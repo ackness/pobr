@@ -1,3 +1,4 @@
+import { plainModifierReason } from '../../../lib/diagnosticText';
 import { originLabel, type Lang } from '../../../lib/i18n';
 import type { LineUsage, LineUsageLine, LineUsageStatus } from '../../../api/types';
 import { words } from '../../text';
@@ -36,7 +37,7 @@ export function statusLabel(lang: Lang, status: LineUsageStatus): string {
     case 'applied': return w('Applied', '已生效', '已生效');
     case 'partial': return w('Partly applied', '部分生效', '部分生效');
     case 'inactive': return w('Inactive', '当前不生效', '目前不生效');
-    case 'unread': return w('Not read', '无人读取', '無人讀取');
+    case 'unread': return w('Unused', '未被使用', '未被使用');
     case 'outside': return w('Used elsewhere', '其他途径使用', '其他途徑使用');
     case 'no_effect': return w('No effect', '无计算影响', '無計算影響');
     case 'unmodelled': return w('Not modelled', '尚未建模', '尚未建模');
@@ -68,11 +69,11 @@ export function sourceGroup(line: Pick<LineUsageLine, 'source_id' | 'source_kind
   const id = (line.source_id ?? '').toLowerCase();
   const kind = (line.source_kind ?? '').toLowerCase();
   if (id.startsWith('item.') || id.startsWith('limb.') || kind.startsWith('item') || kind === 'limb') return 'item';
-  if (id.startsWith('node.') || kind === 'passivenode') return 'tree';
+  if (id.startsWith('node.') || ['passivenode', 'ascendancynode', 'grantedkeystone'].includes(kind)) return 'tree';
   if (id.startsWith('jewel.') || kind === 'jewel') return 'jewel';
   if (id.startsWith('flask.') || id.startsWith('charm.') || kind === 'flask' || kind === 'charm') return 'flask';
-  if (id === 'quest' || id.startsWith('config.') || id.startsWith('quest') || kind === 'config') return 'config';
-  if (id.startsWith('gem.') || id.startsWith('skill.') || kind === 'gem' || kind === 'skill') return 'skill';
+  if (id === 'quest' || id.startsWith('config.') || id.startsWith('quest') || ['config', 'configoption', 'enemyconfig', 'campaignreward'].includes(kind)) return 'config';
+  if (id.startsWith('gem.') || id.startsWith('skill.') || ['gem', 'skill', 'skillgem', 'supportgem', 'skilllevel', 'gemquality'].includes(kind)) return 'skill';
   return 'other';
 }
 
@@ -107,7 +108,8 @@ export function ledgerDisplayText(line: LineUsageLine, lang: Lang, configLabels:
     const knownLabel = configLabels[line.source_id.slice(7)];
     // A known option's bare modifier id is a generated placeholder, not game text.
     if (text === 'Config' || (knownLabel && line.modifiers.some(mod => mod.name === text))) {
-      const label = knownLabel ?? originLabel(lang, line.source_id);
+      const resolved = knownLabel ?? originLabel(lang, line.source_id);
+      const label = resolved === line.source_id ? words(lang, 'Setting name unavailable', '缺少配置名称', '缺少設定名稱') : resolved;
       return words(lang, `Configuration: ${label}`, `配置：${label}`, `配置：${label}`);
     }
   }
@@ -170,6 +172,7 @@ export function ledgerReason(line: LineUsageLine, lang: Lang): string | null {
 export interface LedgerFilter {
   /** Show only these statuses; null shows all. */
   statuses: ReadonlySet<LineUsageStatus> | null;
+  showInternal?: boolean;
   query: string;
   group: SourceGroup | 'all';
 }
@@ -184,6 +187,7 @@ function searchable(line: LineUsageLine): string {
 }
 
 export function matchesFilter(line: LineUsageLine, filter: LedgerFilter): boolean {
+  if (filter.showInternal === false && isInternalLine(line)) return false;
   if (filter.statuses && !filter.statuses.has(line.status)) return false;
   if (filter.group !== 'all' && sourceGroup(line) !== filter.group) return false;
   const query = filter.query.trim().toLowerCase();
@@ -228,4 +232,35 @@ export function toggleStatus(current: ReadonlySet<LineUsageStatus> | null, statu
   const next = new Set(current ?? []);
   if (next.has(status)) next.delete(status); else next.add(status);
   return next.size === 0 ? null : next;
+}
+
+/** Generated identifiers without imported modifier prose belong in advanced entries. */
+export function isInternalLine(line: LineUsageLine): boolean {
+  return !line.text || /^[A-Za-z][A-Za-z0-9_.:]*$/.test(cleanLineText(line.text));
+}
+
+export function reasonConfigField(line: LineUsageLine, conditionConfigs: Readonly<Record<string, string>> = {}): string | null {
+  for (const mod of line.modifiers) {
+    if (mod.read_gate?.config_option) return mod.read_gate.config_option;
+  }
+  const reasons = [line.reason, ...line.modifiers.map(mod => mod.reason)];
+  for (const reason of reasons) {
+    const condition = reason && /^Condition (\w+) not met$/.exec(reason);
+    if (condition && conditionConfigs[condition[1]]) return conditionConfigs[condition[1]];
+  }
+  return null;
+}
+
+export function displayedLedgerReason(line: LineUsageLine, lang: Lang, conditions: Readonly<Record<string, string>> = {}): { text: string | null; untranslated: boolean } {
+  const raw = line.reason ? [line.reason] : line.modifiers.flatMap(mod => mod.reason ? [mod.reason] : []);
+  let untranslated = false;
+  const text = [...new Set(raw)].map(reason => {
+    const mapped = plainModifierReason(reason, lang, conditions);
+    if (mapped) return mapped;
+    const legacy = ledgerReason({ ...line, reason }, lang);
+    if (legacy && legacy !== reason) return legacy;
+    untranslated = true;
+    return words(lang, 'Reason has no translation; open Details.', '原因暂无译文，请展开详情查看原文。', '原因暫無譯文，請展開詳情查看原文。');
+  }).join(' · ');
+  return { text: text || null, untranslated };
 }

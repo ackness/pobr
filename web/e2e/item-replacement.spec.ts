@@ -1,3 +1,4 @@
+import { expectOriginalModifiersKeyboard } from './skillsAndCalcs';
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { chooseTradeGoal, augmentOption, choose, headlineDpsValue, ehpValue, lifeValue, settledText } from './upgradesPage';
@@ -159,7 +160,8 @@ test('joint equipment candidates retain unmodeled effects and cannot apply an un
   await expect(planner.locator('.equipment-plan')).toHaveCount(6);
   await expect(candidate).toHaveCount(0);
   const diagnostics = planner.locator('.equipment-plan-results > details');
-  await diagnostics.locator('summary').click();
+  await diagnostics.locator(':scope > summary').click();
+  await expectOriginalModifiersKeyboard(diagnostics);
   await expect(diagnostics).toContainText('Market Candidate');
   await expect(diagnostics).toContainText('Unmodeled synthetic effect');
   await planner.getByRole('button', { name: /Remove candidate Market Candidate/ }).click();

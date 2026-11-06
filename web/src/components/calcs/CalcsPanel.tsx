@@ -21,7 +21,7 @@ import type {
   CalculateBuildResponse,
 } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { formatStatValue, statFormat, statMap } from '../../lib/statDisplay';
+import { formatStatValue, statFormat, statMap, metricMeaning } from '../../lib/statDisplay';
 import { mainMinion } from '../../lib/mainMinion';
 import {
   bindT,
@@ -30,11 +30,17 @@ import {
   modTypeLabel,
   slotLabel,
   statCategoryLabel,
-  statNameLabel,
+  statNameLabel as sharedStatNameLabel,
   type Lang,
 } from '../../lib/i18n';
 import { getBackend } from '../../api/backend';
-import { lineText } from '../../lib/continuedLines';
+import { isContinuation } from '../../lib/continuedLines';
+import { groupModifiers, damageChain, resistanceIds, type ModifierMeasure } from '../../lib/calcsPresentation';
+import { sourceGroupLabel } from '../../app/pages/calcs/ledger';
+import { ModifierText } from './ModifierText';
+import { useLocalizedLines } from '../../hooks/useLocalizedLines';
+import { ConfigFieldLink } from '../config/ConfigFieldLink';
+import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { useEffect } from 'react';
 import { useSkillName, useSkillCatalog } from '../../hooks/useSkillName';
 import { useLocalizedNames } from '../../hooks/useLocalizedLines';
@@ -60,7 +66,10 @@ interface Props {
   onFocusConsumed?: () => void;
 }
 
-const MOD_TYPE_ORDER = ['BASE', 'INC', 'MORE', 'OVERRIDE', 'FLAG', 'LIST'];
+
+function statNameLabel(lang: Lang, id: string): string {
+  return id === 'TotalDPS' ? bindT(lang)('calcs.hitDps') : sharedStatNameLabel(lang, id);
+}
 
 /** 数字统一格式：千分位 + 最多 2 位小数（清掉浮点尾巴）。 */
 function fmtNum(value: number): string {
@@ -368,15 +377,15 @@ function EnemyLinesView({ rows, lang }: { rows: HitMitigationRow[]; lang: Lang }
   return (
     <div className="damage-lines enemy-lines">
       {groups.map((group) => (
-        <details key={group.key} className={`damage-lines-group enemy-lines-${group.key.toLowerCase()}`}>
-          <summary>
+        <section key={group.key} className={`enemy-lines-section enemy-lines-${group.key.toLowerCase()}`}>
+          <h5>
             {damageTypeLabel(lang, group.type)} · {group.label}
             <span className="breakdown-count">
               {group.mods.filter((m) => m.active).length} {tt('calcs.mods')}
             </span>
-          </summary>
+          </h5>
           <ModLines mods={group.mods} lang={lang} />
-        </details>
+        </section>
       ))}
     </div>
   );
@@ -592,93 +601,112 @@ function ReloadView({ reload, lang }: { reload: ReloadDetail; lang: Lang }) {
 }
 
 /** Modifier lines with type, applied value, text and source; lines the calculation skips are dimmed. */
-function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
+export function ModLines({ mods, lang, measure }: { mods: BreakdownMod[]; lang: Lang; measure?: ModifierMeasure }) {
   const tt = bindT(lang);
-  // 中文界面：词条行批量反查翻译（清洗标注后送翻译器；结果缓存本组件）。
-  const [zhLines, setZhLines] = useState<Record<string, string>>({});
-  useEffect(() => {
-    setZhLines({});
-    if (lang === 'en-US') return;
-    const pending = [
-      ...new Set(
-        mods
-          .map((m) => m.source_text)
-          .filter((t): t is string => !!t)
-          .map(cleanModText),
-      ),
-    ];
-    if (pending.length === 0) return;
-    let cancelled = false;
-    getBackend()
-      .then((b) => b.translateLines(pending, lang))
-      .then((translated) => {
-        if (cancelled) return;
-        const map: Record<string, string> = {};
-        pending.forEach((en, i) => {
-          if (translated[i] !== en) map[en] = lineText(en, translated[i]);
-        });
-        setZhLines(map);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [mods, lang]);
-
-  const modText = (raw: string | null, origin: string | null) => {
-    if (!raw) {
-      switch (origin) {
-        case 'CharacterBase': return tt('calcs.baseFrom.CharacterBase');
-        case 'GameConstant': return tt('calcs.baseFrom.GameConstant');
-        case 'SupportGem': return tt('calcs.baseFrom.SupportGem');
-        default: return tt('calcs.baseDerived');
-      }
-    }
-    const cleaned = cleanModText(raw);
-    return lang !== 'en-US' ? (zhLines[cleaned] ?? cleaned) : cleaned;
-  };
-  return (
-    <div className="breakdown-scroll">
-      <table className="breakdown-table modifier-table">
-        <thead>
-          <tr>
-            <th>{tt('calcs.type')}</th>
-            <th>{tt('calcs.value')}</th>
-            <th>{tt('calcs.modifier')}</th>
-            <th>{tt('calcs.source')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {[...mods]
-            .sort(
-              (a, b) =>
-                MOD_TYPE_ORDER.indexOf(a.mod_type) - MOD_TYPE_ORDER.indexOf(b.mod_type) ||
-                Number(b.active) - Number(a.active),
-            )
-            .map((mod, i) => (
-              <tr key={i} className={mod.active ? undefined : 'is-inactive'}>
-                <td className={`mod-type mod-type-${mod.mod_type.toLowerCase()}`}>{modTypeLabel(lang, mod.mod_type)}</td>
-                <td className="mod-value">{mod.value === null ? '—' : fmtNum(mod.value)}</td>
-                <td className="mod-text">
-                  {modText(mod.source_text, mod.origin_kind)}
-                  {!mod.active && <> <span className="mod-inactive-tag">{tt('calcs.inactive')}</span></>}
-                </td>
-                <td className="mod-origin">
-                  {mod.origin_kind
-                    ? `${originKindLabel(lang, mod.origin_kind)}${
-                        mod.slot ? ` · ${slotLabel(lang, mod.slot)}` : ''
-                      }`
-                    : '—'}
-                </td>
-              </tr>
-            ))}
-        </tbody>
-      </table>
-    </div>
-  );
+  return <div className="modifier-groups">{groupModifiers(mods, measure).map(group => <details className="modifier-source-group" key={group.source}>
+    <summary><strong>{sourceGroupLabel(lang, group.source)}</strong> <span>({group.mods.length})</span>
+      {group.subtotals.length > 0 && <span className="modifier-subtotals">{tt('calcs.sourceTotals')}{lang === 'en-US' ? ': ' : '：'}{group.subtotals.map(total => <span key={total.type}>
+        {modTypeLabel(lang, total.type)} {total.type === 'MORE' ? '×' : ''}{fmtNum(total.value)}{total.type === 'INC' || (total.type === 'BASE' && measure?.unit === 'percent') ? '%' : ''}
+      </span>)}</span>}
+    </summary>
+    <ModifierRows mods={group.mods} lang={lang} />
+  </details>)}</div>;
 }
 
-export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false, nested = false }: { breakdown: Breakdown; lang: Lang; stat?: string; unboundedStacks?: boolean; nested?: boolean }) {
+function ModifierRows({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
+  const tt = bindT(lang);
+  const raw = useMemo(() => mods.map(mod => cleanModText(mod.source_text ?? '')), [mods]);
+  const translated = useLocalizedLines(raw, lang);
+  const [nodes, setNodes] = useState<Record<string, { id: string; name: string }>>({});
+  useEffect(() => {
+    if (!mods.some(mod => mod.origin_kind === 'PassiveNode' || mod.origin_kind === 'AscendancyNode')) return;
+    let cancelled = false;
+    getBackend().then(backend => backend.loadPassiveTree()).then(tree => {
+      if (!cancelled) setNodes(Object.fromEntries(tree.map(node => [String(node.skill), { id: node.id, name: node.name ?? '' }])));
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [mods]);
+  const names = useLocalizedNames(mods.map(mod => {
+    const node = nodes[(mod.origin_id ?? '').replace(/^node\./, '')];
+    return node ? { kind: 'passive' as const, ...node } : { kind: 'base' as const, name: mod.origin_kind === 'Item' && !/[0-9%:]/.test(mod.source_text ?? '') ? mod.source_text ?? '' : '' };
+  }), lang);
+  const source = (mod: BreakdownMod, index: number) => {
+    if (mod.origin_id === 'campaign.resistance_penalty') return words(lang, 'Campaign resistance penalty', '剧情抗性惩罚', '劇情抗性懲罰');
+    const label = mod.origin_kind ? originKindLabel(lang, mod.origin_kind) : sourceGroupLabel(lang, 'other');
+    return [label, names[index], mod.slot ? slotLabel(lang, mod.slot) : null].filter(Boolean).join(' · ');
+  };
+  return <ul className="modifier-rows">{mods.map((mod, index) => {
+    if (isContinuation(raw[index], translated[index])) return null;
+    return <li key={index} className={mod.active ? undefined : 'is-inactive'}>
+      <div className="modifier-row-head"><span className={`mod-type mod-type-${mod.mod_type.toLowerCase()}`}>{modTypeLabel(lang, mod.mod_type)}</span><strong className="mod-value">{mod.value === null ? '—' : fmtNum(mod.value)}</strong></div>
+      <div className="mod-text">{!mod.source_text || (mod.origin_kind === 'Item' && !/[0-9%:]/.test(mod.source_text))
+        ? <>{tt(mod.origin_kind === 'Item' ? 'calcs.missingModifier' : mod.origin_kind === 'CharacterBase' ? 'calcs.baseFrom.CharacterBase' : mod.origin_kind === 'GameConstant' ? 'calcs.baseFrom.GameConstant' : mod.origin_kind === 'SupportGem' ? 'calcs.baseFrom.SupportGem' : 'calcs.baseDerived')}
+          {mod.source_text && <details><summary>{tt('calcs.details')}</summary><pre>{mod.source_text}</pre></details>}</>
+        : <ModifierText raw={mod.source_text} translated={translated[index]} lang={lang} />}
+        {!mod.active && <> <span className="mod-inactive-tag">{tt('calcs.inactive')}</span></>}</div>
+      <p className="mod-origin">{source(mod, index)}{lang !== 'en-US' && /[A-Za-z]{3}/.test(names[index] ?? '') && <small className="modifier-fallback">{tt('calcs.untranslated')}</small>}</p>
+    </li>;
+  })}</ul>;
+}
+
+function FormulaSummary({ breakdown, stat, lang }: { breakdown: Breakdown; stat?: string; lang: Lang }) {
+  const tt = bindT(lang);
+  const formula = breakdown.formula;
+  if (!formula?.steps.length) return null;
+  // Use returned steps only. Special operations keep their actual intermediate result visible.
+  const summary = formula.steps.reduce((expression, step, index) => {
+    const value = fmtNum(step.result);
+    if (index === 0) return value;
+    if (['flat', 'gained', 'flat_after', 'enemy_flat', 'off_hand_added', 'dot_dps', 'poison_dps', 'ignite_dps', 'bleed_dps'].includes(step.op)) return `(${expression} ${formulaOperand(step)})`;
+    if (['increased', 'more', 'action_speed', 'uses_per_second', 'enemy_mitigation', 'chance_to_hit', 'dps_multiplier', 'energy_trigger', 'reload'].includes(step.op)) return `(${expression} ${formulaOperand(step).replace(/ \(.*\)$/, '')})`;
+    if (step.op === 'converted') return `(${expression} ×${fmtNum(1 - step.operand / 100)})`;
+    return `${expression} → ${tt(`calcs.step.${step.op}`)} ${value}`;
+  }, '');
+  const converted = formula.steps.some(step => step.op === 'converted' && step.operand !== 0);
+  const targets = breakdown.sources?.filter(group => group.base_total !== 0 && /ConvertTo/.test(group.name)).map(group => statNameLabel(lang, group.name));
+  return <div className="formula-conclusion"><p>{stat ? statNameLabel(lang, stat) + (lang === 'en-US' ? ': ' : '：') : ''}<span>{summary.split(/(\s+)/).map((part, index) => /\d/.test(part) ? <span className="formula-number" key={index}>{part}</span> : part)}</span> = <strong>{formatStatValue(formula.value, statFormat(stat ?? ''), lang)}{stat?.endsWith('DPS') ? ' DPS' : stat === 'Life' || stat === 'EnergyShield' ? words(lang, ' points', ' 点', ' 點') : ''}</strong></p>
+    {converted && <p className="breakdown-note">{targets?.length ? targets.join('，') : tt('calcs.conversionUnknown')}</p>}
+  </div>;
+}
+
+function DamageChainView({ breakdown, lang }: { breakdown: Breakdown; lang: Lang }) {
+  const tt = bindT(lang);
+  const chain = damageChain(breakdown);
+  const missing = chain.filter(link => link.value === undefined);
+  return <section className="damage-chain"><h4>{tt('calcs.damageChain')}</h4><ol>{chain.filter(link => link.value !== undefined).map(link => <li key={link.key}>
+    <span>{tt(link.key)}</span><strong>{link.unit === 'multiplier' ? '×' : ''}{fmtNum(link.value!)}{link.unit === 'rate' ? words(lang, ' /s', ' 次/秒', ' 次/秒') : link.unit === 'percent' ? '%' : ''}</strong>
+  </li>)}{breakdown.formula && <li><span>{statNameLabel(lang, 'TotalDPS')}</span><strong>{fmtNum(breakdown.formula.value)} DPS</strong></li>}</ol>
+    {missing.length > 0 && <p className="breakdown-note">{tt('calcs.chainMissing').replace('{links}', missing.map(link => tt(link.key)).join(lang === 'en-US' ? ', ' : '、'))}</p>}
+  </section>;
+}
+
+function ResistanceView({ breakdown, stat, lang, values, related, onSelect }: { breakdown: Breakdown; stat: string; lang: Lang;
+  values?: ReadonlyMap<string, number | null>; related?: Record<string, Breakdown>; onSelect?: (stat: string) => void }) {
+  const tt = bindT(lang);
+  const ids = resistanceIds(stat);
+  if (!ids.length) return null;
+  const steps = breakdown.formula?.steps ?? [];
+  const cap = steps.find(step => step.op === 'cap');
+  const before = cap ? steps[steps.indexOf(cap) - 1]?.result : undefined;
+  const fallback = [before, cap?.operand, undefined];
+  const labels = ['calcs.resistTotal', 'calcs.resistCap', 'calcs.resistOver'] as const;
+  const source = (id: string) => related?.[id] ?? (id === stat + 'Total' ? breakdown : undefined);
+  return <section className="resistance-detail"><div className="resistance-summary">{ids.map((id, index) => {
+    const value = values?.get(id) ?? related?.[id]?.formula?.value ?? fallback[index];
+    return <section key={id}><h4>{tt(labels[index])}</h4><strong className="mod-value">{value == null ? tt('calcs.missingValue') : `${fmtNum(value)}%`}</strong></section>;
+  })}</div>
+    {ids.map((id, index) => <details className="resistance-sources" key={id}><summary>{tt(labels[index])}：{tt('calcs.source')}</summary>
+      {onSelect && <AppButton onClick={() => onSelect(id)}>{statNameLabel(lang, id)}</AppButton>}
+      {source(id)?.mods.length ? <ModLines mods={source(id)!.mods} lang={lang} />
+        : source(id)?.sources?.some(group => group.mods.length) ? source(id)!.sources!.filter(group => group.mods.length).map(group => <section key={group.name}><h5>{statNameLabel(lang, group.name)}</h5><ModLines mods={group.mods} lang={lang} measure={{ stat: group.name, unit: statFormat(group.name) }} /></section>)
+        : source(id)?.derived ? <p className="formula-conclusion">{detailFormula(source(id)!.derived!.formula, source(id)!.derived!.inputs, lang, true)}</p>
+        : <p className="breakdown-note">{tt('calcs.missingSources')}</p>}
+    </details>)}
+  </section>;
+
+}
+
+export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false, nested = false, values, related, onSelect, modifierMeasure }: { breakdown: Breakdown; lang: Lang; stat?: string; unboundedStacks?: boolean; nested?: boolean; values?: ReadonlyMap<string, number | null>; related?: Record<string, Breakdown>; onSelect?: (stat: string) => void; modifierMeasure?: ModifierMeasure }) {
   const tt = bindT(lang);
   if (breakdown.derived) {
     const derived = breakdown.derived;
@@ -691,7 +719,8 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
       <h4 className="breakdown-heading">{calcsLabel(lang, 'derived')}</h4>
       <p className="breakdown-note">{tt('calcs.derivedHint')}</p>
       {sourceHints.map(hint => <p className="breakdown-note" key={hint.id}>{statNameLabel(lang, hint.id)}</p>)}
-      <p className="derived-formula">{detailFormula(derived.formula, derived.inputs, lang)}</p>
+      <p className="formula-conclusion">{detailFormula(derived.formula, derived.inputs, lang, true)}{stat && values?.has(stat) ? ` = ${formatStatValue(values.get(stat) ?? null, statFormat(stat), lang)}` : ''}</p>
+      <details className="formula-steps"><summary>{tt('calcs.formula')}</summary><p className="derived-formula">{detailFormula(derived.formula, derived.inputs, lang)}</p></details>
       <table className="breakdown-table"><caption>{tt('calcs.inputs')}</caption><tbody>
         {derived.inputs.map(input => <tr key={input.id}><th scope="row">{detailInputLabel(input.id, derived.inputs, lang)}</th><td>{inputValue(input)}</td></tr>)}
       </tbody></table>
@@ -710,7 +739,7 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
       {groups.map(group => <section key={group.name}>
         <h5>{statNameLabel(lang, group.name)}</h5>
         {group.mods.some(mod => mod.active && mod.mod_type === 'MORE') && <p className="breakdown-note">{tt(group.more_precision === null ? 'calcs.moreRounded' : 'calcs.moreFloored')} {group.more_precision ?? 2}</p>}
-        <BreakdownTable breakdown={{ ...group, formula: null }} lang={lang} nested />
+        <BreakdownTable breakdown={{ ...group, formula: null }} lang={lang} nested modifierMeasure={{ stat: group.name, unit: statFormat(group.name) }} />
       </section>)}
     </div>;
   }
@@ -723,13 +752,21 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
   const linesPerHand = hands.some((hand) => hand.mods.length > 0);
   return (
     <div className="breakdown-detail">
+      {stat && <ResistanceView breakdown={breakdown} stat={stat} lang={lang} values={values} related={related} onSelect={onSelect} />}
+      <FormulaSummary breakdown={breakdown} stat={stat} lang={lang} />
+      {stat === 'CombinedDPS' && onSelect && <div className="combined-components">{breakdown.formula?.steps.map((step, index) => {
+        const component = ({ hit_dps: 'TotalDPS', skill_dot: 'TotalDotDPS', dot_dps: 'TotalDotDPS', poison_dps: 'PoisonDPS', ignite_dps: 'IgniteDPS', bleed_dps: 'BleedDPS' } as Record<string, string>)[step.op];
+        return component ? <AppButton key={index} onClick={() => onSelect(component)}>{statNameLabel(lang, component)} {fmtNum(step.operand)} DPS</AppButton> : null;
+      })}</div>}
+      {stat === 'TotalDPS' && hands.length === 0 && <DamageChainView breakdown={breakdown} lang={lang} />}
       {breakdown.damage && <HitDamageView damage={breakdown.damage} lang={lang} />}
       {breakdown.skill_dot && <SkillDotView rows={breakdown.skill_dot} lang={lang} />}
       {breakdown.formula && breakdown.formula.steps.length > 0 ? (
         <>
           <h4 className="breakdown-heading">{calcsLabel(lang, 'steps')}</h4>
           <p className="breakdown-note">{tt('calcs.stepsHint')}</p>
-          <table className="breakdown-formula" aria-label={tt('calcs.formula')}>
+          <details className="formula-steps"><summary>{tt('calcs.formula')}</summary>
+          <div className="breakdown-scroll"><table className="breakdown-formula" aria-label={tt('calcs.formula')}>
             <tbody>
               {breakdown.formula.steps.map((step, i) => (
                 <tr key={i} className={`formula-step formula-${step.op}`}>
@@ -744,7 +781,7 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
                 <td className="formula-result">{formatStatValue(breakdown.formula.value, statFormat(stat ?? ''), lang)}</td>
               </tr>
             </tbody>
-          </table>
+          </table></div></details>
         </>
       ) : (
         <>
@@ -766,8 +803,14 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
       )}
       {breakdown.mitigation && breakdown.mitigation.length > 0 && (
         <>
-          <MitigationView rows={breakdown.mitigation} lang={lang} />
-          <EnemyLinesView rows={breakdown.mitigation} lang={lang} />
+          <div className="mitigation-context"><MitigationView rows={breakdown.mitigation} lang={lang} />
+            <aside><h4>{tt('calcs.enemyConditions')}</h4><ul>{breakdown.mitigation.map(row => <li key={row.damage_type}>
+              <ConfigFieldLink field={row.resist === null ? 'enemyPhysicalReduction' : `enemy${row.damage_type}Resist`} lang={lang}>
+                {damageTypeLabel(lang, row.damage_type)}：{fmtNum(row.resist ?? row.reduction)}% {tt(row.resist === null ? 'calcs.mitigation.reduction' : 'calcs.mitigation.resist')}
+              </ConfigFieldLink>
+            </li>)}</ul></aside>
+          </div>
+          <details className="enemy-modifiers"><summary>{tt('calcs.modifier')} ({breakdown.mitigation.reduce((sum, row) => sum + row.defence_mods.length + row.taken_mods.length, 0)})</summary><EnemyLinesView rows={breakdown.mitigation} lang={lang} /></details>
         </>
       )}
       {breakdown.ailment && <AilmentView ailment={breakdown.ailment} lang={lang} />}
@@ -777,14 +820,14 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
       {hands.map((hand) => (
         <section key={hand.hand} className={`breakdown-hand breakdown-hand-${hand.hand}`} aria-label={tt(`calcs.hand.${hand.hand}`)}>
           <h4 className="breakdown-hand-title">{tt(`calcs.hand.${hand.hand}`)}</h4>
-          <BreakdownTable breakdown={hand} lang={lang} stat={stat} nested />
+          <BreakdownTable breakdown={hand} lang={lang} stat={stat} nested onSelect={onSelect} />
         </section>
       ))}
       {!linesPerHand && [...breakdown.mods, ...damageLines].some((m) => !m.active) && (
         <p className="breakdown-note">{tt('calcs.inactiveNote')}</p>
       )}
       {breakdown.damage && <DamageLinesView damage={breakdown.damage} lang={lang} />}
-      {!linesPerHand && breakdown.mods.length > 0 && <ModLines mods={breakdown.mods} lang={lang} />}
+      {!linesPerHand && breakdown.mods.length > 0 && <ModLines mods={breakdown.mods} lang={lang} measure={modifierMeasure} />}
     </div>
   );
 }
@@ -808,7 +851,7 @@ export function FullDpsView({ calc, lang }: { calc: CalculateBuildResponse | nul
         <tbody>{full.skills.map(row => <tr key={`${row.group_index}-${row.active_skill_index}`}>
           <th>{tt('calcs.group')} {row.group_index + 1} · {skillName(row.skill_id)}</th><td>{fmtNum(row.count)}</td>
           <td>{row.error ? '—' : fmtNum(row.dps)}</td><td>{row.error}{row.unsupported_modifiers.length > 0 && <details><summary>{tt('calcs.unsupported')} ({row.unsupported_modifiers.length})</summary>
-            <ul>{row.unsupported_modifiers.map((issue, index) => <li key={index}>{issue}</li>)}</ul></details>}</td>
+            <UnincludedModifiers lines={row.unsupported_modifiers} lang={lang} /></details>}</td>
         </tr>)}</tbody>
       </table></div>
     </> : <>
@@ -1049,18 +1092,23 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
     detailHeading.current?.focus({ preventScroll: true });
   }, [selectedMinion, open]);
   const cache = useRef(new StatDetailCache());
-  const [loaded, setLoaded] = useState<{ calc: typeof calc; id: string; actor: string; detail: Breakdown | null; error?: string } | null>(null);
+  const relatedCache = useRef(new WeakMap<CalculateBuildResponse, Record<string, Record<string, Breakdown>>>());
+  const [loaded, setLoaded] = useState<{ calc: typeof calc; id: string; actor: string; detail: Breakdown | null; related?: Record<string, Breakdown>; error?: string } | null>(null);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
-    if (!calc || session.busy || view !== 'metrics' || !open || detailKind(selectedMinion ?? calc, open) === 'none' || actorBreakdowns[open]) return;
+    if (!calc || session.busy || view !== 'metrics' || !open || detailKind(selectedMinion ?? calc, open) === 'none' || (actorBreakdowns[open] && resistanceIds(open).every(id => actorBreakdowns[id]))) return;
     const request = session.currentRequest();
     if (!request) return;
     let cancelled = false;
     cache.current.load(calc, `${actor}:${open}`, async () => {
-      const result = await (await getBackend()).calculateBuild({ ...request, breakdowns: [open], breakdown_actor: selectedMinion ? { kind: 'minion', index: selectedMinion.index } : { kind: 'player' } });
-      return (selectedMinion ? result.minions?.find(minion => minion.index === selectedMinion.index)?.breakdowns[open] : result.breakdowns[open]) ?? null;
+      const result = await (await getBackend()).calculateBuild({ ...request, breakdowns: [open, ...resistanceIds(open)], breakdown_actor: selectedMinion ? { kind: 'minion', index: selectedMinion.index } : { kind: 'player' } });
+      const related = (selectedMinion ? result.minions?.find(minion => minion.index === selectedMinion.index)?.breakdowns : result.breakdowns) ?? {};
+      const actors = relatedCache.current.get(calc) ?? {};
+      actors[actor] = { ...actors[actor], ...related };
+      relatedCache.current.set(calc, actors);
+      return related[open] ?? null;
     }).then(detail => {
-      if (!cancelled) setLoaded({ calc, id: open, actor, detail });
+      if (!cancelled) setLoaded({ calc, id: open, actor, detail, related: relatedCache.current.get(calc)?.[actor] });
     }).catch(error => {
       if (!cancelled) setLoaded({ calc, id: open, actor, detail: null, error: formatApiError(error) });
     });
@@ -1159,7 +1207,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
     if (session.busy && !breakdown) return <p role="status" className="breakdown-detail">{calcsLabel(lang, 'stale')}</p>;
     return kind === 'none' ? <p className="breakdown-detail" role="status">{tt('calcs.noBreakdown')}</p>
       : breakdown ? emptyKey ? <p className="breakdown-detail" role="status">{tt(emptyKey)}</p>
-        : <BreakdownTable breakdown={breakdown} lang={lang} stat={name} unboundedStacks={unboundedPoison && name.startsWith('Poison')} />
+        : <BreakdownTable breakdown={breakdown} lang={lang} stat={name} unboundedStacks={unboundedPoison && name.startsWith('Poison')} values={values} related={{ ...actorBreakdowns, ...current?.related }} onSelect={id => { setOpen(id); detailHeading.current?.focus({ preventScroll: true }); }} />
       : current?.error ? <div className="breakdown-detail" role="alert">{current.error} <AppButton onClick={() => { setLoaded(null); setRetry(value => value + 1); }}>{tt('calcs.retry')}</AppButton></div>
       : <p className="breakdown-detail" role="status">{tt(current ? emptyKey! : 'calcs.loadingDetail')}</p>;
   };
@@ -1176,7 +1224,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
     ['skills', tt('calcs.skillMetrics')],
     ['full-dps', calcsLabel(lang, 'fullDps')],
     ['attribution', tt('calcs.attribution')],
-    ['ledger', words(lang, 'Ledger', '词条账本', '詞綴帳本')],
+    ['ledger', words(lang, 'Ledger', '词缀账本', '詞綴帳本')],
   ] as const;
   const visibleSections = sections.filter(section => category === 'all' || category === section.category)
     .map(section => ({ ...section, names: commonOnly && !query.trim() && category === 'all'
@@ -1237,6 +1285,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
               {open && <p className="calcs-eyebrow">{actorLabel}</p>}
               <h3 id="calcs-detail-heading" ref={detailHeading} tabIndex={-1}>{open ? statNameLabel(lang, open) : calcsLabel(lang, 'choose')}</h3>
               {open && <div className="calcs-detail-value"><strong>{metricValue(open)}</strong></div>}
+              {open && metricMeaning(open, lang) && <p className="metric-meaning">{metricMeaning(open, lang)}</p>}
             </div>
             {minionDamage && <div className="calcs-minion-damage">
               <p className="breakdown-note">{tt('calcs.minionDamage').replace('{skill}', skillName(calc!.main_skill?.skill_id ?? calculatedMinion.summoned_by))}</p>

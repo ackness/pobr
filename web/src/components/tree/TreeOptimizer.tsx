@@ -1,3 +1,4 @@
+import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { treeStatLabel } from './treePresentation';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppInput } from '../shared/controls';
@@ -310,7 +311,7 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
           {evaluated.baselineUnsupported.length > 0 && <details className="tree-planner-diagnostics tree-planner-baseline-unsupported">
             <summary>{text.baselineLimits}{colon}{evaluated.baselineUnsupported.length}</summary>
             <p className="tree-planner-hint">{text.baselineLimitsHint}</p>
-            <ul>{evaluated.baselineUnsupported.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
+            <UnincludedModifiers lines={evaluated.baselineUnsupported} lang={lang} />
           </details>}
           {evaluated.excluded.length > 0 && <details className="tree-planner-diagnostics">
             <summary>{text.excluded}{colon}{evaluated.excluded.length}</summary>
@@ -321,7 +322,7 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
                 <p>{text.add}{colon}{plan.allocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}</p>
                 <p>{text.remove}{colon}{plan.deallocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}</p>
                 {unsupported.length > 0 && <><p>{text.newLimits}</p>
-                  <ul>{unsupported.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul></>}
+                  <UnincludedModifiers lines={unsupported} lang={lang} /></>}
                 {engineError && <p className="opt-error">{text.engineError}{colon}{engineError}</p>}
                 {unsupported.length === 0 && !engineError && <p className="opt-error">{text.invalidStats}</p>}
               </details>

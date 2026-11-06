@@ -18,7 +18,8 @@ vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { harness.buttons.push(props); return <button {...props} />; },
   AppInput: (props: ComponentProps<'input'>) => <input {...props} />,
 }));
-vi.mock('../../hooks/useLocalizedLines', () => ({ useLocalizedNames: (names: { name: string }[]) => names.map(entry => entry.name) }));
+vi.mock('../../hooks/useLocalizedLines', async original => ({ ...await original<typeof import('../../hooks/useLocalizedLines')>(),
+  useLocalizedNames: (names: { name: string }[]) => names.map(entry => entry.name) }));
 vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
 vi.mock('../shared/PreviewContext', () => ({ usePreview: () => ({ state: harness.previewState,
   show: harness.show, showChanges: harness.showChanges, clear: () => {} }) }));
