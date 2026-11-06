@@ -26,6 +26,11 @@ import gemCatalogFixture from '../fixtures/gem_catalog.json';
 import minionCatalogFixture from '../fixtures/minion_catalog.json';
 import configOptionsFixture from '../fixtures/config_options.json';
 
+// Published mock fixtures can predate additive catalog metadata.
+const gemCatalog = gemCatalogFixture.map(gem => ({
+  ...gem, is_unique_only: gem.skill_id.startsWith('Unique'),
+})) as unknown as GemCatalogEntry[];
+
 /** Stronger enemies take less damage, so the mock moves when the scenario does, as the engine would. */
 const TIER_DAMAGE = { none: 1, boss: 0.85, pinnacle: 0.7, uber: 0.6 } as const;
 function againstEnemy(result: CalculateBuildResponse, tier: keyof typeof TIER_DAMAGE | undefined): CalculateBuildResponse {
@@ -107,7 +112,7 @@ export function createMockBackend(): PobrBackend {
     async minionCatalog() { return minionCatalogFixture as unknown as import('./types').MinionCatalog; },
     async gemDescriptions() { return null; },
     async gemCatalog() {
-      return gemCatalogFixture as unknown as GemCatalogEntry[];
+      return gemCatalog;
     },
     async loadConfigOptions() {
       return configOptionsFixture as unknown as ConfigOption[];

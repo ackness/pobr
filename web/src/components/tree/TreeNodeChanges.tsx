@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { AttributeChoice, CalculateBuildRequest, CalculateBuildResponse, TreeEditResponse } from '../../api/types';
 import { getBackend } from '../../api/backend';
 import { diffStats, type DiffEntry } from '../../lib/compare';
@@ -13,14 +13,15 @@ export function TreeNodeChanges({ request, preview, baseline, busy, allocated, l
   baseline: CalculateBuildResponse | null; busy: boolean; allocated: boolean; lang: Lang;
 }) {
   const tt = bindT(lang);
-  const calculationRequest = request && preview?.result ? treeAllocationRequest({ ...request,
+  const calculationRequest = useMemo(() => request && preview?.result ? treeAllocationRequest({ ...request,
     attribute_choices: { ...request.attribute_choices, ...attributeChoices },
-  }, preview.result.allocation) : null;
-  const key = JSON.stringify([calculationRequest, preview, baseline?.stats]);
+  }, preview.result.allocation) : null, [request, preview?.result, attributeChoices]);
+  const key = useMemo(() => JSON.stringify([calculationRequest, preview, baseline?.stats]), [calculationRequest, preview, baseline?.stats]);
+  const [open, setOpen] = useState(false);
   const [resolved, setResolved] = useState<{ key: string; diffs: DiffEntry[] | null } | null>(null);
   const ready = !busy && Boolean(request && baseline && preview?.valid && preview.result);
   useEffect(() => {
-    if (!ready) return;
+    if (!open || !ready || resolved?.key === key) return;
     let cancelled = false;
     const timer = setTimeout(() => {
       getBackend().then(backend => backend.calculateBuild(calculationRequest!))
@@ -28,10 +29,10 @@ export function TreeNodeChanges({ request, preview, baseline, busy, allocated, l
         .catch(() => { if (!cancelled) setResolved({ key, diffs: null }); });
     }, 300);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [key, ready]);
+  }, [key, ready, open]);
   const result = ready && resolved?.key === key ? resolved : null;
-  return <details className="tree-node-changes">
-    <summary className="disclosure" data-disclosure-level="inline">{tt(allocated ? 'diff.ifDealloc' : 'diff.ifAlloc')}</summary>
+  return <details className="tree-node-changes" onToggle={event => setOpen(event.currentTarget.open)}>
+    <summary className="disclosure">{tt(allocated ? 'diff.ifDealloc' : 'diff.ifAlloc')}</summary>
     {result?.diffs ? <TreeHoverBenefits diffs={result.diffs} lang={lang} refundCount={preview?.result?.removed.length} />
       : <p role="status">{busy || !preview || ready && !result ? tt('tree.deltaPending') : tt('tree.deltaUnavailable')}</p>}
   </details>;

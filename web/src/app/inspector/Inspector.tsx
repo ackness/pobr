@@ -6,10 +6,10 @@ import { Button } from '../../components/ui/button';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
 import { detailKind, detailEmptyKey } from '../../lib/statDetails';
-import { formatStatValue, statMap, metricMeaning } from '../../lib/statDisplay';
+import { statMap, metricMeaning, formatStat } from '../../lib/statDisplay';
 import type { SettledCalc } from '../motion/useSettledCalc';
 import { words } from '../text';
-import { parseStatId, statFormat, statLabel } from './statId';
+import { parseStatId, statLabel } from './statId';
 import { useStatBreakdown } from './useStatBreakdown';
 
 /** "Why is this number what it is": the calculation behind one stat, without leaving the page you are on. */
@@ -40,7 +40,7 @@ export default function Inspector({ session, view, lang, id, onClose, onOpenCalc
         <Button variant="ghost" size="icon" aria-label={w('Close', '关闭', '關閉')} onClick={onClose}><X /></Button>
       </div>
     </header>
-    <p className="insp-value">{raw === undefined ? '—' : formatStatValue(raw, statFormat(stat), lang)}</p>
+    <p className="insp-value">{raw === undefined ? '—' : formatStat(stat, raw, lang)}</p>
     {metricMeaning(stat, lang) && <p className="metric-meaning">{metricMeaning(stat, lang)}</p>}
     <div className="insp-body" key={id}>
       {none ? <p className="insp-note" role="status">{tt('calcs.noBreakdown')}</p>

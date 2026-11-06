@@ -16,7 +16,7 @@ const entries: GemCatalogEntry[] = [
   { skill_id: 'fire', name: 'Fireball', name_zh_cn: '火球', name_zh_tw: '火球', colour: 'int', tags: ['Spell', 'Projectile'] },
   { skill_id: 'ice', name: 'Ice Nova', name_zh_cn: '冰霜新星', name_zh_tw: '冰霜新星', colour: 'int', tags: ['Spell'] },
   { skill_id: 'lightning', name: 'Spark', name_zh_cn: '电球', name_zh_tw: '電球', colour: 'int', tags: ['Spell'] },
-].map(entry => ({ ...entry, is_support: false, is_lineage: false, active_effect_ids: [entry.skill_id] })) as GemCatalogEntry[];
+].map(entry => ({ ...entry, is_support: false, is_lineage: false, is_unique_only: false, active_effect_ids: [entry.skill_id] })) as GemCatalogEntry[];
 
 function Fixture() {
   const query = new URLSearchParams(location.search);

@@ -20,6 +20,9 @@ const COLOUR_VAR: Record<string, string> = {
 
 export type ColourFilter = 'all' | 'str' | 'dex' | 'int';
 
+const collators = new Map<Lang, Intl.Collator>();
+const skillIdCollator = new Intl.Collator();
+
 interface Props {
   entries: GemCatalogEntry[];
   placeholder: string;
@@ -33,6 +36,8 @@ interface Props {
  * 中英文子串搜索 + 颜色分类筛选 + 键盘导航（↑↓/Enter/Esc）。
  */
 export function rankGemResults(entries: GemCatalogEntry[], query: string, colour: ColourFilter, lang: Lang): GemCatalogEntry[] {
+  let collator = collators.get(lang);
+  if (!collator) { collator = new Intl.Collator(lang); collators.set(lang, collator); }
   const searchText = (text: string) => normalizeGemName(text).toLocaleLowerCase(lang).replace(/\s/g, '');
   const q = searchText(query.trim());
   const rank = (gem: GemCatalogEntry) => {
@@ -43,18 +48,20 @@ export function rankGemResults(entries: GemCatalogEntry[], query: string, colour
     return gemTagMatches(gem.tags, query.trim()) ? 3 : 4;
   };
   return [...new Map(entries.map(gem => [gem.skill_id, gem])).values()]
-    // The catalog has no socketability field or base ID. SkillGemUnique* bases
-    // expose Unique* effect IDs. Hide them only here; imports still use the full catalog.
-    .filter(gem => !gem.skill_id.startsWith('Unique'))
-    .filter(gem => (colour === 'all' || gem.colour === colour) && rank(gem) < 4)
-    .sort((a, b) => rank(a) - rank(b) || gemDisplayName(a, lang).localeCompare(gemDisplayName(b, lang), lang) || a.skill_id.localeCompare(b.skill_id));
+    // The catalog marks unique-granted effects; imports still use the full catalog.
+    .filter(gem => !gem.is_unique_only)
+    .filter(gem => colour === 'all' || gem.colour === colour)
+    .map(gem => ({ gem, rank: rank(gem), name: gemDisplayName(gem, lang) }))
+    .filter(entry => entry.rank < 4)
+    .sort((a, b) => a.rank - b.rank || collator.compare(a.name, b.name) || skillIdCollator.compare(a.gem.skill_id, b.gem.skill_id))
+    .map(entry => entry.gem);
 }
 
 export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Props) {
   const tt = bindT(lang);
-  const descriptions = useGemDescriptions();
   const active = usePanelActive();
   const [open, setOpen] = useState(false);
+  const descriptions = useGemDescriptions(open && !disabled && active);
   const [query, setQuery] = useState('');
   const [colour, setColour] = useState<ColourFilter>('all');
   const [highlight, setHighlight] = useState(0);

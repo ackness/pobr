@@ -1,3 +1,4 @@
+import { colon } from '../../app/text';
 import { ItemDisplay } from '../items/ItemDisplay';
 import { formatNumber } from '../../lib/statDisplay';
 import { AppButton, AppSelectControl } from '../shared/controls';
@@ -41,7 +42,7 @@ export function TreeComparison(props: Props) {
   const current = loaded?.key === key ? loaded : undefined;
   return <section className="compare-trees" aria-label={tt('compare.treeOverlay')}>
     <h3>{tt('compare.treeOverlay')}</h3>
-    {versionA !== versionB && <p>{tt('compare.treeVersion')}{lang === 'en-US' ? ': ' : '：'}A · {versionA ?? tt('compare.defaultVersion')} / B · {versionB ?? tt('compare.defaultVersion')}</p>}
+    {versionA !== versionB && <p>{tt('compare.treeVersion')}{colon(lang)}A · {versionA ?? tt('compare.defaultVersion')} / B · {versionB ?? tt('compare.defaultVersion')}</p>}
     {versionA !== versionB && <p className="compare-tree-warning" role="note">{tt('compare.treeMismatch')}</p>}
     {!current && <p role="status">{tt('compare.treeLoading')}</p>}
     {current?.error && <p role="alert">{current.error}</p>}
@@ -118,7 +119,7 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
       </li>)}
     </ul>;
   const unplaced = [overlay.unplacedA, overlay.unplacedB].map((ids, index) => ids.length > 0 && <details className="compare-tree-warning" key={index} open>
-      <summary className="disclosure" data-disclosure-level="inline">{index ? 'B' : 'A'} · {tt('compare.unplaced')} ({ids.length})</summary><p>{ids.join(', ')}</p>
+      <summary className="disclosure">{index ? 'B' : 'A'} · {tt('compare.unplaced')} ({ids.length})</summary><p>{ids.join(', ')}</p>
     </details>);
   const tools = currentView && full && <div className="compare-tree-tools">
         <AppButton type="button" onClick={() => setView(focus)}>{tt('compare.fitAllocations')}</AppButton>
@@ -206,7 +207,7 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
         {tableRow('choice-unassigned', tt('compare.unassigned'), totals.map(total => total.attributes.unassigned))}
       </tbody></table></div>
     <p className="compare-hint">{tt('compare.totalsHint')}</p>
-    {totals.map((total, index) => total.unknown.length > 0 && <p className="compare-tree-warning" key={index}>{index ? 'B' : 'A'} · {tt('compare.unknownNodes')}{lang === 'en-US' ? ': ' : '：'}{total.unknown.join(', ')}</p>)}
+    {totals.map((total, index) => total.unknown.length > 0 && <p className="compare-tree-warning" key={index}>{index ? 'B' : 'A'} · {tt('compare.unknownNodes')}{colon(lang)}{total.unknown.join(', ')}</p>)}
     <h4>{tt('compare.socketJewels')}</h4>
     {!sockets.length && <p>{tt('compare.noJewels')}</p>}
     {sockets.map(id => <article className="compare-difference" key={id} data-socket={id}>
@@ -216,7 +217,7 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
       </div>)}</div>
     </article>)}
     <details><summary className="disclosure" data-disclosure-level="group">{tt('compare.passives')}</summary>{(['a', 'b', 'both'] as const).map(side => <p key={side}>
-      {tt(side === 'a' ? 'compare.removed' : side === 'b' ? 'compare.added' : 'compare.both')}{lang === 'en-US' ? ': ' : '：'}{overlay.nodes.filter(entry => entry.side === side).map(entry => entry.node.skill).join(', ') || '—'}
+      {tt(side === 'a' ? 'compare.removed' : side === 'b' ? 'compare.added' : 'compare.both')}{colon(lang)}{overlay.nodes.filter(entry => entry.side === side).map(entry => entry.node.skill).join(', ') || '—'}
     </p>)}</details>
   </>;
   const noCoordinates = <p role="note">{tt('compare.noCoordinates')}</p>;
@@ -267,7 +268,7 @@ function NodeDetails({ node, state, output, side, lang }: {
     <h4>{name ? cleanLine(shownName ?? name) : `#${node.skill}`} · #{node.skill}</h4>
     <p>{tt(state.allocatedNodes.includes(node.skill) ? 'compare.allocated' : 'compare.unallocated')}</p>
     <ul>{shownLines(lines, translated).map((line, index) => <li key={index}>{cleanLine(line)}</li>)}</ul>
-    {state.attributeChoices[String(node.skill)] && <p>{tt('tree.attributeChoice')}{lang === 'en-US' ? ': ' : '：'}{statNameLabel(lang, { str: 'Str', dex: 'Dex', int: 'Int' }[state.attributeChoices[String(node.skill)]])}</p>}
+    {state.attributeChoices[String(node.skill)] && <p>{tt('tree.attributeChoice')}{colon(lang)}{statNameLabel(lang, { str: 'Str', dex: 'Dex', int: 'Int' }[state.attributeChoices[String(node.skill)]])}</p>}
     {change && <p className="compare-hint">{tt('compare.jewelEffect')}</p>}
     {state.jewels.find(jewel => jewel.socket_node === node.skill) && <ItemDisplay rawDetails text={state.jewels.find(jewel => jewel.socket_node === node.skill)!.text} lang={lang} />}
   </>}</div>;

@@ -1845,6 +1845,7 @@ fn manual_skills_and_items_without_code() {
             "colour",
             "is_support",
             "is_lineage",
+            "is_unique_only",
             "tags",
         ],
         "gem catalog entry",
@@ -1871,6 +1872,15 @@ fn manual_skills_and_items_without_code() {
     );
     assert!(entries.iter().any(|e| e["is_support"] == false));
     assert!(entries.iter().any(|e| e["is_support"] == true));
+    assert!(entries.iter().any(|e| e["is_unique_only"] == true));
+    for entry in entries {
+        assert_eq!(
+            entry["is_unique_only"],
+            entry["skill_id"].as_str().unwrap().starts_with("Unique"),
+            "unique-only picker flag for {}",
+            entry["skill_id"]
+        );
+    }
     // Find a known spell (Comet is from a druid reference build).
     let comet = entries
         .iter()
@@ -4549,9 +4559,27 @@ fn minion_selection_catalog_output_and_actor_breakdowns_round_trip() {
             .find(|row| row["id"] == "MainMinionDPS")
             .map(|row| row["value"].clone())
     };
-    let without_main = calc(disabled_main);
+    let without_main = calc(disabled_main.clone());
     assert!(without_main["main_minion_index"].is_null());
     assert_eq!(main_minion_dps(&without_main), None);
+    let absent_variants: Value = serde_json::from_str(
+        &pobr_wasm::optimize_variants_json(
+            &serde_json::json!({ "request": disabled_main, "stats": ["MainMinionDPS"], "variants": [] })
+                .to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(absent_variants["baseline"]["MainMinionDPS"], 0.0);
+    let absent_attribution: Value = serde_json::from_str(
+        &pobr_wasm::attribution_json(
+            &serde_json::json!({ "request": disabled_main, "fields": ["MainMinionDPS"] })
+                .to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(absent_attribution["baseline"], serde_json::json!({}));
     assert_eq!(direct["main_minion_index"], 1);
     let minions = direct["minions"].as_array().unwrap();
     assert_eq!(minions.len(), 2);

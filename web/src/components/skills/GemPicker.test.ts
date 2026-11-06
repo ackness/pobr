@@ -5,7 +5,7 @@ import { gemDisplayName, rankGemResults } from './GemPicker';
 // Production catalog shape: skill_id is a granted effect ID, not a gem base ID.
 const spark: GemCatalogEntry = {
   skill_id: 'SparkPlayer', name: 'Spark', name_zh_cn: '电球', name_zh_tw: '電球',
-  colour: 'int', is_support: false, is_lineage: false,
+  colour: 'int', is_support: false, is_lineage: false, is_unique_only: false,
   active_effect_ids: ['SparkPlayer'], additional_skill_ids: ['SparkColdInfusedPlayer'],
   effect_forms: [{ skill_id: 'SparkPlayer', stat_sets: [
     { id: 'SparkPlayer', index: 1, label: 'Base', stage: null },
@@ -16,7 +16,7 @@ const spark: GemCatalogEntry = {
 };
 const earthboundSpark: GemCatalogEntry = {
   skill_id: 'UniqueEarthboundTriggeredSparkPlayer', name: 'Spark', name_zh_cn: '电球', name_zh_tw: '電球',
-  colour: 'int', is_support: false, is_lineage: false,
+  colour: 'int', is_support: false, is_lineage: false, is_unique_only: true,
   active_effect_ids: ['UniqueEarthboundTriggeredSparkPlayer'],
   effect_forms: [{ skill_id: 'UniqueEarthboundTriggeredSparkPlayer', stat_sets: [] }],
   tags: [...spark.tags, 'Cold', 'InbuiltTrigger', 'Triggered'].sort(),
@@ -45,7 +45,7 @@ test('trigger tags alone do not exclude a socketable gem', () => {
 
 const gem = (id: string, cn: string, en = id, tags: string[] = []): GemCatalogEntry => ({
   skill_id: id, name: en, name_zh_cn: cn, name_zh_tw: cn, tags, colour: 'int',
-  active_effect_ids: [id], is_support: false, is_lineage: false,
+  active_effect_ids: [id], is_support: false, is_lineage: false, is_unique_only: false,
 });
 
 test('Chinese name prefixes and substrings outrank English names and tags, with duplicates removed', () => {
@@ -89,5 +89,16 @@ for (const [lang, first] of [['en-US', 'fire'], ['zh-CN', 'ice'], ['zh-TW', 'fir
     const entries = [gem('fire', '火球', 'Fireball'), gem('ice', '冰霜新星', 'Ice Nova'),
       { ...gem('lightning', '电球', 'Spark'), name_zh_tw: '電球' }];
     expect(rankGemResults(entries, '', 'all', lang)[0].skill_id).toBe(first);
+  });
+}
+
+for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
+  test(`keeps localeCompare defaults and the default-locale skill ID tie-break in ${lang}`, () => {
+    const names = ['a', 'A', 'á', 'a 10', 'a 2', '电', '電', '火', '冰'];
+    const entries = names.map((name, index) => gem(`id-${index}`, name, name));
+    entries.push(gem('á-id', 'a', 'a'), gem('A-id', 'a', 'a'));
+    const expected = [...entries].sort((a, b) => gemDisplayName(a, lang).localeCompare(gemDisplayName(b, lang), lang)
+      || a.skill_id.localeCompare(b.skill_id));
+    expect(rankGemResults(entries, '', 'all', lang)).toEqual(expected);
   });
 }

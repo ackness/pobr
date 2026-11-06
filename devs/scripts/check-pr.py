@@ -66,11 +66,9 @@ def touched_packages(files, root=ROOT, full=False):
     return sorted(touched)
 
 
-def steps_for(files, plan, root=ROOT, packages=None):
+def steps_for(plan, packages, root=ROOT):
     steps = []
-    if plan["rust"] or plan["full"]:
-        if packages is None:
-            packages = touched_packages(files, root, full=plan["full"])
+    if packages:
         selectors = [arg for name in packages for arg in ("-p", name)]
         features = [f"{name}/{feature}" for name, feature in CLIPPY_FEATURES.items()
                     if name in packages]
@@ -83,11 +81,11 @@ def steps_for(files, plan, root=ROOT, packages=None):
             ("Rust tests", root, ["cargo", "test", "--offline", "--locked", *selectors]),
         ]
     if plan["web"] or plan["full"]:
-        steps += [(f"Web {task}", root / "web", ["pnpm", *args]) for task, args in (
-            ("i18n:check", ["i18n:check"]),
-            ("typecheck", ["typecheck"]),
-            ("test", ["test", "--", "--maxWorkers=4"]),
-            ("test:worker", ["test:worker"]),
+        steps += [("Web " + args[0], root / "web", ["pnpm", *args]) for args in (
+            ["i18n:check"],
+            ["typecheck"],
+            ["test", "--", "--maxWorkers=4"],
+            ["test:worker"],
         )]
     if plan["scripts"] or plan["full"]:
         steps.append(("Automation contracts", root, ["bash", "devs/scripts/check-workflows.sh"]))
@@ -137,7 +135,7 @@ def main():
         print("SKIP network steps: dependency installation, pinned owner-data downloads "
               "and remote release-tag validation. "
               "Use already prepared dependencies, WASM and fixtures; missing inputs fail their checks.", flush=True)
-        return run_steps(steps_for(files, plan, packages=packages))
+        return run_steps(steps_for(plan, packages))
     except (ValueError, OSError, KeyError) as error:
         print(f"FAIL local planning: {error}", flush=True)
         return 1

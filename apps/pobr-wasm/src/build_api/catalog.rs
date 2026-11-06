@@ -125,6 +125,8 @@ struct GemCatalogEntry {
     /// Whether it's a Lineage special support gem (determined from the gem
     /// base id; used for the frontend badge plus optimizer candidate filtering).
     is_lineage: bool,
+    /// Whether this unique-granted effect is hidden by the gem picker.
+    is_unique_only: bool,
     /// Skill tags (sorted, deduplicated). For active gems, taken from the
     /// granted effect's `skill_types`; for support gems, taken from
     /// `require_skill_types` (i.e. "what it can support"), with logical
@@ -233,6 +235,10 @@ fn gem_catalog_impl() -> Result<String, super::ApiError> {
     Ok(serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))?)
 }
 
+pub(super) fn is_unique_only_skill(skill_id: &str) -> bool {
+    skill_id.starts_with("Unique")
+}
+
 fn gem_catalog_entries(
     data: &pobr_build::BuildData,
     zh_names: &BTreeMap<String, String>,
@@ -337,6 +343,7 @@ fn gem_catalog_entries(
             },
             is_support: gem.is_support,
             is_lineage: gem.id.contains("Lineage"),
+            is_unique_only: is_unique_only_skill(skill_id),
             tags,
         });
     }
@@ -374,10 +381,8 @@ struct DetailedLine {
 /// `{text, origin}`, one per input, whose texts are exactly the ones
 /// [`translate_lines_json`] returns.
 pub fn translate_lines_detailed_json(lang: &str, lines_json: &str) -> Result<String, String> {
-    (|| {
-        let lines: Vec<String> = serde_json::from_str(lines_json)
-            .map_err(|e| super::ApiError::bad_request(format!("invalid lines json: {e}")))?;
-        let detailed: Vec<DetailedLine> = match crate::locales::line_renderer(lang) {
+    map_lines(lines_json, |lines| {
+        match crate::locales::line_renderer(lang) {
             Some(renderer) => renderer
                 .render_lines_with_origins(lines)
                 .into_iter()
@@ -387,9 +392,8 @@ pub fn translate_lines_detailed_json(lang: &str, lines_json: &str) -> Result<Str
                 .into_iter()
                 .map(|text| DetailedLine { text, origin: None })
                 .collect(),
-        };
-        Ok(serde_json::to_string(&detailed).map_err(|e| format!("serialize: {e}"))?)
-    })()
+        }
+    })
     .map_err(super::ApiError::into_json)
 }
 
@@ -433,9 +437,9 @@ pub fn game_name(lang: &str, kind: &str, key: &str) -> Result<Option<String>, St
     Ok(crate::locales::game_name(lang, kind, key))
 }
 
-fn map_lines(
+fn map_lines<T: Serialize>(
     lines_json: &str,
-    map: impl FnOnce(Vec<String>) -> Vec<String>,
+    map: impl FnOnce(Vec<String>) -> Vec<T>,
 ) -> Result<String, super::ApiError> {
     let lines: Vec<String> = serde_json::from_str(lines_json)
         .map_err(|e| super::ApiError::bad_request(format!("invalid lines json: {e}")))?;

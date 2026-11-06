@@ -5,15 +5,13 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { ItemOptimizer } from './ItemOptimizer';
 import type { OptimizerResults } from '../shared/OptimizerControls';
 
-const ui = vi.hoisted(() => ({ states: [] as unknown[], cursor: 0, preset: 'dps',
+const ui = vi.hoisted(() => ({ preset: 'dps',
   buttons: [] as ComponentProps<'button'>[], evaluate: vi.fn(), result: vi.fn() }));
-vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
-  useState: (initial: unknown) => {
-    const index = ui.cursor++;
-    if (!(index in ui.states)) ui.states[index] = typeof initial === 'function' ? initial() : initial;
-    return [ui.states[index], (next: unknown) => { ui.states[index] = typeof next === 'function' ? next(ui.states[index]) : next; }];
-  },
-}));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness();
+});
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: { preset: ui.preset, cStat: '', cMin: '', cMax: '' }, setGoal: vi.fn() }) }));
 vi.mock('../../hooks/useLocalizedLines', () => ({ useLocalizedNames: (names: { name: string }[]) => names.map(entry => entry.name) }));
 vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
@@ -23,7 +21,7 @@ vi.mock('../shared/OptimizerControls', async original => ({ ...await original<ty
   ObjectiveEditor: () => null, OptimizerProgress: () => null,
   OptimizerResults: (props: ComponentProps<typeof OptimizerResults>) => { ui.result(props); return null; },
 }));
-beforeEach(() => { ui.states = []; ui.preset = 'dps'; ui.evaluate.mockReset(); ui.result.mockClear(); });
+beforeEach(() => { hooks.reset(); ui.preset = 'dps'; ui.evaluate.mockReset(); ui.result.mockClear(); });
 
 test.each([false, true])('saved equipment candidates use the same damage goal (summoner: %s) and preserve hit-DPS-per-mana', async summoner => {
   const request = {};
@@ -31,7 +29,7 @@ test.each([false, true])('saved equipment candidates use the same damage goal (s
     main_minion_index: summoner ? 1 : null, minions: summoner ? [{ index: 1 }] : [] },
   } as unknown as BuildSession;
   const render = () => {
-    ui.cursor = 0; ui.buttons = [];
+    hooks.beginRender(); ui.buttons = [];
     return renderToStaticMarkup(<ItemOptimizer session={session} lang="en-US" slot="ring1"
       candidates={['one', 'two'].map(id => ({ id, kind: 'item', name: id, text: id, slot: 'ring1' }))}
       candidateNames={['one', 'two']} currentText={undefined} onApply={vi.fn()} />);

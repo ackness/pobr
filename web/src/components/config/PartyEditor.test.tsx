@@ -5,19 +5,15 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { PartyEditor } from './PartyEditor';
 
 // Replay the editor's code and importing states without a browser DOM.
-const harness = vi.hoisted(() => ({ values: [] as unknown[], index: 0,
-  input: undefined as ComponentProps<'textarea'>['onChange'],
+const harness = vi.hoisted(() => ({ input: undefined as ComponentProps<'textarea'>['onChange'],
   importClick: undefined as ComponentProps<'button'>['onClick'],
   importMember: vi.fn(),
 }));
-vi.mock('react', async original => ({
-  ...await original<typeof import('react')>(),
-  useState: (initial: unknown) => {
-    const index = harness.index++;
-    if (!(index in harness.values)) harness.values[index] = initial;
-    return [harness.values[index], (value: unknown) => { harness.values[index] = value; }];
-  },
-}));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness({ lazyState: false, functionalUpdates: false });
+});
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../../api/backend', () => ({ getBackend: async () => ({ importPartyMember: harness.importMember }) }));
 vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => {
@@ -28,12 +24,12 @@ vi.mock('../shared/controls', () => ({
   AppTextarea: (props: ComponentProps<'textarea'>) => { harness.input = props.onChange; return <textarea {...props} />; },
 }));
 
-afterEach(() => { harness.values = []; harness.index = 0; vi.clearAllMocks(); });
+afterEach(() => { hooks.reset(); vi.clearAllMocks(); });
 
 test('party import explains the disabled state, enables for a code and disables again after import', async () => {
   const updateParams = vi.fn();
   const session = { calcParams: {}, stateVersion: 1, busy: false, updateParams } as unknown as BuildSession;
-  const render = () => { harness.index = 0; return renderToStaticMarkup(<PartyEditor session={session} lang="en-US" />); };
+  const render = () => { hooks.beginRender(); return renderToStaticMarkup(<PartyEditor session={session} lang="en-US" />); };
   const empty = render();
   expect(empty).toContain('id="party-import-hint">Paste your teammate’s build code first');
   expect(empty).toContain('disabled="" aria-describedby="party-import-hint"');

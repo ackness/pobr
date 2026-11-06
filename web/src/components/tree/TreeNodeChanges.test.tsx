@@ -4,10 +4,13 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import type { CalculateBuildResponse, TreeEditResponse } from '../../api/types';
 import { TreeNodeChanges } from './TreeNodeChanges';
 
-const ui = vi.hoisted(() => ({ value: null as unknown, effects: [] as (() => void | (() => void))[],
+const ui = vi.hoisted(() => ({ value: null as unknown, open: false, effects: [] as (() => void | (() => void))[],
   deps: [] as unknown[], cleanup: undefined as (() => void) | undefined, calculate: vi.fn() }));
 vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
-  useState: () => [ui.value, (next: unknown) => { ui.value = next; }],
+  useState: (initial: unknown) => typeof initial === 'boolean'
+    ? [ui.open, (next: boolean) => { ui.open = next; }]
+    : [ui.value, (next: unknown) => { ui.value = next; }],
+  useMemo: (make: () => unknown) => make(),
   useEffect: (effect: () => void | (() => void), deps: unknown[]) => {
     if (deps.some((value, index) => value !== ui.deps[index])) {
       ui.cleanup?.(); ui.deps = deps; ui.effects.push(effect);
@@ -25,29 +28,36 @@ const preview: TreeEditResponse = { valid: true, reason: null, result: { allocat
 const props = { request: { allocated_nodes: [1, 2, 3] }, baseline: result(100), preview,
   busy: false, allocated: true, lang: 'en-US' as const };
 const render = (next: ComponentProps<typeof TreeNodeChanges> = props) => renderToStaticMarkup(TreeNodeChanges(next));
+const toggle = (open: boolean, next: ComponentProps<typeof TreeNodeChanges> = props) => {
+  TreeNodeChanges(next).props.onToggle({ currentTarget: { open } } as never);
+  return render(next);
+};
 const flush = async () => {
-  ui.effects.splice(0).forEach(effect => { ui.cleanup = effect() ?? undefined; });
+  ui.effects.splice(0).forEach(effect => { ui.cleanup?.(); ui.cleanup = effect() ?? undefined; });
   await vi.advanceTimersByTimeAsync(300);
 };
-beforeEach(() => { ui.value = null; ui.deps = []; ui.effects = []; ui.cleanup = undefined; ui.calculate.mockReset(); vi.useFakeTimers(); });
+beforeEach(() => { ui.value = null; ui.open = false; ui.deps = []; ui.effects = []; ui.cleanup = undefined; ui.calculate.mockReset(); vi.useFakeTimers(); });
 afterEach(() => { ui.cleanup?.(); vi.useRealTimers(); });
 
 test('selected-node details expose the same full refund changes through keyboard-operable summaries', async () => {
   ui.calculate.mockResolvedValue(result(80));
   expect(render()).toContain('calculating');
   await flush();
+  expect(ui.calculate).not.toHaveBeenCalled();
+  toggle(true);
+  await flush();
   const html = render();
-  expect(html).toContain('<details class="tree-node-changes"><summary class="disclosure" data-disclosure-level="inline">');
+  expect(html).toContain('<details class="tree-node-changes"><summary class="disclosure">');
   expect(html).toContain('Combined DPS -20');
   expect(html).toContain('Also refunds 1 downstream nodes');
-  expect(html).toContain('<summary class="disclosure" data-disclosure-level="inline">1 more changes</summary>');
+  expect(html).toContain('<summary class="disclosure">1 more changes</summary>');
   expect(ui.calculate).toHaveBeenCalledWith(expect.objectContaining({ allocated_nodes: [1] }));
 });
 
 test('selected-node changes discard stale results when the build or preview changes', async () => {
   let resolve!: (value: CalculateBuildResponse) => void;
   ui.calculate.mockImplementationOnce(() => new Promise<CalculateBuildResponse>(done => { resolve = done; }));
-  render(); await flush();
+  toggle(true); await flush();
   ui.calculate.mockResolvedValue(result(120));
   const next = { ...props, request: { allocated_nodes: [1, 2, 3, 4] }, baseline: result(200) };
   expect(render(next)).toContain('calculating');
@@ -67,7 +77,7 @@ test('attribute selection recalculates the inspector with the chosen attribute a
   const original = JSON.stringify(selected.request);
   let resolveStrength!: (value: CalculateBuildResponse) => void;
   ui.calculate.mockImplementationOnce(() => new Promise<CalculateBuildResponse>(resolve => { resolveStrength = resolve; }));
-  render({ ...selected, attributeChoices: { '2': 'str' } }); await flush();
+  toggle(true, { ...selected, attributeChoices: { '2': 'str' } }); await flush();
   expect(ui.calculate).toHaveBeenLastCalledWith(expect.objectContaining({
     allocated_nodes: [1, 2], attribute_choices: { '1': 'int', '2': 'str' },
   }));
@@ -90,4 +100,17 @@ test('attribute selection recalculates the inspector with the chosen attribute a
   expect(ui.calculate).toHaveBeenLastCalledWith(expect.objectContaining({ attribute_choices: { '1': 'int', '2': 'int' } }));
   expect(render(intelligence)).toContain('Combined DPS +30');
   expect(JSON.stringify(selected.request)).toBe(original);
+});
+
+test('completed changes survive pointer renders and reopening; closed pending requests are cancelled', async () => {
+  ui.calculate.mockResolvedValue(result(80));
+  toggle(true); await flush();
+  expect(render()).toContain('Combined DPS -20');
+  toggle(false); await flush();
+  toggle(true); await flush();
+  expect(ui.calculate).toHaveBeenCalledTimes(1);
+  const next = { ...props, request: { ...props.request, attribute_choices: { '1': 'dex' as const } } };
+  render(next);
+  toggle(false, next); await flush();
+  expect(ui.calculate).toHaveBeenCalledTimes(1);
 });

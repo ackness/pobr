@@ -251,6 +251,8 @@ export interface GemCatalogEntry {
   is_support: boolean;
   /** 血脉（Lineage）特殊辅助宝石（徽标 + 优化器候选筛选）。 */
   is_lineage: boolean;
+  /** Unique-granted effect hidden by the picker; retained for imported skill metadata. */
+  is_unique_only: boolean;
   /**
    * 技能标签（升序去重）。主动宝石＝granted effect 的 `skill_types`；辅助宝石＝
    * `require_skill_types`（能辅助什么），已滤掉 AND/OR/NOT 逻辑算子。

@@ -5,41 +5,13 @@ import type { PassiveNode } from '../../api/types';
 import type { ObjectiveState } from '../shared/OptimizerControls';
 import { TreeOptimizer, useTreeOptimizer, type TreeOptimizerState } from './TreeOptimizer';
 
-const ui = vi.hoisted(() => ({ cursor: 0, dirty: false, slots: [] as unknown[], effects: [] as (() => void)[],
-  plan: vi.fn(), jewel: vi.fn(), goal: { preset: 'dps', cStat: '', cMin: '', cMax: '' } as ObjectiveState }));
-vi.mock('react', async original => {
-  const memo = (factory: () => unknown, deps?: unknown[]) => {
-    const index = ui.cursor++;
-    const previous = ui.slots[index] as { deps?: unknown[]; value: unknown } | undefined;
-    if (!previous || !deps || deps.some((value, i) => !Object.is(value, previous.deps?.[i]))) {
-      ui.slots[index] = { deps, value: factory() };
-    }
-    return (ui.slots[index] as { value: unknown }).value;
-  };
-  const effect = (callback: () => void | (() => void), deps?: unknown[]) => {
-    const index = ui.cursor++;
-    const previous = ui.slots[index] as { deps?: unknown[]; cleanup?: () => void } | undefined;
-    if (!previous || !deps || deps.some((value, i) => !Object.is(value, previous.deps?.[i]))) {
-      const entry = { deps, cleanup: undefined as (() => void) | undefined };
-      ui.slots[index] = entry;
-      ui.effects.push(() => { previous?.cleanup?.(); entry.cleanup = callback() || undefined; });
-    }
-  };
-  return { ...await original<typeof import('react')>(),
-    useState: (initial: unknown) => {
-      const index = ui.cursor++;
-      if (!(index in ui.slots)) ui.slots[index] = typeof initial === 'function' ? initial() : initial;
-      return [ui.slots[index], (value: unknown) => { ui.slots[index] = typeof value === 'function' ? value(ui.slots[index]) : value; ui.dirty = true; }];
-    },
-    useRef: (initial: unknown) => {
-      const index = ui.cursor++;
-      if (!(index in ui.slots)) ui.slots[index] = { current: initial };
-      return ui.slots[index];
-    },
-    useMemo: memo, useCallback: (callback: unknown, deps?: unknown[]) => memo(() => callback, deps),
-    useEffect: effect, useLayoutEffect: effect,
-  };
+const ui = vi.hoisted(() => ({ plan: vi.fn(), jewel: vi.fn(), goal: { preset: 'dps', cStat: '', cMin: '', cMax: '' } as ObjectiveState }));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness({ refs: true, memo: 'deps', callback: 'deps',
+    effects: { comparison: 'objectIs', cleanup: 'previous' }, layoutEffect: 'effect' });
 });
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 
 vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
 vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: ui.goal, setGoal: vi.fn() }) }));
@@ -64,15 +36,15 @@ function Harness() {
 }
 function render() {
   for (let count = 0; count < 10; count++) {
-    ui.cursor = 0; ui.dirty = false;
+    hooks.beginRender();
     const html = renderToStaticMarkup(<Harness />);
-    ui.effects.splice(0).forEach(effect => effect());
-    if (!ui.dirty) return html;
+    hooks.runEffects();
+    if (!hooks.dirty) return html;
   }
   throw new Error('Render did not settle');
 }
 beforeEach(() => {
-  ui.slots = []; ui.effects = []; ui.plan.mockReset(); ui.jewel.mockClear();
+  hooks.reset(); ui.plan.mockReset(); ui.jewel.mockClear();
   ui.goal = { preset: 'dps', cStat: '', cMin: '', cMax: '' };
   vi.useFakeTimers(); vi.stubGlobal('window', { setTimeout, clearTimeout });
   const request = { allocated_nodes: [1] };

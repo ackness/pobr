@@ -14,7 +14,7 @@ import {
   scoreOf,
   type Objective,
 } from '../../lib/optimize';
-import { formatNumber, formatStatValue, statFormat, STAT_SECTIONS } from '../../lib/statDisplay';
+import { formatNumber, formatStatValue, statFormat, STAT_SECTIONS, formatStat } from '../../lib/statDisplay';
 import { AppSelect } from './AppSelect';
 import type { DamageHeadline } from '../../lib/mainMinion';
 import { tradeAnalysisText } from '../../lib/tradeAnalysisText';
@@ -142,7 +142,7 @@ export function ObjectiveEditor({ value, onChange, lang, disabled, constraintsOn
               onChange={(e) => onChange({ ...value, cMin: e.target.value })}
             />
           </label>
-          {baseline && <p className="opt-hint">{tt('tree.constraintBaseline').replace('{stat}', nameOf(value.cStat)).replace('{value}', current === undefined ? '—' : `${formatStatValue(current, statFormat(value.cStat), lang)}${statFormat(value.cStat) === 'percent' ? '' : ` ${unit}`}`)}</p>}
+          {baseline && <p className="opt-hint">{tt('tree.constraintBaseline').replace('{stat}', nameOf(value.cStat)).replace('{value}', current === undefined ? '—' : `${formatStat(value.cStat, current, lang)}${statFormat(value.cStat) === 'percent' ? '' : ` ${unit}`}`)}</p>}
           {baseline && value.cMin !== '' && <p className="opt-hint">{tt('tree.constraintActive').replace('{stat}', nameOf(value.cStat)).replace('{value}', `${value.cMin} ${unit}`)}</p>}
           <label>
             {tt('opt.max')}{baseline ? lang === 'en-US' ? ` (${unit})` : `（${unit}）` : ''}

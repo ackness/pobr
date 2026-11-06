@@ -306,7 +306,7 @@ test('resource formula summary preserves operation order and reports missing con
   expect(html.replace(/<[^>]*>/g, '')).toContain('(((100 ×0.5) +10) ×1.3)');
   expect(html).toContain('78 points');
   expect(html).toContain('Conversion destination is not returned');
-  expect(html).toContain('<details class="formula-steps"><summary class="disclosure" data-disclosure-level="inline">How it&#x27;s calculated</summary>');
+  expect(html).toContain('<details class="formula-steps"><summary class="disclosure">How it&#x27;s calculated</summary>');
 });
 
 test('resistance figures use returned total, cap and over-cap and show missing sources honestly', () => {

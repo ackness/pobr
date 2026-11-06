@@ -114,7 +114,7 @@ test('an empty enemy field identifies its inherited tier without showing a catal
   expect(html).toContain('placeholder="Inherited from Pinnacle Boss"');
   expect(html).not.toContain('placeholder="75"');
   expect(html).toContain('value=""');
-  expect(html).toContain('<summary class="disclosure" data-disclosure-level="inline">Help</summary>');
+  expect(html).toContain('<summary class="disclosure">Help</summary>');
   expect(html).not.toContain('<details class="config-option-help" open');
 });
 
@@ -175,7 +175,7 @@ test('configuration exclusions retain player text in one shared original-text di
   }, busy: false, stateVersion: 1 } as unknown as BuildSession;
   const html = renderToStaticMarkup(<ConfigPanel session={session} lang="zh-CN" />);
   expect(html).toContain('class="unincluded-modifiers"');
-  expect(html.match(/<summary class="disclosure" data-disclosure-level="inline">词缀原文<\/summary>/g)).toHaveLength(1);
+  expect(html.match(/<summary class="disclosure">词缀原文<\/summary>/g)).toHaveLength(1);
   expect(html).toContain('<pre>First unknown effect\nSecond unknown effect</pre>');
   expect(html).not.toContain('Config: ');
   expect(html).not.toContain('Other effect');

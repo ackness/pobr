@@ -1,9 +1,15 @@
 import type { DisplayStatValue } from '../../api/types';
 import { compareStats } from '../../lib/compare';
+import { formatNumber, formatStatValue } from '../../lib/statDisplay';
 import { statPolarity } from './statPolarity';
 
 export type Tone = 'better' | 'worse' | 'neutral';
 export interface StatChange { id: string; before: number; after: number; delta: number; percent: number | null; tone: Tone }
+
+export function percentText(change: StatChange) {
+  if (change.percent === null) return `${change.delta > 0 ? '+' : '−'}${formatStatValue(Math.abs(change.delta), 'float2')}`;
+  return `${change.percent > 0 ? '+' : '−'}${formatNumber(Math.abs(change.percent), 1, 1)}%`;
+}
 
 /** What an edit moved, stat by stat. Unbounded or missing values are never turned into numbers. */
 export function computeStatChanges(previous: DisplayStatValue[] | null, current: DisplayStatValue[]): Map<string, StatChange> {

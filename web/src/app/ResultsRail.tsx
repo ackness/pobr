@@ -9,20 +9,20 @@ import { useMainMinion } from '../hooks/useMainMinion';
 import { useSkillCatalog } from '../hooks/useSkillName';
 import { MAIN_MINION_DPS, minionDpsNote } from '../lib/mainMinion';
 import { skillDisplayName } from '../lib/skillNames';
-import { formatNumber, STAT_SECTIONS, formatStatValue, statMap } from '../lib/statDisplay';
+import { formatNumber, STAT_SECTIONS, formatStatValue, statMap, formatStat } from '../lib/statDisplay';
 import { detailKind } from '../lib/statDetails';
 import { bindT, damageTypeLabel, enemyTierLabel, statNameLabel, type Lang } from '../lib/i18n';
 import { AppSelect } from '../components/shared/AppSelect';
 import { deriveFindings } from './findings';
 import { AnimatedNumber } from './motion/AnimatedNumber';
 import { resolveEnemyTier } from './enemy';
-import { statColor, statFormat, statLabel } from './inspector/statId';
-import { computeStatChanges, type StatChange } from './motion/statChanges';
+import { statColor, statLabel } from './inspector/statId';
+import { computeStatChanges, percentText, type StatChange } from './motion/statChanges';
 import type { SettledCalc } from './motion/useSettledCalc';
 import type { Route } from './routes';
 import { uiStorageKey } from '../lib/sessionStorage';
 import { calculationVersion } from './calculationVersion';
-import { words } from './text';
+import { words, colon } from './text';
 import { calculatedSkillOptions } from './calculatedSkillOptions';
 import { useSkillMetrics } from './pages/skills/useSkillMetrics';
 import { headlineRows, hideDuplicateRow } from './railStats';
@@ -55,11 +55,6 @@ function useRecent<T>(value: T | undefined, ms: number): T | undefined {
     return () => clearTimeout(timer);
   }, [value, ms]);
   return shown;
-}
-
-function percentText(change: StatChange) {
-  if (change.percent === null) return `${change.delta > 0 ? '+' : '−'}${formatStatValue(Math.abs(change.delta), 'float2')}`;
-  return `${change.percent > 0 ? '+' : '−'}${formatNumber(Math.abs(change.percent), 1, 1)}%`;
 }
 
 interface RowProps { stat?: string; label: string; value: ReactNode; color?: string; change?: StatChange; onOpen?: () => void; pin?: { on: boolean; toggle: () => void; label: string } }
@@ -107,7 +102,7 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
       <ChevronRight /></button>}
     {groups.length === 0 && <p className="rail-empty">{w('Add a skill to see damage.', '添加技能后即可查看伤害。', '新增技能後即可查看傷害。')}</p>}
     {groups.length > 0 && !mainSkill && !minion && <p className="rail-empty">{view.stale && !calc ? w('Calculating…', '计算中…', '計算中…') : tt('sidebar.noMainSkill')}</p>}
-    {mainSkill && mainSkill.group_index !== selected && <p className="rail-empty">{tt('sidebar.computedSkill')}{lang === 'en-US' ? ': ' : '：'}{name(mainSkill.skill_id)}</p>}
+    {mainSkill && mainSkill.group_index !== selected && <p className="rail-empty">{tt('sidebar.computedSkill')}{colon(lang)}{name(mainSkill.skill_id)}</p>}
     {minion && (() => {
       const id = `Minion:${minion.minion.index}:TotalDPS`;
       const value = <AnimatedNumber value={minion.minion.dps} format={numberOf(minion.minion.dps)} />;
@@ -192,14 +187,14 @@ export function ResultsRail({ route, session, view, lang, onStatClick, onNavigat
     <Headline route={route} session={session} view={view} lang={lang} onStatClick={onStatClick} changes={changes} onNavigate={onNavigate} minion={minion} />
     {essentials.length > 0 && <section className="rail-section rail-essentials">
       {essentials.map(id => <Row key={id} label={statLabel(lang, id)} color={statColor(id)} change={changes.get(id)}
-        value={<AnimatedNumber value={values?.get(id)} format={shown => formatStatValue(shown, statFormat(id), lang)} />}
+        value={<AnimatedNumber value={values?.get(id)} format={shown => formatStat(id, shown, lang)} />}
         onOpen={calc && detailKind(calc, id) !== 'none' ? () => onStatClick(id) : undefined} />)}
     </section>}
     <Minion lang={lang} onStatClick={onStatClick} main={minion} />
     {calc && <button type="button" className="rail-link" onClick={() => onStatClick('skill-metrics')}>{bindT(lang)('sidebar.skillValuesLink')}<ChevronRight /></button>}
     {pinnedRows.length > 0 && <section className="rail-section rail-pinned"><h3 className="rail-title"><span>{words(lang, 'Pinned', '已固定', '已固定')}</span></h3>
       {pinnedRows.map(id => <Row key={id} label={statLabel(lang, id)} color={statColor(id)} change={changes.get(id)} pin={pinFor(id)}
-        value={<AnimatedNumber value={values?.get(id)} format={shown => formatStatValue(shown, statFormat(id), lang)} />}
+        value={<AnimatedNumber value={values?.get(id)} format={shown => formatStat(id, shown, lang)} />}
         onOpen={calc && detailKind(calc, id) !== 'none' ? () => onStatClick(id) : undefined} />)}</section>}
     {STAT_SECTIONS.map(section => {
       if (section.requiresSkill && (session.calcParams.main_socket_group === undefined || !calc?.main_skill)) return null;

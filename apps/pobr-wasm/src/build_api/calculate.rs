@@ -12,11 +12,10 @@ use pobr_build::breakdown::detail::{
 use pobr_build::breakdown::{
     BREAKDOWN_STATS, BreakdownActor, MainSkillBreakdown, main_skill_breakdown_in_view,
 };
-use pobr_core::calc::CompletedCalculationSession;
 use serde::Serialize;
 
 use super::request::{
-    CalculateBuildRequest, MAIN_MINION_DPS, apply_request_overrides, import_build_from_request,
+    CalculateBuildRequest, CalculatedBuild, apply_request_overrides, import_build_from_request,
     orchestrator_options,
 };
 use crate::state;
@@ -30,10 +29,8 @@ use crate::state;
 /// earlier one only in its breakdown selection reuses this and produces just the
 /// breakdowns it asks for.
 struct CalculationSnapshot {
-    session: CompletedCalculationSession,
+    calculated: CalculatedBuild,
     provenance: pobr_build::provenance::CalculationProvenance,
-    main_minion_index: Option<usize>,
-    stats: Vec<pobr_data::display_stat::DisplayStatValue>,
     config_context: Option<super::config_context::ConfigContext>,
     unsupported_modifiers: Vec<String>,
     main_skill: Option<MainSkillBreakdown>,
@@ -322,24 +319,10 @@ fn calculate_snapshot(
             serde_json::from_str(&full).map_err(|e| format!("read cached Full DPS: {e}"))?,
         );
     }
-    let mut stats = pobr_core::extract_display_values(session.output());
     // The facts below are read from the view the calculation used, rather than from
     // a build prepared again for each of them.
-    let main_minion = pobr_build::main_skill_minion_in_view(&prepared, &data, session.output());
-    let main_minion_index = main_minion.and_then(|main| {
-        session
-            .output()
-            .minions
-            .iter()
-            .position(|minion| std::ptr::eq(main, minion))
-    });
-    if let Some(main) = main_minion {
-        stats.push(pobr_data::display_stat::DisplayStatValue {
-            id: pobr_data::display_stat::DisplayStatId::new(MAIN_MINION_DPS),
-            value: main.dps,
-            category: pobr_data::display_stat::DisplayStatCategory::Offence,
-        });
-    }
+    let calculated = CalculatedBuild::new(session, &prepared, &data);
+    let session = &calculated.session;
     let provenance = pobr_build::provenance::CalculationProvenance::from_data(
         state::game_data()
             .map_err(super::ApiError::not_initialized)?
@@ -349,14 +332,12 @@ fn calculate_snapshot(
     .map_err(|e| format!("data identity: {e}"))?;
     Ok(CalculationSnapshot {
         provenance,
-        main_minion_index,
-        stats,
         config_context,
         unsupported_modifiers: session.unsupported_modifier_texts().to_vec(),
         main_skill: main_skill_breakdown_in_view(&prepared, &data, session.output()),
         item_errors,
         tree_effects: pobr_build::calc_orchestrator::passive_jewel_state_in_view(&prepared, &data),
-        session,
+        calculated,
     })
 }
 
@@ -367,7 +348,7 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     let snapshot = cached_snapshot(selection_cache_key(request_json, true, true), || {
         calculate_snapshot(request_json, &req)
     })?;
-    let session = &snapshot.session;
+    let session = &snapshot.calculated.session;
     let requested: Vec<&str> = req.breakdowns.as_ref().map_or_else(
         || BREAKDOWN_STATS.to_vec(),
         |ids| ids.iter().map(String::as_str).collect(),
@@ -394,10 +375,10 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     let response = CalculateBuildResponse {
         provenance: &snapshot.provenance,
         minions: minion_outputs(session, &data, &req),
-        main_minion_index: snapshot.main_minion_index,
+        main_minion_index: snapshot.calculated.main_minion_index,
         full_dps: session.output().full_dps.as_ref(),
         energy_trigger: session.output().energy_trigger.as_ref(),
-        stats: &snapshot.stats,
+        stats: snapshot.calculated.display_values(),
         config_context: snapshot.config_context.as_ref(),
         unsupported_modifiers: &snapshot.unsupported_modifiers,
         breakdowns,

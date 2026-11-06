@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { answerConfirm } from './confirmDialog';
+import { busy } from './shell';
 
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   test(`cancelling deletion returns keyboard focus and allows immediately reopening the menu (${reducedMotion})`, async ({ page }) => {
@@ -9,7 +10,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await page.locator('.bd-actions').getByRole('button', { name: 'New build', exact: true }).click();
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Keep me');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
+    await expect(busy(page)).toHaveCount(0);
     const trigger = page.getByRole('button', { name: 'Actions for Keep me', exact: true });
     const dialog = page.getByRole('alertdialog');
     const deletion = page.getByRole('menuitem', { name: 'Delete build', exact: true });

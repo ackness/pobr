@@ -125,7 +125,7 @@ test('a listed null sidecar is invalid rather than treated as an absent optional
 
 test('ordinary gem and class APIs share verified catalogs and source links without rewriting calculation keys', async () => {
   state.gems = [{ skill_id: 'Effect', name: 'Fire', name_zh_cn: '旧火焰', name_zh_tw: '舊火焰',
-    active_effect_ids: ['Effect'], colour: 'int', is_support: false, is_lineage: false, tags: ['Spell'] }];
+    active_effect_ids: ['Effect'], colour: 'int', is_support: false, is_lineage: false, is_unique_only: false, tags: ['Spell'] }];
   const files: Record<string, unknown> = {
     'base/skill_gems.json': [{ id: 'Gem/Fire', granted_effect_id: 'OldEffect' }],
     'overlay/gem_effects.json': { gems: [{ gem_id: 'Gem/Fire', granted_effect_id: 'Effect' }] },

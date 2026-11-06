@@ -39,6 +39,16 @@ enum Segment {
     },
 }
 
+/// A literal plus immediately before a signed placeholder belongs to its sign.
+fn plus_before_signed_slot(segments: &[Segment], slot: usize) -> bool {
+    slot > 0
+        && matches!(
+            segments.get(slot),
+            Some(Segment::Placeholder { signed: true, .. })
+        )
+        && matches!(&segments[slot - 1], Segment::Literal(lit) if lit.ends_with('+'))
+}
+
 /// Parses template text into a segment sequence; returns `None` for
 /// malformed placeholder syntax (the whole line is discarded).
 fn parse_template(text: &str) -> Option<Vec<Segment>> {
@@ -237,11 +247,17 @@ struct Captures {
     ranges: bool,
 }
 
+impl Captures {
+    fn accepts_numeric(self, value: &str) -> bool {
+        is_numeric_capture(value) || (self.ranges && is_range_capture(value))
+    }
+}
+
 /// Validates a captured text span: numeric-shaped values are always
 /// accepted, the others as `captures` allows. Returns the normalized
 /// captured value.
 fn accept_capture(capture: &str, captures: Captures) -> Option<String> {
-    if is_numeric_capture(capture) || (captures.ranges && is_range_capture(capture)) {
+    if captures.accepts_numeric(capture) {
         return Some(capture.trim().to_string());
     }
     if captures.strings {
@@ -584,9 +600,8 @@ impl LineTranslator {
                 }
                 if range_lookup
                     && !self.range_values
-                    && !candidate.src_segments.windows(2).any(|pair| {
-                        matches!(pair, [Segment::Literal(lit), Segment::Placeholder { signed: true, .. }] if lit.ends_with('+'))
-                    })
+                    && !(1..candidate.src_segments.len())
+                        .any(|slot| plus_before_signed_slot(&candidate.src_segments, slot))
                 {
                     return None;
                 }
@@ -896,7 +911,7 @@ impl LineTranslator {
                 let mut origin = candidate.origin;
                 let mut untranslated_word = false;
                 for value in values.values_mut() {
-                    if is_numeric_capture(value) || (self.range_values && is_range_capture(value)) {
+                    if captures.accepts_numeric(value) {
                         continue;
                     }
                     match self.translate_value(value) {
@@ -975,15 +990,13 @@ fn match_segments(
     let mut pending: Option<(usize, Captures)> = None;
     for (position, seg) in segments.iter().enumerate() {
         match seg {
-            Segment::Placeholder { index, signed } => {
+            Segment::Placeholder { index, .. } => {
                 // Two adjacent placeholders with no literal separator —
                 // shouldn't appear in a template, fail conservatively.
                 if pending.is_some() {
                     return None;
                 }
-                let literal_plus = *signed
-                    && position > 0
-                    && matches!(&segments[position - 1], Segment::Literal(lit) if lit.ends_with('+'));
+                let literal_plus = plus_before_signed_slot(segments, position);
                 pending = Some((
                     *index,
                     Captures {
@@ -995,11 +1008,7 @@ fn match_segments(
             Segment::Literal(lit) => {
                 // Let a signed slot own its sign, including when rendering
                 // replaced the template's literal plus with a minus.
-                let optional_plus = lit.ends_with('+')
-                    && matches!(
-                        segments.get(position + 1),
-                        Some(Segment::Placeholder { signed: true, .. })
-                    );
+                let optional_plus = plus_before_signed_slot(segments, position + 1);
                 let lit = if optional_plus {
                     &lit[..lit.len() - 1]
                 } else {
@@ -1055,12 +1064,9 @@ fn render_en(template: &str, values: &HashMap<usize, String>) -> String {
     for (position, seg) in segments.iter().enumerate() {
         match seg {
             Segment::Literal(lit) => out.push_str(lit),
-            Segment::Placeholder { index, signed } => match values.get(index) {
+            Segment::Placeholder { index, .. } => match values.get(index) {
                 Some(value) => {
-                    if *signed
-                        && value.starts_with(['+', '-'])
-                        && position > 0
-                        && matches!(&segments[position - 1], Segment::Literal(lit) if lit.ends_with('+'))
+                    if value.starts_with(['+', '-']) && plus_before_signed_slot(&segments, position)
                     {
                         out.pop();
                     }

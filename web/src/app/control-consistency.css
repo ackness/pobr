@@ -11,8 +11,6 @@
     --disclosure-font-size: var(--text-sm);
     --disclosure-font-weight: 450;
     --disclosure-color: var(--muted-foreground);
-  }
-  .disclosure:where([data-disclosure-level]) {
     gap: var(--disclosure-gap);
     font-size: var(--disclosure-font-size);
     font-weight: var(--disclosure-font-weight);

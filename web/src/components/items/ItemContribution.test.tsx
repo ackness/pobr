@@ -5,38 +5,24 @@ import type { AttributionResponse } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { contributionFields, ItemContribution } from './ItemContribution';
 
-const ui = vi.hoisted(() => ({ values: [] as unknown[], cursor: 0, button: undefined as ComponentProps<'button'> | undefined,
-  effects: [] as (() => void)[], cleanups: [] as (() => void)[] }));
-vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
-  useState: (initial: unknown) => {
-    const index = ui.cursor++;
-    if (!(index in ui.values)) ui.values[index] = initial;
-    return [ui.values[index], (value: unknown) => { ui.values[index] = value; }];
-  },
-  useRef: (initial: unknown) => {
-    const index = ui.cursor++;
-    return ui.values[index] ??= { current: initial };
-  },
-  useEffect: (callback: () => (() => void), deps: unknown[]) => {
-    const index = ui.cursor++;
-    const previous = ui.values[index] as unknown[] | undefined;
-    if (!previous || deps.some((value, i) => value !== previous[i])) {
-      ui.values[index] = deps;
-      ui.effects.push(() => { ui.cleanups[index]?.(); ui.cleanups[index] = callback(); });
-    }
-  },
-}));
+const ui = vi.hoisted(() => ({ button: undefined as ComponentProps<'button'> | undefined }));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness({ lazyState: false, functionalUpdates: false, refs: { reuse: 'nullish' },
+    effects: { comparison: 'strict', cleanup: 'latest' } });
+});
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../shared/controls', () => ({ AppButton: (props: ComponentProps<'button'>) => { ui.button = props; return <button {...props} />; } }));
-beforeEach(() => { ui.values = []; ui.effects = []; ui.cleanups = []; ui.button = undefined; });
+beforeEach(() => { hooks.reset(); ui.button = undefined; });
 const report: AttributionResponse = { baseline: { CombinedDPS: 1000, TotalEHP: 500 }, entries: [
   { kind: 'item', id: 'weapon1', deltas: { CombinedDPS: 300, TotalEHP: -20 } },
   { kind: 'item', id: 'ring1', deltas: { CombinedDPS: 10, TotalEHP: 50 } },
 ] };
 const session = () => ({ stateVersion: 1, calc: {}, busy: false, runAttribution: vi.fn().mockResolvedValue(report) }) as unknown as BuildSession;
 function render(current: BuildSession, slot = 'weapon1') {
-  ui.cursor = 0; ui.button = undefined;
+  hooks.beginRender(); ui.button = undefined;
   const html = renderToStaticMarkup(<ItemContribution session={current} slot={slot} lang="en-US" />);
-  ui.effects.splice(0).forEach(effect => effect());
+  hooks.runEffects();
   return html;
 }
 
@@ -58,7 +44,7 @@ it.each([
   const current: BuildSession = { ...session(), sourceContributions: { ...report, entries: [
     { kind: 'item', id: 'weapon1', deltas: { CombinedDPS: 12345.67, TotalEHP: -20.49 } },
   ] } };
-  ui.cursor = 0;
+  hooks.beginRender();
   const html = renderToStaticMarkup(<ItemContribution session={current} slot="weapon1" lang={lang} />);
   expect(html).toContain(expected);
 });

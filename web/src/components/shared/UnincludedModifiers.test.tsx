@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { joinWrappedModifiers, unincludedGroups, UnincludedModifiers } from './UnincludedModifiers';
+import { mergeModifierContinuations } from '../../lib/continuedLines';
 
 test('unincluded modifiers group by actual passive source without exposing node IDs in the heading', () => {
   const groups = unincludedGroups(['Tree:123: first effect', 'Tree:456: second effect', 'Tree:123: third effect', 'Config: fourth effect'], 'zh-CN');
@@ -19,6 +20,9 @@ test('a complete wrapped rune description becomes one modifier before translatio
   expect(unincludedGroups(lines, 'en-US')[0].lines).toEqual(merged);
   expect(lines).toHaveLength(2);
   expect(joinWrappedModifiers(['Different modifier', lines[1]])).toEqual(['Different modifier', lines[1]]);
+  // The generic merger leaves a second Bonded prefix separate; replacing this helper changes output.
+  expect(mergeModifierContinuations(lines)).toEqual(lines);
+  expect(mergeModifierContinuations(lines)).not.toEqual(merged);
 });
 
 test('item provenance comes from an exact imported modifier line match', () => {
@@ -42,7 +46,7 @@ test.each([
   // The source and modifier lists contain no extra disclosure for each row.
   expect(html.match(/<details\b/g)).toHaveLength(1);
   expect(html.match(/<summary\b/g)).toHaveLength(1);
-  expect(html).toContain(`<details class="unincluded-raw"><summary class="disclosure" data-disclosure-level="inline">${label}</summary>`);
+  expect(html).toContain(`<details class="unincluded-raw"><summary class="disclosure">${label}</summary>`);
   expect(html).not.toContain('class="modifier-raw"');
   expect(html).toContain('<ul class="unincluded-sources">');
   expect(html).toContain('<ul class="unincluded-lines">');

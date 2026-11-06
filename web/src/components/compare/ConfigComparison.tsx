@@ -72,7 +72,7 @@ export function ConfigComparison({ rows, lang, applyButton }: { rows: Row[]; lan
         {known && <div className="compare-pair">{[row.before, row.after].map((value, index) => <div key={index}>
           <strong>{tt(index === 0 ? 'compare.before' : 'compare.after')}</strong><div className="cmp-config-value">{show(row, value)}</div>
         </div>)}</div>}
-        <details><summary className="disclosure" data-disclosure-level="inline">{tt('compare.advanced')}</summary><pre>{JSON.stringify({ key: row.key, A: row.before ?? null, B: row.after ?? null }, null, 2)}</pre></details>
+        <details><summary className="disclosure">{tt('compare.advanced')}</summary><pre>{JSON.stringify({ key: row.key, A: row.before ?? null, B: row.after ?? null }, null, 2)}</pre></details>
       </article>;
     })}
   </>;

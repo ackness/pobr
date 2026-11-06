@@ -52,12 +52,19 @@ test('a request is consumed only once the node and viewport are ready', () => {
   const receipt = { current: undefined as number | undefined };
   const focus = vi.fn();
   const request = { nonce: 1, node: socket.skill };
-  useTreeLocation(request, receipt, undefined, true, focus); flush();
-  useTreeLocation(request, receipt, { ...socket, x: undefined }, true, focus); flush();
-  useTreeLocation(request, receipt, socket, false, focus); flush();
+  function Canvas({ node, ready }: { node?: PassiveNode; ready: boolean }) {
+    useTreeLocation(request, receipt, node, ready, focus);
+    return <svg />;
+  }
+  const mount = (node: PassiveNode | undefined, ready: boolean) => {
+    renderToStaticMarkup(<Canvas node={node} ready={ready} />); flush();
+  };
+  mount(undefined, true);
+  mount({ ...socket, x: undefined }, true);
+  mount(socket, false);
   expect(receipt.current).toBeUndefined();
   expect(focus).not.toHaveBeenCalled();
-  useTreeLocation(request, receipt, socket, true, focus); flush();
+  mount(socket, true);
   expect(receipt.current).toBe(1);
   expect(focus).toHaveBeenCalledWith(socket);
 });

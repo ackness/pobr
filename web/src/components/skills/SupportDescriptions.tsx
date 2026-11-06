@@ -9,7 +9,7 @@ export function SupportDescriptions({ gems, lang }: {
 }) {
   if (!gems.length) return null;
   return <details className="support-diagnostics support-descriptions">
-    <summary className="disclosure" data-disclosure-level="inline">{supportText(lang, 'descriptions')}</summary>
+    <summary className="disclosure">{supportText(lang, 'descriptions')}</summary>
     <p className="skills-hint">{supportText(lang, 'descriptionsHint')}</p>
     <ul>{gems.map(gem => {
       const description = supportDescription(gem, lang);

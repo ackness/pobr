@@ -6,16 +6,14 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { GemOptimizer } from './GemOptimizer';
 import { ChangeBar } from '../../app/preview/ChangeBar';
 
-const harness = vi.hoisted(() => ({ states: [] as unknown[], cursor: 0, buttons: [] as ComponentProps<'button'>[], optimize: vi.fn(), articles: [] as ComponentProps<'article'>[], show: vi.fn(), showChanges: vi.fn(), settings: null as { current: HTMLDetailsElement | null } | null, previewState: null as import('../shared/PreviewContext').PreviewState | null,
-  preset: 'dps', descriptions: null as GemDescriptionIndex | null }));
-vi.mock('../../hooks/useGemDescriptions', () => ({ useGemDescriptions: () => harness.descriptions }));
-vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
-  useState: (initial: unknown) => {
-    const index = harness.cursor++;
-    if (!(index in harness.states)) harness.states[index] = typeof initial === 'function' ? initial() : initial;
-    return [harness.states[index], (next: unknown) => { harness.states[index] = typeof next === 'function' ? next(harness.states[index]) : next; }];
-  },
-}));
+const harness = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], optimize: vi.fn(), articles: [] as ComponentProps<'article'>[], show: vi.fn(), showChanges: vi.fn(), settings: null as { current: HTMLDetailsElement | null } | null, previewState: null as import('../shared/PreviewContext').PreviewState | null,
+  preset: 'dps', descriptions: null as GemDescriptionIndex | null, descriptionsEnabled: false }));
+vi.mock('../../hooks/useGemDescriptions', () => ({ useGemDescriptions: (enabled: boolean) => { harness.descriptionsEnabled = enabled; return harness.descriptions; } }));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness();
+});
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { harness.buttons.push(props); return <button {...props} />; },
   AppInput: (props: ComponentProps<'input'>) => <input {...props} />,
@@ -50,7 +48,7 @@ function setup(main = 0) {
     updateParams: vi.fn(), stateVersion: 1, socketGroupRevision: 1, activeWeaponSet: 1,
   } as unknown as BuildSession;
   const render = () => {
-    harness.cursor = 0; harness.buttons.length = 0; harness.articles.length = 0;
+    hooks.beginRender(); harness.buttons.length = 0; harness.articles.length = 0;
     return renderToStaticMarkup(<GemOptimizer session={session} lang="en-US" active groupIndex={0} catalog={catalog} gemName={id => id} skillKey="skill" />);
   };
   return { session, render };
@@ -61,7 +59,7 @@ function button(label: string) {
   return found!;
 }
 beforeEach(() => {
-  harness.states = [];
+  hooks.reset();
   harness.descriptions = null;
   harness.preset = 'dps';
   harness.previewState = null;
@@ -120,7 +118,7 @@ it('shows reason-labelled exclusion totals and keeps calculation diagnostics fol
   await button('Calculate support combinations').onClick!({} as never);
   const html = render();
   expect(harness.optimize).toHaveBeenCalledOnce();
-  expect(html).toContain('<details class="support-calculation-details"><summary class="disclosure" data-disclosure-level="inline">Calculation details</summary>');
+  expect(html).toContain('<details class="support-calculation-details"><summary class="disclosure">Calculation details</summary>');
   expect(html).not.toMatch(/class="support-calculation-details"[^>]*\bopen=/);
   expect(html).toContain('data-123');
   expect(html).toContain('Internal diagnostic retained');
@@ -136,8 +134,12 @@ function expand() {
 it('keeps recommendations collapsed until requested', () => {
   const { render } = setup();
   expect(render()).not.toContain('gem-optimizer-body');
+  expect(harness.descriptionsEnabled).toBe(false);
   expand();
   expect(render()).toContain('gem-optimizer-body');
+  expect(harness.descriptionsEnabled).toBe(true);
+  expand(); render();
+  expect(harness.descriptionsEnabled).toBe(false);
 });
 
 it('zero evaluations explain the blocker without claiming no improvement', async () => {

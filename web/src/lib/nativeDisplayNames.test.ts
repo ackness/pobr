@@ -6,7 +6,7 @@ import { gemDisplayName, skillDisplayName } from './skillNames';
 
 const gem: GemCatalogEntry = { skill_id: 'Effect', name: 'Fire', name_zh_cn: '旧火焰', name_zh_tw: '舊火焰',
   additional_skill_ids: ['TriggeredFirePlayer'], active_effect_ids: ['Effect', 'TriggeredFirePlayer'],
-  colour: 'int', is_support: false, is_lineage: false, tags: ['Spell'] };
+  colour: 'int', is_support: false, is_lineage: false, is_unique_only: false, tags: ['Spell'] };
 const catalog = (scopes: NativeDisplayTexts['scopes'], locale: 'zh-CN' | 'zh-TW' = 'zh-CN',
   entries: NativeDisplayTexts['entries'] = {}): NativeDisplayTexts => ({
   schema: 'pobr-native-display-texts/v1', game_patch: 'test', realm: 'international', locale,

@@ -18,13 +18,34 @@ export function PreviewProvider({ session, view, route, children }: { session: B
   const [state, setState] = useState<PreviewState | null>(null);
   const sequence = useRef(0);
   const target = useRef<Element | undefined>(undefined);
+  const observer = useRef<MutationObserver | null>(null);
   const timers = useRef<{ rest?: number; hide?: number }>({});
   const cache = useRef<{ version: number; rows: Map<string, StatChange[]> }>({ version: -1, rows: new Map() });
   const latest = useRef({ session, view });
   latest.current = { session, view };
 
-  const show = useCallback((candidate: PreviewCandidate, element?: Element) => {
+  const disconnectTarget = useCallback(() => {
+    observer.current?.disconnect();
+    observer.current = null;
+    target.current = undefined;
+  }, []);
+  const reset = useCallback(() => {
+    window.clearTimeout(timers.current.rest); window.clearTimeout(timers.current.hide);
+    sequence.current++; disconnectTarget(); setState(null);
+  }, [disconnectTarget]);
+  const watchTarget = useCallback((element?: Element) => {
+    disconnectTarget();
+    if (!element) return;
     target.current = element;
+    observer.current = new MutationObserver(() => {
+      const current = target.current;
+      if (current && (!current.isConnected || current.closest('[hidden], [inert]'))) reset();
+    });
+    observer.current.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'inert'] });
+  }, [disconnectTarget, reset]);
+
+  const show = useCallback((candidate: PreviewCandidate, element?: Element) => {
+    watchTarget(element);
     window.clearTimeout(timers.current.hide); window.clearTimeout(timers.current.rest);
     const id = ++sequence.current;
     timers.current.rest = window.setTimeout(async () => {
@@ -45,32 +66,20 @@ export function PreviewProvider({ session, view, route, children }: { session: B
         setState({ label: candidate.label, status: 'ready', changes });
       } catch { if (sequence.current === id) setState(null); }
     }, REST_MS);
-  }, []);
+  }, [watchTarget]);
   const showChanges = useCallback((label: string, changes: StatChange[], element?: Element) => {
-    target.current = element;
+    watchTarget(element);
     window.clearTimeout(timers.current.hide); window.clearTimeout(timers.current.rest);
     sequence.current++;
     setState({ label, status: 'ready', changes });
-  }, []);
+  }, [watchTarget]);
   const clear = useCallback(() => {
-    window.clearTimeout(timers.current.hide); window.clearTimeout(timers.current.rest); sequence.current++; target.current = undefined;
+    window.clearTimeout(timers.current.hide); window.clearTimeout(timers.current.rest); sequence.current++; disconnectTarget();
     timers.current.hide = window.setTimeout(() => setState(null), HIDE_MS);
-  }, []);
-  const reset = useCallback(() => {
-    window.clearTimeout(timers.current.rest); window.clearTimeout(timers.current.hide);
-    sequence.current++; target.current = undefined; setState(null);
-  }, []);
+  }, [disconnectTarget]);
   useEffect(() => reset, [reset]);
   // Navigation, including retained panels, invalidates all pending preview work.
   useEffect(reset, [session.stateVersion, route, reset]);
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const element = target.current;
-      if (element && (!element.isConnected || element.closest('[hidden], [inert]'))) reset();
-    });
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'inert'] });
-    return () => observer.disconnect();
-  }, [reset]);
   const value = useMemo(() => ({ state, show, showChanges, clear }), [state, show, showChanges, clear]);
   return <PreviewContext.Provider value={value}>{children}</PreviewContext.Provider>;
 }

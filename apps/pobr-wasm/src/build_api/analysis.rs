@@ -16,9 +16,9 @@ use pobr_data::passive_tree::NodeId;
 use serde::{Deserialize, Serialize};
 
 use super::request::{
-    CalculateBuildRequest, CalculatedBuild, GemInput, JewelInput, MAIN_MINION_DPS, SlotItemInput,
-    SocketGroupInput, UtilitySlotInput, apply_request_overrides, calculate_build,
-    orchestrator_options, parse_build_from_request, run_session_for_build,
+    CalculateBuildRequest, CalculatedBuild, GemInput, JewelInput, SlotItemInput, SocketGroupInput,
+    UtilitySlotInput, apply_request_overrides, calculate_build, orchestrator_options,
+    parse_build_from_request, run_session_for_build,
 };
 use super::{localize_input_text, slot_from_id};
 use crate::state;
@@ -555,7 +555,7 @@ fn optimize_variants_impl(request_json: &str) -> Result<String, super::ApiError>
     for (index, variant) in req.variants.iter().enumerate() {
         let mut build = base_build.clone();
         let mut opts = base_opts.clone();
-        let session = apply_variant(
+        let calculation = apply_variant(
             &mut build,
             &mut opts,
             variant,
@@ -566,7 +566,7 @@ fn optimize_variants_impl(request_json: &str) -> Result<String, super::ApiError>
         .and_then(|()| {
             calculate_build(&build, &data, &opts).map_err(|e| format!("calculate: {e}"))
         });
-        variants.push(match session {
+        variants.push(match calculation {
             Ok(calculated) => VariantStatsJson {
                 index,
                 label: variant.label.clone(),
@@ -628,16 +628,12 @@ struct AttributionResponse {
     entries: Vec<AttributionEntryJson>,
 }
 
-/// The fields the calculation outputs; [`MAIN_MINION_DPS`] only while the
-/// calculated skill summons a minion, as the catalog leaves out absent outputs.
+/// The requested display fields, leaving out absent outputs.
 fn display_values_map(calculated: &CalculatedBuild, fields: &[String]) -> BTreeMap<String, f64> {
-    let all = pobr_core::extract_display_values(calculated.session.output());
+    let all = calculated.display_values();
     fields
         .iter()
         .filter_map(|f| {
-            if f == MAIN_MINION_DPS {
-                return calculated.main_minion_dps.map(|dps| (f.clone(), dps));
-            }
             all.iter()
                 .find(|v| v.id.as_str() == f.as_str())
                 .map(|v| (f.clone(), v.value))

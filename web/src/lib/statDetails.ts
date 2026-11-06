@@ -1,6 +1,6 @@
 import type { Breakdown, CalculateBuildResponse, DetailKind, DetailInput } from '../api/types';
 import { bindT, statNameLabel, type Lang } from './i18n';
-import { formatStatValue, statFormat } from './statDisplay';
+import { formatStatValue, formatStat } from './statDisplay';
 
 export function detailKind(calc: Pick<CalculateBuildResponse, 'breakdowns' | 'breakdown_descriptors'>, id: string): DetailKind {
   return calc.breakdown_descriptors?.[id] ?? (calc.breakdowns[id] ? 'steps' : 'none');
@@ -41,7 +41,7 @@ export function detailInputValue(input: DetailInput, lang: Lang): string {
     return formatStatValue(input.value === null ? null : input.value * 100, 'percent', lang);
   }
   if (/^(Primary|Secondary)ExcessChance$/.test(input.id)) return formatStatValue(input.value, 'percent', lang);
-  return formatStatValue(input.value, statFormat(input.id), lang);
+  return formatStat(input.id, input.value, lang);
 }
 
 /** Empty is about the returned rows, not just the stat's static descriptor. */

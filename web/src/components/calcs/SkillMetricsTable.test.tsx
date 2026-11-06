@@ -17,7 +17,7 @@ const metrics = { combined_dps: 0, hit_dps: 0, dot_dps: 0, average_hit: 0, actio
 const row = (skill_id: string, index = 0): SkillMetricsEntry => ({ group_index: index, active_skill_index: 1,
   skill_id, status: 'calculated', metrics, error: null, unsupported_modifiers: ['Shared limitation'] });
 const gem = (skill_id: string, tags: string[]): GemCatalogEntry => ({ skill_id, tags, name: skill_id,
-  active_effect_ids: [skill_id], is_support: false, is_lineage: false, colour: null, name_zh_cn: null, name_zh_tw: null });
+  active_effect_ids: [skill_id], is_support: false, is_lineage: false, is_unique_only: false, colour: null, name_zh_cn: null, name_zh_tw: null });
 
 test('skill metrics use the same damage, rate and cost precision as the results panel', () => {
   harness.catalog = new Map();
@@ -55,7 +55,7 @@ test('overview deduplicates limitations, keeps errors in collapsed details and p
   harness.clicks = [];
   const html = renderToStaticMarkup(<SkillMetricsTable session={session} lang="en-US" report={report} displayed={report} />);
   expect(html.match(/<span>Shared limitation<\/span>/g)).toHaveLength(1);
-  expect(html).toContain('<details><summary class="disclosure" data-disclosure-level="inline">Details</summary><p>Cannot resolve effect EnemyExplode</p></details>');
+  expect(html).toContain('<details><summary class="disclosure">Details</summary><p>Cannot resolve effect EnemyExplode</p></details>');
   expect(html).toContain('Not supported yet');
   expect(html).not.toContain('<details open');
   const rows = html.match(/<tr class="skill-metrics-row[^>]*>[\s\S]*?<\/tr>/g)!;

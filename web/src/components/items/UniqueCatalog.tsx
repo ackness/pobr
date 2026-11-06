@@ -1,3 +1,4 @@
+import { colon } from '../../app/text';
 import { AppButton, AppInput } from '../shared/controls';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
@@ -71,7 +72,7 @@ export function UniqueCatalog({ session, lang, selectedSlot }: { session: BuildS
         options={[{ value: '', label: t('allSlots') }, ...slots.map(value => ({ value, label: value.startsWith('Jewel@') ? t('jewel') : slotLabel(lang, value) }))]}
         onChange={value => { setSlot(value); setPicked(null); }} /></label>
     </div>
-    <p>{t('matches')}{lang === 'en-US' ? ': ' : '：'}{results.length}</p>
+    <p>{t('matches')}{colon(lang)}{results.length}</p>
     <div className="unique-results" role="group" aria-label={t('choose')}>
       {results.map(result => <AppButton key={result.id} className="unique-result" aria-pressed={entry?.id === result.id}
         onClick={() => { setSlot(currentSlot); setPicked(result.id); }}>

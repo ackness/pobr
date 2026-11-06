@@ -1,3 +1,4 @@
+import { colon } from '../../app/text';
 import type { EnemyPresets } from '../../api/enemyPresets';
 import type { ConfigInputValue, EnemyTier } from '../../api/types';
 import { encounterPreset, encounterValue, encounterValueLabel, presetRatio } from '../../lib/configEncounter';
@@ -38,7 +39,7 @@ export function EnemyTierSummary({ table, tier, inputs, inherited, lang }: {
     }));
   }
   return <div className="cfg-tier-summary">
-    <p>{tt('config.tierPreset')}{lang === 'en-US' ? ': ' : '：'}{enemyTierLabel(lang, tier)}</p>
+    <p>{tt('config.tierPreset')}{colon(lang)}{enemyTierLabel(lang, tier)}</p>
     <p className="config-hint">{tt('config.presetBasis')}</p>
     <dl>{rows.map(row => <div key={row.key}><dt>{row.label}</dt><dd><span>{row.value}</span><small>{row.source}</small></dd></div>)}</dl>
     <p className="config-hint">{tt('config.presetScalingLimit')}</p>

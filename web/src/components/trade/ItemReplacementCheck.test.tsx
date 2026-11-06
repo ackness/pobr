@@ -10,42 +10,14 @@ import type { Lang } from '../../lib/i18n';
 import { upgradeT } from '../../lib/upgradeText';
 
 // Replay state and committed effects without a browser; retain real dependency comparisons.
-const ui = vi.hoisted(() => ({ cursor: 0, slots: [] as unknown[], effects: [] as (() => void)[],
-  buttons: [] as ComponentProps<'button'>[], input: undefined as ComponentProps<'textarea'> | undefined,
+const ui = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], input: undefined as ComponentProps<'textarea'> | undefined,
   compare: vi.fn(), equipment: vi.fn() }));
-vi.mock('react', async original => {
-  const memo = (factory: () => unknown, deps?: unknown[]) => {
-    const index = ui.cursor++;
-    const previous = ui.slots[index] as { deps?: unknown[]; value: unknown } | undefined;
-    if (!previous || !deps || deps.some((value, i) => !Object.is(value, previous.deps?.[i]))) {
-      ui.slots[index] = { deps, value: factory() };
-    }
-    return (ui.slots[index] as { value: unknown }).value;
-  };
-  const effect = (callback: () => void | (() => void), deps?: unknown[]) => {
-    const index = ui.cursor++;
-    const previous = ui.slots[index] as { deps?: unknown[]; cleanup?: () => void } | undefined;
-    if (!previous || !deps || deps.some((value, i) => !Object.is(value, previous.deps?.[i]))) {
-      const entry = { deps, cleanup: undefined as (() => void) | undefined };
-      ui.slots[index] = entry;
-      ui.effects.push(() => { previous?.cleanup?.(); entry.cleanup = callback() || undefined; });
-    }
-  };
-  return { ...await original<typeof import('react')>(),
-    useState: (initial: unknown) => {
-      const index = ui.cursor++;
-      if (!(index in ui.slots)) ui.slots[index] = typeof initial === 'function' ? initial() : initial;
-      return [ui.slots[index], (value: unknown) => { ui.slots[index] = typeof value === 'function' ? value(ui.slots[index]) : value; }];
-    },
-    useRef: (initial: unknown) => {
-      const index = ui.cursor++;
-      if (!(index in ui.slots)) ui.slots[index] = { current: initial };
-      return ui.slots[index];
-    },
-    useMemo: memo, useCallback: (callback: unknown, deps?: unknown[]) => memo(() => callback, deps),
-    useEffect: effect, useLayoutEffect: effect,
-  };
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness({ refs: true, memo: 'deps', callback: 'deps',
+    effects: { comparison: 'objectIs', cleanup: 'previous' }, layoutEffect: 'effect' });
 });
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
 vi.mock('../shared/PreviewContext', () => ({ usePreview: () => null }));
 vi.mock('../../hooks/useLocalizedLines', () => ({ useLocalizedLines: (lines: string[]) => lines, useLocalizedNames: (names: { name: string }[]) => names.map(name => name.name) }));
@@ -69,7 +41,7 @@ const report = { text, base: { name: 'Chain Mail' }, requiredLevel: 1, lines: []
 } as unknown as ReplacementReport;
 
 beforeEach(() => {
-  ui.cursor = 0; ui.slots = []; ui.effects = []; vi.clearAllMocks();
+  hooks.reset(); vi.clearAllMocks();
   vi.stubGlobal('window', { clearTimeout });
 });
 afterEach(() => { vi.unstubAllGlobals(); });
@@ -81,10 +53,10 @@ function setup(allocatedNodes: number[] = [], settings: { calc?: BuildSession['c
   let resolve!: (report: ReplacementReport) => void;
   ui.compare.mockImplementation(() => new Promise<ReplacementReport>(done => { resolve = done; }));
   const render = (sockets: number[], socketLabel = () => 'Jewel socket') => {
-    ui.cursor = 0; ui.buttons = [];
+    hooks.beginRender(); ui.buttons = [];
     const html = renderToStaticMarkup(<ItemReplacementCheck session={session} lang={lang} active objective={settings.objective ?? objective}
       catalog={catalog} jewelSockets={sockets} socketLabel={socketLabel} goalLabel="Life" onEditGoal={() => {}} />);
-    ui.effects.splice(0).forEach(effect => effect());
+    hooks.runEffects();
     return html;
   };
   render([]);

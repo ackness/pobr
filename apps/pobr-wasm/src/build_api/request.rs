@@ -6,6 +6,7 @@
 //! `pub(crate)` (before the split, this all lived in one module, where
 //! private fields would have sufficed).
 
+use std::cell::OnceCell;
 use std::collections::BTreeMap;
 
 use pobr_build::build::GemSkillRef;
@@ -18,6 +19,7 @@ use pobr_core::calc::{CompletedCalculationSession, MinimalInput};
 use pobr_core::item_text::parse_pob_xml_item;
 use pobr_core::rules::config_interpreter::ConfigInputValue;
 use pobr_data::build_config::CustomModifierBlock;
+use pobr_data::display_stat::{DisplayStatCategory, DisplayStatId, DisplayStatValue};
 use pobr_data::item::EquipmentSlot;
 use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::{AttributeChoice, NodeId};
@@ -753,18 +755,60 @@ pub(crate) const MAIN_MINION_DPS: &str = "MainMinionDPS";
 /// it used.
 pub(crate) struct CalculatedBuild {
     pub(crate) session: CompletedCalculationSession,
-    /// [`MAIN_MINION_DPS`]; `None` when the calculated skill summons no minion.
-    pub(crate) main_minion_dps: Option<f64>,
+    pub(crate) main_minion_index: Option<usize>,
+    display_values: OnceCell<Vec<DisplayStatValue>>,
 }
 
 impl CalculatedBuild {
+    pub(crate) fn new(
+        session: CompletedCalculationSession,
+        prepared: &Build,
+        data: &BuildData,
+    ) -> Self {
+        let output = session.output();
+        let main_minion = pobr_build::main_skill_minion_in_view(prepared, data, output);
+        let main_minion_index = main_minion.and_then(|main| {
+            output
+                .minions
+                .iter()
+                .position(|minion| std::ptr::eq(main, minion))
+        });
+        Self {
+            session,
+            main_minion_index,
+            display_values: OnceCell::new(),
+        }
+    }
+
+    pub(crate) fn display_values(&self) -> &[DisplayStatValue] {
+        self.display_values.get_or_init(|| {
+            let mut values = pobr_core::extract_display_values(self.session.output());
+            if let Some(value) = self.stat_value(MAIN_MINION_DPS) {
+                values.push(DisplayStatValue {
+                    id: DisplayStatId::new(MAIN_MINION_DPS),
+                    value,
+                    category: DisplayStatCategory::Offence,
+                });
+            }
+            values
+        })
+    }
+
     /// One display stat, by display catalog id or [`MAIN_MINION_DPS`] (0 without
     /// a main minion, as the catalog reads 0 for an absent output).
+    /// Does not build the full display list.
     pub(crate) fn stat(&self, id: &str) -> f64 {
+        self.stat_value(id).unwrap_or(0.0)
+    }
+
+    fn stat_value(&self, id: &str) -> Option<f64> {
+        let output = self.session.output();
         if id == MAIN_MINION_DPS {
-            return self.main_minion_dps.unwrap_or(0.0);
+            return self
+                .main_minion_index
+                .map(|index| output.minions[index].dps);
         }
-        pobr_core::display_value(self.session.output(), id)
+        Some(pobr_core::display_value(output, id))
     }
 }
 
@@ -775,12 +819,7 @@ pub(crate) fn calculate_build(
     opts: &DataOrchestratorOptions,
 ) -> Result<CalculatedBuild, pobr_build::BuildError> {
     let (session, prepared) = calculate_with_data_session_prepared(build, data, opts)?;
-    let main_minion_dps = pobr_build::main_skill_minion_in_view(&prepared, data, session.output())
-        .map(|minion| minion.dps);
-    Ok(CalculatedBuild {
-        session,
-        main_minion_dps,
-    })
+    Ok(CalculatedBuild::new(session, &prepared, data))
 }
 
 pub(crate) fn run_session_for_build(
@@ -811,4 +850,44 @@ pub(crate) fn full_dps_for_build(
         &orchestrator_options(req)?,
     )
     .map_err(|e| format!("Full DPS: {e}"))?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stat_reads_do_not_build_the_display_list() {
+        let game = pobr_gamedata::GameData::new(pobr_gamedata::current_data_dir());
+        let data = BuildData::load(&game).unwrap();
+        let build = Build::new().with_character(CharacterIdentity {
+            level: 80,
+            class_name: "Witch".into(),
+            ascendancy_name: String::new(),
+        });
+        let calculated = calculate_build(&build, &data, &Default::default()).unwrap();
+        assert!(calculated.display_values.get().is_none());
+        assert!(calculated.stat("Life") > 0.0);
+        assert_eq!(calculated.stat("Life"), calculated.session.output().life);
+        assert_eq!(calculated.stat(MAIN_MINION_DPS), 0.0);
+        assert_eq!(calculated.stat("UnknownStat"), 0.0);
+        assert!(calculated.display_values.get().is_none());
+
+        let values = calculated.display_values();
+        assert!(calculated.display_values.get().is_some());
+        assert!(std::ptr::eq(values, calculated.display_values()));
+        assert_eq!(
+            serde_json::to_string(values).unwrap(),
+            serde_json::to_string(&pobr_core::extract_display_values(
+                calculated.session.output()
+            ))
+            .unwrap()
+        );
+        for value in values {
+            assert_eq!(
+                calculated.stat(value.id.as_str()).to_bits(),
+                value.value.to_bits()
+            );
+        }
+    }
 }

@@ -39,6 +39,8 @@ mod breakdown;
 mod locale;
 mod usage;
 
+use locale::Origins;
+
 pub use breakdown::{BuildDetail, StatBreakdownEntry, render_breakdowns};
 pub use locale::{
     Locale, SOURCE_LANGUAGE, SUPPLEMENT_FOOTNOTE, SUPPLEMENT_MARKER, TypedInput,
@@ -867,7 +869,7 @@ pub struct ParseItemReport {
     /// rendered text -> who wrote it (`agent` / `human`, the translation
     /// repository's own supplement). Absent when every shown text is official.
     #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
-    pub origins: std::collections::BTreeMap<String, pobr_data::catalog::TextOrigin>,
+    pub origins: Origins,
 }
 
 /// Parses raw item text, outputting a structured [`ParseItemReport`].
@@ -1248,7 +1250,7 @@ pub struct CalculateBuildReport {
     /// rendered text -> who wrote it (`agent` / `human`, the translation
     /// repository's own supplement). Absent when every shown text is official.
     #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
-    pub origins: std::collections::BTreeMap<String, pobr_data::catalog::TextOrigin>,
+    pub origins: Origins,
 }
 
 fn is_false(value: &bool) -> bool {
@@ -1604,7 +1606,7 @@ pub struct MarginalReport {
     /// rendered text -> who wrote it (`agent` / `human`, the translation
     /// repository's own supplement). Absent when every shown text is official.
     #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
-    pub origins: std::collections::BTreeMap<String, pobr_data::catalog::TextOrigin>,
+    pub origins: Origins,
 }
 
 /// Computes a candidate mod line's marginal contribution to a build:
@@ -1793,7 +1795,7 @@ pub fn explain_mod_with_marginal_text(
     let rules = ParseModRules::from_game_data(&data)?;
     let explain = explain_mod_localized(text, &rules, locale)?;
     let mut marginal = localized_marginal(req, locale)?;
-    let marked = locale::mark_marginal_for_text(&mut marginal);
+    let marked = locale::mark(&mut marginal.unsupported_modifiers, &marginal.origins);
     let mut s = render_explain(&explain);
     s.push_str(&render_marginal(&marginal));
     if marked {

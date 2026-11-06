@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { LineUsageLine, LineUsageStatus } from '../../../api/types';
 import { configLabel } from '../../../lib/configLabels';
+import { cleanLineText } from '../../../lib/modifierText';
 import {
-  ATTENTION, NO_FILTER, STATUS_ORDER, cleanLineText, filterLedger, ledgerDisplayText, ledgerReason, lineText, sortLedger, sourceGroup, statusHint, statusLabel,
+  ATTENTION, NO_FILTER, STATUS_ORDER, filterLedger, ledgerDisplayText, ledgerReason, lineText, sortLedger, sourceGroup, statusHint, statusLabel,
   statusRank, statusTone, summarise, toggleStatus,
 } from './ledger';
 

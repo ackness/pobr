@@ -426,7 +426,7 @@ Dependabot 每日分组检查 Actions 更新；Cargo、Rust toolchain、Web 与�
 应用版本由 `[workspace.package].version` 管理；七个基础库与 `data/CURRENT` 独立版本。
 更新应用版本后用 `mise exec -- cargo metadata --format-version 1 > /dev/null` 刷新锁文件。
 [release-policy.py](../devs/scripts/release-policy.py) 按 SemVer 判断升级，检查所有继承 workspace
-版本的应用/工具锁版本，并要求 CHANGELOG.md 有该版本一节（带日期的标题、`### Breaking changes` 小节和对比链接）；
+版本的应用/工具锁版本，并要求 CHANGELOG.md 有该版本一节（格式见 RELEASING.md）；
 远端 tag 查询失败会报错，不能当作“tag 不存在”。
 PR 升版要求 tag 未使用；master 的合并后验证可接受指向同一提交的现有 tag。
 升版、依赖、工具链 PR 默认运行全部轻量检查。

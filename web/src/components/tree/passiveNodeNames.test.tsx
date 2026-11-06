@@ -3,12 +3,19 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import type { PassiveNode } from '../../api/types';
 import type { Lang } from '../../lib/i18n';
 import type { GameNameRequest } from '../../lib/nativeDisplayNames';
-import { passiveNameKey, passiveNodeMatches, passiveNodeName, translatePassiveCard, usePassiveNodeNames } from './passiveNodeNames';
+import { passiveNameKey, passiveNodeMatches, passiveNodeName, translatePassiveCard, translatePassiveStats, usePassiveNodeNames, usePassiveNodesBySkill } from './passiveNodeNames';
 
 const translate = vi.hoisted(() => vi.fn<(names: readonly GameNameRequest[], lang: Lang) => string[]>());
+const ui = vi.hoisted(() => ({ effects: [] as (() => void | (() => void))[], backend: {
+  translateLines: vi.fn<(lines: string[], lang: Lang) => Promise<string[]>>(),
+  loadPassiveTree: vi.fn<(version?: string | null) => Promise<PassiveNode[]>>(),
+} }));
+vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
+  useEffect: (effect: () => void | (() => void)) => { ui.effects.push(effect); },
+}));
+vi.mock('../../api/backend', () => ({ getBackend: async () => ui.backend }));
 vi.mock('../../hooks/useLocalizedLines', async original => ({
   ...await original<typeof import('../../hooks/useLocalizedLines')>(), useLocalizedNames: translate,
-  useLocalizedLines: (lines: string[], lang: Lang) => lines.map(line => lang !== 'en-US' && line.includes('Spirit') ? '精魂提高 30%' : line),
 }));
 const node: PassiveNode = Object.freeze({ skill: 6898, id: 'templar_druid_notable1', name: 'Relentless Vindicator',
   kind: 'notable', stats: ['10% increased [Critical|Critical Hit Chance]'] });
@@ -21,6 +28,8 @@ const translations = {
 };
 
 beforeEach(() => {
+  ui.effects = [];
+  ui.backend = { translateLines: vi.fn(async lines => lines), loadPassiveTree: vi.fn(async () => [node]) };
   translate.mockReset().mockImplementation((requests, lang) => requests.map(request =>
     request.kind === 'passive' ? translations[lang].get(passiveNameKey(request)) ?? request.name : request.name));
 });
@@ -91,16 +100,65 @@ test('a card drops a line a multi-line description translated into the line abov
 });
 
 
-test.each(['zh-CN', 'zh-TW'] as const)('indexes the displayed Spirit modifier for a Chinese query in %s and retains English matching', lang => {
+test.each(['zh-CN', 'zh-TW'] as const)('indexes the displayed Spirit modifier for a Chinese query in %s and retains English matching', async lang => {
   const spirit = { ...node, name: 'Boundless Power', stats: ['30% increased [Spirit|Spirit]'] };
   const life = { ...node, id: 'life', skill: 42, name: 'Health', stats: ['10% increased maximum Life'] };
-  function Probe() {
-    const index = usePassiveNodeNames([spirit, life], lang, true);
-    expect(passiveNodeMatches(spirit, '精魂', index)).toBe(true);
-    expect(passiveNodeMatches(spirit, 'SPIRIT', index)).toBe(true);
-    expect(passiveNodeMatches(life, '精魂', index)).toBe(false);
-    return <span>{passiveNodeName(spirit, index)}</span>;
-  }
-  renderToStaticMarkup(<Probe />);
+  const backend = { translateLines: vi.fn(async (lines: string[]) => lines.map(line => line.includes('Spirit') ? '精魂提高 30%' : line)) };
+  const index = await translatePassiveStats(backend, [spirit, life], lang);
+  expect(passiveNodeMatches(spirit, '精魂', index)).toBe(true);
+  expect(passiveNodeMatches(spirit, 'SPIRIT', index)).toBe(true);
+  expect(passiveNodeMatches(life, '精魂', index)).toBe(false);
+  expect(backend.translateLines).toHaveBeenCalledWith(['30% increased Spirit', '', '10% increased maximum Life', ''], lang);
   expect(spirit.stats).toEqual(['30% increased [Spirit|Spirit]']);
+});
+
+test('stat indexes follow skill IDs within one tree and keep multi-line descriptions inside their node', async () => {
+  const first = { ...node, skill: 1, stats: ['First line', 'Continuation'] };
+  const second = { ...node, skill: 2, stats: ['Second effect'] };
+  const backend = { translateLines: vi.fn(async () => ['完整词条', '', '', '另一词条', '']) };
+  const index = await translatePassiveStats(backend, [first, second], 'zh-CN');
+  expect(passiveNodeMatches(first, '完整词条', index)).toBe(true);
+  expect(passiveNodeMatches(second, '完整词条', index)).toBe(false);
+  expect(passiveNodeMatches(second, '另一词条', index)).toBe(true);
+  backend.translateLines.mockClear();
+  const english = await translatePassiveStats(backend, [first, second], 'en-US');
+  expect(passiveNodeMatches(first, 'First line', english)).toBe(true);
+  expect(backend.translateLines).not.toHaveBeenCalled();
+});
+
+test('stat translation waits for a non-English search and reuses its tree/language request', async () => {
+  function Probe({ active, lang, search }: { active: boolean; lang: Lang; search: string }) {
+    usePassiveNodeNames([node], lang, active, search);
+    return null;
+  }
+  renderToStaticMarkup(<><Probe active={false} lang="zh-CN" search="critical" />
+    <Probe active lang="en-US" search="critical" /><Probe active lang="zh-CN" search=" " /></>);
+  ui.effects.splice(0).forEach(effect => effect());
+  await Promise.resolve();
+  expect(ui.backend.translateLines).not.toHaveBeenCalled();
+  renderToStaticMarkup(<Probe active lang="zh-CN" search="暴击" />);
+  const effect = ui.effects.pop()!;
+  const cleanup = effect();
+  await vi.waitFor(() => expect(ui.backend.translateLines).toHaveBeenCalledTimes(1));
+  cleanup?.();
+  const nextCleanup = effect();
+  await Promise.resolve();
+  expect(ui.backend.translateLines).toHaveBeenCalledTimes(1);
+  nextCleanup?.();
+});
+
+test('passive-source displays load one shared skill index per backend and tree version', async () => {
+  function Probe({ enabled = true, version }: { enabled?: boolean; version?: string }) {
+    usePassiveNodesBySkill(enabled, version);
+    return null;
+  }
+  renderToStaticMarkup(<><Probe enabled={false} /><Probe /><Probe /></>);
+  const cleanups = ui.effects.splice(0).map(effect => effect());
+  await vi.waitFor(() => expect(ui.backend.loadPassiveTree).toHaveBeenCalledTimes(1));
+  expect(ui.backend.loadPassiveTree).toHaveBeenCalledWith(undefined);
+  renderToStaticMarkup(<><Probe version="0_4" /><Probe version="0_4" /></>);
+  cleanups.push(...ui.effects.splice(0).map(effect => effect()));
+  await vi.waitFor(() => expect(ui.backend.loadPassiveTree).toHaveBeenCalledTimes(2));
+  expect(ui.backend.loadPassiveTree).toHaveBeenLastCalledWith('0_4');
+  cleanups.forEach(cleanup => cleanup?.());
 });

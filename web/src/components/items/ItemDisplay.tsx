@@ -138,6 +138,6 @@ export function ItemDisplayContent({ text, lang, lines, translated, rawDetails =
       </TabsContent>
       {!rawDetails && <TabsContent value="raw"><pre className="item-original-text">{text}</pre></TabsContent>}
     </Tabs>
-    {rawDetails && <details><summary className="disclosure" data-disclosure-level="inline">{t(lang, 'compare.advanced')}</summary><pre className="item-original-text">{text}</pre></details>}
+    {rawDetails && <details><summary className="disclosure">{t(lang, 'compare.advanced')}</summary><pre className="item-original-text">{text}</pre></details>}
   </article>;
 }

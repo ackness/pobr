@@ -271,14 +271,6 @@ export function treeAllocationTotals(state: StageState, nodes: import('../api/ty
   return totals;
 }
 
-/** A comparison starts with the closest previous stage of A, then its next stage. */
-export function nearestCompareStage<T extends { buildId: string; stageId: string }>(entries: T[], a: T | undefined): T | undefined {
-  if (!a) return undefined;
-  const stages = entries.filter(entry => entry.buildId === a.buildId);
-  const index = stages.findIndex(entry => entry.stageId === a.stageId);
-  return stages[index - 1] ?? stages[index + 1];
-}
-
 /** Stage order is the saved before/after order; never infer chronology from names. */
 export function defaultCompareSides<T extends { buildId: string; stageId: string }>(entries: T[], activeId: string | undefined, baseline?: T): { a?: T; b?: T } {
   const current = entries.find(entry => entry.stageId === activeId) ?? entries[0];

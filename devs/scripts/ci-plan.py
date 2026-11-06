@@ -157,18 +157,10 @@ def emit(plan, title="Selected checks"):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--local", action="store_true",
-                        help="classify branch, staged, unstaged and untracked changes offline")
     parser.add_argument("--event", type=Path, default=os.environ.get("GITHUB_EVENT_PATH"))
     parser.add_argument("--data-smoke", metavar="BASE", nargs="?", const="",
                         help="instead of the check plan, decide the data-bump smoke against BASE")
     args = parser.parse_args()
-    if args.local:
-        try:
-            emit(classify(local_changed_files()), "Local checks")
-        except ValueError as error:
-            raise SystemExit(str(error)) from error
-        return
     event = json.loads(args.event.read_text()) if args.event else {}
     event_name = os.environ.get("GITHUB_EVENT_NAME")
     if args.data_smoke is not None:

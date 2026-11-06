@@ -117,7 +117,7 @@
   .shell-root .skills-page .skill-gem .gem-controls > .skill-remove { grid-column: 5; grid-row: 1; }
   .shell-root .skills-page .gem-number > span { font-size: var(--text-sm); padding-inline: .5rem; }
   .shell-root .skills-page .gem-advanced { grid-column: 2 / -1; font-size: var(--text-xs); color: var(--muted-foreground); }
-  .shell-root .skills-page .gem-advanced summary { cursor: pointer; padding-block: .25rem; }
+  .shell-root .skills-page .gem-advanced summary { padding-block: .25rem; }
   .shell-root .skills-page .gem-advanced-controls { display: flex; flex-wrap: wrap; gap: .75rem; padding-block: .5rem; }
   .shell-root .skills-page .gem-advanced-controls label { display: flex; align-items: center; gap: .4rem; }
   .shell-root .skills-page .skill-gem .gem-advanced-controls input[type='number'] { width: 4.25rem; }
@@ -162,7 +162,7 @@
   .shell-root .skills-page .support-diagnostic-excluded > li { border-radius: 0; }
   .shell-root .skills-page .support-pool-details > summary,
   .shell-root .skills-page .skills-advanced > summary,
-  .shell-root .skills-page .skill-advanced > summary { cursor: pointer; font-size: var(--text-sm); color: var(--muted-foreground); }
+  .shell-root .skills-page .skill-advanced > summary { font-size: var(--text-sm); color: var(--muted-foreground); }
   .shell-root .skills-page .gem-optimizer-settings > summary:hover,
   .shell-root .skills-page .skills-advanced > summary:hover,
   .shell-root .skills-page .skill-advanced > summary:hover { color: var(--foreground); }

@@ -32,6 +32,7 @@ import { formatStatValue } from '../../lib/statDisplay';
 import { mainMinion } from '../../lib/mainMinion';
 import './skills.css';
 import { useSpiritReservations } from '../../app/pages/skills/useSpiritReservations';
+import { useConsumedRequest } from '../../hooks/useConsumedRequest';
 
 interface Props {
   session: BuildSession;
@@ -39,6 +40,12 @@ interface Props {
   active: boolean;
   focusSpirit?: number;
   focusOptimizer?: { group: number; nonce: number };
+}
+
+type SkillGem = SocketGroupInput['gems'][number];
+
+function itemSourceName(source: SocketGroupInput['source']): string | undefined {
+  return source?.startsWith('Item:') ? source.split(':')[2]?.split(',')[0]?.trim() : '';
 }
 
 export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit }: Props) {
@@ -74,17 +81,15 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
   const [spiritRequested, setSpiritRequested] = useState(0);
   const spiritReport = useSpiritReservations(session, active && (spiritRequested > 0 || focusSpirit !== undefined), spiritRequested);
   const spiritSummary = useRef<HTMLDivElement>(null);
-  const consumedSpiritFocus = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    if (!active || focusSpirit === undefined || consumedSpiritFocus.current === focusSpirit) return;
-    consumedSpiritFocus.current = focusSpirit;
+  const spiritFocusRequest = useConsumedRequest(active, focusSpirit, () => {
     setShowAllGroups(true);
     spiritSummary.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
     spiritSummary.current?.focus();
-  }, [active, focusSpirit]);
+  });
+  useEffect(spiritFocusRequest, [spiritFocusRequest]);
   const sourceNames = groups.map(group => {
     if (!group.source?.startsWith('Item:')) return '';
-    const original = group.source.split(':')[2]?.split(',')[0]?.trim();
+    const original = itemSourceName(group.source);
     const item = session.items?.find(item => nameParts(item.text)[0] === original);
     return item && rarityOf(item.text) === 'unique' ? nameParts(item.text)[0] ?? '' : '';
   });
@@ -93,7 +98,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
     const source = groups[index].source;
     if (source === 'Explode') return gemName('EnemyExplode');
     const name = sourceNames[index];
-    const original = source?.startsWith('Item:') ? source.split(':')[2]?.split(',')[0]?.trim() : '';
+    const original = itemSourceName(source);
     return original ? grantedSourceLabel(lang, `Item:0:${markUntranslated(name ? translatedSources[index] ?? name : original, original, lang)}`) : grantedSourceLabel(lang, source);
   };
   const mainIndex = session.calcParams.main_socket_group;
@@ -105,19 +110,18 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
   const openIdx = storedIdx !== null && groups[storedIdx] ? storedIdx : defaultIdx;
   const setOpenIdx = (index: number | null, focusNonce?: number) => setOpenGroup(index === null
     ? null : { index, revision: session.socketGroupRevision, focusNonce });
-  const consumedFocus = useRef<number | undefined>(undefined);
-  useLayoutEffect(() => {
-    if (!active || !focusOptimizer || consumedFocus.current === focusOptimizer.nonce) return;
-    consumedFocus.current = focusOptimizer.nonce;
-    if (groups[focusOptimizer.group]) setOpenIdx(focusOptimizer.group, focusOptimizer.nonce);
-  }, [active, focusOptimizer, session.socketGroupRevision]);
+  const optimizerFocusRequest = useConsumedRequest(active, focusOptimizer?.nonce, () => {
+    if (focusOptimizer && groups[focusOptimizer.group]) setOpenIdx(focusOptimizer.group, focusOptimizer.nonce);
+  });
+  useLayoutEffect(optimizerFocusRequest, [optimizerFocusRequest]);
   useLayoutEffect(() => {
     if (openGroup && storedIdx === null) setOpenGroup(null);
   }, [session.socketGroupRevision, storedIdx]);
 
   const pickerGroup = openIdx === null ? undefined : groups[openIdx];
-  const supportPickerKey = JSON.stringify([session.socketGroupRevision, session.dataVersion, session.treeVersion,
-    openIdx, groups, session.character?.level]);
+  const supportPickerKey = useMemo(() => JSON.stringify([session.socketGroupRevision, session.dataVersion, session.treeVersion,
+    openIdx, groups, session.character?.level]),
+  [session.socketGroupRevision, session.dataVersion, session.treeVersion, openIdx, groups, session.character?.level]);
   const [compatibleSupports, setCompatibleSupports] = useState<{ key: string; catalog: SupportMetadata[]; ids: Set<string> }>();
   useLayoutEffect(() => {
     if (!active || !pickerGroup || openIdx === null || !tradeGems.length) return;
@@ -136,8 +140,18 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
     return () => controller.abort();
   }, [active, supportPickerKey, tradeGems]);
 
+  const availableSupports = useMemo(() => supports.filter(gem => compatibleSupports?.key === supportPickerKey
+    && compatibleSupports.catalog === tradeGems && compatibleSupports.ids.has(gem.skill_id)),
+  [supports, compatibleSupports, supportPickerKey, tradeGems]);
+  const optimizerSkillKeys = useMemo(() => groups.map(group => JSON.stringify(group.gems
+    .filter(gem => !tradeById.get(gem.skill_id)?.is_support).map(gem => gem.skill_id).sort())), [groups, tradeById]);
+
   const updateGroup = (idx: number, patch: Partial<SocketGroupInput>) => {
     session.setSocketGroups(groups.map((g, i) => (i === idx ? { ...g, ...patch } : g)));
+  };
+  const updateGem = (idx: number, gemIdx: number, patch: Partial<SkillGem> | ((gem: SkillGem) => SkillGem)) => {
+    updateGroup(idx, { gems: groups[idx].gems.map((gem, index) => index !== gemIdx ? gem
+      : typeof patch === 'function' ? patch(gem) : { ...gem, ...patch }) });
   };
 
   // What each group's selected skill deals on its own, for the bars beside the list.
@@ -180,14 +194,13 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
     const groupTitle = selectedId ? gemName(selectedId) : tt(`skills.${noActiveState}`);
     const activeGem = selectedEffect ? group.gems[selectedEffect.gemIndex] : undefined;
     const supportGems = group.gems.filter(gem => gem !== activeGem);
-    const availableSupports = supports.filter(gem => isOpen && compatibleSupports?.key === supportPickerKey
-      && compatibleSupports.catalog === tradeGems && compatibleSupports.ids.has(gem.skill_id));
     const pickerState = supportPickerStatus(group, tradeGems,
-      compatibleSupports?.key === supportPickerKey && compatibleSupports.catalog === tradeGems ? availableSupports.length : undefined, catalogError);
+      compatibleSupports?.key === supportPickerKey && compatibleSupports.catalog === tradeGems ? isOpen ? availableSupports.length : 0 : undefined, catalogError);
     const trigger = group.gems.find(gem => gem.enabled !== false && byId.get(gem.skill_id)?.tags.includes('Meta'));
-    const optimizerSkillKey = JSON.stringify(group.gems
-      .filter(gem => !tradeById.get(gem.skill_id)?.is_support).map(gem => gem.skill_id).sort());
+    const optimizerSkillKey = optimizerSkillKeys[idx];
     const dps = dpsRows.get(idx);
+    const source = sourceLabel(idx);
+    const spirit = spiritReport?.groups.get(idx);
     const optimizer = isOpen && (
       <GemOptimizer
         key={`${session.socketGroupRevision}:${optimizerSkillKey}`}
@@ -256,22 +269,23 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
     </label>;
     const gemList = (
       <ul className="skill-gems">
-        {group.gems.map((gem, gemIdx) => (
-          <li key={gemIdx} className={`skill-gem${gem === activeGem ? ' is-active' : ''}${gem.enabled === false ? ' is-disabled' : ''}`}
-            data-gem-kind={byId.get(gem.skill_id)?.is_support === true ? 'support' : byId.get(gem.skill_id)?.is_support === false ? 'active' : undefined}
-            data-colour={byId.get(gem.skill_id)?.colour ?? undefined}>
+        {group.gems.map((gem, gemIdx) => {
+          const meta = byId.get(gem.skill_id);
+          return <li key={gemIdx} className={`skill-gem${gem === activeGem ? ' is-active' : ''}${gem.enabled === false ? ' is-disabled' : ''}`}
+            data-gem-kind={meta?.is_support === true ? 'support' : meta?.is_support === false ? 'active' : undefined}
+            data-colour={meta?.colour ?? undefined}>
             <AppTooltip content={gem.skill_id === '' ? tt('skills.unresolvedHint') : undefined}><span className="gem-name" tabIndex={gem.skill_id === '' ? 0 : undefined}>
-              {byId.get(gem.skill_id)?.colour && ['str', 'dex', 'int'].includes(byId.get(gem.skill_id)!.colour!) && <span className="sr-only">{tt(`tree.attr.${byId.get(gem.skill_id)!.colour!}`)} · </span>}
+              {meta?.colour && ['str', 'dex', 'int'].includes(meta.colour) && <span className="sr-only">{tt(`tree.attr.${meta.colour}`)} · </span>}
               {gemLabel(gem)}
-              {byId.has(gem.skill_id) && <small className="gem-kind-label">{tt(byId.get(gem.skill_id)!.is_support ? 'compare.support' : 'compare.active')}</small>}
-              {byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
+              {meta && <small className="gem-kind-label">{tt(meta.is_support ? 'compare.support' : 'compare.active')}</small>}
+              {meta?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
               <GemNameCopy skillId={gem.skill_id} name={gemName(gem.skill_id)} lang={lang} />
             </span></AppTooltip>
             <span className="gem-controls">
               <label className="gem-enabled"><AppInput type="checkbox" aria-label={tt('skills.gemEnabled')}
                 checked={gem.enabled !== false} disabled={session.busy}
                 onChange={event => updateGroup(idx, withGemEnabled(group, gemIdx, event.target.checked, byId))} />{tt('skills.gemEnabled')}</label>
-              <label className="gem-number gem-level">{tt('skills.level')}{byId.get(gem.skill_id)?.is_support && (tradeById.get(gem.skill_id)?.max_level ?? 1) === 1 ? <span aria-label={tt('skills.notApplicable')}>—</span> : <AppInput
+              <label className="gem-number gem-level">{tt('skills.level')}{meta?.is_support && (tradeById.get(gem.skill_id)?.max_level ?? 1) === 1 ? <span aria-label={tt('skills.notApplicable')}>—</span> : <AppInput
                 type="number"
                 min={1}
                 max={40}
@@ -281,12 +295,10 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
                 onChange={(e) => {
                   const level = Number(e.target.value);
                   if (!Number.isInteger(level) || level < 1) return;
-                  updateGroup(idx, {
-                    gems: group.gems.map((g, i) => (i === gemIdx ? { ...g, level } : g)),
-                  });
+                  updateGem(idx, gemIdx, { level });
                 }}
               />}</label>
-              <label className="gem-number gem-quality">{tt('skills.quality')}{byId.get(gem.skill_id)?.is_support ? <span aria-label={tt('skills.notApplicable')}>—</span> : <AppInput
+              <label className="gem-number gem-quality">{tt('skills.quality')}{meta?.is_support ? <span aria-label={tt('skills.notApplicable')}>—</span> : <AppInput
                 type="number"
                 min={0}
                 max={23}
@@ -296,9 +308,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
                 onChange={(e) => {
                   const quality = Number(e.target.value);
                   if (!Number.isInteger(quality) || quality < 0) return;
-                  updateGroup(idx, {
-                    gems: group.gems.map((g, i) => (i === gemIdx ? { ...g, quality } : g)),
-                  });
+                  updateGem(idx, gemIdx, { quality });
                 }}
               />}</label>
               <AppButton
@@ -310,12 +320,12 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
                 ×
               </AppButton>
             </span>
-            <details className="gem-advanced"><summary className="disclosure" data-disclosure-level="inline">{tt('skills.gemAdvanced')}</summary>
+            <details className="gem-advanced"><summary className="disclosure">{tt('skills.gemAdvanced')}</summary>
               <div className="gem-advanced-controls">
               <label className="gem-count">{tt('skills.count')}<AppInput type="number" min={0} step="any" value={gem.count ?? 1}
                 aria-label={tt('skills.gemCount')} disabled={session.busy} onChange={event => {
                   const count = Number(event.target.value);
-                  if (Number.isFinite(count) && count >= 0) updateGroup(idx, { gems: group.gems.map((item, index) => index === gemIdx ? { ...item, count } : item) });
+                  if (Number.isFinite(count) && count >= 0) updateGem(idx, gemIdx, { count });
                 }} /></label>
               <AppTooltip content={tt('skills.corruptedHint')}><label className="gem-corrupted">
                 {tt('skills.corrupted')}
@@ -324,15 +334,13 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
                   checked={gem.corrupted === true}
                   disabled={session.busy}
                   aria-label={tt('skills.corrupted')}
-                  onChange={(e) => updateGroup(idx, {
-                    gems: group.gems.map((g, i) => (i === gemIdx ? withGemCorrupted(g, e.target.checked) : g)),
-                  })}
+                  onChange={(e) => updateGem(idx, gemIdx, gem => withGemCorrupted(gem, e.target.checked))}
                 />
               </label></AppTooltip>
               </div>
             </details>
-          </li>
-        ))}
+          </li>;
+        })}
       </ul>
     );
     const minionControls = group.gems.map((gem, gemIndex) => <MinionSelection key={gemIndex} session={session} lang={lang}
@@ -340,7 +348,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
     return { header: (
       <div
         key={idx}
-        data-spirit-reserving={spiritReport?.groups.get(idx)?.reserves || undefined}
+        data-spirit-reserving={spirit?.reserves || undefined}
         className={`skill-group${isMain ? ' is-main' : ''}${group.enabled ? '' : ' is-disabled'}${isOpen ? ' is-selected' : ''}`}
       >
         <div className="skill-group-header">
@@ -366,15 +374,15 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
               )}
             </span>
             {group.weapon_set && <span className="ui-badge">{tt('weapons.set')} {group.weapon_set}</span>}
-                  {spiritReport?.groups.get(idx)?.reserves && <span className="skill-spirit-cost">
-                    {spiritReport.shared.some(entry => entry.groups.includes(idx)) ? tt('skills.spiritShared')
+                  {spirit?.reserves && <span className="skill-spirit-cost">
+                    {spiritReport!.shared.some(entry => entry.groups.includes(idx)) ? tt('skills.spiritShared')
                       : tt('skills.spiritReserving')}
-                    {(spiritReport.groups.get(idx)!.released > 0) && ` · ${tt('skills.spiritReleased').replace('{value}', formatStatValue(spiritReport.groups.get(idx)!.released, 'int', lang))}`}
+                    {(spirit.released > 0) && ` · ${tt('skills.spiritReleased').replace('{value}', formatStatValue(spirit.released, 'int', lang))}`}
                   </span>}
             {isMain && <span className="skill-group-main">{tt('skills.main')}</span>}
-            {sourceLabel(idx) && (
+            {source && (
               <span className="granted-badge">
-                {sourceLabel(idx)}
+                {source}
               </span>
             )}
           </AppButton>
@@ -428,7 +436,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
           {trigger && activeGem !== trigger && <p className="skills-hint">{tt('skills.triggeredBy').replace('{skill}', gemLabel(trigger))}</p>}
           <div className="skill-detail-tags">
             {isMain && <span className="skill-detail-tag">{tt('skills.main')}</span>}
-            {sourceLabel(idx) && <span className="skill-detail-tag">{sourceLabel(idx)}</span>}
+            {source && <span className="skill-detail-tag">{source}</span>}
           </div>
           {dps?.kind === 'damage' && <div className="skill-detail-dps"><span>{tt('sidebar.combinedDps')}</span><strong>{formatStatValue(dps.dps, 'float2', lang)}</strong></div>}
           {dps?.kind === 'minion' && <div className="skill-detail-dps"><span>{tt('skills.minionDps')}</span><strong>{formatStatValue(dps.dps, 'float2', lang)}</strong></div>}
@@ -454,7 +462,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
           {optimizer}
         </section>
         {active && <details className="skill-advanced">
-          <summary className="disclosure" data-disclosure-level="inline">{w('Advanced', '高级', '進階')}</summary>
+          <summary className="disclosure">{w('Advanced', '高级', '進階')}</summary>
           <div className="skill-advanced-body">
             {fullDps}
             {minionControls}

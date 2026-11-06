@@ -6,20 +6,17 @@ import { buildGemDescriptionIndex, type GemDescriptionIndex } from '../../lib/ge
 import { GemDescriptionPanel } from './GemDescriptionPanel';
 import { GemPicker } from './GemPicker';
 
-const ui = vi.hoisted(() => ({ states: [] as unknown[], cursor: 0,
-  descriptions: undefined as GemDescriptionIndex | null | undefined,
+const ui = vi.hoisted(() => ({ descriptions: undefined as GemDescriptionIndex | null | undefined, descriptionsEnabled: false,
   input: {} as ComponentProps<'input'>, buttons: [] as ComponentProps<'button'>[],
   root: {} as ComponentProps<'div'>,
   options: [] as ComponentProps<'li'>[], panel: {} as ComponentProps<'div'>,
 }));
-vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
-  useState: (initial: unknown) => {
-    const index = ui.cursor++;
-    if (!(index in ui.states)) ui.states[index] = typeof initial === 'function' ? initial() : initial;
-    return [ui.states[index], (next: unknown) => { ui.states[index] = typeof next === 'function' ? next(ui.states[index]) : next; }];
-  },
-}));
-vi.mock('../../hooks/useGemDescriptions', () => ({ useGemDescriptions: () => ui.descriptions }));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness();
+});
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
+vi.mock('../../hooks/useGemDescriptions', () => ({ useGemDescriptions: (enabled: boolean) => { ui.descriptionsEnabled = enabled; return ui.descriptions; } }));
 vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { ui.buttons.push(props); return <button {...props} />; },
   AppInput: (props: ComponentProps<'input'>) => { ui.input = props; return <input {...props} />; },
@@ -40,9 +37,9 @@ vi.mock('react/jsx-dev-runtime', async original => {
 
 const gems: GemCatalogEntry[] = [
   { skill_id: 'Area', name: 'Area Support', name_zh_cn: '范围辅助', name_zh_tw: '範圍輔助',
-    is_support: true, is_lineage: false, active_effect_ids: [], colour: 'int', tags: ['Area'] },
+    is_support: true, is_lineage: false, is_unique_only: false, active_effect_ids: [], colour: 'int', tags: ['Area'] },
   { skill_id: 'Bolt', name: 'Bolt', name_zh_cn: '闪电箭', name_zh_tw: '閃電箭',
-    is_support: false, is_lineage: false, active_effect_ids: ['Bolt'], colour: 'dex', tags: ['Projectile'] },
+    is_support: false, is_lineage: false, is_unique_only: false, active_effect_ids: ['Bolt'], colour: 'dex', tags: ['Projectile'] },
 ];
 const data = buildGemDescriptionIndex({ scopes: {
   'GemEffects.SupportText': { AreaVariant: 'Supports [Area] Skills.\r\nSecond line.' },
@@ -51,7 +48,7 @@ const data = buildGemDescriptionIndex({ scopes: {
 [{ id: 'gem', granted_effect_id: 'ignored', str_pct: 50, int_pct: 50 }]);
 const pick = vi.fn();
 function render(lang: 'en-US' | 'zh-CN' | 'zh-TW' = 'en-US') {
-  ui.cursor = 0; ui.buttons = []; ui.options = [];
+  hooks.beginRender(); ui.buttons = []; ui.options = [];
   return renderToStaticMarkup(<GemPicker entries={gems} placeholder="Pick a gem" disabled={false} lang={lang} onPick={pick} />);
 }
 function open(lang: 'en-US' | 'zh-CN' | 'zh-TW' = 'en-US') {
@@ -66,7 +63,7 @@ function key(key: string, extra = {}) {
 }
 const matchMedia = vi.fn(() => ({ matches: false }));
 beforeEach(() => {
-  ui.states = []; ui.descriptions = data; pick.mockClear();
+  hooks.reset(); ui.descriptions = data; pick.mockClear();
   matchMedia.mockReset().mockReturnValue({ matches: false });
   vi.stubGlobal('window', { matchMedia });
 });
@@ -91,9 +88,15 @@ it('shows the highlighted gem, follows arrows/Home/End and pointer hover, and ke
   expect(render()).not.toContain('gem-description-panel');
 });
 
+it('enables descriptions only while the picker is open', () => {
+  render(); expect(ui.descriptionsEnabled).toBe(false);
+  open(); expect(ui.descriptionsEnabled).toBe(true);
+  key('Escape'); render(); expect(ui.descriptionsEnabled).toBe(false);
+});
+
 it('Add, Enter and the list row use the same pick path and close the picker', () => {
   for (const path of ['add', 'enter', 'row']) {
-    ui.states = []; pick.mockClear();
+    hooks.reset(); pick.mockClear();
     open(); key('ArrowDown'); render();
     if (path === 'add') ui.buttons.find(button => button.children === 'Add')!.onClick!({} as never);
     else if (path === 'enter') key('Enter');

@@ -5,22 +5,14 @@ import { defaultStarterSession } from '../lib/buildWorkspace';
 import { useBuildSession } from './useBuildSession';
 
 // Replay the real hook's state and callbacks; boot effects are unnecessary for importing a saved session.
-const harness = vi.hoisted(() => ({ state: [] as unknown[], refs: [] as { current: unknown }[], stateIndex: 0, refIndex: 0,
-  calculate: vi.fn<(request: CalculateBuildRequest) => Promise<CalculateBuildResponse>>(),
+const harness = vi.hoisted(() => ({ calculate: vi.fn<(request: CalculateBuildRequest) => Promise<CalculateBuildResponse>>(),
   metrics: vi.fn<() => Promise<SkillMetricsResponse>>(),
 }));
-vi.mock('react', () => ({
-  useState: (initial: unknown) => {
-    const index = harness.stateIndex++;
-    if (!(index in harness.state)) harness.state[index] = typeof initial === 'function' ? initial() : initial;
-    return [harness.state[index], (value: unknown) => {
-      harness.state[index] = typeof value === 'function' ? value(harness.state[index]) : value;
-    }];
-  },
-  useRef: (initial: unknown) => harness.refs[harness.refIndex++] ??= { current: initial },
-  useCallback: (callback: unknown) => callback,
-  useEffect: () => {},
-}));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../testing/hookHarness');
+  return createHookHarness({ separateCursors: true, refs: { reuse: 'nullish' }, callback: 'identity', effects: 'ignore' });
+});
+vi.mock('react', () => hooks.mockReact());
 vi.mock('../api/backend', () => ({ getBackend: async () => ({
   calculateBuild: harness.calculate, skillMetrics: harness.metrics,
 }) }));
@@ -31,7 +23,7 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 function renderSession() {
-  harness.stateIndex = 0; harness.refIndex = 0;
+  hooks.beginRender();
   return useBuildSession();
 }
 const result = (skill_id: string, value: number) => ({ main_skill: { skill_id }, stats: [{ id: 'CombinedDPS', value }] }) as CalculateBuildResponse;
@@ -44,7 +36,7 @@ function importWithoutSelection() {
 }
 
 beforeEach(() => {
-  harness.state = []; harness.refs = [];
+  hooks.reset();
   harness.calculate.mockReset(); harness.metrics.mockReset();
   const storage = new Map<string, string>();
   vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null,
