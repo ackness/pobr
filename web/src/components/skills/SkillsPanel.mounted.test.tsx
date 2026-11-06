@@ -297,7 +297,7 @@ it('consumes focus nonces in the chosen effect phase only while active and befor
 
 function consumerSession(): BuildSession {
   ui.gems = ['Fireball', 'IceNova'].map(skill_id => ({ skill_id, name: skill_id, name_zh_cn: null, name_zh_tw: null,
-    active_effect_ids: [skill_id], is_support: false, is_lineage: false, colour: 'int', tags: ['Spell', 'Damage'] }));
+    active_effect_ids: [skill_id], is_support: false, is_lineage: false, is_unique_only: false, colour: 'int', tags: ['Spell', 'Damage'] }));
   const groups = ui.gems.map(gem => ({ enabled: true, gems: [{ skill_id: gem.skill_id, level: 20, quality: 0 }] }));
   return { ...metricsSession(), socketGroups: groups, currentRequest: () => ({ socket_groups: groups }),
     character: { level: 100 }, classNames: { classes: {}, ascendancies: {} }, calcParams: { main_socket_group: 0, config_inputs: {} },
