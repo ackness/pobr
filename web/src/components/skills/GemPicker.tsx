@@ -228,7 +228,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
       />
       <Popover open={open && !disabled && active} onOpenChange={setOpen}>
         <PopoverAnchor virtualRef={inputRef} />
-        <PopoverContent ref={panelRef} className={`gem-picker-popover${descriptions ? ' has-descriptions' : ''}`} align="start"
+        <PopoverContent ref={panelRef} className={`gem-picker-popover${descriptions ? ' has-descriptions' : ''}`} align="start" collisionPadding={12}
           onKeyDown={onPanelKeyDown}
           onOpenAutoFocus={event => event.preventDefault()}
           onCloseAutoFocus={event => event.preventDefault()}
