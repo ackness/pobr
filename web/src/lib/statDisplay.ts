@@ -90,9 +90,9 @@ export const STAT_SECTIONS: StatSectionDef[] = [
       { id: 'SpiritUnreserved', label: { 'en-US': 'Unreserved Spirit', 'zh-TW': '未保留精魂', 'zh-CN': '未保留精魂' }, format: 'int' },
       { id: 'Ward', label: { 'en-US': 'Ward', 'zh-TW': '結界', 'zh-CN': '结界' }, format: 'int', hideZero: true },
       { id: 'Rage', label: { 'en-US': 'Rage', 'zh-TW': '盛怒', 'zh-CN': '怒火' }, format: 'int', hideZero: true },
-      { id: 'LifeUnreservedPercent', label: { 'en-US': 'Unreserved Life', 'zh-TW': '未保留生命', 'zh-CN': '未保留生命' }, format: 'percent' },
-      { id: 'ManaUnreservedPercent', label: { 'en-US': 'Unreserved Mana', 'zh-TW': '未保留魔力', 'zh-CN': '未保留魔力' }, format: 'percent' },
-      { id: 'SpiritUnreservedPercent', label: { 'en-US': 'Unreserved Spirit', 'zh-TW': '未保留精魂', 'zh-CN': '未保留精魂' }, format: 'percent' },
+      { id: 'LifeUnreservedPercent', label: { 'en-US': 'Unreserved Life (%)', 'zh-TW': '未保留生命（%）', 'zh-CN': '未保留生命（%）' }, format: 'percent' },
+      { id: 'ManaUnreservedPercent', label: { 'en-US': 'Unreserved Mana (%)', 'zh-TW': '未保留魔力（%）', 'zh-CN': '未保留魔力（%）' }, format: 'percent' },
+      { id: 'SpiritUnreservedPercent', label: { 'en-US': 'Unreserved Spirit (%)', 'zh-TW': '未保留精魂（%）', 'zh-CN': '未保留精魂（%）' }, format: 'percent' },
     ],
   },
   {

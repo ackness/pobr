@@ -191,3 +191,14 @@ test('double critical roll multiplier is displayed as a chance', () => {
   expect(formatStatValue(2, row.format)).toBe('100%');
   expect(formatStatValue(0, row.format)).toBe('0%');
 });
+
+describe('stat section labels', () => {
+  test('rows in one section never share a label, so a value and its percentage stay distinguishable', () => {
+    for (const section of STAT_SECTIONS) {
+      for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
+        const labels = section.rows.map(row => row.label[lang]);
+        expect(labels.filter((label, index) => labels.indexOf(label) !== index), `${section.title['en-US']} ${lang}`).toEqual([]);
+      }
+    }
+  });
+});
