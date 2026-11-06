@@ -70,6 +70,7 @@ impl LineParser {
             }
         }
         let mut translator = LineTranslator::new(&templates, names);
+        translator.require_translated_captures();
         translator
             .enable_source_detection(packs.iter().any(|pack| pack.meta().shares_english_script));
         Some(Self { translator })
