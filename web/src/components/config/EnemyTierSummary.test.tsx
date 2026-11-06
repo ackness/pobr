@@ -28,6 +28,7 @@ test.each([
   expect(html).toContain(curse);
   expect(html).toContain(limit);
   expect(html).not.toMatch(/pinnacle|CurseEffectOnSelf|armour_mult_pct/);
+  expect(html).not.toMatch(/[:：]<\/dt>/);
 });
 
 test('missing or custom presets do not manufacture tier parameters', () => {

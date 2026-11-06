@@ -17,8 +17,8 @@
   .shell-root .config-page .cfg-scenario > .energy-trigger-note { flex-basis: 100%; }
   .shell-root .config-page .cfg-tier-summary { flex: 1 0 100%; min-width: 0; max-width: 48rem; font-size: var(--text-sm); }
   .shell-root .config-page .cfg-tier-summary p { margin: .5rem 0; }
-  .shell-root .config-page .cfg-tier-summary dl { display: grid; gap: .25rem; margin: .75rem 0; }
-  .shell-root .config-page .cfg-tier-summary dl > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .75rem; }
+  .shell-root .config-page .cfg-tier-summary dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .25rem 1rem; margin: .75rem 0; }
+  .shell-root .config-page .cfg-tier-summary dl > div { display: contents; }
   .shell-root .config-page .cfg-tier-summary dd { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .75rem; margin: 0; }
   .shell-root .config-page .cfg-tier-summary dd > span { white-space: nowrap; }
   .shell-root .config-page .cfg-tier-summary small { color: var(--muted-foreground); }
