@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { pageLink, statValue } from './shell';
+import { pageLink } from './shell';
+import { headlineDps } from './skillsAndCalcs';
 import { displayedRail, goTo, importInto, openBuild, openSupportSettings, selectStage, settled } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
@@ -297,7 +298,7 @@ for (const destination of ['newBuild', 'currentStage'] as const) {
     }));
     const dpsText = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Combined DPS / }).innerText();
     const preview = numeric(dpsText.match(/^Combined DPS ([\d,.]+)/)![1]);
-    const totalDps = statValue(page, /^Combined DPS$/).first();
+    const totalDps = headlineDps(page);
     expect(preview).toBeGreaterThan(numeric(await totalDps.innerText()));
     await openBuild(page);
     await submitPaste(page, '{}', 'currentStage', 'en-US', true);

@@ -1,6 +1,6 @@
 import { getBackend } from '../api/backend';
 import type { CalculateBuildRequest, GemInput, SocketGroupInput, VariantInput } from '../api/types';
-import { compareObjectiveStats, evaluateVariants, feasibleOf, scoreOf, type EvaluateOptions, type Objective } from './optimize';
+import { COLLECT_STATS, compareObjectiveStats, evaluateVariants, feasibleOf, scoreOf, type EvaluateOptions, type Objective } from './optimize';
 import type { TradeGem } from './tradeOptimizer';
 import { preserveSkillSelection } from './skillSelection';
 
@@ -224,7 +224,10 @@ export async function optimizeSupports(options: {
   const toInput = (gem: SupportMetadata): GemInput => equipped.find(input => input.skill_id === gem.skill_id)
     ?? { skill_id: gem.skill_id, level: usableSupportLevel(gem, level), quality: 0 };
   const evaluate = options.evaluate ?? evaluateVariants;
-  const identity = await evaluate({ request, variants: [{}], signal });
+  // Combined DPS is displayed on cards and previews even when the shared goal
+  // ranks hit DPS. Request it for the baseline and every candidate batch.
+  const stats = [...new Set([...COLLECT_STATS, 'CombinedDPS'])];
+  const identity = await evaluate({ request, variants: [{}], stats, signal });
   if (identity.aborted) throw new DOMException('Support optimization cancelled', 'AbortError');
   signal?.throwIfAborted();
   const identityRow = identity.results[0];
@@ -255,7 +258,7 @@ export async function optimizeSupports(options: {
       signal?.throwIfAborted();
       const selected = candidates.slice(start, start + 512);
       const variants = selected.map(supports => supportVariant(request, groupIndex, supports, catalog));
-      const result = await evaluate({ request, variants, signal,
+      const result = await evaluate({ request, variants, stats, signal,
         onProgress: done => onProgress?.(evaluated + done, Math.max(estimate, evaluated + candidates.length)) });
       if (result.aborted) throw new DOMException('Support optimization cancelled', 'AbortError');
       signal?.throwIfAborted();

@@ -1,9 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { statValue, openItemsAfterImport } from './shell';
+import { openItemsAfterImport } from './shell';
+import { headlineDps } from './skillsAndCalcs';
 import { copyCurrentStage, currentStage, ehpValue, goTo, openCustomModifiers, openOptimizerSettings, openStage, reduceMotion, settledNumber, settledText } from './upgradesPage';
 import type { SocketGroupInput } from '../src/api/types';
 
-const dps = (page: Page) => statValue(page, /^Combined DPS$/).first();
+const dps = headlineDps;
 const capacity = (page: Page) => page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
 const lineage = (page: Page) => page.getByRole('checkbox', { name: 'Include lineage supports', exact: true });
 const run = (page: Page) => page.getByRole('button', { name: 'Calculate support combinations', exact: true });

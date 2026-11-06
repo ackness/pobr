@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { pageLink, statValue } from './shell';
+import { headlineDps } from './skillsAndCalcs';
 import { displayedRail, goTo, importInto, mainSkillPinned, openBuild, openSupportSettings, settled } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
@@ -435,7 +436,7 @@ test('support receipts and settings survive rejected imports without losing the 
   const actualDps = after.result.stats.find(stat => stat.id === 'CombinedDPS')!.value!;
   expect(actualDps).toBeGreaterThan(before.result.stats.find(stat => stat.id === 'CombinedDPS')!.value!);
   expect(Math.abs(actualDps - predictedDps)).toBeLessThanOrEqual(0.5);
-  await expect(statValue(page, /^Combined DPS$/).first()).toHaveText(formatStatValue(actualDps, 'int'));
+  await expect(headlineDps(page)).toHaveText(formatStatValue(actualDps, 'float2'));
   await expect(page.locator('.support-results')).toHaveCount(0);
 });
 

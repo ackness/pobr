@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { bdLibraryButton, statValue } from './shell';
-import { choose, goTo } from './skillsAndCalcs';
+import { bdLibraryButton } from './shell';
+import { choose, goTo, headlineDps } from './skillsAndCalcs';
 import type { GemInput, SocketGroupInput } from '../src/api/types';
 
 // A charm line the engine does not calculate: it shows as a limit of the baseline. ("Also grants 102 Guard",
@@ -9,7 +9,7 @@ const limitLine = 'Remove Bleeding on use';
 const run = (page: Page) => page.getByRole('button', { name: 'Calculate support combinations', exact: true });
 const capacity = (page: Page) => page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
 const baseline = (page: Page) => page.locator('details.support-baseline-unsupported');
-const dps = (page: Page) => statValue(page, /^Combined DPS$/).first();
+const dps = headlineDps;
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
 
 async function groups(page: Page): Promise<SocketGroupInput[]> {
