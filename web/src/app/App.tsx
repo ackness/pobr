@@ -6,6 +6,7 @@ import { UpgradeGoalProvider } from '../hooks/useUpgradeGoal';
 import { UiProvider, PanelActivity } from '../components/shared/UiContext';
 import { AppDialogsProvider } from '../components/shared/AppDialogs';
 import { AppSelectControl } from '../components/shared/controls';
+import { BrandMark } from '../components/shared/BrandMark';
 import { TooltipProvider } from '../components/ui/tooltip';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
@@ -105,7 +106,7 @@ export default function App() {
 function Recovery({ lang, error }: { lang: Lang; error: string }) {
   let raw: string | null = null;
   try { raw = localStorage.getItem(STORAGE.workspace) ?? localStorage.getItem(LEGACY_STORAGE.workspace); } catch { /* Storage access itself can fail. */ }
-  return <div className="shell-boot" role="alert"><div className="shell-brand-mark">P</div><h1>{words(lang, 'Your build could not be opened', '暂时无法打开 BD', '暫時無法開啟 BD')}</h1><p>{words(lang, 'Your original save is preserved. Download it before retrying.', '原始存档已保留。可先下载备份，再尝试重新打开。', '原始存檔已保留。可先下載備份，再嘗試重新開啟。')}</p><pre>{error}</pre>
+  return <div className="shell-boot" role="alert"><BrandMark className="shell-brand-mark" detailed /><h1>{words(lang, 'Your build could not be opened', '暂时无法打开 BD', '暫時無法開啟 BD')}</h1><p>{words(lang, 'Your original save is preserved. Download it before retrying.', '原始存档已保留。可先下载备份，再尝试重新打开。', '原始存檔已保留。可先下載備份，再嘗試重新開啟。')}</p><pre>{error}</pre>
     {raw && <Button onClick={() => download(raw!, 'pobr-recovery.json')}><Download />{words(lang, 'Download original save', '下载原始存档', '下載原始存檔')}</Button>}</div>;
 }
 
@@ -185,7 +186,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   });
   const retained = (page: Route) => route === page || !stageChanged && visited.scope === stageKey && visited.pages.includes(page);
   if (session.bootError) return <Recovery lang={lang} error={session.bootError} />;
-  if (session.bootMessage || !session.character) return <div className="shell-boot" role="status" aria-busy="true"><div className="shell-brand-mark">P</div><h1>PoBR</h1><p>{bootMessageLabel(lang, session.bootMessage ?? '初始化…')}</p><Skeleton className="h-2 w-56" /></div>;
+  if (session.bootMessage || !session.character) return <div className="shell-boot" role="status" aria-busy="true"><BrandMark className="shell-brand-mark" detailed /><h1>PoBR</h1><p>{bootMessageLabel(lang, session.bootMessage ?? '初始化…')}</p><Skeleton className="h-2 w-56" /></div>;
   const tabLabel = (page: Route) => page === 'overview' ? w('Overview', '概览', '概覽') : t(lang, `tab.${page}`);
   const go = (page: Route) => (event: React.MouseEvent) => {
     if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -195,7 +196,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
     return <a key={page} className="shell-tab" href={routePath(page)} aria-current={page === route ? 'page' : undefined} onClick={go(page)}>{withIcon && <Icon />}<span>{tabLabel(page)}</span></a>; };
   const tabs = (withIcons = false) => <nav className="shell-tabs" aria-label={t(lang, 'a11y.mainNavigation')}>
     {NAV_GROUPS.map((group, index) => <Fragment key={index}>{index > 0 && <span className="shell-tab-divider" aria-hidden="true" />}{group.map(page => link(page, withIcons))}</Fragment>)}</nav>;
-  const brand = <a className="shell-brand" href={routePath('overview')} onClick={go('overview')}><span className="shell-brand-mark">P</span><strong>PoBR</strong><span className="shell-brand-version" title={`v${__POBR_APP_VERSION__} · ${session.dataVersion}`}>v{__POBR_APP_VERSION__}</span></a>;
+  const brand = <a className="shell-brand" href={routePath('overview')} onClick={go('overview')}><BrandMark className="shell-brand-mark" /><strong>PoBR</strong><span className="shell-brand-version" title={`v${__POBR_APP_VERSION__} · ${session.dataVersion}`}>v{__POBR_APP_VERSION__}</span></a>;
   const inspector = inspect && <Suspense fallback={<div className="insp" role="status"><Skeleton className="h-6 w-1/2" /><Skeleton className="mt-4 h-40 w-full" /></div>}>
     <Inspector session={session} view={view} lang={lang} id={inspect} onClose={() => setInspect(null)} onNavigate={() => { skipInspectorRestore.current = !docked; setInspect(null); }} onOpenCalcs={focusStat} pinned={pinned.includes(inspect)} onTogglePin={() => togglePin(inspect)} /></Suspense>;
   const panelLoading = <div role="status" className="shell-panel-loading"><Skeleton className="h-12 w-2/3" /><Skeleton className="h-64 w-full" /><p>{t(lang, 'ui.loadingPanel')}</p></div>;
