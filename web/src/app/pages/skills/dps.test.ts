@@ -22,6 +22,19 @@ describe('groupDps', () => {
     expect(rows.get(2)).toEqual({ kind: 'unavailable' });
   });
 
+  it('gives the calculated summoning skill its minion\'s damage and marks other summoners', () => {
+    const summoner = (id: string) => id === 'skill0' || id === 'skill1';
+    const rows = groupDps([entry(0, 1, 0), entry(1, 1, 0), entry(2, 1, 0), entry(3, 1, 400)], [{}, {}, {}, {}],
+      { group_index: 0, active_skill_index: 1, dps: 5307 }, summoner);
+    expect(rows.get(0)).toEqual({ kind: 'minion', dps: 5307 });
+    expect(rows.get(1)).toEqual({ kind: 'summoner' });
+    expect(rows.get(2)).toEqual({ kind: 'none' });
+    expect(topDps(rows)).toBe(5307);
+    // A different effect of the same group is not the calculated one.
+    expect(groupDps([entry(0, 2, 0)], [{ main_active_skill: 2 }], { group_index: 0, active_skill_index: 1, dps: 5307 }, summoner).get(0))
+      .toEqual({ kind: 'summoner' });
+  });
+
   it('does not invent a figure for a non-finite result', () => {
     expect(groupDps([entry(0, 1, Number.NaN)], [{}]).get(0)).toEqual({ kind: 'unavailable' });
     expect(groupDps([entry(0, 1, Number.POSITIVE_INFINITY)], [{}]).get(0)).toEqual({ kind: 'unavailable' });

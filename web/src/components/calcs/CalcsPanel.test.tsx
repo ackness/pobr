@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import type { Breakdown, BreakdownMod, CalculateBuildResponse, DetailKind } from '../../api/types';
-import { BreakdownTable, CalcsPanel } from './CalcsPanel';
+import { BreakdownTable, CalcsPanel, followedActorKey } from './CalcsPanel';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { UiProvider } from '../shared/UiContext';
 import { TooltipProvider } from '../ui/tooltip';
@@ -111,10 +111,10 @@ test.each([
   expect(html).not.toContain(id);
 });
 
-function panel(calc: Partial<CalculateBuildResponse>, lang: Lang = 'en-US') {
+function panel(calc: Partial<CalculateBuildResponse>, lang: Lang = 'en-US', focus?: { id: string }) {
   const session = { calc: { minions: [], breakdowns: {}, ...calc }, socketGroups: [], calcParams: {} } as unknown as BuildSession;
   return renderToStaticMarkup(<UiProvider lang={lang}><TooltipProvider>
-    <CalcsPanel session={session} lang={lang} />
+    <CalcsPanel session={session} lang={lang} focus={focus} />
   </TooltipProvider></UiProvider>);
 }
 
@@ -131,7 +131,7 @@ test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('Calcs shows honest empty states
   expect(unavailable).toContain(tt('calcs.noBreakdown'));
 });
 
-test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('zero character DPS points to the main minion without changing the default actor in %s', lang => {
+test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('a summoner build opens on the main minion in %s', lang => {
   const calc = { stats: [{ id: 'CombinedDPS', category: 'Offence', value: 0 }], main_skill: { skill_id: 'Wolf Pack' },
     breakdowns: { CombinedDPS: empty }, breakdown_descriptors: { CombinedDPS: 'steps' }, main_minion_index: 7,
     minions: [
@@ -142,13 +142,21 @@ test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('zero character DPS points to th
   const html = panel(calc, lang);
   const tt = bindT(lang);
   const message = tt('calcs.minionDamage').replace('{skill}', 'Wolf Pack');
-  expect(html).toContain(renderToStaticMarkup(<p className="breakdown-note">{message}</p>));
-  expect(html).toContain(tt('calcs.viewMinion').replace('{minion}', 'Wolf Companion'));
-  expect(html).toContain(tt('calcs.actorEyebrow').replace('{actor}', tt('minion.player')));
-  expect(html).toContain('<div class="calcs-detail-value"><strong>0</strong></div>');
-  expect(panel({ ...calc, main_minion_index: undefined }, lang)).not.toContain(message);
-  expect(panel({ ...calc, stats: [{ id: 'CombinedDPS', category: 'Offence', value: 5 }] }, lang)).not.toContain('class="calcs-minion-damage"');
-  expect(panel({ ...calc, stats: [{ id: 'Life', category: 'Resource', value: 0 }] }, lang)).not.toContain('class="calcs-minion-damage"');
+  expect(html).toContain(tt('calcs.actorEyebrow').replace('{actor}', `${tt('minion.title')} · Wolf Companion #8`));
+  expect(html).toContain('<div class="calcs-detail-value"><strong>5,307</strong></div>');
+  // The player's zero is no longer what the page opens on, so the pointer to the minion isn't needed.
+  expect(html).not.toContain(message);
+  const player = panel({ ...calc, main_minion_index: undefined }, lang);
+  expect(player).toContain(tt('calcs.actorEyebrow').replace('{actor}', tt('minion.player')));
+  expect(player).not.toContain(message);
+  // Arriving from the player's own zero opens on the player, with a pointer to the minion.
+  const fromStat = panel(calc, lang, { id: 'CombinedDPS' });
+  expect(fromStat).toContain(tt('calcs.actorEyebrow').replace('{actor}', tt('minion.player')));
+  expect(fromStat).toContain(renderToStaticMarkup(<p className="breakdown-note">{message}</p>));
+  expect(fromStat).toContain(tt('calcs.viewMinion').replace('{minion}', 'Wolf Companion'));
+  expect(fromStat).toContain('<div class="calcs-detail-value"><strong>0</strong></div>');
+  expect(panel({ ...calc, stats: [{ id: 'CombinedDPS', category: 'Offence', value: 5 }] }, lang, { id: 'CombinedDPS' })).not.toContain('class="calcs-minion-damage"');
+  expect(panel({ ...calc, stats: [{ id: 'Life', category: 'Resource', value: 0 }] }, lang, { id: 'Life' })).not.toContain('class="calcs-minion-damage"');
 });
 
 test('derived sections show readable formulas and stat-specific input units', () => {
@@ -173,7 +181,7 @@ test.each([[5000, 5000], [0, 5000], [5000, 0]])('zero DPS components with positi
     ],
     breakdowns: {}, breakdown_descriptors: { IgniteDPS: 'none' }, main_minion_index: 7,
     minions: [{ index: 7, name: 'Wolf Companion', minion_id: 'wolf', summoned_by: 'Wolf Pack', stats: { TotalDPS: 5307.37 }, breakdowns: {} }],
-  } as unknown as CalculateBuildResponse);
+  } as unknown as CalculateBuildResponse, 'en-US', { id: 'IgniteDPS' });
   expect(html).toContain('<h3 id="calcs-detail-heading" tabindex="-1">Ignite DPS</h3>');
   expect(html).toContain('<div class="calcs-detail-value"><strong>0</strong></div>');
   expect(html).not.toContain('class="calcs-minion-damage"');
@@ -202,4 +210,16 @@ test('source groups share one totals note and show origin-specific fallback text
     expect(html).toContain(`${text} <span class="mod-inactive-tag">`);
   }
   expect(html).not.toContain('Campaign resistance penalty');
+});
+
+test('the followed actor key changes across a failed calculation, so a later player skill leaves the minion', () => {
+  const minion = { index: 8, minion_id: 'wolf', summoned_by: 'WolfPack', skill_id: 'Bite', dps: 5307 };
+  const withMinion = { main_minion_index: 8, minions: [minion] } as unknown as CalculateBuildResponse;
+  const playerSkill = { main_minion_index: undefined, minions: [minion] } as unknown as CalculateBuildResponse;
+  const keys = [withMinion, null, playerSkill].map(followedActorKey);
+  expect(keys[0]).not.toBe('player');
+  expect(keys[1]).toBeNull();
+  expect(keys[2]).toBe('player');
+  // Each step differs from the one before, so the follow effect runs on recovery.
+  expect(new Set(keys).size).toBe(3);
 });

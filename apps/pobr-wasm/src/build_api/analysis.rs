@@ -9,17 +9,16 @@ use std::collections::BTreeMap;
 
 use pobr_build::build::GemSkillRef;
 use pobr_build::{
-    Build, BuildData, DataOrchestratorOptions, calculate_with_data_session, decode_pob_code,
-    parse_build_with_allocated_nodes,
+    Build, BuildData, DataOrchestratorOptions, decode_pob_code, parse_build_with_allocated_nodes,
 };
-use pobr_core::calc::CalculationSession;
 use pobr_core::item_text::parse_pob_xml_item;
 use pobr_data::passive_tree::NodeId;
 use serde::{Deserialize, Serialize};
 
 use super::request::{
-    CalculateBuildRequest, GemInput, JewelInput, SlotItemInput, SocketGroupInput, UtilitySlotInput,
-    apply_request_overrides, orchestrator_options, parse_build_from_request, run_session_for_build,
+    CalculateBuildRequest, CalculatedBuild, GemInput, JewelInput, MAIN_MINION_DPS, SlotItemInput,
+    SocketGroupInput, UtilitySlotInput, apply_request_overrides, calculate_build,
+    orchestrator_options, parse_build_from_request, run_session_for_build,
 };
 use super::{localize_input_text, slot_from_id};
 use crate::state;
@@ -71,11 +70,6 @@ struct NodePowerResponse {
     total: Option<usize>,
 }
 
-/// Extracts a display stat value from the full output (defaults to 0 if missing).
-fn display_stat_value(session: &CalculationSession, stat_id: &str) -> f64 {
-    pobr_core::display_value(session.output(), stat_id)
-}
-
 /// Passive node power (PoB2 heatmap semantics): runs a BFS from the
 /// allocated node set as the frontier, and for every unallocated,
 /// stat-carrying node within depth, does a full recalculation with that
@@ -103,8 +97,7 @@ fn node_power_impl(request_json: &str) -> Result<String, super::ApiError> {
     // Degraded records don't go into this response — the main panel's
     // calculate already reports the same item_errors.
     let _ = apply_request_overrides(&mut base_build, &req.request, &data)?;
-    let base_session = run_session_for_build(&base_build, &req.request)?;
-    let base = display_stat_value(&base_session, &req.power_stat);
+    let base = run_session_for_build(&base_build, &req.request)?.stat(&req.power_stat);
 
     // Topology: skill id -> node definition plus undirected adjacency.
     let mut by_skill: BTreeMap<u32, &pobr_data::catalog::PassiveNodeDef> = BTreeMap::new();
@@ -219,8 +212,8 @@ fn node_power_impl(request_json: &str) -> Result<String, super::ApiError> {
             None => {
                 let mut variant = base_build.clone();
                 variant.tree.allocated_nodes.push(NodeId(candidate.skill));
-                let session = run_session_for_build(&variant, &req.request)?;
-                let delta = display_stat_value(&session, &req.power_stat) - base;
+                let delta =
+                    run_session_for_build(&variant, &req.request)?.stat(&req.power_stat) - base;
                 if let Some(key) = candidate.definition {
                     by_definition.insert(key, delta);
                 }
@@ -355,11 +348,11 @@ struct OptimizeVariantsResponse {
 /// the frontend calls in small batches instead, yielding the main thread between them (with progress and cancellation).
 const VARIANT_CAP: usize = 512;
 
-/// Collects a batch of display stat values from a session.
-fn collect_stats(session: &CalculationSession, stat_ids: &[String]) -> BTreeMap<String, f64> {
+/// Collects a batch of display stat values from a calculation.
+fn collect_stats(calculated: &CalculatedBuild, stat_ids: &[String]) -> BTreeMap<String, f64> {
     stat_ids
         .iter()
-        .map(|id| (id.clone(), display_stat_value(session, id)))
+        .map(|id| (id.clone(), calculated.stat(id)))
         .collect()
 }
 
@@ -550,9 +543,9 @@ fn optimize_variants_impl(request_json: &str) -> Result<String, super::ApiError>
     let base_opts = orchestrator_options(&req.request)?;
 
     let baseline = if req.include_baseline.unwrap_or(true) {
-        let session = calculate_with_data_session(&base_build, &data, &base_opts)
+        let calculated = calculate_build(&base_build, &data, &base_opts)
             .map_err(|e| format!("calculate baseline: {e}"))?;
-        Some(collect_stats(&session, &req.stats))
+        Some(collect_stats(&calculated, &req.stats))
     } else {
         None
     };
@@ -571,15 +564,15 @@ fn optimize_variants_impl(request_json: &str) -> Result<String, super::ApiError>
             &mut imported_xml,
         )
         .and_then(|()| {
-            calculate_with_data_session(&build, &data, &opts).map_err(|e| format!("calculate: {e}"))
+            calculate_build(&build, &data, &opts).map_err(|e| format!("calculate: {e}"))
         });
         variants.push(match session {
-            Ok(session) => VariantStatsJson {
+            Ok(calculated) => VariantStatsJson {
                 index,
                 label: variant.label.clone(),
-                stats: collect_stats(&session, &req.stats),
+                stats: collect_stats(&calculated, &req.stats),
                 error: None,
-                unsupported: session.unsupported_modifier_texts().to_vec(),
+                unsupported: calculated.session.unsupported_modifier_texts().to_vec(),
             },
             Err(error) => VariantStatsJson {
                 index,
@@ -635,11 +628,16 @@ struct AttributionResponse {
     entries: Vec<AttributionEntryJson>,
 }
 
-fn display_values_map(session: &CalculationSession, fields: &[String]) -> BTreeMap<String, f64> {
-    let all = pobr_core::extract_display_values(session.output());
+/// The fields the calculation outputs; [`MAIN_MINION_DPS`] only while the
+/// calculated skill summons a minion, as the catalog leaves out absent outputs.
+fn display_values_map(calculated: &CalculatedBuild, fields: &[String]) -> BTreeMap<String, f64> {
+    let all = pobr_core::extract_display_values(calculated.session.output());
     fields
         .iter()
         .filter_map(|f| {
+            if f == MAIN_MINION_DPS {
+                return calculated.main_minion_dps.map(|dps| (f.clone(), dps));
+            }
             all.iter()
                 .find(|v| v.id.as_str() == f.as_str())
                 .map(|v| (f.clone(), v.value))
@@ -675,8 +673,7 @@ fn attribution_impl(request_json: &str) -> Result<String, super::ApiError> {
     // calculate already reports the same item_errors.
     let _ = apply_request_overrides(&mut build, calc_req, &data)?;
 
-    let baseline_session = run_session_for_build(&build, calc_req)?;
-    let baseline = display_values_map(&baseline_session, &fields);
+    let baseline = display_values_map(&run_session_for_build(&build, calc_req)?, &fields);
 
     // The variant list: equipment slots (remove the item) / enabled skill
     // groups (disable them) / flask slots and limbs (remove them). Jewels aren't
@@ -712,8 +709,7 @@ fn attribution_impl(request_json: &str) -> Result<String, super::ApiError> {
     let entries = variants
         .into_iter()
         .map(|(kind, id, variant)| {
-            let session = run_session_for_build(&variant, calc_req)?;
-            let without = display_values_map(&session, &fields);
+            let without = display_values_map(&run_session_for_build(&variant, calc_req)?, &fields);
             let deltas = fields
                 .iter()
                 .map(|f| {

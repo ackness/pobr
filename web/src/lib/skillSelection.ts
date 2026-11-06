@@ -67,11 +67,12 @@ export function withGemCorrupted<Gem extends { corrupted?: boolean }>(gem: Gem, 
 export function highestDpsSkill(
   skills: SkillMetricsEntry[],
   groups: ReadonlyArray<{ enabled?: boolean } | undefined>,
+  dpsOf: (entry: SkillMetricsEntry) => number = entry => entry.metrics!.combined_dps,
 ): SkillMetricsEntry | null {
   let best: SkillMetricsEntry | null = null;
   for (const entry of skills) {
     if (entry.status !== 'calculated' || !entry.metrics || !groups[entry.group_index]?.enabled) continue;
-    if (!best || entry.metrics.combined_dps > best.metrics!.combined_dps) best = entry;
+    if (!best || dpsOf(entry) > dpsOf(best)) best = entry;
   }
   return best;
 }
