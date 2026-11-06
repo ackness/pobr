@@ -1,6 +1,6 @@
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppInput, AppSelectControl } from '../shared/controls';
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { AttributeChoice, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { formatApiError } from '../../api/error';
@@ -20,14 +20,18 @@ interface Props {
   stats: string[];
   onStat: (stat: string) => void;
   onFocus: (node: PassiveNode) => void;
+  onSearch: (query: string) => void;
+  visible?: boolean;
 }
 const PAGE_SIZE = 50;
 
-export function NodePowerTable({ session, nodes, nodeNames, lang, stat, stats, onStat, onFocus }: Props) {
+export function NodePowerTable({ session, nodes, nodeNames, lang, stat, stats, onStat, onFocus, onSearch, visible: tableVisible = true }: Props) {
   const t = messages(lang, 'nodePower');
   const colon = lang === 'en-US' ? ': ' : '：';
   const [open, setOpen] = useState(true);
   const [search, setSearch] = useState('');
+  useEffect(() => { onSearch(tableVisible && open ? search : ''); }, [onSearch, tableVisible, open, search]);
+  useEffect(() => () => onSearch(''), [onSearch]);
   const [small, setSmall] = useState(false);
   const [attribute, setAttribute] = useState<AttributeChoice>('int');
   const [sort, setSort] = useState<PowerSort>('perPoint');
@@ -41,7 +45,8 @@ export function NodePowerTable({ session, nodes, nodeNames, lang, stat, stats, o
   const abort = useRef<AbortController | null>(null);
   const request = useMemo(() => session.currentRequest(), [session.currentRequest, session.stateVersion]);
   const ascendancy = session.treeMeta?.classes.flatMap(c => c.ascendancies ?? []).find(a => a.name === session.character?.ascendancy_name)?.id;
-  const key = JSON.stringify([request, session.stateVersion, session.dataVersion, session.calc?.tree_effects, stat, attribute]);
+  const key = useMemo(() => JSON.stringify([request, session.stateVersion, session.dataVersion, session.calc?.tree_effects, stat, attribute]),
+    [request, session.stateVersion, session.dataVersion, session.calc?.tree_effects, stat, attribute]);
   const latest = useRef(key);
   latest.current = key;
   const context = useMemo(() => passivePlanningContext(nodes, session.allocatedNodes, session.character?.class_name,
@@ -49,9 +54,9 @@ export function NodePowerTable({ session, nodes, nodeNames, lang, stat, stats, o
   [nodes, session.allocatedNodes, session.character?.class_name, session.weaponSwap, session.jewels, ascendancy, session.calc?.tree_effects]);
   const candidates = useMemo(() => powerCandidates(nodes, context, session.allocatedNodes, ascendancy), [nodes, context, session.allocatedNodes, ascendancy]);
   const results = completed?.key === key ? completed : null;
-  const filtered = filterPowerRows(candidates.map(row => results?.rows.get(row.node.skill) ?? row), '', small)
-    .filter(row => passiveNodeMatches(row.node, search, nodeNames));
-  const ranked = rankPowerRows(filtered, sort, ascending);
+  const filtered = useMemo(() => filterPowerRows(candidates.map(row => results?.rows.get(row.node.skill) ?? row), '', small)
+    .filter(row => passiveNodeMatches(row.node, search, nodeNames)), [candidates, results, small, search, nodeNames]);
+  const ranked = useMemo(() => rankPowerRows(filtered, sort, ascending), [filtered, sort, ascending]);
   const pending = filtered.filter(row => row.status === 'pending').length;
   const skipped = filtered.filter(row => !['pending', 'ready'].includes(row.status)).length;
   const provisional = Boolean(progress) || pending > 0 || message === 'cancelled' || Boolean(error);

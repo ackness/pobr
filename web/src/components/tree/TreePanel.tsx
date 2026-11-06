@@ -166,6 +166,8 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
   const [hoverName, setHoverName] = useState<string | null>(null);
   /** 节点搜索串（名称/词条子串匹配，高亮命中节点）。 */
   const [search, setSearch] = useState('');
+  const [reportSearch, setReportSearch] = useState('');
+  useEffect(() => { onSearch(search.trim() || reportSearch); }, [onSearch, search, reportSearch]);
   useEffect(() => () => onSearch(''), [onSearch]);
   /** 「下一个命中」轮转下标（搜索串变化时归零）。 */
   const [hitIndex, setHitIndex] = useState(0);
@@ -938,7 +940,6 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
-              onSearch(e.target.value);
               setHitIndex(0);
               setSelectedSkill(null);
               setAttributeDraft(null);
@@ -1335,6 +1336,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     <NodePowerTable session={session} nodes={nodes ?? []} nodeNames={nodeNames} lang={lang}
         stat={heatStatOptions.includes(reportStat) ? reportStat : defaultReportStat(planner.goal.preset, heatStatOptions)} stats={heatStatOptions}
         onStat={setReportStat}
+        onSearch={setReportSearch} visible={sideOpen}
         onFocus={focusNodeOnTree} />
   );
   const draftsEl = Object.keys(session.editorDrafts).filter(key => key.startsWith('jewel:')).map(key => (

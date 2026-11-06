@@ -1,20 +1,23 @@
-import type { ComponentProps, ReactElement } from 'react';
+import { useState, type ComponentProps, type ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, expect, test, vi } from 'vitest';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { messages } from '../../lib/i18n';
 import type { PassiveNode } from '../../api/types';
+import type { PowerRow } from '../../lib/nodePower';
 import { TreeOptimizer, useTreeOptimizer } from './TreeOptimizer';
 import { NodePowerTable } from './NodePowerTable';
 import { TreeRefundNotice } from './TreeRefundNotice';
 import { PlannerResultsNotice } from './PlannerResultsNotice';
 import { TreeConversionControls, useTreeConversion } from './TreeConversionControls';
 import { JewelPassivePlanner, type JewelPassivePlannerState } from './JewelPassivePlanner';
+import { usePassiveNodeNames } from './passiveNodeNames';
 
 // Replay the real event handlers in the repository's node-only test environment.
 const ui = vi.hoisted(() => ({ cursor: 0, slots: [] as unknown[], buttons: [] as ComponentProps<'button'>[],
   inputs: [] as ComponentProps<'input'>[], refs: [] as { current: unknown }[],
-  evaluate: vi.fn(), convert: vi.fn(), decode: vi.fn() }));
+  effects: [] as (() => void | (() => void))[], captureEffects: false,
+  evaluate: vi.fn(), convert: vi.fn(), decode: vi.fn(), translate: vi.fn() }));
 vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
   useState: (initial: unknown) => {
     const index = ui.cursor++;
@@ -26,7 +29,8 @@ vi.mock('react', async original => ({ ...await original<typeof import('react')>(
     if (!(index in ui.slots)) ui.slots[index] = { current: initial };
     const ref = ui.slots[index] as { current: unknown }; ui.refs.push(ref); return ref;
   },
-  useMemo: (fn: () => unknown) => fn(), useLayoutEffect: () => {}, useEffect: () => {},
+  useMemo: (fn: () => unknown) => fn(), useLayoutEffect: () => {},
+  useEffect: (effect: () => void | (() => void)) => { if (ui.captureEffects) ui.effects.push(effect); },
 }));
 vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: { preset: 'life', cStat: '', cMin: '', cMax: '' }, setGoal: vi.fn() }) }));
 vi.mock('../../hooks/useLocalizedLines', async original => ({ ...await original<typeof import('../../hooks/useLocalizedLines')>(),
@@ -36,7 +40,7 @@ vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
 vi.mock('../../lib/nodePower', async original => ({ ...await original<typeof import('../../lib/nodePower')>(),
   evaluateNodePower: (...args: unknown[]) => ui.evaluate(...args),
 }));
-vi.mock('../../api/backend', () => ({ getBackend: async () => ({ previewTreeConversion: ui.convert, decodeBuild: ui.decode, loadPassiveTree: async () => [] }) }));
+vi.mock('../../api/backend', () => ({ getBackend: async () => ({ previewTreeConversion: ui.convert, decodeBuild: ui.decode, loadPassiveTree: async () => [], translateLines: ui.translate }) }));
 vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { ui.buttons.push(props); return <button {...props} />; },
   AppInput: (props: ComponentProps<'input'>) => { ui.inputs.push(props); return <input {...props} />; },
@@ -52,16 +56,18 @@ const render = (make: () => ReactElement) => {
 };
 const button = (text: string) => ui.buttons.find(props => props.children === text)!;
 const click = (text: string) => button(text).onClick?.({} as never);
+const searchTable = (value: string) => ui.inputs.find(input => input.type === 'search')!.onChange?.({ target: { value } } as never);
+const flushEffects = () => ui.effects.splice(0).map(effect => effect());
 const node = (skill: number, name: string, connections: number[], kind: PassiveNode['kind']): PassiveNode => ({ skill, id: String(skill), name, connections, kind, x: skill * 100, y: 0 });
 const nodes = [node(1, 'WITCH', [2], 'normal'), node(2, 'Power', [1], 'notable')];
 const session = { currentRequest: () => ({ allocated_nodes: [1] }), allocatedNodes: [1], stateVersion: 0,
   character: { class_name: 'Witch' }, jewels: [], calc: {}, busy: false } as unknown as BuildSession;
 
-beforeEach(() => { ui.slots = []; vi.clearAllMocks(); });
+beforeEach(() => { ui.slots = []; ui.effects = []; ui.captureEffects = false; vi.clearAllMocks(); });
 
 test('report opens with an entry empty state, evaluates, locates a result and resets back to the entry', async () => {
   const focus = vi.fn();
-  const props = { session, nodes, nodeNames: new Map(), lang: 'en-US' as const, stat: 'Life', stats: ['Life'], onStat: vi.fn(), onFocus: focus };
+  const props = { session, nodes, nodeNames: new Map(), lang: 'en-US' as const, stat: 'Life', stats: ['Life'], onStat: vi.fn(), onFocus: focus, onSearch: vi.fn() };
   const make = () => NodePowerTable(props);
   const initial = render(make);
   expect(initial.element.props).toMatchObject({ open: true });
@@ -81,6 +87,58 @@ test('report opens with an entry empty state, evaluates, locates a result and re
   expect(render(make).html).not.toContain('<tbody>');
   (initial.element.props as { onToggle: (event: unknown) => void }).onToggle({ currentTarget: { open: false } });
   expect(render(make).html).not.toContain('Filter nodes');
+});
+
+test.each(['zh-CN', 'zh-TW'] as const)('a table-only modifier search loads matching passive stats in %s', async lang => {
+  ui.captureEffects = true;
+  const searchable = [{ ...nodes[0], connections: [2, 3] },
+    { ...nodes[1], stats: ['30% increased [Spirit|Spirit]'] },
+    { ...node(3, 'Health', [1], 'notable'), stats: ['10% increased maximum Life'] }];
+  ui.translate.mockImplementation(async (lines: string[]) => lines.map(line => line.includes('Spirit') ? '精魂提高 30%' : line));
+  ui.evaluate.mockImplementation(async ({ rows, onBatch }) => {
+    onBatch(rows.map((row: PowerRow) => ({ ...row, status: 'ready', gain: 5, perPoint: 5, single: 5 })), 1, 1, []);
+  });
+  const text = messages(lang, 'nodePower');
+  const make = () => {
+    const [tableSearch, onSearch] = useState('');
+    // The canvas query stays empty: only the table can open this shared translation gate.
+    const nodeNames = usePassiveNodeNames(searchable, lang, true, tableSearch);
+    return NodePowerTable({ session, nodes: searchable, nodeNames, lang, stat: 'Life', stats: ['Life'],
+      onStat: vi.fn(), onFocus: vi.fn(), onSearch });
+  };
+  render(make); flushEffects();
+  expect(ui.translate).not.toHaveBeenCalled();
+  searchTable('精魂');
+  render(make); flushEffects();
+  render(make); flushEffects();
+  await vi.waitFor(() => expect(ui.translate).toHaveBeenCalledTimes(1));
+  const filtered = render(make).html;
+  expect(filtered).toContain(`${text.results}：1`);
+  await click(text.run);
+  expect(ui.evaluate.mock.calls[0][0].rows.map((row: PowerRow) => row.node.skill)).toEqual([2]);
+  const evaluated = render(make).html;
+  expect(evaluated).toContain('data-node-id="2"');
+  expect(evaluated).not.toContain('data-node-id="3"');
+});
+
+test('a table query stops requesting stats while its disclosure or sidebar is hidden and clears on unmount', () => {
+  ui.captureEffects = true;
+  let visible = true;
+  const onSearch = vi.fn();
+  const make = () => NodePowerTable({ session, nodes, nodeNames: new Map(), lang: 'zh-CN', stat: 'Life', stats: ['Life'],
+    onStat: vi.fn(), onFocus: vi.fn(), onSearch, visible });
+  const initial = render(make);
+  const cleanups = flushEffects();
+  const toggle = (open: boolean) => (initial.element.props as ComponentProps<'details'>).onToggle?.({ currentTarget: { open } } as never);
+  const notify = () => { render(make); flushEffects(); };
+  searchTable('精魂');
+  notify(); expect(onSearch).toHaveBeenLastCalledWith('精魂');
+  toggle(false); notify(); expect(onSearch).toHaveBeenLastCalledWith('');
+  toggle(true); notify(); expect(onSearch).toHaveBeenLastCalledWith('精魂');
+  visible = false; notify(); expect(onSearch).toHaveBeenLastCalledWith('');
+  visible = true; notify(); expect(onSearch).toHaveBeenLastCalledWith('精魂');
+  cleanups.forEach(cleanup => cleanup?.());
+  expect(onSearch).toHaveBeenLastCalledWith('');
 });
 
 test('the results link scrolls to the visible heading and moves keyboard focus', () => {
@@ -159,7 +217,7 @@ test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('report and open route planner h
     const planner = useTreeOptimizer({ session: { ...session, attributeChoices: {} }, lang, active: true,
       nodes, nodeLabel: () => 'Power', onPreview: vi.fn(), focusPlanner: { nonce: 1 } });
     return <>{NodePowerTable({ session, nodes, nodeNames: new Map(), lang, stat: 'Life', stats: ['Life'],
-      onStat: vi.fn(), onFocus: vi.fn() })}{TreeOptimizer({ planner })}</>;
+      onStat: vi.fn(), onFocus: vi.fn(), onSearch: vi.fn() })}{TreeOptimizer({ planner })}</>;
   };
   const html = render(renderBoth).html;
   const reportLabel = messages(lang, 'nodePower').attributeLabel;
@@ -174,7 +232,7 @@ test('cancelling a report retains completed rows and counts skipped and unproces
   const extra = node(3, 'Island', [], 'notable');
   const fourth = node(4, 'Later', [1], 'notable');
   const props = { session, nodes: [...nodes, extra, fourth], nodeNames: new Map(), lang: 'en-US' as const,
-    stat: 'Life', stats: ['Life'], onStat: vi.fn(), onFocus: vi.fn() };
+    stat: 'Life', stats: ['Life'], onStat: vi.fn(), onFocus: vi.fn(), onSearch: vi.fn() };
   let release!: () => void;
   let signal!: AbortSignal;
   ui.evaluate.mockImplementation(async options => {
@@ -261,7 +319,7 @@ test('passive plans keep unchanged metrics out of the compact row and reveal exa
 test.each(['zh-CN', 'zh-TW', 'en-US'] as const)('report signals row readiness and completion with the current all-candidates control in %s', async lang => {
   const text = messages(lang, 'nodePower');
   const make = () => NodePowerTable({ session, nodes, nodeNames: new Map(), lang,
-    stat: 'Life', stats: ['Life'], onStat: vi.fn(), onFocus: vi.fn() });
+    stat: 'Life', stats: ['Life'], onStat: vi.fn(), onFocus: vi.fn(), onSearch: vi.fn() });
   render(make);
   expect(button(text.run).disabled).toBe(false);
   ui.evaluate.mockImplementation(async ({ rows, onBatch }) => {
