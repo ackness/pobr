@@ -7,7 +7,7 @@
 /** Fails on the current interface for a reason other than a product bug and waits for a rewrite or a decision. */
 export const QUARANTINE = { tag: '@quarantine' } as const;
 
-/** An extra cell of a matrix whose representative cells stay in the default run. */
+/** An extra cell of a matrix whose representative cells stay in the default run, or an exhaustive sweep too slow for it. */
 export const EXTENDED = { tag: '@extended' } as const;
 
 /**

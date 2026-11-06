@@ -1,8 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { go, importCode, shareCode } from './configPage';
+import { control, go, idle, importCode, openConfigGroup, savedState, shareCode } from './configPage';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
-import { QUARANTINE } from './tags';
 
 const code = (inputs = '') => deflateSync(`<PathOfBuilding2>
   <Build level="20" className="Witch" mainSocketGroup="1"/>
@@ -177,27 +176,36 @@ test('read tracking is requested only while Config is open, including edits and 
   expect((await requests()).every(request => request.configContext)).toBe(true);
 });
 
-// Quarantined: the config page now shows one group at a time (eb997114), so the dependent option is hidden until
-// its group is chosen and the "folding the leading group" step no longer applies. Rewrite around the group menu.
-test('an option that depends on the one just set appears in its own group, not in "Relevant to this BD"', QUARANTINE, async ({ page }) => {
+test('an option that depends on the one just set appears in its own group, not in "Relevant to this BD"', async ({ page }) => {
   await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
   await importCode(page, code());
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
   await go(page, 'Configuration');
   await page.locator('.config-view').getByRole('radio', { name: 'All', exact: true }).click();
+  await openConfigGroup(page, 'When In Combat');
   const dependent = page.locator('#config-section-When-In-Combat .config-item[data-config-var="conditionChilledEffect"]');
   const promoted = page.locator('#config-section-Relevant-to-this-build .config-item[data-config-var="conditionChilledEffect"]');
   await expect(dependent).toBeVisible();
-  // `conditionChilledEffect` is only meant once `conditionChilled` is set. Setting it must not move the dependent
-  // to the top of the page: it stays in its own group, next to the control just changed.
-  await page.locator('#config-conditionChilled').setChecked(true);
-  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
+  // The parent may already be placed in another group for this build (it is not checked yet). Edit it
+  // there; satisfying the dependency must leave the dependent in its original combat group.
+  const parent = control(page, 'conditionChilled');
+  const parentGroup = page.locator('.config-section').filter({ has: parent });
+  await openConfigGroup(page, await parentGroup.locator('.disclosure-label').innerText());
+  await parent.check();
+  await expect.poll(async () => (await savedState(page)).params.config_inputs.conditionChilled).toBe(true);
+  await idle(page);
+  await openConfigGroup(page, 'When In Combat');
   await expect(dependent).toBeVisible();
   await expect(promoted).toHaveCount(0);
-  // So folding the leading group does not take it out of reach either.
-  const relevant = page.locator('#config-section-Relevant-to-this-build .config-section-header');
-  await relevant.click();
-  await expect(relevant).toHaveAttribute('aria-expanded', 'false');
+  // Leaving and returning through the group menu must still find the dependent in combat.
+  await openConfigGroup(page, 'General');
+  await expect(dependent).toBeHidden();
+  await openConfigGroup(page, 'When In Combat');
   await expect(dependent).toBeVisible();
+  await expect(control(page, 'conditionChilled')).toBeChecked();
+  // The leading group renders its rows, so an absent dependent there is a real check.
+  await expect(page.locator('#config-section-Relevant-to-this-build .config-item').first()).toBeAttached();
+  await expect(promoted).toHaveCount(0);
+  await expect(control(page, 'conditionChilledEffect')).toHaveCount(1);
 });
