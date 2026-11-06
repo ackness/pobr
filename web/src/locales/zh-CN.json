@@ -912,7 +912,8 @@
     "calcs.enableConfig": "去配置开启 ›",
     "calcs.unknownReason": "原因暂无译文，请展开详情查看原文。",
     "calcs.unincludedReason": "计算未能识别这些词缀，因此未计入其效果。",
-    "calcs.hitDps": "击中 DPS"
+    "calcs.hitDps": "击中 DPS",
+    "calcs.originalModifiers": "词缀原文"
   },
   "bootMessage": {
     "初始化…": "初始化…",

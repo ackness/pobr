@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { pageLink, statRow } from './shell';
-import { choose, closeInspector, detailValue, importBuild, openStat, expandFormulaDetails } from './skillsAndCalcs';
+import { choose, closeInspector, detailValue, importBuild, openStat, expandFormulaDetails, expandModifierSources } from './skillsAndCalcs';
 
 // A committed PoB2 build whose Armour bucket holds a conditional line that is not met
 // ("if you haven't been Hit Recently") next to active INC and MORE lines.
@@ -61,7 +61,7 @@ test('a stat breakdown counts only the lines the calculation applies', async ({ 
   await importBuild(page, code);
   const armour = await openStat(page, 'Armour');
   const rows = armour.locator('.modifier-rows > li');
-  for (const summary of await armour.locator('details.modifier-source-group:not([open]) > summary').all()) await summary.click();
+  await expandModifierSources(armour);
   const inactive = armour.locator('.modifier-rows > li.is-inactive');
   await expect(inactive).not.toHaveCount(0);
   await expect(inactive.first().locator('.mod-inactive-tag')).toHaveText('not active');
@@ -180,7 +180,7 @@ test('average hit and total DPS show how they are built', async ({ page }) => {
     const lines = average.locator(`.damage-lines-${group}`);
     if ((await lines.count()) === 0) return 0;
     await lines.locator(':scope > summary').click();
-    for (const summary of await lines.locator('details.modifier-source-group:not([open]) > summary').all()) await summary.click();
+    await expandModifierSources(lines);
     // A group's header counts the lines it applies, and only those.
     const applied = lines.locator('.modifier-rows > li:not(.is-inactive)');
     expect(num(await lines.locator(':scope > summary .breakdown-count').textContent())).toBe(await applied.count());

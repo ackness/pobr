@@ -1,3 +1,4 @@
+import '../shared/modifierDiagnostics.css';
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
 import { stripReferenceMarkup } from '../../lib/diagnosticText';
 
@@ -15,9 +16,9 @@ export function modifierText(raw: string, translated: string | undefined, lang: 
   return { text, missing: lang !== 'en-US' && text === clean && /[A-Za-z]{3}/.test(clean), internal: false };
 }
 
-export function ModifierText({ raw, translated, lang }: { raw: string; translated?: string; lang: Lang }) {
+export function ModifierText({ raw, translated, lang, rawDetails = true }: { raw: string; translated?: string; lang: Lang; rawDetails?: boolean }) {
   const tt = bindT(lang);
   const display = modifierText(raw, translated, lang);
   return <><span>{display.text}</span>{display.missing && !display.internal && <small className="modifier-fallback">{tt('calcs.untranslated')}</small>}
-    <details className="modifier-raw"><summary>{tt('calcs.details')}</summary><pre>{raw}</pre></details></>;
+    {rawDetails && <details className="modifier-raw"><summary>{tt('calcs.details')}</summary><pre>{raw}</pre></details>}</>;
 }

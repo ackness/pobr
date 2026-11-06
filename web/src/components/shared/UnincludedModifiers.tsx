@@ -9,15 +9,15 @@ import { ModifierText } from '../calcs/ModifierText';
 
 /** Keep each source's adjacent lines together for whole-description translation. */
 export function unincludedGroups(lines: readonly string[], lang: Lang, items: readonly SlotItemInput[] = []) {
-  const groups = new Map<string, { identity: string; source: string | null; node: number | null; item?: SlotItemInput; lines: string[]; raw: string[] }>();
+  const groups = new Map<string, { identity: string; source: string | null; node: number | null; item?: SlotItemInput; lines: string[] }>();
   for (const raw of lines) {
     const parsed = unsupportedLine(raw, lang);
     const match = /^Tree:(\d+): /.exec(raw);
     const matches = parsed.source ? [] : items.filter(item => itemLines(item.text).some(line => line === parsed.text));
     const item = matches.length === 1 ? matches[0] : undefined;
     const key = match ? `node.${match[1]}` : item ? `item.${item.slot}` : parsed.source ?? '';
-    const group = groups.get(key) ?? { identity: key, source: parsed.source, node: match ? Number(match[1]) : null, item, lines: [], raw: [] };
-    group.lines.push(parsed.text); group.raw.push(raw); groups.set(key, group);
+    const group = groups.get(key) ?? { identity: key, source: parsed.source, node: match ? Number(match[1]) : null, item, lines: [] };
+    group.lines.push(parsed.text); groups.set(key, group);
   }
   return [...groups.values()].map(group => ({ ...group, lines: joinWrappedModifiers(group.lines) }));
 }
@@ -39,14 +39,16 @@ function UnincludedGroup({ group, lang }: { group: ReturnType<typeof unincludedG
   const names = useLocalizedNames(node?.source === group.node ? [{ kind: 'passive', id: node.id, name: node.name }] : [], lang);
   const itemNames = useItemDisplayNames([group.item?.text], lang);
   const source = group.item ? `${itemNames[0]} · ${slotLabel(lang, group.item.slot)}` : group.node === null ? group.source ?? (lang === 'en-US' ? 'Source unavailable' : lang === 'zh-TW' ? '未提供來源' : '未提供来源') : names[0] ?? (lang === 'en-US' ? 'Passive tree (name unavailable)' : lang === 'zh-TW' ? '天賦樹（缺少名稱）' : '天赋树（缺少名称）');
-  return <li>{source && <h5>{source}{lang !== 'en-US' && /[A-Za-z]{3}/.test(source) && <small className="modifier-fallback">{tt('calcs.untranslated')}</small>}</h5>}<ul>{group.lines.map((line, index) => isContinuation(line, translated[index]) ? null : <li key={index}>
-    <ModifierText raw={line} translated={translated[index]} lang={lang} />
-  </li>)}</ul><details><summary>{tt('calcs.details')}</summary><pre>{group.raw.join('\n')}</pre></details></li>;
+  return <li>{source && <h5>{source}{lang !== 'en-US' && /[A-Za-z]{3}/.test(source) && <small className="modifier-fallback">{tt('calcs.untranslated')}</small>}</h5>}<ul className="unincluded-lines">{group.lines.map((line, index) => isContinuation(line, translated[index]) ? null : <li key={index}>
+    <ModifierText raw={line} translated={translated[index]} lang={lang} rawDetails={false} />
+  </li>)}</ul></li>;
 }
 
 export function UnincludedModifiers({ lines, lang, items }: { lines: readonly string[]; lang: Lang; items?: readonly SlotItemInput[] }) {
   const groups = useMemo(() => unincludedGroups(lines, lang, items), [lines, lang, items]);
-  return <div className="unincluded-modifiers"><p>{bindT(lang)('calcs.unincludedReason')}</p><ul>{groups.map(group => <UnincludedGroup key={group.identity} group={group} lang={lang} />)}</ul></div>;
+  return <div className="unincluded-modifiers"><p>{bindT(lang)('calcs.unincludedReason')}</p><ul className="unincluded-sources">{groups.map(group => <UnincludedGroup key={group.identity} group={group} lang={lang} />)}</ul>
+    {lines.length > 0 && <details className="unincluded-raw"><summary>{bindT(lang)('calcs.originalModifiers')}</summary><pre>{lines.join('\n')}</pre></details>}
+  </div>;
 }
 
 /** This complete wrapped game description is known to arrive as two diagnostic rows. */

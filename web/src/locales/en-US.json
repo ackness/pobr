@@ -912,7 +912,8 @@
     "calcs.enableConfig": "Enable in Configuration ›",
     "calcs.unknownReason": "Reason has no translation; open Details.",
     "calcs.unincludedReason": "The calculation could not interpret these modifiers. Their effects are not included.",
-    "calcs.hitDps": "Hit DPS"
+    "calcs.hitDps": "Hit DPS",
+    "calcs.originalModifiers": "Original modifier text"
   },
   "bootMessage": {
     "初始化…": "Initializing…",

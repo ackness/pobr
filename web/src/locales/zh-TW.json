@@ -912,7 +912,8 @@
     "calcs.enableConfig": "前往設定啟用 ›",
     "calcs.unknownReason": "原因暫無譯文，請展開詳情查看原文。",
     "calcs.unincludedReason": "計算未能辨識這些詞綴，因此未計入其效果。",
-    "calcs.hitDps": "擊中 DPS"
+    "calcs.hitDps": "擊中 DPS",
+    "calcs.originalModifiers": "詞綴原文"
   },
   "bootMessage": {
     "初始化…": "初始化中…",

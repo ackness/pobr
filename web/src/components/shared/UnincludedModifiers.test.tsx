@@ -31,3 +31,21 @@ test('item provenance comes from an exact imported modifier line match', () => {
   ]);
   expect(ambiguous[0].item).toBeUndefined();
 });
+
+test.each([
+  ['en-US', 'Original modifier text'],
+  ['zh-CN', '词缀原文'],
+  ['zh-TW', '詞綴原文'],
+] as const)('diagnostic source lists have one native original-text disclosure in %s', (lang, label) => {
+  const lines = ['Tree:123: First unknown effect', 'Config: Another unknown effect', 'Tree:123: Wrapped\neffect'];
+  const html = renderToStaticMarkup(<UnincludedModifiers lines={lines} lang={lang} />);
+  // The source and modifier lists contain no extra disclosure for each row.
+  expect(html.match(/<details\b/g)).toHaveLength(1);
+  expect(html.match(/<summary\b/g)).toHaveLength(1);
+  expect(html).toContain(`<details class="unincluded-raw"><summary>${label}</summary>`);
+  expect(html).not.toContain('class="modifier-raw"');
+  expect(html).toContain('<ul class="unincluded-sources">');
+  expect(html).toContain('<ul class="unincluded-lines">');
+  expect(html).toContain(`<pre>${lines.join('\n')}</pre>`);
+  expect(html).not.toMatch(/<summary[^>]*(?:tabindex|aria-hidden|disabled)/);
+});

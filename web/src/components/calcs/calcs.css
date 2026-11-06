@@ -339,8 +339,7 @@
 .modifier-rows .mod-text { margin-top: .4rem; line-height: 1.65; overflow-wrap: anywhere; }
 .modifier-rows .mod-origin { margin: .35rem 0 0; white-space: normal; overflow-wrap: anywhere; }
 .modifier-rows .is-inactive { opacity: .7; }
-.modifier-fallback { display: block; color: var(--muted-foreground); font-size: var(--text-xs); }
-:is(.modifier-raw, .ledger-raw, .unincluded-modifiers, .modifier-rows) pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-xs); }
+:is(.ledger-raw, .modifier-rows) pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-xs); }
 .damage-chain ol { display: flex; flex-wrap: wrap; gap: .5rem 1rem; list-style: none; padding: 0; }
 .damage-chain li { display: grid; gap: .3rem; flex: 1 1 8rem; }
 .damage-chain li span { font-size: var(--text-sm); color: var(--muted-foreground); }
@@ -352,7 +351,6 @@
 .resistance-summary .modifier-subtotals > span { white-space: normal; }
 .config-field-link { display: inline-block; padding-block: .3rem; color: var(--primary); text-decoration: underline; text-underline-offset: .2em; }
 .ledger-internal { display: flex; align-items: center; gap: .5rem; }
-.unincluded-modifiers h5 { margin: .5rem 0; }
 @media (max-width: 760px) {
   .resistance-summary { gap: .5rem; }
   .resistance-summary > section > strong { font-size: var(--text-sm); white-space: normal; }
@@ -367,7 +365,3 @@
 .combined-components { display: flex; flex-wrap: wrap; gap: .5rem; margin-block: .5rem 1rem; }
 .formula-number { display: inline-block; white-space: nowrap; }
 .formula-steps .breakdown-scroll { min-width: 0; max-width: 100%; }
-/* Large operands scroll inside the formula instead of wrapping digits or widening the page. */
-.insp .insp-body .breakdown-detail table.breakdown-formula { table-layout: auto; min-width: 100%; max-width: none; }
-.insp .insp-body .breakdown-detail table.breakdown-formula th { min-width: 8rem; white-space: normal; }
-.insp .insp-body .breakdown-detail table.breakdown-formula td:is(.formula-operand, .formula-result) { width: auto; white-space: nowrap; overflow-wrap: normal; }
