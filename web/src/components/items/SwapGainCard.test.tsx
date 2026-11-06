@@ -37,7 +37,7 @@ it('leads with the main minion gain when player hit and combined DPS do not chan
   expect(headline).toContain('召唤物击中 DPS');
   expect(headline).toContain('狼 · 单只 · 上限 7 只');
   expect(headline).toContain('+50.0%');
-  expect(headline).toContain('100</span> → <b class="swap-after">151');
+  expect(headline).toContain('100.4</span> → <b class="swap-after">150.6');
   expect(html).not.toContain('data-stat="CombinedDPS"');
   expect(html).not.toContain('全部变化');
 });

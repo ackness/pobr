@@ -23,11 +23,15 @@ test('damage chain uses returned rates and mitigation without inventing a trigge
     { op: 'average_hit', operand: 100, result: 100 }, { op: 'enemy_mitigation', operand: .8, result: 80 },
     { op: 'uses_per_second', operand: 2, result: 160 }, { op: 'chance_to_hit', operand: 100, result: 160 },
   ] } };
-  expect(damageChain(breakdown).map(link => link.value)).toEqual([100, 80, 2, 100, undefined]);
+  expect(damageChain(breakdown).map(link => link.value)).toEqual([100, 80, 2, 100, undefined, 160]);
+  // Only links that equal a stat's final value name it; enemy mitigation and the trigger factor are intermediate.
+  expect(damageChain(breakdown).map(link => link.stat)).toEqual(['TotalHitAvg', undefined, 'ActionRate', 'HitChance', undefined, 'TotalDPS']);
   breakdown.formula!.steps.push({ op: 'reload', operand: .5, result: 80 });
   expect(damageChain(breakdown).find(link => link.key === 'calcs.step.reload')?.value).toBe(.5);
+  // Reload scales the rate after this link, so the link is no longer the final ActionRate.
+  expect(damageChain(breakdown).find(link => link.key === 'calcs.chainRate')?.stat).toBeUndefined();
   breakdown.formula!.steps.push({ op: 'energy_trigger', operand: .25, result: 40 });
-  expect(damageChain(breakdown).at(-1)?.value).toBe(.25);
+  expect(damageChain(breakdown).find(link => link.key === 'calcs.chainTrigger')?.value).toBe(.25);
   expect(damageChain(empty).every(link => link.value === undefined)).toBe(true);
 });
 

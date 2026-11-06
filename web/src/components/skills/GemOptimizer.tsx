@@ -13,7 +13,7 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
 import { changesFromRecords } from '../../app/preview/fromRecords';
-import { formatStatValue, formatNumber, statMap } from '../../lib/statDisplay';
+import { formatStatValue, formatNumber, statFormat, statMap } from '../../lib/statDisplay';
 import { supportText } from '../../lib/supportI18n';
 import { resolveDamageObjective } from '../../lib/mainMinion';
 import { useHeadlineDamage } from '../../hooks/useMainMinion';
@@ -166,10 +166,10 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     invalidate();
     session.setSocketGroups(groups);
   };
-  const number = (value: number | undefined) => value === undefined ? '—' : formatStatValue(value, 'int', lang);
+  const number = (value: number | undefined, stat: string) => value === undefined ? '—' : formatStatValue(value, statFormat(stat), lang);
   const metricLabel = (stat: string) => statNameLabel(lang, stat);
-  const change = (before: number, after: number) => before > 0
-    ? `${after >= before ? '+' : ''}${formatNumber((after / before - 1) * 100, 1, 1)}%` : `${after >= before ? '+' : ''}${number(after - before)}`;
+  const change = (before: number, after: number, stat: string) => before > 0
+    ? `${after >= before ? '+' : ''}${formatNumber((after / before - 1) * 100, 1, 1)}%` : `${after >= before ? '+' : ''}${number(after - before, stat)}`;
 
   if (!active) return null;
 
@@ -224,7 +224,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const errorBlock = error && <p className="opt-error">{error}</p>;
   const resultsBlock = result && <div className="support-results">
     <div className="support-baseline"><strong>{st('baseline')}</strong>
-      <span>{damage.label} {number(result.baseline[damage.stat])}</span><span>{metricLabel('TotalEHP')} {number(result.baseline.TotalEHP)}</span>
+      <span>{damage.label} {number(result.baseline[damage.stat], damage.stat)}</span><span>{metricLabel('TotalEHP')} {number(result.baseline.TotalEHP, 'TotalEHP')}</span>
     </div>
     {damage.note && <p className="skills-hint">{damage.note}</p>}
     <p className="skills-hint">{st('keepActive')}</p>
@@ -285,7 +285,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
         const before = result.baseline[stat];
         const after = plan.stats[stat];
         return <span key={stat} className={before === undefined || after === undefined || after === before ? undefined : after > before ? 'is-positive' : 'is-negative'}>
-          {stat === damage.stat ? damage.label : metricLabel(stat)} {number(after)} <strong>{before === undefined || after === undefined ? '—' : change(before, after)}</strong>
+          {stat === damage.stat ? damage.label : metricLabel(stat)} {number(after, stat)} <strong>{before === undefined || after === undefined ? '—' : change(before, after, stat)}</strong>
         </span>;
       })}</div>
       {descriptions ? <details className="support-diagnostics support-descriptions">

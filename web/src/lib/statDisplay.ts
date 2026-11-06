@@ -295,7 +295,7 @@ export function metricMeaning(id: string, lang: Lang): string | null {
 const STAT_FORMATS = new Map(STAT_SECTIONS.flatMap(section => section.rows.map(row => [row.id, row.format] as const)));
 
 export function statFormat(stat: string): StatFormat {
-  if (stat === 'MainMinionDPS') return 'int';
+  if (stat === 'MainMinionDPS') return statFormat('TotalDPS');
   if (/^(Fire|Cold|Lightning|Chaos)Resist(?:Total|Max|OverCap)$/.test(stat)) return 'percent';
   return STAT_FORMATS.get(stat) ?? (/Resist(?:Total|Max|OverCap)?$/.test(stat) ? 'percent' : 'float2');
 }

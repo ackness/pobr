@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { pageLink, statRow } from './shell';
 import { choose, closeInspector, detailValue, importBuild, openStat, expandFormulaDetails, expandModifierSources } from './skillsAndCalcs';
 import { formatStatValue } from '../src/lib/statDisplay';
+import { setLanguage } from './configPage';
+import { bindT } from '../src/lib/i18n';
 
 // A committed PoB2 build whose Armour bucket holds a conditional line that is not met
 // ("if you haven't been Hit Recently") next to active INC and MORE lines.
@@ -25,6 +27,36 @@ async function inspectFromRail(page: Page, label: string | RegExp, heading: stri
   await expect(inspector.locator('div.breakdown-detail').first()).toBeVisible({ timeout: 90_000 });
   await expandFormulaDetails(inspector);
   return inspector;
+}
+
+for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
+  test(`wolf DPS has one final precision across overview, rail, inspector and Calcs in ${lang}`, async ({ page }) => {
+    await importBuild(page, code);
+    await setLanguage(page, lang);
+    const hero = page.locator('#character-stats .rail-hero-value');
+    await expect(hero).toHaveText(/^\d[\d,]*$/);
+    const shown = (await hero.innerText()).trim();
+    expect(num(shown)).toBeGreaterThan(1000);
+    await expect(page.locator('.ov-figure.is-dps dd')).toHaveText(`${shown}${bindT(lang)('overview.sources')}`);
+    await hero.click();
+    const inspector = page.locator('.insp');
+    await expect(inspector.locator('.insp-value')).toHaveText(shown);
+    await expect(inspector.locator('.damage-chain li:last-child strong')).toHaveText(`${shown} DPS`, { timeout: 90_000 });
+    await inspector.getByRole('button', { name: lang === 'en-US' ? 'Close' : lang === 'zh-CN' ? '关闭' : '關閉', exact: true }).click();
+    await expect(inspector).toHaveCount(0);
+    await page.locator('a[href="/calcs"]').click();
+    const detail = page.locator('#calcs-detail');
+    await expect(detailValue(detail)).toHaveText(shown);
+    await expect(page.locator('#breakdown-TotalDPS strong')).toHaveText(shown);
+    await expect(detail.locator('.damage-chain li:last-child strong')).toHaveText(`${shown} DPS`, { timeout: 90_000 });
+    await page.getByRole('button', { name: lang === 'en-US' ? 'All metrics' : lang === 'zh-CN' ? '全部指标' : '全部指標', exact: true }).click();
+    const average = (await page.locator('#breakdown-TotalHitAvg strong').innerText()).trim();
+    await expect(detail.locator('.damage-chain li:first-child strong')).toHaveText(average);
+    await expect(detail.locator('.formula-conclusion strong')).toHaveText(`${shown} DPS`);
+    await expandFormulaDetails(detail);
+    await expect(detail.locator('.formula-average_hit .formula-result')).toHaveText(average);
+    await expect(detail.locator('.formula-final .formula-result')).toHaveText(shown);
+  });
 }
 
 test('View minion selects its actor and default metric and focuses the detail heading', async ({ page }) => {
@@ -79,8 +111,7 @@ test('a stat breakdown counts only the lines the calculation applies', async ({ 
   await expect(steps.locator('tr.formula-more')).toHaveCount(1);
   const shown = num(await detailValue(armour).textContent());
   expect(shown).toBeGreaterThan(0);
-  // The header rounds values of 1000 and above to whole numbers.
-  expect(Math.abs(num(await steps.locator('tr.formula-final .formula-result').textContent()) - shown)).toBeLessThanOrEqual(0.5);
+  await expect(steps.locator('tr.formula-final .formula-result')).toHaveText(await detailValue(armour).innerText());
 
   // Exactly the lines the calculation skips carry the "not active" tag; the rest are applied.
   const active = (await rows.count()) - (await inactive.count());
@@ -103,12 +134,12 @@ test('headline sidebar stats open the lines behind them', async ({ page }) => {
     if (heading === 'Fire Res.') {
       // Fire resistance: the steps go from the modifier total (86) to the capped value shown (75).
       const steps = inspector.locator('.breakdown-formula tr.formula-step');
-      await expect(steps.first().locator('.formula-result')).toHaveText('86');
+      await expect(steps.first().locator('.formula-result')).toHaveText('86%');
       await expect(inspector.locator('tr.formula-cap th')).toHaveText('Capped at the maximum');
       await expect(inspector.locator('tr.formula-cap .formula-operand')).toHaveText('≤ 75');
       const shown = num(await inspector.locator('.insp-value').textContent());
       expect(shown).toBe(75);
-      expect(num(await inspector.locator('tr.formula-final .formula-result').textContent())).toBe(shown);
+      await expect(inspector.locator('tr.formula-final .formula-result')).toHaveText(await inspector.locator('.insp-value').innerText());
     }
     await closeInspector(page);
   }
@@ -117,10 +148,7 @@ test('headline sidebar stats open the lines behind them', async ({ page }) => {
   const speed = await openStat(page, 'ActionRate');
   await expect(speed.locator('tr.formula-base th')).toContainText('Starting value');
   expect(num(await speed.locator('tr.formula-base .formula-result').textContent())).toBeGreaterThan(0);
-  expect(num(await speed.locator('tr.formula-final .formula-result').textContent())).toBeCloseTo(
-    num(await detailValue(speed).textContent()),
-    2,
-  );
+  await expect(speed.locator('tr.formula-final .formula-result')).toHaveText(await detailValue(speed).innerText());
 
   // Crit chance: only hits can crit, so the chance to hit is one of the steps.
   const crit = await openStat(page, 'CritChance');
@@ -144,7 +172,7 @@ test('hit chance shows the accuracy check against enemy evasion', async ({ page 
   const rating = num(await detailValue(accuracy).textContent());
   expect(rating).toBeGreaterThan(0);
   await expect(accuracy.locator('.modifier-rows > li:not(.is-inactive)')).not.toHaveCount(0);
-  expect(Math.abs(num(await accuracy.locator('tr.formula-final .formula-result').textContent()) - rating)).toBeLessThanOrEqual(0.5);
+  await expect(accuracy.locator('tr.formula-final .formula-result')).toHaveText(await detailValue(accuracy).innerText());
 
   // Hit chance starts from that rating and ends at the value shown, below 100%.
   const hit = await openStat(page, 'HitChance');
@@ -154,7 +182,7 @@ test('hit chance shows the accuracy check against enemy evasion', async ({ page 
   const shown = num(await detailValue(hit).textContent());
   expect(shown).toBeGreaterThan(90);
   expect(shown).toBeLessThan(100);
-  expect(num(await hit.locator('tr.formula-final .formula-result').textContent())).toBeCloseTo(shown, 1);
+  await expect(hit.locator('tr.formula-final .formula-result')).toHaveText(await detailValue(hit).innerText());
 });
 
 test('average hit and total DPS show how they are built', async ({ page }) => {
@@ -174,9 +202,10 @@ test('average hit and total DPS show how they are built', async ({ page }) => {
   expect(total).toBeGreaterThan(0);
   expect(num(await average.locator('tr.formula-non_crit_hit .formula-result').textContent())).toBeCloseTo(total, 1);
   await expect(average.locator('tr.formula-crit_hits th')).toContainText('Averaged with critical hits');
-  const shownAverage = num(await detailValue(average).textContent());
+  const averageText = await detailValue(average).innerText();
+  const shownAverage = num(averageText);
   expect(shownAverage).toBeGreaterThan(total);
-  expect(Math.abs(num(await average.locator('tr.formula-final .formula-result').textContent()) - shownAverage)).toBeLessThanOrEqual(0.5);
+  await expect(average.locator('tr.formula-final .formula-result')).toHaveText(averageText);
 
   // The increased column is backed by modifier lines: those shared by every type plus the
   // type's own add up to the physical row's increase.
@@ -206,7 +235,7 @@ test('average hit and total DPS show how they are built', async ({ page }) => {
 
   // Hit DPS: starts from that average hit and multiplies in rate and chance to hit.
   const dps = await openStat(page, 'TotalDPS');
-  expect(Math.abs(num(await dps.locator('tr.formula-average_hit .formula-result').textContent()) - shownAverage)).toBeLessThanOrEqual(0.5);
+  await expect(dps.locator('tr.formula-average_hit .formula-result')).toHaveText(averageText);
   await expect(dps.locator('tr.formula-uses_per_second')).toHaveCount(1);
   await expect(dps.locator('tr.formula-chance_to_hit th')).toHaveText('Chance to hit');
   // The enemy step is split by damage type: the rows start at the average hit and end at
@@ -219,8 +248,7 @@ test('average hit and total DPS show how they are built', async ({ page }) => {
     num(await dps.locator('tr.formula-enemy_mitigation .formula-result').textContent()),
     1,
   );
-  const shownDps = num(await detailValue(dps).textContent());
-  expect(Math.abs(num(await dps.locator('tr.formula-final .formula-result').textContent()) - shownDps)).toBeLessThanOrEqual(0.5);
+  await expect(dps.locator('tr.formula-final .formula-result')).toHaveText(await detailValue(dps).innerText());
   // The enemy's own lines are listed per damage type below the table.
   await expect(dps.locator('.enemy-lines details')).not.toHaveCount(0);
 });
@@ -260,9 +288,9 @@ test('combined DPS adds the damage over time to the hits', async ({ page }) => {
   await expect(combined.locator('tr.formula-hit_dps')).toBeVisible({ timeout: 90_000 });
   expect(await stepResult(combined.locator('tr.formula-dot_dps'))).toBeCloseTo(total, 1);
   const addedDot = num(await combined.locator('tr.formula-dot_dps .formula-operand').textContent());
-  // The final total is rounded for display. The added amount retains two decimals,
-  // so use it rather than subtracting two independently rounded running totals.
-  expect(Math.abs(total - (hit + addedDot))).toBeLessThanOrEqual(0.51);
+  // The hit DPS and the total are final stats, each rounded to its own display precision (whole
+  // numbers from 1000), so their sum with the added amount may differ by up to one rounding step each.
+  expect(Math.abs(total - (hit + addedDot))).toBeLessThanOrEqual(1);
 
   const dot = await openStat(page, 'TotalDotDPS');
   await expect(dot.locator('tr.formula-ignite_dps th')).toHaveText('Ignite DPS');
@@ -383,6 +411,5 @@ test('on-demand details cover steps, sources, derived inputs and an explicit emp
   await pageLink(page, 'Calculations').click();
   const reopened = await openStat(page, 'Life');
   await expect(reopened.locator('.breakdown-formula')).toBeVisible();
-  await expect.poll(async () => Math.round(num(await reopened.locator('.formula-final .formula-result').textContent())))
-    .toBe(Math.round(num(await detailValue(reopened).textContent())));
+  await expect(reopened.locator('.formula-final .formula-result')).toHaveText(await detailValue(reopened).innerText());
 });

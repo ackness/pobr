@@ -606,6 +606,17 @@ ConfigSet 可选择、新建、复制、重命名、删除，至少留一组；�
 <a id="web-calculation-details"></a>
 ## 计算明细
 
+同一 actor 的同一 stat 最终值在标题、结果栏、概览、Calcs 合计、伤害链末项及分项链接中使用相同精度，
+统一调用 `statDisplay.ts` 的 `statFormat`／`formatStatValue`；角色与召唤物、三种界面语言遵守同一规则。
+整数取整并加千分位；普通数值绝对值达到 1000 时取整，否则最多两位小数；百分比最多一位小数，
+速率固定两位小数。`MainMinionDPS` 与 `TotalDPS` 使用相同格式。伤害链的平均击中、命中率和末项 DPS
+分别使用 `TotalHitAvg`、`HitChance`、`TotalDPS` 的最终格式；每秒使用次数在没有装填或能量触发调整时
+使用 `ActionRate` 的最终格式。敌人减伤后的击中、装填或触发调整前的速率、DPS 综合倍率、装填倍率和
+触发倍率属于中间值，使用 `formatNumber`；减伤后击中尚未计入命中率，DPS 综合倍率包含数量倍率。
+公式步骤中已等于 `TotalHitAvg` 或抗性封顶／保底前 `ResistTotal` 的结果，以及 Combined DPS 各分项（击中 DPS、持续伤害与异常 DPS）的数值，也使用对应 stat 的最终格式。
+词条来源组的小计只汇总该组生效的 BASE／INC 或连乘 MORE，不包含其他来源及后续计算步骤，
+使用 `formatNumber`。显示舍入不改变计算输入或结果。
+
 能量 meta 技能的 `energy_trigger` 列容量、消耗、事件速率、返还与触发速率。
 `SkillTriggerRate`、`TriggerRateCap` 用公式说明，TotalDPS／ActionRate 含能量速率调整。
 配置可提供可格挡来袭命中、召唤物死亡速率／Power、Invocation 每秒使用次数。

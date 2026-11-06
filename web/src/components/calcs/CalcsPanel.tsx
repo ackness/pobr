@@ -36,7 +36,7 @@ import {
 } from '../../lib/i18n';
 import { getBackend } from '../../api/backend';
 import { isContinuation } from '../../lib/continuedLines';
-import { groupModifiers, damageChain, resistanceIds, type ModifierMeasure } from '../../lib/calcsPresentation';
+import { groupModifiers, damageChain, resistanceIds, actionRateIsFinal, COMBINED_DPS_COMPONENTS, type ModifierMeasure } from '../../lib/calcsPresentation';
 import { sourceGroupLabel } from '../../app/pages/calcs/ledger';
 import { ModifierText } from './ModifierText';
 import { useLocalizedLines } from '../../hooks/useLocalizedLines';
@@ -85,8 +85,13 @@ function cleanModText(text: string): string {
 }
 
 /** How a formula step changes the running value, e.g. `+120`, `×1.35 (+35%)`, `≤ 75`. */
-function formulaOperand(step: FormulaStep): string {
-  const n = fmtNum(step.operand);
+function formulaOperand(step: FormulaStep, stat?: string, lang: Lang = 'en-US', steps: readonly FormulaStep[] = []): string {
+  const operandStat = step.op === 'cap' ? resistanceIds(stat ?? '')[1]
+    : stat === 'TotalDPS' && step.op === 'chance_to_hit' ? 'HitChance'
+    : stat === 'TotalDPS' && step.op === 'uses_per_second' && actionRateIsFinal(steps) ? 'ActionRate'
+    : stat === 'CombinedDPS' ? COMBINED_DPS_COMPONENTS[step.op]
+    : undefined;
+  const n = operandStat ? formatStatValue(step.operand, statFormat(operandStat), lang).replace(/%$/, '') : fmtNum(step.operand);
   const signed = step.operand < 0 ? `−${fmtNum(-step.operand)}` : `+${n}`;
   switch (step.op) {
     case 'base':
@@ -176,6 +181,19 @@ function formulaOperand(step: FormulaStep): string {
     case 'floor':
       return `≥ ${n}`;
   }
+}
+
+/** A step can finish another stat before this formula finishes its own. */
+function formulaResult(steps: readonly FormulaStep[], index: number, stat: string | undefined, lang: Lang): string {
+  const next = steps[index + 1]?.op;
+  const resultStat = stat === 'TotalDPS' && steps[index].op === 'average_hit' ? 'TotalHitAvg'
+    : (next === 'cap' || next === 'floor') && resistanceIds(stat ?? '')[0]
+      ? resistanceIds(stat!)[0]
+      : index === steps.length - 1 ? stat ?? ''
+      // The first Combined DPS step starts the sum, so its result is still that component.
+      : stat === 'CombinedDPS' && index === 0 ? COMBINED_DPS_COMPONENTS[steps[0].op]
+      : undefined;
+  return resultStat !== undefined ? formatStatValue(steps[index].result, statFormat(resultStat), lang) : fmtNum(steps[index].result);
 }
 
 /** The per-type table behind the average hit: base range, scaling, and both averages. */
@@ -656,10 +674,10 @@ function FormulaSummary({ breakdown, stat, lang }: { breakdown: Breakdown; stat?
   if (!formula?.steps.length) return null;
   // Use returned steps only. Special operations keep their actual intermediate result visible.
   const summary = formula.steps.reduce((expression, step, index) => {
-    const value = fmtNum(step.result);
+    const value = formulaResult(formula.steps, index, stat, lang);
     if (index === 0) return value;
-    if (['flat', 'gained', 'flat_after', 'enemy_flat', 'off_hand_added', 'dot_dps', 'poison_dps', 'ignite_dps', 'bleed_dps'].includes(step.op)) return `(${expression} ${formulaOperand(step)})`;
-    if (['increased', 'more', 'action_speed', 'uses_per_second', 'enemy_mitigation', 'chance_to_hit', 'dps_multiplier', 'energy_trigger', 'reload'].includes(step.op)) return `(${expression} ${formulaOperand(step).replace(/ \(.*\)$/, '')})`;
+    if (['flat', 'gained', 'flat_after', 'enemy_flat', 'off_hand_added', 'dot_dps', 'poison_dps', 'ignite_dps', 'bleed_dps'].includes(step.op)) return `(${expression} ${formulaOperand(step, stat, lang, formula.steps)})`;
+    if (['increased', 'more', 'action_speed', 'uses_per_second', 'enemy_mitigation', 'chance_to_hit', 'dps_multiplier', 'energy_trigger', 'reload'].includes(step.op)) return `(${expression} ${formulaOperand(step, stat, lang, formula.steps).replace(/ \(.*\)$/, '')})`;
     if (step.op === 'converted') return `(${expression} ×${fmtNum(1 - step.operand / 100)})`;
     return `${expression} → ${tt(`calcs.step.${step.op}`)} ${value}`;
   }, '');
@@ -675,8 +693,8 @@ function DamageChainView({ breakdown, lang }: { breakdown: Breakdown; lang: Lang
   const chain = damageChain(breakdown);
   const missing = chain.filter(link => link.value === undefined);
   return <section className="damage-chain"><h4>{tt('calcs.damageChain')}</h4><ol>{chain.filter(link => link.value !== undefined).map(link => <li key={link.key}>
-    <span>{tt(link.key)}</span><strong>{link.unit === 'multiplier' ? '×' : ''}{fmtNum(link.value!)}{link.unit === 'rate' ? words(lang, ' /s', ' 次/秒', ' 次/秒') : link.unit === 'percent' ? '%' : ''}</strong>
-  </li>)}{breakdown.formula && <li><span>{statNameLabel(lang, 'TotalDPS')}</span><strong>{fmtNum(breakdown.formula.value)} DPS</strong></li>}</ol>
+    <span>{tt(link.key)}</span><strong>{link.unit === 'multiplier' ? '×' : ''}{link.stat ? formatStatValue(link.value!, statFormat(link.stat), lang) : fmtNum(link.value!)}{link.unit === 'rate' ? words(lang, ' /s', ' 次/秒', ' 次/秒') : link.unit === 'percent' && !link.stat ? '%' : link.unit === 'dps' ? ' DPS' : ''}</strong>
+  </li>)}</ol>
     {missing.length > 0 && <p className="breakdown-note">{tt('calcs.chainMissing').replace('{links}', missing.map(link => tt(link.key)).join(lang === 'en-US' ? ', ' : '、'))}</p>}
   </section>;
 }
@@ -694,7 +712,7 @@ function ResistanceView({ breakdown, stat, lang, values, related, onSelect }: { 
   const source = (id: string) => related?.[id] ?? (id === stat + 'Total' ? breakdown : undefined);
   return <section className="resistance-detail"><div className="resistance-summary">{ids.map((id, index) => {
     const value = values?.get(id) ?? related?.[id]?.formula?.value ?? fallback[index];
-    return <section key={id}><h4>{tt(labels[index])}</h4><strong className="mod-value">{value == null ? tt('calcs.missingValue') : `${fmtNum(value)}%`}</strong></section>;
+    return <section key={id}><h4>{tt(labels[index])}</h4><strong className="mod-value">{value == null ? tt('calcs.missingValue') : formatStatValue(value, statFormat(id), lang)}</strong></section>;
   })}</div>
     {ids.map((id, index) => <details className="resistance-sources" key={id}><summary className="disclosure" data-disclosure-level="group">{tt(labels[index])}：{tt('calcs.source')}</summary>
       {onSelect && <AppButton onClick={() => onSelect(id)}>{statNameLabel(lang, id)}</AppButton>}
@@ -756,8 +774,8 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
       {stat && <ResistanceView breakdown={breakdown} stat={stat} lang={lang} values={values} related={related} onSelect={onSelect} />}
       <FormulaSummary breakdown={breakdown} stat={stat} lang={lang} />
       {stat === 'CombinedDPS' && onSelect && <div className="combined-components">{breakdown.formula?.steps.map((step, index) => {
-        const component = ({ hit_dps: 'TotalDPS', skill_dot: 'TotalDotDPS', dot_dps: 'TotalDotDPS', poison_dps: 'PoisonDPS', ignite_dps: 'IgniteDPS', bleed_dps: 'BleedDPS' } as Record<string, string>)[step.op];
-        return component ? <AppButton key={index} onClick={() => onSelect(component)}>{statNameLabel(lang, component)} {fmtNum(step.operand)} DPS</AppButton> : null;
+        const component = COMBINED_DPS_COMPONENTS[step.op];
+        return component ? <AppButton key={index} onClick={() => onSelect(component)}>{statNameLabel(lang, component)} {formatStatValue(step.operand, statFormat(component), lang)} DPS</AppButton> : null;
       })}</div>}
       {stat === 'TotalDPS' && hands.length === 0 && <DamageChainView breakdown={breakdown} lang={lang} />}
       {breakdown.damage && <HitDamageView damage={breakdown.damage} lang={lang} />}
@@ -772,8 +790,8 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
               {breakdown.formula.steps.map((step, i) => (
                 <tr key={i} className={`formula-step formula-${step.op}`}>
                   <th scope="row">{tt(`calcs.step.${step.op}`)}</th>
-                  <td className="formula-operand">{formulaOperand(step)}</td>
-                  <td className="formula-result">{i === breakdown.formula!.steps.length - 1 ? formatStatValue(step.result, statFormat(stat ?? ''), lang) : fmtNum(step.result)}</td>
+                  <td className="formula-operand">{formulaOperand(step, stat, lang, breakdown.formula!.steps)}</td>
+                  <td className="formula-result">{formulaResult(breakdown.formula!.steps, i, stat, lang)}</td>
                 </tr>
               ))}
               <tr className="formula-final">
