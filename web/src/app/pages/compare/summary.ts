@@ -54,10 +54,10 @@ export function summaryLine(lang: Lang, counts: DiffCounts): string {
 export interface Headline { id: string; percent: number; tone: DeltaTone }
 
 /** Up to two headline movements (damage first, then survivability) as signed percentages of A. */
-export function headlineDeltas(rows: StatComparison[]): Headline[] {
+export function headlineDeltas(rows: StatComparison[], damageStat?: string): Headline[] {
   const find = (ids: readonly string[]) => ids.map(id => rows.find(row => row.id === id))
     .find(row => row && row.changed && row.delta !== null && row.percent !== null);
-  return [find(['MainMinionDPS', 'CombinedDPS', 'TotalDPS']), find(['TotalEHP']), find(['Life'])]
+  return [find(damageStat ? [damageStat] : ['MainMinionDPS', 'CombinedDPS', 'TotalDPS']), find(['TotalEHP']), find(['Life'])]
     .flatMap(row => row ? [{ id: row.id, percent: row.percent!, tone: deltaTone(row.id, row.delta) }] : []).slice(0, 2);
 }
 

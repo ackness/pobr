@@ -11,8 +11,8 @@ export async function choose(page: Page, trigger: Locator, option: string | RegE
 }
 
 /** The comparison pickers label stages "<BD name> / <stage name>". */
-export const compareStageA = (page: Page) => page.getByRole('combobox', { name: 'Build / stage A', exact: true });
-export const compareStageB = (page: Page) => page.getByRole('combobox', { name: 'Build / stage B', exact: true });
+export const compareStageA = (page: Page) => page.getByRole('combobox', { name: 'A: Before', exact: true });
+export const compareStageB = (page: Page) => page.getByRole('combobox', { name: 'B: After', exact: true });
 export const compareTab = (page: Page, name: string) => page.getByRole('tab', { name: new RegExp(`^${name}`) });
 
 /** The BD library page: open its Export section (collapsed by default), generate the share code and return it. */

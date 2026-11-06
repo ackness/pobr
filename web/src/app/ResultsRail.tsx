@@ -1,3 +1,4 @@
+import { ComparisonBaseline } from './ComparisonBaseline';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ChevronRight, CircleAlert, CircleCheck, Pin } from 'lucide-react';
 import type { EnemyTier, MainSkillInfo } from '../api/types';
@@ -177,6 +178,7 @@ export function ResultsRail({ route, session, view, lang, onStatClick, onNavigat
   const pinnedRows = values ? pinned.filter(id => values.has(id)) : [];
   const version = calculationVersion(lang, calc?.provenance?.data_version ?? session.dataVersion, calc?.provenance?.engine_version, session.calcMs);
   return <aside id="character-stats" className="shell-rail-content" data-stale={view.stale || undefined} aria-label={words(lang, 'Character stats', '角色属性', '角色屬性')}>
+    <ComparisonBaseline session={session} lang={lang} onNavigate={onNavigate} />
     <Headline route={route} session={session} view={view} lang={lang} onStatClick={onStatClick} changes={changes} onNavigate={onNavigate} minion={minion} />
     <Minion lang={lang} onStatClick={onStatClick} main={minion} />
     {calc && <button type="button" className="rail-link" onClick={() => onStatClick('skill-metrics')}>{bindT(lang)('sidebar.skillValuesLink')}<ChevronRight /></button>}

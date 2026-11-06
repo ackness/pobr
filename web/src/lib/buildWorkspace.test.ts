@@ -238,3 +238,40 @@ describe('first successful import', () => {
     expect(addWorkspaceBuild(workspace, 'No default metadata available', saved).builds).toHaveLength(2);
   });
 });
+
+import { recordWorkspaceBaseline } from './buildWorkspace';
+
+describe('comparison baseline persistence', () => {
+  it('records one independent snapshot on this build, replaces it, and survives reload', () => {
+    const initial = createWorkspace(saved);
+    const recorded = recordWorkspaceBaseline(initial, 1000);
+    expect(initial.builds[0].baseline).toBeUndefined();
+    expect(recorded.builds[0].stages).toHaveLength(1);
+    expect(recorded.builds[0].baseline).toEqual({ saved, recordedAt: 1000 });
+    expect(recorded.builds[0].baseline!.saved.state).not.toBe(saved.state);
+    const changed = updateWorkspaceStage(recorded, { ...saved, state: { ...saved.state, character: { ...saved.state.character, level: 50 } } }, {});
+    const loaded = parseWorkspace(JSON.parse(workspaceEnvelope(changed)).workspace, parseSaved)!;
+    expect(loaded.builds[0].baseline!.saved.state.character.level).toBe(30);
+    expect(activeWorkspaceStage(loaded).saved.state.character.level).toBe(50);
+    const other = addWorkspaceBuild(loaded, 'Other', saved);
+    expect(other.builds[1].baseline).toBeUndefined();
+    expect(other.builds[0].baseline).toEqual(loaded.builds[0].baseline);
+    const again = recordWorkspaceBaseline(loaded, 2000);
+    expect(again.builds[0].baseline!.recordedAt).toBe(2000);
+    expect(again.builds[0].baseline!.saved.state.character.level).toBe(50);
+    expect(again.builds[0].stages).toHaveLength(1);
+  });
+
+  it('loads older workspaces with no baseline and rejects broken baseline payloads', () => {
+    const old = createWorkspace(saved);
+    const loaded = parseWorkspace(JSON.parse(workspaceEnvelope(old)).workspace, parseSaved)!;
+    expect(loaded).toEqual(old);
+    expect(loaded.builds[0].baseline).toBeUndefined();
+    expect(activeWorkspaceStage(loaded).saved).toEqual(saved);
+    const bad = recordWorkspaceBaseline(old);
+    bad.builds[0].baseline!.recordedAt = NaN;
+    expect(parseWorkspace(bad, parseSaved)).toBeNull();
+    bad.builds[0].baseline!.recordedAt = 1e20;
+    expect(parseWorkspace(bad, parseSaved)).toBeNull();
+  });
+});

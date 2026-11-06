@@ -71,3 +71,11 @@ it('a description translated as one line shows no row for the lines it covers', 
   expect(html).toContain('能量护盾充能开始');
   expect(html).toContain('生命上限');
 });
+
+it('comparison cards keep original text in collapsed advanced details', () => {
+  const html = renderToStaticMarkup(<UiProvider lang="en-US"><ItemDisplayContent rawDetails text="Unique ID: saved-id" lang="en-US" lines={lines} translated={lines.map(line => line.text)} /></UiProvider>);
+  expect(html).toContain('<details><summary>Advanced details (original text)</summary>');
+  expect(html).not.toContain('<details open');
+  expect(html).toContain('Unique ID: saved-id');
+  expect(html).not.toContain('value="raw"');
+});

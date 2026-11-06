@@ -275,3 +275,17 @@ test.each([['en-US', 'Form'], ['zh-CN', '形态'], ['zh-TW', '形態']] as const
     expect(comparisonGemForm(b, a, new Map(), lang)).toBe(`${label} 3`);
   },
 );
+
+import { defaultCompareSides } from './compare';
+
+describe('before/after default selection', () => {
+  const stages = [{ buildId: 'one', stageId: 'early' }, { buildId: 'one', stageId: 'late' }, { buildId: 'two', stageId: 'other' }];
+  test('puts a recorded baseline before the current stage', () => {
+    const baseline = { buildId: 'one', stageId: 'baseline' };
+    expect(defaultCompareSides(stages, 'late', baseline)).toEqual({ a: baseline, b: stages[1] });
+  });
+  test('puts the earlier stage before the later stage from either active selection', () => {
+    for (const id of ['early', 'late']) expect(defaultCompareSides(stages, id)).toEqual({ a: stages[0], b: stages[1] });
+    expect(defaultCompareSides(stages, 'other')).toEqual({ a: stages[2], b: undefined });
+  });
+});

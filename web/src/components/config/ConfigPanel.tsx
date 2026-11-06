@@ -1,3 +1,4 @@
+import { configListLabel } from '../../lib/configDisplay';
 import { AppButton, AppInput, AppSelectControl, AppTextarea } from '../shared/controls';
 import { PartyEditor } from './PartyEditor';
 import { NamedSets } from '../shared/NamedSets';
@@ -153,12 +154,7 @@ export function OptionRow({
             <option value={String(effective ?? '')}>{effective === undefined ? workflowLabel(lang, 'unset') : String(effective)}</option>}
           {(option.list_options ?? []).map((opt) => {
             const en = stripColorCodes(opt.label);
-            const zh = lang !== 'en-US'
-              ? en.split(/\r?\n/).map(line => {
-                const text = line.trim();
-                return configListOptionLabel(lang, text) ?? listLabels[text] ?? text;
-              }).join(' / ')
-              : en;
+            const zh = configListLabel(lang, en, listLabels);
             return (
               <option key={opt.value} value={opt.value}>
                 {zh}

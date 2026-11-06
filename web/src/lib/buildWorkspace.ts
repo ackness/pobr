@@ -13,6 +13,15 @@ export interface LocalBuild {
   name: string;
   activeStage: string;
   stages: BuildStage[];
+  baseline?: { saved: SavedSession; recordedAt: number };
+}
+
+/** A build owns one independent comparison snapshot; recording never adds a stage. */
+export function recordWorkspaceBaseline(workspace: BuildWorkspace, recordedAt = Date.now()): BuildWorkspace {
+  const saved = structuredClone(activeWorkspaceStage(workspace).saved);
+  return { ...workspace, builds: workspace.builds.map(build => build.id !== workspace.activeBuild ? build : {
+    ...build, baseline: { saved, recordedAt },
+  }) };
 }
 
 export interface BuildWorkspace {
@@ -74,7 +83,7 @@ function starterContent(saved: SavedSession): string {
 export function appendImportedBuild(workspace: BuildWorkspace, build: LocalBuild, defaultStarter?: SavedSession | null): BuildWorkspace {
   const starter = workspace.builds[0], stage = starter.stages[0];
   const replaceStarter = !!defaultStarter && workspace.builds.length === 1 && starter.name === ''
-    && starter.stages.length === 1 && stage.name === '' && Object.keys(stage.drafts).length === 0
+    && !starter.baseline && starter.stages.length === 1 && stage.name === '' && Object.keys(stage.drafts).length === 0
     && starterContent(stage.saved) === starterContent(defaultStarter);
   return { ...workspace, activeBuild: build.id, builds: [...(replaceStarter ? [] : workspace.builds), build] };
 }
@@ -142,7 +151,13 @@ export function parseWorkspace(raw: unknown, parseSession: (json: string) => Sav
         stages.push({ id: stage.id, name: stage.name, saved, drafts: stage.drafts });
       }
       if (!stages.some(stage => stage.id === build.activeStage)) return null;
-      builds.push({ id: build.id, name: build.name, activeStage: build.activeStage, stages });
+      let baseline: LocalBuild['baseline'];
+      if (build.baseline !== undefined) {
+        const saved = parseSession(JSON.stringify(build.baseline.saved));
+        if (!saved || !Number.isFinite(build.baseline.recordedAt) || build.baseline.recordedAt < 0 || Number.isNaN(new Date(build.baseline.recordedAt).getTime())) return null;
+        baseline = { saved, recordedAt: build.baseline.recordedAt };
+      }
+      builds.push({ id: build.id, name: build.name, activeStage: build.activeStage, stages, ...(baseline ? { baseline } : {}) });
     }
     if (!builds.some(build => build.id === workspace.activeBuild)) return null;
     return { version: 1, activeBuild: workspace.activeBuild, builds };
