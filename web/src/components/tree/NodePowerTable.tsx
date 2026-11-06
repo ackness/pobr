@@ -91,7 +91,7 @@ export function NodePowerTable({ session, nodes, nodeNames, lang, stat, stats, o
   return <details className="node-power" open={open} onToggle={event => {
     const next = event.currentTarget.open; setOpen(next); if (!next && abort.current) cancel();
   }}>
-    <summary>{t.title}</summary>
+    <summary className="disclosure" data-disclosure-level="section">{t.title}</summary>
     {open && <>
       <p>{t.hint}</p>
       <div className="node-power-controls">
@@ -110,7 +110,7 @@ export function NodePowerTable({ session, nodes, nodeNames, lang, stat, stats, o
       {progress && <progress aria-label={t.title} value={progress.done} max={progress.total} />}
       {(results || progress || message === 'cancelled') && provisional && <p>{t.provisional}</p>}
       {error && <p role="alert">{error}</p>}
-      {results && results.limits.length > 0 && <details><summary>{t.limits} ({results.limits.length})</summary><ul>{results.limits.map(line => <li key={line}>{line}</li>)}</ul></details>}
+      {results && results.limits.length > 0 && <details><summary className="disclosure" data-disclosure-level="group">{t.limits} ({results.limits.length})</summary><ul>{results.limits.map(line => <li key={line}>{line}</li>)}</ul></details>}
       {!results && !progress ? <p>{t.notStarted}</p> : <>
       <div className="node-power-scroll" tabIndex={0} role="region" aria-label={t.title}>
         <table aria-label={t.title}>
@@ -118,8 +118,8 @@ export function NodePowerTable({ session, nodes, nodeNames, lang, stat, stats, o
           <tbody>{visible.map(row => <tr key={row.node.skill} data-node-id={row.node.skill} data-status={row.status}>
             <td><AppButton onClick={() => onFocus(row.node)} disabled={row.node.x === undefined || row.node.y === undefined}>{passiveNodeName(row.node, nodeNames)}</AppButton>{row.node.ascendancy_id && <small>{t.asc}</small>}
               {row.status !== 'ready' && <small>{t[row.status]}</small>}
-              <details><summary>{t.calculationDetails}</summary><p>{t.kind}{colon}{t[row.node.kind as 'normal' | 'notable' | 'keystone']}</p><p>{columnLabel('single')}{colon}{number(row.single)}</p></details>
-              {row.diagnostics.length > 0 && <details><summary>{t[row.status]}</summary>{row.diagnostics.map((text, i) => <p key={i}>{text}</p>)}</details>}
+              <details><summary className="disclosure" data-disclosure-level="inline">{t.calculationDetails}</summary><p>{t.kind}{colon}{t[row.node.kind as 'normal' | 'notable' | 'keystone']}</p><p>{columnLabel('single')}{colon}{number(row.single)}</p></details>
+              {row.diagnostics.length > 0 && <details><summary className="disclosure" data-disclosure-level="inline">{t[row.status]}</summary>{row.diagnostics.map((text, i) => <p key={i}>{text}</p>)}</details>}
             </td>
             <td data-label={columnLabel('perPoint')}>{number(row.perPoint)}</td><td data-label={columnLabel('points')}>{row.path?.length ?? '—'}</td><td data-label={columnLabel('gain')}>{number(row.gain)}</td>
 
@@ -129,7 +129,7 @@ export function NodePowerTable({ session, nodes, nodeNames, lang, stat, stats, o
       </div>
       <div className="node-power-actions"><AppButton disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t.previous}</AppButton><span>{t.page} {currentPage + 1} / {Math.max(1, Math.ceil(ranked.length / PAGE_SIZE))}</span><AppButton disabled={(currentPage + 1) * PAGE_SIZE >= ranked.length} onClick={() => setPage(currentPage + 1)}>{t.next}</AppButton></div>
       </>}
-      <details><summary>{t.calculationDetails}</summary><p>{t.calculationHint}</p><p>{t.scope}</p></details>
+      <details><summary className="disclosure" data-disclosure-level="inline">{t.calculationDetails}</summary><p>{t.calculationHint}</p><p>{t.scope}</p></details>
     </>}
   </details>;
 }

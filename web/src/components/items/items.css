@@ -317,7 +317,7 @@
 }
 
 
-.library-row-toggle { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 2px var(--space-2); }
+.library-row-toggle { display: grid; grid-template-columns: var(--disclosure-icon-size) minmax(0, 1fr); gap: 2px var(--space-2); }
 .library-row-toggle .row-caret { grid-row: span 2; }
 .library-row-slot { grid-column: 2; margin-left: 0; }
 .library-row-head > .item-actions { flex-wrap: nowrap; }

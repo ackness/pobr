@@ -15,7 +15,7 @@ test('hover prioritizes combined damage and survival, then two relative changes;
   const html = renderToStaticMarkup(<TreeHoverBenefits diffs={diffs} lang="zh-CN" refundCount={12} />);
   expect(html).toContain('综合 DPS -228,958,888');
   expect(html).toContain('将一并退掉 11 个下游节点');
-  expect(html).toContain('<summary>另有 2 项变化</summary>');
+  expect(html).toContain('<summary class="disclosure" data-disclosure-level="inline">另有 2 项变化</summary>');
   expect(html).not.toContain('-228958888');
   expect(html).not.toContain('+100<');
 });

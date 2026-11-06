@@ -30,6 +30,6 @@ export function TreeHoverBenefits({ diffs, lang, refundCount = 0 }: { diffs: Dif
     {refundCount > 1 && <p>{tt('tree.downstream').replace('{count}', String(refundCount - 1))}</p>}
     {primary.map(row)}
     {primary.length === 0 && <span>{tt('diff.none')}</span>}
-    {more.length > 0 && <details><summary>{tt('tree.moreChanges').replace('{count}', String(more.length))}</summary>{more.map(row)}</details>}
+    {more.length > 0 && <details><summary className="disclosure" data-disclosure-level="inline">{tt('tree.moreChanges').replace('{count}', String(more.length))}</summary>{more.map(row)}</details>}
   </div>;
 }

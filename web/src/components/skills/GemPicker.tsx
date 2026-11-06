@@ -130,7 +130,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
 
   const panelContents = <>
           <div className="gem-picker-chips" role="group" aria-label={tt('picker.colour')}>
-            {chips.map((chip) => (
+            <div className="segmented segmented--sm">{chips.map((chip) => (
               <AppButton
                 key={chip.id}
                 type="button"
@@ -141,7 +141,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
               >
                 {chip.label}
               </AppButton>
-            ))}
+            ))}</div>
             <span className="gem-picker-count">{tt('picker.resultCount').replace('{count}', String(filtered.length))}</span>
           </div>
           {filtered.length === 0 && <p className="gem-picker-empty" role="status">{tt('picker.noResults')}</p>}

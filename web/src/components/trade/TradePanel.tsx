@@ -299,7 +299,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   const goalBlock = <>
     <div className="upgrade-evaluation">
       <div className="trade-objectives" role="group" aria-label={tt('opt.objective')} ref={goalRef} tabIndex={-1}>
-        <div>{['dps', 'ehp', 'balanced'].map(id => TRADE_OBJECTIVES.find(entry => entry.id === id)!).map(entry => <AppButton key={entry.id} aria-pressed={preset === entry.id}
+        <div className="segmented">{['dps', 'ehp', 'balanced'].map(id => TRADE_OBJECTIVES.find(entry => entry.id === id)!).map(entry => <AppButton key={entry.id} aria-pressed={preset === entry.id}
           onClick={() => setPreset(entry.id)}>{presetLabel(entry.id)}</AppButton>)}</div>
       </div>
       {damage.note && <p className="trade-priority-hint">{damage.note}</p>}
@@ -320,9 +320,9 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
       <label><AppInput type="checkbox" checked={resistanceFirst} onChange={event => setResistanceFirst(event.target.checked)} />{tt('trade.resistanceFirst')}</label>
       {resistanceFirst && <label>{tt('trade.resistanceTarget')}<AppInput type="number" min={0} max={90} value={resistanceTarget} aria-label={tt('trade.resistanceTarget')}
         onChange={event => { const value = Number(event.target.value); if (Number.isFinite(value) && value >= 0 && value <= 90) setResistanceTarget(value); }} />%</label>}
-      <details className="trade-goal-help"><summary>{tt('trade.goalHelp')}</summary><p>{preset === 'balanced' ? flowT('balancedHint') : tt('trade.resistanceHint')}</p>{preset === 'balanced' && <p>{flowT('balancedAlgorithm')}</p>}</details>
+      <details className="trade-goal-help"><summary className="disclosure" data-disclosure-level="inline">{tt('trade.goalHelp')}</summary><p>{preset === 'balanced' ? flowT('balancedHint') : tt('trade.resistanceHint')}</p>{preset === 'balanced' && <p>{flowT('balancedAlgorithm')}</p>}</details>
     </div>
-    <details className="upgrade-goal-details" open={!!goal.cStat || !['dps', 'ehp', 'balanced'].includes(preset)}><summary>{flowT('advancedGoal')}{goal.cStat ? ` · ${statNameLabel(lang, goal.cStat)}` : ''}</summary><div className="trade-objectives"><div>{TRADE_OBJECTIVES.filter(entry => !['dps', 'ehp', 'balanced'].includes(entry.id)).map(entry =>
+    <details className="upgrade-goal-details" open={!!goal.cStat || !['dps', 'ehp', 'balanced'].includes(preset)}><summary className="disclosure" data-disclosure-level="inline">{flowT('advancedGoal')}{goal.cStat ? ` · ${statNameLabel(lang, goal.cStat)}` : ''}</summary><div className="trade-objectives"><div className="segmented">{TRADE_OBJECTIVES.filter(entry => !['dps', 'ehp', 'balanced'].includes(entry.id)).map(entry =>
       <AppButton key={entry.id} aria-pressed={preset === entry.id} onClick={() => setPreset(entry.id)}>{presetLabel(entry.id)}</AppButton>)}</div></div><div className="opt-controls"><ObjectiveEditor value={goal} onChange={setGoal} lang={lang} constraintsOnly /></div></details>
     </div>
   </>;
@@ -425,11 +425,11 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
           {selectedBase.radius && <p>{tt('trade.radiusHint')}</p>}
         </div>}
         {selected !== 'gems' && choices.length > 1 && <details className="trade-range">
-          <summary>{tt('trade.changeType')}</summary><AppSelect value={selectedBase?.category ?? ''} ariaLabel={`${labelOf(selected)} ${tt('trade.category')}`}
+          <summary className="disclosure" data-disclosure-level="inline">{tt('trade.changeType')}</summary><AppSelect value={selectedBase?.category ?? ''} ariaLabel={`${labelOf(selected)} ${tt('trade.category')}`}
             options={choices.map(category => ({ value: category, label: tt(`trade.category.${category}` as UiKey) }))}
             onChange={category => setCategories(prev => ({ ...prev, [selected]: category }))} />
         </details>}
-        {result?.error && <div role="alert" className="trade-notice trade-error">{tt('trade.analysisFailed')}<details><summary>{tt('trade.errorDetails')}</summary>{result.error}</details></div>}
+        {result?.error && <div role="alert" className="trade-notice trade-error">{tt('trade.analysisFailed')}<details><summary className="disclosure" data-disclosure-level="inline">{tt('trade.errorDetails')}</summary>{result.error}</details></div>}
         {!weights && !result?.gems && running !== selected && <div className="trade-empty-state">
           <span className="trade-empty-symbol" aria-hidden><SlotSymbol slot={selected} /></span>
           <h4>{tt('trade.emptyTitle')}</h4><p>{tt(selected === 'gems' ? 'trade.gemHint' : 'trade.emptyDescription')}</p>
@@ -442,7 +442,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
             <p>{ut('scoreHint')}</p>
             {weights.scoreWarnings.includes('unmodeled-candidates') && <p>{ut('skippedUnmodeled')}</p>}
             {weights.scoreWarnings.includes('constraints-not-in-query') && <p className="upgrade-score-caution">{ut('marketConstraints')}</p>}
-            {weights.currentItemScore && <details><summary>{ut('scoreDetails')}</summary><p>{ut('scoredLines')}{lang === 'en-US' ? ': ' : '：'}{weights.currentItemScore.matchedLines}/{weights.currentItemScore.totalLines}</p>
+            {weights.currentItemScore && <details><summary className="disclosure" data-disclosure-level="inline">{ut('scoreDetails')}</summary><p>{ut('scoredLines')}{lang === 'en-US' ? ': ' : '：'}{weights.currentItemScore.matchedLines}/{weights.currentItemScore.totalLines}</p>
               <ul>{weights.currentItemScore.contributions.map((entry,index) => <li key={index}>{entry.line} · {number(entry.value)} × {number(entry.weight,3)} = {number(entry.score,3)}</li>)}</ul>
               {weights.currentItemScore.unscoredLines.length > 0 && <pre>{weights.currentItemScore.unscoredLines.join('\n')}</pre>}
             </details>}
@@ -466,11 +466,11 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
               <span><strong>{lineText(stat.line, situationalLines[index])}</strong><small>{tt(`trade.mechanic.${stat.kind}`)}{stat.delta !== undefined ? ` +${number(stat.delta)}` : ''}</small></span>
             </label>)}
           </div>}
-          {weights.combinations[0] && <details className="trade-method"><summary>{tt('trade.referenceItem')}</summary><pre className="trade-reference">{weights.combinations[0].text}</pre></details>}
-          <details className="trade-method"><summary>{ut('weightDetails')}</summary><p>{tt('trade.methodDescription')}</p>
+          {weights.combinations[0] && <details className="trade-method"><summary className="disclosure" data-disclosure-level="inline">{tt('trade.referenceItem')}</summary><pre className="trade-reference">{weights.combinations[0].text}</pre></details>}
+          <details className="trade-method"><summary className="disclosure" data-disclosure-level="inline">{ut('weightDetails')}</summary><p>{tt('trade.methodDescription')}</p>
             <ul>{weights.weighted.map((weight, index) => <li key={weight.id}>{lineText(weight.line, localized[index])} · {tt('trade.marketWeight')}{lang === 'en-US' ? ': ' : '：'}{number(weight.weight, 3)}</li>)}</ul>
             <p>{tt('trade.currentGoal')}{lang === 'en-US' ? ': ' : '：'}{goalLabel} {number(scoreOf(weights.baseline, objective))} · {weights.evaluated} {tt('trade.evaluations')}</p></details>
-          {weights.unsupported.length > 0 && <details className="trade-notice trade-unsupported"><summary>{tt('trade.unsupportedHint')} ({weights.unsupported.length})</summary><UnincludedModifiers lines={weights.unsupported} lang={lang} items={session.items} /></details>}
+          {weights.unsupported.length > 0 && <details className="trade-notice trade-unsupported"><summary className="disclosure" data-disclosure-level="inline">{tt('trade.unsupportedHint')} ({weights.unsupported.length})</summary><UnincludedModifiers lines={weights.unsupported} lang={lang} items={session.items} /></details>}
         </>}
         {result?.gems && <div className="trade-gems"><div className="trade-results-heading"><div><h4>{tt('trade.gemCandidates')}</h4>{onSkills && mainGroup !== undefined && <AppButton onClick={() => onSkills(mainGroup)}>{ut('autoSupports')} →</AppButton>}<p>{tt('trade.gemHint')}</p></div></div>
           {result.gems.length === 0 && <p className="trade-notice">{tt('trade.noGemUpgrade')}</p>}
@@ -531,7 +531,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
       <div className="trade-market-context"><strong>{labelOf(selected)}</strong><span>{flowT('comparisonGoal').replace('{goal}', goalLabel)}</span>
         <p>{flowT('baselineItem').replace('{item}', selectedName)}</p></div>
       {fallbackBlock}
-      <details className="trade-market"><summary><span>{words(lang, 'Market', '市集', '市集')}</span><small>{marketSummary}</small></summary>{marketBlock}
+      <details className="trade-market"><summary className="disclosure" data-disclosure-level="section"><span>{words(lang, 'Market', '市集', '市集')}</span><small>{marketSummary}</small></summary>{marketBlock}
       <label className="trade-unique"><AppInput type="checkbox" checked={includeUnique} onChange={event => setIncludeUnique(event.target.checked)} />{tt('trade.includeUnique')}</label>
       </details>
       {searchReady && searchUrl && weights && <div className="trade-search-card">

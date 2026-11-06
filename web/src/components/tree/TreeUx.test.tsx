@@ -101,7 +101,7 @@ test('conversion scope is inside conversion options and the request and button f
     conversion = useTreeConversion({ ...session, exportCode }, 'en-US', true);
     return <TreeConversionControls session={session} conversion={conversion} />;
   };
-  expect(render(make).html).toContain('<summary>Conversion options</summary>');
+  expect(render(make).html).toContain('<summary class="disclosure" data-disclosure-level="inline">Conversion options</summary>');
   expect(button('Convert to current tree')).toBeDefined();
   ui.inputs.find(props => props.type === 'checkbox')!.onChange?.({ target: { checked: true } } as never);
   render(make);
@@ -229,7 +229,7 @@ test('conversion preview cleans raw modifier markup, hides versions in details a
   render(make); await conversion!.createPreview();
   const html = render(make).html;
   expect(html).toContain('<h3>Passive plan 1</h3>');
-  expect(html).toContain('<summary>Details</summary><p>Spec 1 · 0_4 → 0_5</p>');
+  expect(html).toContain('<summary class="disclosure" data-disclosure-level="inline">Details</summary><p>Spec 1 · 0_4 → 0_5</p>');
   expect(html).toContain('+10 to Spirit');
   expect(html).not.toContain('{crafted}'); expect(html).not.toContain('[Spirit|');
   expect(html).toContain('class="tree-conversion-footer"');

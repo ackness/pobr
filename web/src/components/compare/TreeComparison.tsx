@@ -118,7 +118,7 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
       </li>)}
     </ul>;
   const unplaced = [overlay.unplacedA, overlay.unplacedB].map((ids, index) => ids.length > 0 && <details className="compare-tree-warning" key={index} open>
-      <summary>{index ? 'B' : 'A'} · {tt('compare.unplaced')} ({ids.length})</summary><p>{ids.join(', ')}</p>
+      <summary className="disclosure" data-disclosure-level="inline">{index ? 'B' : 'A'} · {tt('compare.unplaced')} ({ids.length})</summary><p>{ids.join(', ')}</p>
     </details>);
   const tools = currentView && full && <div className="compare-tree-tools">
         <AppButton type="button" onClick={() => setView(focus)}>{tt('compare.fitAllocations')}</AppButton>
@@ -215,7 +215,7 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
         {state.jewels.find(jewel => jewel.socket_node === id)?.text ? <ItemDisplay rawDetails text={state.jewels.find(jewel => jewel.socket_node === id)!.text} lang={lang} /> : <p>{tt('compare.notSet')}</p>}
       </div>)}</div>
     </article>)}
-    <details><summary>{tt('compare.passives')}</summary>{(['a', 'b', 'both'] as const).map(side => <p key={side}>
+    <details><summary className="disclosure" data-disclosure-level="group">{tt('compare.passives')}</summary>{(['a', 'b', 'both'] as const).map(side => <p key={side}>
       {tt(side === 'a' ? 'compare.removed' : side === 'b' ? 'compare.added' : 'compare.both')}{lang === 'en-US' ? ': ' : '：'}{overlay.nodes.filter(entry => entry.side === side).map(entry => entry.node.skill).join(', ') || '—'}
     </p>)}</details>
   </>;

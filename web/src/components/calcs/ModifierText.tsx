@@ -20,5 +20,5 @@ export function ModifierText({ raw, translated, lang, rawDetails = true }: { raw
   const tt = bindT(lang);
   const display = modifierText(raw, translated, lang);
   return <><span>{display.text}</span>{display.missing && !display.internal && <small className="modifier-fallback">{tt('calcs.untranslated')}</small>}
-    {rawDetails && <details className="modifier-raw"><summary>{tt('calcs.details')}</summary><pre>{raw}</pre></details>}</>;
+    {rawDetails && <details className="modifier-raw"><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.details')}</summary><pre>{raw}</pre></details>}</>;
 }

@@ -2,7 +2,7 @@
 .shell-root .skill-groups { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
 .shell-root .skill-group { border-radius: 1.25rem; padding: 1.1rem; min-width: 0; }
 .shell-root .skill-group-header { flex-wrap: wrap; gap: .6rem; }
-.shell-root .skill-group-title { display: grid; grid-template-columns: .75rem minmax(0, 1fr); justify-content: flex-start; min-width: 0; }
+.shell-root .skill-group-title { display: grid; grid-template-columns: var(--disclosure-icon-size) minmax(0, 1fr); justify-content: flex-start; min-width: 0; }
 .shell-root .skill-gem { flex-wrap: wrap; gap: .75rem; padding-block: .75rem; }
 .shell-root .gem-name { min-width: 0; overflow-wrap: anywhere; }
 .shell-root .gem-controls { flex-wrap: wrap; justify-content: flex-end; gap: .6rem; }
@@ -73,7 +73,7 @@
 .shell-root .skill-group-title .row-caret { grid-column: 1; grid-row: 1; }
 .shell-root :is(.gem-tags, .gem-controls label) { flex-wrap: wrap; }
 .shell-root :is(.gem-tag, .library-row-slot, .library-row-toggle .item-name, .trade-position small, .trade-priority-name small) { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
-.shell-root .library-row-toggle { display: grid; grid-template-columns: .75rem minmax(0, 1fr); min-width: 0; }
+.shell-root .library-row-toggle { display: grid; grid-template-columns: var(--disclosure-icon-size) minmax(0, 1fr); min-width: 0; }
 .shell-root .utility-row { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); }
 .shell-root :is(.items-equipped, .items-collection, .item-detail, .library-panel, .trade-setup > *, .trade-budget, .compare-pair > *) { min-width: 0; }
 .shell-root .trade-budget { flex-wrap: wrap; }
@@ -82,8 +82,7 @@
 .shell-root .trade-workspace { overflow: visible; }
 .shell-root .compare-panel { overflow-wrap: anywhere; }
 .shell-root .compare-table-wrap { min-width: 0; max-width: 100%; }
-.shell-root :is(.doll-slot.is-selected, .trade-position[aria-pressed='true'], .weapon-set-control [aria-pressed='true']) { background: color-mix(in srgb, var(--primary) 12%, var(--card)); border-color: var(--primary); color: var(--primary); }
-.gem-picker-popover .gem-chip.is-active { background: var(--muted); border-color: var(--primary); color: var(--primary); }
+.shell-root :is(.doll-slot.is-selected, .trade-position[aria-pressed='true']) { background: color-mix(in srgb, var(--primary) 12%, var(--card)); border-color: var(--primary); color: var(--primary); }
 @container shell-page (max-width: 48rem) {
   .shell-root .items-workspace, .shell-root .skill-groups { grid-template-columns: minmax(0, 1fr); }
 }

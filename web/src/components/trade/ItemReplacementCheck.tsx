@@ -263,7 +263,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
         </div>
         <SwapGainCard before={Object.entries(report.baseline).map(([id, value]) => ({ id, value }))}
           after={Object.entries(selected.stats).map(([id, value]) => ({ id, value }))} lang={lang} damage={damage} />
-        {!!selected.unsupported.length && <details className="trade-notice replacement-unsupported"><summary>{ut('incomplete')} ({selected.unsupported.length})</summary><UnincludedModifiers lines={selected.unsupported} lang={lang} /></details>}
+        {!!selected.unsupported.length && <details className="trade-notice replacement-unsupported"><summary className="disclosure" data-disclosure-level="inline">{ut('incomplete')} ({selected.unsupported.length})</summary><UnincludedModifiers lines={selected.unsupported} lang={lang} /></details>}
         {!!report.rejected.length && <p className="trade-notice">{report.rejected.map(row => `${positionLabel(row.slot)}: ${errorText(row.reason)}`).join('\n')}</p>}
         <div className="replacement-apply"><AppButton className={actionClassName} disabled={!active || busy || affixDirty || session.busy} onClick={apply}>{busy ? ut('comparingPositions') : `${ut('apply')} · ${positionLabel(selected.slot)}`}</AppButton><span>{affixDirty ? affixT(lang, 'dirty') : ut('applyHint')}</span></div>
         {!candidate && selectedItem && <div className="replacement-actions"><AppButton disabled={!active || busy || affixDirty || session.busy || alreadyAdded || equipmentCandidates.length >= EQUIPMENT_CANDIDATE_LIMIT}
@@ -272,7 +272,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
       </div>
     </div>}
     {!candidate && <details className="equipment-fold" open={equipmentCandidates.length > 0}>
-      <summary><span>{ut('jointEquipment')}</span><small>{equipmentCandidates.length} / {EQUIPMENT_CANDIDATE_LIMIT}</small></summary>
+      <summary className="disclosure" data-disclosure-level="section"><span>{ut('jointEquipment')}</span><small>{equipmentCandidates.length} / {EQUIPMENT_CANDIDATE_LIMIT}</small></summary>
       <EquipmentPlanner session={session} lang={lang} active={active} objective={objective} catalog={catalog} candidates={equipmentCandidates} actionClassName={actionClassName} damage={damage}
         onRemove={id => setEquipmentCandidates(current => current.filter(candidate => candidate.id !== id))} /></details>}
   </section>;

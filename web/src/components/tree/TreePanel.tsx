@@ -997,7 +997,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
               {heatBusy && <progress aria-label={tt('tree.heat')} value={heatProgress?.done} max={heatProgress?.total} />}
               {heatData && !heatComplete && <span role="status">{tt('tree.heatPartial')}</span>}
               {heatError && <span role="alert">{tt('tree.heatError')}</span>}
-              <details className="tree-heat-legend"><summary>{treeStatLabel(lang, heatStat)}<span className="tree-heat-scale" aria-hidden="true" /></summary><p>{tt('tree.heatLegend').replace('{stat}', treeStatLabel(lang, heatStat))}</p></details>
+              <details className="tree-heat-legend"><summary className="disclosure" data-disclosure-level="inline">{treeStatLabel(lang, heatStat)}<span className="tree-heat-scale" aria-hidden="true" /></summary><p>{tt('tree.heatLegend').replace('{stat}', treeStatLabel(lang, heatStat))}</p></details>
               {heatBusy && <AppButton onClick={cancelHeat}>{tt('tree.heatCancel')}</AppButton>}
               {heatData && heatVersion !== session.stateVersion && (
                 <span className="tree-hint">{tt('tree.heatStale')}</span>
@@ -1259,7 +1259,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
           <span className="attr-distribute-rest">
             {tt('tree.attrUnassigned')}{lang === 'en-US' ? ': ' : '：'}{allocatedAttrNodes.length - attrCounts.str - attrCounts.dex - attrCounts.int}
           </span>
-          <details className="tree-shortcuts"><summary>{words(lang, 'Keyboard shortcuts', '快捷键', '快捷鍵')}</summary><p className="tree-hint">{tt('tree.attrHotkeys')}</p></details>
+          <details className="tree-shortcuts"><summary className="disclosure" data-disclosure-level="inline">{words(lang, 'Keyboard shortcuts', '快捷键', '快捷鍵')}</summary><p className="tree-hint">{tt('tree.attrHotkeys')}</p></details>
         </>
         )}
           <span className="attr-quest" role="group" aria-label={tt('tree.questAttr')}>
@@ -1479,7 +1479,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
         <div className="tree-edit-tools" ref={toolsRef} tabIndex={-1}>
           <label className="tree-sidebar-width">{tt('tree.sidebarWidth')}<AppInput type="range" min={22} max={38} value={sideWidth} onChange={event => setSideWidth(Number(event.target.value))} /></label>
           {toolsBody}
-          <details className="tree-legend-help"><summary>{words(lang, 'Colors and weapon sets', '颜色与武器组', '顏色與武器組')}</summary><p className="tree-hint">{tt('tree.weaponRules')}</p></details>
+          <details className="tree-legend-help"><summary className="disclosure" data-disclosure-level="inline">{words(lang, 'Colors and weapon sets', '颜色与武器组', '顏色與武器組')}</summary><p className="tree-hint">{tt('tree.weaponRules')}</p></details>
         </div>
       </aside>
     </section>

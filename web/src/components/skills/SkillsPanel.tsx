@@ -1,3 +1,4 @@
+import { DisclosureChevron } from '../shared/DisclosureChevron';
 import { useAppDialogs } from '../shared/AppDialogs';
 import { useSessionAction } from '../shared/useSessionAction';
 import { useLocalizedLines, nameParts, rarityOf } from '../../hooks/useLocalizedLines';
@@ -308,7 +309,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
                 ×
               </AppButton>
             </span>
-            <details className="gem-advanced"><summary>{tt('skills.gemAdvanced')}</summary>
+            <details className="gem-advanced"><summary className="disclosure" data-disclosure-level="inline">{tt('skills.gemAdvanced')}</summary>
               <div className="gem-advanced-controls">
               <label className="gem-count">{tt('skills.count')}<AppInput type="number" min={0} step="any" value={gem.count ?? 1}
                 aria-label={tt('skills.gemCount')} disabled={session.busy} onChange={event => {
@@ -352,13 +353,11 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
             ★
           </AppButton>
           <AppButton
-            className="skill-group-title"
+            className="skill-group-title disclosure" data-disclosure-level="group"
             aria-expanded={isOpen}
             onClick={() => setOpenIdx(idx)}
           >
-            <span className="row-caret" aria-hidden>
-              ▸
-            </span>
+            <DisclosureChevron className="row-caret" />
             <span className="skill-group-name">
               {groupTitle}
               {Boolean(session.annotations[`skill:${idx}`]?.trim()) && (
@@ -454,7 +453,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
           {optimizer}
         </section>
         {active && <details className="skill-advanced">
-          <summary>{w('Advanced', '高级', '進階')}</summary>
+          <summary className="disclosure" data-disclosure-level="inline">{w('Advanced', '高级', '進階')}</summary>
           <div className="skill-advanced-body">
             {fullDps}
             {minionControls}
@@ -497,7 +496,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
         {groupViews.find(view => view.detail)?.detail}
       </div>
       {active && <details className="skills-advanced" open={session.library.skillSets.length > 0 || undefined}>
-        <summary>{tt('sets.title')}</summary>
+        <summary className="disclosure" data-disclosure-level="group">{tt('sets.title')}</summary>
         <SkillSets session={session} lang={lang} catalog={byId} />
       </details>}
     </section>

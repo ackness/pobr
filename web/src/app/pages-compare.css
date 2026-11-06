@@ -27,16 +27,10 @@
   .shell-root .cmp-headline[data-tone='better'] b, .shell-root .cmp-delta[data-tone='better'] { color: var(--color-positive); }
   .shell-root .cmp-headline[data-tone='worse'] b, .shell-root .cmp-delta[data-tone='worse'] { color: var(--color-negative); }
 
-  .shell-root .cmp-tablist { display: flex; gap: .1rem; margin: .35rem 0 -1px; overflow-x: auto; scrollbar-width: none; }
-  .shell-root .cmp-tablist::-webkit-scrollbar { display: none; }
-  .shell-root .cmp-tab { position: relative; display: inline-flex; align-items: baseline; gap: .45rem; min-height: 0; padding: .6rem .8rem; border: 0; border-radius: 0; background: none; box-shadow: none; font: inherit; font-size: var(--text-base); color: var(--muted-foreground); white-space: nowrap; transition: color var(--dur-fast) linear; }
-  .shell-root .cmp-tab:hover { color: var(--foreground); }
-  .shell-root .cmp-tab[data-state='active'] { color: var(--foreground); font-weight: 550; }
-  .shell-root .cmp-tab::after { content: ''; position: absolute; inset: auto .5rem 0; height: 2px; border-radius: 2px 2px 0 0; background: var(--primary); transform: scaleX(0); transition: transform var(--dur) var(--ease-out); }
-  .shell-root .cmp-tab[data-state='active']::after { transform: scaleX(1); }
+  .shell-root .cmp-tablist { margin: .35rem 0; }
+  .shell-root .cmp-tab[data-state=active] .cmp-count { color: var(--primary); }
   .shell-root .cmp-tab:focus-visible { outline-offset: -2px; }
   .shell-root .cmp-count { font-size: var(--text-xs); font-weight: 450; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
-  .shell-root .cmp-tab[data-state='active'] .cmp-count { color: var(--primary); }
   .shell-root .cmp-count[data-zero] { opacity: .5; }
 
   /* ── Notes and panels ───────────────────────────────────────────────────── */
@@ -138,8 +132,6 @@
     .shell-root .cmp-tree-stage { grid-template-columns: minmax(0, 1fr); }
   }
   @container shell-container (max-width: 40rem) {
-    /* Tighter tabs keep all five sections on one row at phone width; larger text still wraps. */
-    .shell-root .cmp-tab { padding-inline: .5rem; }
     .shell-root .cmp-panel .compare-pair { grid-template-columns: minmax(0, 1fr); }
     .shell-root .cmp-summary { gap: .2rem .9rem; }
     .shell-root .cmp-stats table { display: block; table-layout: fixed; font-size: .7rem; }
@@ -154,5 +146,4 @@
     .shell-root .cmp-stage-name .cmp-mark { display: none; }
     .shell-root .cmp-stage [data-slot='select-trigger'] { padding-inline: .4rem; }
   }
-  @media (prefers-reduced-motion: reduce) { .shell-root .cmp-tab::after { transition: none; } }
 }

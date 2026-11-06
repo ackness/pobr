@@ -93,9 +93,6 @@
   .shell-root [data-display-mode='game'] .config-page .config-section-header { color: var(--primary); }
 
   /* Calculations: identical formulas and sources in each presentation. */
-  .shell-root .calcs-page.calcs-workspace .calcs-metric-scope { display: flex; gap: .3rem; }
-  .shell-root .calcs-metric-scope > [data-slot='button'] { flex: 1; font-size: var(--text-sm); padding: .4rem; border-color: var(--border); }
-  .shell-root .calcs-metric-scope > [aria-pressed='true'] { background: var(--muted); color: var(--foreground); border-color: var(--primary); }
   .shell-root [data-display-mode='grouped'] .calcs-page.calcs-workspace .calcs-detail-header { padding: 1rem 1.1rem; border-bottom: 0; background: var(--card); border-radius: .5rem; }
   .shell-root [data-display-mode='compact'] .calcs-page.calcs-workspace .calcs-explorer { gap: 1.5rem; grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr); }
   .shell-root [data-display-mode='compact'] .calcs-page.calcs-workspace .calcs-detail-value strong { font-size: 1.6rem; }

@@ -2,6 +2,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./control-consistency.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -41,7 +42,8 @@
     --font-ui: Inter, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
     --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
     --text-xs: .75rem; --text-sm: .8125rem; --text-base: .875rem; --text-lg: 1rem; --text-xl: 1.375rem;
-    --control-height: 2.25rem; --content-width: 100rem; --topbar-height: 3.25rem; --rail-width: 17.5rem;
+    --control-height: 2.25rem; --control-height-sm: 1.75rem;
+    --content-width: 100rem; --topbar-height: 3.25rem; --rail-width: 17.5rem;
     --radius-sm: .3rem; --radius-md: .5rem;
   }
   .dark {
@@ -146,8 +148,6 @@
   .rail-section > .rail-title { padding: .6rem 1rem .3rem; text-transform: none; }
   .rail-section h3 button { display: flex; align-items: center; gap: .3rem; width: 100%; padding: .6rem 1rem .3rem; letter-spacing: inherit; text-transform: inherit; }
   .rail-section h3 button:hover { color: var(--foreground); }
-  .rail-section h3 svg { width: .75rem; height: .75rem; transition: transform .12s; }
-  .rail-section h3 button[aria-expanded='true'] svg { transform: rotate(90deg); }
   .rail-section[data-folded] { padding-bottom: .15rem; }
   .shell-stat-sheet .shell-rail-content { padding: 0 0 2rem; }
 
@@ -315,9 +315,6 @@
   .ov-bar { height: .4rem; border-radius: 999px; background: var(--muted); overflow: hidden; }
   .ov-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--primary); opacity: .85; }
   .ov-bar[data-sign='neg'] > span { background: var(--destructive); }
-  .ov-toggle { display: inline-flex; flex-wrap: wrap; max-width: 100%; padding: .15rem; border-radius: .45rem; background: var(--muted); }
-  .ov-toggle button { min-height: 0; padding: .2rem .65rem; border: 0; border-radius: .3rem; background: none; font: inherit; font-size: var(--text-xs); color: var(--muted-foreground); }
-  .ov-toggle button[aria-pressed='true'] { background: var(--card); color: var(--foreground); box-shadow: 0 0 0 1px var(--border); }
   .ov-compute { display: grid; gap: .8rem; justify-items: start; }
   .ov-compute-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 
@@ -380,11 +377,9 @@
   .bd-import { padding-top: 1.5rem; }
   .bd-import textarea { width: 100%; min-height: 7rem; padding: .8rem 1rem; resize: vertical; font-family: var(--font-mono); font-size: var(--text-sm); line-height: 1.5; background: var(--card); border-radius: .5rem; }
   .bd-import-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin-top: .75rem; }
-  .bd-segment { display: inline-flex; align-items: center; flex-wrap: wrap; max-width: 100%; margin-left: auto; padding: .15rem; border-radius: .5rem; background: var(--muted); }
+  .bd-segment { margin-left: auto; }
   .bd-segment button, .bd-list button, .bd-chips button { min-height: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; }
   .bd-segment > span { padding: .3rem .5rem; font-size: var(--text-sm); color: var(--muted-foreground); }
-  .bd-segment button { overflow-wrap: anywhere; padding: .3rem .8rem; border-radius: .35rem; font-size: var(--text-sm); color: var(--muted-foreground); }
-  .bd-segment button[aria-pressed='true'] { background: var(--card); color: var(--foreground); box-shadow: 0 0 0 1px var(--border); }
   .bd-list { display: grid; margin: 0; padding: 0; list-style: none; }
   .bd-list li + li { border-top: 1px solid var(--border); }
   .bd-list > li { display: flex; align-items: center; min-width: 0; }
@@ -412,10 +407,6 @@
   .bd-inline { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem; }
   .bd-details { margin-top: 1rem; font-size: var(--text-sm); }
   .bd-details summary, .bd-export > summary { cursor: pointer; color: var(--primary); }
-  .bd-export > summary { list-style: none; color: inherit; }
-  .bd-export > summary::-webkit-details-marker { display: none; }
-  .bd-export > summary h2::before { content: '▸ '; }
-  .bd-export[open] > summary h2::before { content: '▾ '; }
   .bd-export[open] > summary { margin-bottom: .75rem; }
   .bd .notes-editor, .bd .import-code { width: 100%; font-size: var(--text-sm); }
   .bd .notes-preview-body { margin: .5rem 0 0; padding: .75rem; white-space: pre-wrap; border-radius: .4rem; background: var(--muted); font-size: var(--text-sm); }

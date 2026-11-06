@@ -212,7 +212,7 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit }:
       <div className="ov-col">
         <section className="ov-sec" aria-labelledby="ov-contribution">
           <div className="ov-sec-head"><h2 id="ov-contribution">{tt('calcs.attribution')}</h2>
-            <div className="ov-toggle" role="group" aria-label={w('Measure', '指标', '指標')}>{ATTRIBUTION_FIELDS.map(id => <button key={id} type="button" aria-pressed={field === id} onClick={() => setField(id)}>{statNameLabel(lang, statFor(id))}</button>)}</div></div>
+            <div className="ov-toggle segmented" role="group" aria-label={w('Measure', '指标', '指標')}>{ATTRIBUTION_FIELDS.map(id => <button key={id} type="button" aria-pressed={field === id} onClick={() => setField(id)}>{statNameLabel(lang, statFor(id))}</button>)}</div></div>
           <p className="ov-hint">{tt('calcs.attributionHint')}</p>
           {!contribution || contribution.version !== session.stateVersion
             ? <div className="ov-compute"><p className="ov-muted">{contribution ? contribution.selection !== selection ? tt('overview.skillAnalysisChanged') : w('The build changed since this was measured.', 'BD 已变化，结果已过期。', 'BD 已變化，結果已過期。') : w('See how removing each item or skill group changes the result.', '查看移除每件装备或技能组后，数值会如何变化。', '查看移除每件裝備或技能組後，數值會如何變化。')}</p>
@@ -233,7 +233,7 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit }:
             <div><dt>{w('Game data', '游戏数据', '遊戲資料')}</dt><dd>{calc?.provenance?.data_version ?? session.dataVersion ?? '—'}</dd></div>
             {calc?.provenance?.engine_version && <div><dt>{w('Engine', '计算引擎', '計算引擎')}</dt><dd>{calc.provenance.engine_version}</dd></div>}
           </dl>
-          {calc && calc.unsupported_modifiers.length > 0 && <details ref={modifierDetails} className="ov-details"><summary>{w('Show the modifiers', '查看这些词缀', '查看這些詞綴')}</summary>
+          {calc && calc.unsupported_modifiers.length > 0 && <details ref={modifierDetails} className="ov-details"><summary className="disclosure" data-disclosure-level="inline">{w('Show the modifiers', '查看这些词缀', '查看這些詞綴')}</summary>
             <UnincludedModifiers lines={calc.unsupported_modifiers} lang={lang} items={session.items} /></details>}
           <p className="ov-hint">{w('Results reflect modeled effects. Review the uncalculated effects above.', '数值仅反映已支持的效果。未计算的内容见上方明细。', '數值僅反映已支援的效果。未計算的內容見上方明細。')}</p>
         </section>

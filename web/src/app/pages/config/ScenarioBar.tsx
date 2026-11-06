@@ -19,7 +19,7 @@ export function ScenarioBar({ session, lang, calc, presets = null, inherited = {
   const current = resolveEnemyTier(session.calcParams.enemy_tier, session.calcParams.config_inputs);
   return <div className="cfg-scenario" role="group" aria-label={w('Enemy tier', '敌人档位', '敵人檔位')}>
     <span className="cfg-scenario-label">{w('Enemy tier', '敌人档位', '敵人檔位')}</span>
-    <div className="cfg-presets">
+    <div className="cfg-presets segmented">
       {SCENARIOS.map(scenario => <AppButton key={scenario.tier} type="button" className="cfg-preset" aria-pressed={current === scenario.tier}
         disabled={session.busy} onClick={() => { if (current !== scenario.tier) session.updateParams({ enemy_tier: scenario.tier as EnemyTier }); }}>
         {enemyTierLabel(lang, scenario.tier)}
