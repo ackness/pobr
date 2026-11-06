@@ -1,7 +1,7 @@
 import { act, isValidElement, useLayoutEffect, type ComponentProps, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import type { BuildSession } from '../../hooks/useBuildSession';
+import { useBuildSession, type BuildSession } from '../../hooks/useBuildSession';
 import type { CalculateBuildResponse, GemCatalogEntry, SkillMetricsEntry } from '../../api/types';
 import type { SupportMetadata } from '../../lib/supportOptimizer';
 import { SkillsPanel } from './SkillsPanel';
@@ -11,14 +11,17 @@ import { Overview } from '../../app/Overview';
 import { ResultsRail } from '../../app/ResultsRail';
 import { bindT } from '../../lib/i18n';
 import { AppSelect, type AppSelectOption } from '../shared/AppSelect';
+import { defaultStarterSession } from '../../lib/buildWorkspace';
 
 const ui = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], inputs: [] as ComponentProps<'input'>[],
-  gems: [] as GemCatalogEntry[], trade: [] as SupportMetadata[], optimize: vi.fn(), metrics: vi.fn(),
+  gems: [] as GemCatalogEntry[], trade: [] as SupportMetadata[], optimize: vi.fn(), metrics: vi.fn(), calculate: vi.fn(),
   pickers: [] as { placeholder: string; entries: GemCatalogEntry[] }[], ranks: [] as ComponentProps<'button'>[],
   selects: [] as { value?: string; open?: boolean; onOpenChange?: (open: boolean) => void }[],
   mainOptions: [] as AppSelectOption[] }));
 vi.mock('../../api/backend', () => ({ getBackend: async () => ({ gemCatalog: async () => ui.gems, gemDescriptions: async () => null,
-  skillMetrics: ui.metrics, supportGroupsCompatible: async (groups: unknown[]) => groups.map(() => true) }) }));
+  skillMetrics: ui.metrics, calculateBuild: ui.calculate, init: async () => {}, gameLocales: async () => [],
+  loadTreeMeta: async () => ({ classes: [{ name: 'Witch' }] }), loadClassNames: async () => ({ classes: {}, ascendancies: {} }),
+  supportGroupsCompatible: async (groups: unknown[]) => groups.map(() => true) }) }));
 vi.mock('../../lib/tradeOptimizer', () => ({ loadTradeCatalog: async () => ({ gems: ui.trade }) }));
 vi.mock('../../lib/supportOptimizer', async original => ({ ...await original<typeof import('../../lib/supportOptimizer')>(), optimizeSupports: ui.optimize }));
 vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: { preset: 'dps' }, setGoal: () => {} }) }));
@@ -107,7 +110,7 @@ class HostDocument {
   documentElement = new HostNode('HTML', this);
   body = new HostNode('BODY', this);
   activeElement = this.body;
-  defaultView = { HTMLIFrameElement: class {} };
+  defaultView = { HTMLIFrameElement: class {}, addEventListener() {}, removeEventListener() {} };
   createElement(tag: string) { return new HostNode(tag.toUpperCase(), this); }
   createElementNS(_namespace: string, tag: string) { return this.createElement(tag); }
   createTextNode(text: string) { const node = new HostNode('#text', this); node.nodeType = 3; node.textContent = text; return node; }
@@ -120,9 +123,11 @@ beforeEach(() => {
   vi.stubGlobal('document', document);
   vi.stubGlobal('window', document.defaultView);
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-  vi.stubGlobal('localStorage', { getItem: () => null });
+  vi.stubGlobal('localStorage', { getItem: () => null, setItem() {} });
   ui.buttons = []; ui.inputs = []; ui.pickers = []; ui.selects = []; ui.ranks = []; ui.gems = []; ui.trade = []; ui.mainOptions = [];
   ui.metrics.mockReset().mockResolvedValue({ skills: [] });
+  ui.calculate.mockReset().mockResolvedValue({ stats: [], main_skill: null, unsupported_modifiers: [], item_errors: [],
+    minions: [], breakdowns: {}, breakdown_descriptors: {} });
   ui.optimize.mockReset().mockResolvedValue({ baseline: { CombinedDPS: 100 }, baselineUnsupported: [], plans: [], excluded: [], candidates: 0, evaluated: 0, unmodeled: 0 });
   host = document.createElement('div');
   root = createRoot(host as unknown as HTMLElement);
@@ -138,7 +143,7 @@ it('remounts same-skill editors when switching groups and on revision changes, r
   const groups = [5, 2].map(count => ({ enabled: true, gems: [{ skill_id: fire.skill_id, level: 20, quality: 0 },
     ...supports.slice(0, count).map(gem => ({ skill_id: gem.skill_id, level: 1, quality: 0 }))] }));
   const session = { socketGroups: groups, calcParams: { main_socket_group: 0 }, character: { level: 100 }, busy: false,
-    calc: { main_skill: {}, stats: [] }, annotations: {}, items: [], library: { skillSets: [] }, socketGroupRevision: 1, stateVersion: 1,
+    calc: { main_skill: {}, stats: [] }, annotations: {}, items: [], library: { skillSets: [] }, socketGroupRevision: 1, stateVersion: 1, calculationScope: {},
     currentRequest: () => ({ socket_groups: groups }),
     updateParams: (patch: object) => { Object.assign(session.calcParams, patch); root.render(<SkillsPanel session={session} lang="en-US" active />); },
   } as unknown as BuildSession;
@@ -172,7 +177,7 @@ it('remounts same-skill editors when switching groups and on revision changes, r
 
 type Snapshot = ReturnType<typeof useSharedSkillMetrics>;
 function metricsSession(): BuildSession {
-  return { stateVersion: 1, socketGroupRevision: 1, busy: false,
+  return { calculationScope: {}, stateVersion: 1, socketGroupRevision: 1, busy: false,
     socketGroups: [{ enabled: true, gems: [] }], currentRequest: () => ({ socket_groups: [] }),
   } as unknown as BuildSession;
 }
@@ -465,4 +470,52 @@ it('shares pending and completed batches across the real rail, Overview and Skil
   expect(ranks().every(button => !button.disabled)).toBe(true);
   ranks().find(button => !button['aria-pressed'])!.onClick!({} as never);
   expect(session.inspectSkill).toHaveBeenLastCalledWith(1, 1, 3);
+});
+
+it.each([false, true])('shares metrics across annotation edits and navigation with the batch completed=%s', async completed => {
+  vi.useFakeTimers();
+  const saved = defaultStarterSession('Witch');
+  saved.state.socketGroups = consumerSession().socketGroups;
+  saved.state.params.main_socket_group = 0;
+  let session!: BuildSession;
+  function Workspace({ page }: { page: 'overview' | 'skills' }) {
+    session = useBuildSession();
+    return <>{rail(session)}{page === 'overview'
+      ? <Overview session={session} view={{ calc: session.calc, previous: null, stale: false }} lang="en-US" navigate={idle} focusStat={idle} />
+      : <SkillsPanel session={session} lang="en-US" active />}</>;
+  }
+  const render = async (page: 'overview' | 'skills') => {
+    await act(async () => root.render(<Workspace page={page} />));
+  };
+  await render('skills');
+  await act(async () => { session.importSession(JSON.stringify(saved)); });
+  expect(session.bootError).toBeNull();
+  expect(session.busy).toBe(false);
+  let resolve!: (report: { skills: SkillMetricsEntry[] }) => void;
+  ui.metrics.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+  await debounceMetrics();
+  expect(ui.metrics).toHaveBeenCalledOnce();
+  if (completed) await act(async () => { resolve({ skills: skillRows([100, 200]) }); });
+
+  const { currentRequest, calculationScope, stateVersion } = session;
+  const request = currentRequest();
+  await act(async () => { session.setAnnotation('skill:0', 'Keep this skill for bosses.'); });
+  expect(session.annotations['skill:0']).toBe('Keep this skill for bosses.');
+  expect(session.currentRequest).not.toBe(currentRequest);
+  expect(session.currentRequest()).toEqual(request);
+  expect(session.calculationScope).toBe(calculationScope);
+  expect(session.stateVersion).toBe(stateVersion);
+  await render('overview'); await debounceMetrics();
+  expect(ui.metrics).toHaveBeenCalledOnce();
+  if (!completed) await act(async () => { resolve({ skills: skillRows([100, 200]) }); });
+  expect(nodeWith('aria-labelledby', 'ov-skills').getAttribute('aria-busy')).toBe('false');
+  await render('skills'); await debounceMetrics();
+  expect(ui.metrics).toHaveBeenCalledOnce();
+
+  await act(async () => { session.setCharacter({ level: 99 }); });
+  expect(session.calculationScope).toBe(calculationScope);
+  expect(session.stateVersion).toBe(stateVersion + 1);
+  await debounceMetrics();
+  expect(ui.metrics).toHaveBeenCalledTimes(2);
+  expect(ui.metrics.mock.calls[1][0]).toMatchObject({ character: { level: 99 } });
 });

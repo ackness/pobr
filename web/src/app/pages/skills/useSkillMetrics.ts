@@ -10,20 +10,21 @@ export interface SkillMetricsSnapshot {
 }
 
 let latestMetrics: {
-  request: BuildSession['currentRequest'];
+  scope: BuildSession['calculationScope'];
   version: number;
   revision: number;
   result: Promise<SkillMetricsSnapshot>;
 } | undefined;
 
 export function requestSkillMetrics(session: BuildSession): Promise<SkillMetricsSnapshot> | undefined {
-  const { currentRequest, stateVersion, socketGroupRevision } = session;
-  if (latestMetrics?.request === currentRequest && latestMetrics.version === stateVersion
+  const { calculationScope, currentRequest, stateVersion, socketGroupRevision } = session;
+  // apply advances the calculation version; annotation edits only replace currentRequest.
+  if (latestMetrics && latestMetrics.scope === calculationScope && latestMetrics.version === stateVersion
     && latestMetrics.revision === socketGroupRevision) return latestMetrics.result;
   const request = currentRequest();
   if (!request) return;
   const entry = {
-    request: currentRequest, version: stateVersion, revision: socketGroupRevision,
+    scope: calculationScope, version: stateVersion, revision: socketGroupRevision,
     result: getBackend().then(backend => backend.skillMetrics(request))
       .then(result => ({ revision: socketGroupRevision, skills: result.skills })),
   };

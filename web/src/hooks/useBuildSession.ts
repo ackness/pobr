@@ -246,7 +246,9 @@ export interface BuildSession {
   setAttributeChoices: (choices: Record<string, AttributeChoice>) => void;
   /** 当前完整计算请求（对比预览用：克隆后改一处再算一次）。 */
   currentRequest: () => CalculateBuildRequest | null;
-  /** 状态版本号（每次编辑 +1；hover 收益等缓存的失效键）。 */
+  /** Cache namespace: calculation versions are only unique within one session. */
+  calculationScope: object;
+  /** Calculation input revision; annotations, notes and unapplied drafts leave it unchanged. */
   stateVersion: number;
   /** 自上次导入 / 切换 loadout 以来是否有编辑（切换会整份覆盖，据此提醒）。 */
   isDirty: boolean;
@@ -804,6 +806,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const libraryRef = useRef(library);
   const librarySyncedRef = useRef(initialLibrary);
   const [stateVersion, setStateVersion] = useState(0);
+  const calculationScope = useRef({});
   const [attributed, setAttributed] = useState<{ state: BuildState; fields: string[]; report: AttributionResponse } | null>(null);
   const calc = calculated?.version === stateVersion ? calculated.result : null;
   const calcMs = calculated?.version === stateVersion ? calculated.ms : null;
@@ -1884,6 +1887,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     applyTreePlan,
     removeJewelSocket,
     currentRequest,
+    calculationScope: calculationScope.current,
     stateVersion,
     isDirty: stateVersion > cleanVersionRef.current || notes !== cleanNotesRef.current || hasDrafts,
     hasBuildContent: !!build || hasDrafts || !!notes.trim() || !!state && Boolean(
