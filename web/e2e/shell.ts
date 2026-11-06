@@ -38,9 +38,6 @@ export async function openBuildMenu(page: Page, name?: string) {
   const rows = page.locator('.bd-list > li');
   const row = name ? rows.filter({ has: page.locator('.bd-build-select strong', { hasText: name }) })
     : rows.filter({ has: page.locator('.bd-build-select[aria-pressed="true"]') });
-  // A menu that opened a dialog unmounts only after the dialog's exit; reopening before then
-  // lets that late unmount close the new menu.
-  await expect(page.getByRole('menu')).toHaveCount(0);
   await row.locator('[data-slot="dropdown-menu-trigger"]').click();
 }
 

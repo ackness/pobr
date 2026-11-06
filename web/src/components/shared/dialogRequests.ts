@@ -1,4 +1,5 @@
 import type { Lang } from '../../lib/i18n';
+import { canRestoreDialogFocus } from './dialogFocus';
 
 export interface DialogRequest {
   id: number;
@@ -47,7 +48,7 @@ export class DialogRequests {
 }
 
 /** The caller may provide a persistent trigger when a menu item opens a dialog. */
-export function restoreDialogFocus(request: DialogRequest, event: Pick<Event, 'preventDefault'>) {
+export function restoreDialogFocus(request: DialogRequest, event: Pick<Event, 'preventDefault' | 'target'>) {
   event.preventDefault();
-  if (request.trigger?.isConnected) request.trigger.focus();
+  if (canRestoreDialogFocus(event) && request.trigger?.isConnected) request.trigger.focus();
 }
