@@ -195,7 +195,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
               <label className="cmp-toggle"><AppInput type="checkbox" checked={changedOnly} onChange={event => setChangedOnly(event.target.checked)} /> {tt('compare.changed')}</label>
               <p className="cmp-note">{tt('compare.percentHint')}</p>
             </div>
-            <div className="compare-table-wrap"><table><thead><tr><th scope="col">{tt('compare.summary')}</th><th scope="col">{tt('compare.before')}</th><th scope="col">{tt('compare.after')}</th><th scope="col">{tt('compare.delta')}</th><th scope="col">{tt('compare.percent')}</th></tr></thead>
+            {!(changedOnly && counts.stats === 0) && <div className="compare-table-wrap"><table><thead><tr><th scope="col">{tt('compare.summary')}</th><th scope="col">{tt('compare.before')}</th><th scope="col">{tt('compare.after')}</th><th scope="col">{tt('compare.delta')}</th><th scope="col">{tt('compare.percent')}</th></tr></thead>
             {sections.map(section => {
               const rows = section.rows.map(def => ({ def, row: value.stats.find(row => row.id === def.id) }))
                 .filter(({ row }) => row && (!changedOnly || row.changed));
@@ -205,9 +205,9 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
                   <td className="cmp-delta" data-tone={tone} data-label={tt(isPercentageStat(def.format) ? 'compare.points' : 'compare.delta')} aria-label={isPercentageStat(def.format) ? `${tt('compare.points')}${lang === 'en-US' ? ': ' : '：'}${formatComparisonDelta(row.delta, def.format, lang)}` : undefined}>{formatComparisonDelta(row.delta, def.format, lang)}</td>
                   <td className="cmp-delta" data-tone={tone} data-label={tt('compare.percent')}>{row.percent === null ? '—' : `${row.percent > 0 ? '+' : ''}${formatNumber(row.percent, 1, 1)}%`}</td>
                 </tr>; })}</tbody>;
-            })}</table></div>
+            })}</table></div>}
             {changedOnly && counts.stats === 0 && <p className="cmp-none">{tt('compare.none')}</p>}
-            <p className="cmp-note">{tt('compare.basisHint')} · {session.dataVersion}</p>
+            <p className="cmp-note">{session.dataVersion ? tt('compare.basisHint').replace('{value}', session.dataVersion) : tt('compare.basisHint').replace(/\s*[(（]\{value\}[)）]/, '')}</p>
             <details className="cmp-details" open={[value.before, value.after].some(output => output.unsupported_modifiers.length || output.item_errors.length)}><summary>{tt('compare.diagnostics')}</summary>{[value.before, value.after].map((output, index) => <div key={index}>
               <strong>{index === 0 ? 'A' : 'B'} · {tt('sidebar.mainSkill')}{lang === 'en-US' ? ': ' : '：'}{output.main_skill ? skillDisplayName(output.main_skill.skill_id, lang, catalog) : absent}</strong>
               <UnincludedModifiers lines={output.unsupported_modifiers} lang={lang} /><ul>{output.item_errors.map((error, i) => <li key={i}>{slotLabel(lang, error.slot)}{lang === 'en-US' ? ': ' : '：'}{error.message}</li>)}</ul>

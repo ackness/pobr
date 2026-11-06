@@ -65,7 +65,7 @@
     "compare.basis": "Calculation config",
     "compare.own": "Each stage’s own config",
     "compare.useA": "Use A’s config for both",
-    "compare.basisHint": "Both use the current data and effective calculation mode. Configuration includes enemy tier and custom modifiers; sharing it changes this preview only.",
+    "compare.basisHint": "Both use the current data ({value}) and effective calculation mode. Configuration includes enemy tier and custom modifiers; sharing it changes this preview only.",
     "compare.changed": "Only changed stats",
     "compare.delta": "Change",
     "compare.percent": "% of A",

@@ -65,7 +65,7 @@
     "compare.basis": "计算配置",
     "compare.own": "各阶段自己的配置",
     "compare.useA": "两者都使用 A 的配置",
-    "compare.basisHint": "两者使用当前数据及有效计算模式。配置包含敌人等级与自定义词缀；共用仅影响此预览。",
+    "compare.basisHint": "两者使用当前数据（{value}）及有效计算模式。配置包含敌人等级与自定义词缀；共用仅影响此预览。",
     "compare.changed": "只显示变动属性",
     "compare.delta": "变化",
     "compare.percent": "相对 A 的 %",

@@ -138,6 +138,8 @@
     .shell-root .cmp-tree-stage { grid-template-columns: minmax(0, 1fr); }
   }
   @container shell-container (max-width: 40rem) {
+    /* Tighter tabs keep all five sections on one row at phone width; larger text still wraps. */
+    .shell-root .cmp-tab { padding-inline: .5rem; }
     .shell-root .cmp-panel .compare-pair { grid-template-columns: minmax(0, 1fr); }
     .shell-root .cmp-summary { gap: .2rem .9rem; }
     .shell-root .cmp-stats table { display: block; table-layout: fixed; font-size: .7rem; }

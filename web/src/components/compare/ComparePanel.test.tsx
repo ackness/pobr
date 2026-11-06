@@ -146,6 +146,20 @@ test('table changes are after minus before and lower costs are coloured as impro
   expect(html).toMatch(/class="cmp-bar"><div class="cmp-stages"[^]*?<\/div><\/div><div class="cmp-context"/);
 });
 
+test('identical sides show one no-differences line instead of an empty table', () => {
+  const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Later');
+  const [a, b] = workspace.builds[0].stages;
+  ui.values = [a.id, b.id, 'own', true, '', 'stats', {
+    key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
+    value: { stats: [{ id: 'Life', before: 100, after: 100, delta: 0, percent: 0, changed: false }],
+      before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
+  }];
+  const html = render({ workspace, dataVersion: '0.5.5.5', applyComparedStage: vi.fn() } as unknown as BuildSession);
+  expect(html).not.toContain('<thead>');
+  expect(html).toContain('class="cmp-none"');
+  expect(html).toContain('current data (0.5.5.5)');
+});
+
 test.each(['zh-CN', 'zh-TW'] as const)('items and character identities reuse localized displays in %s', lang => {
   const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Later');
   const [a, b] = workspace.builds[0].stages;

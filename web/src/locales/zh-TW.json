@@ -65,7 +65,7 @@
     "compare.basis": "計算配置",
     "compare.own": "各階段自己的配置",
     "compare.useA": "兩者都使用 A 的配置",
-    "compare.basisHint": "兩者使用目前資料及有效計算模式。配置包含敵人等級與自訂詞綴；共用僅影響此預覽。",
+    "compare.basisHint": "兩者使用目前資料（{value}）及有效計算模式。配置包含敵人等級與自訂詞綴；共用僅影響此預覽。",
     "compare.changed": "只顯示變動屬性",
     "compare.delta": "變化",
     "compare.percent": "相對 A 的 %",
