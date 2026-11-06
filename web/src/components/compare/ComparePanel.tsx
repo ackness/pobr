@@ -65,7 +65,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
       onClick={() => apply(section)}>{tt(!hasSource ? 'compare.emptySource' : append ? 'compare.append' : 'compare.apply')}</AppButton>;
   };
   const sections = [{ title: { 'en-US': t('en-US', 'sidebar.mainSkill'), 'zh-TW': t('zh-TW', 'sidebar.mainSkill'), 'zh-CN': t('zh-CN', 'sidebar.mainSkill') },
-    rows: ([['MainSkillHitDPS', 'sidebar.hitDps'], ['MainSkillDotDPS', 'sidebar.dotDps'], ['MainSkillCombinedDPS', 'sidebar.combinedDps']] as const)
+    rows: ([['MainMinionDPS', 'skills.minionDps'], ['MainSkillHitDPS', 'sidebar.hitDps'], ['MainSkillDotDPS', 'sidebar.dotDps'], ['MainSkillCombinedDPS', 'sidebar.combinedDps']] as const)
       .map(([id, label]) => ({ id, label: { 'en-US': t('en-US', label), 'zh-TW': t('zh-TW', label), 'zh-CN': t('zh-CN', label) }, format: 'float2' as const })),
   }, ...STAT_SECTIONS];
   const absent = tt('compare.notSet');

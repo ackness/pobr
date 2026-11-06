@@ -43,6 +43,8 @@ dps、life、armour、evasion、energy_shield，以及 stats、breakdowns、brea
 
 main_minion_index 由 reference_check::main_skill_minion 按提供效果的准确宝石和召唤来源定位。
 同名召唤宝石各有结果，主组停用时无主召唤物。明细均带 actor。
+stats 另含 `MainMinionDPS`（Offence）：主召唤物单只击中 DPS，不乘数量；无主召唤物时缺省。
+节点强度、变体比较和归因也接受这个 id。
 
 | 请求字段 | 行为 |
 |---|---|

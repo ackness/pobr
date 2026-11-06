@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CalculateBuildRequest, PassiveNode } from '../api/types';
 import { connectedAllocation } from './passiveGraph';
 import { scoreOf, type EvaluateOptions, type Objective } from './optimize';
-import { allocationPaths, passivePlanAllocation, passivePlanningContext, planPassiveUpgrades, refundableBranches, withTravelAttributes, type PassivePlanningContext } from './passivePlanner';
+import { allocationPaths, passivePlanAllocation, passivePlanningContext, planPassiveUpgrades, uniquePassivePlans, refundableBranches, withTravelAttributes, type PassivePlanningContext } from './passivePlanner';
 
 const node = (skill: number, connections: number[] = [], extra: Partial<PassiveNode> = {}): PassiveNode => ({
   skill, id: String(skill), name: skill === 1 ? 'WITCH' : `Node ${skill}`, kind: 'normal', connections, ...extra,
@@ -350,4 +350,12 @@ describe('passive upgrade planner', () => {
       expect(plan.allocate.length).toBeLessThanOrEqual(plan.deallocate.length);
     }
   });
+});
+
+
+it('merges identical plan allocations regardless of target or node order and keeps distinct routes', () => {
+  const first = { target: 2, allocate: [2, 3], deallocate: [8, 9], stats: { Life: 120 } };
+  const duplicate = { target: 3, allocate: [3, 2], deallocate: [9, 8], stats: { Life: 120 } };
+  const different = { target: 3, allocate: [4, 3], deallocate: [9, 8], stats: { Life: 120 } };
+  expect(uniquePassivePlans([first, duplicate, different])).toEqual([first, different]);
 });
