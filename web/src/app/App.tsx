@@ -119,6 +119,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const main = useRef<HTMLElement>(null);
   const [shellEl, setShellEl] = useState<HTMLElement | null>(null);
   const docked = useShellRems(shellEl) >= 94;
+  const skipInspectorRestore = useRef(false);
   const [inspect, setInspect] = useState<string | null>(null);
   const jobs = useActiveJobCount();
   const { pinned, toggle: togglePin } = usePinnedStats();
@@ -195,7 +196,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
     {NAV_GROUPS.map((group, index) => <Fragment key={index}>{index > 0 && <span className="shell-tab-divider" aria-hidden="true" />}{group.map(page => link(page, withIcons))}</Fragment>)}</nav>;
   const brand = <a className="shell-brand" href={routePath('overview')} onClick={go('overview')}><span className="shell-brand-mark">P</span><strong>PoBR</strong><span className="shell-brand-version" title={`v${__POBR_APP_VERSION__} · ${session.dataVersion}`}>v{__POBR_APP_VERSION__}</span></a>;
   const inspector = inspect && <Suspense fallback={<div className="insp" role="status"><Skeleton className="h-6 w-1/2" /><Skeleton className="mt-4 h-40 w-full" /></div>}>
-    <Inspector session={session} view={view} lang={lang} id={inspect} onClose={() => setInspect(null)} onOpenCalcs={focusStat} pinned={pinned.includes(inspect)} onTogglePin={() => togglePin(inspect)} /></Suspense>;
+    <Inspector session={session} view={view} lang={lang} id={inspect} onClose={() => setInspect(null)} onNavigate={() => { skipInspectorRestore.current = !docked; setInspect(null); }} onOpenCalcs={focusStat} pinned={pinned.includes(inspect)} onTogglePin={() => togglePin(inspect)} /></Suspense>;
   const panelLoading = <div role="status" className="shell-panel-loading"><Skeleton className="h-12 w-2/3" /><Skeleton className="h-64 w-full" /><p>{t(lang, 'ui.loadingPanel')}</p></div>;
   const shortcutKey = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
   const saveState = session.storageFailed ? w('Save failed', '保存失败', '儲存失敗') : session.busy ? w('Calculating', '计算中', '計算中') : t(lang, 'shell.saved');
@@ -253,7 +254,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
       <ChangeBar lang={lang} />
       {docked && inspector && <aside className="shell-inspector" aria-label={w('Why this number', '这个数从哪来', '這個數從哪來')}>{inspector}</aside>}
     </div>
-    <Sheet open={!docked && inspect !== null} onOpenChange={open => { if (!open) setInspect(null); }}><SheetContent className="shell-inspector-sheet" showCloseButton={false}><SheetHeader className="sr-only"><SheetTitle>{w('Why this number', '这个数从哪来', '這個數從哪來')}</SheetTitle><SheetDescription>{w('The calculation behind the selected value.', '所选数值背后的计算。', '所選數值背後的計算。')}</SheetDescription></SheetHeader>{inspector}</SheetContent></Sheet>
+    <Sheet open={!docked && inspect !== null} onOpenChange={open => { if (!open) setInspect(null); }}><SheetContent className="shell-inspector-sheet" showCloseButton={false} onCloseAutoFocus={event => { if (skipInspectorRestore.current) { event.preventDefault(); skipInspectorRestore.current = false; } }}><SheetHeader className="sr-only"><SheetTitle>{w('Why this number', '这个数从哪来', '這個數從哪來')}</SheetTitle><SheetDescription>{w('The calculation behind the selected value.', '所选数值背后的计算。', '所選數值背後的計算。')}</SheetDescription></SheetHeader>{inspector}</SheetContent></Sheet>
     <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} session={session} view={view} lang={lang} pageLabel={tabLabel} onNavigate={navigate} onInspect={inspectStat} onSettings={() => setSettingsOpen(true)}
       onToggleTheme={() => onPreferences({ ...preferences, theme: document.documentElement.classList.contains('dark') ? 'light' : 'dark' })} themeLabel={document.documentElement.classList.contains('dark') ? w('Switch to the light theme', '切换到浅色主题', '切換到淺色主題') : w('Switch to the dark theme', '切换到深色主题', '切換到深色主題')} />
     <ShortcutsDialog open={helpOpen} onOpenChange={setHelpOpen} lang={lang} pageLabel={tabLabel} />

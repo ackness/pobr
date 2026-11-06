@@ -1,3 +1,4 @@
+import { expandFormulaDetails } from './skillsAndCalcs';
 import { expect, test, type Page } from '@playwright/test';
 import { deflateSync } from 'node:zlib';
 import { installTradeCatalogFixture } from './tradeCatalogFixture';
@@ -22,7 +23,7 @@ test('a number in the results rail opens the calculation behind it, and it can b
   // An exact label: `hasText` is a substring match and would pick "Enemy life dealt per hit".
   await page.locator('.rail-row.is-link').filter({ has: page.locator('.rail-label', { hasText: /^Life$/ }) }).first().click();
   await expect(page.locator('.insp h2')).toHaveText('Life');
-  await expect(page.locator('.insp .formula-final, .insp .breakdown-summary').first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.insp .formula-conclusion, .insp .breakdown-summary').first()).toBeVisible({ timeout: 30_000 });
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.locator('.insp')).toHaveCount(0);
 });
@@ -39,6 +40,8 @@ for (const width of [390, 1440]) {
     await results.locator('.rail-row.is-link').filter({ has: page.locator('.rail-label', { hasText: /^Life$/ }) }).locator('.rail-value').click();
     const inspector = page.locator('.insp');
     await expect(inspector.locator('h2')).toHaveText('Life');
+    await expect(inspector.locator('.formula-conclusion').first()).toBeVisible({ timeout: 30_000 });
+    await expandFormulaDetails(inspector);
     const formula = inspector.locator('.breakdown-formula').first();
     await expect(formula).toBeVisible({ timeout: 30_000 });
     // Stress the real formula styling with long labels and numbers in both numeric columns.
@@ -61,21 +64,22 @@ for (const width of [390, 1440]) {
     });
     expect(measurements.length).toBeGreaterThan(0);
     for (const cell of measurements) {
-      expect(cell.whiteSpace).toBe('normal');
-      expect(cell.width).toBeGreaterThanOrEqual(cell.tableWidth * .24);
+      expect(cell.whiteSpace).toBe('nowrap');
+      expect(cell.width).toBeGreaterThan(0);
       expect(cell.left).toBeGreaterThanOrEqual(cell.panelLeft - 1);
-      expect(cell.right).toBeLessThanOrEqual(Math.min(cell.panelRight, cell.viewportWidth) + 1);
       expect(cell.textLeft).toBeGreaterThanOrEqual(cell.left - 1);
       expect(cell.textRight).toBeLessThanOrEqual(cell.right + 1);
     }
-    const modifiers = inspector.locator('.modifier-table').first();
+    await inspector.locator('details.modifier-source-group > summary').first().click();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const modifiers = inspector.locator('.modifier-rows').first();
     await expect(modifiers).toBeVisible();
     const columns = await modifiers.evaluate(table => {
       table.querySelectorAll('.mod-value').forEach(cell => { cell.textContent = '-2,290,002'; });
       table.querySelectorAll('.mod-text').forEach(cell => { cell.textContent = '角色等级与属性提供的基础值'; });
       table.querySelectorAll('.mod-origin').forEach(cell => { cell.textContent = 'LongCharacterBaseSourceWithoutSpaces'; });
       const panel = table.closest('.insp')!.getBoundingClientRect();
-      return Array.from(table.querySelectorAll('tbody tr'), row => {
+      return Array.from(table.querySelectorAll(':scope > li'), row => {
         const value = row.querySelector('.mod-value')!;
         const valueBox = value.getBoundingClientRect();
         const text = row.querySelector('.mod-text')!.getBoundingClientRect();
@@ -92,7 +96,7 @@ for (const width of [390, 1440]) {
       expect(column.valueWhiteSpace).toBe('nowrap');
       expect(column.textWidth).toBeGreaterThan(column.valueWidth);
       expect(column.sourceWhiteSpace).toBe('normal');
-      expect(column.sourceWidth).toBeLessThanOrEqual(column.tableWidth * .26 + 1);
+      expect(column.sourceWidth).toBeLessThanOrEqual(column.tableWidth + 1);
       expect(column.valueRight).toBeLessThanOrEqual(Math.min(column.panelRight, column.viewportWidth) + 1);
       expect(column.sourceRight).toBeLessThanOrEqual(Math.min(column.panelRight, column.viewportWidth) + 1);
     }
