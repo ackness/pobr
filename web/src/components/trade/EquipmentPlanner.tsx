@@ -1,3 +1,4 @@
+import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppSelectControl } from '../shared/controls';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -142,7 +143,7 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
           {!feasibleOf(plan.stats, objective) && <p className="delta-neg">{ut('constraintFail')}</p>}
           {(plan.error || !!plan.warnings?.length) && <p className="trade-notice">{ut('jointInvalid')} {plan.error ? reasonText(plan.error) : plan.warnings?.map(reasonText).join(', ')}</p>}
           {!!plan.unsupported.length && <details className="trade-notice"><summary>{ut('incomplete')} ({plan.unsupported.length})</summary>
-            <ul>{plan.unsupported.map((line, index) => <li key={index}>{line}</li>)}</ul></details>}
+            <UnincludedModifiers lines={plan.unsupported} lang={lang} /></details>}
           {!!chosen.length && <AppButton className="trade-primary" disabled={!active || busy || session.busy || !canApply} onClick={() => apply(plan)}>{ut('jointApply')}</AppButton>}
         </li>;
       })}</ol>
@@ -150,7 +151,7 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
         <ul>{rejected.map(plan => <li key={plan.candidateIds.join('/')}>
           {plan.candidateIds.map(id => { const candidate = candidates.find(value => value.id === id)!;
             return `${candidate.label} · ${slotLabel(lang, candidate.slot)}`; }).join(' + ')} · {plan.error ? reasonText(plan.error) : plan.warnings?.map(reasonText).join(', ')}
-          {!!plan.unsupported.length && <ul>{plan.unsupported.map((line, index) => <li key={index}>{line}</li>)}</ul>}
+          {!!plan.unsupported.length && <UnincludedModifiers lines={plan.unsupported} lang={lang} />}
         </li>)}</ul></details>}
       <p className="replacement-requirement-note">{ut('requirementsNote')} {ut('jointLimits')}</p>
     </div>}

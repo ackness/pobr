@@ -1,3 +1,4 @@
+import { CONFIG_FIELD_EVENT, takeConfigField } from '../../lib/configNavigation';
 import { AppButton, AppInput, AppSelectControl, AppTextarea } from '../shared/controls';
 import { PartyEditor } from './PartyEditor';
 import { NamedSets } from '../shared/NamedSets';
@@ -362,14 +363,35 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
     ? words(lang, 'Relevant to this build', '与此 BD 相关', '與此 BD 相關') : configSectionLabel(lang, name);
 
   useEffect(() => {
+    const receive = () => {
+      if (!active || loadState !== 'ready') return;
+      const field = takeConfigField();
+      if (!field) return;
+      const option = options.find(option => option.var === field);
+      if (option) { setView('options'); openSetting(option); }
+    };
+    receive();
+    window.addEventListener(CONFIG_FIELD_EVENT, receive);
+    return () => window.removeEventListener(CONFIG_FIELD_EVENT, receive);
+    // The pending field is consumed only once the destination and catalog are ready.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, options, loadState]);
+
+  useEffect(() => {
     if (!focusTarget || session.busy) return;
+    const group = groups.find(group => group.options.some(option => option.var === focusTarget));
+    if (group && selectedSection !== group.name) {
+      setSelectedSection(group.name);
+      setOpenSections(previous => new Set([...previous, group.name]));
+      return;
+    }
     const control = document.getElementById(`config-${focusTarget}`);
     if (control instanceof HTMLElement) {
       control.focus({ preventScroll: true });
       control.scrollIntoView({ block: 'center' });
     }
     setFocusTarget(null);
-  }, [focusTarget, groups, session.busy]);
+  }, [focusTarget, groups, session.busy, selectedSection]);
 
   const searching = query.trim() !== '';
   const activeSection = groups.find(group => group.name === selectedSection)?.name ?? groups[0]?.name;

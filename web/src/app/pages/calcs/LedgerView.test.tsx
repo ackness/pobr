@@ -23,7 +23,7 @@ test('the ledger opens on one call to action and does not run the slow check by 
 });
 
 test.each([
-  ['zh-CN', '检查词条', '词条账本'],
+  ['zh-CN', '检查词缀', '词缀账本'],
   ['zh-TW', '檢查詞綴', '詞綴帳本'],
 ] as const)('the ledger speaks %s', (lang, action, title) => {
   const html = renderToStaticMarkup(<UiProvider lang={lang}><TooltipProvider><LedgerView session={session} lang={lang} /></TooltipProvider></UiProvider>);
