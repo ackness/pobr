@@ -1,13 +1,14 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test, vi } from 'vitest';
-import type { ConfigOption } from '../../api/types';
+import type { EnemyPresets } from '../../api/enemyPresets';
+import type { CalculateBuildResponse, ConfigOption } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { ConfigPanel } from './ConfigPanel';
 
 // Replay the panel's state and actual control handlers in the SSR test environment.
 // Child rows can render their own draft state, but only panel state is persisted.
-const harness = vi.hoisted(() => ({ index: 0, values: [] as unknown[],
+const harness = vi.hoisted(() => ({ presets: null as EnemyPresets | null, index: 0, values: [] as unknown[],
   category: undefined as ComponentProps<'select'> | undefined,
   search: undefined as ComponentProps<'input'> | undefined,
   inputs: new Map<string, ComponentProps<'input'>>(),
@@ -25,6 +26,7 @@ vi.mock('react', async original => ({
     }];
   },
 }));
+vi.mock('../../hooks/useEnemyPresets', () => ({ useEnemyPresets: () => harness.presets }));
 vi.mock('../../hooks/useSkillName', () => ({ useSkillName: () => (id: string) => id }));
 vi.mock('../shared/NamedSets', () => ({ NamedSets: () => null }));
 vi.mock('./PartyEditor', () => ({ PartyEditor: () => null }));
@@ -60,6 +62,56 @@ vi.mock('../shared/controls', () => ({
 afterEach(() => {
   harness.inputs.clear();
   harness.restore = undefined;
+  harness.presets = null;
+});
+
+test('quick checks use current values and sources, and change damage checks to the calculated minion', () => {
+  harness.presets = { max_enemy_level: 85, tiers: [{ id: 'Pinnacle', min_level: 82, elemental_resist_bonus: 50, chaos_resist_bonus: 0,
+    armour_mult_pct: { base: 100, num: 0, den: 1 }, evasion_mult_pct: { base: 100, num: 0, den: 1 }, enemy_mods: [] }] };
+  const options: ConfigOption[] = [
+    { var: 'conditionEnemyShocked', label: 'Enemy shocked', input_type: 'check' },
+    { var: 'enemyFireResist', label: 'Enemy fire resistance', input_type: 'count', default: { placeholder_number: 50 } },
+    { var: 'enemyPhysicalReduction', label: 'Enemy physical reduction', input_type: 'count' },
+  ];
+  harness.values = ['options', null, options, 'ready', 0, '', 'all', null,
+    new Set(['General']), {}, {}];
+  const calc = { main_skill: { skill_id: 'Fireball', hit_damage: [{ damage_type: 'Fire', avg: 100 }] } } as CalculateBuildResponse;
+  const session = { calcParams: { config_inputs: {}, enemy_tier: 'pinnacle' }, calc, busy: false,
+    setConfigInput: vi.fn(), stateVersion: 1 } as unknown as BuildSession;
+  const render = () => {
+    harness.index = 0;
+    return renderToStaticMarkup(<ConfigPanel session={session} lang="en-US" />);
+  };
+  const quick = (html: string) => html.match(/<ul class="config-quick-list">[\s\S]*?<\/ul>/)![0];
+  expect(quick(render())).toContain('Inherited from Pinnacle Boss');
+  expect(quick(render())).toContain('>50%</output>');
+  expect(harness.inputs.get('config-enemyFireResist')!.placeholder).toBe('50 (Inherited from Pinnacle Boss)');
+  expect(quick(render())).toContain('>Off</output>');
+  expect(quick(render())).not.toMatch(/false|Boolean/);
+  session.calcParams.config_inputs = { enemyFireResist: 0 };
+  expect(quick(render())).toContain('Your setting');
+  expect(quick(render())).toContain('>0%</output>');
+  session.build = { config_inputs: { enemyFireResist: 0 } } as unknown as BuildSession['build'];
+  expect(quick(render())).toContain('Imported setting');
+  session.calcParams.enemy_tier = 'none';
+  session.calcParams.config_inputs = {};
+  expect(quick(render())).toContain('Inherited from Mapping');
+  session.calcParams.config_inputs = { enemyFireResist: 50 };
+  session.build = undefined as unknown as BuildSession['build'];
+  harness.restore = undefined;
+  render();
+  // A catalog placeholder matching the explicit value must not remove Restore.
+  expect(harness.restore).toBeTypeOf('function');
+  session.calcParams.config_inputs = {};
+  calc.main_minion_index = 7;
+  calc.minions = [{ index: 7, minion_id: 'wolf', name: 'Wolf', summoned_by: 'WolfPackPlayer', skill_id: 'Bite', level: 85,
+    dps: 10, life: 100, armour: 10, evasion: 10, energy_shield: 0, stats: { TotalDPS: 10 }, breakdowns: {} }];
+  const minionChecks = quick(render());
+  expect(minionChecks).toContain('data-config-var="enemyPhysicalReduction"');
+  expect(minionChecks).toContain('data-config-var="enemyFireResist"');
+  expect(minionChecks).not.toContain('Calculated skill hit damage');
+  expect(render()).toContain('The result does not report the main minion’s hit damage types.');
+  expect(session.setConfigInput).not.toHaveBeenCalled();
 });
 
 test('mobile category selection narrows Modified results and exits search without changing scope', () => {

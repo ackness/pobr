@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import type { EnemyTier } from '../../../api/types';
+import type { CalculateBuildResponse, EnemyTier } from '../../../api/types';
 import type { BuildSession } from '../../../hooks/useBuildSession';
 import { UiProvider } from '../../../components/shared/UiContext';
 import { TooltipProvider } from '../../../components/ui/tooltip';
@@ -14,6 +14,15 @@ const render = (tier: EnemyTier | undefined, lang: 'en-US' | 'zh-CN' | 'zh-TW' =
 const pressed = (html: string) => [...html.matchAll(/aria-pressed="(true|false)"[^>]*>([^<]*)</g)].filter(match => match[1] === 'true').map(match => match[2]);
 
 describe('ScenarioBar', () => {
+  it('puts the energy mapping explanation beside the tier picker without inventing preset values', () => {
+    const calc = { main_skill: { group_index: 0 }, energy_trigger: { maximum_energy: 100, source: 'SparkPlayer', at_own_rate: false } } as CalculateBuildResponse;
+    const html = renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider>
+      <ScenarioBar lang="en-US" calc={calc} session={{ socketGroups: [{ enabled: true, gems: [{ skill_id: 'MetaCastOnCritPlayer' }] }, { enabled: true, gems: [{ skill_id: 'SparkPlayer' }] }], calcParams: { enemy_tier: 'none', config_inputs: {} } } as unknown as BuildSession} />
+    </TooltipProvider></UiProvider>);
+    expect(html).toContain('Mapping is calculated against one normal monster (power 1); clearing packs fills energy faster');
+    expect(html).not.toContain('armour');
+    expect(render('none')).not.toContain('clearing packs');
+  });
   it('presses exactly the preset that matches the enemy tier', () => {
     expect(pressed(render('boss'))).toEqual(['Boss']);
     expect(pressed(render('none'))).toEqual(['Mapping']);

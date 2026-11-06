@@ -8,9 +8,12 @@ import { getBackend } from '../../api/backend';
 import type { CalculateBuildResponse, ConfigInputValue, ConfigOption, CustomModifierBlock } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useSkillName } from '../../hooks/useSkillName';
+import { useEnemyPresets } from '../../hooks/useEnemyPresets';
 import { bindT, configSectionLabel, damageTypeLabel, t, type Lang } from '../../lib/i18n';
 import { CONFIG_LABEL_ZH, configLabel, configListOptionLabel, configTooltip } from '../../lib/configLabels';
-import { configDefaultValue, configValueDiffers } from '../../lib/configDefaults';
+import { configValueDiffers } from '../../lib/configDefaults';
+import { encounterHitTypes, encounterInheritedValues, encounterTierLabel, encounterValue, encounterValueLabel, inheritsEnemyValue } from '../../lib/configEncounter';
+import { resolveEnemyTier } from '../../app/enemy';
 import { configApplicability, configExistsInGame, configVisibilityInputs, type Applicability } from '../../lib/configVisibility';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { workflowLabel } from './workflowLabels';
@@ -85,6 +88,8 @@ export function OptionRow({
   option,
   value,
   overridden,
+  inheritedLabel,
+  inheritedValue,
   busy,
   lang,
   listLabels,
@@ -95,6 +100,8 @@ export function OptionRow({
   option: ConfigOption;
   value: ConfigInputValue | undefined;
   overridden: boolean;
+  inheritedLabel?: string;
+  inheritedValue?: number;
   busy: boolean;
   lang: Lang;
   listLabels: Record<string, string>;
@@ -105,105 +112,105 @@ export function OptionRow({
   const tt = bindT(lang);
   const label = optionLabel(lang, option);
   const tooltip = configTooltip(lang, option.var, option.tooltip);
-  const fallback = configDefaultValue(option);
+  const fallback = encounterValue(option, undefined, inheritedValue === undefined ? {} : { [option.var]: inheritedValue });
   const effective = value ?? fallback;
   const [draft, setDraft] = useState(String(value ?? ''));
   useEffect(() => setDraft(String(value ?? '')), [value]);
   return (
-    <div className={`config-item${overridden ? ' is-overridden' : ''}`} data-config-var={option.var}>
-      <div className="config-description">
-        <label className="config-key" htmlFor={`config-${option.var}`}>{label}</label>
-        <details className="config-option-help">
-          <summary>{workflowLabel(lang, 'help')}</summary>
-          {tooltip && <p className="config-help" id={`config-help-${option.var}`}>{stripColorCodes(tooltip)}</p>}
-          {tooltip && lang !== 'en-US' && tooltip === option.tooltip && <p className="config-source">{workflowLabel(lang, 'sourceHelp')}</p>}
-          <span className="config-source">{workflowLabel(lang, 'rawKey')}</span>
-          <code className="config-raw-key">{option.var}</code>
-          <span className="config-source">{tt(value === undefined ? 'config.sourceDefault' : 'config.sourceSaved')}</span>
-          {value !== undefined && <span className="config-source config-saved-type">
-            {workflowLabel(lang, typeof value as 'boolean' | 'number' | 'string')}: <code>{JSON.stringify(value)}</code>
-          </span>}
-        </details>
-        {applicability !== 'applicable' && <span className="config-applicability">
-          {tt(applicability === 'unknown' ? 'config.applicabilityUnknown' : 'config.notApplicable')}
-          {value !== undefined && <> · {tt('config.savedRetained')}</>}
-        </span>}
-      </div>
-      {option.input_type === 'check' ? (
-        <AppInput
-          id={`config-${option.var}`}
-          aria-describedby={tooltip ? `config-help-${option.var}` : undefined}
-          type="checkbox"
-          checked={typeof effective === 'number' ? effective !== 0 : effective === true}
-          disabled={busy}
-          onChange={(e) => onChange(e.target.checked)}
-          aria-label={label}
-        />
-      ) : option.input_type === 'list' ? (
-        <AppSelectControl
-          className="w-full"
-          id={`config-${option.var}`}
-          aria-describedby={tooltip ? `config-help-${option.var}` : undefined}
-          value={String(effective ?? '')}
-          disabled={busy}
-          onChange={(e) => onChange(e.target.value)}
-          aria-label={label}
-        >
-          {!(option.list_options ?? []).some(opt => String(opt.value) === String(effective ?? '')) &&
-            <option value={String(effective ?? '')}>{effective === undefined ? workflowLabel(lang, 'unset') : String(effective)}</option>}
-          {(option.list_options ?? []).map((opt) => {
-            const en = stripColorCodes(opt.label);
-            const zh = lang !== 'en-US'
-              ? en.split(/\r?\n/).map(line => {
-                const text = line.trim();
-                return configListOptionLabel(lang, text) ?? listLabels[text] ?? text;
-              }).join(' / ')
-              : en;
-            return (
-              <option key={opt.value} value={opt.value}>
-                {zh}
-              </option>
-            );
-          })}
-        </AppSelectControl>
-      ) : (
-        <AppInput
-          id={`config-${option.var}`}
-          aria-describedby={tooltip ? `config-help-${option.var}` : undefined}
-          className="config-value"
-          type={option.input_type === 'text' || typeof value === 'string' || typeof value === 'boolean' ? 'text' : 'number'}
-          inputMode={option.input_type === 'text' ? undefined : 'decimal'}
-          step="any"
-          value={draft}
-          placeholder={
-            typeof fallback === 'number' || typeof fallback === 'string'
-              ? String(fallback)
-              : ''
-          }
-          disabled={busy}
-          aria-label={label}
-          onChange={event => setDraft(event.target.value)}
-          onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }}
-          onBlur={(e) => {
-            const raw = e.target.value;
-            if (raw === String(value ?? '')) return;
-            if (option.input_type === 'text') {
-              onChange(raw);
-            } else if (raw.trim() === '') {
-              setDraft(String(value ?? ''));
-              onReset();
-            } else if (raw.trim() !== '' && Number.isFinite(Number(raw))) {
-              if (Number(raw) !== value) onChange(Number(raw));
+    <div className={`config-item config-option-row${overridden ? ' is-overridden' : ''}`} data-config-var={option.var}>
+      <label className="config-key" htmlFor={`config-${option.var}`}>{label}</label>
+      <div className={`config-option-control${option.input_type === 'check' ? ' is-check' : ''}`}>
+        {option.input_type === 'check' ? (
+          <AppInput
+            id={`config-${option.var}`}
+            aria-describedby={tooltip ? `config-help-${option.var}` : undefined}
+            type="checkbox"
+            checked={typeof effective === 'number' ? effective !== 0 : effective === true}
+            disabled={busy}
+            onChange={(e) => onChange(e.target.checked)}
+            aria-label={label}
+          />
+        ) : option.input_type === 'list' ? (
+          <AppSelectControl
+            className="w-full"
+            id={`config-${option.var}`}
+            aria-describedby={tooltip ? `config-help-${option.var}` : undefined}
+            value={String(effective ?? '')}
+            disabled={busy}
+            onChange={(e) => onChange(e.target.value)}
+            aria-label={label}
+          >
+            {!(option.list_options ?? []).some(opt => String(opt.value) === String(effective ?? '')) &&
+              <option value={String(effective ?? '')}>{effective === undefined ? workflowLabel(lang, 'unset') : String(effective)}</option>}
+            {(option.list_options ?? []).map((opt) => {
+              const en = stripColorCodes(opt.label);
+              const zh = lang !== 'en-US'
+                ? en.split(/\r?\n/).map(line => {
+                  const text = line.trim();
+                  return configListOptionLabel(lang, text) ?? listLabels[text] ?? text;
+                }).join(' / ')
+                : en;
+              return (
+                <option key={opt.value} value={opt.value}>
+                  {zh}
+                </option>
+              );
+            })}
+          </AppSelectControl>
+        ) : (
+          <AppInput
+            id={`config-${option.var}`}
+            aria-describedby={tooltip ? `config-help-${option.var}` : undefined}
+            className="config-value"
+            type={option.input_type === 'text' || typeof value === 'string' || typeof value === 'boolean' ? 'text' : 'number'}
+            inputMode={option.input_type === 'text' ? undefined : 'decimal'}
+            step="any"
+            value={draft}
+            placeholder={
+              typeof fallback === 'number' || typeof fallback === 'string'
+                ? `${fallback}${inheritedLabel ? lang === 'en-US' ? ` (${inheritedLabel})` : `（${inheritedLabel}）` : ''}`
+                : inheritedLabel ?? ''
             }
-          }}
-        />
-      )}
+            disabled={busy}
+            aria-label={label}
+            onChange={event => setDraft(event.target.value)}
+            onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+            onBlur={(e) => {
+              const raw = e.target.value;
+              if (raw === String(value ?? '')) return;
+              if (option.input_type === 'text') {
+                onChange(raw);
+              } else if (raw.trim() === '') {
+                setDraft(String(value ?? ''));
+                onReset();
+              } else if (raw.trim() !== '' && Number.isFinite(Number(raw))) {
+                if (Number(raw) !== value) onChange(Number(raw));
+              }
+            }}
+          />
+        )}
+      </div>
       {overridden && (
         <AppButton className="config-reset" disabled={busy} title={tt('config.reset')}
           aria-label={`${tt('config.reset')}${lang === 'en-US' ? ': ' : '：'}${label}`} onClick={onReset}>
           ↺
         </AppButton>
       )}
+      <details className="config-option-help">
+        <summary>{workflowLabel(lang, 'help')}</summary>
+        {tooltip && <p className="config-help" id={`config-help-${option.var}`}>{stripColorCodes(tooltip)}</p>}
+        {tooltip && lang !== 'en-US' && tooltip === option.tooltip && <p className="config-source">{workflowLabel(lang, 'sourceHelp')}</p>}
+        <span className="config-source">{workflowLabel(lang, 'rawKey')}</span>
+        <code className="config-raw-key">{option.var}</code>
+        <span className="config-source">{value === undefined && inheritedLabel ? inheritedLabel : tt(value === undefined ? 'config.sourceDefault' : 'config.sourceSaved')}</span>
+        {value !== undefined && <span className="config-source config-saved-type">
+          {workflowLabel(lang, typeof value as 'boolean' | 'number' | 'string')}: <code>{JSON.stringify(value)}</code>
+        </span>}
+        {applicability !== 'applicable' && <span className="config-applicability">
+          {tt(applicability === 'unknown' ? 'config.applicabilityUnknown' : 'config.notApplicable')}
+          {value !== undefined && <> · {tt('config.savedRetained')}</>}
+        </span>}
+      </details>
     </div>
   );
 }
@@ -211,6 +218,7 @@ export function OptionRow({
 /** Config 页：敌人档位 + 内置配置目录（分区/搜索）+ build 原始 `<Input>` 高级区。 */
 export function ConfigPanel({ session, lang, settledCalc }: Props) {
   const tt = bindT(lang);
+  const presets = useEnemyPresets(session.dataVersion);
   const [view, setView] = useState('options');
   const skillName = useSkillName(lang);
   const [focusTarget, setFocusTarget] = useState<string | null>(null);
@@ -304,9 +312,14 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
 
   // Previous output remains visible while the baseline recalculates.
   const calculatedMain = calc?.main_skill;
+  const isMinion = calc?.main_minion_index != null;
+  const hitTypes = encounterHitTypes(calc);
+  const inherited = encounterInheritedValues(presets, resolveEnemyTier(session.calcParams.enemy_tier, inputs),
+    session.character?.level ?? session.build?.character?.level, inputs);
+  const tierLabel = encounterTierLabel(lang, session.calcParams.enemy_tier, inputs);
+  const inheritedLabel = tt('config.inheritedFrom').replace('{tier}', tierLabel);
   const quickOptions = QUICK_OPTIONS.flatMap(({ key, damageType }) => {
-    if (damageType && !calculatedMain?.hit_damage.some(part =>
-      part.damage_type === damageType && Number.isFinite(part.avg) && part.avg > 0)) return [];
+    if (damageType && !isMinion && !hitTypes.has(damageType)) return [];
     const option = options.find(candidate => candidate.var === key);
     return option ? [{ option, damageType }] : [];
   });
@@ -410,33 +423,31 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
         <p className="config-hint">{tt('config.quickHint')}</p>
         <p className="config-quick-context" role="status">
           {session.busy ? tt('config.quickUpdating')
-            : calculatedMain ? <>{tt('config.quickSkill')}{lang === 'en-US' ? ': ' : '：'}<span className="config-quick-skill">{skillName(calculatedMain.skill_id)}</span></>
+            : calculatedMain ? <>{tt(isMinion ? 'config.quickMinion' : 'config.quickSkill')}{lang === 'en-US' ? ': ' : '：'}<span className="config-quick-skill">{skillName(calculatedMain.skill_id)}</span></>
             : tt('config.quickUnavailable')}
         </p>
-        <p className="config-hint">{tt('config.quickScope')}</p>
+        <p className="config-hint">{tt(isMinion ? 'config.quickMinionScope' : 'config.quickScope')}</p>
         <ul className="config-quick-list">
           {quickOptions.map(({ option, damageType }) => {
             const raw = effective(option.var);
-            const value = raw ?? configDefaultValue(option);
-            const source = raw === undefined ? tt('config.quickDefault')
+            const value = encounterValue(option, raw, inherited);
+            const source = raw === undefined ? (inheritsEnemyValue(option) ? inheritedLabel : tt('config.quickDefault'))
               : isOverridden(option.var) || buildInputs[option.var] === undefined
                 ? tt('config.quickConfigured') : tt('config.quickImported');
-            const type = typeof value === 'boolean' ? tt('config.quickBoolean')
-              : typeof value === 'number' ? tt('config.quickNumber') : tt('config.quickString');
             const label = optionLabel(lang, option);
             return (
               <li key={option.var} className="config-quick-entry" data-config-var={option.var}>
                 <div className="config-quick-description">
                   <strong>{label}</strong>
                   <p className="config-quick-value">
-                    {source}: <output aria-label={`${tt('config.valueLabel')}${lang === 'en-US' ? ': ' : '：'}${label}`}>
-                      {value === undefined ? tt('config.quickUnset')
-                        : <><span>{type}</span> <code>{JSON.stringify(value)}</code></>}
+                    {source}{lang === 'en-US' ? ': ' : '：'}<output className={typeof value === 'number' ? 'whitespace-nowrap' : undefined}
+                      aria-label={`${tt('config.valueLabel')}${lang === 'en-US' ? ': ' : '：'}${label}`}>
+                      {encounterValueLabel(lang, option, value)}
                     </output>
                   </p>
                   <p className="config-hint">
                     {damageType
-                      ? `${tt('config.quickHitReason')}${lang === 'en-US' ? ': ' : '：'}${damageTypeLabel(lang, damageType)}. ${tt('config.quickMitigationReason')}`
+                      ? `${isMinion ? '' : `${tt('config.quickHitReason')}${lang === 'en-US' ? ': ' : '：'}${damageTypeLabel(lang, damageType)}${lang === 'en-US' ? '. ' : '。'}`}${tt('config.quickMitigationReason')}`
                       : tt(option.var === 'conditionShockEffect' ? 'config.quickShockMagnitude' : 'config.quickShockState')}
                   </p>
                 </div>
@@ -538,7 +549,10 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
                     key={option.var}
                     option={option}
                     value={effective(option.var)}
-                    overridden={configValueDiffers(option, inputs[option.var], buildInputs[option.var])}
+                    inheritedLabel={inheritsEnemyValue(option) ? inheritedLabel : undefined}
+                    inheritedValue={inherited[option.var]}
+                    overridden={inheritsEnemyValue(option) ? inputs[option.var] !== buildInputs[option.var]
+                      : configValueDiffers(option, inputs[option.var], buildInputs[option.var])}
                     busy={session.busy}
                     lang={lang}
                     listLabels={listLabels}
@@ -663,7 +677,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
 
   return <section className="ui-page config-page" aria-labelledby="config-heading">
     <PageHeader id="config-heading" title={tt('config.title')} description={tt('ui.configHint')} />
-    <div className="config-scenario"><ScenarioBar session={session} lang={lang} /><NamedSets session={session} lang={lang} /></div>
+    <div className="config-scenario"><ScenarioBar session={session} lang={lang} calc={calc} presets={presets} inherited={inherited} /><NamedSets session={session} lang={lang} /></div>
     <Tabs className="flex-col" value={view} onValueChange={setView}>
       <TabsList className="config-view-tabs group-data-horizontal/tabs:h-auto" aria-label={tt('config.title')}>
         <TabsTrigger className="h-auto min-h-10 whitespace-nowrap max-[600px]:whitespace-normal px-3 py-2 max-[600px]:flex-[1_1_42%] data-[state=active]:bg-background data-[state=active]:text-foreground" value="options">{workflowLabel(lang, 'options')}</TabsTrigger>

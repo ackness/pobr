@@ -1,3 +1,4 @@
+import { EnergyTriggerNote } from '../components/config/EnergyTriggerNote';
 import { useEffect, useState } from 'react';
 import { AlertTriangle, ArrowRight, CircleAlert, CircleCheck, Download } from 'lucide-react';
 import { getBackend } from '../api/backend';
@@ -152,6 +153,7 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
         <dt>{figure.label}</dt>
         <dd><button type="button" onClick={() => focusStat(figure.id)}><AnimatedNumber value={figure.value} format={figure.format} /><span className="ov-source">{tt('overview.sources')}</span></button></dd>
         <small>{figure.sub}</small>
+        {figure.tone === 'dps' && <EnergyTriggerNote calc={calc} groups={session.socketGroups} lang={lang} />}
       </div>)}
     </dl>
 

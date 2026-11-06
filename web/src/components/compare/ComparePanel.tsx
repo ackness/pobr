@@ -1,3 +1,4 @@
+import { encounterTierLabel } from '../../lib/configEncounter';
 import { buildDisplayName, stageDisplayName } from '../../lib/workspaceNames';
 import { AppButton, AppInput, AppSelectControl } from '../shared/controls';
 import { Tabs as TabsPrimitive } from 'radix-ui';
@@ -8,7 +9,7 @@ import { useSkillCatalog } from '../../hooks/useSkillName';
 import { formatApiError } from '../../api/error';
 import type { SocketGroupInput } from '../../api/types';
 import { compareBuilds, comparisonGemForm, hasComparisonSource, isPercentageStat, nearestCompareStage, configDifferences, copySection, diffText, formatComparisonDelta, itemDifferences, resolvedTreeVersion, skillDifferences, weaponDifferences, type ConfigBasis, type CopySection } from '../../lib/compare';
-import { bindT, enemyTierLabel, statNameLabel, t, type Lang } from '../../lib/i18n';
+import { bindT, statNameLabel, t, type Lang } from '../../lib/i18n';
 import { activeSkillEffects } from '../../lib/skillSelection';
 import { skillDisplayName } from '../../lib/skillNames';
 import { unsupportedLineLabel } from '../../lib/diagnosticText';
@@ -135,7 +136,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
   const skillChanges = a && b ? skillDifferences(a.saved.state, b.saved.state) : [];
   const configChanges = a && b ? [
     ...configDifferences(a.saved.state, b.saved.state).map(row => ({ ...row, action: { kind: 'config', key: row.key } as CopySection })),
-    { key: tt('compare.enemy'), before: a.saved.state.params.enemy_tier === undefined ? undefined : enemyTierLabel(lang, a.saved.state.params.enemy_tier), after: b.saved.state.params.enemy_tier === undefined ? undefined : enemyTierLabel(lang, b.saved.state.params.enemy_tier), action: { kind: 'enemy' } as CopySection },
+    { key: tt('compare.enemy'), before: encounterTierLabel(lang, a.saved.state.params.enemy_tier, a.saved.state.params.config_inputs), after: encounterTierLabel(lang, b.saved.state.params.enemy_tier, b.saved.state.params.config_inputs), action: { kind: 'enemy' } as CopySection },
     { key: tt('compare.mods'), before: a.saved.state.params.custom_modifier_blocks ?? a.saved.state.params.extra_modifiers,
       after: b.saved.state.params.custom_modifier_blocks ?? b.saved.state.params.extra_modifiers, action: { kind: 'modifiers' } as CopySection },
   ].filter(row => JSON.stringify(row.before) !== JSON.stringify(row.after)) : [];

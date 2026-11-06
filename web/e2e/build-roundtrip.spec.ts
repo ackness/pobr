@@ -159,7 +159,7 @@ test('switch, reload, edit and share preserve the selected loadout and global fi
   await page.getByLabel('Search config options…').fill('Onslaught');
   await page.locator('.config-item input[type="checkbox"]').first().check();
   // The enemy is chosen with the fight presets above the options ("Mapping" is the tier without a boss).
-  await page.getByRole('group', { name: 'Enemy to fight', exact: true }).getByRole('button', { name: 'Mapping', exact: true }).click();
+  await page.getByRole('group', { name: 'Enemy tier', exact: true }).getByRole('button', { name: 'Mapping', exact: true }).click();
   await page.getByRole('tab', { name: 'Custom modifiers', exact: true }).click();
   await page.locator('.config-modifier-add').click();
   await page.getByRole('textbox', { name: 'Group title', exact: true }).fill('Default');
