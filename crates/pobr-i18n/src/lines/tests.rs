@@ -777,6 +777,109 @@ fn a_rendered_line_never_carries_untranslated_words_in_a_value() {
 }
 
 #[test]
+fn a_parsed_line_requires_its_word_captures_to_translate() {
+    let mut pack = templates_pack(
+        "zh-CN",
+        serde_json::json!([
+            {"src": "有 {0} 个插槽", "en": "Has {0} Sockets"},
+            {"src": "伤害提高 {0}%", "en": "{0}% increased Damage"},
+            {"src": "羁绊：{0}", "en": "Bonded: {0}"},
+            {"src": "配置 {0}", "en": "Allocates {0}"}
+        ]),
+    );
+    pack.set_names(
+        NameKind::Word,
+        [("Iron Reflexes".into(), "霸体".into())].into(),
+    );
+    let parser = LineParser::new(&[&pack], []).unwrap();
+    for (line, expected) in [
+        ("有 4 个插槽", "Has 4 Sockets"),
+        ("配置 霸体", "Allocates Iron Reflexes"),
+        ("羁绊：伤害提高 12%", "Bonded: 12% increased Damage"),
+        // Unformatted string slots still preserve ranges without words.
+        ("伤害提高 (10-12)%", "(10-12)% increased Damage"),
+    ] {
+        assert_eq!(parser.parse_line(line).as_deref(), Some(expected), "{line}");
+    }
+    for line in [
+        "有 4 Augment 个插槽",
+        "有 4 深渊 个插槽",
+        "伤害提高 Minions deal (10-12)%",
+        "羁绊：12% increased Damage",
+        "配置 Unknown Passive",
+    ] {
+        assert_eq!(parser.parse_line(line), None, "{line}");
+        assert_eq!(parser.translate_line(line), None, "{line}");
+        assert_eq!(parser.parse_text(line), line, "{line}");
+    }
+}
+
+#[test]
+fn a_literal_plus_before_a_signed_slot_renders_one_sign() {
+    // This row is unchanged in the prepared and staged zh-CN packs.
+    let pack = templates_pack(
+        "zh-CN",
+        serde_json::json!([{
+            "src": "地图内有腐化地图的几率 +{0:+d}%",
+            "en": "Your Maps have {0:+d}% chance to contain a Vaal Side Area"
+        }]),
+    );
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+    let parser = LineParser::new(&[&pack], []).unwrap();
+    for (value, expected) in [
+        ("+5", "+5"),
+        ("+0", "+0"),
+        ("-5", "-5"),
+        ("5", "+5"),
+        ("+(1-2)", "+(1-2)"),
+        ("-(1-2)", "-(1-2)"),
+    ] {
+        let line = format!("Your Maps have {value}% chance to contain a Vaal Side Area");
+        assert_eq!(
+            renderer.render_line_with_origin(&line),
+            Some((format!("地图内有腐化地图的几率 {expected}%"), None)),
+            "{line}"
+        );
+        let rendered = renderer.render_line(&line).unwrap();
+        assert_eq!(
+            parser.parse_line(&rendered),
+            Some(format!(
+                "Your Maps have {expected}% chance to contain a Vaal Side Area"
+            )),
+            "{rendered}"
+        );
+    }
+    assert_eq!(
+        parser.parse_line("地图内有腐化地图的几率 ++5%"),
+        Some("Your Maps have +5% chance to contain a Vaal Side Area".into())
+    );
+}
+
+#[test]
+fn only_a_literal_plus_before_a_signed_slot_is_optional() {
+    let pack = templates_pack(
+        "zh-CN",
+        serde_json::json!([
+            {"src": "无符号 +{0:d}%", "en": "Unsigned {0:d}%"},
+            {"src": "数值 {0:+d}%", "en": "Signed {0:+d}%"},
+            {"src": "混合 {0:d}% 和 +{1:+d}%", "en": "Mixed {0:d}% and {1:+d}%"}
+        ]),
+    );
+    let parser = LineParser::new(&[&pack], []).unwrap();
+    assert_eq!(parser.parse_line("无符号 +5%"), Some("Unsigned 5%".into()));
+    assert_eq!(parser.parse_line("数值 +5%"), Some("Signed +5%".into()));
+    for line in [
+        "无符号 5%",
+        "无符号 -5%",
+        "无符号 +(1-2)%",
+        "数值 +(1-2)%",
+        "混合 (1-2)% 和 +5%",
+    ] {
+        assert_eq!(parser.parse_line(line), None, "{line}");
+    }
+}
+
+#[test]
 fn a_bonded_line_renders_through_the_packs_own_templates() {
     let templates = serde_json::json!([
         {"src": "羁绊： {0}", "en": "Bonded: {0}"},

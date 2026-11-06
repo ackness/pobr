@@ -33,7 +33,10 @@ use pobr_data::catalog::{StatLineTemplate, TextOrigin};
 enum Segment {
     Literal(String),
     /// A placeholder's numeric index (`{0}` / `{0:+d}` -> 0).
-    Placeholder(usize),
+    Placeholder {
+        index: usize,
+        signed: bool,
+    },
 }
 
 /// Parses template text into a segment sequence; returns `None` for
@@ -61,7 +64,10 @@ fn parse_template(text: &str) -> Option<Vec<Segment>> {
             if !literal.is_empty() {
                 segments.push(Segment::Literal(std::mem::take(&mut literal)));
             }
-            segments.push(Segment::Placeholder(index));
+            segments.push(Segment::Placeholder {
+                index,
+                signed: inner.split_once(':').is_some_and(|(_, spec)| spec == "+d"),
+            });
             i = end + 1;
         } else {
             let ch = text[i..].chars().next()?;
@@ -450,7 +456,7 @@ impl LineTranslator {
             // fallback channel gates string capture on strong anchors to suppress false matches.
             let has_placeholder = src_segments
                 .iter()
-                .any(|s| matches!(s, Segment::Placeholder(_)));
+                .any(|s| matches!(s, Segment::Placeholder { .. }));
             let mut anchored = false;
             if has_placeholder && !has_numeric_format(&pair.src) {
                 if let Some(Segment::Literal(lit)) = src_segments.first() {
@@ -473,7 +479,11 @@ impl LineTranslator {
             {
                 let most = first_lines.entry(template_skeleton(&first)).or_default();
                 *most = (*most).max(lines);
-                if anchored && first.iter().any(|s| matches!(s, Segment::Placeholder(_))) {
+                if anchored
+                    && first
+                        .iter()
+                        .any(|s| matches!(s, Segment::Placeholder { .. }))
+                {
                     let literal_skeleton = |segment: Option<&Segment>| match segment {
                         Some(Segment::Literal(lit)) => skeleton(lit),
                         _ => String::new(),
@@ -525,9 +535,9 @@ impl LineTranslator {
     /// Time`, `Has {0} Sockets`) also matches a longer line around it and
     /// carries that line's untranslated words inside its value (`Take 30% less
     /// Damage over time` -> `持续性伤害总降 Take 30%`). A capture without
-    /// letters (a roll range such as `(1-20)`) is kept as it is. The display
-    /// direction asks for this: an untranslated line shows the source text
-    /// whole, never a mixture.
+    /// letters (a roll range such as `(1-20)`) is kept as it is. Both parser
+    /// and renderer ask for this: an untranslated line keeps its source text
+    /// whole, so a partial match never changes its meaning.
     pub fn require_translated_captures(&mut self) {
         self.translated_captures_only = true;
     }
@@ -558,17 +568,26 @@ impl LineTranslator {
     /// range also tries the bucket of its skeleton without the range's
     /// parentheses (the rolled line's). Official templates of both buckets
     /// come before any supplement, as within one bucket; each group tries
-    /// the bucket as written first.
+    /// the bucket as written first. A literal plus before a signed slot
+    /// also permits that slot's rendered range to round-trip through input.
     fn translate_numeric(
         &self,
         text: &str,
         skel: &str,
         lines: usize,
     ) -> Option<(String, Option<TextOrigin>)> {
-        let in_bucket = |skel: &str, official: bool| {
+        let in_bucket = |skel: &str, official: bool, range_lookup: bool| {
             self.buckets.get(skel)?.iter().find_map(|&i| {
                 let candidate = &self.templates[i];
                 if candidate.lines != lines || candidate.origin.is_none() != official {
+                    return None;
+                }
+                if range_lookup
+                    && !self.range_values
+                    && !candidate.src_segments.windows(2).any(|pair| {
+                        matches!(pair, [Segment::Literal(lit), Segment::Placeholder { signed: true, .. }] if lit.ends_with('+'))
+                    })
+                {
                     return None;
                 }
                 let values =
@@ -576,13 +595,10 @@ impl LineTranslator {
                 Some((render_en(&candidate.en, &values), candidate.origin))
             })
         };
-        let rolled = self
-            .range_values
-            .then(|| without_range_parentheses(text))
-            .flatten()
-            .map(|rolled| skeleton(&rolled));
+        let rolled = without_range_parentheses(text).map(|rolled| skeleton(&rolled));
         [true, false].into_iter().find_map(|official| {
-            in_bucket(skel, official).or_else(|| in_bucket(rolled.as_deref()?, official))
+            in_bucket(skel, official, false)
+                .or_else(|| in_bucket(rolled.as_deref()?, official, true))
         })
     }
 
@@ -861,7 +877,7 @@ impl LineTranslator {
                 ..self.numeric_captures()
             };
             if let Some(mut values) = match_segments(line, &candidate.src_segments, captures) {
-                // Renderer only: a slot written `{0}%` holds a number, never words (in
+                // A slot written `{0}%` holds a number, never words (in
                 // `Bonded: 12% increased Damage`, `{0}% increased Damage` must not take
                 // `Bonded: 12`).
                 if self.translated_captures_only
@@ -917,7 +933,7 @@ impl LineTranslator {
 /// The placeholders directly followed by `%`: a percentage's number.
 fn percent_slots(segments: &[Segment]) -> impl Iterator<Item = usize> + '_ {
     segments.windows(2).filter_map(|pair| match pair {
-        [Segment::Placeholder(index), Segment::Literal(lit)] if lit.starts_with('%') => {
+        [Segment::Placeholder { index, .. }, Segment::Literal(lit)] if lit.starts_with('%') => {
             Some(*index)
         }
         _ => None,
@@ -956,30 +972,55 @@ fn match_segments(
 ) -> Option<HashMap<usize, String>> {
     let mut values: HashMap<usize, String> = HashMap::new();
     let mut pos = 0usize;
-    let mut pending: Option<usize> = None;
-    for seg in segments {
+    let mut pending: Option<(usize, Captures)> = None;
+    for (position, seg) in segments.iter().enumerate() {
         match seg {
-            Segment::Placeholder(index) => {
+            Segment::Placeholder { index, signed } => {
                 // Two adjacent placeholders with no literal separator —
                 // shouldn't appear in a template, fail conservatively.
                 if pending.is_some() {
                     return None;
                 }
-                pending = Some(*index);
+                let literal_plus = *signed
+                    && position > 0
+                    && matches!(&segments[position - 1], Segment::Literal(lit) if lit.ends_with('+'));
+                pending = Some((
+                    *index,
+                    Captures {
+                        ranges: captures.ranges || literal_plus,
+                        ..captures
+                    },
+                ));
             }
             Segment::Literal(lit) => {
+                // Let a signed slot own its sign, including when rendering
+                // replaced the template's literal plus with a minus.
+                let optional_plus = lit.ends_with('+')
+                    && matches!(
+                        segments.get(position + 1),
+                        Some(Segment::Placeholder { signed: true, .. })
+                    );
+                let lit = if optional_plus {
+                    &lit[..lit.len() - 1]
+                } else {
+                    lit
+                };
                 let found = find_ignore_ascii_case(&line[pos..], lit)?;
-                if let Some(index) = pending.take() {
+                if let Some((index, captures)) = pending.take() {
                     let value = accept_capture(&line[pos..pos + found], captures)?;
                     insert_capture(&mut values, index, value)?;
                 } else if found != 0 {
                     return None;
                 }
                 pos += found + lit.len();
+                // Older output included both the literal and slot's plus.
+                if optional_plus && line[pos..].starts_with("++") {
+                    pos += 1;
+                }
             }
         }
     }
-    if let Some(index) = pending {
+    if let Some((index, captures)) = pending {
         let value = accept_capture(&line[pos..], captures)?;
         insert_capture(&mut values, index, value)?;
     } else if pos != line.len() {
@@ -1003,17 +1044,28 @@ fn insert_capture(values: &mut HashMap<usize, String>, index: usize, value: Stri
 }
 
 /// Substitutes captured values back into the English template (`{N}` /
-/// `{N:+d}` replaced by index; a missing value is left as-is).
+/// `{N:+d}` replaced by index; a missing value is left as-is). A literal
+/// `+` immediately before a signed slot and the value's sign render once;
+/// the pack's template bytes stay unchanged.
 fn render_en(template: &str, values: &HashMap<usize, String>) -> String {
     let Some(segments) = parse_template(template) else {
         return template.to_string();
     };
     let mut out = String::new();
-    for seg in &segments {
+    for (position, seg) in segments.iter().enumerate() {
         match seg {
             Segment::Literal(lit) => out.push_str(lit),
-            Segment::Placeholder(index) => match values.get(index) {
-                Some(value) => out.push_str(value),
+            Segment::Placeholder { index, signed } => match values.get(index) {
+                Some(value) => {
+                    if *signed
+                        && value.starts_with(['+', '-'])
+                        && position > 0
+                        && matches!(&segments[position - 1], Segment::Literal(lit) if lit.ends_with('+'))
+                    {
+                        out.pop();
+                    }
+                    out.push_str(value);
+                }
                 None => out.push_str(&format!("{{{index}}}")),
             },
         }
