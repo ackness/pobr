@@ -127,7 +127,9 @@ test('localized triggered skill uses a readable popup and keyboard selection', a
   expect(colors.text).not.toBe(colors.background);
   expect(colors.background).not.toBe('rgb(255, 255, 255)');
   // The popup keeps keyboard focus on its items: Home goes to the first one, Enter picks it.
+  // Radix moves the focus for Home in a timer after the keydown, so wait for it before Enter.
   await page.keyboard.press('Home');
+  await expect(popup.getByRole('option').first()).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(popup).toHaveCount(0);
   await expect(selector).toHaveText(/火球.*技能组 1/);
