@@ -1,11 +1,10 @@
 import { buildAction } from './shell';
 import { t } from '../src/lib/i18n';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
 import type { ConfigInputValue } from '../src/api/types';
-import { choose, control, currentStageName, go, hitDps, idle, importCode, nativeSelect, noMotion, openStage, row, savedState, setLanguage, shareCode } from './configPage';
-import { QUARANTINE } from './tags';
+import { choose, configGroupNames, control, currentStageName, go, hitDps, idle, importCode, nativeSelect, noMotion, openConfigGroup, openStage, row, savedState, setLanguage, shareCode } from './configPage';
 
 test.use(noMotion);
 
@@ -13,8 +12,15 @@ const card = (page: Page) => page.locator('.config-quick-access');
 const entry = (page: Page, key: string) => card(page).locator(`[data-config-var=${JSON.stringify(key)}]`);
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
 /** Every control with a saved key: inputs, and the buttons that open a list. */
-const controlIds = (page: Page) => page.locator('.config-section .config-item :is(input, button)[id^="config-"]')
+const controlIds = (section: Locator) => section.locator('.config-item :is(input, button)[id^="config-"]')
   .evaluateAll(elements => elements.map(element => element.id).sort());
+async function catalogControlIds(page: Page) {
+  const ids: string[] = [];
+  for (const name of await configGroupNames(page)) {
+    ids.push(...await controlIds(await openConfigGroup(page, name)));
+  }
+  return ids.sort();
+}
 /** The skill whose numbers the results panel shows. */
 const inspectedSkill = (page: Page) => page.locator('.shell-rail').getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
 const common = ['conditionEnemyShocked', 'conditionShockEffect'];
@@ -147,19 +153,14 @@ for (const [fixture, identity, types] of [
   });
 }
 
-// Quarantined: walks every `.config-section-header`, but the config page now shows one group at a time (eb997114).
-
-test('review and keyboard jump clear both filters, preserve the request and keep the unique full catalog', QUARANTINE, async ({ page }) => {
+test('review and keyboard jump clear both filters, preserve the request and keep the unique full catalog', async ({ page }) => {
   await ready(page);
   await importCode(page, syntheticCode(['Comet']));
   await openConfig(page);
   const allOptions = page.locator('.config-view').getByRole('radio', { name: 'All', exact: true });
   await allOptions.click();
-  const headers = page.locator('.config-section-header');
-  for (let index = 0; index < await headers.count(); index++) {
-    if (await headers.nth(index).getAttribute('aria-expanded') !== 'true') await headers.nth(index).click();
-  }
-  const ids = await controlIds(page);
+  const ids = await catalogControlIds(page);
+  expect(ids.length).toBeGreaterThan(0);
   expect(new Set(ids).size).toBe(ids.length);
   // An uncertain mechanic remains in the original catalog, not just quick entries.
   await page.locator('.config-search').fill('onLeyline');
@@ -174,9 +175,10 @@ test('review and keyboard jump clear both filters, preserve the request and keep
   await expect(page.locator('.config-search')).toHaveValue('');
   await expect(page.getByRole('radio', { name: /^Modified/ })).not.toBeChecked();
   await expect(allOptions).toHaveAttribute('aria-checked', 'true');
-  await expect(row(page, 'enemyColdResist').locator('..').locator('..').locator('.config-section-header'))
-    .toHaveAttribute('aria-expanded', 'true');
-  const afterIds = await controlIds(page);
+  const destination = page.locator('.config-section').filter({ has: control(page, 'enemyColdResist') });
+  await expect(destination).toBeVisible();
+  await expect(destination.locator('.config-section-header')).toHaveAttribute('aria-expanded', 'true');
+  const afterIds = await catalogControlIds(page);
   expect(afterIds).toEqual(ids);
   await expect(control(page, 'enemyColdResist')).toHaveCount(1);
   expect(await savedState(page)).toEqual(before);

@@ -120,6 +120,23 @@ export async function setLanguage(page: Page, lang: Lang) {
 export const control = (page: Page, key: string): Locator => page.locator(`[id=${JSON.stringify(`config-${key}`)}]`);
 export const row = (page: Page, key: string): Locator => page.locator('.config-item').filter({ has: control(page, key) });
 
+/** The catalog's group menu remains available while only the selected group is visible. */
+export const configGroupNames = (page: Page): Promise<string[]> =>
+  page.locator('.config-group-nav button > span:first-child').allTextContents();
+
+/** Select and open a catalog group through its menu, including initially folded groups. */
+export async function openConfigGroup(page: Page, name: string): Promise<Locator> {
+  const button = page.locator('.config-group-nav').getByRole('button')
+    .filter({ has: page.getByText(name, { exact: true }) });
+  await button.click();
+  await expect(button).toHaveAttribute('aria-pressed', 'true');
+  // Match the group by its header only: an option label may repeat a group name.
+  const section = page.locator('.config-section').filter({ has: page.locator('.config-section-header').getByText(name, { exact: true }) });
+  await expect(section).toBeVisible();
+  await expect(section.locator('.config-section-header')).toHaveAttribute('aria-expanded', 'true');
+  return section;
+}
+
 /** Open the Config page (in the open interface language) and search for a setting. */
 export async function openSetting(page: Page, key: string, configName = 'Configuration') {
   await go(page, configName);
