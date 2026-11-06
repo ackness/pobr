@@ -71,7 +71,27 @@ mise exec -- python3 devs/scripts/tool-versions.py --check
 
 ## 日常命令
 
+推送前运行 `mise run check:pr`：复用 `ci-plan.py` 的区域规则，检查
+`merge-base(origin/master, HEAD)` 到 HEAD 的全部变更，加上暂存、未暂存和未跟踪文件；
+纯文档改动立即结束。Rust 先检查格式，失败即停，再检查 workspace、对涉及的 crate 及其所有传递反向依赖
+运行完整 CI 同样的 Clippy flags（启用所选 crate 的 benchmarks/diagnostics）和测试。
+依赖关系从离线 Cargo metadata 读取；`mise run check:pr --plan-only` 只打印区域和包，不执行检查。
+数据、共享输入及 full 改动检查所有 crate，full 还运行全部本地区域。
+Web 运行 i18n、类型、单测与 Worker 检查，脚本运行离线自动化契约。
+任务跳过依赖安装、数据下载和远端 tag 校验，使用已准备的依赖、WASM 和 fixtures，缺失时检查失败并显示原因。
+
+可运行一次 `mise run hooks:install`，把 `core.hooksPath` 设为 `devs/hooks`，
+pre-push hook 会自动执行上述检查；同一 clone 的所有 worktree **共享此设置**，各自使用本地的
+`devs/hooks`。临时跳过可用 `POBR_SKIP_PREPUSH=1 git push`。
+旧分支若没有 `devs/hooks/pre-push`，Git 会跳过缺失的 hook，直接推送而不检查。
+`core.hooksPath` 会取代 `.git/hooks` 中的所有 hook。
+Rust、data 或 pipeline 改动合并前须有绿色的 `mise run ci <branch>`：
+PR gate 不运行 Clippy 或 Rust 测试，本地检查也不代替完整集成 CI。
+这是 review 规则，`pr-ready` 不强制执行。
+
 ```bash
+mise run check:pr                             # Before pushing: changed areas, offline
+mise run hooks:install                        # Opt in once per clone; shared by worktrees
 mise run targets                              # List current suites without compiling
 mise run verify build skills support_gating:: # Selected tests, fmt and Clippy
 mise run test core parser mod_parser::        # One integration suite and filter
@@ -327,7 +347,7 @@ PR 不在 workflow 层过滤文档，以免必需检查永久 pending：只运�
 例外是数据 bump：完整 CI 的范围改动了 `pipeline/data.lock.json`（master push，或对分支 `mise run ci <ref>`、
 其数据锁与默认分支不同）时，只运行一个冒烟 spec [data-bump-smoke.spec.ts](../web/e2e/data-bump-smoke.spec.ts)：
 导入构筑码、技能与辅助、打造器、加点（恰好退一点再加一点）、刷新重开（加点、辅助、能量护盾与 DPS 不变）。选择由 `ci-plan.py --data-smoke` 决定；
-tag 与 nightly 不选，分支范围无法比较时保守选中。它不进入 PR gate，因此数据 bump PR 合并前应 `mise run ci <分支>`。
+tag 与 nightly 不选，分支范围无法比较时保守选中。它不进入 PR gate，因此数据 bump PR 合并前须有绿色的 `mise run ci <分支>`。
 
 默认 Playwright 配置（[playwright.config.ts](../web/playwright.config.ts)）不运行带标签的用例，标签定义在
 [e2e/tags.ts](../web/e2e/tags.ts)：`@quarantine` 是界面已改、等待重写或等待决定的用例，`@extended` 是矩阵中额外的
@@ -378,7 +398,8 @@ mise run full                             # 显式本地 Rust 全量检查，不
 不验证“是否有独立推理”。这是减少误操作的辅助入口；维护者也可以直接核对同样的事实。
 合并默认用 merge commit，让分支原始提交继续可从 master 到达：review 证据与 `--match-head-commit`
 引用的 head SHA 在删除分支后仍能取回。其他仓库引用的 PoBR 提交（`contract/<n>.<m>`）由不可变 tag 保留，不依赖合并方式。
-`pr-ready` 不要求每个普通 PR 都有合并前 full。若风险需要手动 full，单独核对该 run 的
+Rust、data 或 pipeline 改动合并前须有绿色的 `mise run ci <branch>`，其他改动按风险选择。
+这是 review 规则，`pr-ready` 不强制执行。单独核对该 run 的
 `head_sha`、结果与当前 base；分支 head 的结果不证明之后变化的 merge commit。
 base 更新后的保障取决于已配置的服务端规则和必要复验，不能从本地文件推断 strict 已启用。
 
@@ -393,7 +414,8 @@ Bug 表单收集可复现步骤、版本/数据版本、环境，以及相关构
 
 Dependabot 每日分组检查 Actions 更新；Cargo、Rust toolchain、Web 与数据管线每月检查。
 当前 Action 使用经核对的最新稳定标签；升级 PR 运行全部轻量检查，master 合并后完整验证，
-高风险升级可先手动 full。没有自动合并或按年龄关闭已确认缺陷的机器人。
+涉及 Rust、data 或 pipeline 的升级合并前须有绿色的 `mise run ci <branch>`，其他升级按风险选择。
+没有自动合并或按年龄关闭已确认缺陷的机器人。
 不为流程形式引入收费 review 服务、贡献准入名单或带真实密钥的 fork 预览。
 
 ## 发布与部署
@@ -406,7 +428,8 @@ Dependabot 每日分组检查 Actions 更新；Cargo、Rust toolchain、Web 与�
 [release-policy.py](../devs/scripts/release-policy.py) 按 SemVer 判断升级，检查所有继承 workspace
 版本的应用/工具锁版本；远端 tag 查询失败会报错，不能当作“tag 不存在”。
 PR 升版要求 tag 未使用；master 的合并后验证可接受指向同一提交的现有 tag。
-升版、依赖、工具链 PR 默认运行全部轻量检查；风险需要时在合并前手动 full，
+升版、依赖、工具链 PR 默认运行全部轻量检查。
+涉及 Rust、data 或 pipeline 的改动合并前须有绿色的 `mise run ci <branch>`，其他改动按风险选择。
 master 合并后和发布 tag 各自执行完整验证。
 
 推送 `v*` tag 后先验证 tag/version/commit/lock 身份，再完整验证该提交；通过后

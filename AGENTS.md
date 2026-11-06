@@ -38,6 +38,7 @@ Run everything through mise from the repository root: `mise run <task>` or
 `mise bootstrap --only packages,tools,task`.
 
 ```bash
+mise run check:pr                        # before pushing; optional pre-push hook
 mise run data:prepare                    # pinned owner data for real-data tests
 mise run test core parser mod_parser::   # one suite, one filter
 mise run verify build skills support_gating::
@@ -57,6 +58,9 @@ merge and release mechanics: [development workflow](docs/development-workflow.md
   may be handed off unrun. Report what you inspected and actually ran; never
   present review or `cargo check` as passing tests, and never lower a parity
   baseline to make a test pass.
+- **Before merging.** Rust, data or pipeline changes need a green
+  `mise run ci <branch>`; PR gate omits Clippy and Rust tests. Run
+  `mise run check:pr` before pushing ([local checks and hook](docs/development-workflow.md#日常命令)).
 - **Builds.** One `./target` per worktree and one Cargo command at a time; never
   share a writable `CARGO_TARGET_DIR` across worktrees. Do not change the
   dev/test profile, run `cargo clean` automatically, or chain

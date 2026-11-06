@@ -2,6 +2,7 @@
 # The cheap automation contract shared by local checks and both CI tiers.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
+bash -n devs/hooks/pre-push
 while IFS= read -r -d '' script; do bash -n "$script"; done < <(
   find devs/scripts pipeline tools/pob2-oracle -type f -name '*.sh' -print0
 )

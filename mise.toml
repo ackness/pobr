@@ -84,6 +84,14 @@ run = "bash devs/scripts/driver.sh test"
 description = "fmt check plus Clippy for selected targets: `mise run lint build skills`"
 run = "bash devs/scripts/driver.sh lint"
 
+[tasks."check:pr"]
+description = "Offline checks for the current PR range and local changes, plus affected-crate Clippy/tests"
+run = "python3 devs/scripts/check-pr.py"
+
+[tasks."hooks:install"]
+description = "Install the pre-push check:pr hook (core.hooksPath is shared by this clone's worktrees)"
+run = "git config core.hooksPath devs/hooks"
+
 [tasks.verify]
 description = "Selected tests, then fmt and Clippy: `mise run verify build skills [filter]`"
 run = "bash devs/scripts/driver.sh verify"

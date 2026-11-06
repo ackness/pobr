@@ -101,7 +101,8 @@ PoB2（`vendor/`）只用于交叉核对，不引用其行号来解释游戏规�
 需要本地批次诊断时，在 warm checkout 选择一次门禁：
 
 ```bash
-mise run ci <pushed-ref>          # 高风险批次：合并前远端全量
+mise run check:pr                # 推送前检查当前分支和未提交变更；hook 自动运行
+mise run ci <pushed-ref>          # Rust、data 或 pipeline 改动：合并前须为绿色
 mise run gate                    # 按需本地验证，含额外accuracy报告
 mise run gate --only core,parity # 修复后只重跑失败项
 ```
