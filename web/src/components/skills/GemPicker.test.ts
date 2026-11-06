@@ -42,3 +42,11 @@ for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
     expect(rankGemResults([fireball], '焰球', 'all', lang)).toEqual([fireball]);
   });
 }
+
+for (const [lang, first] of [['en-US', 'fire'], ['zh-CN', 'ice'], ['zh-TW', 'fire']] as const) {
+  test(`an empty search starts with the first localized name in ${lang}`, () => {
+    const entries = [gem('fire', '火球', 'Fireball'), gem('ice', '冰霜新星', 'Ice Nova'),
+      { ...gem('lightning', '电球', 'Spark'), name_zh_tw: '電球' }];
+    expect(rankGemResults(entries, '', 'all', lang)[0].skill_id).toBe(first);
+  });
+}

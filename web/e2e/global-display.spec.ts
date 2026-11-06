@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { deflateSync } from 'node:zlib';
 import { pageLink } from './shell';
+import { go } from './configPage';
 
 const code = deflateSync('<PathOfBuilding2><Build level="81" className="Ranger"/><Items/></PathOfBuilding2>').toString('base64url');
 const openSettings = (page: Page) => page.locator('.shell-settings-button').click();
@@ -81,7 +82,7 @@ test('mobile skills keep the selected editor first and let players reveal other 
 for (const width of [390, 1440, 2560]) {
   test(`Skills details use the page scroll and keep complete support names at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await pageLink(page, 'Skills').click();
+    await go(page, 'Skills');
     const detail = page.locator('.skill-detail');
     await expect(detail).toBeVisible();
     const layout = await detail.evaluate(element => {
