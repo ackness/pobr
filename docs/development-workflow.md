@@ -433,7 +433,7 @@ PR 升版要求 tag 未使用；master 的合并后验证可接受指向同一�
 涉及 Rust、data 或 pipeline 的改动合并前须有绿色的 `mise run ci <branch>`，其他改动按风险选择。
 master 合并后和发布 tag 各自执行完整验证。
 
-推送 `v*` tag 后先验证 tag/version/commit/lock 身份，再完整验证该提交；通过后
+推送 `v*` tag 后先验证 tag/version/commit/lock 身份与 CHANGELOG 一节，再完整验证该提交；通过后
 从同一 run 下载 WASM 资产并校验 SHA256SUMS；上传前再次核对远端 tag 的 peeled SHA，随后创建 GitHub Release，
 说明取自 tag 提交上 CHANGELOG.md 的该版本一节，后接 WASM 体积报告。
 已有 Release 重跑只覆盖同名资产、不改说明，适用于同一不可变 tag 的修复性重试，禁止移动已发布 tag。

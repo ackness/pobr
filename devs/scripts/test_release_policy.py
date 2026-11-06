@@ -299,6 +299,16 @@ version.workspace = true
             "### Breaking changes\n\n- Old.\n\n"
             "**Full diff**: https://example.invalid/releases/v0.0.1\n"
         ))
+        # Fenced "## " lines, reference definitions inside the body and a trailing space
+        # on the Breaking changes heading do not end or invalidate the section.
+        body = ("### Breaking changes \n\n- See [docs].\n\n[docs]: https://example.invalid/docs\n\n"
+                "```text\n## [0.0.10] - not a heading\n```\n\n### Fixed\n\n- A fix.\n")
+        self.write_changelog("0.0.10", body=body)
+        nested = self.root / "new/dir/notes.md"
+        self.assert_output(self.run_policy("notes", "v0.0.10", str(nested)), "notes=true")
+        self.assertEqual(nested.read_text(), (
+            f"Summary.\n\n{body}\n**Full diff**: https://example.invalid/compare/v0.0.1...v0.0.10\n"
+        ))
         output.unlink()
         self.assert_error(self.run_policy("notes", "v0.0.12", str(output)), "found 0")
         self.assert_error(self.run_policy("notes", "0.0.10", str(output)), "canonical")

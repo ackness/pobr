@@ -145,8 +145,15 @@ def changelog_section(version):
     if not path.is_file():
         raise PolicyError(f"{CHANGELOG} is missing; add a section for {version}")
     lines = path.read_text(encoding="utf-8").splitlines()
-    starts = [index for index, line in enumerate(lines)
-              if (match := SECTION.fullmatch(line)) and match[1] == version]
+    # "## " headings outside code fences delimit the sections.
+    headings, fenced = [], False
+    for index, line in enumerate(lines):
+        if line.startswith("```"):
+            fenced = not fenced
+        elif not fenced and line.startswith("## "):
+            headings.append(index)
+    starts = [index for index in headings
+              if (match := SECTION.fullmatch(lines[index])) and match[1] == version]
     if len(starts) != 1:
         raise PolicyError(f"{CHANGELOG} needs exactly one '## [{version}] - YYYY-MM-DD' "
                           f"section, found {len(starts)}")
@@ -157,12 +164,13 @@ def changelog_section(version):
     except ValueError:
         raise PolicyError(f"{CHANGELOG} heading must read '## [{version}] - YYYY-MM-DD': "
                           f"{lines[start]!r}") from None
-    # The section ends at the next version heading or the link definitions.
-    end = next((index for index in range(start + 1, len(lines))
-                if lines[index].startswith("## ") or LINK.fullmatch(lines[index])),
-               len(lines))
+    # The section ends at the next heading; trailing link definitions (the
+    # file's compare links) are not part of it.
+    end = next((index for index in headings if index > start), len(lines))
+    while end > start + 1 and (not lines[end - 1].strip() or LINK.fullmatch(lines[end - 1])):
+        end -= 1
     body = "\n".join(lines[start + 1:end]).strip()
-    if "### Breaking changes" not in body.splitlines():
+    if "### Breaking changes" not in (line.rstrip() for line in body.splitlines()):
         raise PolicyError(f"{CHANGELOG} section {version} needs a '### Breaking changes' "
                           "subsection (write '- None.' when there are none)")
     links = [match[2] for line in lines
@@ -232,6 +240,7 @@ def check_tag(tag, sha):
 def notes(tag, output):
     tag_version(tag)
     body, link = changelog_section(tag[1:])
+    Path(output).parent.mkdir(parents=True, exist_ok=True)
     Path(output).write_text(f"{body}\n\n**Full diff**: {link}\n", encoding="utf-8")
     return "notes", True
 
