@@ -86,7 +86,7 @@ test('import reminder is inline and imported false values survive review and rel
   await expect(reminder).toHaveAttribute('role', 'note');
   await expect(page.locator('#ov-title')).toBeVisible();
   await expect(reminder).toContainText('任务奖励');
-  await reminder.getByRole('button', { name: '检查配置' }).click();
+  await reminder.getByRole('link', { name: '去配置' }).click();
   await expect(reminder).toHaveCount(0);
   await expect(page).toHaveURL(/\/config$/);
   await find(page, reward);

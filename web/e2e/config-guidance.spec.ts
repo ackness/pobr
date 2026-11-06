@@ -1,3 +1,4 @@
+import { buildAction } from './shell';
 import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -248,7 +249,7 @@ test('review, jump, edit/reset, share and reload preserve imported false/zero/nu
   await importCode(page, syntheticCode(['Comet', 'Fireball'], raw));
   const before = await savedState(page);
   await expect(page.locator('.shell-notice[role=note]')).toBeVisible();
-  await page.locator('.shell-notice[role=note]').getByRole('button', { name: 'Review configuration', exact: true }).click();
+  await page.locator('.shell-notice[role=note]').getByRole('link', { name: 'Go to Configuration', exact: true }).click();
   await openQuickAccess(page);
   for (const [key, value] of [['conditionEnemyShocked', false], ['conditionShockEffect', 0], ['enemyColdResist', 17]] as const) {
     await expect(entry(page, key).locator('output')).toHaveText(typeof value === 'boolean' ? (value ? 'On' : 'Off') : `${value}%`);
@@ -312,7 +313,7 @@ test('main-skill, stage and independent-build changes refresh context without le
   await expect(card(page).locator('.config-quick-skill')).toHaveText('Spark');
   await expect.poll(() => quickKeys(page)).toEqual([...common, 'enemyLightningResist'].sort());
   await page.locator('.shell-builds-button').click();
-  await page.getByRole('button', { name: 'Rename build', exact: true }).click();
+  await buildAction(page, 'Rename build');
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Synthetic Guidance Original');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   const originalStage = await currentStageName(page);
