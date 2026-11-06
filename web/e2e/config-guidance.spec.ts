@@ -1,3 +1,4 @@
+import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
@@ -13,7 +14,7 @@ const numeric = (text: string) => Number(text.replaceAll(',', ''));
 const controlIds = (page: Page) => page.locator('.config-section .config-item :is(input, button)[id^="config-"]')
   .evaluateAll(elements => elements.map(element => element.id).sort());
 /** The skill whose numbers the results panel shows. */
-const inspectedSkill = (page: Page) => page.locator('.shell-rail').getByRole('combobox', { name: 'Inspected skill', exact: true });
+const inspectedSkill = (page: Page) => page.locator('.shell-rail').getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
 const common = ['conditionEnemyShocked', 'conditionShockEffect'];
 const hitSettings: Record<string, string> = {
   Physical: 'enemyPhysicalReduction', Fire: 'enemyFireResist', Cold: 'enemyColdResist',

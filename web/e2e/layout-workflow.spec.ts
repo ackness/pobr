@@ -1,17 +1,53 @@
+import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
-import { statRow, statValue } from './shell';
+import { bdLibraryButton, statRow, statValue } from './shell';
 import { choose, goTo, importAndOpen } from './skillsAndCalcs';
 import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
+import { setLanguage } from './configPage';
 
 const monk = readFileSync('../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', 'utf8');
 // The skill picker at the top of the results panel.
-const inspected = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
+const inspected = (page: Page) => page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 /** Import a build and open Items. Below the wide breakpoint the page links sit in the menu sheet. */
 async function start(page: Page, code: string) {
   await importAndOpen(page, code);
   await expect(page.locator('.paper-doll')).toBeVisible();
+}
+
+for (const [lang, buildLabel, stageLabel] of [
+  ['en-US', 'Current build', 'Current stage'],
+  ['zh-CN', '当前 BD', '当前阶段'],
+  ['zh-TW', '目前 BD', '目前階段'],
+] as const) {
+  test(`translated navigation never covers build or stage selectors in ${lang}`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await start(page, monk);
+    await bdLibraryButton(page).click();
+    for (const action of ['Rename build', 'Rename stage']) {
+      await page.locator('.bd-actions').getByRole('button', { name: action, exact: true }).click();
+      await page.getByRole('textbox', { name: 'Name', exact: true }).fill(`${action} with a very long name · 很长的中文名称測試`);
+      await page.getByRole('button', { name: 'Save', exact: true }).click();
+    }
+    await setLanguage(page, lang);
+    for (const width of [390, 768, 1280, 1440, 2560]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const name of [buildLabel, stageLabel]) {
+        const picker = page.getByRole('combobox', { name, exact: true });
+        const bounds = (await picker.boundingBox())!;
+        expect(bounds.width).toBeGreaterThan(0);
+        expect(bounds.x).toBeGreaterThanOrEqual(0);
+        expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+        // A real click catches overlapping navigation even when both controls look visible.
+        await picker.click();
+        await expect(page.getByRole('listbox')).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(page.getByRole('listbox')).toHaveCount(0);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    }
+  });
 }
 
 for (const width of [390, 1440]) {

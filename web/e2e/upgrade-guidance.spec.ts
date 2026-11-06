@@ -1,3 +1,4 @@
+import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { dpsValue, goTo, openOptimizerSettings, settledNumber, settledText } from './upgradesPage';
@@ -17,7 +18,7 @@ async function caster(page: Page) {
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('combobox', { name: 'Inspected skill', exact: true }).click();
+  await page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true }).click();
   await page.getByRole('option', { name: '1. Fireball', exact: true }).click();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
 }

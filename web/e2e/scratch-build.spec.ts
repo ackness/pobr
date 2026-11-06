@@ -4,7 +4,7 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { pageLink, statValue } from './shell';
+import { pageLink, statValue, playerHitDps } from './shell';
 import { choose, closeSettings, settled, stableText } from './buildLibrary';
 
 test('scratch build: class picker, level edit, tree allocation', async ({ page }) => {
@@ -49,7 +49,7 @@ test('scratch build: class picker, level edit, tree allocation', async ({ page }
   await expect(page.locator('.gem-picker-item').first()).toBeVisible();
   await picker.press('Enter');
   await expect(page.locator('.skill-group')).toHaveCount(1, { timeout: 30_000 });
-  const dpsValue = statValue(page, /^Hit DPS$/).first();
+  const dpsValue = playerHitDps(page);
   await expect(dpsValue).not.toHaveText('0', { timeout: 30_000 });
   await expect(dpsValue).not.toHaveText('—');
 

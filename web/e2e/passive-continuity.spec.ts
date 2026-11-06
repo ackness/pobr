@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import type { AttributeChoice, JewelInput, PassiveNode, SlotItemInput, SocketGroupInput } from '../src/api/types';
 import { buildPassiveGraph, shortestAllocationPath } from '../src/lib/passiveGraph';
-import { busy, pageLink, statValue } from './shell';
+import { busy, pageLink, statValue, playerHitDps } from './shell';
 import { choose } from './treePage';
 
 const version = readFileSync('../data/CURRENT', 'utf8').trim();
@@ -37,7 +37,7 @@ interface FixtureState {
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state as FixtureState);
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
 const life = (page: Page) => statValue(page, /^Life$/);
-const totalDps = (page: Page) => statValue(page, /^Hit DPS$/);
+const totalDps = (page: Page) => playerHitDps(page);
 const effectiveHp = (page: Page) => statValue(page, /^Effective HP$/);
 
 type Planner = 'route' | 'joint';
@@ -317,7 +317,7 @@ for (const edit of ['equipment', 'goal'] as const) {
       await page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true }).check();
       await page.locator('.upgrade-goal-details > summary').click();
       await select(page, 'Constraint', 'Effective HP');
-      await page.getByRole('spinbutton', { name: 'min', exact: true }).fill(String(floor));
+      await page.getByRole('spinbutton', { name: 'Minimum Effective HP (points)', exact: true }).fill(String(floor));
       await expect(life(page)).toHaveText(beforeLife);
     }
     await expect(page.locator('.tree-canvas, .tree-planner-run')).toHaveCount(0);

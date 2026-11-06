@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { pageLink, statRow } from './shell';
 import { choose, closeInspector, detailValue, importBuild, openStat } from './skillsAndCalcs';
+import { formatStatValue } from '../src/lib/statDisplay';
 
 // A committed PoB2 build whose Armour bucket holds a conditional line that is not met
 // ("if you haven't been Hit Recently") next to active INC and MORE lines.
@@ -249,11 +250,15 @@ test('combined DPS adds the damage over time to the hits', async ({ page }) => {
   const combined = page.locator('#calcs-detail');
   await expect(combined.locator('tr.formula-hit_dps')).toBeVisible({ timeout: 90_000 });
   expect(await stepResult(combined.locator('tr.formula-dot_dps'))).toBeCloseTo(total, 1);
+  const addedDot = num(await combined.locator('tr.formula-dot_dps .formula-operand').textContent());
+  // The final total is rounded for display. The added amount retains two decimals,
+  // so use it rather than subtracting two independently rounded running totals.
+  expect(Math.abs(total - (hit + addedDot))).toBeLessThanOrEqual(0.51);
 
   const dot = await openStat(page, 'TotalDotDPS');
   await expect(dot.locator('tr.formula-ignite_dps th')).toHaveText('Ignite DPS');
   await expect(dot.locator('tr.formula-bleed_dps')).toHaveCount(1);
-  expect(await stepResult(dot.locator('tr.formula-final'))).toBeCloseTo(total - hit, 0);
+  await expect(dot.locator('tr.formula-final .formula-result')).toHaveText(formatStatValue(addedDot, 'float2'));
 });
 
 test("a skill's own damage over time is listed per type", async ({ page }) => {

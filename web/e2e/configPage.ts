@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { workspaceText } from '../src/lib/workspaceText';
 import { answerConfirm } from './confirmDialog';
-import { bdLibraryButton } from './shell';
+import { bdLibraryButton, playerHitDps } from './shell';
 
 export type Lang = 'en-US' | 'zh-CN' | 'zh-TW';
 
@@ -31,9 +31,8 @@ export async function go(page: Page, name: string) {
   await expect(page).toHaveURL(new RegExp(`${path === '/' ? '/' : path}$`));
 }
 
-/** The Hit DPS row of the results panel: the first row under the headline, whatever the interface language. */
-export const hitDps = (page: Page): Locator =>
-  page.locator('.shell-rail #character-stats .rail-headline > .rail-row .rail-value').first();
+/** The calculated player's Hit DPS row, whatever the interface language. */
+export const hitDps = playerHitDps;
 
 /** Numbers settle at once with reduced motion, so a read right after a calculation never catches a tween. */
 export const noMotion = { reducedMotion: 'reduce' } as const;

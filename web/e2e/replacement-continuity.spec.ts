@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openItemsAfterImport, statValue } from './shell';
+import { openItemsAfterImport, statValue, playerHitDps } from './shell';
 import { augmentOption, choose, copyCurrentStage, currentStage, goTo, openCustomModifiers, openOptimizerSettings, openStage, reduceMotion } from './upgradesPage';
 import type { SlotItemInput } from '../src/api/types';
 
@@ -135,7 +135,7 @@ test('complete text, nondefault ring, full receipt and limits survive Upgrades â
   expect(await saved(page)).toEqual(before);
   await page.getByRole('button', { name: 'Apply to build Â· Ring 1', exact: true }).click();
   await assertExactItems(page, before, [{ slot: 'ring1', text: ring }]);
-  await expect.poll(async () => numeric(await stat(page, 'Hit DPS').innerText())).toBeCloseTo(predictedDps, 0);
+  await expect.poll(async () => numeric(await playerHitDps(page).innerText())).toBeCloseTo(predictedDps, 0);
   await expect.poll(async () => numeric(await stat(page, 'Life').innerText())).toBe(Math.round(predictedLife));
   await expect.poll(async () => numeric(await stat(page, 'Effective HP').innerText())).toBe(Math.round(predictedEhp));
 });
@@ -165,7 +165,7 @@ test('custom prepared augments and exact evaluated Apply survive navigation with
   await expect.poll(() => replacement(page).innerText()).toBe(receipt);
   await page.getByRole('button', { name: /^Apply to build/ }).click();
   await assertExactItems(page, before, [{ slot: 'weapon1', text: prepared! }]);
-  await expect.poll(async () => numeric(await stat(page, 'Hit DPS').innerText())).toBeCloseTo(predictedDps, 0);
+  await expect.poll(async () => numeric(await playerHitDps(page).innerText())).toBeCloseTo(predictedDps, 0);
   await expect.poll(async () => numeric(await stat(page, 'Effective HP').innerText())).toBe(Math.round(predictedEhp));
   await expect.poll(async () => numeric(await stat(page, 'Life').innerText())).toBe(Math.round(predictedLife));
 });
@@ -201,7 +201,7 @@ test('equipment candidates, nondefault cap and complete joint receipt survive na
     slot: candidate.label.includes('Ring 1') ? 'ring1' : candidate.label.includes('Ring 2') ? 'ring2' : 'amulet', text: candidate.text,
   })));
   await expect.poll(async () => numeric(await stat(page, 'Life').innerText())).toBe(Math.round(expectedLife));
-  await expect.poll(async () => numeric(await stat(page, 'Hit DPS').innerText())).toBeCloseTo(expectedDps, 0);
+  await expect.poll(async () => numeric(await playerHitDps(page).innerText())).toBeCloseTo(expectedDps, 0);
   await expect.poll(async () => numeric(await stat(page, 'Effective HP').innerText())).toBe(Math.round(expectedEhp));
   await expect(jointResults(page)).toHaveCount(0);
 });

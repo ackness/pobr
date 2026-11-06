@@ -1,5 +1,6 @@
+import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
-import { openItemsAfterImport, pageLink, statValue } from './shell';
+import { openItemsAfterImport, pageLink, statValue, playerHitDps } from './shell';
 import { openBuild, openExport, openLoadouts, stableText } from './buildLibrary';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
@@ -13,8 +14,8 @@ const xml = `<PathOfBuilding2>
   <Notes>Original notes</Notes>
 </PathOfBuilding2>`;
 
-const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
-const hitDps = (page: Page) => statValue(page, /^Hit DPS$/).first();
+const mainSkill = (page: Page) => page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
+const hitDps = (page: Page) => playerHitDps(page);
 /** Opens the Imported PoB loadouts section of the Build page and switches to one of them by its position. */
 async function switchLoadout(page: Page, index: number) {
   const picker = page.getByRole('combobox', { name: 'PoB loadout', exact: true });

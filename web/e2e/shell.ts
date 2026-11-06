@@ -13,6 +13,10 @@ export const statRow = (page: Page, label: string | RegExp): Locator =>
   page.locator('#character-stats .rail-row').filter({ has: page.locator('.rail-label').filter({ hasText: label }) });
 export const statValue = (page: Page, label: string | RegExp): Locator => statRow(page, label).locator('.rail-value');
 
+/** The calculated player's Hit DPS, independent of language and deliberately pinned copies. */
+export const playerHitDps = (page: Page): Locator =>
+  page.locator('#character-stats .rail-headline > .rail-row[data-stat="TotalDPS"] .rail-value');
+
 /** An import lands on the Overview. Most specs then work on the Items page, so follow the import there. */
 export async function openItemsAfterImport(page: Page) {
   await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
