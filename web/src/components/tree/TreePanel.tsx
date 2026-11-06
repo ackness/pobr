@@ -3,6 +3,7 @@ import { useTreeHover } from './useTreeHover';
 import { hasDisconnectedTreeNodes, isDisconnectedTree, isImportProblem, needsTreeConversion } from './treeImportStatus';
 import { TreeRefundNotice, type RefundReceipt } from './TreeRefundNotice';
 import { evaluateHeatmap } from './heatmap';
+import { fitToParentInPixels } from './pixelSize';
 import { TreePointSummary } from './TreePointSummary';
 import { jewelSocketNames } from './jewelSocketNames';
 import { defaultReportStat, distributeAttributeChoices, passivePointSummary } from './treePresentation';
@@ -216,6 +217,13 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     moved: boolean;
   } | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  // Size the SVG in pixels: a percentage size made every layout beside the canvas lay out the whole tree again.
+  const attachSvg = useCallback((svg: SVGSVGElement | null) => {
+    svgRef.current = svg;
+    if (!svg) return;
+    const stop = fitToParentInPixels(svg);
+    return () => { stop(); svgRef.current = null; };
+  }, []);
   const sceneRef = useRef<SVGGElement | null>(null);
   const dragRafRef = useRef<number | null>(null);
   const suppressClickRef = useRef(false);
@@ -857,8 +865,8 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     const dy = e.clientY - drag.startY;
     if (!drag.moved && Math.abs(dx) + Math.abs(dy) > 3) {
       drag.moved = true;
-      // 拖动确立后关闭节点命中测试（省掉每帧对 ~4900 个圆的 hover 命中）；
-      // pointer-events 关闭后 leave 不再触发，主动清掉悬停 tooltip。
+      // A confirmed drag shows .tree-drag-shield over the SVG, so moves no longer hit-test the
+      // ~4900 circles. The circles then get no leave event, so clear the hover tooltip here.
       svg.classList.add('is-dragging');
       setHover(null);
     }
@@ -1057,7 +1065,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
   const canvasEl = (
     <div className="tree-canvas">
         <svg
-          ref={svgRef}
+          ref={attachSvg}
           tabIndex={-1}
           viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
           onWheel={onWheel}
@@ -1089,6 +1097,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
           {nodesEl}
           </g>
         </svg>
+        <div className="tree-drag-shield" aria-hidden="true" />
         {hover && !attrPicker && (
           <TreeTooltip
             node={hover}
