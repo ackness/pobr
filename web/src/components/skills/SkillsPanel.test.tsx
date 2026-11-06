@@ -36,7 +36,7 @@ vi.mock('../../app/pages/skills/useSkillMetrics', () => ({ useSkillMetrics: () =
 vi.mock('../../hooks/useLocalizedLines', async original => ({ ...await original<typeof import('../../hooks/useLocalizedLines')>(), useLocalizedLines: (lines: string[]) => lines.map(line => harness.localized[line] ?? line) }));
 
 const fire: GemCatalogEntry = { skill_id: 'Fireball', name: 'Fireball', name_zh_cn: '火球', name_zh_tw: '火球',
-  colour: 'int', is_support: false, is_lineage: false, active_effect_ids: ['Fireball'], tags: [] };
+  colour: 'int', is_support: false, is_lineage: false, is_unique_only: false, active_effect_ids: ['Fireball'], tags: [] };
 const support: GemCatalogEntry = { ...fire, skill_id: 'Support', name: 'Support', active_effect_ids: [], is_support: true };
 const catalog = new Map([[fire.skill_id, fire], [support.skill_id, support]]);
 function session() {

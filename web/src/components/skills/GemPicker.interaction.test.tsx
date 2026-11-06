@@ -40,9 +40,9 @@ vi.mock('react/jsx-dev-runtime', async original => {
 
 const gems: GemCatalogEntry[] = [
   { skill_id: 'Area', name: 'Area Support', name_zh_cn: '范围辅助', name_zh_tw: '範圍輔助',
-    is_support: true, is_lineage: false, active_effect_ids: [], colour: 'int', tags: ['Area'] },
+    is_support: true, is_lineage: false, is_unique_only: false, active_effect_ids: [], colour: 'int', tags: ['Area'] },
   { skill_id: 'Bolt', name: 'Bolt', name_zh_cn: '闪电箭', name_zh_tw: '閃電箭',
-    is_support: false, is_lineage: false, active_effect_ids: ['Bolt'], colour: 'dex', tags: ['Projectile'] },
+    is_support: false, is_lineage: false, is_unique_only: false, active_effect_ids: ['Bolt'], colour: 'dex', tags: ['Projectile'] },
 ];
 const data = buildGemDescriptionIndex({ scopes: {
   'GemEffects.SupportText': { AreaVariant: 'Supports [Area] Skills.\r\nSecond line.' },

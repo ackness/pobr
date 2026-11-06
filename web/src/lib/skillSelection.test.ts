@@ -4,7 +4,7 @@ import { activeSkillEffects, highestDpsSkill, preserveSkillSelection, removeSkil
 
 const gemDefaults = {
   name: 'Fixture', name_zh_tw: null, name_zh_cn: null, colour: null,
-  is_support: false, is_lineage: false, tags: [],
+  is_support: false, is_lineage: false, is_unique_only: false, tags: [],
 };
 const catalog = new Map<string, GemCatalogEntry>([
   ['Curse', { ...gemDefaults, skill_id: 'Curse', active_effect_ids: ['Curse'], additional_skill_ids: ['DisplayOnlyStatSet'] }],

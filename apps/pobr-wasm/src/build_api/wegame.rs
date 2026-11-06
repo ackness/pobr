@@ -373,7 +373,7 @@ fn gem_names(data: &BuildData) -> Result<HashMap<(String, bool), BTreeSet<String
         }
     }
     let item_only = |effect: &str| {
-        effect.starts_with("Unique")
+        crate::build_api::catalog::is_unique_only_skill(effect)
             || data
                 .item_granted_skill_variants
                 .iter()

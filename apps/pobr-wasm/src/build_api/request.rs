@@ -18,6 +18,7 @@ use pobr_core::calc::{CompletedCalculationSession, MinimalInput};
 use pobr_core::item_text::parse_pob_xml_item;
 use pobr_core::rules::config_interpreter::ConfigInputValue;
 use pobr_data::build_config::CustomModifierBlock;
+use pobr_data::display_stat::{DisplayStatCategory, DisplayStatId, DisplayStatValue};
 use pobr_data::item::EquipmentSlot;
 use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::{AttributeChoice, NodeId};
@@ -753,18 +754,50 @@ pub(crate) const MAIN_MINION_DPS: &str = "MainMinionDPS";
 /// it used.
 pub(crate) struct CalculatedBuild {
     pub(crate) session: CompletedCalculationSession,
-    /// [`MAIN_MINION_DPS`]; `None` when the calculated skill summons no minion.
-    pub(crate) main_minion_dps: Option<f64>,
+    pub(crate) main_minion_index: Option<usize>,
+    display_values: Vec<DisplayStatValue>,
 }
 
 impl CalculatedBuild {
+    pub(crate) fn new(
+        session: CompletedCalculationSession,
+        prepared: &Build,
+        data: &BuildData,
+    ) -> Self {
+        let output = session.output();
+        let main_minion = pobr_build::main_skill_minion_in_view(prepared, data, output);
+        let main_minion_index = main_minion.and_then(|main| {
+            output
+                .minions
+                .iter()
+                .position(|minion| std::ptr::eq(main, minion))
+        });
+        let mut display_values = pobr_core::extract_display_values(output);
+        if let Some(main) = main_minion {
+            display_values.push(DisplayStatValue {
+                id: DisplayStatId::new(MAIN_MINION_DPS),
+                value: main.dps,
+                category: DisplayStatCategory::Offence,
+            });
+        }
+        Self {
+            session,
+            main_minion_index,
+            display_values,
+        }
+    }
+
+    pub(crate) fn display_values(&self) -> &[DisplayStatValue] {
+        &self.display_values
+    }
+
     /// One display stat, by display catalog id or [`MAIN_MINION_DPS`] (0 without
     /// a main minion, as the catalog reads 0 for an absent output).
     pub(crate) fn stat(&self, id: &str) -> f64 {
-        if id == MAIN_MINION_DPS {
-            return self.main_minion_dps.unwrap_or(0.0);
-        }
-        pobr_core::display_value(self.session.output(), id)
+        self.display_values()
+            .iter()
+            .find(|value| value.id.as_str() == id)
+            .map_or(0.0, |value| value.value)
     }
 }
 
@@ -775,12 +808,7 @@ pub(crate) fn calculate_build(
     opts: &DataOrchestratorOptions,
 ) -> Result<CalculatedBuild, pobr_build::BuildError> {
     let (session, prepared) = calculate_with_data_session_prepared(build, data, opts)?;
-    let main_minion_dps = pobr_build::main_skill_minion_in_view(&prepared, data, session.output())
-        .map(|minion| minion.dps);
-    Ok(CalculatedBuild {
-        session,
-        main_minion_dps,
-    })
+    Ok(CalculatedBuild::new(session, &prepared, data))
 }
 
 pub(crate) fn run_session_for_build(

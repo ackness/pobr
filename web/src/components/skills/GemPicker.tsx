@@ -43,9 +43,8 @@ export function rankGemResults(entries: GemCatalogEntry[], query: string, colour
     return gemTagMatches(gem.tags, query.trim()) ? 3 : 4;
   };
   return [...new Map(entries.map(gem => [gem.skill_id, gem])).values()]
-    // The catalog has no socketability field or base ID. SkillGemUnique* bases
-    // expose Unique* effect IDs. Hide them only here; imports still use the full catalog.
-    .filter(gem => !gem.skill_id.startsWith('Unique'))
+    // The catalog marks unique-granted effects; imports still use the full catalog.
+    .filter(gem => !gem.is_unique_only)
     .filter(gem => (colour === 'all' || gem.colour === colour) && rank(gem) < 4)
     .sort((a, b) => rank(a) - rank(b) || gemDisplayName(a, lang).localeCompare(gemDisplayName(b, lang), lang) || a.skill_id.localeCompare(b.skill_id));
 }

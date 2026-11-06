@@ -295,7 +295,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
           const metadata = byId.get(gem.skill_id);
           const entry = gemCatalog?.get(gem.skill_id) ?? {
             skill_id: gem.skill_id, name: metadata?.name ?? gemName(gem.skill_id),
-            name_zh_cn: null, name_zh_tw: null, is_support: true, is_lineage: metadata?.is_lineage ?? false,
+            name_zh_cn: null, name_zh_tw: null, is_support: true, is_lineage: metadata?.is_lineage ?? false, is_unique_only: false,
             active_effect_ids: [], colour: null, tags: metadata?.require_skill_types ?? [],
           };
           return <GemDescriptionPanel key={gem.skill_id} gem={entry} index={descriptions} lang={lang} />;

@@ -91,7 +91,7 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); vi.unstubAllGlobals(); });
 
 it('remounts same-skill editors when switching groups and on revision changes, resetting capacity before evaluation', async () => {
-  const fire: GemCatalogEntry = { skill_id: 'Fireball', name: 'Fireball', name_zh_cn: '火球', name_zh_tw: '火球', is_support: false, is_lineage: false,
+  const fire: GemCatalogEntry = { skill_id: 'Fireball', name: 'Fireball', name_zh_cn: '火球', name_zh_tw: '火球', is_support: false, is_lineage: false, is_unique_only: false,
     active_effect_ids: ['Fireball'], colour: 'int', tags: ['Spell'] };
   const supports = Array.from({ length: 5 }, (_, index) => ({ ...fire, skill_id: `Support${index}`, name: `Support ${index}`, is_support: true, active_effect_ids: [] }));
   ui.gems = [fire, ...supports];

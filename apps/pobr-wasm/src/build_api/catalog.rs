@@ -125,6 +125,8 @@ struct GemCatalogEntry {
     /// Whether it's a Lineage special support gem (determined from the gem
     /// base id; used for the frontend badge plus optimizer candidate filtering).
     is_lineage: bool,
+    /// Whether this unique-granted effect is hidden by the gem picker.
+    is_unique_only: bool,
     /// Skill tags (sorted, deduplicated). For active gems, taken from the
     /// granted effect's `skill_types`; for support gems, taken from
     /// `require_skill_types` (i.e. "what it can support"), with logical
@@ -233,6 +235,10 @@ fn gem_catalog_impl() -> Result<String, super::ApiError> {
     Ok(serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))?)
 }
 
+pub(super) fn is_unique_only_skill(skill_id: &str) -> bool {
+    skill_id.starts_with("Unique")
+}
+
 fn gem_catalog_entries(
     data: &pobr_build::BuildData,
     zh_names: &BTreeMap<String, String>,
@@ -337,6 +343,7 @@ fn gem_catalog_entries(
             },
             is_support: gem.is_support,
             is_lineage: gem.id.contains("Lineage"),
+            is_unique_only: is_unique_only_skill(skill_id),
             tags,
         });
     }
