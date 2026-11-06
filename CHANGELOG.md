@@ -4,6 +4,33 @@ Notable changes to PoBR, the browser build planner at [pobr.win](https://pobr.wi
 
 Versions follow [SemVer](https://semver.org/). While the version is 0.0.x, any release may change behaviour; changes that need action from WASM, CLI or data consumers are listed under **Breaking changes**. How a release section is written: [RELEASING.md](RELEASING.md#4-发版上线).
 
+## [0.0.47] - 2026-11-06
+
+A maintenance release: the passive tree and the Skills page do less work while you use them, and release notes now come from this changelog. Builds saved in v0.0.46 open unchanged, and the WASM JSON schema version stays at 19.
+
+### Breaking changes
+
+- None.
+
+### Changed
+
+- Passive tree: moving the pointer over nodes no longer recomputes socket labels, point totals and edit previews; a selected node's change totals are calculated when you open them; Simplified and Traditional Chinese stat lines are translated only once you type a search (on the tree or in the node table) and are kept while you keep editing, so Refund and other previews respond sooner. (#335)
+- Skills page: the results rail, Overview and Skills share one skill-damage calculation per change instead of running it once each; gem descriptions load when a gem picker or optimizer opens; the gem list sorts faster. (#335)
+
+### Fixed
+
+- The support gem picker's keyboard highlight no longer jumps back to the first entry while the page updates. (#335)
+
+### For developers
+
+- `GemCatalogEntry` has a new `is_unique_only` boolean for skills granted only by unique items (the picker's old `Unique` id-prefix rule, now in the catalog). The field is additive; the schema version is unchanged. (#335)
+- Release notes and release PR bodies come from the `CHANGELOG.md` section; `release-policy.py` requires that section on a version bump and gains a `notes` command. (#334)
+- `devs/scripts/ci-plan.py` drops the unused `--local` flag. (#335)
+
+### Internal
+
+- Cleanup of code merged since v0.0.45: duplicated rules and helpers merged (`colon`, `formatStat`, `cleanLineText`, one `MainMinionDPS` producer), dead CSS and exports removed, inline disclosure summaries no longer need `data-disclosure-level`, and web unit tests share one hook harness. (#335)
+
 ## [0.0.46] - 2026-11-06
 
 Picking a gem now shows what it does, in English, Simplified Chinese and Traditional Chinese. Simplified Chinese stat lines, gem descriptions and minion names now use the China client's official text. Summoner builds lead with the main minion's damage instead of 0, most pages had a round of wording, layout and number-format fixes, and PoBR has its own icon. Builds saved in v0.0.45 open unchanged, and the WASM JSON schema version stays at 19.
@@ -165,6 +192,7 @@ pobr.win now calculates with game data 0.5.5.5 (was 0.5.5.4.2), imported from th
 
 Notes for 0.0.43 and earlier are on [GitHub Releases](https://github.com/ackness/pobr/releases).
 
+[0.0.47]: https://github.com/ackness/pobr/compare/v0.0.46...v0.0.47
 [0.0.46]: https://github.com/ackness/pobr/compare/v0.0.45...v0.0.46
 [0.0.45]: https://github.com/ackness/pobr/compare/v0.0.44...v0.0.45
 [0.0.44]: https://github.com/ackness/pobr/compare/v0.0.43...v0.0.44
