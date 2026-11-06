@@ -208,7 +208,12 @@
 
   /* ── Resilience: large text, touch, motion ─────────────────────────────── */
   @media (pointer: coarse) { [data-slot='button'], [data-slot='select-trigger'], [data-slot='input'] { min-height: 44px; } .shell-tab { min-height: 44px; } }
-  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+  /* Reduced motion turns transitions off rather than making them very short. A short transition is still a
+     transition: with the default transition-property `all`, every changed property on every element starts
+     one. On the passive tree the scene's transform then animated on each pan frame, and each such frame took
+     seconds to composite. One-shot animations keep a near-zero duration so that `animationend` still fires
+     for the dialogs and menus that wait for it before they unmount. */
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; scroll-behavior: auto !important; } }
   /* Enlarged text changes the room available in rem; wrap rather than clip. */
   .shell-settings { overflow-wrap: anywhere; }
   .shell-settings .display-mode-picker { grid-template-columns: minmax(0, 1fr); }
@@ -485,6 +490,8 @@
   /* Reduced motion: values and states still change; nothing slides, grows or loops. */
   @media (prefers-reduced-motion: reduce) {
     .shell-progress[data-active]::after { width: 100%; animation: none; opacity: .5; }
+    /* The line still waits 200ms before it shows, so quick calculations never flash it; it just does not fade. */
+    .shell-progress[data-active] { transition: opacity 0s linear 200ms !important; }
     .rail-flash { animation: none; opacity: 0; }
     .rail-chip { animation: none; }
     .rail-fold { transition: none; }
