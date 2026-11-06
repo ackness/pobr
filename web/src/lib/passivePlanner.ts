@@ -7,9 +7,8 @@ import {
   type EvaluateResult,
   type Objective,
 } from './optimize';
-import { allocationRoutes, buildPassiveGraph, classStartSkill, connectedAllocation, type PassiveGraph } from './passiveGraph';
+import { allocationRoutes, buildPassiveGraph, classStartSkill, connectedAllocation, implicitClassStarts, type PassiveGraph } from './passiveGraph';
 
-const CLASS_START_NAMES = new Set(['TEMPLAR', 'DUELIST', 'RANGER', 'MARAUDER', 'SIX', 'WITCH']);
 export const PASSIVE_PLAN_LIMIT = 512;
 export const PASSIVE_POINT_LIMIT = 8;
 const PROBE_LIMIT = 256;
@@ -43,13 +42,13 @@ export function passivePlanningContext(
 ): PassivePlanningContext {
   const root = treeEffects?.class_starts[className?.toLowerCase() ?? ''] ?? classStartSkill(nodes, className);
   const grants = treeEffects?.allocation_grants ?? [];
-  const classStarts = new Set(Object.values(treeEffects?.class_starts ?? {}));
+  const classStarts = implicitClassStarts(nodes, treeEffects);
   const roots = new Set([...(root === null ? [] : [root]), ...grants.flatMap(grant => grant.roots)]);
   const exclusive = new Set(exclusiveNodes);
   const allAllocated = new Set(allocated);
   const eligible = nodes.filter(node => !node.ascendancy_id && node.kind !== 'mastery'
     && !exclusive.has(node.skill)
-    && (!(classStarts.has(node.skill) || CLASS_START_NAMES.has(node.name ?? '')) || roots.has(node.skill))
+    && (!classStarts.has(node.skill) || roots.has(node.skill))
     && (!node.unlock_constraint || ((!node.unlock_constraint.ascendancy || node.unlock_constraint.ascendancy === ascendancy)
       && node.unlock_constraint.nodes.every(id => allAllocated.has(id) && !exclusive.has(id)))));
   const allNodes = new Map(nodes.map(node => [node.skill, node]));

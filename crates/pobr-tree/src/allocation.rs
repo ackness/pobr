@@ -340,6 +340,14 @@ impl<'a> AllocationTree<'a> {
         {
             return Err("unsupported_node".into());
         }
+        // Class starts and jewel-granted starts are implicit: a route may begin at one,
+        // but it is never stored or paid for unless the import carried it.
+        let implicit: BTreeSet<u32> = self
+            .roots
+            .iter()
+            .chain(self.grants.iter().flat_map(|g| g.roots.iter()))
+            .copied()
+            .collect();
         let mut next = before.clone();
         let mut path = vec![];
         match action {
@@ -399,7 +407,7 @@ impl<'a> AllocationTree<'a> {
                     if let Some(shared_target) = path.iter().rev().find(|id| {
                         self.shared_only(**id)
                             && !before.shared.contains(id)
-                            && !self.roots.contains(id)
+                            && !implicit.contains(id)
                     }) {
                         let shared_path = self
                             .route(before, *shared_target, 0)
@@ -415,14 +423,14 @@ impl<'a> AllocationTree<'a> {
                         path.dedup();
                     }
                     for id in &path {
-                        if !next.shared.contains(id) && !self.roots.contains(id) {
+                        if !next.shared.contains(id) && !implicit.contains(id) {
                             next.exclusive[usize::from(effective - 1)].insert(*id);
                         }
                     }
                 }
-                // Roots are implicit; retain only roots that the import explicitly carried.
+                // Retain only implicit starts that the import explicitly carried.
                 next.shared
-                    .retain(|id| !self.roots.contains(id) || before.shared.contains(id));
+                    .retain(|id| !implicit.contains(id) || before.shared.contains(id));
             }
         }
         self.validate(&next)?;

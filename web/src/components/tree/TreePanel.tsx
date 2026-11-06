@@ -25,6 +25,7 @@ import {
   allocationAccess,
   buildPassiveGraph,
   classStartSkill,
+  implicitClassStarts,
 } from '../../lib/passiveGraph';
 import { NODE_RADIUS, clampView, isAttributeNode as isAttrNode, passiveTreeEdges, treeExtent, type ViewBox } from '../../lib/treeGeometry';
 import { diffStats, type DiffEntry } from '../../lib/compare';
@@ -384,11 +385,11 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     [nodes, session.character?.class_name, treeEffects],
   );
 
+  const implicitStarts = useMemo(() => implicitClassStarts(nodes ?? [], treeEffects), [nodes, treeEffects]);
   const graph = useMemo(() => {
-    const starts = new Set(Object.values(treeEffects?.class_starts ?? {}));
     const allowed = new Set([startSkill, ...grants.flatMap(grant => grant.roots)]);
-    return buildPassiveGraph((nodes ?? []).filter(node => !starts.has(node.skill) || allowed.has(node.skill)));
-  }, [nodes, treeEffects, startSkill, grants]);
+    return buildPassiveGraph((nodes ?? []).filter(node => !implicitStarts.has(node.skill) || allowed.has(node.skill)));
+  }, [nodes, implicitStarts, startSkill, grants]);
   const freeNodes = useMemo(() => allocationAccess(graph, allocated, startSkill, grants).free,
     [graph, allocated, startSkill, grants]);
   /** 搜索命中集（名称 + 词条文本，剥 `[a|b]` 标记后不分大小写子串匹配）。 */

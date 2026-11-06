@@ -40,6 +40,20 @@ function exhaustive(context: PassivePlanningContext, budget: number, calculate: 
 }
 
 describe('passive upgrade planner', () => {
+  it('spends one point beside a normal-kind jewel-granted class start and never allocates either root', () => {
+    const nodes = [node(1, [2, 3]), node(2, [], { kind: 'jewel_socket' }), node(3),
+      node(50459, [13828], { id: 'ranger596', name: 'RANGER' }), node(13828, [], { name: 'Evasion' })];
+    const effects = { class_starts: { witch: 1, ranger: 50459 },
+      allocation_grants: [{ source: 2, nodes: [], roots: [50459] }],
+      nodes: {}, conquered: [], unresolved: [], rings: [], warnings: [] };
+    const context = passivePlanningContext(nodes, [2], 'Witch', [], [2], undefined, effects);
+    const plans = allocationPaths(context, context.allocated, 1);
+    expect(plans.map(plan => plan.allocate)).toEqual([[3], [13828]]);
+    const plan = plans.find(plan => plan.target === 13828)!;
+    expect(passivePlanAllocation({ allocated_nodes: [2] }, context, plan, 1, 'allocate')?.allocatedNodes).toEqual([2, 13828]);
+    expect(passivePlanAllocation({ allocated_nodes: [2] }, context,
+      { allocate: [50459], deallocate: [], target: 50459 }, 1, 'allocate')).toBeNull();
+  });
   it('plans one-point radius upgrades, protects providers, and rejects outward island travel at apply time', () => {
     const nodes = [node(1,[2,3]),node(2,[],{kind:'jewel_socket'}),node(3,[4]),node(4,[5]),node(5,[6]),node(6)];
     const effects = { class_starts: { witch: 1 }, allocation_grants: [{source:2,nodes:[5],roots:[]}],
