@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { go, importCode, shareCode } from './configPage';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
+import { QUARANTINE } from './tags';
 
 const code = (inputs = '') => deflateSync(`<PathOfBuilding2>
   <Build level="20" className="Witch" mainSocketGroup="1"/>
@@ -176,7 +177,9 @@ test('read tracking is requested only while Config is open, including edits and 
   expect((await requests()).every(request => request.configContext)).toBe(true);
 });
 
-test('an option that depends on the one just set appears in its own group, not in "Relevant to this BD"', async ({ page }) => {
+// Quarantined: the config page now shows one group at a time (eb997114), so the dependent option is hidden until
+// its group is chosen and the "folding the leading group" step no longer applies. Rewrite around the group menu.
+test('an option that depends on the one just set appears in its own group, not in "Relevant to this BD"', QUARANTINE, async ({ page }) => {
   await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
   await importCode(page, code());

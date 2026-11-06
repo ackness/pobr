@@ -8,7 +8,7 @@ import { SkillsPanel } from './SkillsPanel';
 
 const ui = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], inputs: [] as ComponentProps<'input'>[],
   gems: [] as GemCatalogEntry[], trade: [] as SupportMetadata[], optimize: vi.fn() }));
-vi.mock('../../api/backend', () => ({ getBackend: async () => ({ gemCatalog: async () => ui.gems, supportGroupsCompatible: async (groups: unknown[]) => groups.map(() => true) }) }));
+vi.mock('../../api/backend', () => ({ getBackend: async () => ({ gemCatalog: async () => ui.gems, gemDescriptions: async () => null, supportGroupsCompatible: async (groups: unknown[]) => groups.map(() => true) }) }));
 vi.mock('../../lib/tradeOptimizer', () => ({ loadTradeCatalog: async () => ({ gems: ui.trade }) }));
 vi.mock('../../lib/supportOptimizer', async original => ({ ...await original<typeof import('../../lib/supportOptimizer')>(), optimizeSupports: ui.optimize }));
 vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: { preset: 'dps' }, setGoal: () => {} }) }));

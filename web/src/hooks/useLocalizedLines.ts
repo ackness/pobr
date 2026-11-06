@@ -166,10 +166,11 @@ export function localizedLines(lines: string[], lang: Lang, translated: readonly
     }
     if (BONDED.test(l)) {
       extra += 2;
-      const official = (text: string) => lang === 'zh-CN' ? text.replace(/^(?:Bonded|羁绊|纽带)\s*[:：]\s*/, '纽带：') : text;
+      // CN shows one form of the owner-chosen term (Tencent's trade-site prefix), without the space after the colon.
+      const official = (text: string) => lang === 'zh-CN' ? text.replace(/^(?:Bonded|羁绊|纽带)\s*[:：]\s*/, '羁绊：') : text;
       if (out !== undefined && out !== l && !BONDED.test(out)) return official(out);
       // Without a whole-line row, compose the effect with the official CN or pack-owned TW prefix.
-      const composed = composedBonded(l, translated[extra - 1], lang === 'zh-CN' ? '纽带：{0}' : prefix);
+      const composed = composedBonded(l, translated[extra - 1], lang === 'zh-CN' ? '羁绊：{0}' : prefix);
       const value = composed === l && out !== undefined ? out : composed;
       return value === l ? l : official(value);
     }

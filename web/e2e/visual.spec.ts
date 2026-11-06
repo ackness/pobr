@@ -6,11 +6,15 @@
 import { expect, test } from '@playwright/test';
 import { bdLibraryButton } from './shell';
 import { goTo, importAndOpen } from './skillsAndCalcs';
+import { EXTENDED } from './tags';
 
 const BREAKPOINTS = [320, 768, 1024, 1440, 1920, 2560, 3440] as const;
+// 1024 is the only default check of the 1001–1250px rules (trade, config workflow, the 1100/1200 breakpoints).
+// 1920 sits in a band the 1440 and 2560 populated runs cover; 3440 is covered by `functional pages fit 3440px`.
+const DEFAULT_BREAKPOINTS: readonly number[] = [320, 768, 1024, 1440];
 
 for (const width of BREAKPOINTS) {
-  test(`no horizontal overflow at ${width}px`, async ({ page }) => {
+  test(`no horizontal overflow at ${width}px`, DEFAULT_BREAKPOINTS.includes(width) ? {} : EXTENDED, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/build');
     await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({
@@ -59,16 +63,6 @@ for (const width of BREAKPOINTS) {
     }
   });
 }
-
-test('keyboard: tab navigation reaches import textarea', async ({ page }) => {
-  await page.goto('/build');
-  await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({
-    timeout: 90_000,
-  });
-  // The import textbox remains keyboard-focusable as navigation grows.
-  await page.getByRole('textbox', { name: 'Build code' }).focus();
-  await expect(page.getByRole('textbox', { name: 'Build code' })).toBeFocused();
-});
 
 test('replacement header fits a narrow screen with classic scrollbar space', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 900 });

@@ -225,6 +225,7 @@ clearing Cargo caches.
 | `mise run web test:wasm-contract` | Frontend request conversion against prepared real WASM/data. |
 | `mise run web test:worker` | HTTP Worker tests in workerd. |
 | `mise run web exec playwright test e2e/build-roundtrip.spec.ts` | Focused browser regression with current dist/WASM/data. |
+| `POBR_E2E_ALL=1 mise run web exec playwright test` | Also run the `@quarantine` and `@extended` tests the default run leaves out (`e2e/tags.ts`); `POBR_E2E_TRACE=1` records failure traces locally. |
 | `mise run web build-wasm` / `mise run web sync-data` | Prepare WASM / copy versioned data into public. |
 | `mise run web package-wasm` / `mise run web smoke-wasm-package` | Package / verify the standalone archive in `.cache/wasm-release/`. |
 

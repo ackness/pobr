@@ -1,12 +1,15 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { go } from './configPage';
+import { QUARANTINE } from './tags';
 
 // Controls the data audit found not to exist in this game version are not offered on the page.
 const gameRelevance: { data_version: string; excluded: Record<string, unknown> } =
   JSON.parse(readFileSync('src/lib/configGameRelevance.json', 'utf8'));
 
-test('every catalog control and list choice can be changed, recalculated and reset', async ({ page }) => {
+// Quarantined: expects every group on one page (`.config-section` nth), but the config page now shows one group at
+// a time (eb997114); with a 600 s budget it also cost a worker ten minutes per run.
+test('every catalog control and list choice can be changed, recalculated and reset', QUARANTINE, async ({ page }) => {
   test.setTimeout(600_000);
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });

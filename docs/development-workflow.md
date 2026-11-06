@@ -329,6 +329,14 @@ PR 不在 workflow 层过滤文档，以免必需检查永久 pending：只运�
 导入构筑码、技能与辅助、打造器、加点（恰好退一点再加一点）、刷新重开（加点、辅助、能量护盾与 DPS 不变）。选择由 `ci-plan.py --data-smoke` 决定；
 tag 与 nightly 不选，分支范围无法比较时保守选中。它不进入 PR gate，因此数据 bump PR 合并前应 `mise run ci <分支>`。
 
+默认 Playwright 配置（[playwright.config.ts](../web/playwright.config.ts)）不运行带标签的用例，标签定义在
+[e2e/tags.ts](../web/e2e/tags.ts)：`@quarantine` 是界面已改、等待重写或等待决定的用例，`@extended` 是矩阵中额外的
+语言／宽度／同路径变体（英文 1440px 与简体中文 390px 等代表格仍在默认集）。`POBR_E2E_ALL=1` 连同它们一起运行，
+再加 `--grep @quarantine` 只运行隔离的用例；修好后去掉标签。产品缺陷导致的失败不打标签，照常报告。
+完整 CI 的 E2E 步骤设 `POBR_E2E_ALL=1` 并 `--grep-invert @quarantine`：运行全部矩阵格，只留下隔离的用例。
+默认配置还给单个操作与导航设 30 秒超时（等待真实 WASM 导入或计算的地方写在显式的 `expect(...)` 超时里）；本地默认 4 个 worker、不录 trace，
+`POBR_E2E_TRACE=1` 开启，CI 保留失败用例的 trace。
+
 PR 与完整 CI 的 web 作业在作业摘要里打印游戏文本缺译统计（`devs/scripts/translation-coverage.py`）：
 每种语言的名词表、词条模板（与英文 stat 描述模板逐字对照）与原生显示文本覆盖率，缺译只报告、不使检查失败；
 读不了的表、语言或快照打印为 `unreadable: <原因>`，脚本仍以 0 退出，CI 步骤另设 `continue-on-error`。缺译在 Web／WASM 中显示英文（`translationFallback.test.ts`、pobr-i18n 渲染测试）。

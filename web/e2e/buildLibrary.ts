@@ -12,6 +12,8 @@ export const mainNav = (page: Page, lang: Lang = 'en-US') => page.getByRole('nav
  */
 export async function goTo(page: Page, name: string, lang: Lang = 'en-US') {
   const link = mainNav(page, lang).getByRole('link', { name, exact: true });
+  // The menu drawer stays in place while it slides away after the previous page change; its links are not the ones to use.
+  await expect(page.locator('.shell-mobile-navigation')).toHaveCount(0);
   if (await link.isVisible()) { await link.click(); return; }
   await page.locator('.shell-menu-button').click();
   await page.getByRole('dialog').getByRole('link', { name, exact: true }).click();
@@ -43,6 +45,15 @@ export async function choose(page: Page, trigger: Locator, option: string | RegE
 /** Opens a stage of the current BD by its name, from the top bar. */
 export async function selectStage(page: Page, name: string) {
   await choose(page, page.getByRole('combobox', { name: 'Current stage', exact: true }), name);
+}
+
+/**
+ * Opened lists and popovers are placed a frame after they appear and then zoom and slide in, so a size read
+ * before their animations finish can see them scaled down. Wait for that, then measure once.
+ */
+export async function animationsSettled(page: Page) {
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await page.waitForFunction(() => document.getAnimations().every(animation => animation.playState !== 'running'));
 }
 
 /** Picks where the next import goes: a new BD, or the current stage (which asks before it replaces anything). */

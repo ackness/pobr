@@ -10,9 +10,10 @@ import type { SavedSession } from '../src/hooks/useBuildSession';
 import type { BuildWorkspace } from '../src/lib/buildWorkspace';
 import { bindT, type Lang } from '../src/lib/i18n';
 import { buildPassiveGraph, shortestAllocationPath } from '../src/lib/passiveGraph';
-import { formatStatValue, STAT_SECTIONS } from '../src/lib/statDisplay';
+import { formatStatValue, STAT_SECTIONS, statFormat } from '../src/lib/statDisplay';
 import { workspaceText } from '../src/lib/workspaceText';
 import * as wasmReplay from '../src/wasm/pkg/pobr_wasm.js';
+import { matrixCell } from './tags';
 
 const frostBomb = readFileSync(new URL('../../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', import.meta.url), 'utf8').trim();
 const version = readFileSync(new URL('../../data/CURRENT', import.meta.url), 'utf8').trim();
@@ -259,8 +260,9 @@ async function exactApply(page: Page, card: Locator, planner: Planner, before: C
   const metrics = ['Life', 'CombinedDPS', 'TotalEHP'] as const;
   for (const id of metrics) {
     const value = expectedResult.stats.find(stat => stat.id === id)!.value!;
-    expect(Math.abs(numeric(await card.locator(`output[data-stat="${id}"]`).innerText()) - value),
-      `${id} must match the independently replayed route to its displayed precision`).toBeLessThanOrEqual(0.00501);
+    // A route card folds its before → after values into a closed details element: read the text, not the rendering.
+    expect(await card.locator(`output[data-stat="${id}"]`).textContent(),
+      `${id} must match the independently replayed route to its displayed precision`).toBe(formatStatValue(value, statFormat(id), lang));
   }
   await card.getByRole('button', { name: planner === 'route' ? labels[lang].apply : 'Apply jewel and passive plan', exact: true }).click();
   // The receipt belongs to the allocation that was just replaced, so it goes with it. A planner that keeps
@@ -273,16 +275,19 @@ async function exactApply(page: Page, card: Locator, planner: Planner, before: C
     .toEqual({ ...expectedRequest, allocated_nodes: [...expectedRequest.allocated_nodes!].sort((a, b) => a - b) });
   expect(after.result).toEqual(expectedResult);
   for (const id of metrics) {
-    const row = STAT_SECTIONS.flatMap(section => section.rows).find(row => row.id === id)!;
+    const row = STAT_SECTIONS.flatMap(section => section.rows).find(row => row.id === id);
     const value = expectedResult.stats.find(stat => stat.id === id)!.value;
-    await expect(statValue(page, new RegExp(`^${row.label[lang]}$`)).first()).toHaveText(formatStatValue(value, row.format));
+    // Combined DPS is the headline figure above the rows.
+    const shown = row ? statValue(page, new RegExp(`^${row.label[lang]}$`)).first()
+      : page.locator(`.rail-headline [data-stat="${id}"] .rail-hero-value`).first();
+    await expect(shown).toHaveText(formatStatValue(value, statFormat(id)));
   }
   return after;
 }
 
 for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
   for (const width of [390, 1440]) {
-    test(`${lang} ${width}px: rejected imports preserve Frost Bomb and fresh route evaluation completes`, async ({ page }, testInfo) => {
+    test(`${lang} ${width}px: rejected imports preserve Frost Bomb and fresh route evaluation completes`, matrixCell(lang, width), async ({ page }, testInfo) => {
       test.setTimeout(300_000);
       await page.setViewportSize({ width, height: 780 });
       await frostWorkspace(page, lang);
@@ -467,7 +472,7 @@ test('strict saved-file rejection stays local and external decoder rejection als
 
 for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
   for (const width of [390, 1440]) {
-    test(`${lang} ${width}px: real failed calculation remains blocked across a later rejected import and recovers only after a valid edit`, async ({ page }, testInfo) => {
+    test(`${lang} ${width}px: real failed calculation remains blocked across a later rejected import and recovers only after a valid edit`, matrixCell(lang, width), async ({ page }, testInfo) => {
       test.setTimeout(300_000);
       await page.setViewportSize({ width, height: 780 });
       await syntheticWitch(page, lang);

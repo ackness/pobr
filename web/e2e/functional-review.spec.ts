@@ -4,6 +4,7 @@ import { openItemsAfterImport } from './shell';
 import { answerConfirm } from './confirmDialog';
 import { choose, goTo } from './skillsAndCalcs';
 import { readFileSync } from 'node:fs';
+import { animationsSettled } from './buildLibrary';
 import { deflateSync } from 'node:zlib';
 
 // The skill picker at the top of the results panel. `goTo` opens the menu sheet where the page links are folded away.
@@ -89,6 +90,8 @@ test('weapon binding and gem menus remain clickable at the bottom of the scroll 
   await trigger.click();
   // The drop-down's list is not labelled itself; only one is open.
   const menu = page.getByRole('listbox');
+  await expect(menu).toBeVisible();
+  await animationsSettled(page);
   const rect = await menu.boundingBox();
   const mainRect = await page.locator('main').boundingBox();
   expect(rect!.y + rect!.height).toBeLessThanOrEqual(mainRect!.y + mainRect!.height);
@@ -118,6 +121,8 @@ test('equipment menus in short viewports can scroll to and select the final posi
   const list = page.getByRole('listbox');
   const menu = list.locator('[data-radix-select-viewport]');
   // The list is cut to the room the short viewport leaves, so it has to scroll.
+  await expect(list).toBeVisible();
+  await animationsSettled(page);
   const box = await list.boundingBox();
   expect(box!.y).toBeGreaterThanOrEqual(0);
   expect(box!.y + box!.height).toBeLessThanOrEqual(500);
@@ -137,6 +142,8 @@ test('nested gem lists in short viewports can scroll to and select their final r
   await search.click();
   const menu = page.locator('.gem-picker-list');
   // The list is capped at 20rem (320px) and is shorter still when the viewport leaves less room.
+  await expect(menu).toBeVisible();
+  await animationsSettled(page);
   expect(await menu.evaluate(element => element.clientHeight)).toBeLessThan(320);
   const popover = await page.locator('.gem-picker-popover').boundingBox();
   expect(popover!.y + popover!.height).toBeLessThanOrEqual(500);
