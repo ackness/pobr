@@ -186,11 +186,13 @@ test('cold resistance changes real hit DPS and reset restores the exact absent o
   await openConfig(page);
   const before = await savedState(page);
   const baseline = await hitDps(page).innerText();
+  await expect(entry(page, 'enemyColdResist').locator('output')).toHaveText(/^\d+(?:\.\d+)?%$/);
   const defaultValue = await entry(page, 'enemyColdResist').locator('output').innerText();
   await editNumber(page, 'enemyColdResist', 60);
   await expect.poll(async () => numeric(await hitDps(page).innerText())).toBeLessThan(numeric(baseline));
-  await expect(entry(page, 'enemyColdResist').locator('output code')).toHaveText('60');
+  await expect(entry(page, 'enemyColdResist').locator('output')).toHaveText('60%');
   await reset(page, 'enemyColdResist');
+  await expect(control(page, 'enemyColdResist')).toHaveAttribute('placeholder', /\d+.*Inherited from/);
   expect((await configInputs(page)).enemyColdResist).toBeUndefined();
   expect(await savedState(page)).toEqual(before);
   await expect(hitDps(page)).toHaveText(baseline);
@@ -250,13 +252,13 @@ test('review, jump, edit/reset, share and reload preserve imported false/zero/nu
   await page.locator('.shell-notice[role=note]').getByRole('link', { name: 'Go to Configuration', exact: true }).click();
   await openQuickAccess(page);
   for (const [key, value] of [['conditionEnemyShocked', false], ['conditionShockEffect', 0], ['enemyColdResist', 17]] as const) {
-    await expect(entry(page, key).locator('output code')).toHaveText(JSON.stringify(value));
+    await expect(entry(page, key).locator('output')).toHaveText(typeof value === 'boolean' ? (value ? 'On' : 'Off') : `${value}%`);
     await openSetting(page, key);
   }
   // Select the separately calculated fire skill to expose the imported string summary.
   await choose(page, inspectedSkill(page), /2\. Fireball/);
   await idle(page);
-  await expect(entry(page, 'enemyFireResist').locator('output code')).toHaveText('"23"');
+  await expect(entry(page, 'enemyFireResist').locator('output')).toHaveText('Saved value needs review; open the setting to correct it.');
   await openSetting(page, 'enemyFireResist');
   await expect(control(page, 'enemyFireResist')).toHaveValue('23');
   expect(await configInputs(page)).toEqual(before.params.config_inputs);
@@ -295,8 +297,8 @@ test('review, jump, edit/reset, share and reload preserve imported false/zero/nu
   await openQuickAccess(page);
   await idle(page);
   expect(await configInputs(page)).toMatchObject(raw);
-  await expect(entry(page, 'conditionEnemyShocked').locator('output code')).toHaveText('false');
-  await expect(entry(page, 'conditionShockEffect').locator('output code')).toHaveText('0');
+  await expect(entry(page, 'conditionEnemyShocked').locator('output')).toHaveText('Off');
+  await expect(entry(page, 'conditionShockEffect').locator('output')).toHaveText('0%');
   await expect(hitDps(page)).toHaveText(baseline);
 });
 
@@ -351,15 +353,15 @@ test('EN/zh-TW/zh-CN labels and keyboard destinations remain localized without c
     await openSetting(page, 'enemyColdResist', true);
     const canonicalLabel = await control(page, 'enemyColdResist').getAttribute('aria-label');
     await expect(current.locator('strong')).toHaveText(canonicalLabel!);
-    await expect(entry(page, 'conditionEnemyShocked').locator('output code')).toHaveText('false');
-    await expect(entry(page, 'conditionShockEffect').locator('output code')).toHaveText('20');
+    await expect(entry(page, 'conditionEnemyShocked').locator('output')).toHaveText(lang === 'en-US' ? 'Off' : lang === 'zh-TW' ? '關閉' : '关闭');
+    await expect(entry(page, 'conditionShockEffect').locator('output')).toHaveText('20%');
     expect(await savedState(page)).toEqual(before);
     await expect(hitDps(page)).toHaveText(baseline);
     await setLanguage(page, lang === 'en-US' ? 'zh-TW' : lang === 'zh-TW' ? 'zh-CN' : 'en-US');
   }
 });
 
-for (const width of [320, 390, 1440]) {
+for (const width of [320, 390, 1440, 2560]) {
   test(`quick card and keyboard jump fit ${width}px and focus below the sticky toolbar`, async ({ page }) => {
     await page.setViewportSize({ width, height: 780 });
     await ready(page);
@@ -370,6 +372,8 @@ for (const width of [320, 390, 1440]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
     const before = await savedState(page);
     await openSetting(page, 'enemyColdResist', true);
+    await expect(row(page, 'enemyColdResist').locator('.config-option-help')).not.toHaveAttribute('open', '');
+    expect(await row(page, 'enemyColdResist').evaluate(element => element.getBoundingClientRect().width <= 769)).toBe(true);
     await expect.poll(() => control(page, 'enemyColdResist').evaluate(element => {
       const bounds = element.getBoundingClientRect();
       const toolbar = document.querySelector('.config-toolbar')!.getBoundingClientRect();
@@ -381,6 +385,24 @@ for (const width of [320, 390, 1440]) {
     expect(await savedState(page)).toEqual(before);
   });
 }
+
+test('checkbox values stay beside their labels and help opens on demand', async ({ page }) => {
+  await page.setViewportSize({ width: 2560, height: 1000 });
+  await ready(page);
+  await importCode(page, syntheticCode(['Comet']));
+  await openConfig(page);
+  await openSetting(page, 'conditionEnemyShocked');
+  const setting = row(page, 'conditionEnemyShocked');
+  expect(await setting.evaluate(element => {
+    const label = element.querySelector('.config-key')!.getBoundingClientRect();
+    const control = element.querySelector('.config-option-control')!.getBoundingClientRect();
+    return control.left - label.right <= 16 && Math.abs(control.top - label.top) < 16;
+  })).toBe(true);
+  await setting.getByText('Help', { exact: true }).click();
+  await expect(setting.locator('.config-raw-key')).toBeVisible();
+  await setting.getByText('Help', { exact: true }).click();
+  await expect(setting.locator('.config-raw-key')).not.toBeVisible();
+});
 
 for (const planner of ['support', 'replacement'] as const) {
   test(`completed ${planner} receipt survives review/jump, but a real config edit invalidates Apply`, async ({ page }) => {

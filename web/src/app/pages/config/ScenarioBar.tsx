@@ -1,4 +1,7 @@
-import type { EnemyTier } from '../../../api/types';
+import type { CalculateBuildResponse, EnemyTier } from '../../../api/types';
+import { EnergyTriggerNote } from '../../../components/config/EnergyTriggerNote';
+import { EnemyTierSummary } from '../../../components/config/EnemyTierSummary';
+import type { EnemyPresets } from '../../../api/enemyPresets';
 import { AppButton } from '../../../components/shared/controls';
 import type { BuildSession } from '../../../hooks/useBuildSession';
 import { enemyTierLabel, type Lang } from '../../../lib/i18n';
@@ -10,7 +13,8 @@ import { SCENARIOS } from './scenario';
  * The fight the numbers are measured against, as one choice. Picking a preset sets the enemy tier
  * and nothing else; a build that takes its enemy from its own imported settings reads as custom.
  */
-export function ScenarioBar({ session, lang }: { session: BuildSession; lang: Lang }) {
+export function ScenarioBar({ session, lang, calc, presets = null, inherited = {} }: { session: BuildSession; lang: Lang; calc?: CalculateBuildResponse | null;
+  presets?: EnemyPresets | null; inherited?: Readonly<Record<string, number>> }) {
   const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
   const current = resolveEnemyTier(session.calcParams.enemy_tier, session.calcParams.config_inputs);
   return <div className="cfg-scenario" role="group" aria-label={w('Enemy tier', '敌人档位', '敵人檔位')}>
@@ -21,6 +25,8 @@ export function ScenarioBar({ session, lang }: { session: BuildSession; lang: La
         {enemyTierLabel(lang, scenario.tier)}
       </AppButton>)}
     </div>
+    <EnemyTierSummary table={presets} tier={current} inputs={session.calcParams.config_inputs} inherited={inherited} lang={lang} />
+    <EnergyTriggerNote calc={calc} groups={session.socketGroups} lang={lang} />
     {current === 'custom' && <span className="cfg-scenario-note" role="status">
       {w('Using the build’s enemy settings.', '使用 BD 中的敌人设置。', '使用 BD 中的敵人設定。')}
     </span>}

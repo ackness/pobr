@@ -1,3 +1,4 @@
+import { EnergyTriggerNote } from '../components/config/EnergyTriggerNote';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ChevronRight, CircleAlert, CircleCheck, Pin } from 'lucide-react';
 import type { EnemyTier, MainSkillInfo } from '../api/types';
@@ -99,6 +100,7 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
     <div className="rail-scenario"><span>{w('Enemy tier', '敌人档位', '敵人檔位')}</span>
       <AppSelect ariaLabel={w('Enemy tier', '敌人档位', '敵人檔位')} value={enemy === 'custom' ? '' : enemy} placeholder={w('Custom', '自定义', '自訂')} disabled={session.busy}
         onChange={tier => session.updateParams({ enemy_tier: tier as EnemyTier })} options={TIERS.map(tier => ({ value: tier, label: enemyTierLabel(lang, tier) }))} /></div>
+    <EnergyTriggerNote calc={calc} groups={groups} lang={lang} className="mx-4" />
     {route !== 'overview' && calc && groups.length > 0 && <button type="button" className="rail-health" title={tt('sidebar.viewOverview')} data-state={findings.length === 0 ? 'ok' : findings.some(item => item.severity === 'bad') ? 'bad' : 'warn'} onClick={toOverview}>
       {findings.length === 0 ? <CircleCheck /> : <CircleAlert />}
       <span>{findings.length === 0 ? w('No obvious problems', '没有明显问题', '沒有明顯問題') : w(`${findings.length} to look at`, `${findings.length} 项需要关注`, `${findings.length} 項需要關注`)}<small>{tt('sidebar.viewOverview')}</small></span>
