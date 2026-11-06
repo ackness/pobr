@@ -75,9 +75,10 @@ Add regression cases for changed behavior even when execution is deferred. Repor
 what you inspected, actual commands/results and anything left unrun. A review or
 compiler check does not prove runtime assertions passed.
 
-Your PR runs the relevant quick checks automatically (`PR gate`); a maintainer may
-request full CI before merging a risky change, and master runs full CI after merge.
-There is no need to repeat a full run locally. CI details are in the
+Your PR runs the relevant quick checks automatically (`PR gate`). Changes to Rust,
+data or pipeline require a green `mise run ci <branch>` before merging; choose full
+CI for other changes by risk. This is a review rule; `pr-ready` does not enforce it.
+Master also runs full CI after merge. CI details are in the
 [development workflow](docs/development-workflow.md#ci-的责任与触发).
 
 ## Pull requests and review

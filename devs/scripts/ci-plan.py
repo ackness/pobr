@@ -119,6 +119,31 @@ def changed_files(base, head="HEAD", cwd=None):
             for name in result.stdout.split(b"\0") if name]
 
 
+def local_changed_files(cwd=None):
+    """Include the branch range, index, working tree and non-ignored new files."""
+    def git(*args):
+        result = subprocess.run(["git", *args], cwd=cwd, capture_output=True)
+        if result.returncode:
+            raise ValueError(f"git {' '.join(args)} failed: "
+                             + result.stderr.decode(errors="replace").strip())
+        return result.stdout
+
+    try:
+        base = git("merge-base", "origin/master", "HEAD").decode().strip()
+    except ValueError as error:
+        raise ValueError(f"{error}; run `git fetch origin master` to refresh the comparison base") from error
+    files = set()
+    for args in (
+        ("diff", "--no-renames", "--name-only", "-z", base, "HEAD", "--"),
+        ("diff", "--no-renames", "--name-only", "-z", "--cached", "HEAD", "--"),
+        ("diff", "--no-renames", "--name-only", "-z", "--"),
+        ("ls-files", "--others", "--exclude-standard", "-z"),
+    ):
+        files.update(name.decode("utf-8", errors="surrogateescape")
+                     for name in git(*args).split(b"\0") if name)
+    return sorted(files)
+
+
 def emit(plan, title="Selected checks"):
     lines = [f"{key}={str(value).lower()}" for key, value in plan.items()]
     print("\n".join(lines))
@@ -132,10 +157,18 @@ def emit(plan, title="Selected checks"):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--local", action="store_true",
+                        help="classify branch, staged, unstaged and untracked changes offline")
     parser.add_argument("--event", type=Path, default=os.environ.get("GITHUB_EVENT_PATH"))
     parser.add_argument("--data-smoke", metavar="BASE", nargs="?", const="",
                         help="instead of the check plan, decide the data-bump smoke against BASE")
     args = parser.parse_args()
+    if args.local:
+        try:
+            emit(classify(local_changed_files()), "Local checks")
+        except ValueError as error:
+            raise SystemExit(str(error)) from error
+        return
     event = json.loads(args.event.read_text()) if args.event else {}
     event_name = os.environ.get("GITHUB_EVENT_NAME")
     if args.data_smoke is not None:
