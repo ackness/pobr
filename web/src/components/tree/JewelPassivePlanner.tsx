@@ -1,10 +1,11 @@
 import { formatStatValue, statFormat, formatNumber } from '../../lib/statDisplay';
+import { useHeadlineDamage } from '../../hooks/useMainMinion';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { AttributeChoice, CalculateBuildRequest, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { statNameLabel, messages, type Lang } from '../../lib/i18n';
+import { messages, statNameLabel, type Lang } from '../../lib/i18n';
 import { normalizeCopiedItem } from '../../lib/itemReplacement';
 import {
   JEWEL_PASSIVE_CANDIDATE_LIMIT, planJewelPassiveUpgrades,
@@ -177,6 +178,7 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
   const { session, lang, nodeLabel, onLocate, raw, setRaw, selectedSocket, setSocket, sockets,
     candidates, remove, completed, result, progress, error, preview, exclusive, applied, add, run, apply, stop, show } = planner;
   const text = messages(lang, 'jewelPlanner');
+  const damage = useHeadlineDamage(session.calc, lang);
   const colon = lang === 'en-US' ? ': ' : '：';
   const format = (value: number) => formatNumber(value);
   const delta = (value: number, baseline: number) => baseline === 0 ? `${value >= 0 ? '+' : ''}${format(value)}`
@@ -215,6 +217,7 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
     {error && <p className="opt-error" role="alert">{error}</p>}
     {result && <PlannerResultsNotice count={result.plans.length} lang={lang}><div className="jewel-plan-results">
       <p className="tree-planner-hint">{text.evaluated}{colon}{result.evaluated}</p>
+      {damage.note && <p className="tree-planner-hint">{damage.note}</p>}
       {result.limited && <p className="tree-planner-hint">{text.bounded}</p>}
       {result.unmodeled > 0 && <p className="tree-planner-hint">{text.skipped}{colon}{result.unmodeled}</p>}
       {result.diagnostics.length > 0 && <details><summary>{text.diagnostics}</summary><ul>{result.diagnostics.map((reason, index) => <li key={index}>{reason}</li>)}</ul></details>}
@@ -223,8 +226,8 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
       <ol className="tree-planner-results">{result.plans.map((plan, index) => <li key={index} className={preview === index ? 'is-previewed' : ''}>
         <div className="tree-plan-heading"><strong>{plan.candidateId === null ? text.current : plan.candidateLabel}</strong>
           <span>{plan.candidateId !== null && <>{nodeLabel(completed!.candidates.find(candidate => candidate.id === plan.candidateId)!.jewel.socket_node)} · </>}{text.addNodes} {plan.allocate.length} · {text.removeNodes} {plan.deallocate.length}</span></div>
-        <div className="tree-plan-metrics">{(['TotalDPS', 'TotalEHP', 'Life'] as const).map(stat => <span key={stat}>
-          {statNameLabel(lang, stat)} <b>{delta(plan.stats[stat] ?? 0, result.baseline[stat] ?? 0)}</b>
+        <div className="tree-plan-metrics">{[damage.stat, 'TotalEHP', 'Life'].map(stat => <span key={stat}>
+          {stat === damage.stat ? damage.label : statNameLabel(lang, stat)} <b>{delta(plan.stats[stat] ?? 0, result.baseline[stat] ?? 0)}</b>
           <small>{formatStatValue(result.baseline[stat] ?? 0, statFormat(stat), lang)} → <output data-stat={stat}>{formatStatValue(plan.stats[stat] ?? 0, statFormat(stat), lang)}</output></small>
         </span>)}</div>
         <details><summary>{text.route}</summary><p>{text.addNodes}{colon}{plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>

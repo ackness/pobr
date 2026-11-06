@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it } from 'vitest';
 import { SwapGainCard } from './SwapGainCard';
+import { minionDpsNote } from '../../lib/mainMinion';
 
 it('prioritizes combined DPS, effective HP and life with before/after and percentages, folding all other changes once', () => {
   const before = [{ id: 'TotalDPS', value: 80 }, { id: 'CombinedDPS', value: 100 }, { id: 'Life', value: 200 }, { id: 'TotalEHP', value: 1000 }, { id: 'Armour', value: 500 }];
@@ -25,6 +26,20 @@ it('keeps unavailable stats unavailable and uses an absolute change for a zero b
   expect(html).not.toContain('%');
   expect(html).toContain('>+50<');
   expect(html).toContain('>—<');
+});
+
+it('leads with the main minion gain when player hit and combined DPS do not change', () => {
+  const before = [{ id: 'TotalDPS', value: 0 }, { id: 'CombinedDPS', value: 0 }, { id: 'MainMinionDPS', value: 100.4 }];
+  const after = before.map(row => ({ ...row, value: row.id === 'MainMinionDPS' ? 150.6 : row.value }));
+  const html = renderToStaticMarkup(<SwapGainCard before={before} after={after} lang="zh-CN"
+    damage={{ stat: 'MainMinionDPS', label: '召唤物击中 DPS', note: minionDpsNote('zh-CN', '狼', 7) }} />);
+  const headline = html.match(/data-stat="MainMinionDPS"[\s\S]*?<\/div>/)![0];
+  expect(headline).toContain('召唤物击中 DPS');
+  expect(headline).toContain('狼 · 单只 · 上限 7 只');
+  expect(headline).toContain('+50.0%');
+  expect(headline).toContain('100</span> → <b class="swap-after">151');
+  expect(html).not.toContain('data-stat="CombinedDPS"');
+  expect(html).not.toContain('全部变化');
 });
 
 it.each(['en-US', 'zh-CN', 'zh-TW'] as const)('uses metric precision for absolute gains and groups negative DPS in %s', lang => {

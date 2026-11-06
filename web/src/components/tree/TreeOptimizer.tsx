@@ -7,7 +7,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject }
 import { formatApiError } from '../../api/error';
 import type { AttributeChoice, CalculateBuildRequest, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { bindT, statNameLabel, messages, type Lang } from '../../lib/i18n';
+import { bindT, messages, statNameLabel, type Lang } from '../../lib/i18n';
+import { resolveDamageObjective } from '../../lib/mainMinion';
+import { useHeadlineDamage } from '../../hooks/useMainMinion';
 import { scoreOf, type Objective } from '../../lib/optimize';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import {
@@ -116,7 +118,7 @@ export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onLo
     session.calc?.tree_effects),
   [nodes, session.allocatedNodes, session.character?.class_name, session.weaponSwap, session.jewels, session.treeMeta, session.character?.ascendancy_name, session.calc?.tree_effects]);
   const baselineStats = useMemo(() => Object.fromEntries((session.calc?.stats ?? []).map(stat => [stat.id, stat.value ?? 0])), [session.calc]);
-  const objective = useMemo(() => objectiveOf(goal, baselineStats), [goal, baselineStats]);
+  const objective = useMemo(() => resolveDamageObjective(objectiveOf(goal, baselineStats), session.calc), [goal, baselineStats, session.calc]);
   const request = useMemo(() => session.currentRequest(), [session.currentRequest, session.stateVersion]);
   // Pair the full evaluation with its effective goal and authoritative jewel topology.
   const snapshotKey = useMemo(() => JSON.stringify([session.stateVersion, session.dataVersion, session.treeVersion,
@@ -260,6 +262,7 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
     ? `${value >= baseline ? '+' : ''}${formatNumber((value / baseline - 1) * 100, 1, 1)}%`
     : `${value >= baseline ? '+' : ''}${number(value - baseline)}`;
   const currentStats = evaluated?.baseline ?? {};
+  const damage = useHeadlineDamage(session.calc, lang);
 
   return (
     <div className="tree-planner" ref={containerRef} id="passive-upgrades">
@@ -280,7 +283,7 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
           ]} /></label>
           <label>{mode === 'allocate' ? text.points : text.refundPoints}<AppInput type="number" min={1} max={PASSIVE_POINT_LIMIT} value={points}
             onChange={event => { const value = Number(event.target.value); if (Number.isInteger(value) && value >= 1 && value <= PASSIVE_POINT_LIMIT) setPoints(value); }} /></label>
-          <ObjectiveEditor statName={id => treeStatLabel(lang, id)} baseline={Object.fromEntries((session.calc?.stats ?? []).filter(stat => stat.value !== null).map(stat => [stat.id, stat.value!]))} value={goal} onChange={setGoal} lang={lang} />
+          <ObjectiveEditor damage={damage} statName={id => treeStatLabel(lang, id)} baseline={Object.fromEntries((session.calc?.stats ?? []).filter(stat => stat.value !== null).map(stat => [stat.id, stat.value!]))} value={goal} onChange={setGoal} lang={lang} />
           <label>{text.attribute}<AppSelect value={attribute} ariaLabel={text.attributeLabel} onChange={value => setAttribute(value as AttributeChoice)} options={[
             { value: 'str', label: text.str }, { value: 'dex', label: text.dex }, { value: 'int', label: text.int },
           ]} /></label>
@@ -298,10 +301,11 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
         {error && <p className="opt-error">{error}</p>}
         {evaluated && <PlannerResultsNotice count={evaluated.plans.length} lang={lang}>
           <div className="tree-planner-summary">
-            {evaluated.evaluated > 0 && <span>{text.baseline}{colon}{statNameLabel(lang, 'TotalDPS')} {formatStatValue(currentStats.TotalDPS ?? 0, statFormat('TotalDPS'), lang)} · {statNameLabel(lang, 'TotalEHP')} {formatStatValue(currentStats.TotalEHP ?? 0, statFormat('TotalEHP'), lang)}</span>}
+            {evaluated.evaluated > 0 && <span>{text.baseline}{colon}{damage.label} {formatStatValue(currentStats[damage.stat] ?? 0, statFormat(damage.stat), lang)} · {statNameLabel(lang, 'TotalEHP')} {formatStatValue(currentStats.TotalEHP ?? 0, statFormat('TotalEHP'), lang)}</span>}
             <details><summary>{messages(lang, 'nodePower').calculationDetails}</summary><span>{text.evaluated}{colon}{evaluated.evaluated}</span><p>{text.data}{colon}{completed!.dataVersion ?? text.unknownVersion} · {text.tree}{colon}{completed!.treeVersion ?? text.defaultTree}</p></details>
             {preview !== null && <AppButton onClick={() => show(null)}>{text.clear}</AppButton>}
           </div>
+          {damage.note && <p className="tree-planner-hint">{damage.note}</p>}
           {evaluated.limited && <p className="tree-planner-hint">{text.limited}</p>}
           {evaluated.unmodeled > 0 && <p className="tree-planner-hint">{text.skipped}{colon}{evaluated.unmodeled}</p>}
           {preview !== null && <p className="tree-planner-hint" role="status">{text.previewHint}</p>}
@@ -332,14 +336,15 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
                 <span>{text.cost} {plan.allocate.length - plan.deallocate.length} · {text.add} {plan.allocate.length}{plan.deallocate.length > 0 ? ` · ${text.remove} ${plan.deallocate.length}` : ''}</span></div>
               <div className="tree-plan-metrics">
                 {Math.abs(scoreOf(plan.stats, completed!.objective) - scoreOf(currentStats, completed!.objective)) >= 0.005 && <span>{text.score} <b>{delta(scoreOf(plan.stats, completed!.objective), scoreOf(currentStats, completed!.objective))}</b></span>}
-                {(['TotalDPS', 'TotalEHP', 'Life'] as const).filter(stat => Math.abs((plan.stats[stat] ?? 0) - (currentStats[stat] ?? 0)) >= 0.005).map(stat => <span key={stat}>
-                  {treeStatLabel(lang, stat)} <b className={(plan.stats[stat] ?? 0) >= (currentStats[stat] ?? 0) ? 'is-positive' : 'is-negative'}>{delta(plan.stats[stat] ?? 0, currentStats[stat] ?? 0)}</b>
+                {[damage.stat, 'TotalEHP', 'Life'].filter(stat => Math.abs((plan.stats[stat] ?? 0) - (currentStats[stat] ?? 0)) >= 0.005).map(stat => <span key={stat}>
+                  {stat === damage.stat ? damage.label : treeStatLabel(lang, stat)} <b className={(plan.stats[stat] ?? 0) >= (currentStats[stat] ?? 0) ? 'is-positive' : 'is-negative'}>{delta(plan.stats[stat] ?? 0, currentStats[stat] ?? 0)}</b>
+
                 </span>)}
               </div>
               <details><summary>{text.route} · +{plan.allocate.length} {plan.allocate.slice(0, 2).map(nodeLabel).join(' · ')}{plan.allocate.length > 2 ? '…' : ''}{plan.deallocate.length > 0 ? ` · −${plan.deallocate.length} ${plan.deallocate.slice(0, 2).map(nodeLabel).join(' · ')}${plan.deallocate.length > 2 ? '…' : ''}` : ''}</summary><p>{text.add}{colon}{plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>
                 <p>{text.remove}{colon}{plan.deallocate.map(nodeLabel).join(' · ') || '—'}</p>
-                {(['TotalDPS', 'TotalEHP', 'Life'] as const).map(stat => <p key={stat}>
-                  {statNameLabel(lang, stat)}{colon}{formatStatValue(currentStats[stat] ?? 0, statFormat(stat), lang)} → <output data-stat={stat}>{formatStatValue(plan.stats[stat] ?? 0, statFormat(stat), lang)}</output>
+                {[damage.stat, 'TotalEHP', 'Life'].map(stat => <p key={stat}>
+                  {stat === damage.stat ? damage.label : treeStatLabel(lang, stat)}{colon}{formatStatValue(currentStats[stat] ?? 0, statFormat(stat), lang)} → <output data-stat={stat}>{formatStatValue(plan.stats[stat] ?? 0, statFormat(stat), lang)}</output>
                 </p>)}
               </details>
               <div className="tree-plan-actions"><AppButton onClick={() => show(index)}>{text.preview}</AppButton><AppButton disabled={session.busy} onClick={() => apply(plan)}>{text.apply}</AppButton></div>

@@ -10,7 +10,7 @@ export interface PositionAnalysis {
 }
 
 /** Compare complete replacements against the same build, never sums of affix gains. */
-export function rankUpgradePositions(results: Record<string, PositionAnalysis>, objective: Objective) {
+export function rankUpgradePositions(results: Record<string, PositionAnalysis>, objective: Objective, damageStat = 'CombinedDPS') {
   return Object.entries(results).flatMap(([slot, result]) => {
     const best = result.weights?.combinations[0];
     const gem = result.gems?.filter(plan => plan.stats && plan.baseline)
@@ -21,9 +21,16 @@ export function rankUpgradePositions(results: Record<string, PositionAnalysis>, 
     const originalScore = scoreOf(baseline, objective);
     const gain = scoreOf(stats, objective) - originalScore;
     if (!Number.isFinite(gain)) return [];
+    const balanced: Objective = { stat: damageStat, secondaryStat: 'TotalEHP', constraints: [] };
+    const balancedBefore = scoreOf(baseline, balanced);
+    const percent = (stat: string) => baseline[stat] > 0 && stats[stat] !== undefined
+      ? (stats[stat] - baseline[stat]) / baseline[stat] * 100 : undefined;
     return [{ slot, gain, gainPercent: originalScore !== 0 ? gain / Math.abs(originalScore) * 100 : undefined,
+      balancedPercent: balancedBefore > 0 && stats[damageStat] !== undefined && stats.TotalEHP !== undefined
+        ? (scoreOf(stats, balanced) - balancedBefore) / balancedBefore * 100 : undefined,
+      dpsPercent: percent(damageStat), ehpPercent: percent('TotalEHP'),
       lifeDelta: (stats.Life ?? 0) - (baseline.Life ?? 0),
-      dpsDelta: (stats.TotalDPS ?? 0) - (baseline.TotalDPS ?? 0),
+      dpsDelta: (stats[damageStat] ?? 0) - (baseline[damageStat] ?? 0),
       ehpDelta: (stats.TotalEHP ?? 0) - (baseline.TotalEHP ?? 0),
       deficit: minimumDeficit(stats, objective),
       reference: best?.text ?? '', limited: result.weights?.limited ?? true }];

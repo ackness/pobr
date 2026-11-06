@@ -12,6 +12,8 @@ import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
 import { changesFromRecords } from '../../app/preview/fromRecords';
 import { formatStatValue, formatNumber, statMap } from '../../lib/statDisplay';
 import { supportText } from '../../lib/supportI18n';
+import { resolveDamageObjective } from '../../lib/mainMinion';
+import { useHeadlineDamage } from '../../hooks/useMainMinion';
 import type { Objective } from '../../lib/optimize';
 import { applySupportPlan, eligibleSupports, lineageAvailable, optimizeSupports, type SupportMetadata, type SupportOptimization } from '../../lib/supportOptimizer';
 import { ObjectiveEditor, OptimizerProgress, objectiveOf } from '../shared/OptimizerControls';
@@ -51,6 +53,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const tt = bindT(lang);
   const st = (key: Parameters<typeof supportText>[1]) => supportText(lang, key);
   const { goal, setGoal } = useUpgradeGoal();
+  const damage = useHeadlineDamage(session.calc, lang);
   const group = session.socketGroups[groupIndex];
   const byId = useMemo(() => new Map(catalog.map(gem => [gem.skill_id, gem])), [catalog]);
   const occupied = group?.gems.filter(gem => byId.get(gem.skill_id)?.is_support).length ?? 0;
@@ -82,7 +85,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const visibleGems = pool.gems.filter(gem => !query || `${gemName(gem.skill_id)} ${gem.name}`.toLocaleLowerCase(lang).includes(query));
   const requestKey = JSON.stringify(session.currentRequest());
   const settingsKey = JSON.stringify([requestKey, session.stateVersion, session.socketGroupRevision,
-    session.dataVersion, session.treeVersion, session.activeWeaponSet, groupIndex, capacity, includeLineage, goal, excludedIds]);
+    session.dataVersion, session.treeVersion, session.activeWeaponSet, groupIndex, capacity, includeLineage, goal, excludedIds, damage.stat]);
   const result = evaluated?.settingsKey === settingsKey && evaluated.requestKey === requestKey
     && evaluated.catalog === catalog ? evaluated : null;
   const stop = () => {
@@ -129,8 +132,8 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     if (mainIndex !== groupIndex) { select(); return; }
     const request = session.currentRequest();
     if (!request || !canSearch || !session.calc?.main_skill || session.calcError) return;
-    const objective = objectiveOf(goal, Object.fromEntries([...statMap(session.calc?.stats ?? [])]
-      .map(([key, value]) => [key, value ?? 0])));
+    const objective = resolveDamageObjective(objectiveOf(goal, Object.fromEntries([...statMap(session.calc?.stats ?? [])]
+      .map(([key, value]) => [key, value ?? 0]))), session.calc);
     invalidate();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -199,7 +202,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
       setCapacity(value);
     }
   }} /></label>;
-  const objectiveControls = <ObjectiveEditor value={goal} onChange={next => { invalidate(); setGoal(next); }} lang={lang} />;
+  const objectiveControls = <ObjectiveEditor damage={damage} value={goal} onChange={next => { invalidate(); setGoal(next); }} lang={lang} />;
   const runButton = <AppButton className="opt-run" disabled={session.busy || progress !== null || !canSearch || !group?.enabled
     || (mainIndex === groupIndex && !session.calc?.main_skill)} onClick={run}>
     {progress ? tt('opt.running') : mainIndex !== groupIndex ? st('selectMain') : st('run')}
@@ -216,8 +219,9 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const errorBlock = error && <p className="opt-error">{error}</p>;
   const resultsBlock = result && <div className="support-results">
     <div className="support-baseline"><strong>{st('baseline')}</strong>
-      <span>{metricLabel('CombinedDPS')} {number(result.baseline.CombinedDPS)}</span><span>{metricLabel('TotalEHP')} {number(result.baseline.TotalEHP)}</span>
+      <span>{damage.label} {number(result.baseline[damage.stat])}</span><span>{metricLabel('TotalEHP')} {number(result.baseline.TotalEHP)}</span>
     </div>
+    {damage.note && <p className="skills-hint">{damage.note}</p>}
     <p className="skills-hint">{st('keepActive')}</p>
     <details className="support-calculation-details">
     <summary>{st('calculationDetails')}</summary>
@@ -252,8 +256,8 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     </div> : !result.plans.length && <p className="skills-hint">{st('noGain')}</p>}
     {result.plans.map((plan, index) => {
       const changes = changesFromRecords(
-        Object.fromEntries(['CombinedDPS', 'TotalEHP'].flatMap(id => result.baseline[id] === undefined ? [] : [[id, result.baseline[id]]])),
-        Object.fromEntries(['CombinedDPS', 'TotalEHP'].flatMap(id => plan.stats[id] === undefined ? [] : [[id, plan.stats[id]]])));
+        Object.fromEntries([damage.stat, 'TotalEHP'].flatMap(id => result.baseline[id] === undefined ? [] : [[id, result.baseline[id]]])),
+        Object.fromEntries([damage.stat, 'TotalEHP'].flatMap(id => plan.stats[id] === undefined ? [] : [[id, plan.stats[id]]])));
       const hover = preview ? {
         onEnter: () => preview.showChanges(`${words(lang, 'Supports: ', '辅助：', '輔助：')}${plan.supports.map(gem => gemName(gem.skill_id)).join(' + ')}`, changes),
         onLeave: preview.clear } : undefined;
@@ -272,11 +276,11 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
         <AppButton className="support-exclude-button" aria-label={`${st('exclude')} ${gemName(gem.skill_id)}`}
           title={`${st('exclude')} ${gemName(gem.skill_id)}`} onClick={() => exclude(gem.skill_id)}><span aria-hidden>×</span></AppButton>
       </span>)}</div>
-      <div className="support-plan-metrics">{['CombinedDPS', 'TotalEHP'].map(stat => {
+      <div className="support-plan-metrics">{[damage.stat, 'TotalEHP'].map(stat => {
         const before = result.baseline[stat];
         const after = plan.stats[stat];
         return <span key={stat} className={before === undefined || after === undefined || after === before ? undefined : after > before ? 'is-positive' : 'is-negative'}>
-          {metricLabel(stat)} {number(after)} <strong>{before === undefined || after === undefined ? '—' : change(before, after)}</strong>
+          {stat === damage.stat ? damage.label : metricLabel(stat)} {number(after)} <strong>{before === undefined || after === undefined ? '—' : change(before, after)}</strong>
         </span>;
       })}</div>
       <SupportDescriptions lang={lang} gems={plan.supports.map(gem => ({

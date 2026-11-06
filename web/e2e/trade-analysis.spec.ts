@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
-import { copyCurrentStage, currentStage, goTo, openLibrary, openMarketSettings, openStage, reduceMotion } from './upgradesPage';
+import { chooseTradeGoal, copyCurrentStage, currentStage, goTo, openLibrary, openMarketSettings, openStage, reduceMotion } from './upgradesPage';
 import { deflateSync } from 'node:zlib';
 import { installTradeCatalogFixture } from './tradeCatalogFixture';
 import { categoryAffixPool } from '../src/lib/tradeOptimizer';
@@ -45,7 +45,7 @@ async function openTrade(page: Page, rings = 1) {
   await expect(page.locator('.paper-doll')).toBeVisible();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   await goTo(page, 'Upgrades');
-  await page.getByRole('button', { name: 'Max Life', exact: true }).click();
+  await chooseTradeGoal(page, 'Max Life');
   await page.locator('.trade-position').filter({ hasText: /^Ring 1/ }).click();
   await expect(page.getByRole('button', { name: 'Calculate modifier scores', exact: true })).toBeEnabled();
 }
@@ -70,6 +70,28 @@ async function pauseScoringClock(page: Page) {
   await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
   await page.clock.pauseAt(new Date('2026-01-01T00:00:01Z'));
 }
+
+test('item details hand off the slot, goal and baseline to step 4 without page overflow', async ({ page }) => {
+  await reduceMotion(page);
+  await openTrade(page, 2);
+  await completeAll(page);
+  await goTo(page, 'Items');
+  await page.locator('.doll-cell[data-slot="ring2"] .doll-slot').click();
+  await page.locator('.item-detail').getByRole('button', { name: 'Find a better one on the trade site', exact: true }).click();
+  await expect(page.locator('.up-market')).toBeFocused();
+  await expect(page.locator('#up-market')).toBeInViewport();
+  await expect(page.locator('.trade-position[data-slot-id="ring2"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.trade-market-context')).toContainText('Goal: Max Life');
+  await expect(page.locator('.trade-market-context')).toContainText('Compare with current item: Second Ring');
+  await expect(page.locator('.up-market .trade-market-link')).toHaveCount(1);
+  await expect(page.locator('.trade-priority-table thead')).toContainText('Balanced score');
+  await expect(page.locator('.trade-priority-table thead')).toContainText('Combined DPS');
+  for (const width of [390, 1440, 2560]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.locator('.trade-page').evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
+});
 
 test('completed trade analysis and Ring 1 selection survive tabs and market edits but reset for a new goal', async ({ page }) => {
   await openTrade(page);
@@ -117,7 +139,7 @@ test('completed trade analysis and Ring 1 selection survive tabs and market edit
   await expect(page.locator('.trade-priorities .ui-badge')).toContainText('1 / 1');
 
   // The build has no skill, so a damage goal cannot be analysed at all; a defence goal is a new goal that still can.
-  await page.getByRole('button', { name: 'Max Effective HP', exact: true }).click();
+  await page.getByRole('button', { name: 'Effective HP', exact: true }).click();
   await expectCleared(page);
 });
 
@@ -170,6 +192,9 @@ test('leaving all-position analysis stops hidden work and resumes only the unfin
     return completed.textContent();
   }, { timeout: 90_000, intervals: [10] }).toContain('1 / 2');
   await expect(page.locator('.trade-progress > span')).toContainText('Ring 2');
+  await expect(page.locator('.trade-progress > span')).toContainText('Slot 2/2');
+  await expect(page.getByRole('button', { name: 'Resume remaining positions', exact: true })).toHaveCount(0);
+  await expect(page.locator('.trade-progress').getByRole('button', { name: 'Stop', exact: true })).toBeVisible();
   const reference = page.locator('.upgrade-score-reference');
   const score = await reference.locator('div > strong').first().innerText();
   const scores = await page.locator('.trade-score-table').innerText();

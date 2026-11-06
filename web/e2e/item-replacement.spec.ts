@@ -1,7 +1,7 @@
 import { expectOriginalModifiersKeyboard } from './skillsAndCalcs';
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
-import { augmentOption, choose, dpsValue, ehpValue, lifeValue, settledText } from './upgradesPage';
+import { chooseTradeGoal, augmentOption, choose, headlineDpsValue, ehpValue, lifeValue, settledText } from './upgradesPage';
 
 async function loadRings(page: Page, includeAmulet = false) {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
@@ -27,7 +27,7 @@ async function loadRings(page: Page, includeAmulet = false) {
   await expect(page.getByRole('textbox', { name: 'Complete item text' })).toBeVisible();
 }
 
-const dps = dpsValue;
+const dps = headlineDpsValue;
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
 const savedState = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 const copied = 'Item Class: Rings\nRarity: RARE\nMarket Candidate\nSapphire Ring\n--------\nRequirements:\nLevel: 60\nDex: 90\n--------\nItem Level: 100\nImplicits: 1\n+30% to Cold Resistance\n--------\n20% increased Fire Damage\n+100 to maximum Life';
@@ -35,7 +35,7 @@ const copied = 'Item Class: Rings\nRarity: RARE\nMarket Candidate\nSapphire Ring
 test('three-item search applies the complete result and changing its goal invalidates it', async ({ page }) => {
   await loadRings(page, true);
   const original = await savedState(page);
-  await page.getByRole('button', { name: 'Max Life', exact: true }).click();
+  await chooseTradeGoal(page, 'Max Life');
   const planner = page.locator('.equipment-planner');
   for (const [name, slot] of [['First Ring', 'Ring 1'], ['Second Ring', 'Ring 2']]) {
     await paste(page, copied.replace('Market Candidate', name).replace('+100 to maximum Life', '+150 to maximum Life'));
@@ -54,9 +54,9 @@ test('three-item search applies the complete result and changing its goal invali
   await expect(best.locator('h5')).toContainText('Third Item');
   await expect(best.locator('h5')).toContainText('First Ring');
   await expect(best.locator('h5')).toContainText('Second Ring');
-  await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
+  await page.getByRole('button', { name: 'Combined DPS', exact: true }).click();
   await expect(planner.locator('.equipment-plan-results')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Max Life', exact: true }).click();
+  await chooseTradeGoal(page, 'Max Life');
   await run.click();
   await expect(best).toBeVisible();
   const expectedLife = numeric(await best.locator('[data-plan-stat="Life"]').innerText());
@@ -78,7 +78,7 @@ test('joint equipment plans compare both ring placements, keep item identity, an
   await loadRings(page);
   const original = await savedState(page);
   const before = await settledText(dps(page));
-  await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
+  await page.getByRole('button', { name: 'Combined DPS', exact: true }).click();
   const planner = page.locator('.equipment-planner');
   const addBothPositions = async (text: string) => {
     await paste(page, text);
@@ -100,23 +100,23 @@ test('joint equipment plans compare both ring placements, keep item identity, an
   await expect(planner.locator('.equipment-plan-results')).toContainText('Plans calculated: 7');
   await expect(dps(page)).toHaveText(before);
   expect((await savedState(page)).items).toEqual(original.items);
-  await page.getByRole('button', { name: 'Max Life', exact: true }).click();
+  await chooseTradeGoal(page, 'Max Life');
   await expect(planner.locator('.equipment-plan-results')).toHaveCount(0);
   await planner.getByRole('button', { name: 'Compare one- and two-item plans', exact: true }).click();
   await expect(planner.locator('.equipment-plan-results')).toBeVisible();
-  await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
+  await page.getByRole('button', { name: 'Combined DPS', exact: true }).click();
   await expect(planner.locator('.equipment-plan-results')).toHaveCount(0);
   await planner.getByRole('button', { name: 'Compare one- and two-item plans', exact: true }).click();
   await expect(planner.locator('.equipment-plan-results')).toBeVisible();
   await expect(planner.locator('.equipment-plan').first().locator('h5')).toHaveText('Second Candidate · Ring 2');
-  await page.getByRole('button', { name: 'Max Life', exact: true }).click();
+  await chooseTradeGoal(page, 'Max Life');
   await expect(planner.locator('.equipment-plan-results')).toHaveCount(0);
   await planner.getByRole('button', { name: 'Compare one- and two-item plans', exact: true }).click();
   await expect(planner.locator('.equipment-plan-results')).toBeVisible();
   const best = planner.locator('.equipment-plan').first();
   await expect(best.locator('h5')).toContainText('Market Candidate');
   await expect(best.locator('h5')).toContainText('Second Candidate');
-  const expectedDps = numeric(await best.locator('[data-plan-stat="TotalDPS"]').innerText());
+  const expectedDps = numeric(await best.locator('[data-plan-stat="CombinedDPS"]').innerText());
   const expectedLife = numeric(await best.locator('[data-plan-stat="Life"]').innerText());
   await best.getByRole('button', { name: 'Apply equipment plan', exact: true }).click();
   await expect(planner.locator('.equipment-plan-results')).toHaveCount(0);
@@ -185,7 +185,7 @@ test('pasting detects both rings, recommends the actual better destination, and 
   await expect(dps(page)).toHaveText(before);
   expect((await savedState(page)).items).toEqual(original.items);
   await destinations.filter({ hasText: /^Ring 1/ }).click();
-  await expect(page.locator('.upgrade-replacement-result')).toContainText('Hit DPS decreases after this replacement');
+  await expect(page.locator('.upgrade-replacement-result')).toContainText('Combined DPS decreases after this replacement');
   await best.click();
   const expectedDps = numeric(await page.locator('.swap-gain-card [data-stat="CombinedDPS"] .swap-after').innerText());
   await page.getByRole('button', { name: 'Apply to build · Ring 2', exact: true }).click();

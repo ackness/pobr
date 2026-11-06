@@ -1,5 +1,6 @@
 import type { CalculateBuildResponse, MinionOutput } from '../api/types';
 import { bindT, type Lang } from './i18n';
+import type { Objective } from './optimize';
 
 /**
  * The display stat the engine adds while the calculated skill summons a minion: the hit DPS of
@@ -19,6 +20,18 @@ export function mainMinion(calc: MinionFields | null | undefined): MinionOutput 
 /** The damage stat a build is judged by: the main minion's for a summoner build, otherwise the player's combined DPS. */
 export function headlineDpsStat(calc: MinionFields | null | undefined): string {
   return mainMinion(calc) ? MAIN_MINION_DPS : 'CombinedDPS';
+}
+
+/** Resolve the shared damage goal once; efficiency goals keep their original numerator. */
+export function resolveDamageObjective(objective: Objective, calc: MinionFields | null | undefined): Objective {
+  return objective.stat === 'TotalDPS' && !objective.per
+    ? { ...objective, stat: headlineDpsStat(calc) } : objective;
+}
+
+export interface DamageHeadline {
+  stat: string;
+  label: string;
+  note?: string;
 }
 
 /** "Wolf · one minion · limit 7": the headline is one minion's damage, never multiplied by the limit. */

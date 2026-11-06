@@ -1,4 +1,4 @@
-/* Upgrades: a goal, then where to look, then candidates. Sections are divided by hairlines; rows are flat. */
+/* Upgrades: goal, method, equipment analysis, then trade verification. */
 @layer app {
   .shell-root .trade-page { display: block; min-width: 0; }
   .shell-root .trade-page :is(h2, h3, h4, h5, p, ol, ul) { margin: 0; }
@@ -41,6 +41,8 @@
   .shell-root .trade-page .trade-skill-context .app-select { min-width: 0; }
   .shell-root .trade-page .weapon-set-control { flex: 0 1 auto; padding: 0; }
   .shell-root .trade-page .upgrade-evaluation > .trade-notice { flex: 1 0 100%; }
+  /* The per-minion note explains the damage goal, so it sits on its own line under the goal buttons. */
+  .shell-root .trade-page .upgrade-evaluation > .trade-priority-hint { flex: 1 0 100%; margin: -.6rem 0 0; }
   .shell-root .trade-page .trade-safety-settings { flex: 1 0 100%; gap: .5rem 1.75rem; margin: 0; padding: 0; }
   .shell-root .trade-page .trade-safety-settings label { color: var(--foreground); }
   .shell-root .trade-page .trade-safety-settings input[type='number'] { width: 4.5rem; }
@@ -52,7 +54,7 @@
   .shell-root .trade-page .upgrade-goal-details summary { color: var(--primary); }
   .shell-root .trade-page .upgrade-goal-details .opt-controls { margin: .75rem 0 0; }
 
-  /* ── 2 · Where is the best gain ─────────────────────────────────────────── */
+  /* ── 2 · Improvement method ─────────────────────────────────────────── */
   .shell-root .trade-page .upgrade-paths { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0; border-block: 1px solid var(--border); }
   .shell-root .trade-page .upgrade-paths > button { position: relative; display: grid; grid-template-columns: 1.6rem minmax(0, 1fr) auto; align-items: center; justify-content: stretch; gap: .1rem .8rem; height: auto; margin: 0; padding: 1rem 1rem 1rem 0; border: 0; border-radius: 0; background: transparent; text-align: left; white-space: normal; transition: background var(--dur-fast) linear; }
   .shell-root .trade-page .upgrade-paths > button + button { padding-left: 1.25rem; border-left: 1px solid var(--border); }
@@ -91,15 +93,29 @@
   .shell-root .trade-page .trade-score-row:nth-child(-n+4) .trade-rank { color: var(--muted-foreground); }
   .shell-root .trade-page .trade-position-symbol { flex: 0 0 2rem; width: 2rem; height: 2rem; color: var(--muted-foreground); }
   .shell-root .trade-page .trade-position-symbol svg { width: 1.35rem; height: 1.35rem; }
-  .shell-root .trade-page .trade-priority-name { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: .1rem; }
-  .shell-root .trade-page .trade-priority-name strong { font-size: var(--text-base); font-weight: 550; }
-  .shell-root .trade-page .trade-priority-name small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs); color: var(--muted-foreground); }
-  .shell-root .trade-page .trade-priority-delta { display: flex; flex-direction: column; align-items: flex-end; flex: none; gap: .1rem; text-align: right; }
-  .shell-root .trade-page .trade-priority-delta strong { font-size: var(--text-lg); font-weight: 620; font-variant-numeric: tabular-nums; }
-  .shell-root .trade-page .trade-priority-delta small { font-size: var(--text-xs); color: var(--muted-foreground); }
-  .shell-root .trade-page .trade-priority-defence { display: flex; flex-wrap: wrap; gap: .1rem 1.25rem; padding: 0 .25rem .7rem calc(.25rem + 1.4rem + 2rem + 1.5rem); font-size: var(--text-xs); font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
 
-  /* ── 3 · Candidates ─────────────────────────────────────────────────────── */
+  .shell-root .trade-page .upgrade-paths > button[aria-pressed='true'] strong { color: var(--primary); }
+  .shell-root .trade-page .up-step[tabindex] { scroll-margin-top: 1rem; }
+  .shell-root .trade-page .trade-progress-controls { display: flex; align-items: center; gap: 1rem; margin-top: .5rem; }
+  .shell-root .trade-page .trade-progress > span { display: block; line-height: 1.65; }
+  .shell-root .trade-page .trade-priority-table-wrap { max-width: 100%; overflow-x: auto; margin-top: .75rem; }
+  .shell-root .trade-page .trade-priority-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+  .shell-root .trade-page .trade-priority-table :is(th, td) { padding: .75rem; border-bottom: 1px solid var(--border); text-align: right; }
+  .shell-root .trade-page .trade-priority-table th { font-weight: 500; }
+  .shell-root .trade-page .trade-priority-table thead th { color: var(--muted-foreground); }
+  .shell-root .trade-page .trade-priority-table thead th:not(:first-child, :last-child) { min-width: 5.5rem; }
+  .shell-root .trade-page .trade-priority-table th:first-child { min-width: 9rem; padding-left: 0; text-align: left; }
+  .shell-root .trade-page .trade-priority-table th small { display: block; max-width: 24rem; margin-top: .2rem; font-size: var(--text-xs); color: var(--muted-foreground); overflow-wrap: anywhere; }
+  .shell-root .trade-page .trade-priority-table td { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .shell-root .trade-page .trade-priority-table .trade-priority-position { display: inline-flex; gap: 0; width: auto; margin: 0; padding: .4rem .75rem; border: 1px solid var(--input); border-radius: var(--radius-2xl); font-size: var(--text-sm); }
+  .shell-root .trade-page .trade-market-context { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; font-size: var(--text-sm); }
+  .shell-root .trade-page .trade-market-context p { flex: 1 0 100%; color: var(--muted-foreground); overflow-wrap: anywhere; }
+  .shell-root .trade-page .trade-search-pending { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1.5rem; margin-bottom: 1.5rem; }
+  .shell-root .trade-page .trade-search-pending p { flex: 1 1 20rem; font-size: var(--text-sm); color: var(--muted-foreground); }
+  .shell-root .trade-page .up-market > .trade-search-card { margin: 0 0 1.5rem; padding: 0 0 1.25rem; border-top: 0; border-bottom: 1px solid var(--border); }
+  .shell-root .trade-page .up-paste { margin-top: 1.75rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+
+  /* ── 4 · Trade verification ─────────────────────────────────────────────────────── */
   .shell-root .trade-page .trade-market { margin: 1.5rem 0; border-block: 1px solid var(--border); }
   .shell-root .trade-page .trade-market > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem 1rem; padding: .75rem 0; list-style: none; font-size: var(--text-sm); }
   .shell-root .trade-page .trade-market > summary::-webkit-details-marker { display: none; }
@@ -302,7 +318,6 @@
     .shell-root .trade-page .upgrade-paths > button, .shell-root .trade-page .upgrade-paths > button + button { padding: .8rem 0; }
     .shell-root .trade-page .upgrade-paths > button + button { border-left: 0; border-top: 1px solid var(--border); }
     .shell-root .trade-page .trade-skill-context { grid-template-columns: minmax(0, 1fr); }
-    .shell-root .trade-page .trade-priority-defence { padding-left: .25rem; }
     .shell-root .trade-page .replacement-metrics, .shell-root .trade-page .equipment-plan .replacement-metrics { grid-template-columns: minmax(0, 1fr); }
     .shell-root .trade-page .replacement-metric + .replacement-metric { padding-left: 0; border-left: 0; border-top: 1px solid var(--border); }
     .shell-root .trade-page .trade-priority-position { flex-wrap: wrap; }

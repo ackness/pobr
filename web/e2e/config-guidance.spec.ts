@@ -424,7 +424,7 @@ for (const planner of ['support', 'replacement'] as const) {
       await page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true }).fill('2');
       await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
       await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
-      await page.getByRole('option', { name: 'Max Hit DPS', exact: true }).click();
+      await page.getByRole('option', { name: 'Combined DPS', exact: true }).click();
       await page.getByRole('button', { name: 'Calculate support combinations', exact: true }).click();
       await expect(page.locator('.support-plan').first()).toBeVisible({ timeout: 90_000 });
       await expect(page.getByRole('button', { name: 'Calculate support combinations', exact: true })).toBeEnabled();
@@ -433,7 +433,7 @@ for (const planner of ['support', 'replacement'] as const) {
         elements.map(element => element.getAttribute('data-skill-id')));
     } else {
       await go(page, 'Upgrades');
-      await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
+      await page.getByRole('button', { name: 'Combined DPS', exact: true }).click();
       await page.getByRole('textbox', { name: 'Complete item text', exact: true }).evaluate(element => {
         const data = new DataTransfer();
         data.setData('text/plain', 'Rarity: RARE\nSynthetic Guidance Replacement\nSapphire Ring\nImplicits: 0\n100% increased Fire Damage\n+100 to maximum Life');
