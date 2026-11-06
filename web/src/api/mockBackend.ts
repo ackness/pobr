@@ -111,6 +111,7 @@ export function createMockBackend(): PobrBackend {
     async loadConfigOptions() {
       return configOptionsFixture as unknown as ConfigOption[];
     },
+    async loadEnemyPresets() { return null; },
     async translateLines(lines) {
       return lines;
     },

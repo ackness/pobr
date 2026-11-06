@@ -1,4 +1,5 @@
 import { withBreakdownDescriptors } from './descriptors';
+import type { EnemyPresets } from './enemyPresets';
 import type { UniqueEntry, UniqueSelection, UniqueDraft } from './uniques';
 import type { CraftingMetadata } from './itemCrafting';
 /**
@@ -109,6 +110,8 @@ export interface PobrBackend {
   minionCatalog(): Promise<MinionCatalog>;
   /** 内置配置目录（Config 页分区开关）。 */
   loadConfigOptions(): Promise<ConfigOption[]>;
+  /** Enemy tier facts from the same pinned snapshot as the calculation. */
+  loadEnemyPresets(): Promise<EnemyPresets | null>;
   /** 英文词条行 → `lang` 显示（数据包语言包的模板反查，按回退链；不认识原样返回）。 */
   translateLines(lines: string[], lang?: import('../lib/i18n').Lang): Promise<string[]>;
   /** Names of known identity (passive node id, item base line) → `lang` display: the locale's

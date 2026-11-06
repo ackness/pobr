@@ -121,7 +121,8 @@ test('a custom modifier raises gem levels, and a line the calculation cannot app
   await leave();
   await expect.poll(number).toBeGreaterThan(plain);
   const raised = await number();
-  await expect(unapplied.locator('li')).toHaveText(['Zorblax the unknowable 12%']);
+  await expect(unapplied.locator('.unincluded-lines > li')).toHaveText(['Zorblax the unknowable 12%']);
+  await expect(unapplied.locator('details.unincluded-raw')).toHaveCount(1);
 
   // The same bonus for skills Comet is not leaves it alone; the notice goes with the line.
   await text.fill('+1 to Level of all Fire Skills');
