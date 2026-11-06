@@ -55,7 +55,7 @@ export function ReplacementAffixEditor({ report, catalog, characterLevel, lang, 
     setReplacing(undefined); setPicked('');
   };
   return <details className="replacement-affix-editor" open={initiallyOpen || undefined}>
-    <summary>{t('title')}</summary>
+    <summary className="disclosure" data-disclosure-level="group">{t('title')}</summary>
     <p className="affix-editor-hint">{t('hint')}</p>
     {current.locked ? <p className="affix-editor-warning">{t(current.locked)}</p> : !pool.length ? <p>{t('dataMissing')}</p> : <>
       <div className="affix-editor-meta"><label>{t('itemLevel')}<AppInput type="number" min="1" max="100" value={current.itemLevel ?? ''} disabled={disabled}
@@ -75,7 +75,7 @@ export function ReplacementAffixEditor({ report, catalog, characterLevel, lang, 
           {lines.map((line, index) => <p key={index}>{line}</p>)}
           {row.fractured && <p className="affix-editor-hint">{t('fractured')}</p>}
           {mod && !row.fractured && <div className="affix-editor-roll"><span>{row.edited ? `${t('range')} · ${Math.round(row.roll * 100)}%` : t('current')}</span>
-            <div>{([0, 0.5, 1] as const).map(roll => <AppButton key={roll} disabled={disabled} aria-pressed={row.edited && row.roll === roll}
+            <div className="segmented segmented--sm">{([0, 0.5, 1] as const).map(roll => <AppButton key={roll} disabled={disabled} aria-pressed={row.edited && row.roll === roll}
               onClick={() => update({ ...current, rows: current.rows.map(existing => existing.key === row.key ? { ...existing, edited: true, roll } : existing) })}>{t(roll === 0 ? 'minimum' : roll === 1 ? 'maximum' : 'midpoint')}</AppButton>)}</div>
             {row.edited && <AppRange min={0} max={100} step={1} value={row.roll * 100} disabled={disabled} aria-label={`${t('range')}: ${mod.id}`}
               onValueChange={value => update({ ...current, rows: current.rows.map(existing => existing.key === row.key ? { ...existing, roll: value / 100 } : existing) })} />}
@@ -83,7 +83,7 @@ export function ReplacementAffixEditor({ report, catalog, characterLevel, lang, 
         </article>;
       })}</div>
       <div className="affix-editor-add">
-        <div className="affix-editor-kind" role="group" aria-label={t('choose')}>{(['prefix', 'suffix'] as const).map(type => <AppButton key={type} aria-pressed={kind === type} disabled={disabled}
+        <div className="affix-editor-kind segmented segmented--sm" role="group" aria-label={t('choose')}>{(['prefix', 'suffix'] as const).map(type => <AppButton key={type} aria-pressed={kind === type} disabled={disabled}
           onClick={() => { setKind(type); setPicked(''); }}>{t(type)}</AppButton>)}</div>
         {replacing && <p>{t('replace')} <AppButton onClick={() => { setReplacing(undefined); setPicked(''); }}>{t('reset')}</AppButton></p>}
         <AppInput type="search" value={query} placeholder={t('search')} aria-label={t('search')} onChange={event => setQuery(event.target.value)} />

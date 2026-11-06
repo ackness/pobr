@@ -36,7 +36,7 @@ export function Settings({ open, onOpenChange, preferences: p, onChange, version
         </label>)}
         <p className="shell-setting-hint">{w('The default for every page. Individual page choices take precedence.', '用作所有页面的默认方式。单独设置的页面保持原选择。', '各頁面預設使用此方式，個別頁面的設定優先。')}</p>
       </fieldset>
-      <details className="display-page-overrides"><summary>{w('Customize individual pages', '为个别页面单独设置', '個別頁面設定')}{Object.keys(p.pageDisplayModes).length > 0 && ` (${Object.keys(p.pageDisplayModes).length})`}</summary>
+      <details className="display-page-overrides"><summary className="disclosure" data-disclosure-level="group">{w('Customize individual pages', '为个别页面单独设置', '個別頁面設定')}{Object.keys(p.pageDisplayModes).length > 0 && ` (${Object.keys(p.pageDisplayModes).length})`}</summary>
         {ROUTES.map(page => <div className="display-page-option" key={page}>
           <Label htmlFor={`display-page-${page}`}>{pageNames(p.lang)[page]}</Label>
           <AppSelectControl id={`display-page-${page}`} value={p.pageDisplayModes[page] ?? 'inherit'} onChange={event => setPageMode(page, event.target.value)}>
@@ -46,7 +46,7 @@ export function Settings({ open, onOpenChange, preferences: p, onChange, version
         </div>)}
         {Object.keys(p.pageDisplayModes).length > 0 && <Button variant="outline" onClick={() => onChange({ ...p, pageDisplayModes: {} })}>{w('Use global setting on every page', '所有页面跟随全局', '所有頁面跟隨全域設定')}</Button>}
       </details>
-      <fieldset><legend>{w('Appearance', '外观', '外觀')}</legend><div className="shell-theme-options">
+      <fieldset><legend>{w('Appearance', '外观', '外觀')}</legend><div className="shell-theme-options segmented">
         {([['dark', Moon, w('Dark', '深色')], ['light', Sun, w('Light', '浅色', '淺色')], ['system', Monitor, w('System', '跟随系统', '跟隨系統')]] as const).map(([theme, Icon, label]) =>
           <Button key={theme} variant={p.theme === theme ? 'default' : 'outline'} aria-pressed={p.theme === theme} onClick={() => onChange({ ...p, theme })}><Icon />{label}</Button>)}
       </div></fieldset>

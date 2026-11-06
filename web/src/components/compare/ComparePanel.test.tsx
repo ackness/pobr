@@ -219,7 +219,7 @@ test('comparison diagnostics use the shared excluded-modifier list and localize 
   }];
   const html = render({ workspace, dataVersion: '0.5' } as unknown as BuildSession, 'zh-CN');
   expect(html.match(/class="unincluded-modifiers"/g)).toHaveLength(2);
-  expect(html.match(/<summary>词缀原文<\/summary>/g)).toHaveLength(2);
+  expect(html.match(/<summary class="disclosure" data-disclosure-level="inline">词缀原文<\/summary>/g)).toHaveLength(2);
   expect(html).toContain('Config: First unknown effect\nConfig: Second unknown effect');
   expect(html).toContain('戒指 1：Invalid item');
   expect(html).not.toContain('class="modifier-raw"');

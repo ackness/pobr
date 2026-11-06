@@ -42,7 +42,7 @@ test.each([
   // The source and modifier lists contain no extra disclosure for each row.
   expect(html.match(/<details\b/g)).toHaveLength(1);
   expect(html.match(/<summary\b/g)).toHaveLength(1);
-  expect(html).toContain(`<details class="unincluded-raw"><summary>${label}</summary>`);
+  expect(html).toContain(`<details class="unincluded-raw"><summary class="disclosure" data-disclosure-level="inline">${label}</summary>`);
   expect(html).not.toContain('class="modifier-raw"');
   expect(html).toContain('<ul class="unincluded-sources">');
   expect(html).toContain('<ul class="unincluded-lines">');

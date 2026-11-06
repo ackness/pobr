@@ -77,7 +77,7 @@ it('shows support level and quality as inapplicable and keeps count/corruption i
   expect(harness.inputs.filter(input => input['aria-label'] === 'Level')).toHaveLength(1);
   expect(harness.inputs.filter(input => input['aria-label'] === 'Quality')).toHaveLength(1);
   expect(html).toContain('aria-label="Not applicable">—');
-  expect(html).toContain('<details class="gem-advanced"><summary>Gem options</summary>');
+  expect(html).toContain('<details class="gem-advanced"><summary class="disclosure" data-disclosure-level="inline">Gem options</summary>');
   expect(html.indexOf('placeholder="Add a support gem…"')).toBeLessThan(html.indexOf('class="gem-optimizer"'));
   const count = harness.inputs.find(input => input['aria-label'] === 'Gem count')!;
   count.onChange!({ target: { value: '1.5' } } as never);
@@ -202,9 +202,9 @@ for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
     expect(widths[1]).toBeCloseTo(1000 / 5307.37 * 100);
     expect(html).toContain(`<div class="skill-detail-dps"><span>${tt('skills.minionDps')}</span><strong>5,307</strong></div>`);
 
-    harness.buttons.filter(button => button.className === 'skill-group-title')[1].onClick!({} as never);
+    harness.buttons.filter(button => button.className?.split(' ').includes('skill-group-title'))[1].onClick!({} as never);
     expect(render(current, false, lang)).toContain(`<p class="skill-detail-dps">${tt('skills.summonerPending')}</p>`);
-    harness.buttons.filter(button => button.className === 'skill-group-title')[2].onClick!({} as never);
+    harness.buttons.filter(button => button.className?.split(' ').includes('skill-group-title'))[2].onClick!({} as never);
     expect(render(current, false, lang)).toContain(`<div class="skill-detail-dps"><span>${tt('sidebar.combinedDps')}</span><strong>1,000</strong></div>`);
   });
 }

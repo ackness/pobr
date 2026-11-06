@@ -1,3 +1,4 @@
+import { DisclosureChevron } from '../shared/DisclosureChevron';
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { usePreview } from '../shared/PreviewContext';
@@ -174,7 +175,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
       .replace('{unknown}', String(pool.unknown)).replace('{level}', String(pool.levelBlocked))
       .replace('{incompatible}', String(pool.incompatible))}</span>
   </div>;
-  const poolFilter = <details className="support-pool-details"><summary>{st('filterTitle')}</summary>
+  const poolFilter = <details className="support-pool-details"><summary className="disclosure" data-disclosure-level="inline">{st('filterTitle')}</summary>
     <p className="skills-hint">{st('filterHint')}</p>
     <label className="support-search">{st('search')}<AppInput type="search" value={search}
       placeholder={st('searchPlaceholder')} onChange={event => setSearch(event.target.value)} /></label>
@@ -224,20 +225,20 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     {damage.note && <p className="skills-hint">{damage.note}</p>}
     <p className="skills-hint">{st('keepActive')}</p>
     <details className="support-calculation-details">
-    <summary>{st('calculationDetails')}</summary>
+    <summary className="disclosure" data-disclosure-level="inline">{st('calculationDetails')}</summary>
     <p className="skills-hint">{st('results')} {result.evaluated} · {st('unsupported')} {result.unmodeled}</p>
     <p className="skills-hint">{st('data')}{lang === 'en-US' ? ': ' : '：'}{result.dataVersion ?? st('unknownVersion')} · {st('tree')}{lang === 'en-US' ? ': ' : '：'}{result.request.tree_version ?? st('defaultTree')}</p>
     {result.baselineUnsupported.length > 0 && <details className="support-diagnostics support-baseline-unsupported">
-      <summary>{st('baselineLimits')}{lang === 'en-US' ? ': ' : '：'}{result.baselineUnsupported.length}</summary>
+      <summary className="disclosure" data-disclosure-level="group">{st('baselineLimits')}{lang === 'en-US' ? ': ' : '：'}{result.baselineUnsupported.length}</summary>
       <p className="skills-hint">{st('baselineLimitsHint')}</p>
       <UnincludedModifiers lines={result.baselineUnsupported} lang={lang} items={result.request.items} />
     </details>}
     {result.excluded.length > 0 && <details className="support-diagnostics">
-      <summary>{st('diagnosticExcluded')}{lang === 'en-US' ? ': ' : '：'}{result.excluded.length}</summary>
+      <summary className="disclosure" data-disclosure-level="group">{st('diagnosticExcluded')}{lang === 'en-US' ? ': ' : '：'}{result.excluded.length}</summary>
       <p className="skills-hint">{st('diagnosticExcludedHint')}</p>
       <ol className="support-diagnostic-excluded">{result.excluded.map((edit, index) => <li key={index}>
         <details>
-          <summary>{st('completeSet')}{lang === 'en-US' ? ': ' : '：'}{edit.supports.map(gem => gemName(gem.skill_id)).join(' · ') || st('noSupports')}</summary>
+          <summary className="disclosure" data-disclosure-level="inline">{st('completeSet')}{lang === 'en-US' ? ': ' : '：'}{edit.supports.map(gem => gemName(gem.skill_id)).join(' · ') || st('noSupports')}</summary>
           <ul className="support-diagnostic-gems">{edit.supports.map(gem => <li key={gem.skill_id} data-skill-id={gem.skill_id}>
             {gemName(gem.skill_id)} · {st('level')} {gem.level} · {st('quality')} {gem.quality} · {st('statSet')} {gem.stat_set_index ?? 1}
           </li>)}</ul>
@@ -290,11 +291,11 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     </article>;
     })}
   </div>;
-  const toggleButton = <AppButton className="gem-optimizer-toggle" aria-expanded={expanded} onClick={() => {
+  const toggleButton = <AppButton className="gem-optimizer-toggle disclosure" data-disclosure-level="section" aria-expanded={expanded} onClick={() => {
     setExpanded(!expanded);
     if (!expanded) select();
   }}>
-    <span className="row-caret" aria-hidden>▸</span>{st('title')}
+    <DisclosureChevron className="row-caret" />{st('title')}
   </AppButton>;
 
   // Manual picking is outside this optional section; calculated results precede settings.
@@ -312,7 +313,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
         {errorBlock}
         {resultsBlock}
         <details className="gem-optimizer-settings" ref={settingsRef}>
-          <summary>{words(lang, 'Goal, capacity and candidates', '目标、容量与候选宝石', '目標、容量與候選寶石')}</summary>
+          <summary className="disclosure" data-disclosure-level="group">{words(lang, 'Goal, capacity and candidates', '目标、容量与候选宝石', '目標、容量與候選寶石')}</summary>
           <div className="gem-optimizer-settings-body">
             {hint}
             {poolSummary}

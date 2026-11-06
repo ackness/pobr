@@ -1,3 +1,4 @@
+import { DisclosureChevron } from '../shared/DisclosureChevron';
 import { configListLabel } from '../../lib/configDisplay';
 import { CONFIG_FIELD_EVENT, takeConfigField } from '../../lib/configNavigation';
 import { AppButton, AppInput, AppSelectControl, AppTextarea } from '../shared/controls';
@@ -195,7 +196,7 @@ export function OptionRow({
         </AppButton>
       )}
       <details className="config-option-help">
-        <summary>{workflowLabel(lang, 'help')}</summary>
+        <summary className="disclosure" data-disclosure-level="inline">{workflowLabel(lang, 'help')}</summary>
         {tooltip && <p className="config-help" id={`config-help-${option.var}`}>{stripColorCodes(tooltip)}</p>}
         {tooltip && lang !== 'en-US' && tooltip === option.tooltip && <p className="config-source">{workflowLabel(lang, 'sourceHelp')}</p>}
         <span className="config-source">{workflowLabel(lang, 'rawKey')}</span>
@@ -497,7 +498,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
 
   const catalog = (<>
       <div className="config-controls">{searchToolbar}{viewToggle}</div>
-      <div className="config-help-tools"><details className="config-guidance"><summary>{workflowLabel(lang, 'guidance')}</summary>
+      <div className="config-help-tools"><details className="config-guidance"><summary className="disclosure" data-disclosure-level="inline">{workflowLabel(lang, 'guidance')}</summary>
       <p className="config-hint">{tt('config.visibilityHint')}</p>
       <p className="config-hint">{tt('config.editHint')}</p>
       <p className="config-hint">{tt('config.defaultsHint')}</p>
@@ -506,7 +507,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
       {loadState === 'error' && <div className="calc-error" role="alert">
         {tt('config.loadFailed')} <AppButton onClick={() => setLoadAttempt(value => value + 1)}>{tt('common.retry')}</AppButton>
       </div>}
-    <details className="config-quick-disclosure"><summary>{tt('config.quickTitle')}</summary>{quickAccess}</details></div>
+    <details className="config-quick-disclosure"><summary className="disclosure" data-disclosure-level="inline">{tt('config.quickTitle')}</summary>{quickAccess}</details></div>
     {groups.length > 0 && <label className="config-mobile-category">
       <span>{words(lang, 'Category', '分类', '分類')}</span>
       <AppSelectControl aria-label={words(lang, 'Configuration category', '配置分类', '設定分類')} value={searching ? 'search' : activeSection}
@@ -545,7 +546,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
         return (
           <section key={name} id={`config-section-${name.replace(/\s+/g, '-')}`} className="config-section" hidden={!searching && activeSection !== name}>
             <AppButton
-              className="config-section-header h-auto min-h-12 w-full justify-between whitespace-normal rounded-none border-0 bg-muted text-left"
+              className="config-section-header h-auto min-h-12 w-full justify-between whitespace-normal rounded-none border-0 bg-muted text-left disclosure" data-disclosure-level="group"
               aria-controls={`config-group-${name.replace(/\s+/g, '-')}`}
               aria-expanded={open}
               onClick={() => {
@@ -558,7 +559,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
                 setOpenSections(next);
               }}
             >
-              <span><span className="row-caret" aria-hidden>{open ? '▾' : '▸'}</span> {groupTitle(name)}</span>
+              <span className="disclosure-label"><DisclosureChevron className="row-caret" />{groupTitle(name)}</span>
               <span className="config-section-count">{sectionOptions.length}</span>
             </AppButton>
             {open && (
@@ -653,7 +654,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
 
   const advancedValues = (
       <details className="ui-card config-advanced" open>
-      <summary>{tt('config.addTitle')}</summary>
+      <summary className="disclosure" data-disclosure-level="section">{tt('config.addTitle')}</summary>
       <p className="config-hint">{tt('config.hint')}</p>
       {extraKeys.length > 0 && (
         <div className="config-grid">

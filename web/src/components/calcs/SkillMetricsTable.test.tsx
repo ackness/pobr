@@ -55,7 +55,7 @@ test('overview deduplicates limitations, keeps errors in collapsed details and p
   harness.clicks = [];
   const html = renderToStaticMarkup(<SkillMetricsTable session={session} lang="en-US" report={report} displayed={report} />);
   expect(html.match(/<span>Shared limitation<\/span>/g)).toHaveLength(1);
-  expect(html).toContain('<details><summary>Details</summary><p>Cannot resolve effect EnemyExplode</p></details>');
+  expect(html).toContain('<details><summary class="disclosure" data-disclosure-level="inline">Details</summary><p>Cannot resolve effect EnemyExplode</p></details>');
   expect(html).toContain('Not supported yet');
   expect(html).not.toContain('<details open');
   const rows = html.match(/<tr class="skill-metrics-row[^>]*>[\s\S]*?<\/tr>/g)!;

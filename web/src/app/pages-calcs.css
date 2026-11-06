@@ -4,15 +4,9 @@
 @layer app {
   .shell-root .calcs-page.calcs-workspace { min-width: 0; }
 
-  /* ── Page chrome and the flat tab bar ─────────────────────────────────── */
+  /* ── Page chrome and view switch ─────────────────────────────────── */
   .shell-root .calcs-page.calcs-workspace > .page-header { margin-bottom: .35rem; padding-bottom: 0; border-bottom: 0; }
-  .shell-root .calcs-page.calcs-workspace .calcs-view-tabs { display: flex; flex-wrap: wrap; align-items: stretch; justify-content: flex-start; gap: 0 .35rem; width: 100%; max-width: 100%; height: auto; margin: 0 0 1.5rem; padding: 0; border-radius: 0; border-bottom: 1px solid var(--border); background: none; }
-  .shell-root .calcs-page.calcs-workspace .calcs-view-tab { position: relative; flex: 0 0 auto; height: auto; min-height: 2.6rem; padding: .5rem .8rem; border-radius: 0; background: none; box-shadow: none; font-size: var(--text-base); font-weight: 500; white-space: nowrap; color: var(--muted-foreground); transition: color var(--dur-fast) linear; }
-  .shell-root .calcs-page.calcs-workspace .calcs-view-tab:hover { color: var(--foreground); }
-  .shell-root .calcs-page.calcs-workspace .calcs-view-tab:focus-visible { border-radius: .3rem; box-shadow: none; outline: 2px solid var(--primary); outline-offset: -2px; }
-  .shell-root .calcs-page.calcs-workspace .calcs-view-tab[data-state='active'] { background: none; color: var(--foreground); }
-  .shell-root .calcs-page.calcs-workspace .calcs-view-tab::after { content: ''; position: absolute; inset: auto .5rem -1px; height: 2px; border-radius: 2px 2px 0 0; background: var(--primary); opacity: 1; transform: scaleX(0); transition: transform var(--dur) var(--ease-out); }
-  .shell-root .calcs-page.calcs-workspace .calcs-view-tab[data-state='active']::after { transform: scaleX(1); }
+  .shell-root .calcs-page.calcs-workspace .calcs-view-tabs { margin: 0 0 1.5rem; }
   .shell-root .calcs-page.calcs-workspace .calcs-hint { margin: .25rem 0; font-size: var(--text-sm); line-height: 1.55; color: var(--muted-foreground); }
 
   /* ── Metrics: the list of stats (left) and the inspector (right) ──────── */
@@ -102,8 +96,7 @@
   .shell-root :is(.breakdown-detail, .calcs-page.calcs-workspace) .breakdown-hand { margin: 1.5rem 0 0; padding: 1rem 0 0 0; border: 0; border-top: 1px solid var(--border); }
   .shell-root :is(.breakdown-detail, .calcs-page.calcs-workspace) .damage-lines { margin: 0 0 1rem; border-top: 1px solid var(--border); }
   .shell-root :is(.breakdown-detail, .calcs-page.calcs-workspace) .damage-lines-group { border-bottom: 1px solid var(--border); }
-  .shell-root :is(.breakdown-detail, .calcs-page.calcs-workspace) .damage-lines-group > summary { padding: .5rem 0; font-size: var(--text-sm); color: var(--muted-foreground); }
-  .shell-root :is(.breakdown-detail, .calcs-page.calcs-workspace) .damage-lines-group[open] > summary { color: var(--foreground); }
+  .shell-root :is(.breakdown-detail, .calcs-page.calcs-workspace) .damage-lines-group > summary { padding: .5rem 0; }
   .shell-root :is(.breakdown-detail, .calcs-page.calcs-workspace) .damage-lines-group[open] { padding-bottom: .25rem; }
   .shell-root :is(.breakdown-detail, .calcs-page.calcs-workspace) .breakdown-count { margin-left: auto; font-size: var(--text-xs); color: var(--muted-foreground); }
 
@@ -215,8 +208,5 @@
     .shell-root .calcs-page.calcs-workspace .calcs-detail-value strong { font-size: 1.9rem; }
     .shell-root .calcs-page.calcs-workspace .breakdown-formula .formula-operand { padding-right: 1rem; }
     .shell-root .calcs-page.calcs-workspace .ledger-search { max-width: none; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .shell-root .calcs-page.calcs-workspace .calcs-view-tab::after { transition: none; }
   }
 }

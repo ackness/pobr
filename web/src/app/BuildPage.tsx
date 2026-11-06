@@ -209,7 +209,7 @@ export function BuildPage({ session, lang, onImported, claimImportFocus, importN
         <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={session.busy || importing}><FileUp />{tt('save.import')}</Button>
         <AppInput ref={fileRef} type="file" accept=".json,.build,.txt,application/json,text/plain" hidden aria-label={tt('save.import')}
           onChange={event => { const file = event.target.files?.[0]; if (file) void importFile(file); event.target.value = ''; }} />
-        <div className="bd-segment" role="group" aria-label={text.importDestination}>
+        <div className="bd-segment segmented" role="group" aria-label={text.importDestination}>
           <span>{text.importDestination}{lang === 'en-US' ? ':' : '：'}</span>
           {destinations.map(([value, label]) => <button key={value} type="button" aria-pressed={destination === value} disabled={importing || session.busy} onClick={() => setDestination(value)}>{label}</button>)}
         </div>
@@ -231,7 +231,7 @@ export function BuildPage({ session, lang, onImported, claimImportFocus, importN
         {build?.stages.map((entry, index) => <li key={entry.id}><button type="button" aria-pressed={entry.id === stage?.id} disabled={session.busy} onClick={() => session.selectStage(build.id, entry.id)}>
           {stageDisplayName(entry, index, lang)}<small>Lv{entry.saved.state.character.level} · {entry.saved.state.allocatedNodes.length} {tt('build.passives')}</small></button></li>)}
       </ul>
-      {session.build && session.loadouts.length > 0 && <details className="bd-details"><summary>{text.importedLoadouts}</summary>
+      {session.build && session.loadouts.length > 0 && <details className="bd-details"><summary className="disclosure" data-disclosure-level="group">{text.importedLoadouts}</summary>
         <p className="bd-hint">{text.importedLoadoutsHint}</p>
         <div className="bd-inline">
           <label>{tt('loadout.switch')}<AppSelectControl aria-label={tt('loadout.switch')} value={session.activeLoadout ?? ''} disabled={session.busy} onChange={async event => {
@@ -264,7 +264,7 @@ export function BuildPage({ session, lang, onImported, claimImportFocus, importN
       {hasPobColorCodes(session.notes) && <div className="notes-preview" aria-label={tt('notes.preview')}><pre className="notes-preview-body">{parsePobColorText(session.notes).map((segment, index) => <span key={index} style={segment.color ? { color: segment.color } : undefined}>{segment.text}</span>)}</pre></div>}
     </section>
 
-    <details className="bd-sec bd-export"><summary><h2>{text.exportTitle}</h2></summary>
+    <details className="bd-sec bd-export"><summary className="disclosure" data-disclosure-level="section"><h2>{text.exportTitle}</h2></summary>
       <h3 className="bd-subtitle">{text.buildFileTitle}</h3>
       <p className="bd-hint">{text.shareHint}</p>
       <div className="bd-actions bd-actions-start"><Button variant="outline" disabled={session.busy} onClick={() => download(session.exportLocalBuild(), 'pobr-build-stages.json')}>{text.share}</Button></div>

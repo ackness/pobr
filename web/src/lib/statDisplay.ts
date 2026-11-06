@@ -302,7 +302,9 @@ export function statFormat(stat: string): StatFormat {
 
 /** Shared display rounding and grouping for numbers that are not tied to a stat. */
 export function formatNumber(value: number, digits = 2, minimumDigits = 0): string {
-  return value.toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: minimumDigits });
+  // A tiny negative that rounds to zero would print as "-0", which reads like a loss.
+  const shown = Math.round(value * 10 ** digits) === 0 ? 0 : value;
+  return shown.toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: minimumDigits });
 }
 
 /** Format a result consistently in headlines, detail results and comparisons. */

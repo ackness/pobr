@@ -41,7 +41,7 @@ export function SkillMetricsTable({ session, lang, report, displayed }: {
   ] as const;
   return <>
     {unsupported.length > 0 && <details className="skill-metrics-limits">
-      <summary>{tt('calcs.unsupported')}</summary>
+      <summary className="disclosure" data-disclosure-level="inline">{tt('calcs.unsupported')}</summary>
       <UnincludedModifiers lines={unsupported} lang={lang} />
     </details>}
     <div className="breakdown-scroll">
@@ -91,7 +91,7 @@ export function SkillMetricsTable({ session, lang, report, displayed }: {
               {summoner && minionDps === null && <p>{tt('skills.summonerPending')}</p>}
               {report && available && entry.unsupported_modifiers.length > 0 && <p>{tt('calcs.excludedModifiers')}</p>}
               {report && entry.error && <details onClick={event => event.stopPropagation()}>
-                <summary>{tt('calcs.errorDetails')}</summary><p>{entry.error}</p>
+                <summary className="disclosure" data-disclosure-level="inline">{tt('calcs.errorDetails')}</summary><p>{entry.error}</p>
               </details>}
             </td>
           </tr>;

@@ -212,7 +212,7 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
               {owner && <p className="ledger-meta">{owner}{lang !== 'en-US' && /[A-Za-z]{3}/.test(owner) && <small className="modifier-fallback">{tt('calcs.untranslated')}</small>}</p>}
               {reason.text && <p className="ledger-reason">{reason.text}</p>}
               {field && <ConfigFieldLink field={field} lang={lang} />}
-              <details className="ledger-raw"><summary>{tt('calcs.details')}</summary><pre>{JSON.stringify({ text: line.text, source: line.source_id, reason: line.reason, modifiers: line.modifiers }, null, 2)}</pre></details>
+              <details className="ledger-raw"><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.details')}</summary><pre>{JSON.stringify({ text: line.text, source: line.source_id, reason: line.reason, modifiers: line.modifiers }, null, 2)}</pre></details>
               {line.used_in.length > 0 && <p className="ledger-meta">{w('Counts in', '计入', '計入')}: {line.used_in.map(id => statNameLabel(lang, id) === id ? w('Metric name unavailable', '缺少指标名称', '缺少指標名稱') : statNameLabel(lang, id)).join(' · ')}</p>}
               {line.modifiers.length > 0 && <>
                 <button type="button" className="ledger-toggle" aria-expanded={expanded} onClick={() => toggleRow(index)}>
@@ -235,21 +235,21 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
       </div>}
       {(needsWaiting.length > 0 || rejected.length > 0) && <div className="ledger-extra">
         {needsWaiting.length > 0 && <details>
-          <summary>{w(`Conditions waiting to be set (${needsWaiting.length})`, `等待设置的条件（${needsWaiting.length}）`, `等待設定的條件（${needsWaiting.length}）`)}</summary>
+          <summary className="disclosure" data-disclosure-level="group">{w(`Conditions waiting to be set (${needsWaiting.length})`, `等待设置的条件（${needsWaiting.length}）`, `等待設定的條件（${needsWaiting.length}）`)}</summary>
           <ul>{needsWaiting.map(item => {
             const field = item.config_option ?? usage.condition_configs?.[item.condition];
             return <li key={item.condition}><b>{configLabels[field ?? ''] ?? w('Unmet condition', '尚未满足的条件', '尚未滿足的條件')}</b>
               <span>{field ? <ConfigFieldLink field={field} lang={lang} /> : w('No configuration field is available', '暂无可调整的配置项', '暫無可調整的設定項目')}</span>
-              <details><summary>{tt('calcs.details')}</summary><pre>{item.condition}</pre></details>
+              <details><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.details')}</summary><pre>{item.condition}</pre></details>
               <small>{w(`${item.modifiers.length} waiting`, `${item.modifiers.length} 条在等待`, `${item.modifiers.length} 條在等待`)}</small>
             </li>;
           })}</ul>
         </details>}
         {rejected.length > 0 && <details>
-          <summary>{w(`Modifiers not included: skills (${rejected.length})`, `未计入计算的词缀（技能，${rejected.length}）`, `未計入計算的詞綴（技能，${rejected.length}）`)}</summary>
+          <summary className="disclosure" data-disclosure-level="group">{w(`Modifiers not included: skills (${rejected.length})`, `未计入计算的词缀（技能，${rejected.length}）`, `未計入計算的詞綴（技能，${rejected.length}）`)}</summary>
           <ul>{rejected.map(item => <li key={`${item.owner}:${item.stat}`} title={`${item.stat} · ${item.owner}${item.reason ? ` · ${item.reason}` : ''}`}><span>{ownerLabel(item.owner, skillName) === item.owner ? w('Skill name unavailable', '缺少技能名称', '缺少技能名稱') : ownerLabel(item.owner, skillName)}</span>
             <small>{item.status === 'unmapped' ? w('This effect cannot be calculated yet', '尚无法计算此效果', '尚無法計算此效果') : w('This effect is not recognised yet', '尚未识别此效果', '尚未辨識此效果')}{item.reason ? ` · ${ledgerReasonLabel(item.reason, lang) ?? tt('calcs.unknownReason')}` : ''}</small>
-            <details><summary>{tt('calcs.details')}</summary><pre>{item.owner}{'\n'}{item.stat}{'\n'}{item.reason}</pre></details></li>)}</ul>
+            <details><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.details')}</summary><pre>{item.owner}{'\n'}{item.stat}{'\n'}{item.reason}</pre></details></li>)}</ul>
         </details>}
       </div>}
       {done.response.item_errors.length > 0 && <ul className="ledger-errors">

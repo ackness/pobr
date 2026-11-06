@@ -1,3 +1,4 @@
+import { DisclosureChevron } from '../shared/DisclosureChevron';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton } from '../shared/controls';
 import { formatApiError } from '../../api/error';
@@ -114,13 +115,11 @@ export function ItemOptimizer({
   return (
     <div className="gem-optimizer">
       <AppButton
-        className="gem-optimizer-toggle"
+        className="gem-optimizer-toggle disclosure" data-disclosure-level="section"
         aria-expanded={expanded}
         onClick={() => setExpanded(!expanded)}
       >
-        <span className="row-caret" aria-hidden>
-          ▸
-        </span>
+        <DisclosureChevron className="row-caret" />
         {tt('opt.openItem')}
       </AppButton>
       {expanded && (

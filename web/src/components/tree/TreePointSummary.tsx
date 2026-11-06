@@ -17,7 +17,7 @@ export function TreePointSummary({ current, preview, invalidReason, lang }: {
       <span className="tree-count-change">{change !== null ? text('tree.pointChange').replace('{delta}', `${change >= 0 ? '+' : ''}${change}`) : ''}</span>
     </span>
     <p className="tree-edit-preview" role="status" aria-live="polite" aria-atomic="true">{preview && !result ? invalidReason : ''}</p>
-    <details className="tree-point-details"><summary>{text('tree.pointDetails')}</summary>
+    <details className="tree-point-details"><summary className="disclosure" data-disclosure-level="inline">{text('tree.pointDetails')}</summary>
       <p>{text('tree.pointBudgetHint')}</p>
       <p>{text('tree.campaignPoints')}</p>
       <p>{text('tree.set1')}{colon}{result?.weapon_points_used[0] ?? current.weapon[0]}</p>

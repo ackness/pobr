@@ -147,7 +147,7 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
     </article>
     </div>
     <div className="guidance-section-heading" ref={samplesRef} tabIndex={-1}><h3>{gt('samples')} <span>{ranked.length}</span></h3>
-      <details><summary>{gt('score')}</summary><p>{gt('formula')}</p></details></div>
+      <details><summary className="disclosure" data-disclosure-level="inline">{gt('score')}</summary><p>{gt('formula')}</p></details></div>
     <p className="guidance-notice">{gt('history')}</p>
     <div className="guidance-filters"><AppInput className="guidance-search" aria-label={gt('search')} placeholder={gt('search')} value={query} onChange={event => setQuery(event.target.value)} />
       <label className="guidance-checkbox"><AppInput type="checkbox" checked={exact} onChange={event => setExact(event.target.checked)} />{gt('exact')}</label></div>
@@ -178,14 +178,14 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
         <tbody>{compareGems(currentGroup?.gems ?? [], selectedGroup?.gems ?? []).map(row => <tr key={row.id}>
           <th><span className={`guidance-gem guidance-gem--${byId.get(row.id)?.colour ?? 'none'}`}>◆</span> {gemName(row.id)}</th>
           {[row.current, row.reference].map((gem, index) => <td key={index}>{gem ? `${gt('level')} ${gem.level} · ${gt('quality')} ${gem.quality}%` : gt('absent')}</td>)}</tr>)}</tbody></table></div>
-      <details className="guidance-card"><summary>{gt('reference')} · {gt('skills')} ({selected.build.socket_groups.length})</summary>
+      <details className="guidance-card"><summary className="disclosure" data-disclosure-level="group">{gt('reference')} · {gt('skills')} ({selected.build.socket_groups.length})</summary>
         {selected.build.socket_groups.map((group, index) => <ReferenceSkillGroup key={index} group={group} index={index} gemName={gemName} />)}</details>
       <h3>{gt('gear')}</h3><p className="guidance-muted">{gt('gearHint')}</p>
       <EquipmentComparison session={session} reference={selected} lang={lang} onCompareItem={onCompareItem} />
       <h3>{gt('tree')}</h3><p className="guidance-notice">{gt('passiveVersion')}</p>
       <div className="guidance-passives"><PassiveList title={gt('current')} nodes={keyPassives(session.allocatedNodes, nodes)} lang={lang} />
         <PassiveList title={gt('reference')} nodes={keyPassives(selected.build.tree.allocated_nodes, nodes)} lang={lang} /></div>
-      <details className="guidance-card"><summary>{gt('notes')}</summary><p>{gt('notesHint')}</p><pre className="guidance-notes">{referenceNotes ? parsePobColorText(referenceNotes).map(part => part.text).join('') : gt('noNotes')}</pre></details>
+      <details className="guidance-card"><summary className="disclosure" data-disclosure-level="group">{gt('notes')}</summary><p>{gt('notesHint')}</p><pre className="guidance-notes">{referenceNotes ? parsePobColorText(referenceNotes).map(part => part.text).join('') : gt('noNotes')}</pre></details>
     </div>}
     <h3>{gt('next')}</h3>
     {(!!session.calc?.unsupported_modifiers.length || !!session.calc?.item_errors.length) && <p className="guidance-notice">{gt('partial')}</p>}
@@ -216,7 +216,7 @@ function EquipmentComparison({ session, reference, lang, onCompareItem }: { sess
   const names = useItemDisplayNames(texts, lang);
   return <div className="guidance-equipment">{slots.map((slot, index) => <article className="guidance-card" key={slot}><h4>{slotLabel(lang, slot)}</h4>
     <div className="guidance-equipment-pair">{[0, 1].map(side => <div key={side}><span className="page-eyebrow">{gt(side ? 'reference' : 'current')}</span>
-      <p>{names[index * 2 + side] || gt('absent')}</p>{texts[index * 2 + side] && <><details><summary>{gt('text')}</summary><pre>{texts[index * 2 + side]}</pre></details>
+      <p>{names[index * 2 + side] || gt('absent')}</p>{texts[index * 2 + side] && <><details><summary className="disclosure" data-disclosure-level="inline">{gt('text')}</summary><pre>{texts[index * 2 + side]}</pre></details>
         {side === 1 && <AppButton disabled={session.busy} onClick={() => onCompareItem(texts[index * 2 + side]!)}>{gt('evaluateItem')}</AppButton>}</>}</div>)}</div></article>)}</div>;
 }
 
@@ -226,5 +226,5 @@ function PassiveList({ title, nodes, lang }: { title: string; nodes: PassiveNode
   let offset = 0, named = 0;
   return <article className="guidance-card"><h4>{title} ({nodes.length})</h4>{!nodes.length && <p>{guidanceT(lang, 'noPassives')}</p>}
     {nodes.map(node => { const name = node.name ? names[named++] : node.id; const stats = node.stats ?? []; const lines = shownLines(stats, translated.slice(offset, offset + stats.length)); offset += stats.length;
-      return <details key={node.skill}><summary>{name}</summary><ul>{lines.map((line, index) => <li key={index}>{line}</li>)}</ul></details>; })}</article>;
+      return <details key={node.skill}><summary className="disclosure" data-disclosure-level="group">{name}</summary><ul>{lines.map((line, index) => <li key={index}>{line}</li>)}</ul></details>; })}</article>;
 }

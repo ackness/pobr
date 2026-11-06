@@ -28,7 +28,7 @@ export function SwapGainCard({ before, after, lang, damage }: { before: readonly
         <span><span>{value(id, row?.before)}</span> → <b className="swap-after">{value(id, row?.after)}</b></span>
       </div>;
     })}</div>
-    {changes.length > 0 && <details><summary>{tt('items.allChanges').replace('{count}', String(changes.length))}</summary>
+    {changes.length > 0 && <details><summary className="disclosure" data-disclosure-level="inline">{tt('items.allChanges').replace('{count}', String(changes.length))}</summary>
       <div className="replacement-table-wrap"><table><thead><tr><th>{tt('items.changedStat')}</th><th>{upgradeT(lang, 'before')}</th><th>{upgradeT(lang, 'after')}</th><th>{upgradeT(lang, 'change')}</th></tr></thead>
         <tbody>{changes.map(row => <tr key={row.id}><th>{label(row.id)}</th><td>{value(row.id, row.before)}</td><td>{value(row.id, row.after)}</td><td>{formatComparisonDelta(row.delta, statFormat(row.id), lang)}</td></tr>)}</tbody>
       </table></div>

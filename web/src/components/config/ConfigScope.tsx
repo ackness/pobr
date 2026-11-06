@@ -16,7 +16,7 @@ export function ConfigScopeControl({ scope, count, lang, onChange }: {
   scope: ConfigScope; count: number; lang: Lang; onChange: (scope: ConfigScope) => void;
 }) {
   const tt = bindT(lang);
-  return <ToggleGroup className="config-view flex-wrap" type="single" value={scope} aria-label={tt('config.view')}
+  return <ToggleGroup className="config-view flex-wrap segmented" type="single" value={scope} aria-label={tt('config.view')}
     onValueChange={value => { if (value) onChange(value as ConfigScope); }}>
     <ToggleGroupItem value="relevant">{tt('config.applicable')}</ToggleGroupItem>
     <ToggleGroupItem value="modified">{tt('config.configuredOnly').replace('{count}', String(count))}</ToggleGroupItem>

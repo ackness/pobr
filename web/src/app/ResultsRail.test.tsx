@@ -51,6 +51,12 @@ it('hides the duplicate attention link on Overview and names destinations elsewh
   expect(render('overview')).toContain('Skill values (Calculations)');
 });
 
+it('keeps result section folds at the compact sidebar heading level', () => {
+  const html = render('overview');
+  expect(html).toMatch(/<h3 class="rail-title"><button[^>]*data-disclosure-level="small"[^>]*aria-expanded="false"/);
+  expect(html).not.toContain('data-disclosure-level="group"');
+});
+
 it('hides neutral quantity and duplicate ailment totals while preserving distinct values', () => {
   const html = render('overview');
   expect(html).not.toContain('Quantity Multiplier');

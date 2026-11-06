@@ -141,7 +141,7 @@ test('usable scores show integer ranking scores, one-decimal gains and one equip
   expect(html).toContain('<strong>797</strong>');
   expect(html).toContain('+1.2%');
   expect(html.match(/class="trade-primary trade-market-link"/g)).toHaveLength(1);
-  expect(html).toMatch(/<details class="trade-method"><summary>Calculation details: trade weights<\/summary>.*32.046/);
+  expect(html).toMatch(/<details class="trade-method"><summary class="disclosure" data-disclosure-level="inline">Calculation details: trade weights<\/summary>.*32.046/);
   ui.selects.find(select => select.ariaLabel === 'League')!.onChange('__custom');
   expect(render()).toContain('Enter a league in Market settings to open this search.');
   expect(button('Open trade search').disabled).toBe(true);

@@ -39,7 +39,7 @@ test.each([false, true])('saved equipment candidates use the same damage goal (s
   ui.evaluate.mockResolvedValue({ baseline: { TotalDPS: 10, CombinedDPS: 100, MainMinionDPS: 100, ManaCost: 1 },
     results: [{ index: 0, stats: { TotalDPS: 10000, CombinedDPS: 120, MainMinionDPS: 110, ManaCost: 1 } },
       { index: 1, stats: { TotalDPS: 1, CombinedDPS: 150, MainMinionDPS: 180, ManaCost: 1 } }] });
-  render(); ui.buttons.find(button => button.className === 'gem-optimizer-toggle')!.onClick!({} as never); render();
+  render(); ui.buttons.find(button => button.className?.split(' ').includes('gem-optimizer-toggle'))!.onClick!({} as never); render();
   await ui.buttons.find(button => button.className === 'opt-run')!.onClick!({} as never); render();
   expect(ui.result).toHaveBeenLastCalledWith(expect.objectContaining({ objective: expect.objectContaining({ stat: summoner ? 'MainMinionDPS' : 'CombinedDPS' }),
     ranked: [expect.objectContaining({ index: 1 }), expect.objectContaining({ index: 0 })] }));

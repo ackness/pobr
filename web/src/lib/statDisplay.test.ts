@@ -207,3 +207,11 @@ test('main-minion headlines use the same integer precision as Combined DPS', () 
   expect(statFormat('MainMinionDPS')).toBe('int');
   expect(formatStatValue(12345.67, statFormat('MainMinionDPS'), 'zh-CN')).toBe('12,346');
 });
+
+test('values that round to zero never show a minus sign', () => {
+  expect(formatNumber(-0.001)).toBe('0');
+  expect(formatNumber(-0)).toBe('0');
+  expect(formatNumber(-0.004, 2, 2)).toBe('0.00');
+  expect(formatNumber(-0.01)).toBe('-0.01');
+  expect(formatStatValue(-0.001, 'float2')).toBe('0');
+});
