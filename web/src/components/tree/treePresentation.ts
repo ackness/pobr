@@ -2,7 +2,7 @@ import { OBJECTIVE_PRESETS } from '../../lib/optimize';
 import { formatComparisonDelta } from '../../lib/compare';
 import type { CalculateBuildResponse, AttributeChoice, PassiveJewelState, PassiveNode, WeaponSwap } from '../../api/types';
 import { bindT, messages, statNameLabel, type Lang } from '../../lib/i18n';
-import { statFormat } from '../../lib/statDisplay';
+import { formatNumber, statFormat } from '../../lib/statDisplay';
 
 /** Gains are differences: percentage formats use percentage points, never relative percent changes. */
 export function powerGain(value: number | null, stat: string, lang: Lang): string {
@@ -11,7 +11,7 @@ export function powerGain(value: number | null, stat: string, lang: Lang): strin
   const format = statFormat(stat);
   const percent = ['percent', 'chanceMultiplier', 'modifier'].includes(format);
   const amount = format === 'chanceMultiplier' || format === 'modifier' ? value * 100 : value;
-  const number = amount.toLocaleString(lang, { maximumFractionDigits: 2, signDisplay: 'always' });
+  const number = `${amount >= 0 ? '+' : ''}${formatNumber(amount)}`;
   const unit = percent ? text.percentUnit : format === 'rate' || /DPS$/.test(stat) ? text.rateUnit : text.valueUnit;
   return `${number} ${unit}`;
 }
@@ -61,7 +61,7 @@ export function refundDelta(before: CalculateBuildResponse | null, after: Calcul
   if (delta === null) return bindT(lang)('tree.deltaUnavailable');
   const baseline = before!.stats.find(stat => stat.id === 'CombinedDPS')!.value!;
   const absolute = formatComparisonDelta(delta, 'float2', lang);
-  const percent = (delta / baseline * 100).toLocaleString(lang, { maximumFractionDigits: 1, signDisplay: 'always' });
+  const percent = `${delta >= 0 ? '+' : ''}${formatNumber(delta / baseline * 100, 1)}`;
   return baseline > 0 ? `${absolute}${lang === 'en-US' ? ` (${percent}%)` : `（${percent}%）`}` : absolute;
 }
 

@@ -251,7 +251,7 @@ test.each([false, true])('gem recommendations display the headline damage gain a
   ui.gems.mockResolvedValue([plan]);
   await ready();
   ui.buttons.find(props => props['data-slot-id'] === 'gems')!.onClick!({} as never);
-  render(); await button('Calculate affix scores').onClick!({} as never);
+  render(); await button('Calculate modifier scores').onClick!({} as never);
   const html = render();
   const card = html.slice(html.indexOf('class="trade-gem-card"'));
   expect(card).toContain(`data-stat="${summoner ? 'MainMinionDPS' : 'CombinedDPS'}">${summoner ? 'Minion hit DPS' : 'Combined DPS'} <b class="delta-pos">100 → ${summoner ? 180 : 150}</b>`);

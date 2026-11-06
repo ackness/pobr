@@ -79,3 +79,30 @@ test('recommends a minion-only equipment gain and displays its headline, percent
   expect(html).not.toContain('data-plan-stat="TotalDPS"');
   expect(ui.buttons.find(button => button.children === 'Apply equipment plan')?.disabled).toBeFalsy();
 });
+
+test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('planned resistance values have exactly one percent sign in %s', async lang => {
+  const request = {};
+  const session = { activeWeaponSet: 1, currentRequest: () => request } as unknown as BuildSession;
+  const objective = { stat: 'Life', constraints: [] }, catalog = { bases: [], mods: [] };
+  const candidates = [{ id: 'one', itemId: 'item', label: 'Ring', slot: 'ring1', text: 'Candidate' }];
+  const damage = { stat: 'CombinedDPS', label: 'Combined DPS' };
+  ui.plan.mockResolvedValue({ baseline: { Life: 100 }, evaluated: 1, plans: [{
+    candidateIds: [], items: [], unsupported: [], stats: { Life: 100, FireResist: 75, ColdResist: 75, LightningResist: 75, ChaosResist: -20 },
+  }] });
+  const render = () => {
+    for (let count = 0; count < 10; count++) {
+      ui.cursor = 0; ui.buttons = []; ui.dirty = false;
+      const html = renderToStaticMarkup(<EquipmentPlanner session={session} lang={lang} active objective={objective}
+        catalog={catalog} candidates={candidates} onRemove={() => {}} damage={damage} />);
+      ui.effects.splice(0).forEach(effect => effect());
+      if (!ui.dirty) return html;
+    }
+    throw new Error('Render did not settle');
+  };
+  render();
+  await ui.buttons.find(button => button.className === 'trade-primary')!.onClick!({} as never);
+  const resistances = render()!.match(/<p class="equipment-plan-resists">([\s\S]*?)<\/p>/)![1];
+  expect(resistances.match(/ 75%<\/span>/g)).toHaveLength(3);
+  expect(resistances).toContain(' -20%</span>');
+  expect(resistances).not.toContain('%%');
+});

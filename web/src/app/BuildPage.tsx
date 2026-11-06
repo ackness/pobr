@@ -154,7 +154,7 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
 
   const destinations: [Destination, string][] = [['newBuild', text.importNew], ['currentStage', text.importCurrent.replace('{stage}', currentStageName)]];
   return <section className="bd" aria-labelledby="build-heading">
-    <header className="bd-head"><h1 id="build-heading">{w('My builds', '我的 BD', '我的 BD')}</h1><p>{tt('ui.buildHint')}</p></header>
+    <header className="bd-head"><h1 id="build-heading">{w('Build library', 'BD 库', 'BD 庫')}</h1><p>{tt('ui.buildHint')}</p></header>
 
 
     <section className="bd-sec" aria-labelledby="bd-library-title">

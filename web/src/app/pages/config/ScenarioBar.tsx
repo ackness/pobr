@@ -1,7 +1,7 @@
 import type { EnemyTier } from '../../../api/types';
 import { AppButton } from '../../../components/shared/controls';
 import type { BuildSession } from '../../../hooks/useBuildSession';
-import { type Lang } from '../../../lib/i18n';
+import { enemyTierLabel, type Lang } from '../../../lib/i18n';
 import { words } from '../../text';
 import { resolveEnemyTier } from '../../enemy';
 import { SCENARIOS } from './scenario';
@@ -13,16 +13,16 @@ import { SCENARIOS } from './scenario';
 export function ScenarioBar({ session, lang }: { session: BuildSession; lang: Lang }) {
   const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
   const current = resolveEnemyTier(session.calcParams.enemy_tier, session.calcParams.config_inputs);
-  return <div className="cfg-scenario" role="group" aria-label={w('Enemy to fight', '对战的敌人', '對戰的敵人')}>
-    <span className="cfg-scenario-label">{w('Fight', '对手', '對手')}</span>
+  return <div className="cfg-scenario" role="group" aria-label={w('Enemy tier', '敌人档位', '敵人檔位')}>
+    <span className="cfg-scenario-label">{w('Enemy tier', '敌人档位', '敵人檔位')}</span>
     <div className="cfg-presets">
       {SCENARIOS.map(scenario => <AppButton key={scenario.tier} type="button" className="cfg-preset" aria-pressed={current === scenario.tier}
         disabled={session.busy} onClick={() => { if (current !== scenario.tier) session.updateParams({ enemy_tier: scenario.tier as EnemyTier }); }}>
-        {w(scenario.en, scenario.cn, scenario.tw)}
+        {enemyTierLabel(lang, scenario.tier)}
       </AppButton>)}
     </div>
     {current === 'custom' && <span className="cfg-scenario-note" role="status">
-      {w('Using the build’s enemy settings.', '使用构筑中的敌人设置。', '使用 BD 中的敵人設定。')}
+      {w('Using the build’s enemy settings.', '使用 BD 中的敌人设置。', '使用 BD 中的敵人設定。')}
     </span>}
   </div>;
 }

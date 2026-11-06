@@ -34,7 +34,7 @@ test('WeGame import preserves gem levels and ranks quiver upgrades', async ({ pa
     .toHaveText('0', { timeout: 60_000 });
   await expect(page.locator('.ov-details')).toHaveCount(0);
   await pageLink(page, 'Items').click();
-  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
   await pageLink(page, 'Skills').click();
   await expect(page.locator('.skill-group').first()).toContainText('Ice Shot');
   // The persisted editing state is what the optimizer and the next reload consume.

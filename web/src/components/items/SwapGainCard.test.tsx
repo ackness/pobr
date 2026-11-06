@@ -29,17 +29,35 @@ it('keeps unavailable stats unavailable and uses an absolute change for a zero b
 });
 
 it('leads with the main minion gain when player hit and combined DPS do not change', () => {
-  const before = [{ id: 'TotalDPS', value: 0 }, { id: 'CombinedDPS', value: 0 }, { id: 'MainMinionDPS', value: 100 }];
-  const after = before.map(row => ({ ...row, value: row.id === 'MainMinionDPS' ? 150 : row.value }));
+  const before = [{ id: 'TotalDPS', value: 0 }, { id: 'CombinedDPS', value: 0 }, { id: 'MainMinionDPS', value: 100.4 }];
+  const after = before.map(row => ({ ...row, value: row.id === 'MainMinionDPS' ? 150.6 : row.value }));
   const html = renderToStaticMarkup(<SwapGainCard before={before} after={after} lang="zh-CN"
     damage={{ stat: 'MainMinionDPS', label: '召唤物击中 DPS', note: minionDpsNote('zh-CN', '狼', 7) }} />);
   const headline = html.match(/data-stat="MainMinionDPS"[\s\S]*?<\/div>/)![0];
   expect(headline).toContain('召唤物击中 DPS');
   expect(headline).toContain('狼 · 单只 · 上限 7 只');
   expect(headline).toContain('+50.0%');
-  expect(headline).toContain('100</span> → <b class="swap-after">150');
+  expect(headline).toContain('100</span> → <b class="swap-after">151');
   expect(html).not.toContain('data-stat="CombinedDPS"');
   expect(html).not.toContain('全部变化');
+});
+
+it.each(['en-US', 'zh-CN', 'zh-TW'] as const)('uses metric precision for absolute gains and groups negative DPS in %s', lang => {
+  const html = renderToStaticMarkup(<SwapGainCard
+    before={[{ id: 'CombinedDPS', value: 0 }, { id: 'TotalEHP', value: 0 }, { id: 'Life', value: 0 }, { id: 'TotalDPS', value: 12345.67 }]}
+    after={[{ id: 'CombinedDPS', value: 12345.67 }, { id: 'TotalEHP', value: 1001.83 }, { id: 'Life', value: 1.83 }, { id: 'TotalDPS', value: 0 }]} lang={lang} />);
+  const metric = (id: string) => html.match(new RegExp(`data-stat="${id}"[\\s\\S]*?</div>`))![0];
+  expect(metric('CombinedDPS')).toContain('<strong class="delta-pos">+12,346</strong>');
+  expect(metric('TotalEHP')).toContain('<strong class="delta-pos">+1,002</strong>');
+  expect(metric('Life')).toContain('<strong class="delta-pos">+2</strong>');
+  expect(metric('Life')).toContain('<span><span>0</span> → <b class="swap-after">2</b></span>');
+  expect(html).toContain('<td>12,346</td><td>0</td><td>-12,346</td>');
+});
+
+it('uses shared grouping and precision for relative gains too', () => {
+  const html = renderToStaticMarkup(<SwapGainCard before={[{ id: 'Life', value: 100 }]}
+    after={[{ id: 'Life', value: 12445.67 }]} lang="en-US" />);
+  expect(html).toContain('<strong class="delta-pos">+12,345.7%</strong>');
 });
 
 

@@ -7,7 +7,7 @@ test.use(noMotion);
 
 /** The custom modifier groups live on their own tab of the Config page. */
 async function openModifiers(page: Page) {
-  await go(page, 'Config');
+  await go(page, 'Configuration');
   await page.getByRole('tab', { name: 'Custom modifiers', exact: true }).click();
 }
 

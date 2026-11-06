@@ -44,12 +44,12 @@ test('compare stages without mutation, share A config, and apply one item to ina
     ...original.builds[0].stages[0].saved, state: { ...original.builds[0].stages[0].saved.state,
       items: original.builds[0].stages[1].saved.state.items, sourceBackfillComplete: true },
   } });
-  await page.getByRole('heading', { name: 'Compare builds and stages', exact: true }).scrollIntoViewIfNeeded();
+  await page.getByRole('heading', { name: 'Compare', exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('comparison.png') });
   await page.setViewportSize({ width: 640, height: 900 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Compare builds and stages', exact: true })).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByRole('heading', { name: 'Compare', exact: true })).toBeVisible({ timeout: 90_000 });
   expect((await snapshot()).builds[0].stages[0].saved.state.items).toEqual(original.builds[0].stages[1].saved.state.items);
 });
 
@@ -78,7 +78,7 @@ for (const activeStage of ['stage-a', 'stage-b']) {
     await pageLink(page, 'Compare').click();
     await choose(page, compareStageA(page), 'Spark / Starter');
     await choose(page, compareStageB(page), 'Spark / Target');
-    await compareTab(page, 'Config').click();
+    await compareTab(page, 'Configuration').click();
     for (const key of [shockKey, questKey]) {
       const difference = page.locator(`[data-config-key="${key}"]`);
       await expect(difference).toContainText('Not set');
@@ -86,7 +86,7 @@ for (const activeStage of ['stage-a', 'stage-b']) {
     }
     expect(await snapshot()).toEqual(original);
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'Compare builds and stages', exact: true })).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByRole('heading', { name: 'Compare', exact: true })).toBeVisible({ timeout: 90_000 });
     await expect(busy(page)).toHaveCount(0);
     const restored = await snapshot();
     expect(restored.builds[0].stages[0].saved.state.params.config_inputs).toEqual(original.builds[0].stages[0].saved.state.params.config_inputs);

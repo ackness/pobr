@@ -35,7 +35,7 @@ export function ItemContribution({ session, slot, lang }: { session: BuildSessio
   return <section className="item-contribution" aria-label={tt('items.contribution')}>
     <h4>{tt('items.contribution')}</h4>
     {available ? <p>{tt('items.removalLoss').replace('{dps}', formatStatValue(entry.deltas.CombinedDPS, 'float2', lang))
-      .replace('{ehp}', formatStatValue(entry.deltas.TotalEHP, 'float2', lang))}</p> : <>
+      .replace('{ehp}', formatStatValue(entry.deltas.TotalEHP, 'int', lang))}</p> : <>
       <p>{tt('items.contributionMissing')}</p>
       <AppButton onClick={() => void run()} disabled={running || session.busy || !session.calc}>
         {tt(running ? 'calcs.running' : 'calcs.runAttribution')}

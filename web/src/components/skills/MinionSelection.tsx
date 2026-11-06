@@ -42,7 +42,7 @@ export function MinionSelection({ session, lang, groupIndex, gemIndex, gemName }
   const label = (row: MinionCatalog['monsters'][number]) => shownName.get(row.id) ?? row.name;
   const needle = query.trim().toLowerCase();
   const visible = choices.filter(row => row.id === id || row.name.toLowerCase().includes(needle) || label(row).toLowerCase().includes(needle));
-  return <div className="minion-controls" role="group" aria-label={`${tt('minion.title')}: ${gemName}`}>
+  return <div className="minion-controls" role="group" aria-label={`${tt('minion.title')}${lang === 'en-US' ? ': ' : '：'}${gemName}`}>
     <h4>{gemName} · {tt('minion.title')}</h4>
     {choices.length > 8 && <AppInput type="search" value={query} placeholder={tt('minion.search')} aria-label={tt('minion.search')}
       onChange={event => setQuery(event.target.value)} />}

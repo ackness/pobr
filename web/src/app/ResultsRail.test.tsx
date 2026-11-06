@@ -9,16 +9,27 @@ import type { Route } from './routes';
 
 vi.mock('../hooks/useSkillName', () => ({ useSkillCatalog: () => new Map() }));
 
-function render(route: Route, quantity = 1, withIgnite = 100) {
+function render(route: Route, quantity = 1, withIgnite = 100, lang: 'en-US' | 'zh-CN' | 'zh-TW' = 'en-US') {
   const calc = { stats: Object.entries({ CritMultiplier: 7.36, QuantityMultiplier: quantity, TotalDPS: 100,
     CombinedDPS: 100, WithIgniteDPS: withIgnite, WithBleedDPS: 100, WithPoisonDPS: 100, CombinedAvgToMonsterLife: 10 }).map(([id, value]) => ({ id, value })),
     main_skill: { skill_id: 'Fireball', hit_damage: [], combined_dps: 100, hit_dps: 100, dot_dps: 0 },
     item_errors: [], unsupported_modifiers: [], minions: [], breakdowns: {}, breakdown_descriptors: {},
   } as unknown as CalculateBuildResponse;
   const session = { calcParams: { main_socket_group: 0 }, socketGroups: [{ gems: [] }], calcMs: 77, dataVersion: '0.5.5.5' } as unknown as BuildSession;
-  return renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider><ResultsRail route={route} session={session}
-    view={{ calc, previous: null, stale: false }} lang="en-US" onStatClick={() => {}} onNavigate={() => {}} pinned={[]} onTogglePin={() => {}} /></TooltipProvider></UiProvider>);
+  return renderToStaticMarkup(<UiProvider lang={lang}><TooltipProvider><ResultsRail route={route} session={session}
+    view={{ calc, previous: null, stale: false }} lang={lang} onStatClick={() => {}} onNavigate={() => {}} pinned={[]} onTogglePin={() => {}} /></TooltipProvider></UiProvider>);
 }
+
+it.each([
+  ['en-US', 'Hit DPS', 'Combined DPS'],
+  ['zh-CN', '击中 DPS', '综合 DPS'],
+  ['zh-TW', '擊中 DPS', '綜合 DPS'],
+] as const)('shows one calculated-skill Hit DPS row and a distinct Combined DPS headline in %s', (lang, hit, combined) => {
+  const html = render('overview', 1, 100, lang);
+  expect(html.match(new RegExp(`class="rail-label">${hit}</span>`, 'g'))).toHaveLength(1);
+  expect(html).toContain(`data-stat="TotalDPS"><span class="rail-label">${hit}</span><span class="rail-value">100</span>`);
+  expect(html).toContain(`<span class="rail-hero-label">${combined}</span>`);
+});
 
 it('hides the duplicate attention link on Overview and names destinations elsewhere', () => {
   expect(render('overview')).not.toContain('class="rail-health"');

@@ -12,6 +12,7 @@ describe('matchingTiers', () => {
   });
   it('finds a single enemy by its own name, in Chinese too', () => {
     expect(matchingTiers('uber', 'en-US').map(entry => entry.tier)).toEqual(['uber']);
-    expect(matchingTiers('刷', 'zh-CN').length).toBeLessThanOrEqual(1);
+    expect(matchingTiers('刷', 'zh-CN')).toEqual([{ tier: 'none', label: '敌人档位：刷图' }]);
+    expect(matchingTiers('pinnacle', 'en-US')).toEqual([{ tier: 'pinnacle', label: 'Enemy tier: Pinnacle Boss' }]);
   });
 });

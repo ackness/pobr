@@ -1,5 +1,6 @@
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { SwapGainCard } from '../items/SwapGainCard';
+import { formatNumber } from '../../lib/statDisplay';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
 import { usePreview } from '../shared/PreviewContext';
@@ -99,7 +100,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   const selectedItem = selected?.variant.set_items?.length === 1 ? selected.variant.set_items[0] : undefined;
   const alreadyAdded = !!report && !!selectedItem && equipmentCandidates.some(candidate =>
     candidate.itemId === report.text && candidate.slot === selectedItem.slot && candidate.text === selectedItem.text);
-  const format = (value: number) => value.toLocaleString(lang, { maximumFractionDigits: 2 });
+  const format = (value: number) => formatNumber(value);
   const deltaText = (value: number) => `${value > 0 ? '+' : ''}${format(value)}`;
   const positionLabel = (slot: string) => slot.startsWith('Jewel@') ? socketLabel?.(Number(slot.slice(6))) ?? ut('jewelPosition') : slotLabel(lang, slot);
   const errorText = useCallback((message: string) => ({
@@ -257,7 +258,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
         <div className="replacement-verdict"><span className="trade-section-label">{ut('replacementOutcome')}</span>
         <strong className={selected.unsupported.length || selected.augments.limitWarning ? '' : compareObjectiveStats(selected.stats, report.baseline, objective) < 0 ? 'delta-pos' : 'delta-neg'}>
           {selected.augments.limitWarning ? ut('augmentUnverified') : selected.unsupported.length ? ut('partialReplacement') : ut(compareObjectiveStats(selected.stats, report.baseline, objective) < 0 ? 'better' : 'worse')}</strong>
-        {(selected.stats[damage.stat] ?? 0) < (report.baseline[damage.stat] ?? 0) && <p className="delta-neg">{ut('dpsDrop')}</p>}
+        {(selected.stats[damage.stat] ?? 0) < (report.baseline[damage.stat] ?? 0) && <p className="delta-neg">{words(lang, '{stat} decreases after this replacement', '替换后{stat}降低', '替換後{stat}降低').replace('{stat}', damage.label)}</p>}
         {!feasibleOf(selected.stats, objective) && <p className="delta-neg">{ut('constraintFail')}</p>}
         </div>
         <SwapGainCard before={Object.entries(report.baseline).map(([id, value]) => ({ id, value }))}

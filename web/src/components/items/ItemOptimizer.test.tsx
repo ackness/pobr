@@ -15,6 +15,7 @@ vi.mock('react', async original => ({ ...await original<typeof import('react')>(
   },
 }));
 vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: { preset: ui.preset, cStat: '', cMin: '', cMax: '' }, setGoal: vi.fn() }) }));
+vi.mock('../../hooks/useLocalizedLines', () => ({ useLocalizedNames: (names: { name: string }[]) => names.map(entry => entry.name) }));
 vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
 vi.mock('../shared/controls', () => ({ AppButton: (props: ComponentProps<'button'>) => { ui.buttons.push(props); return <button {...props} />; } }));
 vi.mock('../../lib/optimize', async original => ({ ...await original<typeof import('../../lib/optimize')>(), evaluateVariants: (...args: unknown[]) => ui.evaluate(...args) }));

@@ -33,7 +33,8 @@ import { planGemUpgrades } from '../../lib/tradeMarket';
 import { AppSelect } from '../shared/AppSelect';
 import { CopyButton } from '../shared/CopyButton';
 import { objectiveOf, ObjectiveEditor } from '../shared/OptimizerControls';
-import { statMap } from '../../lib/statDisplay';
+import { formatStatValue, statFormat, formatNumber, statMap } from '../../lib/statDisplay';
+import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { rankUpgradePositions, type PositionAnalysis } from '../../lib/tradePriority';
 import { hasReusableTradeAnalysis, hasUsableTradeWeights, reusableTradeCount, type CachedTradeAnalysis, type TradeAnalysisMode } from '../../lib/tradeAnalysis';
 import { tradeAnalysisText } from '../../lib/tradeAnalysisText';
@@ -216,7 +217,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   const searchReady = !!searchUrl && !!league.trim();
   const maxGain = Math.max(...(weights?.weighted.map(weight => weight.gain) ?? []), 1e-9);
   const disabled = !active || running !== null || session.busy || !catalog || !canAnalyze;
-  const number = (value: number, digits = 2) => value.toLocaleString(lang, { maximumFractionDigits: digits });
+  const number = (value: number, digits = 2) => formatNumber(value, digits);
 
   const priorities = rankUpgradePositions(results, objective, damageStat);
   const fullTargets = slots.filter(slot => (bySlot.has(slot) || slot.startsWith('Jewel@')) && baseOf(slot));
@@ -437,7 +438,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
           <section className="upgrade-score-reference ui-card" aria-label={ut('currentScore')}>
             <div><span>{ut('currentScore')}</span><strong>{weights.currentItemScore ? number(weights.currentItemScore.score, 0) : '—'}</strong>
               <small>{ut(!weights.currentItemScore ? 'noScore' : weights.currentItemScore.complete ? 'complete' : 'partial')}</small></div>
-            <div className="upgrade-current-stats"><span>{damageLabel} <b>{weights.baseline[damageStat] === undefined ? '—' : number(weights.baseline[damageStat])}</b></span><span>{statNameLabel(lang, 'TotalEHP')} <b>{number(weights.baseline.TotalEHP ?? 0)}</b></span></div>
+            <div className="upgrade-current-stats"><span>{damageLabel} <b>{weights.baseline[damageStat] === undefined ? '—' : formatStatValue(weights.baseline[damageStat], statFormat(damageStat), lang)}</b></span><span>{statNameLabel(lang, 'TotalEHP')} <b>{formatStatValue(weights.baseline.TotalEHP ?? 0, statFormat('TotalEHP'), lang)}</b></span></div>
             <p>{ut('scoreHint')}</p>
             {weights.scoreWarnings.includes('unmodeled-candidates') && <p>{ut('skippedUnmodeled')}</p>}
             {weights.scoreWarnings.includes('constraints-not-in-query') && <p className="upgrade-score-caution">{ut('marketConstraints')}</p>}
@@ -453,7 +454,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
             {weights.weighted.map((weight, index) => <div key={weight.id} className="trade-score-row" role="row">
               <span className="trade-affix" role="cell"><span className="trade-rank">{String(index + 1).padStart(2, '0')}</span>{lineText(weight.line, localized[index])}</span>
               <span className="trade-priority" role="cell"><span className="trade-bar"><span style={{ width: `${weight.gain / maxGain * 100}%` }} /></span><b>{Math.round(weight.gain / maxGain * 100)}</b></span>
-              <span className="trade-gain" role="cell">+{weight.gainPercent.toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span>
+              <span className="trade-gain" role="cell">+{formatNumber(weight.gainPercent, 1, 1)}%</span>
             </div>)}
           </div>}
           {Boolean(weights.situational?.length) && <div className="trade-situational">
@@ -469,7 +470,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
           <details className="trade-method"><summary>{ut('weightDetails')}</summary><p>{tt('trade.methodDescription')}</p>
             <ul>{weights.weighted.map((weight, index) => <li key={weight.id}>{lineText(weight.line, localized[index])} · {tt('trade.marketWeight')}{lang === 'en-US' ? ': ' : '：'}{number(weight.weight, 3)}</li>)}</ul>
             <p>{tt('trade.currentGoal')}{lang === 'en-US' ? ': ' : '：'}{goalLabel} {number(scoreOf(weights.baseline, objective))} · {weights.evaluated} {tt('trade.evaluations')}</p></details>
-          {weights.unsupported.length > 0 && <details className="trade-notice trade-unsupported"><summary>{tt('trade.unsupportedHint')} ({weights.unsupported.length})</summary><pre>{weights.unsupported.join('\n')}</pre></details>}
+          {weights.unsupported.length > 0 && <details className="trade-notice trade-unsupported"><summary>{tt('trade.unsupportedHint')} ({weights.unsupported.length})</summary><UnincludedModifiers lines={weights.unsupported} lang={lang} items={session.items} /></details>}
         </>}
         {result?.gems && <div className="trade-gems"><div className="trade-results-heading"><div><h4>{tt('trade.gemCandidates')}</h4>{onSkills && mainGroup !== undefined && <AppButton onClick={() => onSkills(mainGroup)}>{ut('autoSupports')} →</AppButton>}<p>{tt('trade.gemHint')}</p></div></div>
           {result.gems.length === 0 && <p className="trade-notice">{tt('trade.noGemUpgrade')}</p>}
@@ -486,7 +487,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
               {plan.gainPercent !== undefined && <span className={plan.gainPercent < 0 ? 'delta-neg' : 'trade-gain'}>{tt('trade.referenceGain')} {plan.gainPercent >= 0 ? '+' : ''}{number(plan.gainPercent)}%</span>}</div>
             <div className="upgrade-gem-stats">{[damage.stat, 'TotalEHP'].map(stat => {
               const before = plan.baseline?.[stat] ?? 0, after = plan.stats?.[stat] ?? 0;
-              return <span key={stat} data-stat={stat}>{stat === damage.stat ? damage.label : statNameLabel(lang, stat)} <b className={after < before ? 'delta-neg' : 'delta-pos'}>{number(before)} → {number(after)}</b></span>;
+              return <span key={stat} data-stat={stat}>{stat === damage.stat ? damage.label : statNameLabel(lang, stat)} <b className={after < before ? 'delta-neg' : 'delta-pos'}>{formatStatValue(before, statFormat(stat), lang)} → {formatStatValue(after, statFormat(stat), lang)}</b></span>;
             })}{damage.note && <small>{damage.note}</small>}</div>
             {plan.acquisition !== 'skill-adjustment' && league.trim() && <a className="trade-secondary" href={gemTradeUrl({ realm, league, category: 'gem', price: priceCap, maxLevel: session.character?.level,
               gem: { name: realm === 'cn' ? cnSkillName(plan.gem.skill_id) : plan.gem.name, level: plan.level, quality: plan.quality } })} target="_blank" rel="noreferrer">{tt('trade.browseMarket')}</a>}

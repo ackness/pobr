@@ -304,7 +304,7 @@ for (const destination of ['newBuild', 'currentStage'] as const) {
     await submitPaste(page, '{}', 'currentStage', 'en-US', true);
     expect(await capture(page)).toEqual(before);
     await rejectPaste(page, JSON.stringify(before.envelope), destination, before);
-    await pageLink(page, 'Calcs').click();
+    await pageLink(page, 'Calculations').click();
     await pageLink(page, 'Skills').click();
     await expect.poll(() => page.locator('.support-results').innerText()).toBe(receipt);
     // The settings section folds up when the page is left; the values in it are what must have been kept.

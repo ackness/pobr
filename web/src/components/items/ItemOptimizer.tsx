@@ -6,6 +6,7 @@ import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import type { VariantInput, VariantStats } from '../../api/types';
 import type { BuildSession, LibraryItem } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
+import { useHeadlineDamage } from '../../hooks/useMainMinion';
 import { resolveDamageObjective } from '../../lib/mainMinion';
 import { evaluateVariants, rankVariants } from '../../lib/optimize';
 import {
@@ -44,6 +45,7 @@ export function ItemOptimizer({
   onApply,
 }: Props) {
   const tt = bindT(lang);
+  const damage = useHeadlineDamage(session.calc, lang);
   const [expanded, setExpanded] = useState(false);
   const { goal: objState, setGoal: setObjState } = useUpgradeGoal();
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -128,7 +130,7 @@ export function ItemOptimizer({
             <p className="skills-hint">{tt('opt.needLibrary')}</p>
           ) : (
             <div className="opt-row">
-              <ObjectiveEditor value={objState} onChange={setObjState} lang={lang} />
+              <ObjectiveEditor damage={damage} value={objState} onChange={setObjState} lang={lang} />
               <AppButton
                 className="opt-run"
                 disabled={session.busy || progress !== null}

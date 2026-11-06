@@ -89,7 +89,7 @@ async function completeJoint(page: Page) {
 
 async function awayAndBack(page: Page) {
   // First lazy visits detect Suspense hide/reveal receipt loss.
-  for (const name of ['Skills', 'Calcs', 'Tree']) {
+  for (const name of ['Skills', 'Calculations', 'Tree']) {
     await goTo(page, name);
     await expect(input(page)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Apply (to build|equipment plan)/ })).toHaveCount(0);
@@ -215,7 +215,7 @@ for (const [edit, maximum] of [['build', 2], ['goal', 1], ['goal', 2], ['goal', 
     const candidates = await planner(page).locator('.equipment-candidates').innerText();
     const before = await saved(page);
     if (edit === 'build') {
-      await goTo(page, 'Config');
+      await goTo(page, 'Configuration');
       await openCustomModifiers(page);
       await page.locator('.config-modifier-add').click();
       const block = page.locator('.config-modifier-block').last();
@@ -281,7 +281,7 @@ test('leaving cancels pending paste debounce and returning never calculates with
   await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
   await page.clock.pauseAt(new Date('2026-01-01T00:00:01Z'));
   await paste(page, ring);
-  await goTo(page, 'Calcs', { force: true });
+  await goTo(page, 'Calculations', { force: true });
   await page.clock.runFor(1000);
   await goTo(page, 'Upgrades', { force: true });
   await page.clock.runFor(1000);
@@ -335,7 +335,7 @@ for (const work of ['replacement', 'joint'] as const) {
     await start.click();
     await expect.poll(() => page.evaluate(() =>
       (window as Window & { replacementReleases: (() => void)[] }).replacementReleases.length)).toBe(1);
-    await goTo(page, 'Calcs');
+    await goTo(page, 'Calculations');
     await releaseContinuation(page, 0);
     await expect(input(page)).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Cancel comparison', exact: true })).toHaveCount(0);
@@ -363,7 +363,7 @@ for (const work of ['replacement', 'joint'] as const) {
     await start.click();
     await expect.poll(() => page.evaluate(() =>
       (window as Window & { replacementReleases: (() => void)[] }).replacementReleases.length)).toBe(1);
-    await goTo(page, 'Calcs');
+    await goTo(page, 'Calculations');
     await goTo(page, 'Upgrades');
     await expect(jointResults(page)).toHaveCount(0);
     if (work === 'replacement') await expect(replacement(page)).toHaveCount(0);

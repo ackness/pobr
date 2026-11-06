@@ -32,9 +32,9 @@ test('manual affix tiers respect item level and recalculate a whole item before 
   await expect(editor).toHaveAttribute('open', '');
   await expect(editor.locator('[data-affix-id="equipment:IncreasedLife6"]')).toBeVisible();
   await expect(editor.locator('.affix-editor-meta')).toContainText('Prefixes 1 / 3');
-  await editor.locator('.affix-editor-row').getByRole('button', { name: 'Replace affix', exact: true }).click();
-  await editor.getByRole('searchbox', { name: 'Search affixes' }).fill('to maximum Life');
-  await editor.getByRole('combobox', { name: 'Choose an affix and tier', exact: true }).click();
+  await editor.locator('.affix-editor-row').getByRole('button', { name: 'Replace modifier', exact: true }).click();
+  await editor.getByRole('searchbox', { name: 'Search modifiers' }).fill('to maximum Life');
+  await editor.getByRole('combobox', { name: 'Choose a modifier and tier', exact: true }).click();
   await expect(page.getByRole('option', { name: /\+119 to maximum Life/ })).toHaveCount(0);
   await page.getByRole('option', { name: /\+99 to maximum Life/ }).click();
   await expect(editor.locator('.affix-editor-preview')).toContainText('+92 to maximum Life');

@@ -1,3 +1,4 @@
+import { formatStatValue, statFormat, formatNumber } from '../../lib/statDisplay';
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppSelectControl } from '../shared/controls';
@@ -59,7 +60,7 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
   }, [key, catalog, stop]);
   useLayoutEffect(() => { if (!active) stop(); }, [active, stop]);
   useLayoutEffect(() => () => stop(), [stop]);
-  const format = (value: number) => value.toLocaleString(lang, { maximumFractionDigits: 2 });
+  const format = (value: number) => formatNumber(value);
   const reasonText = (reason: string) => ({
     'wrong-slot': ut('wrongSlot'), 'weapon-type': ut('weaponType'), 'unknown-base': ut('unknownBase'),
     'item-level': ut('itemLevel'), 'unidentified-item': ut('unidentified'), 'augment-limit': ut('augmentLimit'),
@@ -140,10 +141,10 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
             return <div className="replacement-metric" key={stat}><span>{stat === damage.stat ? damage.label : statNameLabel(lang, stat)}</span>
               {stat === damage.stat && damage.note && <small>{damage.note}</small>}
               <strong className={delta < 0 ? 'delta-neg' : delta > 0 ? 'delta-pos' : ''}>{delta > 0 ? '+' : ''}{format(before > 0 ? delta / before * 100 : delta)}{before > 0 ? '%' : ''}</strong>
-              <span>{format(before)} → <b data-plan-stat={stat}>{format(after)}</b></span></div>;
+              <span>{formatStatValue(before, statFormat(stat), lang)} → <b data-plan-stat={stat}>{formatStatValue(after, statFormat(stat), lang)}</b></span></div>;
           })}</div>}
           {!plan.error && <p className="equipment-plan-resists">{['FireResist', 'ColdResist', 'LightningResist', 'ChaosResist'].map(stat =>
-            <span key={stat}>{statNameLabel(lang, stat)} {format(plan.stats[stat] ?? 0)}%</span>)}</p>}
+            <span key={stat}>{statNameLabel(lang, stat)} {formatStatValue(plan.stats[stat] ?? 0, statFormat(stat), lang)}</span>)}</p>}
           {!feasibleOf(plan.stats, objective) && <p className="delta-neg">{ut('constraintFail')}</p>}
           {(plan.error || !!plan.warnings?.length) && <p className="trade-notice">{ut('jointInvalid')} {plan.error ? reasonText(plan.error) : plan.warnings?.map(reasonText).join(', ')}</p>}
           {!!plan.unsupported.length && <details className="trade-notice"><summary>{ut('incomplete')} ({plan.unsupported.length})</summary>

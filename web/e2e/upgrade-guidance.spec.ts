@@ -1,3 +1,4 @@
+import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { headlineDpsValue, goTo, openOptimizerSettings, settledNumber, settledText } from './upgradesPage';
@@ -17,7 +18,7 @@ async function caster(page: Page) {
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('combobox', { name: 'Inspected skill', exact: true }).click();
+  await page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true }).click();
   await page.getByRole('option', { name: '1. Fireball', exact: true }).click();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
 }
@@ -28,7 +29,7 @@ test('current market Sum is a reference; complete replacement detects a downgrad
   const before = await settledText(dps(page));
   await goTo(page, 'Upgrades');
   await page.locator('.trade-position').filter({ hasText: /^Ring 1/ }).click();
-  await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+  await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
   const reference = page.locator('.upgrade-score-reference');
   await expect(reference).toBeVisible();
   await expect(reference).toContainText('Current equipment score');
@@ -39,7 +40,7 @@ test('current market Sum is a reference; complete replacement detects a downgrad
   expect(Math.round(query.query.stats[0].value.min)).toBe(sum);
   await page.getByRole('textbox', { name: 'Complete item text' }).fill('Rarity: NORMAL\nSapphire Ring');
   await page.getByRole('button', { name: 'Calculate replacement' }).click();
-  await expect(page.locator('.upgrade-replacement-result')).toContainText('DPS decreases after this replacement');
+  await expect(page.locator('.upgrade-replacement-result')).toContainText('Combined DPS decreases after this replacement');
   await expect(dps(page)).toHaveText(before);
   const preview = await page.locator('.swap-gain-card [data-stat="CombinedDPS"] .swap-after').innerText();
   await page.getByRole('button', { name: 'Apply to build · Ring 1', exact: true }).click();
@@ -70,7 +71,7 @@ test('shared goals link automatic supports and connected passive plans with real
   await expect(dps(page)).not.toHaveText(before);
   await goTo(page, 'Upgrades');
   await page.locator('.trade-position').filter({ hasText: 'Skill and support gems' }).click();
-  await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+  await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
   await expect(page.locator('.trade-gems')).toBeVisible();
   for (const card of await page.locator('.trade-gem-card').filter({ hasText: 'Skill adjustment' }).all()) {
     await expect(card.getByRole('link')).toHaveCount(0);

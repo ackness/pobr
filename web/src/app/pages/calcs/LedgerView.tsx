@@ -145,7 +145,7 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
   return <section className="ledger" aria-labelledby="ledger-heading" aria-busy={running}>
     <header className="ledger-head">
       <div>
-        <h3 id="ledger-heading" tabIndex={-1}>{w('Line ledger', '词缀账本', '詞綴帳本')}</h3>
+        <h3 id="ledger-heading" tabIndex={-1}>{w('Modifier ledger', '词缀账本', '詞綴帳本')}</h3>
         <p className="calcs-hint">{w('Every line of this BD and what the calculation did with it: counted, waiting for a condition, or lost.',
           '这个 BD 的每一行词缀，以及计算对它做了什么：已计入、在等条件，还是丢失。',
           '這個 BD 的每一行詞綴，以及計算對它做了什麼：已計入、在等條件，還是遺失。')}</p>
@@ -253,7 +253,7 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
         </details>}
       </div>}
       {done.response.item_errors.length > 0 && <ul className="ledger-errors">
-        {done.response.item_errors.map((issue, index) => <li key={index} className="calc-error">{slotLabel(lang, issue.slot)}: {issue.message}</li>)}
+        {done.response.item_errors.map((issue, index) => <li key={index} className="calc-error">{slotLabel(lang, issue.slot)}{lang === 'en-US' ? ': ' : '：'}{issue.message}</li>)}
       </ul>}
     </div>}
   </section>;

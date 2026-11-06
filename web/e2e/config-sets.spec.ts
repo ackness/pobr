@@ -11,8 +11,8 @@ test('config sets save edits independently and survive copy, export, reload and 
   await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
   await importCode(page, code);
-  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
-  await go(page, 'Config');
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await go(page, 'Configuration');
   const sets = page.getByRole('region', { name: 'Configuration set', exact: true });
   const selector = sets.getByRole('combobox');
   // The picker shows set titles; the set numbers live in the hidden native select behind it.
@@ -48,8 +48,8 @@ test('config sets save edits independently and survive copy, export, reload and 
   expect(xml).toContain('activeConfigSet="8"');
   expect(xml.match(/name="futureInput" string="keep"/g)).toHaveLength(2);
   await importCode(page, exported);
-  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible();
-  await go(page, 'Config');
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
+  await go(page, 'Configuration');
   await selected('8');
   await page.getByLabel('Search config options…').fill('multiplierKilledRecently');
   await expect(killed).toHaveValue('5');
@@ -59,7 +59,7 @@ test('config sets save edits independently and survive copy, export, reload and 
   const loadout = page.getByRole('combobox', { name: 'PoB loadout', exact: true });
   await expect(loadout).toBeEnabled();
   await choose(page, loadout, 'Boss');
-  await go(page, 'Config');
+  await go(page, 'Configuration');
   await selected('3');
   await page.getByLabel('Search config options…').fill('multiplierKilledRecently');
   await expect(killed).toHaveValue('2');

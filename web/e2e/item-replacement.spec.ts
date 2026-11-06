@@ -185,7 +185,7 @@ test('pasting detects both rings, recommends the actual better destination, and 
   await expect(dps(page)).toHaveText(before);
   expect((await savedState(page)).items).toEqual(original.items);
   await destinations.filter({ hasText: /^Ring 1/ }).click();
-  await expect(page.locator('.upgrade-replacement-result')).toContainText('DPS decreases after this replacement');
+  await expect(page.locator('.upgrade-replacement-result')).toContainText('Combined DPS decreases after this replacement');
   await best.click();
   const expectedDps = numeric(await page.locator('.swap-gain-card [data-stat="CombinedDPS"] .swap-after').innerText());
   await page.getByRole('button', { name: 'Apply to build · Ring 2', exact: true }).click();

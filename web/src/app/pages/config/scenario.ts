@@ -3,11 +3,11 @@ import { configApplicability, type Applicability } from '../../../lib/configVisi
 
 /** The fights a build can be measured against, in the order a player thinks of them. */
 export const SCENARIOS = [
-  { tier: 'none', en: 'Mapping', cn: '刷图', tw: '刷圖' },
-  { tier: 'boss', en: 'Boss', cn: 'Boss', tw: '頭目' },
-  { tier: 'pinnacle', en: 'Pinnacle', cn: '巅峰 Boss', tw: '巔峰頭目' },
-  { tier: 'uber', en: 'Uber', cn: '终极 Boss', tw: '終極頭目' },
-] as const satisfies ReadonlyArray<{ tier: EnemyTier; en: string; cn: string; tw: string }>;
+  { tier: 'none' },
+  { tier: 'boss' },
+  { tier: 'pinnacle' },
+  { tier: 'uber' },
+] as const satisfies ReadonlyArray<{ tier: EnemyTier }>;
 
 /**
  * Which preset is active. A build whose enemy comes from its own imported settings carries no

@@ -180,3 +180,20 @@ it('card, baseline and hover reuse the evaluated Combined DPS with identical int
   expect(html).toContain('Equip');
   expect(html).toContain('New');
 });
+
+it('the minion-only support hover previews the same damage stat as its card', async () => {
+  const { session, render } = setup();
+  session.calc = { ...session.calc!, main_minion_index: 2, minions: [{ index: 2, name: 'Wolf' }] } as BuildSession['calc'];
+  harness.optimize.mockResolvedValueOnce({ baseline: { TotalDPS: 0, CombinedDPS: 0, MainMinionDPS: 100.4, TotalEHP: 200 },
+    plans: [{ supports: [], variant: {}, stats: { TotalDPS: 0, CombinedDPS: 0, MainMinionDPS: 150.6, TotalEHP: 200 } }],
+    baselineUnsupported: [], excluded: [], evaluated: 1, unmodeled: 0 });
+  render(); expand(); render(); await button('Calculate support combinations').onClick!({} as never);
+  const html = render();
+  expect(html).toContain('Minion hit DPS 151');
+  harness.articles[0].onMouseEnter!({} as never);
+  expect(harness.showChanges).toHaveBeenLastCalledWith(expect.any(String), expect.arrayContaining([
+    expect.objectContaining({ id: 'MainMinionDPS', before: 100.4, after: 150.6 }),
+  ]));
+  const hover = renderToStaticMarkup(<ChangeBar lang="en-US" />);
+  expect(hover).toContain('100 → 151');
+});

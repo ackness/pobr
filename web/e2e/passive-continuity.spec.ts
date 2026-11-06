@@ -1,3 +1,4 @@
+import { headlineDps } from './skillsAndCalcs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
@@ -37,7 +38,7 @@ interface FixtureState {
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state as FixtureState);
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
 const life = (page: Page) => statValue(page, /^Life$/);
-const totalDps = (page: Page) => page.locator('#character-stats .rail-hero-value').first();
+const totalDps = headlineDps;
 const effectiveHp = (page: Page) => statValue(page, /^Effective HP$/);
 
 type Planner = 'route' | 'joint';
@@ -109,7 +110,7 @@ async function noReceipts(page: Page) {
 
 async function awayAndBack(page: Page) {
   // Calcs is deliberately the first lazy-page visit: a warmed boundary misses I2's loss.
-  await nav(page, 'Calcs').click();
+  await nav(page, 'Calculations').click();
   await expect(page.locator('.tree-canvas')).toHaveCount(0);
   await expect(page.locator('.tree-planner-run')).toHaveCount(0);
   await nav(page, 'Skills').click();
@@ -335,7 +336,7 @@ for (const edit of ['equipment', 'goal'] as const) {
     expect(after.attributeChoices).toEqual(before.attributeChoices);
     expect(after.jewels).toEqual(before.jewels);
     if (edit === 'goal') {
-      await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Max total DPS');
+      await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Combined DPS');
       await expect(page.getByRole('spinbutton', { name: 'Minimum Effective HP (points)', exact: true })).toHaveValue(String(floor));
       await expect(page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true })).toBeChecked();
     }
@@ -400,7 +401,7 @@ test('hidden tree has no canvas, hover, attribute editor or keyboard allocation 
   const before = await saved(page);
   // Do not move the pointer off the hovered node before navigation: a normal
   // mouse click can clear hover and accidentally conceal a retained key handler.
-  await nav(page, 'Calcs').dispatchEvent('click');
+  await nav(page, 'Calculations').dispatchEvent('click');
   await expect(page.locator('.tree-canvas, .tree-tooltip, .attr-picker, .tree-asc-picker, .tree-planner-body')).toHaveCount(0);
   await page.locator('body').click({ position: { x: 2, y: 2 } });
   for (const key of ['s', 'd', 'i', '1', '2', '3']) await page.keyboard.press(key);
@@ -446,7 +447,7 @@ for (const planner of ['route', 'joint'] as const) {
       if (action === 'cancel') {
         await page.getByRole('button', { name: 'Cancel', exact: true }).click({ force: true });
       } else {
-        await nav(page, action === 'leave' ? 'Calcs' : 'Upgrades').click({ force: true });
+        await nav(page, action === 'leave' ? 'Calculations' : 'Upgrades').click({ force: true });
         await expect(page.locator('.tree-canvas, .tree-planner-run, .opt-progress')).toHaveCount(0);
         if (action === 'hidden goal') {
           await page.getByRole('button', { name: 'Combined DPS', exact: true }).click({ force: true });
@@ -464,7 +465,7 @@ for (const planner of ['route', 'joint'] as const) {
       expect(await saved(page)).toEqual(before);
       await expect(life(page)).toHaveText(beforeLife);
       if (action === 'hidden goal') {
-        await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Max total DPS');
+        await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Combined DPS');
         await expect(page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true })).toBeChecked();
         // The fresh run below intentionally uses a newly chosen shared objective.
         await select(page, 'Objective', 'Max Life');
@@ -505,7 +506,7 @@ for (const planner of ['route', 'joint'] as const) {
     await run(page, planner).click();
     await expect.poll(() => page.evaluate(() =>
       (window as Window & { passiveReleases: (() => void)[] }).passiveReleases.length)).toBe(1);
-    await nav(page, 'Calcs').click();
+    await nav(page, 'Calculations').click();
     await nav(page, 'Tree').click();
     await noReceipts(page);
     await page.evaluate(() => { (window as Window & { passiveHold: boolean }).passiveHold = true; });
@@ -552,7 +553,7 @@ test('historical tree replacement discards current-tree receipts and exposes no 
 });
 
 async function awayHistorical(page: Page) {
-  await nav(page, 'Calcs').click();
+  await nav(page, 'Calculations').click();
   await nav(page, 'Tree').click();
   await expect(page.locator('.tree-canvas, .tree-planner')).toHaveCount(0);
 }
