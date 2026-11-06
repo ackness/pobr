@@ -134,8 +134,9 @@ CHANGELOG 的一节用英文写，读者依次是 pobr.win 的玩家、使用 WA
 - 标题 `## [0.x.y] - YYYY-MM-DD`（发版日期），下面两三句概述本版最重要的变化。
 - 小节按此顺序，没有内容的省略：`### Breaking changes`、`### Added`、`### Changed`、`### Fixed`、`### Data`、
   `### For developers`、`### Internal`。`### Breaking changes` 必须保留，核对后没有就写 `- None.`。
-- 破坏性变更：WASM 导出或 JSON 字段被删除、改名或改类型，`SCHEMA_VERSION` 或数据契约 `CONTRACT_VERSION` 改变，
-  CLI 子命令或参数改变，旧版保存的构筑或本地设置读不出来。只新增可选字段不算。
+- 破坏性变更指 WASM、CLI 或数据包的使用者要改代码或数据才能继续工作的变化，例如 WASM 导出或 JSON 字段被删除、改名、
+  改类型或改变取值含义，`SCHEMA_VERSION` 或数据契约 `CONTRACT_VERSION` 改变，CLI 子命令或参数改变，
+  旧版保存的构筑或本地设置读不出来。只新增可选字段不算。
 - 每条末尾标出 PR，如 `(#322)`；范围内每个 PR 至少出现一次，发版 PR 本身不列。
 - 每段、每条写成一行，不手动折行：GitHub 的 Release 和 PR 说明会把换行原样显示。
 - 文件底部加本版的对比链接 `[0.x.y]: https://github.com/ackness/pobr/compare/v<上一版>...v0.x.y`。

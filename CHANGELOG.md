@@ -6,11 +6,11 @@ Versions follow [SemVer](https://semver.org/). While the version is 0.0.x, any r
 
 ## [0.0.46] - 2026-11-06
 
-Picking a gem now shows what it does, in English, Simplified Chinese and Traditional Chinese. Simplified Chinese stat lines, gem descriptions and minion names now use the China client's official text. Summoner builds lead with the main minion's damage instead of 0, most pages had a round of wording, layout and number-format fixes, and PoBR has its own icon.
+Picking a gem now shows what it does, in English, Simplified Chinese and Traditional Chinese. Simplified Chinese stat lines, gem descriptions and minion names now use the China client's official text. Summoner builds lead with the main minion's damage instead of 0, most pages had a round of wording, layout and number-format fixes, and PoBR has its own icon. Builds saved in v0.0.45 open unchanged, and the WASM JSON schema version stays at 19.
 
 ### Breaking changes
 
-- None. Builds saved in v0.0.45 open unchanged, and the WASM JSON schema version stays at 19.
+- None.
 
 ### Added
 
@@ -36,7 +36,6 @@ Picking a gem now shows what it does, in English, Simplified Chinese and Traditi
 - Config page: one filter with three choices (Relevant, Modified, All), and a row you just edited stays in the list. Non-damaging skills no longer show 0 DPS in the Calcs skill overview. (#304)
 - Folds, segmented switches, controls, headings and borders share one style and line up across pages; Skills rows and the Config jump list no longer move under the pointer. (#295, #297, #319)
 - Clearer wording and empty states on Calcs, the passive tree reports and point counts, upgrade search, items and configuration values. Minion builds with 0 player DPS point to the minion. (#298, #299, #300, #313)
-- zh-CN shows the Bonded prefix as 羁绊：, matching the official text. (#321)
 
 ### Fixed
 
@@ -45,6 +44,7 @@ Picking a gem now shows what it does, in English, Simplified Chinese and Traditi
 - Allocating the first node next to a jewel-granted class start (for example Split Personality) no longer stores the start node or costs an extra point, and removing the jewel removes the start. (#315)
 - The passive tree no longer stalls for tens of seconds while dragging with reduced motion on; panning, allocating and refunding are faster with animations too. (#324)
 - Reopening a row's menu right after cancelling its dialog no longer closes the menu. (#327)
+- zh-CN no longer rewrites the official Bonded prefix 羁绊： as 纽带：. (#321)
 - Overview skill damage shows "Calculating…" while it runs instead of claiming there is no damage, and Calcs no longer shows "-0" life regeneration. (#297, #319)
 - The passive tree, Display settings and Config page fit a 390 px phone at 32 px text, and Chinese labels stay whole in the inspector's modifier table. (#303, #305, #316)
 
@@ -52,28 +52,28 @@ Picking a gem now shows what it does, in English, Simplified Chinese and Traditi
 
 - Game package `game/0.5.5.5-3` (data contract 1.3) adds the optional `overlay/gem_descriptions.json` with English gem descriptions; calculations are unchanged. (#296, #330)
 - Language package `locale/0.5.5.5-4`: Simplified Chinese stat lines, gem descriptions and minion names from the China client's official text, and Traditional Chinese gem descriptions from the international client. 2 of 447 skill gem names per language still have no translation. The support-display asset stays at `locale/0.5.5.5-3`. (#330, #331)
-- Supplement translations carry their origin (`official`, `agent` or `human`), and official text always wins over a supplement. Minion, spectre and companion names are looked up by monster variety id. The web app does not mark supplement text yet. (#293)
+- Supplement translations carry their origin (`official`, `agent` or `human`; data contract 1.2), and official text always wins over a supplement. Minion, spectre and companion names are looked up by monster variety id. The web app does not mark supplement text yet. (#293)
 
 ### For developers
 
-- WASM: new export `translateLinesDetailed(lang, linesJson)` returns `[{text, origin}]`, where `origin` is `"agent"`, `"human"` or `null` for official text. `MinionDef` gains an optional `monster_variety_id`. While the calculated skill summons a minion, calculate-build stats include `MainMinionDPS`, and the node-power, variant-optimizer and attribution requests accept it as a target. (#293, #306)
+- WASM: new export `translateLinesDetailed(lang, linesJson)` returns `[{text, origin}]`, where `origin` is `"agent"`, `"human"` or `null` for official text. Minion catalog entries and calculate-build minion entries gain an optional `monster_variety_id`. While the calculated skill summons a minion, calculate-build stats include `MainMinionDPS`, and the node-power, variant-optimizer and attribution requests accept it as a target. (#293, #306)
 - CLI: `--lang` text reports mark supplement lines with `†` and end with a footnote; JSON reports add an `origins` map, left out when empty. `pobr_cli::render_build_text` is exported for library users. (#293)
-- `mise run check:pr` runs the pre-push checks for the changed files, and `mise run hooks:install` enables an opt-in pre-push hook. Rust, data and pipeline PRs need a green `mise run ci <branch>` before merging. (#325, #331)
 - The translation repository no longer publishes the support display. Until the PR that retires `support_display` merges, `data:bump` refuses a new game patch or a trade catalogue change. (#331)
-- `docs/web-contracts.md` documents gem description lookup, the 羁绊 exception, reduced motion, final-stat precision and the dialog and menu rules. (#296, #321, #322, #324, #327, #328)
 
 ### Internal
 
 - Browser tests: the default run leaves out `@extended` cases and per-test traces, the quarantined Config tests were rewritten and `@quarantine` is now empty, and the island-reconnect test checks the intended behaviour. The full Config sweep runs in full CI. (#320, #323, #329)
+- `mise run check:pr` runs the pre-push checks for the changed files, and `mise run hooks:install` enables an opt-in pre-push hook. Rust, data and pipeline PRs need a green `mise run ci <branch>` before merging. (#325, #331)
 - Guides updated after `game/0.5.5.5-3` and `locale/0.5.5.5-4`. (#331)
+- `docs/web-contracts.md` documents gem description lookup, the 羁绊 exception, reduced motion, final-stat precision and the dialog and menu rules. (#296, #321, #322, #324, #327, #328)
 
 ## [0.0.45] - 2026-11-05
 
-Gems and skills that showed a raw id such as `Metadata/Items/Gems/SkillGemHeraldOfIce` now show their names. In Chinese, passive and base item names are looked up by id, and stat descriptions the game writes on several lines translate as one description. A new developer command checks what the web app shows for real builds.
+Gems and skills that showed a raw id such as `Metadata/Items/Gems/SkillGemHeraldOfIce` now show their names. In Chinese, passive and base item names are looked up by id, and stat descriptions the game writes on several lines translate as one description. A new developer command checks what the web app shows for real builds. The WASM JSON schema version stays at 19.
 
 ### Breaking changes
 
-- None. The WASM JSON schema version stays at 19.
+- WASM: `translateLines` and `parseLocalizedLines` still return one output per input, but a line that a multi-line description folds into the line before it now comes back as `""`. Skip empty strings or read the output by position. (#291)
 
 ### Fixed
 
@@ -89,7 +89,6 @@ Gems and skills that showed a raw id such as `Metadata/Items/Gems/SkillGemHerald
 
 ### For developers
 
-- `translateLines` and `parseLocalizedLines` still return one output per input, but a line that a multi-line description folds into the line before it now comes back as `""`. Skip empty strings or read the output by position. (#291)
 - `mise run audit:display [--release <tag> | --package <path>] [--strict] <builds>` runs the web app's naming path in Node over real build codes and reports errors, raw ids, untranslated text and calculation coverage; `--strict` fails on errors and raw-id names. (#287, #289, #291)
 - `BuildData.base_item_names` (id to English name) sits next to `base_items`. (#285)
 
@@ -133,7 +132,7 @@ pobr.win now calculates with game data 0.5.5.5 (was 0.5.5.4.2), imported from th
 - Saving a build no longer turns a defaulted condition into an explicit `false`, which changed an Infernalist's energy trigger rate after reopening. (#191)
 - Config and Calcs keep their layout and scroll position during a recalculation, and equipment-socket jewels are no longer lost when a build is edited or saved. (#207)
 - The Config Reset button no longer appears when a checkbox is set back to its default. (#209)
-- Chinese support gems show Chinese effect descriptions (534 of 567; the rest show a marked English fallback), and Evasion Rating is translated and grouped with the other item properties. (#183)
+- Chinese support gems show Chinese effect descriptions (534 of 567; the rest show a marked fallback), and Evasion Rating is translated and grouped with the other item properties. (#183)
 - Traditional Chinese affix names resolve. (#280)
 
 ### Data
@@ -147,10 +146,8 @@ pobr.win now calculates with game data 0.5.5.5 (was 0.5.5.4.2), imported from th
 ### For developers
 
 - `mise run data:bump <owner> <tag>` adopts a new data Release: it verifies the Release (SHA256SUMS, receipt, contract version), rewrites the lock and `data/CURRENT`, and moves the support display with the language Release. [RELEASING.md](RELEASING.md) covers the process across the three repositories, including rollback. (#270, #278, #281)
-- `pipeline/data.lock.json` (`pobr-data-lock/v2`) is the only data declaration and replaces six per-domain lock files. The older lock schemas and the `--crafting` and `--keep-current` options are gone. (#237, #238, #245, #246, #270)
-- `data:prepare` replaces a stale install of the same patch instead of failing, and `POBR_DATA_CACHE` points to a shared download cache. (#249)
-- The automatic data-sync workflow (`data-sync.yml`, `data:latest`) is removed in favour of `data:bump` pull requests. (#231, #269)
-- Web interface text is one JSON file per language in `web/src/locales/`, checked by `mise run i18n:check` in CI; `mise run i18n:coverage` reports game-text coverage. A smoke E2E runs when the data lock changes. (#268, #274)
+- Game and language data are no longer committed under `data/<patch>/`. `pipeline/data.lock.json` pins the owner Releases, and the new `mise run data:prepare` downloads, verifies and installs them; `POBR_DATA_CACHE` points to a shared download cache. (#218, #249, #270)
+- The 0.0.43 data-producing tasks (`data`, `data:fetch`, `data:adapt`, `data:regen`, `data:index`, `data:export`, `data:prune`) are removed; data fixes go to the owner repositories. (#235)
 - An experimental schema-4 native calculation path (CLI `calculate-native`, WASM lifecycle exports) was added and removed within this cycle; 0.0.43 never had it. (#180, #181, #182, #184, #185, #186, #188, #189, #262)
 - Agent skills live in `.agents/skills/` (`.claude/skills/` keeps symlinks); the WASM archive still ships `skills/use-pobr-wasm/`. (#247)
 
@@ -158,6 +155,8 @@ pobr.win now calculates with game data 0.5.5.5 (was 0.5.5.4.2), imported from th
 
 - CI: quick PR checks and full integration runs on master, Rust tests in three parallel shards, cached WASM bindings, and the compact release packaged from the prepared owner snapshot. `pr-ready` suggests merge commits. (#176, #217, #236, #250, #255)
 - Data pipeline cleanup: PoBR no longer produces or rewrites data. Raw-table, vendor and duplicate acquisition code is retired, the adapter and its policies moved to RePoE, and the unused vendor tree art was removed (the tree looks the same). (#224, #225, #226, #228, #232, #233, #235, #237, #239, #240, #243, #248, #261, #266, #273)
+- Data tooling that was added and replaced within this cycle: per-domain lock files and lock schemas, the `--crafting` and `--keep-current` options, and the automatic data-sync workflow (`data-sync.yml`, `data:latest`), all superseded by the single lock and `data:bump` pull requests. (#231, #237, #238, #245, #246, #269)
+- Web interface text is one JSON file per language in `web/src/locales/`, checked by `mise run i18n:check` in CI; `mise run i18n:coverage` reports game-text coverage. A smoke E2E runs when the data lock changes. (#268, #274)
 - Tests: an obsolete domain-rejection case was removed, and `pobr-gamedata` parses floats exactly in every shard. (#213, #241)
 - Docs: the three-repository architecture, data provenance, data status, maintainer guides, READMEs and screenshots. (#175, #187, #190, #220, #222, #223, #229, #230, #234, #242, #252, #279, #281, #282)
 - Dependencies: Rust 1.99.1, `sha2` 0.11.1, TypeScript 7.0.2, Vite 8.3.5, Vitest 5.0.5, React 19.3.1 and `actions/cache` v6. (#177, #178, #179, #216, #227)
