@@ -418,7 +418,7 @@ for (const planner of ['support', 'replacement'] as const) {
       });
       await expect(page.locator('.replacement-content')).toHaveAttribute('aria-busy', 'false');
       await expect(page.getByRole('button', { name: /^Apply to build/ })).toBeEnabled();
-      receipt = await receiptNumbers(page, '.upgrade-replacement-result tbody td');
+      receipt = await receiptNumbers(page, '.swap-gain-card .replacement-metric');
     }
     const before = await savedState(page);
     const baseline = await hitDps(page).innerText();
@@ -439,7 +439,7 @@ for (const planner of ['support', 'replacement'] as const) {
         elements.map(element => element.getAttribute('data-skill-id')))).toEqual(supportIds);
       await expect(page.locator('.support-plan').first().getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
     } else {
-      await expect.poll(() => receiptNumbers(page, '.upgrade-replacement-result tbody td')).toEqual(receipt);
+      await expect.poll(() => receiptNumbers(page, '.swap-gain-card .replacement-metric')).toEqual(receipt);
       await expect(page.getByRole('button', { name: /^Apply to build/ })).toBeEnabled();
     }
     await openConfig(page);

@@ -1,15 +1,16 @@
-import { formatStatValue, statFormat, formatNumber } from '../../lib/statDisplay';
-import { formatComparisonDelta } from '../../lib/compare';
+import { SwapGainCard } from '../items/SwapGainCard';
+import { formatNumber } from '../../lib/statDisplay';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
 import { usePreview } from '../shared/PreviewContext';
 import { changesFromRecords } from '../../app/preview/fromRecords';
 import { words } from '../../app/text';
+import { itemNameLabel } from '../../lib/itemCrafting';
 import { craftT } from '../../lib/itemCraftingText';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CalculateBuildRequest } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { useLocalizedLines } from '../../hooks/useLocalizedLines';
+import { useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
 import { isContinuation } from '../../lib/continuedLines';
 import { compareReplacementPositions, pasteNotStarted, replacementAffixes, type ReplacementReport } from '../../lib/itemReplacement';
 import { compareObjectiveStats, feasibleOf, type Objective } from '../../lib/optimize';
@@ -81,8 +82,12 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   const recommended = report && best && !best.unsupported.length && !best.augments.limitWarning && feasibleOf(best.stats, objective)
     && compareObjectiveStats(best.stats, report.baseline, objective) < 0 ? best.slot : undefined;
   const affixes = replacementAffixes(selected?.lines ?? report?.lines ?? []);
-  const translated = useLocalizedLines([report?.base.name ?? '', ...affixes.map(line => line.text)], lang);
-  const nameLine = report?.lines.find(line => line.kind === 'name')?.text;
+  const originalName = report?.lines.find(line => line.kind === 'name')?.text ?? '';
+  const baseNames = useLocalizedNames(report ? [{ kind: 'base', name: report.base.name }] : [], lang);
+  const name = useLocalizedLines([originalName], lang);
+  const baseName = report ? itemNameLabel(report.base.name, baseNames[0], lang) : '';
+  const translated = useLocalizedLines(['', ...affixes.map(line => line.text)], lang);
+  const nameLine = originalName && originalName !== report?.base.name ? itemNameLabel(originalName, name[0], lang) : baseName;
   const requiredLevel = Math.max(report?.requiredLevel ?? 0, ...(selected?.augments.runes.map(name =>
     selected.augments.info.options.find(option => option.name === name)?.required_level ?? 0) ?? []));
   const selectedItem = selected?.variant.set_items?.length === 1 ? selected.variant.set_items[0] : undefined;
@@ -175,7 +180,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
       session.setItems([...session.items.filter(item => !replacements.some(row => row.slot === item.slot)), ...replacements]);
     }
     else return;
-    setApplied({ slot: selected.slot, name: nameLine || translated[0] || report.base.name,
+    setApplied({ slot: selected.slot, name: nameLine || baseName,
       text: itemText, weaponSet: session.activeWeaponSet });
     stop(); setSnapshot(null); setChosenSlot(null); setAffixDirty(false);
   };
@@ -183,7 +188,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     if (!active || !latest.current.active || busy || affixDirty || session.busy || !report || !selectedItem || !receiptCurrent() || alreadyAdded
       || equipmentCandidates.length >= EQUIPMENT_CANDIDATE_LIMIT) return;
     const candidate = { id: String(++candidateSequence.current), itemId: report.text,
-      label: nameLine || translated[0] || report.base.name, slot: selectedItem.slot, text: selectedItem.text };
+      label: nameLine || baseName, slot: selectedItem.slot, text: selectedItem.text };
     setEquipmentCandidates(current => [...current, candidate]);
   };
   const candidateText = selected?.variant.set_items?.find(item => item.slot === selected.slot)?.text
@@ -199,7 +204,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
         onPaste={event => { if (candidate || !latest.current.active) return; const copied = event.clipboardData.getData('text/plain'); if (!copied) return;
           event.preventDefault(); stop(); setApplied(null); setSnapshot(null); setAugmentPlans({}); setChosenSlot(null); setAffixDirty(false); setText(copied); setPendingPaste({ input: copied }); }} />
       <div className="replacement-actions"><AppButton className="trade-primary" disabled={!active || busy || affixDirty || session.busy || !catalog || !text.trim()} onClick={() => void run(text, augmentPlans, chosenSlot ?? undefined)}>
-        {busy ? ut('comparingPositions') : ut('compare')}</AppButton>
+        {busy ? ut('comparingPositions') : candidate ? craftT(lang, 'compareEquipped') : ut('compare')}</AppButton>
         {busy && <AppButton onClick={stop}>{ut('cancelCompare')}</AppButton>}
         {!candidate && <span>{ut('autoPositions')}</span>}</div>
       {!candidate && <p className="replacement-copy-links"><a href="/userscripts/pobr-market-copy.user.js" target="_blank" rel="noreferrer">{ut('copyScript')}</a>
@@ -215,8 +220,8 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     {report && selected && <div className="replacement-content" aria-busy={busy}>
       <div className="replacement-candidate">
       <aside className="replacement-parsed" aria-label={ut('parsedItem')}>
-        <span className="trade-section-label">{ut('parsedItem')}</span><h4>{nameLine || translated[0]}</h4>
-        <p>{translated[0]} · {ut('requiredLevel')} {requiredLevel}</p>
+        <span className="trade-section-label">{ut('parsedItem')}</span><h4>{nameLine || baseName}</h4>
+        <p>{baseName} · {ut('requiredLevel')} {requiredLevel}</p>
         <div className="replacement-affixes"><span className="replacement-affix-count">{ut('parsedAffixes')} · {affixes.length}</span>
           {affixes.map((line, index) => isContinuation(line.text, translated[index + 1]) ? null : <div key={index} className={`replacement-affix replacement-affix--${line.kind}`}>
             <span>{translated[index + 1] ?? line.text}</span>{line.tier !== undefined ? <small>T{line.tier}</small> : line.kind !== 'explicit' && <small>{ut(line.kind === 'rune' ? 'affixRune' : line.kind === 'enchant' ? 'affixEnchant' : 'affixImplicit')}</small>}
@@ -249,17 +254,8 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
         {(selected.stats.TotalDPS ?? 0) < (report.baseline.TotalDPS ?? 0) && <p className="delta-neg">{ut('dpsDrop')}</p>}
         {!feasibleOf(selected.stats, objective) && <p className="delta-neg">{ut('constraintFail')}</p>}
         </div>
-        <div className="replacement-metrics">{['TotalDPS', 'TotalEHP'].map(stat => {
-          const before = report.baseline[stat] ?? 0, after = selected.stats[stat] ?? 0, delta = after - before;
-          return <div className="replacement-metric" key={stat}><span>{statNameLabel(lang, stat)}</span>
-            <strong className={delta < 0 ? 'delta-neg' : delta > 0 ? 'delta-pos' : ''}>{before > 0 ? `${deltaText(delta / before * 100)}%` : deltaText(delta)}</strong>
-            <span>{formatStatValue(before, statFormat(stat), lang)} <span aria-hidden>→</span> <b>{formatStatValue(after, statFormat(stat), lang)}</b></span></div>;
-        })}</div>
-        <div className="replacement-table-wrap"><table><thead><tr><th>{positionLabel(selected.slot)}</th><th>{ut('before')}</th><th>{ut('after')}</th><th>{ut('change')}</th></tr></thead><tbody>
-          {['TotalDPS', 'TotalEHP', 'Life', 'FireResist', 'ColdResist', 'LightningResist', 'ChaosResist'].map(stat => {
-            const before = report.baseline[stat] ?? 0, after = selected.stats[stat] ?? 0, delta = after - before;
-            return <tr key={stat}><th>{statNameLabel(lang, stat)}</th><td>{formatStatValue(before, statFormat(stat), lang)}</td><td>{formatStatValue(after, statFormat(stat), lang)}</td><td className={delta < 0 ? 'delta-neg' : delta > 0 ? 'delta-pos' : ''}>{formatComparisonDelta(delta, statFormat(stat), lang)}</td></tr>;
-          })}</tbody></table></div>
+        <SwapGainCard before={Object.entries(report.baseline).map(([id, value]) => ({ id, value }))}
+          after={Object.entries(selected.stats).map(([id, value]) => ({ id, value }))} lang={lang} />
         {!!selected.unsupported.length && <details className="trade-notice replacement-unsupported"><summary>{ut('incomplete')} ({selected.unsupported.length})</summary><ul>{selected.unsupported.map((line, index) => <li key={index}>{line}</li>)}</ul></details>}
         {!!report.rejected.length && <p className="trade-notice">{report.rejected.map(row => `${positionLabel(row.slot)}: ${errorText(row.reason)}`).join('\n')}</p>}
         <div className="replacement-apply"><AppButton className="trade-primary" disabled={!active || busy || affixDirty || session.busy} onClick={apply}>{busy ? ut('comparingPositions') : `${ut('apply')} · ${positionLabel(selected.slot)}`}</AppButton><span>{affixDirty ? affixT(lang, 'dirty') : ut('applyHint')}</span></div>
