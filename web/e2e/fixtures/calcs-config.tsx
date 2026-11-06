@@ -50,7 +50,9 @@ backend.calculateBuild = async request => {
     level: 20, dps: 300, life: 9876, armour: 0, energy_shield: 0, evasion: 0,
     stats: { Life: 9876, FireResistMax: 75 }, breakdown_descriptors: { Life: 'steps', FireResistMax: 'none' },
     breakdowns: request.breakdown_actor?.kind === 'minion' && request.breakdowns?.includes('Life') ? { Life: { ...detail(9876), actor: { kind: 'minion', index: 0 } } } : {} }];
-  result.main_minion_index = 0;
+  // The calculated skill is Fireball, so the minion is not the main one: Calcs opens on the player and
+  // reaches the minion by its id.
+  result.main_minion_index = undefined;
   result.full_dps = { dps: 300, dot_dps: 0, skills: [{ group_index: 0, active_skill_index: 1, skill_id: 'Fireball', count: 1, hit_dps: 300, dot_dps: 0, dps: 300, unsupported_modifiers: [], error: null }] };
   if (request.config_context) result.config_context = { main_skill: 'Fireball', skill_types: [], predicates: { if_skill: { Absent: false } } };
   if (probe.holdNextDetail && request.breakdowns?.length) {

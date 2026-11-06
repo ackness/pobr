@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { pageLink, statRow } from './shell';
-import { closeInspector, detailValue, importBuild, openStat } from './skillsAndCalcs';
+import { choose, closeInspector, detailValue, importBuild, openStat } from './skillsAndCalcs';
 
 // A committed PoB2 build whose Armour bucket holds a conditional line that is not met
 // ("if you haven't been Hit Recently") next to active INC and MORE lines.
@@ -26,11 +26,15 @@ test('View minion selects its actor and default metric and focuses the detail he
   await importBuild(page, code);
   await pageLink(page, 'Calcs').click();
   const actor = page.getByRole('combobox', { name: 'Actor', exact: true });
+  const detail = page.locator('#calcs-detail');
+  // A summoner build opens on the calculated skill's minion.
+  await expect(actor).toHaveText(/^Minion: Wolf Companion · \d+$/);
+  await expect(detail.locator('.calcs-eyebrow')).toHaveText(/^Showing: Minion · Wolf Companion #\d+$/);
+  await choose(page, actor, 'Player');
   await expect(actor).toHaveText('Player');
 
   // A zero character result has no breakdown table, which openStat waits for.
   await page.locator('#breakdown-CombinedDPS').click();
-  const detail = page.locator('#calcs-detail');
   const heading = detail.getByRole('heading', { name: 'Combined DPS', exact: true });
   await expect(heading).toBeVisible();
   await expect(detailValue(detail)).toHaveText('0');

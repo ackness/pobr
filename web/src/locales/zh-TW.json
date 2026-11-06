@@ -866,6 +866,12 @@
     "calcs.overviewFailed": "暫時無法計算技能總覽。",
     "calcs.itemExcluded": "此裝備未計入計算。",
     "calcs.skillInstance": "{skill}（技能組 {group}，效果 {effect}）",
+    "minion.perMinion": "單隻",
+    "minion.limit": "上限 {count} 隻",
+    "sidebar.minionHitDps": "召喚物擊中 DPS",
+    "sidebar.playerCombinedDps": "角色自身綜合 DPS",
+    "skills.minionDps": "召喚物擊中 DPS（單隻）",
+    "skills.summonerPending": "召喚技能。設為計算技能後顯示召喚物傷害。",
     "tree.moreChanges": "另有 {count} 項變化",
     "tree.downstream": "將一併退掉 {count} 個下游節點",
     "tree.refundResult": "已退 {points} 點 · 綜合 DPS {delta}",
@@ -2383,7 +2389,8 @@
     "SecondaryFlatCritBonus": "次要計算分支：額外暴擊傷害加成（%）",
     "SecondaryIncreasedCritBonus": "次要計算分支：暴擊傷害加成增加（%）",
     "SecondaryMoreCritBonus": "次要計算分支：暴擊傷害加成更多倍率",
-    "SecondaryCritBonusOverride": "次要計算分支：暴擊傷害加成覆寫（%）"
+    "SecondaryCritBonusOverride": "次要計算分支：暴擊傷害加成覆寫（%）",
+    "MainMinionDPS": "召喚物擊中 DPS（單隻）"
   },
   "support": {
     "title": "自動尋優輔助寶石",

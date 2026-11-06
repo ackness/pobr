@@ -2,6 +2,7 @@ import type { GemCatalogEntry, SkillMetricsEntry, SkillMetricsResponse } from '.
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useSkillCatalog } from '../../hooks/useSkillName';
 import { bindT, grantedSourceLabel, type Lang } from '../../lib/i18n';
+import { mainMinion } from '../../lib/mainMinion';
 import { highestDpsSkill } from '../../lib/skillSelection';
 import { formatStatValue } from '../../lib/statDisplay';
 import { skillDisplayName } from '../../lib/skillNames';
@@ -17,14 +18,27 @@ export function isNonDamagingSkill(entry: SkillMetricsEntry, catalog: ReadonlyMa
     && entry.metrics.combined_dps === 0 && entry.metrics.average_hit === 0;
 }
 
+/** A summoning skill that deals no damage itself: its minions do. */
+export function isSummonerSkill(entry: SkillMetricsEntry, catalog: ReadonlyMap<string, GemCatalogEntry>): boolean {
+  const gem = catalog.get(entry.skill_id);
+  return !!gem && !gem.is_support && gem.tags.includes('CreatesMinion') && entry.status === 'calculated'
+    && !!entry.metrics && entry.metrics.combined_dps === 0 && entry.metrics.average_hit === 0;
+}
+
 export function SkillMetricsTable({ session, lang, report, displayed }: {
   session: BuildSession; lang: Lang; report: SkillMetricsResponse | null; displayed: SkillMetricsResponse;
 }) {
   const tt = bindT(lang);
+  const minion = mainMinion(session.calc);
+  const calculated = session.calc?.main_skill;
   const catalog = useSkillCatalog();
   const skillName = (id: string) => skillDisplayName(id, lang, catalog);
   const mainIndex = session.calcParams.main_socket_group;
-  const highest = report ? highestDpsSkill(report.skills, session.socketGroups) : null;
+  // The calculated effect's damage is its main minion's when it has one, as on the rail and Overview.
+  const minionDpsOf = (entry: SkillMetricsEntry) => minion && calculated?.group_index === entry.group_index
+    && calculated.active_skill_index === entry.active_skill_index ? minion.dps : null;
+  const dpsOf = (entry: SkillMetricsEntry) => minionDpsOf(entry) ?? entry.metrics!.combined_dps;
+  const highest = report ? highestDpsSkill(report.skills, session.socketGroups, dpsOf) : null;
   const unsupported = [...new Set(displayed.skills.flatMap(entry => entry.unsupported_modifiers))];
   const nameCounts = new Map<string, number>();
   for (const entry of displayed.skills) {
@@ -57,6 +71,9 @@ export function SkillMetricsTable({ session, lang, report, displayed }: {
           const selected = entry.group_index === mainIndex && entry.active_skill_index === (group?.main_active_skill ?? 1);
           const available = !!report && entry.status === 'calculated' && entry.metrics !== null;
           const nonDamaging = isNonDamagingSkill(entry, catalog);
+          // A summoning skill deals its damage through minions; only the calculated one's minion is calculated.
+          const summoner = available && isSummonerSkill(entry, catalog);
+          const minionDps = available ? minionDpsOf(entry) : null;
           const disabled = !report || session.busy || !group?.enabled;
           const name = skillName(entry.skill_id);
           const label = nameCounts.get(name)! > 1 ? tt('calcs.skillInstance')
@@ -75,14 +92,17 @@ export function SkillMetricsTable({ session, lang, report, displayed }: {
               </AppButton>
               {granted && <span className="granted-badge">{granted}</span>}
               {nonDamaging && <span className="granted-badge">{tt('calcs.nonDamaging')}</span>}
-              {entry === highest && entry.metrics!.combined_dps > 0 && <span className="granted-badge">{tt('calcs.highestDps')}</span>}
+              {minionDps !== null && <span className="granted-badge">{tt('skills.minionDps')}</span>}
+              {entry === highest && dpsOf(entry) > 0 && <span className="granted-badge">{tt('calcs.highestDps')}</span>}
             </td>
             {columns.map(([key]) => <td className="mod-value" key={key}>
-              {available && !(nonDamaging && (key === 'combined_dps' || key === 'average_hit'))
-                ? formatStatValue(entry.metrics![key], 'float2') : '—'}
+              {key === 'combined_dps' && minionDps !== null ? formatStatValue(minionDps, 'float2')
+                : available && !((nonDamaging || summoner) && (key === 'combined_dps' || key === 'average_hit'))
+                  ? formatStatValue(entry.metrics![key], 'float2') : '—'}
             </td>)}
             <td className="skill-metrics-diagnostics">
               {report && !available && <p>{tt('calcs.unavailable')}</p>}
+              {summoner && minionDps === null && <p>{tt('skills.summonerPending')}</p>}
               {report && available && entry.unsupported_modifiers.length > 0 && <p>{tt('calcs.excludedModifiers')}</p>}
               {report && entry.error && <details onClick={event => event.stopPropagation()}>
                 <summary>{tt('calcs.errorDetails')}</summary><p>{entry.error}</p>

@@ -343,7 +343,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
   /** 热力图可选属性（按当前计算结果里实际存在的展示量过滤）。 */
   const heatStatOptions = useMemo(() => {
     const CANDIDATES = [
-      'TotalDPS', 'Life', 'EnergyShield', 'TotalEHP', 'Mana',
+      'MainMinionDPS', 'TotalDPS', 'Life', 'EnergyShield', 'TotalEHP', 'Mana',
       'Armour', 'Evasion', 'Spirit',
     ];
     const present = new Set((session.calc?.stats ?? []).filter(s => Number.isFinite(s.value)).map((s) => s.id));

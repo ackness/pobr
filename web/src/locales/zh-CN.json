@@ -866,6 +866,12 @@
     "calcs.overviewFailed": "暂时无法计算技能总览。",
     "calcs.itemExcluded": "此装备未计入计算。",
     "calcs.skillInstance": "{skill}（技能组 {group}，效果 {effect}）",
+    "minion.perMinion": "单只",
+    "minion.limit": "上限 {count} 只",
+    "sidebar.minionHitDps": "召唤物击中 DPS",
+    "sidebar.playerCombinedDps": "角色自身综合 DPS",
+    "skills.minionDps": "召唤物击中 DPS（单只）",
+    "skills.summonerPending": "召唤技能。设为计算技能后显示召唤物伤害。",
     "tree.moreChanges": "另有 {count} 项变化",
     "tree.downstream": "将一并退掉 {count} 个下游节点",
     "tree.refundResult": "已退 {points} 点 · 综合 DPS {delta}",
@@ -2383,7 +2389,8 @@
     "SecondaryFlatCritBonus": "次要计算分支：额外暴击伤害加成（%）",
     "SecondaryIncreasedCritBonus": "次要计算分支：暴击伤害加成增加（%）",
     "SecondaryMoreCritBonus": "次要计算分支：暴击伤害加成更多倍率",
-    "SecondaryCritBonusOverride": "次要计算分支：暴击伤害加成覆写（%）"
+    "SecondaryCritBonusOverride": "次要计算分支：暴击伤害加成覆写（%）",
+    "MainMinionDPS": "召唤物击中 DPS（单只）"
   },
   "support": {
     "title": "自动寻优辅助宝石",

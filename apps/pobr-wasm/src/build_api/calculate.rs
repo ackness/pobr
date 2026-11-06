@@ -16,7 +16,8 @@ use pobr_core::calc::CompletedCalculationSession;
 use serde::Serialize;
 
 use super::request::{
-    CalculateBuildRequest, apply_request_overrides, import_build_from_request, orchestrator_options,
+    CalculateBuildRequest, MAIN_MINION_DPS, apply_request_overrides, import_build_from_request,
+    orchestrator_options,
 };
 use crate::state;
 
@@ -321,19 +322,24 @@ fn calculate_snapshot(
             serde_json::from_str(&full).map_err(|e| format!("read cached Full DPS: {e}"))?,
         );
     }
-    let stats = pobr_core::extract_display_values(session.output());
+    let mut stats = pobr_core::extract_display_values(session.output());
     // The facts below are read from the view the calculation used, rather than from
     // a build prepared again for each of them.
-    let main_minion_index =
-        pobr_build::main_skill_minion_in_view(&prepared, &data, session.output()).and_then(
-            |main| {
-                session
-                    .output()
-                    .minions
-                    .iter()
-                    .position(|minion| std::ptr::eq(main, minion))
-            },
-        );
+    let main_minion = pobr_build::main_skill_minion_in_view(&prepared, &data, session.output());
+    let main_minion_index = main_minion.and_then(|main| {
+        session
+            .output()
+            .minions
+            .iter()
+            .position(|minion| std::ptr::eq(main, minion))
+    });
+    if let Some(main) = main_minion {
+        stats.push(pobr_data::display_stat::DisplayStatValue {
+            id: pobr_data::display_stat::DisplayStatId::new(MAIN_MINION_DPS),
+            value: main.dps,
+            category: pobr_data::display_stat::DisplayStatCategory::Offence,
+        });
+    }
     let provenance = pobr_build::provenance::CalculationProvenance::from_data(
         state::game_data()
             .map_err(super::ApiError::not_initialized)?
