@@ -4,7 +4,7 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { pageLink, statValue } from './shell';
+import { pageLink, statValue, playerHitDps } from './shell';
 import { choose, closeSettings, settled, stableText } from './buildLibrary';
 
 test('scratch build: class picker, level edit, tree allocation', async ({ page }) => {
@@ -43,14 +43,14 @@ test('scratch build: class picker, level edit, tree allocation', async ({ page }
   await expect(page.locator('.tree-count')).toHaveText(/Used [1-9]\d* \/ \d+ points/, { timeout: 30_000 });
   await expect(target).toHaveClass(/node-allocated/);
 
-  // 手动添加技能：自定义选择器搜 Comet → 回车选中首项 → 新组出现 → Total DPS 出数。
+  // 手动添加技能：自定义选择器搜 Comet → 回车选中首项 → 新组出现 → Hit DPS 出数。
   await pageLink(page, 'Skills').click();
   const picker = page.getByPlaceholder('Add a skill group…');
   await picker.fill('Comet');
   await expect(page.locator('.gem-picker-item').first()).toBeVisible();
   await picker.press('Enter');
   await expect(page.locator('.skill-group')).toHaveCount(1, { timeout: 30_000 });
-  const dpsValue = statValue(page, /^Total DPS$/).first();
+  const dpsValue = playerHitDps(page);
   await expect(dpsValue).not.toHaveText('0', { timeout: 30_000 });
   await expect(dpsValue).not.toHaveText('—');
 

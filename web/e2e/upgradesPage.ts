@@ -1,9 +1,13 @@
+import { headlineDps, goTo as goToVisiblePage } from './skillsAndCalcs';
+import { waitForPageTransition } from './navigation';
+import { t } from '../src/lib/i18n';
 import { expect, type Locator, type Page } from '@playwright/test';
-import { bdLibraryButton, pageLink, statValue } from './shell';
+import { bdLibraryButton, pageLink, statValue, playerHitDps } from './shell';
 
 /** The results panel rows the Items / Upgrades specs read. Labels are anchored: "Life" must not match "Unreserved Life". */
 export const lifeValue = (page: Page): Locator => statValue(page, /^Life$/);
-export const dpsValue = (page: Page): Locator => statValue(page, /^Total DPS$/);
+export const headlineDpsValue = headlineDps;
+export const dpsValue = playerHitDps;
 export const ehpValue = (page: Page): Locator => statValue(page, /^Effective HP$/);
 
 /** The stage that is open, as the top bar's "Current stage" control shows it. */
@@ -32,12 +36,15 @@ export async function openStage(page: Page, name: string) {
  * view transition, one frame after the click, so two quick clicks in a row would otherwise race.
  */
 export async function goTo(page: Page, name: string, options?: { force?: boolean }) {
-  await pageLink(page, name).click(options);
+  if (options?.force) await pageLink(page, name).click(options);
+  else await goToVisiblePage(page, name);
   await expect(pageLink(page, name)).toHaveAttribute('aria-current', 'page');
+  // Forced navigation in paused-clock fixtures has reduced motion and cannot await RAF.
+  if (!options?.force) await waitForPageTransition(page);
 }
 
-/** The "Calculation skill" selector at the head of the results panel. */
-export const inspectedSkill = (page: Page): Locator => page.locator('#character-stats').getByRole('combobox', { name: 'Calculation skill', exact: true });
+/** The calculated skill selector at the head of the results panel. */
+export const inspectedSkill = (page: Page): Locator => page.locator('#character-stats').getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
 
 /**
  * The results panel eases a number to its new value over a fraction of a second, so a single read right after an
@@ -57,6 +64,8 @@ export async function settledNumber(locator: Locator): Promise<number> {
 export async function openLibrary(page: Page, options?: { force?: boolean }) {
   await bdLibraryButton(page).click(options);
   await expect(bdLibraryButton(page)).toHaveAttribute('aria-current', 'page');
+  // Forced navigation in paused-clock fixtures has reduced motion and cannot await RAF.
+  if (!options?.force) await waitForPageTransition(page);
 }
 
 /** The options of an open select are rendered in a portal, so they are found on the page, not inside the panel. */
@@ -103,4 +112,13 @@ export async function openCustomModifiers(page: Page) {
  */
 export async function reduceMotion(page: Page) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
+}
+
+/** Legacy goals remain in advanced settings; the main flow has three choices. */
+export async function chooseTradeGoal(page: Page, name: string) {
+  if (name === 'Max Life' || name === 'Best damage efficiency (Hit DPS per mana)') {
+    const settings = page.locator('.upgrade-goal-details');
+    if (!(await settings.evaluate(element => (element as HTMLDetailsElement).open))) await settings.locator(':scope > summary').click();
+  }
+  await page.getByRole('button', { name, exact: true }).click();
 }

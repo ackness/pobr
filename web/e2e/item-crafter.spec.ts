@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { lifeValue, settledText } from './upgradesPage';
-import { openImport } from './buildLibrary';
 
 test('craft a rare from a game base, save it and equip the previewed delta', async ({ page }, testInfo) => {
   await page.route('**/api/import/wegame', route => route.fulfill({ json: {
@@ -13,7 +12,6 @@ test('craft a rare from a game base, save it and equip the previewed delta', asy
   } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticCrafterFixture');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -30,19 +28,19 @@ test('craft a rare from a game base, save it and equip the previewed delta', asy
   await crafter.screenshot({ path: testInfo.outputPath('base-picker.png') });
   await crafter.getByRole('button', { name: 'Create draft', exact: true }).click();
   const editor = crafter.locator('.replacement-affix-editor');
-  await editor.locator('summary').click();
-  await editor.getByRole('searchbox', { name: 'Search affixes' }).fill('to maximum Life');
-  await editor.getByRole('combobox', { name: 'Choose an affix and tier', exact: true }).click();
+  await expect(editor).toHaveAttribute('open', '');
+  await editor.getByRole('searchbox', { name: 'Search modifiers' }).fill('to maximum Life');
+  await editor.getByRole('combobox', { name: 'Choose a modifier and tier', exact: true }).click();
   await expect(page.getByRole('option', { name: /\+119 to maximum Life/ })).toHaveCount(0);
   await page.getByRole('option', { name: /\+99 to maximum Life/ }).click();
   await editor.locator('.affix-editor-add > .trade-primary').click();
   await expect(life).toHaveText(before);
   await editor.getByRole('button', { name: 'Maximum', exact: true }).click();
-  await editor.getByRole('button', { name: 'Recalculate edited item', exact: true }).click();
+  await editor.getByRole('button', { name: 'Compare with current equipment', exact: true }).click();
   await expect(crafter.getByRole('textbox', { name: 'Complete item text' })).toHaveValue(/\+99 to maximum Life/);
   await crafter.locator('.replacement-position').filter({ hasText: /^Ring 1/ }).click();
   await expect(crafter.getByRole('button', { name: 'Apply to build · Ring 1', exact: true })).toBeVisible();
-  const expectedLife = await crafter.locator('.upgrade-replacement-result tbody tr').filter({ hasText: /^Life(?=[0-9\s])/ }).locator('td').nth(1).innerText();
+  const expectedLife = await crafter.locator('.swap-gain-card [data-stat="Life"] .swap-after').innerText();
   await expect(life).toHaveText(before);
   await crafter.getByRole('button', { name: 'Save to item library', exact: true }).click();
   await expect(crafter.getByRole('button', { name: 'Saved to item library', exact: true })).toBeVisible();

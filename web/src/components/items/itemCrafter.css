@@ -11,3 +11,9 @@
 .unique-roll { display: grid; grid-template-columns: minmax(0, 1fr) minmax(80px, 180px) 3rem; align-items: center; gap: .75rem; padding-block: .6rem; border-bottom: 1px solid var(--border); }
 .unique-roll input { width: 100%; min-width: 0; }
 @media (max-width: 640px) { .unique-roll { grid-template-columns: minmax(0, 1fr) 3rem; } .unique-roll > span { grid-column: 1 / -1; } }
+.unique-results { display: grid; gap: .5rem; max-height: 26rem; overflow-y: auto; margin-block: .75rem; }
+.unique-result { display: flex; flex-direction: column; align-items: flex-start; gap: .3rem; height: auto; min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: start; padding: .75rem; }
+.unique-result[aria-pressed="true"] { border-color: var(--primary); }
+.unique-result small { color: var(--muted-foreground); }
+.unique-roll-value { grid-column: 1 / -1; margin: 0; overflow-wrap: anywhere; }
+.unique-roll output { white-space: nowrap; font-variant-numeric: tabular-nums; }

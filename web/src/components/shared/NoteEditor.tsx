@@ -60,7 +60,7 @@ export function NoteEditor({ value, onCommit, lang }: Props) {
       type="button"
       className="note-block"
       title={tt('note.editHint')}
-      aria-label={`${tt('note.editHint')}: ${value}`}
+      aria-label={`${tt('note.editHint')}${lang === 'en-US' ? ': ' : '：'}${value}`}
       onClick={() => {
         setDraft(value);
         setEditing(true);

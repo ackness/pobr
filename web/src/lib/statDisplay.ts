@@ -63,7 +63,8 @@ export const STAT_SECTIONS: StatSectionDef[] = [
       { id: 'OffHandAccuracy', label: { 'en-US': 'Off Hand Accuracy', 'zh-TW': '副手命中值', 'zh-CN': '副手命中值' }, format: 'int', hideZero: true },
       { id: 'AccuracyHitChanceUncapped', label: { 'en-US': 'Uncapped Chance to Hit', 'zh-TW': '無上限命中率', 'zh-CN': '无上限命中率' }, format: 'percent', hideZero: true },
       { id: 'QuantityMultiplier', label: { 'en-US': 'Quantity Multiplier', 'zh-TW': '數量倍率', 'zh-CN': '数量倍率' }, format: 'float2', hideZero: true },
-      { id: 'TotalDPS', label: { 'en-US': 'Total DPS', 'zh-TW': '總 DPS', 'zh-CN': '总 DPS' }, format: 'float2', colorVar: 'accent-gold-bright' },
+      { id: 'TotalDotDPS', label: { 'en-US': 'Total DoT DPS', 'zh-TW': '持續傷害 DPS', 'zh-CN': '持续伤害 DPS' }, format: 'float2', hideZero: true },
+      { id: 'TotalDPS', label: { 'en-US': 'Hit DPS', 'zh-TW': '擊中 DPS', 'zh-CN': '击中 DPS' }, format: 'float2', colorVar: 'accent-gold-bright' },
       { id: 'TotalHitAvg', label: { 'en-US': 'Average Hit', 'zh-TW': '平均擊中', 'zh-CN': '平均击中' }, format: 'float2' },
       { id: 'ActionRate', label: { 'en-US': 'Attack/Cast Rate', 'zh-TW': '攻擊/施放速率', 'zh-CN': '攻击/施放速率' }, format: 'rate' },
       { id: 'HitChance', label: { 'en-US': 'Hit Chance', 'zh-TW': '命中率', 'zh-CN': '命中率' }, format: 'percent' },
@@ -86,12 +87,12 @@ export const STAT_SECTIONS: StatSectionDef[] = [
       { id: 'Mana', label: { 'en-US': 'Mana', 'zh-TW': '魔力', 'zh-CN': '魔力' }, format: 'int', colorVar: 'color-mana' },
       { id: 'EnergyShield', label: { 'en-US': 'Energy Shield', 'zh-TW': '能量護盾', 'zh-CN': '能量护盾' }, format: 'int', colorVar: 'color-es' },
       { id: 'Spirit', label: { 'en-US': 'Spirit', 'zh-TW': '精魂', 'zh-CN': '精魂' }, format: 'int', colorVar: 'color-chaos' },
-      { id: 'SpiritUnreserved', label: { 'en-US': 'Spirit Unreserved', 'zh-TW': '未保留精魂', 'zh-CN': '未保留精魂' }, format: 'int' },
+      { id: 'SpiritUnreserved', label: { 'en-US': 'Unreserved Spirit', 'zh-TW': '未保留精魂', 'zh-CN': '未保留精魂' }, format: 'int' },
       { id: 'Ward', label: { 'en-US': 'Ward', 'zh-TW': '結界', 'zh-CN': '结界' }, format: 'int', hideZero: true },
       { id: 'Rage', label: { 'en-US': 'Rage', 'zh-TW': '盛怒', 'zh-CN': '怒火' }, format: 'int', hideZero: true },
-      { id: 'LifeUnreservedPercent', label: { 'en-US': 'Unreserved Life', 'zh-TW': '未保留生命', 'zh-CN': '未保留生命' }, format: 'percent' },
-      { id: 'ManaUnreservedPercent', label: { 'en-US': 'Unreserved Mana', 'zh-TW': '未保留魔力', 'zh-CN': '未保留魔力' }, format: 'percent' },
-      { id: 'SpiritUnreservedPercent', label: { 'en-US': 'Unreserved Spirit', 'zh-TW': '未保留精魂', 'zh-CN': '未保留精魂' }, format: 'percent' },
+      { id: 'LifeUnreservedPercent', label: { 'en-US': 'Unreserved Life (%)', 'zh-TW': '未保留生命（%）', 'zh-CN': '未保留生命（%）' }, format: 'percent' },
+      { id: 'ManaUnreservedPercent', label: { 'en-US': 'Unreserved Mana (%)', 'zh-TW': '未保留魔力（%）', 'zh-CN': '未保留魔力（%）' }, format: 'percent' },
+      { id: 'SpiritUnreservedPercent', label: { 'en-US': 'Unreserved Spirit (%)', 'zh-TW': '未保留精魂（%）', 'zh-CN': '未保留精魂（%）' }, format: 'percent' },
     ],
   },
   {
@@ -110,7 +111,7 @@ export const STAT_SECTIONS: StatSectionDef[] = [
     title: { 'en-US': 'Resistances', 'zh-TW': '抗性', 'zh-CN': '抗性' },
     rows: [
       { id: 'FireResist', label: { 'en-US': 'Fire Res.', 'zh-TW': '火焰抗性', 'zh-CN': '火焰抗性' }, format: 'percent', colorVar: 'color-fire' },
-      { id: 'ColdResist', label: { 'en-US': 'Cold Res.', 'zh-TW': '冰冷抗性', 'zh-CN': '冰冷抗性' }, format: 'percent', colorVar: 'color-cold' },
+      { id: 'ColdResist', label: { 'en-US': 'Cold resistance', 'zh-TW': '冰冷抗性', 'zh-CN': '冰冷抗性' }, format: 'percent', colorVar: 'color-cold' },
       { id: 'LightningResist', label: { 'en-US': 'Lightning Res.', 'zh-TW': '閃電抗性', 'zh-CN': '闪电抗性' }, format: 'percent', colorVar: 'color-lightning' },
       { id: 'ChaosResist', label: { 'en-US': 'Chaos Res.', 'zh-TW': '混沌抗性', 'zh-CN': '混沌抗性' }, format: 'percent', colorVar: 'color-chaos' },
       { id: 'FireResistOverCap', label: { 'en-US': 'Fire Res. Over Max', 'zh-TW': '超過上限火焰抗性', 'zh-CN': '超过上限火焰抗性' }, format: 'percent', hideZero: true },
@@ -143,7 +144,7 @@ export const STAT_SECTIONS: StatSectionDef[] = [
       { id: 'NetWardRegen', label: { 'en-US': 'Net Runic Ward Regeneration', 'zh-TW': '符文守護淨再生', 'zh-CN': '符文守护净再生' }, format: 'float2', hideZero: true },
       { id: 'NetEnergyShieldRegen', label: { 'en-US': 'Net Energy Shield Recovery per Second', 'zh-TW': '每秒能量護盾淨恢復', 'zh-CN': '每秒能量护盾净恢复' }, format: 'float2', hideZero: true },
       { id: 'TotalNetRegen', label: { 'en-US': 'Total Net Recovery per Second', 'zh-TW': '每秒總淨恢復', 'zh-CN': '每秒总净恢复' }, format: 'float2', hideZero: true },
-      { id: 'TotalBuildDegen', label: { 'en-US': 'Build Resource Loss per Second', 'zh-TW': '每秒構築資源損失', 'zh-CN': '每秒构筑资源损失' }, format: 'float2', hideZero: true },
+      { id: 'TotalBuildDegen', label: { 'en-US': 'Build Resource Loss per Second', 'zh-TW': '每秒 BD 資源損失', 'zh-CN': '每秒 BD 资源损失' }, format: 'float2', hideZero: true },
       { id: 'LifeLeechGainRate', label: { 'en-US': 'Life Leech and Gain on Hit per Second', 'zh-TW': '每秒生命偷取與擊中獲得', 'zh-CN': '每秒生命偷取与击中获得' }, format: 'float2', hideZero: true },
       { id: 'ManaLeechGainRate', label: { 'en-US': 'Mana Leech and Gain on Hit per Second', 'zh-TW': '每秒魔力偷取與擊中獲得', 'zh-CN': '每秒魔力偷取与击中获得' }, format: 'float2', hideZero: true },
       { id: 'EnergyShieldLeechGainRate', label: { 'en-US': 'Energy Shield Leech and Gain on Hit per Second', 'zh-TW': '每秒能量護盾偷取與擊中獲得', 'zh-CN': '每秒能量护盾偷取与击中获得' }, format: 'float2', hideZero: true },
@@ -213,13 +214,98 @@ export const STAT_SECTIONS: StatSectionDef[] = [
   },
 ];
 
+/** Shared metric meanings beside the display labels; UI text only. */
+export const METRIC_MEANINGS: Readonly<Record<string, Record<Lang, string>>> = {
+  "CombinedDPS": {
+    "en-US": "The sum of hit DPS and damage over time DPS.",
+    "zh-CN": "击中 DPS 与持续伤害 DPS 之和。",
+    "zh-TW": "擊中 DPS 與持續傷害 DPS 之和。"
+  },
+  "TotalDPS": {
+    "en-US": "Calculated skill hit damage per second after enemy resistances and armour.",
+    "zh-CN": "计算技能每秒对敌人造成的击中伤害，已计入敌人抗性与护甲。",
+    "zh-TW": "計算技能每秒對敵人造成的擊中傷害，已計入敵人抗性與護甲。"
+  },
+  "AverageDamage": {
+    "en-US": "Average damage per use, including critical strikes, enemy mitigation and hit chance.",
+    "zh-CN": "每次使用对敌人的平均伤害，含暴击、敌人减伤与命中率。",
+    "zh-TW": "每次使用對敵人的平均傷害，含暴擊、敵人減傷與命中率。"
+  },
+  "TotalHitAvg": {
+    "en-US": "Average hit before enemy mitigation, including critical strikes.",
+    "zh-CN": "敌人减伤前的单次平均击中伤害，含暴击。",
+    "zh-TW": "敵人減傷前的單次平均擊中傷害，含暴擊。"
+  },
+  "CritChance": {
+    "en-US": "Chance for the calculated skill to critically strike under the selected conditions.",
+    "zh-CN": "在所选条件下，计算技能造成暴击的几率。",
+    "zh-TW": "在所選條件下，計算技能造成暴擊的機率。"
+  },
+  "Life": {
+    "en-US": "Maximum life after modifiers and resource conversion, before reservation.",
+    "zh-CN": "计入词缀与资源转换后的生命上限，尚未扣除保留。",
+    "zh-TW": "計入詞綴與資源轉換後的生命上限，尚未扣除保留。"
+  },
+  "EnergyShield": {
+    "en-US": "Maximum energy shield available to absorb damage before life.",
+    "zh-CN": "可在生命之前承受伤害的能量护盾上限。",
+    "zh-TW": "可在生命之前承受傷害的能量護盾上限。"
+  },
+  "TotalEHP": {
+    "en-US": "Estimated damage you can survive against the configured enemy, including mitigation and avoidance.",
+    "zh-CN": "在所设敌人条件下，计入减伤与避免伤害后预计可承受的伤害。",
+    "zh-TW": "在所設敵人條件下，計入減傷與避免傷害後預計可承受的傷害。"
+  },
+  "Armour": {
+    "en-US": "Reduces physical damage from hits; effectiveness depends on hit size.",
+    "zh-CN": "降低击中的物理伤害，效果取决于单次伤害大小。",
+    "zh-TW": "降低擊中的物理傷害，效果取決於單次傷害大小。"
+  },
+  "Evasion": {
+    "en-US": "Helps avoid enemy attacks under the configured enemy conditions.",
+    "zh-CN": "在所设敌人条件下，帮助闪避敌人的攻击。",
+    "zh-TW": "在所設敵人條件下，幫助閃避敵人的攻擊。"
+  },
+  "FireResist": {
+    "en-US": "Reduces damage of this type, up to the resistance cap; excess resistance offsets resistance penalties.",
+    "zh-CN": "降低此类型的伤害，受抗性上限限制；溢出抗性可抵消抗性降低。",
+    "zh-TW": "降低此類型的傷害，受抗性上限限制；超出上限的抗性可抵銷抗性降低。"
+  },
+  "ColdResist": {
+    "en-US": "Reduces damage of this type, up to the resistance cap; excess resistance offsets resistance penalties.",
+    "zh-CN": "降低此类型的伤害，受抗性上限限制；溢出抗性可抵消抗性降低。",
+    "zh-TW": "降低此類型的傷害，受抗性上限限制；超出上限的抗性可抵銷抗性降低。"
+  },
+  "LightningResist": {
+    "en-US": "Reduces damage of this type, up to the resistance cap; excess resistance offsets resistance penalties.",
+    "zh-CN": "降低此类型的伤害，受抗性上限限制；溢出抗性可抵消抗性降低。",
+    "zh-TW": "降低此類型的傷害，受抗性上限限制；超出上限的抗性可抵銷抗性降低。"
+  },
+  "ChaosResist": {
+    "en-US": "Reduces damage of this type, up to the resistance cap; excess resistance offsets resistance penalties.",
+    "zh-CN": "降低此类型的伤害，受抗性上限限制；溢出抗性可抵消抗性降低。",
+    "zh-TW": "降低此類型的傷害，受抗性上限限制；超出上限的抗性可抵銷抗性降低。"
+  }
+};
+
+export function metricMeaning(id: string, lang: Lang): string | null {
+  return METRIC_MEANINGS[id]?.[lang] ?? null;
+}
+
 const STAT_FORMATS = new Map(STAT_SECTIONS.flatMap(section => section.rows.map(row => [row.id, row.format] as const)));
 
 export function statFormat(stat: string): StatFormat {
-  return STAT_FORMATS.get(stat) ?? 'float2';
+  if (stat === 'MainMinionDPS') return 'int';
+  if (/^(Fire|Cold|Lightning|Chaos)Resist(?:Total|Max|OverCap)$/.test(stat)) return 'percent';
+  return STAT_FORMATS.get(stat) ?? (/Resist(?:Total|Max|OverCap)?$/.test(stat) ? 'percent' : 'float2');
 }
 
-/** 数值格式化（null = 计算侧的 ∞ / 不适用）。 */
+/** Shared display rounding and grouping for numbers that are not tied to a stat. */
+export function formatNumber(value: number, digits = 2, minimumDigits = 0): string {
+  return value.toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: minimumDigits });
+}
+
+/** Format a result consistently in headlines, detail results and comparisons. */
 export function formatStatValue(value: number | null, format: StatFormat, lang: Lang = 'en-US'): string {
   if (value === null || !Number.isFinite(value)) return '∞';
   switch (format) {
@@ -228,17 +314,17 @@ export function formatStatValue(value: number | null, format: StatFormat, lang: 
     case 'modifier':
       return `${value >= 1 ? '+' : ''}${roundTo((value - 1) * 100, 1)}%`;
     case 'pierce':
-      return value >= 100 ? ({ 'en-US': 'All targets', 'zh-TW': '所有目標', 'zh-CN': '所有目标' }[lang]) : Math.round(value).toLocaleString('en-US');
+      return value >= 100 ? ({ 'en-US': 'All targets', 'zh-TW': '所有目標', 'zh-CN': '所有目标' }[lang]) : formatNumber(Math.round(value), 0);
     case 'int':
-      return Math.round(value).toLocaleString('en-US');
+      return formatNumber(Math.round(value), 0);
     case 'percent':
       return `${roundTo(value, 1)}%`;
     case 'rate':
-      return roundTo(value, 2).toFixed(2);
+      return formatNumber(roundTo(value, 2), 2, 2);
     case 'float2':
       return Math.abs(value) >= 1000
-        ? Math.round(value).toLocaleString('en-US')
-        : roundTo(value, 2).toString();
+        ? formatNumber(Math.round(value), 0)
+        : formatNumber(roundTo(value, 2));
   }
 }
 

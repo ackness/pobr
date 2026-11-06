@@ -1,6 +1,7 @@
+import { buildAction, openBuildMenu } from './shell';
 import { expect, test, type Page } from '@playwright/test';
 import { deflateSync } from 'node:zlib';
-import { mainSkillPinned, openImport } from './buildLibrary';
+import { mainSkillPinned } from './buildLibrary';
 import { QUARANTINE } from './tags';
 
 const code = deflateSync('<PathOfBuilding2><Build level="60" className="Witch" mainSocketGroup="1"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree><Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="FireballPlayer" level="12" quality="0" enabled="true"/></Skill></SkillSet></Skills><Items/><Config><Input name="enemyLevel" number="82"/><Input name="buffOnslaught" boolean="false"/></Config></PathOfBuilding2>').toString('base64url');
@@ -16,9 +17,7 @@ async function preferences(page: Page, extra: Record<string, unknown> = {}) {
 async function importBuild(page: Page) {
   await preferences(page);
   await page.goto('/build');
-  await openImport(page);
   await expect(page.getByRole('textbox', { name: 'Build code', exact: true })).toBeVisible({ timeout: 90_000 });
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await expect(page.locator('#ov-title')).toBeVisible();
@@ -43,9 +42,7 @@ test('copies saves of the first interface once and config edits preserve the ori
   const dialogs: string[] = []; page.on('dialog', dialog => { dialogs.push(dialog.type()); void dialog.dismiss(); });
   await preferences(page);
   await page.goto('/build');
-  await openImport(page);
   await expect(page.getByRole('textbox', { name: 'Build code', exact: true })).toBeVisible({ timeout: 90_000 });
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click(); await expect(page.locator('#ov-title')).toBeVisible();
   await expect(page.locator('.shell-save-state')).toHaveText('Saved in this browser');
@@ -99,7 +96,7 @@ test('tabs of one browser follow each other and merge what a tab missed', async 
   const names = (tab: Page, list: string[]) => expect(shown(tab)).toHaveText(list.map((name, index) => name || `Build ${index + 1}`));
   const notice = (tab: Page) => tab.locator('.shell-notice[data-sync]');
   const create = async (tab: Page, value: string) => {
-    await tab.getByRole('button', { name: 'New build', exact: true }).last().click();
+    await tab.locator('.bd-library').getByRole('button', { name: 'New build', exact: true }).click();
     await tab.getByRole('textbox', { name: 'Name', exact: true }).fill(value);
     await tab.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(tab.locator('.shell-save-state')).toHaveText('Saved in this browser');
@@ -115,10 +112,10 @@ test('tabs of one browser follow each other and merge what a tab missed', async 
   await expect(notice(other)).toHaveAttribute('data-sync', 'updated');
 
   // Deleting the build the other tab has open: that tab moves on to one that is still there.
-  await other.getByRole('group', { name: 'Saved builds', exact: true }).getByRole('button', { name: /Made here/ }).click();
+  await other.getByRole('group', { name: 'Saved builds', exact: true }).locator('.bd-build-select').filter({ hasText: 'Made here' }).click();
   await expect(other.locator('.shell-save-state')).toHaveText('Saved in this browser');
   await openBuilds(page);
-  await page.getByRole('button', { name: 'Delete build', exact: true }).click();
+  await buildAction(page, 'Delete build');
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
   await names(other, start);
   await expect(notice(other)).toHaveAttribute('data-sync', 'current-removed');
@@ -150,8 +147,8 @@ test('tabs of one browser share the saved skill sets', async ({ page, context })
   const stored = async (tab: Page): Promise<string[]> => (await state(tab, 'pobr-v2-library')).skillSets.map((set: { name: string }) => set.name);
   const save = async (tab: Page, name: string) => {
     await tab.locator('details.skills-advanced').evaluate(details => { (details as HTMLDetailsElement).open = true; });
-    await tab.getByRole('textbox', { name: 'Set name…', exact: true }).fill(name);
-    await tab.getByRole('button', { name: 'Save current as set', exact: true }).click();
+    await tab.getByRole('textbox', { name: 'Skill template name…', exact: true }).fill(name);
+    await tab.getByRole('button', { name: 'Save as skill template', exact: true }).click();
   };
 
   // An import already leaves a set named after the class; the others are counted on top of it.
@@ -181,7 +178,7 @@ test('tabs of one browser share the saved skill sets', async ({ page, context })
 
 test('navigation, settings and confirmations retain the current editor', async ({ page }) => {
   await importBuild(page);
-  await expect(page.getByRole('note')).toContainText('configuration');
+  await expect(page.getByRole('note')).toContainText('Go to Configuration');
   await openBuilds(page);
   const notes = page.getByRole('textbox', { name: 'Notes', exact: true });
   await notes.fill('Persistent stage note'); await notes.blur();
@@ -195,7 +192,7 @@ test('navigation, settings and confirmations retain the current editor', async (
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(notes).toHaveValue('Persistent stage note');
   expect((await state(page)).state).toEqual(before);
-  await nav(page, 'Calcs').click(); await expect(page).toHaveURL(/\/calcs$/);
+  await nav(page, 'Calculations').click(); await expect(page).toHaveURL(/\/calcs$/);
   await page.goBack(); await expect(page.locator('#build-heading')).toBeVisible();
   await expect(notes).toHaveValue('Persistent stage note');
   await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
@@ -211,12 +208,16 @@ test('navigation, settings and confirmations retain the current editor', async (
 
 test('deletes a build or a stage only after asking, and keeps the last of each', async ({ page }) => {
   await importBuild(page);
-  const deleteBuild = page.getByRole('button', { name: 'Delete build', exact: true });
+  const deleteBuild = () => buildAction(page, 'Delete build');
+  const deletionAvailable = async (available: boolean) => {
+    await openBuildMenu(page);
+    await expect(page.getByRole('menuitem', { name: 'Delete build', exact: true })).toHaveCount(available ? 1 : 0);
+    await page.keyboard.press('Escape');
+  };
   const deleteStage = page.getByRole('button', { name: 'Delete stage', exact: true });
   const undo = page.getByRole('button', { name: 'Undo', exact: true });
   const name = async (action: string, value: string) => {
-    // The import form has a "New build" choice of its own; the action is the later of the two.
-    await page.getByRole('button', { name: action, exact: true }).last().click();
+    await page.locator('.bd-actions').getByRole('button', { name: action, exact: true }).click();
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill(value);
     await page.getByRole('button', { name: 'Save', exact: true }).click();
   };
@@ -225,12 +226,12 @@ test('deletes a build or a stage only after asking, and keeps the last of each',
   // First import replaces the untouched starter; the only remaining build cannot be deleted.
   const start: string[] = await builds();
   expect(start).toHaveLength(1);
-  await expect(deleteBuild).toHaveCount(0);
+  await deletionAvailable(false);
   // Each build here has one stage, and a build's only stage is not offered for deletion.
   await expect(deleteStage).toHaveCount(0);
 
   await name('New build', 'Second');
-  await expect(deleteBuild).toBeVisible();
+  await deletionAvailable(true);
   // Opening another build is not an edit to take back: Undo would otherwise put the build
   // that was just left over this one.
   await expect(undo).toBeDisabled();
@@ -251,11 +252,11 @@ test('deletes a build or a stage only after asking, and keeps the last of each',
   await expect(undo).toBeDisabled();
 
   // A build: the confirmation names it, declining changes nothing, and confirming removes it.
-  await deleteBuild.click();
+  await deleteBuild();
   await expect(page.getByRole('alertdialog')).toContainText('Second');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   expect(await builds()).toEqual([...start, 'Second:1']);
-  await deleteBuild.click();
+  await deleteBuild();
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect.poll(builds).toEqual(start);
   // Undo must not bring the deleted build's data back into the one that opened.
@@ -266,12 +267,12 @@ test('deletes a build or a stage only after asking, and keeps the last of each',
 
   // Deleting down to the last build: it stays, and nothing offers to delete it.
   while ((await builds()).length > 1) {
-    await deleteBuild.click();
+    await deleteBuild();
     await page.getByRole('button', { name: 'Confirm', exact: true }).click();
     await expect.poll(async () => (await builds()).length).toBeLessThan(start.length);
     start.pop();
   }
-  await expect(deleteBuild).toHaveCount(0);
+  await deletionAvailable(false);
   await expect(page.locator('.shell-save-state')).toHaveText('Saved in this browser');
 
   // It is gone for good: still one build after a reload, and it is the one that was kept.
@@ -330,11 +331,11 @@ test('a retained skill optimizer keeps its results through the first visit to a 
   await nav(page, 'Skills').click();
   const group = page.locator('.skill-group').first();
   if (await group.locator('.skill-group-title').getAttribute('aria-expanded') === 'false') await group.locator('.skill-group-title').click();
-  if (await group.locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') await group.locator('.gem-optimizer-toggle').click();
+  if (await page.locator('.skill-detail').locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') await page.locator('.skill-detail').locator('.gem-optimizer-toggle').click();
   await page.getByRole('button', { name: 'Calculate support combinations', exact: true }).click();
   await expect(page.locator('.support-plan').first()).toBeVisible({ timeout: 90_000 });
   const receipt = (await page.locator('.support-results').textContent())!; // textContent: toHaveText compares it, innerText applies CSS text-transform
-  await nav(page, 'Calcs').click();
+  await nav(page, 'Calculations').click();
   await expect(page.locator('.shell-panel-loading')).toHaveCount(0, { timeout: 60_000 });
   await expect(page.locator('#breakdown-Life')).toBeVisible();
   await nav(page, 'Skills').click();
@@ -367,15 +368,15 @@ test('real WASM details stay lazy and configuration tracking follows the active 
   });
   const requests = () => page.evaluate(() => (window as typeof window & { calcRequests: Array<{ breakdowns?: string[]; config_context?: boolean; breakdown_actor?: unknown }> }).calcRequests);
   await importBuild(page);
-  await nav(page, 'Calcs').click();
+  await nav(page, 'Calculations').click();
   await expect(page.locator('#breakdown-Life')).toBeVisible();
   expect((await requests()).filter(request => request.breakdowns?.length)).toHaveLength(0);
   await page.locator('#breakdown-Life').click();
-  await expect(page.locator('#calcs-detail .formula-final')).toBeVisible();
+  await expect(page.locator('#calcs-detail .formula-conclusion')).toBeVisible();
   expect((await requests()).filter(request => request.breakdowns?.length)).toEqual([
     expect.objectContaining({ breakdowns: ['Life'], breakdown_actor: { kind: 'player' } }),
   ]);
-  await nav(page, 'Config').click();
+  await nav(page, 'Configuration').click();
   await expect.poll(async () => (await requests()).at(-1)?.config_context).toBe(true);
   await openBuilds(page);
   await page.getByLabel('Level', { exact: true }).fill('61');

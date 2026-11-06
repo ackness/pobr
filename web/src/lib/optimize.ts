@@ -49,6 +49,8 @@ export const COLLECT_STATS: string[] = [
   ...new Set([
     ...OBJECTIVE_PRESETS.flatMap((p) => (p.per ? [p.stat, p.per] : [p.stat])),
     ...CONSTRAINT_STATS,
+    'CombinedDPS',
+    'MainMinionDPS',
     'FireResist', 'ColdResist', 'LightningResist', 'ChaosResist', 'ProjectileCount', 'AoeRadius',
   ]),
 ];

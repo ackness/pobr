@@ -2,10 +2,10 @@ import { AppButton, AppInput } from '../shared/controls';
 import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { useLocalizedLines } from '../../hooks/useLocalizedLines';
+import { useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
 import { shownLines } from '../../lib/continuedLines';
 import type { Lang } from '../../lib/i18n';
-import { baseDraftText, craftBaseDisplayName, craftingCatalog, type CraftCatalog } from '../../lib/itemCrafting';
+import { baseDraftText, craftBaseDisplayName, craftingCatalog, defaultCraftClass, itemClassName, itemClassLabel, itemNameLabel, type CraftCatalog } from '../../lib/itemCrafting';
 import { craftT } from '../../lib/itemCraftingText';
 import { loadTradeCatalog } from '../../lib/tradeOptimizer';
 import { AppSelect } from '../shared/AppSelect';
@@ -73,11 +73,12 @@ export function EquippedItemCrafter({ draft, session, lang }: { draft: EquippedI
   </section>;
 }
 
-export function ItemCrafter({ session, lang }: { session: BuildSession; lang: Lang }) {
+export function ItemCrafter({ session, lang, selectedSlot }: { session: BuildSession; lang: Lang; selectedSlot?: string | null }) {
   const t = (key: Parameters<typeof craftT>[1]) => craftT(lang, key);
   const [catalog, setCatalog] = useState<CraftCatalog | null>(null);
   const [error, setError] = useState(false);
-  const [itemClass, setItemClass] = useState('Ring');
+  // Follow slot inspection only until the user edits or creates a draft.
+  const [itemClass, setItemClass] = useState('');
   const [baseId, setBaseId] = useState('');
   const [rarity, setRarity] = useState<'NORMAL' | 'MAGIC' | 'RARE'>('RARE');
   const [itemLevel, setItemLevel] = useState(85);
@@ -91,24 +92,25 @@ export function ItemCrafter({ session, lang }: { session: BuildSession; lang: La
     return () => { cancelled = true; };
   }, []);
   const classes = useMemo(() => [...new Set(catalog?.bases.map(base => base.itemClass) ?? [])], [catalog]);
-  const bases = useMemo(() => catalog?.bases.filter(base => base.itemClass === itemClass) ?? [], [catalog, itemClass]);
+  const currentClass = itemClass || (catalog ? defaultCraftClass(catalog, selectedSlot, [...session.items, ...session.flasks, ...session.limbs].find(item => item.slot === selectedSlot)?.text) : '');
+  const bases = useMemo(() => catalog?.bases.filter(base => base.itemClass === currentClass) ?? [], [catalog, currentClass]);
   const base = bases.find(base => base.id === baseId) ?? bases[0];
   const rarities = base?.affix_limit === 1 ? ['NORMAL', 'MAGIC'] as const : ['NORMAL', 'MAGIC', 'RARE'] as const;
   const chosenRarity = rarity === 'RARE' && base?.affix_limit === 1 ? 'MAGIC' : rarity;
-  const names = useLocalizedLines(bases.map(base => base.name), lang);
-  const classNames = useLocalizedLines(classes, lang);
+  const names = useLocalizedNames(bases.map(base => ({ kind: 'base' as const, name: base.name })), lang);
+  const classNames = useLocalizedNames(classes.map(name => ({ kind: 'itemClass' as const, name: itemClassName(name) })), lang);
   const implicits = useLocalizedLines(base?.implicits ?? [], lang);
-  const reset = () => setCreated(null);
+  const reset = () => { setItemClass(currentClass); setCreated(null); };
   if (error) return <p role="alert">{t('error')}</p>;
   if (!catalog) return <p role="status">{t('loading')}</p>;
   return <section className="item-crafter ui-card" aria-label={t('craft')}>
     <p>{t('hint')}</p>
     <div className="item-crafter-fields">
-      <label>{t('itemClass')}<AppSelect ariaLabel={t('itemClass')} value={itemClass}
-        options={classes.map((value, i) => ({ value, label: classNames[i] ?? value }))}
+      <label>{t('itemClass')}<AppSelect ariaLabel={t('itemClass')} value={currentClass}
+        options={classes.map((value, i) => ({ value, label: itemClassLabel(value, classNames[i], lang) }))}
         onChange={value => { reset(); setItemClass(value); setBaseId(''); }} /></label>
       <label>{t('base')}<AppSelect ariaLabel={t('base')} value={base?.id ?? ''}
-        options={bases.map((base, i) => ({ value: base.id, label: craftBaseDisplayName(base, lang, names[i] ?? base.name), hint: `${t('requirement')} ${base.level}` }))}
+        options={bases.map((base, i) => ({ value: base.id, label: itemNameLabel(base.name, craftBaseDisplayName(base, lang, names[i] ?? base.name), lang), hint: `${t('requirement')} ${base.level}` }))}
         onChange={value => { reset(); setBaseId(value); }} /></label>
       <label>{t('rarity')}<AppSelect ariaLabel={t('rarity')} value={chosenRarity}
         options={rarities.map(value => ({ value, label: t(value) }))}
@@ -122,7 +124,10 @@ export function ItemCrafter({ session, lang }: { session: BuildSession; lang: La
     {!!catalog.missingMods && <p className="trade-notice">{t('missing')} {catalog.missingMods}</p>}
     <AppButton className="trade-primary" disabled={session.busy || !base || !Number.isInteger(itemLevel) || itemLevel < 1 || itemLevel > 100
       || !Number.isInteger(quality) || quality < 0 || quality > 20}
-      onClick={() => setCreated({ text: baseDraftText(base, chosenRarity, itemLevel, quality), id: (created?.id ?? 0) + 1 })}>{t('create')}</AppButton>
+      onClick={() => {
+        setItemClass(currentClass);
+        setCreated({ text: baseDraftText(base, chosenRarity, itemLevel, quality), id: (created?.id ?? 0) + 1 });
+      }}>{t('create')}</AppButton>
     {created && base && <ItemDraftWorkbench key={created.id} initialText={created.text} base={base} catalog={catalog} session={session} lang={lang} />}
   </section>;
 }

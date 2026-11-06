@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { choose, goTo, importBuild, shareCode } from './skillsAndCalcs';
-import { openImport } from './buildLibrary';
 
 const source = `<PathOfBuilding2>
   <Build level="90" className="Huntress" mainSocketGroup="1"/>
@@ -42,7 +41,7 @@ test('choose a companion and its skill, inspect minion breakdowns, and preserve 
   }
   await page.setViewportSize(desktopSize);
 
-  await goTo(page, 'Calcs');
+  await goTo(page, 'Calculations');
   // The metric list shows the values of the chosen actor. The summoner is the calculated skill, so
   // Calcs opens on its minion; the player is one choice away.
   const life = page.locator('#breakdown-Life strong');
@@ -78,9 +77,6 @@ test('choose a companion and its skill, inspect minion breakdowns, and preserve 
   const xml = inflateSync(Buffer.from(code, 'base64url')).toString();
   expect(xml).toContain('skillMinion="Metadata/Monsters/Quadrilla/Quadrilla"');
   expect(xml).toContain('skillMinionSkill="3"');
-  // The import form is a closed disclosure on the BD page, as in importBuild().
-  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await expect.poll(async () => (await state()).socketGroups[0].gems[0].minion_skill).toBe(3);

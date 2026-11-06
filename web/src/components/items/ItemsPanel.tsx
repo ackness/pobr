@@ -23,9 +23,12 @@ import {
 import { bindT, slotLabel, type Lang } from '../../lib/i18n';
 import { shownLines } from '../../lib/continuedLines';
 import { upgradeT } from '../../lib/upgradeText';
+import { tradeAnalysisText } from '../../lib/tradeAnalysisText';
+import { useHeadlineDamage } from '../../hooks/useMainMinion';
 import { applyEquippedAugmentLimits, planReplacementAugments } from '../../lib/replacementAugments';
-import { previewDiff, type DiffEntry } from '../../lib/compare';
-import { DiffList } from '../shared/DiffList';
+import type { DisplayStatValue } from '../../api/types';
+import { SwapGainCard } from './SwapGainCard';
+import { ItemContribution } from './ItemContribution';
 import { CopyButton } from '../shared/CopyButton';
 import { NoteEditor } from '../shared/NoteEditor';
 import { AppSelect, type AppSelectOption } from '../shared/AppSelect';
@@ -54,13 +57,15 @@ function ItemRow({
   actions,
   hover,
   children,
+  source,
 }: {
   text: string;
   name: string;
   lang: Lang;
   /** Preview handlers; event props add no attributes to the markup. */
-  hover?: { onEnter: () => void; onLeave: () => void };
+  hover?: { onEnter: (event: { currentTarget: Element }) => void; onLeave: () => void };
   slotTag?: string;
+  source?: string;
   open: boolean;
   onToggle: () => void;
   actions?: ReactNode;
@@ -78,6 +83,7 @@ function ItemRow({
         </AppButton>
         <span className="item-actions" role="group" aria-label={bindT(lang)('lib.actions')}>{actions}</span>
       </header>
+      {source && <p className="library-source">{source}</p>}
       {open && (
         <div className="library-row-body">
           <ItemDisplay text={text} lang={lang} />
@@ -380,11 +386,10 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
         <WeaponSetControl session={session} lang={lang} />
         <AppButton aria-expanded={crafting} onClick={() => { setCrafting(value => !value); setUniques(false); }}>{craftT(lang, crafting ? 'close' : 'craft')}</AppButton>
         <AppButton aria-expanded={uniques} onClick={() => { setUniques(value => !value); setCrafting(false); }}>{uniqueT(lang, uniques ? 'close' : 'title')}</AppButton>
-        {onUpgrade && <AppButton onClick={() => onUpgrade(selected && !isLimbSlot(selected) ? selected : "weapon1")}>{tt("trade.findBetter")}</AppButton>}
       </PageHeader>
       <p className="weapon-set-hint">{tt('weapons.hint')}</p>
-      {uniques && <UniqueCatalog session={session} lang={lang} />}
-      {crafting && <ItemCrafter session={session} lang={lang} />}
+      {uniques && <UniqueCatalog selectedSlot={selected} session={session} lang={lang} />}
+      {crafting && <ItemCrafter selectedSlot={selected} session={session} lang={lang} />}
       <div className="items-workspace">
       <article className="items-equipped items-doll">
       <PaperDoll slot={(id) => slotButton(id, isUtilitySlot(id) ? id : undefined)} utilitySlots={UTILITY_SLOTS} limbSlots={LIMB_SLOTS}
@@ -423,6 +428,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
               />
             )}
             <span className="item-actions">
+              {onUpgrade && !isLimbSlot(selected) && <AppButton onClick={() => onUpgrade(selected)}>{tradeAnalysisText(lang, 'findBetter')}</AppButton>}
               {!editing && (
                 <AppButton disabled={session.busy} onClick={() => setEditing(true)}>
                   {selectedText ? tt('items.edit') : tt('items.add')}
@@ -452,6 +458,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
               )}
             </span>
           </header>
+          {selectedText && <ItemContribution session={session} slot={selected} lang={lang} />}
           {craftingItem?.slot === selected && craftingItem.text === selectedText && craftingDraft?.base && (
             <EquippedItemCrafter key={`${selected}:${selectedText}`} draft={craftingDraft} session={session} lang={lang} />
           )}
@@ -608,13 +615,15 @@ function LibrarySection({
   selectedSlot: string | null;
   onEquip: (text: string) => void;
 }) {
+  const damage = useHeadlineDamage(session.calc, lang);
   const tt = bindT(lang);
   const [comparison, setComparison] = useState<{ id: string; slot: string;
-    source: BuildSession['currentRequest']; diffs: DiffEntry[]; error?: string } | null>(null);
+    source: BuildSession['currentRequest']; before: DisplayStatValue[]; after: DisplayStatValue[]; error?: string } | null>(null);
   const diffFor = comparison?.slot === selectedSlot && comparison.source === session.currentRequest ? comparison : null;
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [slotOnly, setSlotOnly] = useState(true);
+  const [buildOnly, setBuildOnly] = useState(false);
   const all = session.library.items.filter((i) => i.kind === 'item');
   // 显示名「名称·基底」一批送翻译（中文界面搜索可同时命中中英文名与基底名）。
   const names = useItemDisplayNames(
@@ -623,6 +632,7 @@ function LibrarySection({
   );
   const q = query.trim().toLowerCase();
   const items = all.filter((entry, i) => {
+    if (buildOnly && (!entry.sourceBuild || entry.sourceBuild.id !== session.workspace?.activeBuild)) return false;
     // 勾选「只看当前槽位」时，未记录槽位的旧库条目一并隐藏（槽位未知≠槽位匹配）。
     if (
       slotOnly &&
@@ -636,9 +646,6 @@ function LibrarySection({
       entry.text.toLowerCase().includes(q) || (names[i] ?? '').toLowerCase().includes(q)
     );
   });
-  if (all.length === 0) {
-    return <p className="items-hint">{tt('lib.empty')}</p>;
-  }
 
   const canUse = (entry: LibraryItem) => Boolean(selectedSlot && entry.slot && slotFamily(entry.slot) === slotFamily(selectedSlot));
   /** The current build with `entry` in the selected slot. */
@@ -656,10 +663,11 @@ function LibrarySection({
     if (!candidate || !selectedSlot || !session.calc || !canUse(entry)) return;
     const origin = { id: entry.id, slot: selectedSlot, source: session.currentRequest };
     try {
-      const diffs = await previewDiff(candidate, session.calc);
-      setComparison({ ...origin, diffs });
+      const before = session.calc.stats;
+      const next = await (await getBackend()).calculateBuild(candidate);
+      setComparison({ ...origin, before, after: next.stats });
     } catch (error) {
-      setComparison({ ...origin, diffs: [], error: formatApiError(error) });
+      setComparison({ ...origin, before: [], after: [], error: formatApiError(error) });
     }
   };
 
@@ -669,6 +677,7 @@ function LibrarySection({
     setComparison(null);
   };
 
+  if (all.length === 0) return <p className="items-hint">{tt('lib.empty')}</p>;
   return (
     <>
       <div className="library-toolbar" role="group" aria-label={tt('lib.title')}>
@@ -680,6 +689,8 @@ function LibrarySection({
           onChange={(e) => setQuery(e.target.value)}
           aria-label={tt('lib.search')}
         />
+        <label className="library-slot-filter"><AppInput type="checkbox" aria-label={tt('lib.thisBuild')} checked={buildOnly}
+          onChange={event => setBuildOnly(event.target.checked)} />{tt('lib.thisBuild')}</label>
         {selectedSlot && (
           <label className="library-slot-filter">
             <AppInput
@@ -699,9 +710,10 @@ function LibrarySection({
           text={entry.text}
           name={names[all.indexOf(entry)] ?? entry.name}
           lang={lang}
+          source={entry.sourceBuild ? tt('lib.sourceBuild').replace('{name}', session.workspace?.builds.find(build => build.id === entry.sourceBuild?.id)?.name || entry.sourceBuild.name || tt('lib.unnamedBuild')) : tt('lib.sourceUnknown')}
           slotTag={entry.slot ? slotLabel(lang, entry.slot) : undefined}
           hover={preview && selectedSlot && canUse(entry) ? {
-            onEnter: () => preview.show({ key: `${selectedSlot}:${entry.id}`, label: `${slotLabel(lang, selectedSlot)} ← ${names[all.indexOf(entry)] ?? entry.name}`, request: () => withEntry(entry) }),
+            onEnter: event => preview.show({ key: `${selectedSlot}:${entry.id}`, label: `${slotLabel(lang, selectedSlot)} ← ${names[all.indexOf(entry)] ?? entry.name}`, request: () => withEntry(entry) }, event.currentTarget),
             onLeave: preview.clear,
           } : undefined}
           open={expandedId === entry.id}
@@ -739,7 +751,7 @@ function LibrarySection({
         >
           {diffFor?.id === entry.id && (
             <div className="library-diff">
-              {diffFor.error ? <p className="calc-error" role="alert">{diffFor.error}</p> : <DiffList diffs={diffFor.diffs} lang={lang} />}
+              {diffFor.error ? <p className="calc-error" role="alert">{diffFor.error}</p> : <SwapGainCard before={diffFor.before} after={diffFor.after} lang={lang} damage={damage} />}
             </div>
           )}
         </ItemRow>

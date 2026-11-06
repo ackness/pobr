@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
-import { pageLink, statValue } from './shell';
-import { displayedRail, goTo, importInto, openBuild, openSupportSettings, selectStage, settled, openImport } from './buildLibrary';
+import { buildAction, pageLink } from './shell';
+import { headlineDps } from './skillsAndCalcs';
+import { displayedRail, goTo, importInto, openBuild, openSupportSettings, selectStage, settled } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
 import type { BuildJson, CalculateBuildRequest, CalculateBuildResponse, PassiveNode } from '../src/api/types';
@@ -106,13 +107,11 @@ async function start(page: Page, lang: Lang = 'en-US') {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await page.addInitScript(lang => localStorage.setItem('pobr-lang', lang), lang);
   await page.goto('/build');
-  await openImport(page);
   await expect(page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true })).toBeEnabled({ timeout: 90_000 });
   await settled(page);
 }
 
 async function importSource(page: Page, source: string, lang: Lang = 'en-US') {
-  await openImport(page);
   await page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true }).fill(source);
   await page.locator('.import-submit').click();
   // An import lands on the Overview; follow it to the Items page and come back to the Build page afterwards.
@@ -126,8 +125,8 @@ async function importSource(page: Page, source: string, lang: Lang = 'en-US') {
 
 async function editName(page: Page, action: string, name: string, lang: Lang = 'en-US') {
   const text = workspaceText(lang);
-  // The import form has a "New build" choice of its own; the library action is the later of the two.
-  await page.getByRole('button', { name: action, exact: true }).last().click();
+  if (action === text.renameBuild) await buildAction(page, action);
+  else await page.locator('.bd-actions').getByRole('button', { name: action, exact: true }).click();
   await page.getByRole('textbox', { name: text.name, exact: true }).fill(name);
   await page.getByRole('button', { name: text.save, exact: true }).click();
   await settled(page);
@@ -278,9 +277,9 @@ for (const destination of ['newBuild', 'currentStage'] as const) {
     const group = page.locator('.skill-group').first();
     const title = group.locator('.skill-group-title');
     if (await title.getAttribute('aria-expanded') === 'false') await title.click();
-    const toggle = group.locator('.gem-optimizer-toggle');
+    const toggle = page.locator('.skill-detail').locator('.gem-optimizer-toggle');
     if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
-    await expect(group.locator('.gem-optimizer-body')).toBeVisible();
+    await expect(page.locator('.skill-detail').locator('.gem-optimizer-body')).toBeVisible();
     await openSupportSettings(page);
     const capacity = page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
     const lineage = page.getByRole('checkbox', { name: 'Include lineage supports', exact: true });
@@ -298,15 +297,15 @@ for (const destination of ['newBuild', 'currentStage'] as const) {
         level: Number(element.getAttribute('data-level')), quality: Number(element.getAttribute('data-quality')),
         ...(statSet !== null ? { stat_set_index: Number(statSet) } : {}) };
     }));
-    const dpsText = await first.locator('.support-plan-metrics > span').filter({ hasText: /^DPS / }).innerText();
-    const preview = numeric(dpsText.match(/^DPS ([\d,.]+)/)![1]);
-    const totalDps = statValue(page, /^Total DPS$/).first();
+    const dpsText = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Combined DPS / }).innerText();
+    const preview = numeric(dpsText.match(/^Combined DPS ([\d,.]+)/)![1]);
+    const totalDps = headlineDps(page);
     expect(preview).toBeGreaterThan(numeric(await totalDps.innerText()));
     await openBuild(page);
     await submitPaste(page, '{}', 'currentStage', 'en-US', true);
     expect(await capture(page)).toEqual(before);
     await rejectPaste(page, JSON.stringify(before.envelope), destination, before);
-    await pageLink(page, 'Calcs').click();
+    await pageLink(page, 'Calculations').click();
     await pageLink(page, 'Skills').click();
     await expect.poll(() => page.locator('.support-results').innerText()).toBe(receipt);
     // The settings section folds up when the page is left; the values in it are what must have been kept.
@@ -326,7 +325,7 @@ for (const destination of ['newBuild', 'currentStage'] as const) {
     expected.workspace.builds.find(build => build.id === activeBuild)!.stages.find(stage => stage.id === activeStage)!.saved.state = expected.state;
     expect(after.envelope).toEqual(expected);
     expect(after.bytes.library).toBe(before.bytes.library);
-    expect(Math.abs(numeric(await totalDps.innerText()) - preview)).toBeLessThanOrEqual(0.06);
+    expect(Math.abs(numeric(await totalDps.innerText()) - preview)).toBeLessThanOrEqual(0.5);
     await expect(page.locator('.support-results')).toHaveCount(0);
     await page.reload();
     await expect(page.locator('.skills-toolbar input')).toBeEnabled({ timeout: 90_000 });

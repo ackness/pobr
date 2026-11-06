@@ -3,7 +3,6 @@ import { bdLibraryButton, openItemsAfterImport } from './shell';
 import { answerConfirm } from './confirmDialog';
 import { choose, goTo } from './skillsAndCalcs';
 import { deflateSync } from 'node:zlib';
-import { openImport } from './buildLibrary';
 
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));
 
@@ -109,12 +108,11 @@ test('class changes in both entry points can be cancelled without clearing a bui
 });
 
 test('config drafts commit on Enter and reset restores imported values in the saved request', async ({ page }) => {
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(importedCode);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible();
-  await goTo(page, 'Config');
+  await goTo(page, 'Configuration');
   const search = page.getByRole('searchbox', { name: 'Search config options…' });
   await search.fill('enemyLevel');
   const level = page.locator('#config-enemyLevel');
@@ -147,7 +145,7 @@ test('config drafts commit on Enter and reset restores imported values in the sa
   await page.locator('.search-empty').getByRole('button', { name: 'All', exact: true }).click();
   await expect(search).toHaveValue('');
   await expect(page.locator('.config-section').first()).toBeVisible();
-  await goTo(page, 'Calcs');
+  await goTo(page, 'Calculations');
   await page.locator('.calcs-search').fill('no-such-stat-123');
   await expect(page.locator('.search-empty')).toBeVisible();
   await page.getByRole('button', { name: 'Clear search', exact: true }).click();

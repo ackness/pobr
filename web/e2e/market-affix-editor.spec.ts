@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { lifeValue, settledText } from './upgradesPage';
-import { openImport } from './buildLibrary';
 
 test('manual affix tiers respect item level and recalculate a whole item before application', async ({ page }) => {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
@@ -16,7 +15,6 @@ test('manual affix tiers respect item level and recalculate a whole item before 
   } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticAffixFixture');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -30,12 +28,13 @@ test('manual affix tiers respect item level and recalculate a whole item before 
   // Ring 2 ranks higher; an explicit Ring 1 choice must survive editing and recalculation.
   await page.locator('.replacement-position').filter({ hasText: /^Ring 1/ }).click();
   const editor = page.locator('.replacement-affix-editor');
-  await editor.locator('summary').click();
+  if (!(await editor.evaluate(element => (element as HTMLDetailsElement).open))) await editor.locator(':scope > summary').click();
+  await expect(editor).toHaveAttribute('open', '');
   await expect(editor.locator('[data-affix-id="equipment:IncreasedLife6"]')).toBeVisible();
   await expect(editor.locator('.affix-editor-meta')).toContainText('Prefixes 1 / 3');
-  await editor.locator('.affix-editor-row').getByRole('button', { name: 'Replace affix', exact: true }).click();
-  await editor.getByRole('searchbox', { name: 'Search affixes' }).fill('to maximum Life');
-  await editor.getByRole('combobox', { name: 'Choose an affix and tier', exact: true }).click();
+  await editor.locator('.affix-editor-row').getByRole('button', { name: 'Replace modifier', exact: true }).click();
+  await editor.getByRole('searchbox', { name: 'Search modifiers' }).fill('to maximum Life');
+  await editor.getByRole('combobox', { name: 'Choose a modifier and tier', exact: true }).click();
   await expect(page.getByRole('option', { name: /\+119 to maximum Life/ })).toHaveCount(0);
   await page.getByRole('option', { name: /\+99 to maximum Life/ }).click();
   await expect(editor.locator('.affix-editor-preview')).toContainText('+92 to maximum Life');
@@ -46,8 +45,9 @@ test('manual affix tiers respect item level and recalculate a whole item before 
   await expect(input).toHaveValue(/\+92 to maximum Life/);
   await expect(page.getByRole('button', { name: 'Apply to build · Ring 1', exact: true })).toBeEnabled();
   await expect(life).toHaveText(before);
-  const expectedLife = await page.locator('.upgrade-replacement-result tbody tr').filter({ hasText: /^Life(?=[0-9\s])/ }).locator('td').nth(1).innerText();
-  await editor.locator('summary').click();
+  const expectedLife = await page.locator('.swap-gain-card [data-stat="Life"] .swap-after').innerText();
+  if (!(await editor.evaluate(element => (element as HTMLDetailsElement).open))) await editor.locator(':scope > summary').click();
+  await expect(editor).toHaveAttribute('open', '');
   await page.setViewportSize({ width: 320, height: 900 });
   await page.addStyleTag({ content: 'html { scrollbar-gutter: stable; }' });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

@@ -43,6 +43,8 @@ export type GameNameRequest =
   | { kind: 'passive'; id: string; name: string }
   /** A line the item classifier or the item format marks as the base type. */
   | { kind: 'base'; name: string }
+  /** Whole class name selected from a language-pack alias, never modifier prose. */
+  | { kind: 'itemClass'; name: string }
   /** A minion: its game MonsterVarieties Id (the WASM `monster_variety_id`) and English name. Only the
    * `MonsterVarieties.Name` scope names it, the first along the game-text chain that has the record (in
    * the shown script, origin kept); without a record it stays English (no text path). */
@@ -113,6 +115,14 @@ export class NativeNameIndex {
     if (request.kind === 'passive') {
       const text = scopedName(catalog.scopes['PassiveSkills.Name'], request.id, request.name);
       return typeof text === 'string' ? { text, origin: scopeOrigin(catalog, 'PassiveSkills.Name', [request.id]) } : text;
+    }
+    if (request.kind === 'itemClass') {
+      const key = request.name.replace(/\s/g, '').toLowerCase();
+      const matches = Object.entries(catalog.scopes['ItemClasses.Name'] ?? {}).filter(([, [english]]) =>
+        english?.replace(/\s/g, '').toLowerCase() === key);
+      if (!matches.length) return undefined;
+      const texts = new Set(matches.map(([, pair]) => pair[1]));
+      return texts.size === 1 && matches[0][1][1] ? { text: matches[0][1][1], origin: scopeOrigin(catalog, 'ItemClasses.Name', matches.map(([id]) => id)) } : null;
     }
     const scope = catalog.scopes['BaseItemTypes.Name'];
     if (!scope) return undefined;

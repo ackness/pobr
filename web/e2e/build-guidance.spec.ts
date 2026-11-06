@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
 import { nav, pageLink } from './shell';
-import { openImport } from './buildLibrary';
 
 test('historical references stay hidden: no page for them and no reference data is ever requested', async ({ page }) => {
   const referenceRequests: string[] = [];
@@ -8,7 +7,6 @@ test('historical references stay hidden: no page for them and no reference data 
     if (request.url().includes('/build-references/')) referenceRequests.push(request.url());
   });
   await page.goto('/build');
-  await openImport(page);
   await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({ timeout: 90_000 });
   await expect(pageLink(page, 'Build references')).toHaveCount(0);
   await expect(nav(page).getByRole('link', { name: /reference/i })).toHaveCount(0);

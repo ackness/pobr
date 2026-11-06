@@ -1,7 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { readFileSync } from 'node:fs';
-import { openImport } from './buildLibrary';
 
 const script = readFileSync(new URL('../public/userscripts/pobr-market-copy.user.js', import.meta.url), 'utf8');
 const id = 'a'.repeat(64), otherId = 'b'.repeat(64);
@@ -185,7 +184,6 @@ test('text copied from a market response reaches real WASM replacement compariso
     skills: [{ baseType: 'Fireball', support: false, properties: [{ type: 5, values: [['16', 0]] }] }],
   } }));
   await page.goto('/build');
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticUserscriptFixture');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -198,7 +196,7 @@ test('text copied from a market response reaches real WASM replacement compariso
   await expect(page.locator('.replacement-parsed')).toContainText('Required level 60');
   await expect(page.locator('.replacement-affix')).toHaveCount(3);
   await expect(page.locator('.replacement-unsupported')).toHaveCount(0);
-  await expect(page.locator('.upgrade-replacement-result')).toContainText('DPS decreases after this replacement');
+  await expect(page.locator('.upgrade-replacement-result')).toContainText('Combined DPS decreases after this replacement');
   await expect(page.locator('.replacement-copy-links a').first()).toHaveAttribute('href', '/userscripts/pobr-market-copy.user.js');
   const popup = page.waitForEvent('popup');
   await page.locator('.replacement-copy-links a').last().click();

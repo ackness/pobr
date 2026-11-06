@@ -1,18 +1,24 @@
+import { UnincludedModifiers } from '../shared/UnincludedModifiers';
+import { SwapGainCard } from '../items/SwapGainCard';
+import { formatNumber } from '../../lib/statDisplay';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
 import { usePreview } from '../shared/PreviewContext';
 import { changesFromRecords } from '../../app/preview/fromRecords';
 import { words } from '../../app/text';
+import { itemNameLabel } from '../../lib/itemCrafting';
 import { craftT } from '../../lib/itemCraftingText';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CalculateBuildRequest } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { useLocalizedLines } from '../../hooks/useLocalizedLines';
+import { useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
 import { isContinuation } from '../../lib/continuedLines';
 import { compareReplacementPositions, pasteNotStarted, replacementAffixes, type ReplacementReport } from '../../lib/itemReplacement';
 import { compareObjectiveStats, feasibleOf, type Objective } from '../../lib/optimize';
 import type { TradeCatalog } from '../../lib/tradeOptimizer';
 import { slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
+import { useHeadlineDamage } from '../../hooks/useMainMinion';
+import type { DamageHeadline } from '../../lib/mainMinion';
 import { upgradeT } from '../../lib/upgradeText';
 import type { AugmentSelection } from '../../lib/replacementAugments';
 import { ReplacementAugmentPicker } from './ReplacementAugmentPicker';
@@ -34,14 +40,18 @@ interface ComparisonSnapshot {
 }
 
 /** One visible clipboard flow; choosing a destination never mutates the build. */
-export function ItemReplacementCheck({ session, lang, active, objective, catalog, jewelSockets, goalLabel, onEditGoal, initialItemText, candidate, socketLabel }: {
+export function ItemReplacementCheck({ session, lang, active, objective, catalog, jewelSockets, goalLabel, onEditGoal, initialItemText, candidate, socketLabel, actionClassName = 'trade-primary', damage: providedDamage }: {
   session: BuildSession; lang: Lang; active: boolean; objective: Objective; catalog: TradeCatalog | null; jewelSockets: number[];
   goalLabel: string; onEditGoal: () => void;
   socketLabel?: (id: number) => string;
   initialItemText?: string;
   candidate?: { kind: 'item' | 'jewel' };
+  actionClassName?: 'trade-primary' | 'trade-secondary';
+  damage?: DamageHeadline;
 }) {
   const ut = (key: Parameters<typeof upgradeT>[1]) => upgradeT(lang, key);
+  const defaultDamage = useHeadlineDamage(session.calc, lang);
+  const damage = providedDamage ?? defaultDamage;
   const [saved, setSaved] = useState(false);
   const [text, setText] = useState(initialItemText ?? '');
   const [snapshot, setSnapshot] = useState<ComparisonSnapshot | null>(null);
@@ -79,14 +89,18 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   const recommended = report && best && !best.unsupported.length && !best.augments.limitWarning && feasibleOf(best.stats, objective)
     && compareObjectiveStats(best.stats, report.baseline, objective) < 0 ? best.slot : undefined;
   const affixes = replacementAffixes(selected?.lines ?? report?.lines ?? []);
-  const translated = useLocalizedLines([report?.base.name ?? '', ...affixes.map(line => line.text)], lang);
-  const nameLine = report?.lines.find(line => line.kind === 'name')?.text;
+  const originalName = report?.lines.find(line => line.kind === 'name')?.text ?? '';
+  const baseNames = useLocalizedNames(report ? [{ kind: 'base', name: report.base.name }] : [], lang);
+  const name = useLocalizedLines([originalName], lang);
+  const baseName = report ? itemNameLabel(report.base.name, baseNames[0], lang) : '';
+  const translated = useLocalizedLines(['', ...affixes.map(line => line.text)], lang);
+  const nameLine = originalName && originalName !== report?.base.name ? itemNameLabel(originalName, name[0], lang) : baseName;
   const requiredLevel = Math.max(report?.requiredLevel ?? 0, ...(selected?.augments.runes.map(name =>
     selected.augments.info.options.find(option => option.name === name)?.required_level ?? 0) ?? []));
   const selectedItem = selected?.variant.set_items?.length === 1 ? selected.variant.set_items[0] : undefined;
   const alreadyAdded = !!report && !!selectedItem && equipmentCandidates.some(candidate =>
     candidate.itemId === report.text && candidate.slot === selectedItem.slot && candidate.text === selectedItem.text);
-  const format = (value: number) => value.toLocaleString(lang, { maximumFractionDigits: 2 });
+  const format = (value: number) => formatNumber(value);
   const deltaText = (value: number) => `${value > 0 ? '+' : ''}${format(value)}`;
   const positionLabel = (slot: string) => slot.startsWith('Jewel@') ? socketLabel?.(Number(slot.slice(6))) ?? ut('jewelPosition') : slotLabel(lang, slot);
   const errorText = useCallback((message: string) => ({
@@ -173,7 +187,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
       session.setItems([...session.items.filter(item => !replacements.some(row => row.slot === item.slot)), ...replacements]);
     }
     else return;
-    setApplied({ slot: selected.slot, name: nameLine || translated[0] || report.base.name,
+    setApplied({ slot: selected.slot, name: nameLine || baseName,
       text: itemText, weaponSet: session.activeWeaponSet });
     stop(); setSnapshot(null); setChosenSlot(null); setAffixDirty(false);
   };
@@ -181,7 +195,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     if (!active || !latest.current.active || busy || affixDirty || session.busy || !report || !selectedItem || !receiptCurrent() || alreadyAdded
       || equipmentCandidates.length >= EQUIPMENT_CANDIDATE_LIMIT) return;
     const candidate = { id: String(++candidateSequence.current), itemId: report.text,
-      label: nameLine || translated[0] || report.base.name, slot: selectedItem.slot, text: selectedItem.text };
+      label: nameLine || baseName, slot: selectedItem.slot, text: selectedItem.text };
     setEquipmentCandidates(current => [...current, candidate]);
   };
   const candidateText = selected?.variant.set_items?.find(item => item.slot === selected.slot)?.text
@@ -196,8 +210,8 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
         onChange={event => { if (candidate || !latest.current.active) return; stop(); setApplied(null); setSnapshot(null); setChosenSlot(null); setAffixDirty(false); setAugmentPlans({}); setText(event.target.value); }}
         onPaste={event => { if (candidate || !latest.current.active) return; const copied = event.clipboardData.getData('text/plain'); if (!copied) return;
           event.preventDefault(); stop(); setApplied(null); setSnapshot(null); setAugmentPlans({}); setChosenSlot(null); setAffixDirty(false); setText(copied); setPendingPaste({ input: copied }); }} />
-      <div className="replacement-actions"><AppButton className="trade-primary" disabled={!active || busy || affixDirty || session.busy || !catalog || !text.trim()} onClick={() => void run(text, augmentPlans, chosenSlot ?? undefined)}>
-        {busy ? ut('comparingPositions') : ut('compare')}</AppButton>
+      <div className="replacement-actions"><AppButton className={`replacement-compare ${actionClassName}`} disabled={!active || busy || affixDirty || session.busy || !catalog || !text.trim()} onClick={() => void run(text, augmentPlans, chosenSlot ?? undefined)}>
+        {busy ? ut('comparingPositions') : candidate ? craftT(lang, 'compareEquipped') : ut('compare')}</AppButton>
         {busy && <AppButton onClick={stop}>{ut('cancelCompare')}</AppButton>}
         {!candidate && <span>{ut('autoPositions')}</span>}</div>
       {!candidate && <p className="replacement-copy-links"><a href="/userscripts/pobr-market-copy.user.js" target="_blank" rel="noreferrer">{ut('copyScript')}</a>
@@ -213,8 +227,8 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     {report && selected && <div className="replacement-content" aria-busy={busy}>
       <div className="replacement-candidate">
       <aside className="replacement-parsed" aria-label={ut('parsedItem')}>
-        <span className="trade-section-label">{ut('parsedItem')}</span><h4>{nameLine || translated[0]}</h4>
-        <p>{translated[0]} · {ut('requiredLevel')} {requiredLevel}</p>
+        <span className="trade-section-label">{ut('parsedItem')}</span><h4>{nameLine || baseName}</h4>
+        <p>{baseName} · {ut('requiredLevel')} {requiredLevel}</p>
         <div className="replacement-affixes"><span className="replacement-affix-count">{ut('parsedAffixes')} · {affixes.length}</span>
           {affixes.map((line, index) => isContinuation(line.text, translated[index + 1]) ? null : <div key={index} className={`replacement-affix replacement-affix--${line.kind}`}>
             <span>{translated[index + 1] ?? line.text}</span>{line.tier !== undefined ? <small>T{line.tier}</small> : line.kind !== 'explicit' && <small>{ut(line.kind === 'rune' ? 'affixRune' : line.kind === 'enchant' ? 'affixEnchant' : 'affixImplicit')}</small>}
@@ -234,33 +248,24 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
       <div className="upgrade-replacement-result" aria-live="polite">
         <div className="replacement-destinations" role="group" aria-label={ut('chooseReplacement')}>
           {positions.map(row => <AppButton key={row.slot} disabled={busy} className="replacement-position" aria-pressed={selected.slot === row.slot} onClick={() => { setChosenSlot(row.slot); setSaved(false); }}
-            onMouseEnter={preview ? () => preview.showChanges(`${positionLabel(row.slot)} ← ${ut('replacementOutcome')}`, changesFromRecords(report.baseline, row.stats)) : undefined}
-            onMouseLeave={preview?.clear} onFocus={preview ? () => preview.showChanges(`${positionLabel(row.slot)} ← ${ut('replacementOutcome')}`, changesFromRecords(report.baseline, row.stats)) : undefined} onBlur={preview?.clear}>
+            onMouseEnter={preview ? event => preview.showChanges(`${positionLabel(row.slot)} ← ${ut('replacementOutcome')}`, changesFromRecords(report.baseline, row.stats), event.currentTarget) : undefined}
+            onMouseLeave={preview?.clear} onFocus={preview ? event => preview.showChanges(`${positionLabel(row.slot)} ← ${ut('replacementOutcome')}`, changesFromRecords(report.baseline, row.stats), event.currentTarget) : undefined} onBlur={preview?.clear}>
             <strong>{positionLabel(row.slot)}</strong>{recommended === row.slot && <span className="replacement-recommended">{ut('recommendedPosition')}</span>}
-            <span className={(row.stats.TotalDPS ?? 0) < (report.baseline.TotalDPS ?? 0) ? 'delta-neg' : ''}>DPS {deltaText((row.stats.TotalDPS ?? 0) - (report.baseline.TotalDPS ?? 0))}</span>
-            <span className={(row.stats.TotalEHP ?? 0) < (report.baseline.TotalEHP ?? 0) ? 'delta-neg' : ''}>EHP {deltaText((row.stats.TotalEHP ?? 0) - (report.baseline.TotalEHP ?? 0))}</span>
+            <span className={(row.stats[damage.stat] ?? 0) < (report.baseline[damage.stat] ?? 0) ? 'delta-neg' : ''}>{damage.label} {deltaText((row.stats[damage.stat] ?? 0) - (report.baseline[damage.stat] ?? 0))}</span>
+            <span className={(row.stats.TotalEHP ?? 0) < (report.baseline.TotalEHP ?? 0) ? 'delta-neg' : ''}>{statNameLabel(lang, 'TotalEHP')} {deltaText((row.stats.TotalEHP ?? 0) - (report.baseline.TotalEHP ?? 0))}</span>
           </AppButton>)}
         </div>
         <div className="replacement-verdict"><span className="trade-section-label">{ut('replacementOutcome')}</span>
         <strong className={selected.unsupported.length || selected.augments.limitWarning ? '' : compareObjectiveStats(selected.stats, report.baseline, objective) < 0 ? 'delta-pos' : 'delta-neg'}>
           {selected.augments.limitWarning ? ut('augmentUnverified') : selected.unsupported.length ? ut('partialReplacement') : ut(compareObjectiveStats(selected.stats, report.baseline, objective) < 0 ? 'better' : 'worse')}</strong>
-        {(selected.stats.TotalDPS ?? 0) < (report.baseline.TotalDPS ?? 0) && <p className="delta-neg">{ut('dpsDrop')}</p>}
+        {(selected.stats[damage.stat] ?? 0) < (report.baseline[damage.stat] ?? 0) && <p className="delta-neg">{words(lang, '{stat} decreases after this replacement', '替换后{stat}降低', '替換後{stat}降低').replace('{stat}', damage.label)}</p>}
         {!feasibleOf(selected.stats, objective) && <p className="delta-neg">{ut('constraintFail')}</p>}
         </div>
-        <div className="replacement-metrics">{['TotalDPS', 'TotalEHP'].map(stat => {
-          const before = report.baseline[stat] ?? 0, after = selected.stats[stat] ?? 0, delta = after - before;
-          return <div className="replacement-metric" key={stat}><span>{statNameLabel(lang, stat)}</span>
-            <strong className={delta < 0 ? 'delta-neg' : delta > 0 ? 'delta-pos' : ''}>{before > 0 ? `${deltaText(delta / before * 100)}%` : deltaText(delta)}</strong>
-            <span>{format(before)} <span aria-hidden>→</span> <b>{format(after)}</b></span></div>;
-        })}</div>
-        <div className="replacement-table-wrap"><table><thead><tr><th>{positionLabel(selected.slot)}</th><th>{ut('before')}</th><th>{ut('after')}</th><th>{ut('change')}</th></tr></thead><tbody>
-          {['TotalDPS', 'TotalEHP', 'Life', 'FireResist', 'ColdResist', 'LightningResist', 'ChaosResist'].map(stat => {
-            const before = report.baseline[stat] ?? 0, after = selected.stats[stat] ?? 0, delta = after - before;
-            return <tr key={stat}><th>{statNameLabel(lang, stat)}</th><td>{format(before)}</td><td>{format(after)}</td><td className={delta < 0 ? 'delta-neg' : delta > 0 ? 'delta-pos' : ''}>{deltaText(delta)}</td></tr>;
-          })}</tbody></table></div>
-        {!!selected.unsupported.length && <details className="trade-notice replacement-unsupported"><summary>{ut('incomplete')} ({selected.unsupported.length})</summary><ul>{selected.unsupported.map((line, index) => <li key={index}>{line}</li>)}</ul></details>}
+        <SwapGainCard before={Object.entries(report.baseline).map(([id, value]) => ({ id, value }))}
+          after={Object.entries(selected.stats).map(([id, value]) => ({ id, value }))} lang={lang} damage={damage} />
+        {!!selected.unsupported.length && <details className="trade-notice replacement-unsupported"><summary>{ut('incomplete')} ({selected.unsupported.length})</summary><UnincludedModifiers lines={selected.unsupported} lang={lang} /></details>}
         {!!report.rejected.length && <p className="trade-notice">{report.rejected.map(row => `${positionLabel(row.slot)}: ${errorText(row.reason)}`).join('\n')}</p>}
-        <div className="replacement-apply"><AppButton className="trade-primary" disabled={!active || busy || affixDirty || session.busy} onClick={apply}>{busy ? ut('comparingPositions') : `${ut('apply')} · ${positionLabel(selected.slot)}`}</AppButton><span>{affixDirty ? affixT(lang, 'dirty') : ut('applyHint')}</span></div>
+        <div className="replacement-apply"><AppButton className={actionClassName} disabled={!active || busy || affixDirty || session.busy} onClick={apply}>{busy ? ut('comparingPositions') : `${ut('apply')} · ${positionLabel(selected.slot)}`}</AppButton><span>{affixDirty ? affixT(lang, 'dirty') : ut('applyHint')}</span></div>
         {!candidate && selectedItem && <div className="replacement-actions"><AppButton disabled={!active || busy || affixDirty || session.busy || alreadyAdded || equipmentCandidates.length >= EQUIPMENT_CANDIDATE_LIMIT}
           onClick={addCandidate}>{ut(alreadyAdded ? 'jointAdded' : 'jointAdd')}</AppButton>
           <span>{equipmentCandidates.length} / {EQUIPMENT_CANDIDATE_LIMIT}</span></div>}
@@ -268,7 +273,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     </div>}
     {!candidate && <details className="equipment-fold" open={equipmentCandidates.length > 0}>
       <summary><span>{ut('jointEquipment')}</span><small>{equipmentCandidates.length} / {EQUIPMENT_CANDIDATE_LIMIT}</small></summary>
-      <EquipmentPlanner session={session} lang={lang} active={active} objective={objective} catalog={catalog} candidates={equipmentCandidates}
+      <EquipmentPlanner session={session} lang={lang} active={active} objective={objective} catalog={catalog} candidates={equipmentCandidates} actionClassName={actionClassName} damage={damage}
         onRemove={id => setEquipmentCandidates(current => current.filter(candidate => candidate.id !== id))} /></details>}
   </section>;
 }

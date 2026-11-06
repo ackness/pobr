@@ -7,7 +7,6 @@ import { expect, test } from '@playwright/test';
 import { bdLibraryButton } from './shell';
 import { goTo, importAndOpen } from './skillsAndCalcs';
 import { EXTENDED } from './tags';
-import { openImport } from './buildLibrary';
 
 const BREAKPOINTS = [320, 768, 1024, 1440, 1920, 2560, 3440] as const;
 // 2560 and 3440 are also covered by the populated workflow and `functional pages fit 3440px`; 1024 sits between
@@ -18,7 +17,6 @@ for (const width of BREAKPOINTS) {
   test(`no horizontal overflow at ${width}px`, DEFAULT_BREAKPOINTS.includes(width) ? {} : EXTENDED, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/build');
-    await openImport(page);
     await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({
       timeout: 90_000,
     });
@@ -31,12 +29,12 @@ for (const width of BREAKPOINTS) {
     await page.keyboard.press('Escape');
     await expect(source).toHaveCount(0);
     for (const [tab, selector] of [
-      ['Build', '.bd'], ['Overview', '.ov'], ['Items', '.paper-doll'], ['Skills', '.skills-toolbar'],
-      ['Calcs', '.calcs-page'], ['Config', '.config-section-header'], ['Tree', '.tree-canvas svg'], ['Upgrades', '.trade-page'],
+      ['Build library', '.bd'], ['Overview', '.ov'], ['Items', '.paper-doll'], ['Skills', '.skills-toolbar'],
+      ['Calculations', '.calcs-page'], ['Configuration', '.config-section-header'], ['Tree', '.tree-canvas svg'], ['Upgrades', '.trade-page'],
       ['Compare', '.compare-panel'],
     ]) {
       // The build library is a button beside the page links, not a page link.
-      if (tab === 'Build') await bdLibraryButton(page).click();
+      if (tab === 'Build library') await bdLibraryButton(page).click();
       else await goTo(page, tab);
       await expect(page.locator(selector).first()).toBeVisible();
       const overflow = await page.evaluate(() => ({
@@ -47,7 +45,7 @@ for (const width of BREAKPOINTS) {
       expect(overflow.main, `${tab}: main content must not overflow horizontally`).toBeLessThanOrEqual(1);
       // The build library and the Overview without a build are reading columns of their own width, and the
       // tree fills the viewport by design.
-      if (width >= 1920 && !['Tree', 'Build', 'Overview'].includes(tab)) {
+      if (width >= 1920 && !['Tree', 'Build library', 'Overview'].includes(tab)) {
         const bounds = await page.locator('.ui-page:visible, .compare-panel:visible').first().boundingBox();
         expect(bounds!.width, `${tab}: use the available wide workspace`).toBeGreaterThan(1400);
       }
@@ -69,7 +67,6 @@ for (const width of BREAKPOINTS) {
 test('replacement header fits a narrow screen with classic scrollbar space', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 900 });
   await page.goto('/build');
-  await openImport(page);
   await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({ timeout: 90_000 });
   await goTo(page, 'Upgrades');
   await expect(page.locator('.replacement-heading')).toBeVisible();
@@ -94,11 +91,11 @@ for (const width of [390, 1440, 2560]) {
     await page.setViewportSize({ width, height: 1000 });
     await importAndOpen(page, readFileSync('../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', 'utf8'));
     await expect(page.locator('.paper-doll')).toBeVisible();
-    for (const tab of ['Build', 'Overview', 'Items', 'Skills', 'Tree', 'Calcs', 'Config', 'Upgrades', 'Compare']) {
-      if (tab === 'Build') await bdLibraryButton(page).click();
+    for (const tab of ['Build library', 'Overview', 'Items', 'Skills', 'Tree', 'Calculations', 'Configuration', 'Upgrades', 'Compare']) {
+      if (tab === 'Build library') await bdLibraryButton(page).click();
       else await goTo(page, tab);
       if (tab === 'Items') await page.getByRole('button', { name: 'Body Armour', exact: true }).click();
-      if (tab === 'Calcs') await expect(page.locator('.calcs-metric-row').first()).toBeVisible();
+      if (tab === 'Calculations') await expect(page.locator('.calcs-metric-row').first()).toBeVisible();
       if (tab === 'Skills') await page.locator('.skill-group-title').nth(4).click();
       if (width >= 1920 && tab === 'Skills') {
         // On a wide page the selected skill's detail sits beside the list instead of under it.
@@ -117,7 +114,7 @@ for (const width of [390, 1440, 2560]) {
       const overflow = await page.locator('main').evaluate(element => element.scrollWidth - element.clientWidth);
       expect(overflow, `${tab} populated at ${width}`).toBeLessThanOrEqual(1);
       await page.screenshot({ path: `e2e/screenshots/layout-${process.env.LAYOUT_REVIEW_PHASE ?? 'after'}-${tab.toLowerCase()}-${width}.png` });
-      if (tab === 'Calcs') {
+      if (tab === 'Calculations') {
         // The skill overview is another view of the same page.
         await page.getByRole('tab', { name: 'Skill metrics', exact: true }).click();
         await expect(page.locator('.skill-metrics-row').first()).toBeVisible();

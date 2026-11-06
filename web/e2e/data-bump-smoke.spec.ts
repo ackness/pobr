@@ -104,8 +104,8 @@ test('after a data bump: import, skills and supports, crafting, passives, save a
   await expect(crafter.locator('.item-crafter-base')).not.toBeEmpty();
   await crafter.getByRole('button', { name: 'Create draft', exact: true }).click();
   const editor = crafter.locator('.replacement-affix-editor');
-  await editor.locator('summary').click();
-  await editor.getByRole('combobox', { name: 'Choose an affix and tier', exact: true }).click();
+  await expect(editor).toHaveAttribute('open', '');
+  await editor.getByRole('combobox', { name: 'Choose a modifier and tier', exact: true }).click();
   expect(await page.getByRole('option').count()).toBeGreaterThan(0);
   await page.keyboard.press('Escape');
   await settled(page);

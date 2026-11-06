@@ -18,7 +18,7 @@ test('unsupported line prefixes are localized and the raw text is untouched', ()
 
 test('known reason codes get labels and unknown ones stay raw', () => {
   expect(ledgerReasonLabel('unknown_mod_name', 'en-US')).toBe('Unknown modifier name');
-  expect(ledgerReasonLabel('unknown_mod_name', 'zh-CN')).toBe('未知的词条名称');
+  expect(ledgerReasonLabel('unknown_mod_name', 'zh-CN')).toBe('未知的词缀名称');
   expect(ledgerReasonLabel('quality-applicability: Foo', 'zh-TW')).toBe('品質加成不適用');
   expect(ledgerReasonLabel('mod_type (part of the entry)', 'en-US')).toBe('Modifier type is not supported (whole entry skipped)');
   for (const code of ['unextractable', 'scalar', 'missing_mod_type', 'mod_type', 'tag', 'flags', 'keyword_flags', 'skill_data_key', 'skill_flag', 'kind']) {

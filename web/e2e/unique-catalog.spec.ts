@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { lifeValue, settledText } from './upgradesPage';
-import { openImport } from './buildLibrary';
 
 test('find a unique by modifier, choose a variant and rolls, then save and equip its preview', async ({ page }, testInfo) => {
   await page.route('**/api/import/wegame', route => route.fulfill({ json: {
@@ -13,7 +12,6 @@ test('find a unique by modifier, choose a variant and rolls, then save and equip
   } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticUniqueFixture');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -27,8 +25,7 @@ test('find a unique by modifier, choose a variant and rolls, then save and equip
   await page.getByRole('option', { name: 'Amulet', exact: true }).click();
   await catalogue.getByRole('combobox', { name: 'Equipment slot', exact: true }).click();
   await page.getByRole('option', { name: 'Amulet', exact: true }).click();
-  await catalogue.getByRole('combobox', { name: 'Choose a unique', exact: true }).click();
-  await page.getByRole('option', { name: /^Astramentis/ }).click();
+  await catalogue.getByRole('button', { name: /^Astramentis/ }).click();
   await expect(catalogue).toContainText('Rolls default to the midpoint');
   await catalogue.getByRole('combobox', { name: 'Variant', exact: true }).click();
   await page.getByRole('option', { name: 'Pre 0.2.0', exact: true }).click();
@@ -41,7 +38,7 @@ test('find a unique by modifier, choose a variant and rolls, then save and equip
   await expect(text).toHaveValue(/\+100 to all Attributes/);
   await expect(catalogue.getByRole('button', { name: 'Apply to build · Amulet', exact: true })).toBeVisible();
   await expect(life).toHaveText(before);
-  const expectedLife = await catalogue.locator('.upgrade-replacement-result tbody tr').filter({ hasText: /^Life(?=[0-9\s])/ }).locator('td').nth(1).innerText();
+  const expectedLife = await catalogue.locator('.swap-gain-card [data-stat="Life"] .swap-after').innerText();
   await catalogue.getByRole('button', { name: 'Save to item library', exact: true }).click();
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-library')!).items.at(-1));
   expect(saved).toMatchObject({ kind: 'item', slot: 'amulet' });

@@ -29,3 +29,16 @@ test('only completed improving references appear; zero baseline never yields inf
   const ranked = rankUpgradePositions({ missing: {}, error: { error: 'Unavailable' }, empty }, objective);
   expect(ranked).toHaveLength(1); expect(ranked[0].gainPercent).toBeUndefined(); expect(Number.isFinite(ranked[0].gain)).toBe(true);
 });
+
+test('balanced percentage is independent of the selected objective and Combined DPS differs from hit DPS', () => {
+  const row = result({ TotalDPS: 110, CombinedDPS: 180.6, Life: 600, TotalEHP: 1000 });
+  row.weights!.baseline.CombinedDPS = 100;
+  const ranked = rankUpgradePositions({ ring: row }, { stat: 'Life', constraints: [] });
+  expect(ranked[0].gainPercent).toBeCloseTo(20);
+  expect(ranked[0].balancedPercent).toBeCloseTo(34.3875, 3);
+  expect(ranked[0].dpsPercent).toBeCloseTo(80.6);
+  expect(ranked[0].ehpPercent).toBe(0);
+  const minion = rankUpgradePositions({ ring: row }, { stat: 'Life', constraints: [] }, 'MainMinionDPS');
+  expect(minion[0].dpsPercent).toBeUndefined();
+  expect(minion[0].balancedPercent).toBeUndefined();
+});

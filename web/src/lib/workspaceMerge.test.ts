@@ -218,3 +218,16 @@ describe('merging the saved library of items and skill sets', () => {
     expect(merged.items.map(item => item.id)).toEqual(['b', 'a']);
   });
 });
+
+it('another tab saving a stage retains the newly recorded baseline', () => {
+  const saved = session(30);
+  const base = createWorkspace(saved);
+  const mine = structuredClone(base);
+  mine.builds[0].baseline = { saved: structuredClone(saved), recordedAt: 1000 };
+  const theirs = structuredClone(base);
+  theirs.builds[0].stages[0].saved.notes = 'Other tab';
+  const merged = mergeWorkspaces(base, mine, theirs).workspace;
+  expect(merged.builds[0].baseline).toEqual(mine.builds[0].baseline);
+  expect(merged.builds[0].stages[0].saved.notes).toBe('Other tab');
+  expect(mergeWorkspaces(base, theirs, mine).workspace.builds[0].baseline).toEqual(mine.builds[0].baseline);
+});

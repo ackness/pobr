@@ -1,3 +1,4 @@
+import { waitForPageTransition } from './navigation';
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import type { PassiveNode } from '../src/api/types';
@@ -26,6 +27,7 @@ async function openComparison(page: Page, workspace: BuildWorkspace) {
   await expect(busy(page)).toHaveCount(0);
   const original = await snapshot(page);
   await pageLink(page, 'Compare').click();
+  await waitForPageTransition(page);
   await choose(page, compareStageA(page), 'Spark / Starter');
   await choose(page, compareStageB(page), 'Spark / Target');
   // Only the open section is mounted, so open the tree overlay explicitly.

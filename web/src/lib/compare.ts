@@ -3,6 +3,7 @@
  * PoB2 的装备对比 / 天赋点收益提示都用这一个原语。
  */
 
+import { skillFormName } from './skillNames';
 import { hasPosition, isAttributeNode } from './treeGeometry';
 import { classStartSkill } from './passiveGraph';
 import { STAT_SECTIONS, formatStatValue, type StatFormat, type Lang } from './statDisplay';
@@ -51,7 +52,7 @@ export function isPercentageStat(format: StatFormat | undefined): boolean {
 }
 
 /** Unknown, explicit null and unbounded results remain unavailable. */
-export function compareStats(before: DisplayStatValue[], after: DisplayStatValue[]): StatComparison[] {
+export function compareStats(before: readonly Pick<DisplayStatValue, 'id' | 'value'>[], after: readonly Pick<DisplayStatValue, 'id' | 'value'>[]): StatComparison[] {
   const a = new Map(before.map(stat => [stat.id, stat.value]));
   const b = new Map(after.map(stat => [stat.id, stat.value]));
   return [...new Set([...a.keys(), ...b.keys()])].map(id => {
@@ -278,6 +279,16 @@ export function nearestCompareStage<T extends { buildId: string; stageId: string
   return stages[index - 1] ?? stages[index + 1];
 }
 
+/** Stage order is the saved before/after order; never infer chronology from names. */
+export function defaultCompareSides<T extends { buildId: string; stageId: string }>(entries: T[], activeId: string | undefined, baseline?: T): { a?: T; b?: T } {
+  const current = entries.find(entry => entry.stageId === activeId) ?? entries[0];
+  if (!current) return {};
+  if (baseline) return { a: baseline, b: current };
+  const stages = entries.filter(entry => entry.buildId === current.buildId);
+  const index = stages.indexOf(current);
+  return index > 0 ? { a: stages[index - 1], b: current } : { a: current, b: stages[index + 1] };
+}
+
 /** Empty B is not a removal action. Explicit false and zero config values are copyable. */
 export function hasComparisonSource(b: StageState, section: CopySection): boolean {
   switch (section.kind) {
@@ -296,5 +307,6 @@ export function comparisonGemForm(gem: SocketGroupInput['gems'][number], other: 
   const index = gem.stat_set_index ?? 1;
   if (index === 1 && (!other || other.skill_id !== gem.skill_id || (other.stat_set_index ?? 1) === 1)) return null;
   const forms = catalog.get(gem.skill_id)?.effect_forms?.find(effect => effect.skill_id === effectId)?.stat_sets;
-  return forms?.find(form => form.index === index)?.label || `${t(lang, 'compare.form')} ${index}`;
+  const form = forms?.find(form => form.index === index);
+  return form?.label ? skillFormName(form.label, form.id, lang, catalog) : `${t(lang, 'compare.form')} ${index}`;
 }

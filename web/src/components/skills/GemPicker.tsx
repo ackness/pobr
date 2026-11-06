@@ -5,7 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { GemCatalogEntry } from '../../api/types';
 import { bindT, type Lang } from '../../lib/i18n';
 import { gemTagLabels, gemTagMatches } from '../../lib/gemTags';
-import { gemDisplayName } from '../../lib/skillNames';
+import { normalizeGemName, gemDisplayName } from '../../lib/skillNames';
 export { gemDisplayName } from '../../lib/skillNames';
 
 /** 宝石颜色 → 语义 CSS 变量（tokens.css）。 */
@@ -15,7 +15,7 @@ const COLOUR_VAR: Record<string, string> = {
   int: 'color-mana',
 };
 
-type ColourFilter = 'all' | 'str' | 'dex' | 'int';
+export type ColourFilter = 'all' | 'str' | 'dex' | 'int';
 
 interface Props {
   entries: GemCatalogEntry[];
@@ -29,6 +29,24 @@ interface Props {
  * 自定义宝石选择器：应用同风格下拉面板（非系统 datalist），
  * 中英文子串搜索 + 颜色分类筛选 + 键盘导航（↑↓/Enter/Esc）。
  */
+export function rankGemResults(entries: GemCatalogEntry[], query: string, colour: ColourFilter, lang: Lang): GemCatalogEntry[] {
+  const searchText = (text: string) => normalizeGemName(text).toLocaleLowerCase(lang).replace(/\s/g, '');
+  const q = searchText(query.trim());
+  const rank = (gem: GemCatalogEntry) => {
+    const chineseNames = [gem.name_zh_cn, gem.name_zh_tw].filter((name): name is string => Boolean(name)).map(searchText);
+    if (!q || chineseNames.some(name => name.startsWith(q))) return 0;
+    if (chineseNames.some(name => name.includes(q))) return 1;
+    if (searchText(gem.name).includes(q)) return 2;
+    return gemTagMatches(gem.tags, query.trim()) ? 3 : 4;
+  };
+  return [...new Map(entries.map(gem => [gem.skill_id, gem])).values()]
+    // The catalog has no socketability field or base ID. SkillGemUnique* bases
+    // expose Unique* effect IDs. Hide them only here; imports still use the full catalog.
+    .filter(gem => !gem.skill_id.startsWith('Unique'))
+    .filter(gem => (colour === 'all' || gem.colour === colour) && rank(gem) < 4)
+    .sort((a, b) => rank(a) - rank(b) || gemDisplayName(a, lang).localeCompare(gemDisplayName(b, lang), lang) || a.skill_id.localeCompare(b.skill_id));
+}
+
 export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Props) {
   const tt = bindT(lang);
   const active = usePanelActive();
@@ -52,23 +70,9 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
     return () => document.removeEventListener('pointerdown', onDown);
   }, [open]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return entries
-      .filter((e) => colour === 'all' || e.colour === colour)
-      .filter(
-        (e) =>
-          q === '' ||
-          e.name.toLowerCase().includes(q) ||
-          (e.name_zh_tw ?? '').includes(query.trim()) ||
-          (e.name_zh_cn ?? '').includes(query.trim()) ||
-          // 标签也参与搜索：输入 "projectile" / "投射物" 可筛出该类技能。
-          gemTagMatches(e.tags, query.trim()),
-      )
-      .slice(0, 200);
-  }, [entries, query, colour]);
+  const filtered = useMemo(() => rankGemResults(entries, query, colour, lang), [entries, query, colour, lang]);
 
-  useEffect(() => setHighlight(0), [query, colour, open]);
+  useEffect(() => setHighlight(0), [query, colour, open, entries]);
   useEffect(() => { if (disabled || !active) setOpen(false); }, [disabled, active]);
 
   const pick = (entry: GemCatalogEntry) => {
@@ -138,7 +142,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
                 {chip.label}
               </AppButton>
             ))}
-            <span className="gem-picker-count">{filtered.length}</span>
+            <span className="gem-picker-count">{tt('picker.resultCount').replace('{count}', String(filtered.length))}</span>
           </div>
           {filtered.length === 0 && <p className="gem-picker-empty" role="status">{tt('picker.noResults')}</p>}
           <ul className="gem-picker-list" role="listbox" ref={listRef} id={listId} aria-label={placeholder}>
@@ -160,6 +164,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
                   onClick={() => pick(entry)}
                 >
                   <span
+                    role="img" aria-label={entry.colour && ['str', 'dex', 'int'].includes(entry.colour) ? tt(`tree.attr.${entry.colour}`) : tt('picker.colour')}
                     className="gem-dot"
                     style={{
                       background: entry.colour ? `var(--${COLOUR_VAR[entry.colour]})` : 'var(--text-muted)',

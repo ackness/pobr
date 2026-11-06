@@ -3,7 +3,6 @@ import { deflateSync, inflateSync } from 'node:zlib';
 import { bdLibraryButton } from './shell';
 import { answerConfirm } from './confirmDialog';
 import { choose, goTo, importBuild, shareCode } from './skillsAndCalcs';
-import { openImport } from './buildLibrary';
 
 const code = deflateSync(`<PathOfBuilding2><Build level="30" className="Witch" mainSocketGroup="2"/>
 <Tree activeSpec="1"><Spec title="Mapping" nodes="" treeVersion="0_5"/><Spec title="Boss" nodes="" treeVersion="0_5"/></Tree>
@@ -34,7 +33,7 @@ test('skill sets keep their main group and weapon bindings across copy, edits, s
   if (await groups.first().locator('.skill-group-title').getAttribute('aria-expanded') !== 'true') {
     await groups.first().locator('.skill-group-title').click();
   }
-  const level = groups.first().getByRole('spinbutton', { name: 'Level', exact: true });
+  const level = page.locator('.skill-detail').getByRole('spinbutton', { name: 'Level', exact: true });
   await expect(level).toBeEnabled();
   await level.fill('12');
   await expect(selector).toBeEnabled();
@@ -63,8 +62,6 @@ test('skill sets keep their main group and weapon bindings across copy, edits, s
   expect(xml).toContain('set2="false"');
   expect(xml).toContain('name="futureConfig" string="keep"');
   expect(xml.match(/label="Keep label"/g)).toHaveLength(2);
-  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill(exported);
   await page.locator('.import-submit').click();
   await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });

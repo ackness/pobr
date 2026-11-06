@@ -1,6 +1,9 @@
-import { describe, expect, test } from 'vitest';
-import { feasibleOf, rankVariants, scoreOf } from './optimize';
+import { describe, expect, test, vi } from 'vitest';
+import { evaluateVariants, feasibleOf, rankVariants, scoreOf } from './optimize';
 import type { VariantStats } from '../api/types';
+
+const backend = vi.hoisted(() => ({ optimizeVariants: vi.fn() }));
+vi.mock('../api/backend', () => ({ getBackend: async () => backend }));
 
 describe('scoreOf / feasibleOf', () => {
   test('plain objective reads the stat', () => {
@@ -40,4 +43,18 @@ describe('rankVariants', () => {
     );
     expect(ranked.map((r) => r.index)).toEqual([3, 0, 1, 2]);
   });
+});
+
+
+test('default evaluation requests CombinedDPS for replacement headlines in both baseline and candidate results', async () => {
+  backend.optimizeVariants.mockImplementation(async ({ stats }: { stats: string[] }) => ({
+    baseline: stats.includes('CombinedDPS') ? { CombinedDPS: 150 } : {},
+    variants: [{ index: 0, stats: stats.includes('CombinedDPS') ? { CombinedDPS: 200 } : {}, error: null }],
+  }));
+  const result = await evaluateVariants({ request: {}, variants: [{ label: 'Replacement', set_items: [{ slot: 'ring1', text: 'Candidate' }] }] });
+  expect(backend.optimizeVariants).toHaveBeenCalledWith(expect.objectContaining({
+    stats: expect.arrayContaining(['CombinedDPS', 'MainMinionDPS', 'TotalDPS', 'TotalEHP', 'Life']), include_baseline: true,
+  }));
+  expect(result.baseline.CombinedDPS).toBe(150);
+  expect(result.results[0].stats.CombinedDPS).toBe(200);
 });

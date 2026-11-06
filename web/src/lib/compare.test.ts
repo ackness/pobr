@@ -275,3 +275,27 @@ test.each([['en-US', 'Form'], ['zh-CN', '形态'], ['zh-TW', '形態']] as const
     expect(comparisonGemForm(b, a, new Map(), lang)).toBe(`${label} 3`);
   },
 );
+
+import { defaultCompareSides } from './compare';
+
+describe('before/after default selection', () => {
+  const stages = [{ buildId: 'one', stageId: 'early' }, { buildId: 'one', stageId: 'late' }, { buildId: 'two', stageId: 'other' }];
+  test('puts a recorded baseline before the current stage', () => {
+    const baseline = { buildId: 'one', stageId: 'baseline' };
+    expect(defaultCompareSides(stages, 'late', baseline)).toEqual({ a: baseline, b: stages[1] });
+  });
+  test('puts the earlier stage before the later stage from either active selection', () => {
+    for (const id of ['early', 'late']) expect(defaultCompareSides(stages, id)).toEqual({ a: stages[0], b: stages[1] });
+    expect(defaultCompareSides(stages, 'other')).toEqual({ a: stages[2], b: undefined });
+  });
+});
+
+test('comparison form names use the same localized labels as the skill editor', () => {
+  const gem = { skill_id: 'BonestormPlayer', level: 20, quality: 0, stat_set_index: 2 };
+  const catalog = new Map([[gem.skill_id, { name: 'Bonestorm', effect_forms: [{ skill_id: gem.skill_id, stat_sets: [
+    { id: gem.skill_id, index: 1, label: 'Projectile', stage: null },
+    { id: 'BonestormExplosionPlayer', index: 2, label: 'Explosion', stage: null },
+  ] }] } as GemCatalogEntry]]);
+  expect(comparisonGemForm(gem, undefined, catalog, 'zh-CN')).toBe('爆炸');
+  expect(comparisonGemForm(gem, undefined, catalog, 'zh-TW')).toBe('爆炸');
+});

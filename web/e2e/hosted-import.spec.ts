@@ -1,10 +1,11 @@
+import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
-import { loadoutSelect, openBuild, openExport, openLoadouts, openImport } from './buildLibrary';
+import { loadoutSelect, openBuild, openExport, openLoadouts } from './buildLibrary';
 import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 
-const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Calculation skill', exact: true });
+const mainSkill = (page: Page) => page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
 const code = readFileSync(new URL('../worker-tests/fixtures/build-code.txt', import.meta.url), 'utf8').trim();
 
 test('hosted import keeps selection and loadouts through editing and export; failures preserve the build', async ({ page }, testInfo) => {
@@ -18,11 +19,10 @@ test('hosted import keeps selection and loadouts through editing and export; fai
   });
   await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://pobb.in/Fixture_42');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
   await expect(mainSkill(page)).toContainText('Fireball');
   const saved = () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));
   expect((await saved()).state.socketGroups[0].main_active_skill).toBe(2);
@@ -42,20 +42,17 @@ test('hosted import keeps selection and loadouts through editing and export; fai
   expect(xml.match(/<SkillSet\b/g)).toHaveLength(2);
   expect(xml.match(/<ItemSet\b/g)).toHaveLength(2);
   expect(xml).toContain('Edited hosted build');
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill(exportedCode);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
   await expect(mainSkill(page)).toContainText('Fireball');
   await openBuild(page);
   const before = (await saved()).state;
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://pobb.in/missing');
   await page.locator('.import-submit').click();
   await expect(page.locator('.shell-alert')).toContainText('not found');
   expect((await saved()).state).toEqual(before);
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://poe.ninja/poe2/builds/league/character/account/name');
   await page.locator('.import-submit').click();
   await expect(page.locator('.shell-alert')).toContainText('not supported yet');

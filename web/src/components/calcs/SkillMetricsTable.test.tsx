@@ -19,6 +19,20 @@ const row = (skill_id: string, index = 0): SkillMetricsEntry => ({ group_index: 
 const gem = (skill_id: string, tags: string[]): GemCatalogEntry => ({ skill_id, tags, name: skill_id,
   active_effect_ids: [skill_id], is_support: false, is_lineage: false, colour: null, name_zh_cn: null, name_zh_tw: null });
 
+test('skill metrics use the same damage, rate and cost precision as the results panel', () => {
+  harness.catalog = new Map();
+  const report: SkillMetricsResponse = { item_errors: [], skills: [{ ...row('Fireball'), metrics: {
+    ...metrics, combined_dps: 12345.678, average_hit: -12345.678, action_rate: 2, mana_cost: 20.83, life_cost: 1.83,
+  } }] };
+  const session = { socketGroups: [{ enabled: true, gems: [] }], calcParams: {} } as unknown as BuildSession;
+  const html = renderToStaticMarkup(<SkillMetricsTable session={session} lang="zh-CN" report={report} displayed={report} />);
+  expect(html).toContain('<td class="mod-value">12,346</td>');
+  expect(html).toContain('<td class="mod-value">-12,346</td>');
+  expect(html).toContain('<td class="mod-value">2.00</td>');
+  expect(html).toContain('<td class="mod-value">21</td>');
+  expect(html).toContain('<td class="mod-value">2</td>');
+});
+
 test('zero damage is not enough to label a skill non-damaging, and secondary effects do not borrow the host tags', () => {
   const catalog = new Map([['Curse', gem('Curse', ['Spell', 'AppliesCurse'])],
     ['Fireball', gem('Fireball', ['Spell', 'Damage', 'Projectile'])],
@@ -40,7 +54,7 @@ test('overview deduplicates limitations, keeps errors in collapsed details and p
     calcParams: {}, stateVersion: 7, inspectSkill } as unknown as BuildSession;
   harness.clicks = [];
   const html = renderToStaticMarkup(<SkillMetricsTable session={session} lang="en-US" report={report} displayed={report} />);
-  expect(html.match(/Shared limitation/g)).toHaveLength(1);
+  expect(html.match(/<span>Shared limitation<\/span>/g)).toHaveLength(1);
   expect(html).toContain('<details><summary>Details</summary><p>Cannot resolve effect EnemyExplode</p></details>');
   expect(html).toContain('Not supported yet');
   expect(html).not.toContain('<details open');
@@ -60,8 +74,8 @@ test('overview deduplicates limitations, keeps errors in collapsed details and p
 
 test.each([
   ['en-US', 'Spark (Group 1, effect 1)', 'Spark (Group 2, effect 1)', 'Spark (Group 2, effect 2)'],
-  ['zh-CN', 'Spark（技能组 1，效果 1）', 'Spark（技能组 2，效果 1）', 'Spark（技能组 2，效果 2）'],
-  ['zh-TW', 'Spark（技能組 1，效果 1）', 'Spark（技能組 2，效果 1）', 'Spark（技能組 2，效果 2）'],
+  ['zh-CN', 'Spark（未翻译）（技能组 1，效果 1）', 'Spark（未翻译）（技能组 2，效果 1）', 'Spark（未翻译）（技能组 2，效果 2）'],
+  ['zh-TW', 'Spark（尚未翻譯）（技能組 1，效果 1）', 'Spark（尚未翻譯）（技能組 2，效果 1）', 'Spark（尚未翻譯）（技能組 2，效果 2）'],
 ] as const)('duplicate skills have distinct localized button names and inspect the exact instance in %s', (lang, ...labels) => {
   harness.catalog = new Map([['Spark', gem('Spark', ['Spell', 'Damage'])], ['Fireball', gem('Fireball', ['Spell', 'Damage'])]]);
   const report: SkillMetricsResponse = { item_errors: [], skills: [
@@ -74,7 +88,7 @@ test.each([
   harness.clicks = [];
   const html = renderToStaticMarkup(<SkillMetricsTable session={session} lang={lang} report={report} displayed={report} />);
   const buttons = [...html.matchAll(/<button[^>]*>([^<]*)<\/button>/g)];
-  expect(buttons.map(button => button[1])).toEqual([...labels, 'Fireball']);
+  expect(buttons.map(button => button[1])).toEqual([...labels, lang === 'en-US' ? 'Fireball' : `Fireball${lang === 'zh-CN' ? '（未翻译）' : '（尚未翻譯）'}`]);
   expect(new Set(buttons.map(button => button[1])).size).toBe(4);
   expect(buttons[2][0]).toContain('aria-pressed="true"');
   for (let index = 0; index < 3; index++) harness.clicks[index]({ stopPropagation: vi.fn() } as never);
@@ -95,7 +109,7 @@ test('a summoning skill shows its minion\'s damage only when it is the calculate
   expect(wolf).toContain('<td class="mod-value">5,307</td>');
   expect(zombie).toContain('Make it the calculated skill to see their damage.');
   // Its own zero damage and average hit are not figures; costs and speed still are.
-  expect(zombie).toContain('<td class="mod-value">—</td><td class="mod-value">—</td><td class="mod-value">1</td>');
+  expect(zombie).toContain('<td class="mod-value">—</td><td class="mod-value">—</td><td class="mod-value">1.00</td>');
 });
 
 test('a damaging summoner still shows its minion, and the highest-DPS mark compares the shown values', () => {
@@ -111,6 +125,8 @@ test('a damaging summoner still shows its minion, and the highest-DPS mark compa
   const [unearth, fireball] = html.split('<tr class="skill-metrics-row').slice(1);
   expect(unearth).toContain('minion hit DPS, one minion');
   expect(unearth).toContain('<td class="mod-value">5,307</td>');
-  expect(unearth).toContain('Highest DPS');
-  expect(fireball).not.toContain('Highest DPS');
+  expect(html).toContain('Combined DPS / Minion hit DPS');
+  expect(unearth).toContain('Highest minion hit DPS');
+  expect(unearth).not.toContain('Highest Combined DPS');
+  expect(fireball).not.toContain('Highest');
 });

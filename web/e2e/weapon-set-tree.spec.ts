@@ -5,7 +5,6 @@ import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import type { PassiveNode } from '../src/api/types';
 import type { SavedSession } from '../src/hooks/useBuildSession';
-import { openImport } from './buildLibrary';
 
 const version = readFileSync(new URL('../../data/CURRENT', import.meta.url), 'utf8').trim();
 const nodes: PassiveNode[] = JSON.parse(readFileSync(new URL(`../../data/${version}/base/passive_tree.json`, import.meta.url), 'utf8'));
@@ -32,11 +31,10 @@ async function idle(page: Page) {
 }
 async function importCode(page: Page, source: string) {
   await page.locator('.shell-builds-button').click();
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(source);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
   await idle(page);
 }
 async function allocate(page: Page, node: PassiveNode) {
@@ -62,7 +60,6 @@ test('set allocation, previews, promotion and export preserve the inactive tree'
   // calculations all run the shipped WASM and current game data.
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await page.goto('/build');
-  await openImport(page);
   await expect(page.getByRole('textbox', { name: 'Build code', exact: true })).toBeVisible({ timeout: 90_000 });
   await importCode(page, code);
   await nav(page, 'Tree').click();

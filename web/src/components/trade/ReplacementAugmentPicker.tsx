@@ -65,7 +65,7 @@ export function ReplacementAugmentPicker({ plan, level, lang, disabled, onChange
     </>}
     {plan.addedSockets > 0 && <p className="replacement-augment-assumption">+{plan.addedSockets} · {ut('augmentAdded')}</p>}
     {plan.source === 'inherited' && <p className="replacement-augment-note">{ut('augmentSimulation')}</p>}
-    {!!plan.skipped.length && <p className="replacement-augment-assumption">{ut('augmentSkipped')}: {plan.skipped.join(', ')}</p>}
+    {!!plan.skipped.length && <p className="replacement-augment-assumption">{ut('augmentSkipped')}{lang === 'en-US' ? ': ' : '：'}{plan.skipped.join(', ')}</p>}
     {plan.limitWarning && <p className="replacement-augment-assumption">{ut('augmentLimitUnknown')}</p>}
   </section>;
 }

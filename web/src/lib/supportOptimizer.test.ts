@@ -1,12 +1,13 @@
 import { expect, test, vi } from 'vitest';
-import type { CalculateBuildRequest, GemInput, SocketGroupInput } from '../api/types';
+import type { CalculateBuildRequest, GemInput, MinionOutput, SocketGroupInput } from '../api/types';
 import type { EvaluateOptions } from './optimize';
-import { applySupportPlan, eligibleSupports, lineageAvailable, optimizeSupports, sameSupportFamily, supportSetCompatible, supportSetsCompatible, supportVariant,
+import { resolveDamageObjective } from './mainMinion';
+import { applySupportPlan, eligibleSupports, lineageAvailable, optimizeSupports, sameSupportFamily, supportPickerStatus, supportSetCompatible, supportSetsCompatible, supportVariant,
   type SupportMetadata } from './supportOptimizer';
 
 // Canned engine decisions for the synthetic search fixtures. Rule semantics and
 // fixed-point ordering are tested in Rust; these tests exercise search policy.
-const engine = vi.hoisted(() => ({ judge: vi.fn(async (groups: SocketGroupInput[]) => groups.map(group => {
+const engine = vi.hoisted(() => ({ optimize: vi.fn(), judge: vi.fn(async (groups: SocketGroupInput[]) => groups.map(group => {
   const ids = group.gems.map(gem => gem.skill_id);
   if (group.source && ids.includes('GemOnly')) return false;
   if (ids.includes('NeedsMinion') && !ids.some(id => ['AddsMinion', 'Enabler'].includes(id))) return false;
@@ -14,7 +15,7 @@ const engine = vi.hoisted(() => ({ judge: vi.fn(async (groups: SocketGroupInput[
   if (ids.includes('MinionWithoutArea') && (!ids.includes('AddsMinion') || ids.includes('AddsArea'))) return false;
   return true;
 })) }));
-vi.mock('../api/backend', () => ({ getBackend: async () => ({ supportGroupsCompatible: engine.judge }) }));
+vi.mock('../api/backend', () => ({ getBackend: async () => ({ supportGroupsCompatible: engine.judge, optimizeVariants: engine.optimize }) }));
 
 const gem = (id: string, extra: Partial<SupportMetadata> = {}): SupportMetadata => ({
   skill_id: id, name: id, family: id, max_level: 1, level_requirements: [0], is_support: true,
@@ -26,6 +27,28 @@ const active = gem('Fireball', { is_support: false, skill_types: ['Spell', 'Proj
 const input = (id: string): GemInput => ({ skill_id: id, level: 1, quality: 0 });
 const group = (ids: string[] = []): SocketGroupInput => ({ enabled: true, gems: [input('Fireball'), ...ids.map(input)] });
 const objective = { stat: 'TotalDPS', constraints: [] };
+
+test('the resolved summoner goal ranks a minion-only support gain above player damage', async () => {
+  const request = { character: { level: 100 }, socket_groups: [group()] };
+  const objective = resolveDamageObjective({ stat: 'TotalDPS', constraints: [] }, {
+    main_minion_index: 1, minions: [{ index: 1 } as MinionOutput],
+  });
+  const evaluate = async ({ variants }: EvaluateOptions) => {
+    const baseline = { TotalDPS: 10, CombinedDPS: 10, MainMinionDPS: 100, TotalEHP: 1000 };
+    return { baseline, aborted: false, results: variants.map((variant, index) => {
+      const ids = variant.socket_groups?.[0].gems.map(gem => gem.skill_id) ?? [];
+      return { index, label: null, error: null, stats: { ...baseline,
+        TotalDPS: ids.includes('PlayerBoost') ? 1000 : 10,
+        CombinedDPS: ids.includes('PlayerBoost') ? 1000 : 10,
+        MainMinionDPS: ids.includes('MinionBoost') ? 150 : 100,
+      } };
+    }) };
+  };
+  const result = await optimizeSupports({ request, groupIndex: 0, catalog: [active, gem('MinionBoost'), gem('PlayerBoost')],
+    capacity: 1, objective, evaluate });
+  expect(result.plans[0].supports.map(gem => gem.skill_id)).toEqual(['MinionBoost']);
+  expect(result.plans[0].stats).toMatchObject({ MainMinionDPS: 150, TotalDPS: 10, CombinedDPS: 10 });
+});
 
 test('automatic pool includes conditional pairs but rejects wrong types, level and unknown metadata', async () => {
   const adds = gem('AddsMinion', { add_skill_types: ['Minion'] });
@@ -368,4 +391,51 @@ test('rejected removals and replacements record full evaluated sets with equippe
   expect(replacement.unsupported).toEqual(['Synthetic set limit: Old+New']);
   expect(result.plans).toEqual([]);
   expect(request).toEqual(original);
+});
+
+test('an unresolved imported gem does not poison the compatibility check for the recognised trigger group', async () => {
+  const unresolved = { skill_id: '', name_spec: "Atziri's Communion", level: 0, quality: 0 };
+  const trigger = gem('Trigger', { is_support: false, skill_types: ['Meta'] });
+  const original: SocketGroupInput = { ...group(), main_active_skill: 2, gems: [input('Trigger'), unresolved, input('Fireball')] };
+  const catalog = [active, trigger, gem('New')];
+  expect(await supportSetCompatible(original, [input('New')], catalog)).toBe(true);
+  expect(engine.judge).toHaveBeenLastCalledWith([{ ...original, gems: [input('Trigger'), input('Fireball'), input('New')] }]);
+  const variant = supportVariant({ socket_groups: [original] }, 0, [input('New')], catalog);
+  expect(variant.socket_groups![0].gems).toEqual([...original.gems, input('New')]);
+  expect(variant.socket_groups![0].main_active_skill).toBe(2);
+  expect(original.gems[1]).toBe(unresolved);
+});
+
+
+test('manual picker distinguishes unknown compatibility, no candidates, loading and full sockets', () => {
+  const catalog = [active, gem('New')];
+  expect(supportPickerStatus(group(), catalog, undefined)).toMatchObject({ status: 'loading', remaining: 5 });
+  expect(supportPickerStatus(group(), catalog, 0)).toMatchObject({ status: 'empty', remaining: 5 });
+  expect(supportPickerStatus(group(), catalog, 2)).toMatchObject({ status: 'ready', remaining: 5 });
+  expect(supportPickerStatus(group(), catalog, 0, true)).toMatchObject({ status: 'error' });
+  expect(supportPickerStatus({ enabled: true, gems: [input('Unknown')] }, catalog, 0)).toMatchObject({ status: 'unknown', partial: true });
+  expect(supportPickerStatus(group(Array(5).fill('New')), catalog, undefined)).toMatchObject({ status: 'full', remaining: 0 });
+  const partial = { ...group(), gems: [...group().gems, input('')] };
+  expect(supportPickerStatus(partial, catalog, 2)).toMatchObject({ status: 'ready', partial: true, remaining: 5 });
+});
+
+
+test('real evaluation requests collect Combined DPS for both the baseline and every support batch', async () => {
+  engine.optimize.mockReset().mockImplementation(async ({ request, variants, stats, include_baseline }) => {
+    const measure = (groups: SocketGroupInput[]) => {
+      const upgraded = groups[0].gems.some(gem => gem.skill_id === 'New');
+      const values: Record<string, number> = { TotalDPS: upgraded ? 200 : 100, CombinedDPS: upgraded ? 1456.7 : 1000.4, TotalEHP: 500 };
+      return Object.fromEntries(stats.map((id: string) => [id, values[id] ?? 0]));
+    };
+    return { baseline: include_baseline ? measure(request.socket_groups) : undefined,
+      variants: variants.map((variant: { socket_groups?: SocketGroupInput[] }, index: number) => ({ index, label: null,
+        stats: measure(variant.socket_groups ?? request.socket_groups), error: null, unsupported: [] })) };
+  });
+  const result = await optimizeSupports({ request: { socket_groups: [group()] }, groupIndex: 0,
+    catalog: [active, gem('New')], capacity: 1, objective });
+  expect(engine.optimize.mock.calls.length).toBeGreaterThan(1);
+  for (const [request] of engine.optimize.mock.calls) expect(request.stats).toContain('CombinedDPS');
+  expect(result.baseline.CombinedDPS).toBe(1000.4);
+  expect(result.plans[0].stats.CombinedDPS).toBe(1456.7);
+  expect(result.plans[0].stats.TotalDPS).toBe(200);
 });

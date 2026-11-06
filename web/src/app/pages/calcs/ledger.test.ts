@@ -69,7 +69,7 @@ describe('lineText', () => {
     expect(ledgerDisplayText(config, 'en-US', { GamblesprintMovementSpeed: 'Gamblesprint Movement Speed' }))
       .toBe('Configuration: Gamblesprint Movement Speed');
     expect(ledgerDisplayText({ ...config, text: '10% increased Damage' }, 'zh-CN')).toBe('10% increased Damage');
-    expect(ledgerDisplayText({ ...config, source_id: 'config.future' }, 'zh-CN')).toBe('配置：config.future');
+    expect(ledgerDisplayText({ ...config, source_id: 'config.future' }, 'zh-CN')).toBe('配置：缺少配置名称');
     const generated = { ...config, source_id: 'config.raiseSpectreEnableCurses', text: 'SpectreCursesEnabled',
       modifiers: [{ name: 'SpectreCursesEnabled', mod_type: 'FLAG', value: true, applied: null,
         status: 'unread' as const, reason: null, used_in: [] }] };
@@ -114,7 +114,7 @@ describe('lineText', () => {
     expect(unmodelled.reason).toContain('life_flask_self_only');
     expect(ledgerReason({ ...unmodelled, status: 'no_effect' }, 'zh-CN')).toBe(unmodelled.reason);
     expect(ledgerReason(line('no_effect', { reason: 'a config option nothing in this build asks for' }), 'zh-TW'))
-      .toBe('目前構築沒有使用此配置項。');
+      .toBe('目前 BD 沒有使用此配置項。');
     expect(ledgerReason(line('inactive', { reason: 'Condition FutureCondition not met' }), 'zh-CN'))
       .toBe('Condition FutureCondition not met');
   });

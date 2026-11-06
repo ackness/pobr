@@ -4,8 +4,8 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { ObjectiveEditor, objectiveOf, type ObjectiveState, OptimizerResults } from './OptimizerControls';
 
 const inputs = vi.hoisted(() => [] as ComponentProps<'input'>[]);
-const selects = vi.hoisted(() => [] as { ariaLabel: string; onChange: (value: string) => void }[]);
-vi.mock('./AppSelect', () => ({ AppSelect: (props: { ariaLabel: string; onChange: (value: string) => void }) => { selects.push(props); return <select aria-label={props.ariaLabel} />; } }));
+const selects = vi.hoisted(() => [] as { ariaLabel: string; onChange: (value: string) => void; options?: { value: string; label: string }[] }[]);
+vi.mock('./AppSelect', () => ({ AppSelect: (props: { ariaLabel: string; onChange: (value: string) => void; options?: { value: string; label: string }[] }) => { selects.push(props); return <select aria-label={props.ariaLabel} />; } }));
 const buttons = vi.hoisted(() => [] as ComponentProps<'button'>[]);
 vi.mock('./controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { buttons.push(props); return <button {...props} />; },
@@ -23,7 +23,7 @@ it('labels mixed scores and distinguishes gains, losses and unchanged results', 
     ]} />);
   expect(html).toContain('Balanced score');
   expect(html).toContain('Change from current');
-  expect(html).toContain('Current equipment</td><td class="opt-score">100</td>');
+  expect(html).toContain('Current equipment</td><td class="opt-score">100.4</td>');
   expect(html).toContain('class="opt-delta is-negative">-61.4%');
   expect(html).toContain('class="opt-delta">+0.0%');
   expect(html).toContain('class="opt-delta is-positive">+100.0%');
@@ -72,4 +72,13 @@ it('tree constraints start at the current baseline and accept an explicit minimu
   expect(value.cMin).toBe('50');
   expect(render()).toContain('最低值（%）');
   expect(render()).not.toContain('50% %');
+});
+
+it.each([['CombinedDPS', 'Combined DPS'], ['MainMinionDPS', 'Minion hit DPS']])('names the shared damage goal by its resolved stat (%s)', (stat, label) => {
+  renderToStaticMarkup(<ObjectiveEditor value={{ preset: 'dps', cStat: '', cMin: '', cMax: '' }} onChange={() => {}}
+    lang="en-US" damage={{ stat, label }} />);
+  const options = selects.find(select => select.ariaLabel === 'Objective')!.options!;
+  expect(options.find(option => option.value === 'dps')!.label).toBe(label);
+  expect(options.find(option => option.value === 'balanced')!.label).toBe('Balance both');
+  expect(options.find(option => option.value === 'dpsPerMana')!.label).toContain('Hit DPS per mana');
 });

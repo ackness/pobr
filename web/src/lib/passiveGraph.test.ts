@@ -6,6 +6,7 @@ import {
   connectedAllocation,
   shortestAllocationPath,
   reconcileJewelAllocation,
+  implicitClassStarts,
 } from './passiveGraph';
 
 const node = (skill: number, connections: number[] = [], name?: string): PassiveNode => ({
@@ -17,6 +18,22 @@ const node = (skill: number, connections: number[] = [], name?: string): Passive
 });
 
 describe('passive graph', () => {
+  it('treats a normal-kind jewel-granted class start as implicit and revokes its remote path', () => {
+    const nodes: PassiveNode[] = [node(1, [2, 3], 'WITCH'), { ...node(2), kind: 'jewel_socket' }, node(3),
+      { ...node(50459, [13828], 'RANGER'), id: 'ranger596' }, node(13828, [], 'Evasion'), node(99)];
+    const before: PassiveJewelState = {
+      class_starts: { witch: 1, ranger: 50459 },
+      allocation_grants: [{ source: 2, nodes: [], roots: [50459] }],
+      nodes: {}, conquered: [], unresolved: [], rings: [], warnings: [],
+    };
+    expect(implicitClassStarts(nodes, before)).toEqual(new Set([1, 50459]));
+    const graph = buildPassiveGraph(nodes);
+    const original = [2, 99]; // Preserve an unexplained imported island.
+    expect(shortestAllocationPath(graph, new Set(original), 1, 13828, before.allocation_grants)).toEqual([13828]);
+    expect(shortestAllocationPath(graph, new Set(original), 1, 3, before.allocation_grants)).toEqual([3]);
+    expect(reconcileJewelAllocation(nodes, [...original, 13828], 'Witch', before,
+      { ...before, allocation_grants: [] })).toEqual(original);
+  });
   it('reconciles changed jewels while preserving overlapping grants and unexplained imports', () => {
     const nodes = [node(1, [2, 3]), node(2), node(3), node(10, [11]), node(11), node(12), node(99)];
     const state = (allocation_grants: PassiveJewelState['allocation_grants']): PassiveJewelState => ({

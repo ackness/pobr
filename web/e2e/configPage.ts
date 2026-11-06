@@ -1,8 +1,8 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { workspaceText } from '../src/lib/workspaceText';
 import { answerConfirm } from './confirmDialog';
-import { bdLibraryButton } from './shell';
-import { openImport } from './buildLibrary';
+import { bdLibraryButton, playerHitDps } from './shell';
+import { waitForPageTransition } from './navigation';
 
 export type Lang = 'en-US' | 'zh-CN' | 'zh-TW';
 
@@ -28,15 +28,15 @@ export async function go(page: Page, name: string) {
   // Right after a reload the shell is still booting: wait for whichever of the two shows up.
   await expect(async () => { expect(await link.isVisible() || await menu.isVisible()).toBe(true); }).toPass({ timeout: 90_000 });
   if (!(await link.isVisible())) await menu.click();
-  // The shell commits a page change a frame after the click, so wait for the address to change before the next step.
+  // The shell commits a page change before its transition finishes. Wait for both before measuring or editing controls.
   const path = (await link.getAttribute('href'))!;
   await link.click();
   await expect(page).toHaveURL(new RegExp(`${path === '/' ? '/' : path}$`));
+  await waitForPageTransition(page);
 }
 
-/** The Hit DPS row of the results panel: the first row under the headline, whatever the interface language. */
-export const hitDps = (page: Page): Locator =>
-  page.locator('.shell-rail #character-stats .rail-headline > .rail-row .rail-value').first();
+/** The calculated player's Hit DPS row, whatever the interface language. */
+export const hitDps = playerHitDps;
 
 /** Numbers settle at once with reduced motion, so a read right after a calculation never catches a tween. */
 export const noMotion = { reducedMotion: 'reduce' } as const;
@@ -62,11 +62,9 @@ export async function openBuilds(page: Page) {
 /** Import a code on the Build page and follow it to the Items page. */
 export async function importCode(page: Page, code: string, destination: 'newBuild' | 'currentStage' = 'newBuild', lang: Lang = 'en-US') {
   await openBuilds(page);
-  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   const text = workspaceText(lang);
   const group = page.getByRole('group', { name: text.importDestination, exact: true });
   await group.getByRole('button').nth(destination === 'newBuild' ? 0 : 1).click();
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   if (destination === 'currentStage') await answerConfirm(page, true);
@@ -123,7 +121,7 @@ export const control = (page: Page, key: string): Locator => page.locator(`[id=$
 export const row = (page: Page, key: string): Locator => page.locator('.config-item').filter({ has: control(page, key) });
 
 /** Open the Config page (in the open interface language) and search for a setting. */
-export async function openSetting(page: Page, key: string, configName = 'Config') {
+export async function openSetting(page: Page, key: string, configName = 'Configuration') {
   await go(page, configName);
   await page.locator('.config-search').fill(key);
   await expect(control(page, key)).toBeVisible();

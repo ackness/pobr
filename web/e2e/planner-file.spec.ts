@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
-import { choose, openBuild, openExport, openImport } from './buildLibrary';
+import { choose, openBuild, openExport } from './buildLibrary';
 import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
@@ -45,7 +45,6 @@ test('all source loadouts provide separate downloadable files without switching 
   await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
   const code = deflateSync('<PathOfBuilding2><Build level="50" className="Ranger" ascendClassName="Deadeye"/><Tree activeSpec="1"><Spec title="Starter" nodes="3936" treeVersion="0_5"/><Spec title="Endgame" nodes="46325" treeVersion="0_5"/></Tree><Skills/><Items/></PathOfBuilding2>').toString('base64url');
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);

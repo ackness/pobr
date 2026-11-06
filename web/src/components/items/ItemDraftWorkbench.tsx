@@ -3,6 +3,7 @@ import { getBackend } from '../../api/backend';
 import type { ItemLineJson } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import type { Lang } from '../../lib/i18n';
+import { resolveDamageObjective } from '../../lib/mainMinion';
 import { craftT } from '../../lib/itemCraftingText';
 import type { TradeBase, TradeCatalog } from '../../lib/tradeOptimizer';
 import { ItemReplacementCheck } from '../trade/ItemReplacementCheck';
@@ -43,10 +44,10 @@ export function ItemDraftWorkbench({ initialText, base, catalog, session, lang, 
   return <div className="item-draft-workbench">
     {editable && !/^Rarity: NORMAL/m.test(draft.text) && <ReplacementAffixEditor key={draft.text}
       report={{ ...draft, base }} catalog={catalog} characterLevel={100} lang={lang}
-      disabled={session.busy} onCompare={text => setInput(previous => ({ text, revision: previous.revision + 1 }))} onDirtyChange={setDirty} />}
+      disabled={session.busy} initiallyOpen compareLabel={craftT(lang, 'compareEquipped')} onCompare={text => setInput(previous => ({ text, revision: previous.revision + 1 }))} onDirtyChange={setDirty} />}
     {editable && /^Rarity: NORMAL/m.test(draft.text) && <p>{craftT(lang, 'normalHint')}</p>}
     {!dirty && <ItemReplacementCheck key={draft.text} session={session} lang={lang} active={true}
-      objective={objective} catalog={catalog} jewelSockets={jewelSockets} goalLabel="" onEditGoal={() => {}}
+      objective={resolveDamageObjective(objective, session.calc)} catalog={catalog} jewelSockets={jewelSockets} goalLabel="" onEditGoal={() => {}}
       initialItemText={draft.text} candidate={{ kind: base.category === 'jewel' ? 'jewel' : 'item' }} />}
   </div>;
 }

@@ -3,7 +3,7 @@ import type { ItemLineJson } from '../../api/types';
 import { getBackend } from '../../api/backend';
 import { itemLines, rarityOf, useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
 import { isContinuation } from '../../lib/continuedLines';
-import type { Lang } from '../../lib/i18n';
+import { t, type Lang } from '../../lib/i18n';
 import { itemDamageType, itemDisplaySections, itemValueParts, type DisplayItemLine } from '../../lib/itemDisplay';
 import { useUi } from '../shared/UiContext';
 import { AppTooltip } from '../shared/controls';
@@ -32,14 +32,14 @@ export function useItemLineTexts(lines: readonly ItemLineJson[], lang: Lang): st
   return lines.map((line, index) => line.kind === 'base' ? bases[base++] ?? line.text : translated[index] ?? line.text);
 }
 
-export function ItemDisplay({ text, lang }: { text: string; lang: Lang }) {
+export function ItemDisplay({ text, lang, rawDetails = false }: { text: string; lang: Lang; rawDetails?: boolean }) {
   const classified = useClassifiedLines(text);
   const fallback = useMemo<ItemLineJson[]>(() => itemLines(text).map((line, index) => ({
     text: line, kind: index === 0 ? 'name' : 'struct',
   })), [text]);
   const lines = classified ?? fallback;
   const translated = useItemLineTexts(lines, lang);
-  return <ItemDisplayContent text={text} lang={lang} lines={lines} translated={translated} />;
+  return <ItemDisplayContent text={text} lang={lang} lines={lines} translated={translated} rawDetails={rawDetails} />;
 }
 
 export function ItemValues({ text }: { text: string }) {
@@ -48,8 +48,8 @@ export function ItemValues({ text }: { text: string }) {
 }
 
 /** All three layouts share one projection; no layout edits the imported item or invents missing data. */
-export function ItemDisplayContent({ text, lang, lines, translated }: {
-  text: string; lang: Lang; lines: readonly ItemLineJson[]; translated: readonly string[];
+export function ItemDisplayContent({ text, lang, lines, translated, rawDetails = false }: {
+  text: string; lang: Lang; lines: readonly ItemLineJson[]; translated: readonly string[]; rawDetails?: boolean;
 }) {
   const { displayMode: style } = useUi();
   // A line a multi-line description translated into the line above shows no row.
@@ -62,12 +62,12 @@ export function ItemDisplayContent({ text, lang, lines, translated }: {
   const hasUnknownTiers = hasTiers && model.explicit.some(line => line.tier == null);
   const prefixLabel = w('Prefixes', '前缀', '前綴');
   const suffixLabel = w('Suffixes', '后缀', '後綴');
-  const otherLabel = fixedAffixes ? w('Modifiers', '词条', '詞綴') : w('Unclassified modifiers', '未分类词条', '未分類詞綴');
+  const otherLabel = fixedAffixes ? w('Modifiers', '词缀', '詞綴') : w('Unclassified modifiers', '未分类词缀', '未分類詞綴');
   const labels = {
     prefix: w('Prefix', '前缀', '前綴'), suffix: w('Suffix', '后缀', '後綴'),
     implicit: w('Implicit', '固有', '固定'), enchant: w('Enchant', '附魔'), rune: w('Rune', '符文'),
     class_req: w('Requirement', '需求'),
-    explicit: fixedAffixes ? w('Modifier', '词条', '詞綴') : w('Unclassified', '未分类', '未分類'),
+    explicit: fixedAffixes ? w('Modifier', '词缀', '詞綴') : w('Unclassified', '未分类', '未分類'),
   };
   const rarityLabel = ({ normal: w('Normal', '普通'), magic: w('Magic', '魔法'), rare: w('Rare', '稀有'), unique: w('Unique', '传奇', '傳奇'), relic: w('Relic', '遗珍', '遺珍') } as Record<string, string>)[rarity];
 
@@ -115,13 +115,13 @@ export function ItemDisplayContent({ text, lang, lines, translated }: {
     <Tabs defaultValue="details" className="item-display-tabs">
       <div className="item-display-tabbar"><TabsList variant="line" aria-label={w('Equipment view', '装备查看方式', '裝備檢視方式')}>
         <TabsTrigger value="details">{w('Details', '装备详情', '裝備詳情')}</TabsTrigger>
-        <TabsTrigger value="raw">{w('Original text', '原始文本', '原始文字')}</TabsTrigger>
+        {!rawDetails && <TabsTrigger value="raw">{w('Original text', '原始文本', '原始文字')}</TabsTrigger>}
       </TabsList>{hasTiers && <span className="item-tier-hint">{w('T1 is the highest tier', 'T1 为最高档', 'T1 為最高階')}</span>}</div>
       <TabsContent value="details" className="item-display-body">
         {style === 'game' && extras}
         {style === 'compact' && model.explicit.length > 0 ? <table className="item-affix-table">
           <caption className="sr-only">{w('Equipment modifiers', '装备词缀', '裝備詞綴')}</caption>
-          <thead><tr><th scope="col">{w('Type', '类型', '類型')}</th><th scope="col">{w('Modifier and values', '词条与数值', '詞綴與數值')}</th>{hasTiers && <th scope="col">{w('Tier', '档位', '階級')}</th>}</tr></thead>
+          <thead><tr><th scope="col">{w('Type', '类型', '類型')}</th><th scope="col">{w('Modifier and values', '词缀与数值', '詞綴與數值')}</th>{hasTiers && <th scope="col">{w('Tier', '档位', '階級')}</th>}</tr></thead>
           <tbody>{model.explicit.map(line => <tr className="item-line" key={line.index} data-affix={line.affix} data-damage={itemDamageType(line.original)}>
             <td>{line.affix && !fixedAffixes ? <Badge variant={line.affix === 'prefix' ? 'secondary' : 'outline'}>{labels[line.affix]}</Badge>
               : <span className="item-unclassified">{labels.explicit}</span>}</td>
@@ -136,7 +136,8 @@ export function ItemDisplayContent({ text, lang, lines, translated }: {
         {style !== 'game' && extras}
         {hasUnknownTiers && <p className="item-display-hint">{w('— means the tier was not identified.', '— 表示档位未识别。', '— 表示階級未識別。')}</p>}
       </TabsContent>
-      <TabsContent value="raw"><pre className="item-original-text">{text}</pre></TabsContent>
+      {!rawDetails && <TabsContent value="raw"><pre className="item-original-text">{text}</pre></TabsContent>}
     </Tabs>
+    {rawDetails && <details><summary>{t(lang, 'compare.advanced')}</summary><pre className="item-original-text">{text}</pre></details>}
   </article>;
 }

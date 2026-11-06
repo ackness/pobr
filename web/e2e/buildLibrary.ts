@@ -23,6 +23,7 @@ export async function goTo(page: Page, name: string, lang: Lang = 'en-US') {
 export async function openBuild(page: Page) {
   await bdLibraryButton(page).click();
   await expect(page.locator('#build-heading')).toBeVisible();
+  await expect(page.locator('.bd-import textarea')).toBeFocused();
 }
 
 /**
@@ -46,17 +47,8 @@ export async function selectStage(page: Page, name: string) {
   await choose(page, page.getByRole('combobox', { name: 'Current stage', exact: true }), name);
 }
 
-/** The Build page's import section starts open only while the browser has no build; open it before pasting. */
-export async function openImport(page: Page) {
-  const fold = page.locator('details.bd-import');
-  await expect(fold).toBeAttached({ timeout: 90_000 }); // the Build page renders once the engine has booted
-  if (!await fold.evaluate(el => (el as HTMLDetailsElement).open)) await fold.locator(':scope > summary').click();
-  await expect(fold).toHaveJSProperty('open', true);
-}
-
 /** Picks where the next import goes: a new BD, or the current stage (which asks before it replaces anything). */
 export async function importInto(page: Page, destination: 'newBuild' | 'currentStage', lang: Lang = 'en-US') {
-  await openImport(page);
   const choices = page.getByRole('group', { name: workspaceText(lang).importDestination, exact: true }).getByRole('button');
   await choices.nth(destination === 'newBuild' ? 0 : 1).click();
   await expect(choices.nth(destination === 'newBuild' ? 0 : 1)).toHaveAttribute('aria-pressed', 'true');

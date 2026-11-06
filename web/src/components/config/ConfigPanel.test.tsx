@@ -75,6 +75,23 @@ describe('materialized configuration display', () => {
   });
 });
 
+test('configuration exclusions use the shared modifier list with one original-text disclosure', () => {
+  const lines = ['Config: First unknown effect', 'Config: Second unknown effect'];
+  const session = { calcParams: { config_inputs: {} }, items: [], busy: false, stateVersion: 1,
+    calc: { stats: [], main_skill: null, item_errors: [], breakdowns: {}, unsupported_modifiers: [...lines, 'Tree:123: Unrelated effect'] },
+  } as unknown as BuildSession;
+  const html = renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider>
+    <ConfigPanel session={session} lang="en-US" />
+  </TooltipProvider></UiProvider>);
+  expect(html).toContain('Modifiers not included');
+  expect(html).toContain('class="unincluded-modifiers"');
+  expect(html.match(/class="unincluded-raw"/g)).toHaveLength(1);
+  expect(html).toContain('<pre>First unknown effect\nSecond unknown effect</pre>');
+  expect(html).not.toContain('Config: ');
+  expect(html).not.toContain('class="modifier-raw"');
+  expect(html).not.toContain('Unrelated effect');
+});
+
 test('keeps a saved inapplicable option, typed value and collapsed help', () => {
   const html = renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider>
     <OptionRow option={{ var: 'testOption', label: 'Test option', input_type: 'count', tooltip: 'Catalog help' }}
@@ -86,6 +103,34 @@ test('keeps a saved inapplicable option, typed value and collapsed help', () => 
   expect(html).toContain('Text: <code>&quot;0&quot;</code>');
   expect(html).toContain('value="0"');
   expect(html).not.toContain(' title=');
+});
+
+test('an empty enemy field identifies its inherited tier without showing a catalog example as the value', () => {
+  const html = renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider>
+    <OptionRow option={{ var: 'enemyFireResist', label: 'Enemy fire resistance', input_type: 'count', default: { placeholder_number: 75 } }}
+      value={undefined} inheritedLabel="Inherited from Pinnacle Boss" overridden={false} busy={false}
+      lang="en-US" listLabels={{}} applicability="applicable" onChange={vi.fn()} onReset={vi.fn()} />
+  </TooltipProvider></UiProvider>);
+  expect(html).toContain('placeholder="Inherited from Pinnacle Boss"');
+  expect(html).not.toContain('placeholder="75"');
+  expect(html).toContain('value=""');
+  expect(html).toContain('<summary>Help</summary>');
+  expect(html).not.toContain('<details class="config-option-help" open');
+});
+
+test.each([
+  ['en-US', 'Inherited from Pinnacle Boss', '50 (Inherited from Pinnacle Boss)'],
+  ['zh-CN', '继承自巅峰 Boss', '50（继承自巅峰 Boss）'],
+  ['zh-TW', '繼承自巔峰頭目', '50（繼承自巔峰頭目）'],
+] as const)('an empty resistance field shows the actual inherited number and source in %s', (lang, source, placeholder) => {
+  const html = renderToStaticMarkup(<UiProvider lang={lang}><TooltipProvider>
+    <OptionRow option={{ var: 'enemyFireResist', label: 'Enemy fire resistance', input_type: 'count', default: { placeholder_number: 75 } }}
+      value={undefined} inheritedValue={50} inheritedLabel={source} overridden={false} busy={false}
+      lang={lang} listLabels={{}} applicability="applicable" onChange={vi.fn()} onReset={vi.fn()} />
+  </TooltipProvider></UiProvider>);
+  expect(html).toContain(`placeholder="${placeholder}"`);
+  expect(html).toContain('value=""');
+  expect(html).not.toContain('placeholder="75"');
 });
 
 test.each([undefined, false, 0, '0', ''] as const)('raw editor retains the type of %j', value => {
@@ -122,4 +167,17 @@ test.each(['relevant', 'modified', 'all'] as ConfigScope[])('configuration scope
   expect(html).toContain('role="radiogroup"');
   expect(html).toContain('Relevant to this build');
   expect(html).toContain('Modified (2)');
+});
+
+test('configuration exclusions retain player text in one shared original-text disclosure', () => {
+  const session = { calcParams: { config_inputs: {} }, calc: {
+    unsupported_modifiers: ['Config: First unknown effect', 'Config: Second unknown effect', 'Tree:12: Other effect'],
+  }, busy: false, stateVersion: 1 } as unknown as BuildSession;
+  const html = renderToStaticMarkup(<ConfigPanel session={session} lang="zh-CN" />);
+  expect(html).toContain('class="unincluded-modifiers"');
+  expect(html.match(/<summary>词缀原文<\/summary>/g)).toHaveLength(1);
+  expect(html).toContain('<pre>First unknown effect\nSecond unknown effect</pre>');
+  expect(html).not.toContain('Config: ');
+  expect(html).not.toContain('Other effect');
+  expect(html).not.toContain('class="modifier-raw"');
 });

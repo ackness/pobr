@@ -14,8 +14,10 @@ import {
   scoreOf,
   type Objective,
 } from '../../lib/optimize';
-import { formatStatValue, statFormat, STAT_SECTIONS } from '../../lib/statDisplay';
+import { formatNumber, formatStatValue, statFormat, STAT_SECTIONS } from '../../lib/statDisplay';
 import { AppSelect } from './AppSelect';
+import type { DamageHeadline } from '../../lib/mainMinion';
+import { tradeAnalysisText } from '../../lib/tradeAnalysisText';
 
 /** 目标编辑器的受控状态（字符串态便于输入框直绑；objectiveOf 再解析）。 */
 export interface ObjectiveState {
@@ -69,10 +71,11 @@ export function statLabel(id: string, lang: Lang): string {
 }
 
 function fmtNum(value: number, lang: Lang): string {
-  return value.toLocaleString(lang, { maximumFractionDigits: 0 });
+  return formatStatValue(value, 'float2', lang);
 }
 
 interface EditorProps {
+  damage?: DamageHeadline;
   constraintsOnly?: boolean;
   baseline?: Record<string, number>;
   statName?: (id: string) => string;
@@ -83,7 +86,7 @@ interface EditorProps {
 }
 
 /** 目标预设 + 单条约束（属性 / 下限 / 上限）。 */
-export function ObjectiveEditor({ value, onChange, lang, disabled, constraintsOnly, baseline, statName }: EditorProps) {
+export function ObjectiveEditor({ value, onChange, lang, disabled, constraintsOnly, baseline, statName, damage }: EditorProps) {
   const tt = bindT(lang);
   const nameOf = statName ?? ((id: string) => statLabel(id, lang));
   const unit = statFormat(value.cStat) === 'percent' ? tt('tree.unitPercent') : statFormat(value.cStat) === 'rate' || /DPS$/.test(value.cStat) ? tt('tree.unitRate') : tt('tree.unitValue');
@@ -104,7 +107,8 @@ export function ObjectiveEditor({ value, onChange, lang, disabled, constraintsOn
         {tt('opt.objective')}
         <AppSelect
           value={value.preset}
-          options={OBJECTIVE_PRESETS.map((p) => ({ value: p.id, label: tt(p.labelKey as UiKey) }))}
+          options={OBJECTIVE_PRESETS.map((p) => ({ value: p.id, label: damage && p.id === 'dps' ? damage.label
+            : damage && p.id === 'balanced' ? tradeAnalysisText(lang, 'balancedGoal') : tt(p.labelKey as UiKey) }))}
           onChange={(preset) => onChange({ ...value, preset })}
           disabled={disabled}
           ariaLabel={tt('opt.objective')}
@@ -200,7 +204,7 @@ export function OptimizerResults({
   const baseScore = scoreOf(baseline, objective);
   const deltaPct = (score: number): string =>
     baseScore > 0
-      ? `${score >= baseScore ? '+' : ''}${(((score - baseScore) / baseScore) * 100).toFixed(1)}%`
+      ? `${score >= baseScore ? '+' : ''}${formatNumber(((score - baseScore) / baseScore) * 100, 1, 1)}%`
       : '—';
   return (
     <table className="opt-table">

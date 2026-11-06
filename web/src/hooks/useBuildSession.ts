@@ -9,7 +9,7 @@ import type { TreeEditResult } from '../api/types';
  * 防止乱序返回覆盖新状态。所有后端交互经 `api/backend`。
  */
 
-import { activeWorkspaceStage, addWorkspaceBuild, appendImportedBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
+import { recordWorkspaceBaseline, activeWorkspaceStage, addWorkspaceBuild, appendImportedBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, duplicateWorkspaceBuild, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
 import { mergeLibraries, mergeWorkspaces } from '../lib/workspaceMerge';
 import { formatApiError } from '../api/error';
 import { resolveBuildInput } from '../api/import';
@@ -133,7 +133,7 @@ const sameValue = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringi
 
 /** The library without which build and stage each tab has open: what another tab can have changed. */
 const libraryContent = (library: BuildWorkspace) =>
-  library.builds.map(({ id, name, stages }) => ({ id, name, stages }));
+  library.builds.map(({ id, name, stages, baseline }) => ({ id, name, stages, baseline }));
 
 /** What a merge did to the stage a tab shows, and which message goes with the change. */
 function mergeEffect(before: BuildWorkspace, after: BuildWorkspace, conflicts: string[]) {
@@ -148,6 +148,9 @@ export type ImportDestination = 'newBuild' | 'currentStage';
 export interface ImportOptions { destination: ImportDestination; name?: string }
 
 export interface BuildSession {
+  saveComparisonBaseline: () => void;
+  comparisonRevision: number;
+  startBaselineComparison: () => void;
   treeVersion?: string | null;
   dataVersion: string | null;
   workspace: BuildWorkspace | null;
@@ -158,10 +161,11 @@ export interface BuildSession {
   selectStage: (buildId: string, stageId?: string) => void;
   createLocalBuild: (name: string) => void;
   duplicateStage: (name: string) => void;
-  /** Removes the current build (the one that follows it opens) / the current stage; the last of either stays. */
-  removeBuild: () => void;
+  /** Remove a build by ID (defaults to the active one); the library always keeps one build. */
+  removeBuild: (buildId?: string) => void;
+  duplicateBuild: (buildId: string, name: string) => void;
   removeStage: () => void;
-  renameWorkspace: (kind: 'build' | 'stage', name: string) => void;
+  renameWorkspace: (kind: 'build' | 'stage', name: string, buildId?: string) => void;
   applyComparedStage: (a: StageSnapshot, b: StageSnapshot, state: SavedSession['state']) => boolean;
   exportWorkspace: () => string;
   exportLocalBuild: () => string;
@@ -272,6 +276,7 @@ export interface BuildSession {
   /** Select an exact effect atomically; reject rows from an obsolete overview. */
   inspectSkill: (groupIndex: number, activeSkillIndex: number, expectedVersion: number) => void;
   setConfigInput: (key: string, value: ConfigInputValue | null) => void;
+  sourceContributions?: AttributionResponse | null;
   runAttribution: (fields: string[]) => Promise<AttributionResponse>;
   /** Independent per-effect metrics across weapon sets, without an aggregate sum. */
   runSkillMetrics: () => Promise<SkillMetricsResponse>;
@@ -377,6 +382,18 @@ export interface LibraryItem {
   text: string;
   /** 来源装备槽（导入/保存时记录；旧条目缺失 → 不参与槽位过滤）。 */
   slot?: string;
+  sourceBuild?: { id: string; name: string };
+}
+
+/** Save the identity now; a snapshot name still works after its build is deleted. */
+export function librarySourceBuild(workspace: BuildWorkspace | null): LibraryItem['sourceBuild'] {
+  const build = workspace?.builds.find(build => build.id === workspace.activeBuild);
+  return build ? { id: build.id, name: build.name } : undefined;
+}
+
+/** One constructor for explicit saves and imported equipment; old entries need no migration. */
+export function createLibraryItem(kind: LibraryItem['kind'], text: string, slot: string | undefined, workspace: BuildWorkspace | null): LibraryItem {
+  return { id: createId(), kind, name: itemName(text), text, slot, sourceBuild: librarySourceBuild(workspace) };
 }
 
 /** 技能组套装：整套 socket_groups 快照，可随时切换。 */
@@ -394,7 +411,7 @@ export interface Library {
 }
 
 /** The stored text as a library: what is missing is empty, and unreadable text is an empty library too. */
-function parseLibrary(raw: string | null): Library {
+export function parseLibrary(raw: string | null): Library {
   return readStoredLibrary(raw) ?? { items: [], skillSets: [] };
 }
 
@@ -681,6 +698,8 @@ export async function skillMetricsForState(state: BuildState): Promise<SkillMetr
 }
 
 export function useBuildSession(configContextActive = false, lang: Lang = 'en-US'): BuildSession {
+  const [comparisonRevision, setComparisonRevision] = useState(0);
+  const startBaselineComparison = useCallback(() => setComparisonRevision(value => value + 1), []);
   const configContextActiveRef = useRef(configContextActive);
   configContextActiveRef.current = configContextActive;
   const [dataVersion, setDataVersion] = useState<string | null>(null);
@@ -702,7 +721,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const redoHistory = useRef<{ state: BuildState; build: BuildJson | null }[]>([]);
   const [calculated, setCalculated] = useState<{ version: number; result: CalculateBuildResponse; ms: number } | null>(null);
   const [calculating, setCalculating] = useState(false);
-  // Source operations can overlap a recalc or nest (manageLoadout imports its result).
+  // Source operations and automatic skill selection can overlap a recalc or nest.
   const [pendingOperations, setPendingOperations] = useState(0);
   const busy = calculating || pendingOperations > 0;
   const [calcError, setCalcError] = useState<string | null>(null);
@@ -785,6 +804,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const libraryRef = useRef(library);
   const librarySyncedRef = useRef(initialLibrary);
   const [stateVersion, setStateVersion] = useState(0);
+  const [attributed, setAttributed] = useState<{ state: BuildState; fields: string[]; report: AttributionResponse } | null>(null);
   const calc = calculated?.version === stateVersion ? calculated.result : null;
   const calcMs = calculated?.version === stateVersion ? calculated.ms : null;
   const [socketGroupRevision, setSocketGroupRevision] = useState(0);
@@ -892,6 +912,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       if (next.params.main_socket_group === undefined && next.socketGroups.some(group => group.enabled)) {
         const pending = next;
         const wasClean = cleanVersionRef.current === versionRef.current;
+        setPendingOperations(count => count + 1);
         skillMetricsForState(pending).then((report) => {
           const best = highestDpsSkill(report.skills, pending.socketGroups);
           if (!best || stateRef.current !== pending) return;
@@ -903,7 +924,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
           }, { auto: true });
           // A default is not an edit: an untouched import stays clean.
           if (wasClean) cleanVersionRef.current = versionRef.current;
-        }).catch(() => {});
+        }).catch(() => {}).finally(() => setPendingOperations(count => count - 1));
       }
     },
     [recalc, saveToStorage],
@@ -985,13 +1006,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         text: j.text,
         slot: undefined,
       })),
-    ].map((e) => ({
-      id: createId(),
-      kind: e.kind,
-      name: itemName(e.text),
-      text: e.text,
-      slot: e.slot,
-    }));
+    ].map(e => createLibraryItem(e.kind, e.text, e.slot, workspaceRef.current));
 
     const setName = decoded.character.ascendancy_name || decoded.character.class_name;
     const skillSet: SkillSet | null = decoded.socket_groups.length
@@ -1015,7 +1030,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       // A library entry has one slot: merging different hands would lose a candidate.
       const importIdentity = (item: LibraryItem) => {
         const hand = item.slot === 'weapon1' || item.slot === 'weapon2' ? item.slot : '';
-        return `${hand}\0${item.text}`;
+        return `${item.sourceBuild?.id ?? ''}\0${hand}\0${item.text}`;
       };
       const seen = new Set(existing.map(importIdentity));
       const newItems = imported.filter((i) => {
@@ -1046,7 +1061,6 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
           ? await backend.decodeBuildFile(code)
           : await backend.decodeBuild(code);
         setBuild(decoded);
-        mergeImportedIntoLibrary(decoded);
         // <Notes> 里可能带 PoBR 注释标记段：拆成总览笔记 + 局部注释。
         const { overview, annotations } = splitNotes(decoded.notes ?? '');
         const importedState: BuildState = {
@@ -1069,6 +1083,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
           const name = importedBuildName(decoded.character, classNames, lang, options.name, plannerName);
           workspaceRef.current = addWorkspaceBuild(workspaceRef.current, name, { version: 1, state: importedState, notes: overview }, defaultStarterRef.current);
         }
+        mergeImportedIntoLibrary(decoded);
         // Do not persist imported notes into the stage being left behind.
         notesRef.current = overview;
         setNotesState(overview);
@@ -1657,13 +1672,20 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     restoreSession(stage.saved, stage.drafts);
   }, [busy, restoreSession]);
 
-  const removeBuild = useCallback(() => {
+  const duplicateBuild = useCallback((buildId: string, name: string) => {
+    if (workspaceRef.current && !busy) persistWorkspace(duplicateWorkspaceBuild(workspaceRef.current, buildId, name));
+  }, [busy, persistWorkspace]);
+
+  const removeBuild = useCallback((buildId?: string) => {
     if (!workspaceRef.current || busy) return;
-    const next = removeWorkspaceBuild(workspaceRef.current);
+    const next = removeWorkspaceBuild(workspaceRef.current, buildId);
     if (next === workspaceRef.current) return;
+    const changedActive = next.activeBuild !== workspaceRef.current.activeBuild;
     persistWorkspace(next);
-    const stage = activeWorkspaceStage(workspaceRef.current ?? next);
-    restoreSession(stage.saved, stage.drafts);
+    if (changedActive) {
+      const stage = activeWorkspaceStage(workspaceRef.current ?? next);
+      restoreSession(stage.saved, stage.drafts);
+    }
   }, [busy, persistWorkspace, restoreSession]);
 
   const removeStage = useCallback(() => {
@@ -1675,9 +1697,17 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     restoreSession(stage.saved, stage.drafts);
   }, [busy, persistWorkspace, restoreSession]);
 
-  const renameWorkspace = useCallback((kind: 'build' | 'stage', name: string) => {
-    if (workspaceRef.current) persistWorkspace(renameWorkspaceEntry(workspaceRef.current, kind, name));
+  const renameWorkspace = useCallback((kind: 'build' | 'stage', name: string, buildId?: string) => {
+    if (workspaceRef.current) persistWorkspace(renameWorkspaceEntry(workspaceRef.current, kind, name, buildId));
   }, [persistWorkspace]);
+
+  const saveComparisonBaseline = useCallback(() => {
+    if (!workspaceRef.current || !stateRef.current || busy) return;
+    const current = updateWorkspaceStage(workspaceRef.current,
+      { version: 1, state: stateRef.current, notes: notesRef.current }, draftsRef.current);
+    persistWorkspace(recordWorkspaceBaseline(current));
+    startBaselineComparison();
+  }, [busy, persistWorkspace, startBaselineComparison]);
 
   const applyComparedStage = useCallback((a: StageSnapshot, b: StageSnapshot, nextState: BuildState) => {
     if (!workspaceRef.current || busy) return false;
@@ -1717,7 +1747,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         ...libraryRef.current,
         items: [
           ...libraryRef.current.items,
-          { id: createId(), kind, name: itemName(text), text, slot },
+          createLibraryItem(kind, text, slot, workspaceRef.current),
         ],
       });
     },
@@ -1780,10 +1810,13 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const runAttribution = useCallback(
     async (fields: string[]) => {
       if (!state) throw new Error('build not ready');
+      if (attributed?.state === state && fields.every(field => attributed.fields.includes(field))) return attributed.report;
       const backend = await getBackend();
-      return backend.attribution({ request: toRequest(state), fields });
+      const report = await backend.attribution({ request: toRequest(state), fields });
+      if (stateRef.current === state) setAttributed({ state, fields, report });
+      return report;
     },
-    [state],
+    [state, attributed],
   );
 
   const runSkillMetrics = useCallback(async (): Promise<SkillMetricsResponse> => {
@@ -1792,8 +1825,9 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   }, [state]);
 
   return {
+    saveComparisonBaseline, comparisonRevision, startBaselineComparison,
     treeVersion: state?.treeVersion,
-    dataVersion, workspace, storageFailed, syncNotice, dismissSyncNotice, applyComparedStage, selectStage, createLocalBuild, duplicateStage, removeBuild, removeStage, renameWorkspace, exportWorkspace, exportLocalBuild,
+    dataVersion, workspace, storageFailed, syncNotice, dismissSyncNotice, applyComparedStage, selectStage, createLocalBuild, duplicateStage, duplicateBuild, removeBuild, removeStage, renameWorkspace, exportWorkspace, exportLocalBuild,
     activeWeaponSet: state?.weaponSwap?.active ?? 1,
     weaponSwap: state?.weaponSwap,
     setWeaponSet,
@@ -1872,6 +1906,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     inspectSkill,
     setConfigInput,
     runAttribution,
+    sourceContributions: attributed?.state === state ? attributed.report : null,
     runSkillMetrics,
   };
 }

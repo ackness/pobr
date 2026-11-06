@@ -22,8 +22,8 @@ async function ready(page: Page) {
   await expect(page.getByLabel('等级', { exact: true })).toBeEnabled({ timeout: 90_000 });
 }
 
-async function importBuild(page: Page) {
-  await page.locator('.import-code').first().fill(code);
+async function importBuild(page: Page, source = code) {
+  await page.locator('.import-code').first().fill(source);
   await page.locator('.import-submit').click();
   // An import lands on the Overview, with the reminder to review the configuration above the page.
   await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
@@ -39,6 +39,10 @@ async function find(page: Page, key: string) {
 
 test('catalog defaults are checked, translated, recalculable and resettable', async ({ page }) => {
   await ready(page);
+  // Keep catalog defaults inherited, with a real skill so the rail shows results.
+  await importBuild(page, deflateSync(`<PathOfBuilding2><Build level="90" className="Witch" mainSocketGroup="1"/>
+    <Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" quality="0" enabled="true"/></Skill></Skills>
+    <Items/><Config/></PathOfBuilding2>`).toString('base64url'));
   await go(page, '配置');
   const life = statValue(page, /^生命$/);
   await find(page, reward);
@@ -86,7 +90,7 @@ test('import reminder is inline and imported false values survive review and rel
   await expect(reminder).toHaveAttribute('role', 'note');
   await expect(page.locator('#ov-title')).toBeVisible();
   await expect(reminder).toContainText('任务奖励');
-  await reminder.getByRole('button', { name: '检查配置' }).click();
+  await reminder.getByRole('link', { name: '去配置' }).click();
   await expect(reminder).toHaveCount(0);
   await expect(page).toHaveURL(/\/config$/);
   await find(page, reward);
@@ -109,14 +113,14 @@ test('localized triggered skill uses a readable popup and keyboard selection', a
   await expect(page.locator('.ov-figure').first().locator('small')).toHaveText('风舞者');
   // The skill whose numbers the results panel shows is picked in a popup at the head of the panel.
   const selector = page.locator('.shell-rail').getByRole('combobox', { name: '计算技能', exact: true });
-  await expect(selector).toHaveText(/2\. 风舞者/);
+  await expect(selector).toHaveText(/风舞者.*技能组 2/);
   await go(page, '技能');
   await expect(page.locator('.skill-group.is-main .skill-group-name')).toHaveText('风舞者');
   await expect(page.locator('.skill-set-chip')).toContainText('锐眼');
   await selector.click();
   const popup = page.getByRole('listbox');
   await expect(popup).toBeVisible();
-  await expect(popup.getByRole('option', { selected: true })).toContainText('2. 风舞者');
+  await expect(popup.getByRole('option', { selected: true })).toContainText('风舞者');
   const colors = await popup.getByRole('option').first().evaluate(element => ({
     text: getComputedStyle(element).color, background: getComputedStyle(element.parentElement!).backgroundColor,
   }));
@@ -126,9 +130,9 @@ test('localized triggered skill uses a readable popup and keyboard selection', a
   await page.keyboard.press('Home');
   await page.keyboard.press('Enter');
   await expect(popup).toHaveCount(0);
-  await expect(selector).toHaveText(/1\. 火球/);
+  await expect(selector).toHaveText(/火球.*技能组 1/);
   await expect(page.locator('.skill-group.is-main .skill-group-name')).toHaveText('火球');
   await selector.click();
-  await popup.getByRole('option', { name: /2\. 风舞者/ }).click();
-  await expect(selector).toHaveText(/2\. 风舞者/);
+  await popup.getByRole('option', { name: /风舞者.*技能组 2/ }).click();
+  await expect(selector).toHaveText(/风舞者.*技能组 2/);
 });

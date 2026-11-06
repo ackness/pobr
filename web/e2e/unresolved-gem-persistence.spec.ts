@@ -1,6 +1,7 @@
+import { t } from '../src/lib/i18n';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { openItemsAfterImport, pageLink, statValue } from './shell';
-import { importInto, openBuild, openExport, selectStage as chooseStage, settled, stableText, openImport } from './buildLibrary';
+import { buildAction, openItemsAfterImport, pageLink, playerHitDps } from './shell';
+import { importInto, openBuild, openExport, selectStage as chooseStage, settled, stableText } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
@@ -9,8 +10,8 @@ import type { BuildWorkspace } from '../src/lib/buildWorkspace';
 
 type Envelope = SavedSession & { workspace: BuildWorkspace };
 const cometCode = readFileSync(new URL('../../examples/demo-bd-test/builds/sorceress-stormweaver-comet/code.txt', import.meta.url), 'utf8').trim();
-const hitDps = (page: Page) => statValue(page, /^Hit DPS$/).first();
-const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Calculation skill', exact: true });
+const hitDps = (page: Page) => playerHitDps(page);
+const mainSkill = (page: Page) => page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
 
 async function snapshot(page: Page): Promise<Envelope> {
   return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));
@@ -66,8 +67,8 @@ async function importComet(page: Page) {
 }
 
 async function editName(page: Page, action: string, name: string) {
-  // The import form has a "New build" choice of its own; the library action is the later of the two.
-  await page.getByRole('button', { name: action, exact: true }).last().click();
+  if (action === 'Rename build') await buildAction(page, action);
+  else await page.locator('.bd-actions').getByRole('button', { name: action, exact: true }).click();
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await idle(page);
@@ -137,7 +138,7 @@ test('inactive Comet stages survive multibuild reload, switching and deliberate 
   await pageLink(page, 'Skills').click();
   const firestorm = page.locator('.skill-group').nth(8);
   await expandGroup(firestorm);
-  const activeGem = firestorm.locator('.skill-gem').nth(0);
+  const activeGem = page.locator('.skill-detail').locator('.skill-gem').nth(0);
   await activeGem.getByRole('spinbutton', { name: 'Level', exact: true }).fill('20');
   await idle(page);
   await activeGem.getByRole('spinbutton', { name: 'Quality', exact: true }).fill('21');
@@ -234,7 +235,6 @@ test('Comet PoB share-code reimport retains the unresolved slot and source gem m
     nameSpec: 'Unleash', level: '0', quality: '0',
     count: '1', enableGlobal1: 'true', enableGlobal2: 'true',
   });
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(sharedCode);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -248,7 +248,7 @@ test('Comet PoB share-code reimport retains the unresolved slot and source gem m
   }
   expect(new Set(after.state.allocatedNodes)).toEqual(new Set(before.state.allocatedNodes));
   // PoB export may add standard false config defaults; imported values stay exact.
-  expect(after.state.params).toMatchObject(before.state.params);
+  expect(after.state.params).toMatchObject({ ...before.state.params });
   expect(after.notes).toBe(before.notes);
   expect(after.state.pobCode).toBe(sharedCode);
   expect(after.workspace.builds.slice(0, -1)).toEqual(before.workspace.builds);
@@ -267,7 +267,6 @@ test('unresolved gems without count or global weapon attributes keep them absent
 </Skill></SkillSet></Skills></PathOfBuilding2>`).toString('base64url');
   await page.goto('/build');
   await ready(page);
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -291,7 +290,6 @@ test('unresolved gems without count or global weapon attributes keep them absent
   for (const attribute of ['count', 'enableGlobal1', 'enableGlobal2']) {
     expect(attributes).not.toHaveProperty(attribute);
   }
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(sharedCode);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -310,8 +308,6 @@ test('malformed inactive Comet stage import preserves the current workspace and 
   const library = await page.evaluate(() => localStorage.getItem('pobr-v2-library'));
   const malformed = structuredClone(before);
   activeBuild(malformed).stages[0].saved.state.socketGroups[8].gems[1].quality = -1;
-  // The file button and its error live in the import section, which is folded once the browser has a build.
-  await openImport(page);
   await page.locator('input[type=file]').setInputFiles({
     name: 'malformed-workspace.json', mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(malformed)),
@@ -335,7 +331,6 @@ test('removing an unresolved slot does not change the selected second active ski
 </Skill></SkillSet></Skills></PathOfBuilding2>`).toString('base64url');
   await page.goto('/build');
   await ready(page);
-  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -346,7 +341,7 @@ test('removing an unresolved slot does not change the selected second active ski
   await pageLink(page, 'Skills').click();
   const group = page.locator('.skill-group').first();
   await expandGroup(group);
-  await group.locator('.skill-gem').nth(1).getByRole('button', { name: 'Remove gem', exact: true }).click();
+  await page.locator('.skill-detail').locator('.skill-gem').nth(1).getByRole('button', { name: 'Remove gem', exact: true }).click();
   await idle(page);
   await expect(mainSkill(page)).toContainText('Spark');
   await expect(hitDps(page)).toHaveText(beforeDps);
@@ -364,7 +359,6 @@ for (const count of [1, 2]) {
     const code = deflateSync(Buffer.from(xml)).toString('base64url');
     await page.goto('/build');
     await ready(page);
-    await openImport(page);
     await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
     await page.locator('.import-submit').click();
     await openItemsAfterImport(page);
@@ -375,7 +369,7 @@ for (const count of [1, 2]) {
     await pageLink(page, 'Skills').click();
     const group = page.locator('.skill-group').first();
     await expandGroup(group);
-    await group.locator('.skill-gem').first().getByRole('button', { name: 'Remove gem', exact: true }).click();
+    await page.locator('.skill-detail').locator('.skill-gem').first().getByRole('button', { name: 'Remove gem', exact: true }).click();
     await idle(page);
     const after = await snapshot(page);
     expect(after.state.socketGroups[0].gems).toEqual(before.state.socketGroups[0].gems.slice(1));

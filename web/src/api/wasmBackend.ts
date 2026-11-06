@@ -38,6 +38,7 @@ import type {
   ItemAugmentInfo,
 } from './types';
 import type { JewelBase, PobrBackend } from './backend';
+import type { EnemyPresets } from './enemyPresets';
 
 interface WasmModule {
   default: () => Promise<unknown>;
@@ -115,6 +116,7 @@ function readAgainAfterBoot(rel: string): boolean {
     || [
       'base/base_items.json',
       'base/skill_gems.json',
+      'base/enemy_presets.json',
       'base/passive_tree.json',
       'base/passive_tree_meta.json',
       'overlay/trade_catalog.json',
@@ -413,6 +415,12 @@ export async function createWasmBackend(): Promise<PobrBackend> {
       }
       const text = await fetchVersionFile(manifest.version, 'overlay/config_options.json');
       return (JSON.parse(text) as ConfigCatalogFile).options;
+    },
+    async loadEnemyPresets() {
+      if (!manifest) manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
+      const path = 'base/enemy_presets.json';
+      return manifest.files.includes(path)
+        ? JSON.parse(await fetchVersionFile(manifest.version, path)) as EnemyPresets : null;
     },
     async loadClassNames() {
       if (!manifest) {

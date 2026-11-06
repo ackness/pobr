@@ -13,6 +13,15 @@ export interface LocalBuild {
   name: string;
   activeStage: string;
   stages: BuildStage[];
+  baseline?: { saved: SavedSession; recordedAt: number };
+}
+
+/** A build owns one independent comparison snapshot; recording never adds a stage. */
+export function recordWorkspaceBaseline(workspace: BuildWorkspace, recordedAt = Date.now()): BuildWorkspace {
+  const saved = structuredClone(activeWorkspaceStage(workspace).saved);
+  return { ...workspace, builds: workspace.builds.map(build => build.id !== workspace.activeBuild ? build : {
+    ...build, baseline: { saved, recordedAt },
+  }) };
 }
 
 export interface BuildWorkspace {
@@ -74,7 +83,7 @@ function starterContent(saved: SavedSession): string {
 export function appendImportedBuild(workspace: BuildWorkspace, build: LocalBuild, defaultStarter?: SavedSession | null): BuildWorkspace {
   const starter = workspace.builds[0], stage = starter.stages[0];
   const replaceStarter = !!defaultStarter && workspace.builds.length === 1 && starter.name === ''
-    && starter.stages.length === 1 && stage.name === '' && Object.keys(stage.drafts).length === 0
+    && !starter.baseline && starter.stages.length === 1 && stage.name === '' && Object.keys(stage.drafts).length === 0
     && starterContent(stage.saved) === starterContent(defaultStarter);
   return { ...workspace, activeBuild: build.id, builds: [...(replaceStarter ? [] : workspace.builds), build] };
 }
@@ -91,23 +100,37 @@ export function duplicateWorkspaceStage(workspace: BuildWorkspace, name: string)
   }) };
 }
 
-export function renameWorkspaceEntry(workspace: BuildWorkspace, kind: 'build' | 'stage', name: string): BuildWorkspace {
+/** Copy every stage, retaining content and drafts while giving each entry a fresh ID. */
+export function duplicateWorkspaceBuild(workspace: BuildWorkspace, buildId: string, name: string): BuildWorkspace {
+  const source = workspace.builds.find(build => build.id === buildId);
+  if (!source || !name.trim()) return workspace;
+  let activeStage = '';
+  const stages = source.stages.map(stage => {
+    const id = createId();
+    if (stage.id === source.activeStage) activeStage = id;
+    return { ...stage, id };
+  });
+  const copy = { ...source, id: createId(), name: name.trim(), activeStage, stages };
+  return { ...workspace, builds: [...workspace.builds, copy] };
+}
+
+export function renameWorkspaceEntry(workspace: BuildWorkspace, kind: 'build' | 'stage', name: string, buildId = workspace.activeBuild): BuildWorkspace {
   if (!name.trim()) return workspace;
-  return { ...workspace, builds: workspace.builds.map(build => build.id !== workspace.activeBuild ? build : {
+  return { ...workspace, builds: workspace.builds.map(build => build.id !== buildId ? build : {
     ...build,
     ...(kind === 'build' ? { name: name.trim() } : { stages: build.stages.map(stage => stage.id !== build.activeStage ? stage : { ...stage, name: name.trim() }) }),
   }) };
 }
 
 /**
- * Removes the active build, the build that follows it (else the one before) becoming the active
- * one. The library always keeps a build, so the only one is never removed.
+ * Removes the requested build. Removing the active one opens its next neighbor (else the previous).
+ * The library always keeps a build, so the only one is never removed.
  */
-export function removeWorkspaceBuild(workspace: BuildWorkspace): BuildWorkspace {
-  const index = workspace.builds.findIndex(build => build.id === workspace.activeBuild);
+export function removeWorkspaceBuild(workspace: BuildWorkspace, buildId = workspace.activeBuild): BuildWorkspace {
+  const index = workspace.builds.findIndex(build => build.id === buildId);
   if (index < 0 || workspace.builds.length < 2) return workspace;
   const builds = workspace.builds.filter((_, at) => at !== index);
-  return { ...workspace, activeBuild: builds[Math.min(index, builds.length - 1)].id, builds };
+  return { ...workspace, activeBuild: buildId === workspace.activeBuild ? builds[Math.min(index, builds.length - 1)].id : workspace.activeBuild, builds };
 }
 
 /**
@@ -142,7 +165,13 @@ export function parseWorkspace(raw: unknown, parseSession: (json: string) => Sav
         stages.push({ id: stage.id, name: stage.name, saved, drafts: stage.drafts });
       }
       if (!stages.some(stage => stage.id === build.activeStage)) return null;
-      builds.push({ id: build.id, name: build.name, activeStage: build.activeStage, stages });
+      let baseline: LocalBuild['baseline'];
+      if (build.baseline !== undefined) {
+        const saved = parseSession(JSON.stringify(build.baseline.saved));
+        if (!saved || !Number.isFinite(build.baseline.recordedAt) || build.baseline.recordedAt < 0 || Number.isNaN(new Date(build.baseline.recordedAt).getTime())) return null;
+        baseline = { saved, recordedAt: build.baseline.recordedAt };
+      }
+      builds.push({ id: build.id, name: build.name, activeStage: build.activeStage, stages, ...(baseline ? { baseline } : {}) });
     }
     if (!builds.some(build => build.id === workspace.activeBuild)) return null;
     return { version: 1, activeBuild: workspace.activeBuild, builds };

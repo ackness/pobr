@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { formatStatValue, statMap, STAT_SECTIONS } from './statDisplay';
+import { formatNumber, formatStatValue, statFormat, statMap, STAT_SECTIONS } from './statDisplay';
 import { statNameLabel } from './i18n';
 
 describe('copied flask recovery labels', () => {
@@ -34,6 +34,32 @@ describe('formatStatValue', () => {
   test('float2 大数退化为整数展示', () => {
     expect(formatStatValue(4143.7479, 'float2')).toBe('4,144');
     expect(formatStatValue(4.59, 'float2')).toBe('4.59');
+  });
+
+  test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('groups large negative values with the same precision in %s', lang => {
+    expect(formatStatValue(-12345.678, 'float2', lang)).toBe('-12,346');
+    expect(formatStatValue(-12345, 'int', lang)).toBe('-12,345');
+    expect(formatStatValue(-999.125, 'float2', lang)).toBe('-999.12');
+    expect(formatStatValue(-1000, 'float2', lang)).toBe('-1,000');
+    expect(formatStatValue(1000, 'float2', lang)).toBe('1,000');
+  });
+
+  test('keeps total, maximum and internal resistance values in percent', () => {
+    for (const id of ['FireResistTotal', 'ColdResistMax', 'LightningResistOverCap', 'TotemChaosResist']) {
+      expect(statFormat(id), id).toBe('percent');
+      expect(formatStatValue(75, statFormat(id)), id).toBe('75%');
+    }
+  });
+
+  test('uses metric precision for both a headline and its result', () => {
+    expect(formatStatValue(1693.83, statFormat('Life'))).toBe('1,694');
+    expect(formatStatValue(5307.37, statFormat('TotalDPS'))).toBe('5,307');
+    expect(formatStatValue(5307.37, statFormat('CombinedDPS'))).toBe('5,307');
+    expect(formatStatValue(22.35, statFormat('CritChance'))).toBe('22.4%');
+    expect(formatStatValue(2.345, statFormat('ActionRate'))).toBe('2.35');
+    expect(formatStatValue(2, statFormat('ActionRate'))).toBe('2.00');
+    expect(formatNumber(-12345.678)).toBe('-12,345.68');
+    expect(formatNumber(12, 1, 1)).toBe('12.0');
   });
 
   test('null / 非有限值显示 ∞（ChaosMaxHit 免疫语义）', () => {
@@ -164,4 +190,20 @@ test('double critical roll multiplier is displayed as a chance', () => {
   expect(formatStatValue(1, row.format)).toBe('0%');
   expect(formatStatValue(2, row.format)).toBe('100%');
   expect(formatStatValue(0, row.format)).toBe('0%');
+});
+
+describe('stat section labels', () => {
+  test('rows in one section never share a label, so a value and its percentage stay distinguishable', () => {
+    for (const section of STAT_SECTIONS) {
+      for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
+        const labels = section.rows.map(row => row.label[lang]);
+        expect(labels.filter((label, index) => labels.indexOf(label) !== index), `${section.title['en-US']} ${lang}`).toEqual([]);
+      }
+    }
+  });
+});
+
+test('main-minion headlines use the same integer precision as Combined DPS', () => {
+  expect(statFormat('MainMinionDPS')).toBe('int');
+  expect(formatStatValue(12345.67, statFormat('MainMinionDPS'), 'zh-CN')).toBe('12,346');
 });

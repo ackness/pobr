@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { answerConfirm } from './confirmDialog';
-import { pageLink } from './shell';
+import { buildAction, pageLink } from './shell';
 import { importInto, openBuild, openExport, selectStage, settled } from './buildLibrary';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
@@ -15,7 +15,8 @@ async function ready(page: Page) {
 }
 async function editName(page: Page, action: string, name: string) {
   // Scope to library/stage actions; the import destination has a separate New build choice.
-  await page.locator('.bd-actions').getByRole('button', { name: action, exact: true }).click();
+  if (action === 'Rename build') await buildAction(page, action);
+  else await page.locator('.bd-actions').getByRole('button', { name: action, exact: true }).click();
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
@@ -70,7 +71,6 @@ test('independent builds and stages preserve passive routes and notes across rel
   const shared = JSON.parse(readFileSync((await download.path())!, 'utf8'));
   expect(shared.build.stages).toHaveLength(2);
   expect(shared.build.stages[0].saved.notes).toBe('Leveling Ice Shot');
-  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   await page.locator('input[type=file]').setInputFiles((await download.path())!);
   await expect(page.locator('#ov-title')).toBeVisible();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
@@ -87,7 +87,6 @@ test('independent builds and stages preserve passive routes and notes across rel
   const backup = await backupPromise;
   expect(JSON.parse(readFileSync((await backup.path())!, 'utf8')).workspace.builds).toHaveLength(3);
   await editName(page, 'New build', 'Temporary');
-  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   await page.locator('input[type=file]').setInputFiles((await backup.path())!);
   await answerConfirm(page, true);
   await expect(page.locator('#ov-title')).toBeVisible();
@@ -167,7 +166,6 @@ test('malformed shared files leave the active stage and browser save untouched',
   const before = await snapshot(page);
   const invalid = { version: 1, notes: 'Invalid import', state: { ...before.state,
     flasks: {}, socketGroups: [{ enabled: true, gems: [null] }], params: { config_inputs: {} } } };
-  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   await page.locator('input[type=file]').setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(invalid)) });
   await expect(page.getByRole('alert').first()).toBeVisible();
   expect(await snapshot(page)).toEqual(before);
@@ -216,7 +214,7 @@ test('planning catalogs stay on the initialized snapshot after a deployment', as
     return route.abort();
   });
   await pageLink(page, 'Skills').click();
-  await expect(page.getByRole('heading', { name: 'Skill groups', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Skills', exact: true })).toBeVisible();
   await expect(page.getByPlaceholder('Add a skill group…')).toBeEnabled();
   await pageLink(page, 'Upgrades').click();
   await expect(page.getByRole('heading', { name: 'Upgrades', exact: true })).toBeVisible();
@@ -282,7 +280,7 @@ test('new imports keep the current build and replacement requires an explicit de
   expect(replaced.workspace.builds[1]).toEqual(imported.workspace.builds[1]);
 });
 
-test('automatic import collection deduplicates raw text without losing equipped copies or distinct rolls', async ({ page }) => {
+test('automatic import collection deduplicates within a build and retains each source build', async ({ page }) => {
   const ring = 'Rarity: RARE\nTwin Ring\nSapphire Ring\nImplicits: 0\n+50 to maximum Life';
   const rolledRing = ring.replace('+50', '+51');
   const ringCode = (second: string) => deflateSync(`<PathOfBuilding2>
@@ -292,7 +290,7 @@ test('automatic import collection deduplicates raw text without losing equipped 
       <ItemSet id="1"><Slot name="Ring 1" itemId="1"/><Slot name="Ring 2" itemId="2"/></ItemSet>
     </Items></PathOfBuilding2>`).toString('base64url');
   const library = () => page.evaluate(() =>
-    JSON.parse(localStorage.getItem('pobr-v2-library')!).items as { id: string; text: string }[]);
+    JSON.parse(localStorage.getItem('pobr-v2-library')!).items as { id: string; text: string; sourceBuild?: { id: string; name: string } }[]);
   await page.goto('/build');
   await ready(page);
   await importCode(page, ringCode(ring));
@@ -301,14 +299,22 @@ test('automatic import collection deduplicates raw text without losing equipped 
   ]);
   const collected = await library();
   expect(collected.map(item => item.text)).toEqual([ring]);
-  await importCode(page, ringCode(ring));
+  expect(collected[0].sourceBuild?.id).toBe((await snapshot(page)).workspace.activeBuild);
+  await importCode(page, ringCode(ring), 'currentStage');
   expect(await library()).toEqual(collected);
-  await importCode(page, ringCode(rolledRing));
+  await importCode(page, ringCode(rolledRing), 'currentStage');
   expect((await library()).map(item => item.text)).toEqual([ring, rolledRing]);
   expect((await snapshot(page)).state.items).toEqual([
     { slot: 'ring1', text: ring }, { slot: 'ring2', text: rolledRing },
   ]);
+  const firstBuild = (await snapshot(page)).workspace.activeBuild;
+  await importCode(page, ringCode(rolledRing));
+  const secondBuild = (await snapshot(page)).workspace.activeBuild;
+  expect(secondBuild).not.toBe(firstBuild);
+  expect((await library()).map(item => item.sourceBuild?.id)).toEqual([firstBuild, firstBuild, secondBuild, secondBuild]);
   await pageLink(page, 'Items').click();
+  await expect(page.locator('.items-library .library-source')).toHaveCount(4);
+  await page.getByRole('checkbox', { name: 'This build only', exact: true }).check();
   for (const slot of ['Ring 1', 'Ring 2']) {
     await page.locator('.paper-doll').getByRole('button', { name: slot, exact: true }).click();
     await expect(page.locator('.items-library').getByRole('button', { name: 'Equip', exact: true })).toHaveCount(2);
@@ -341,12 +347,19 @@ test('import recovers legacy library slot eligibility without deleting user-owne
     <Build level="80" className="Ranger"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
     <Skills/><Items activeItemSet="1"><Item id="1">${ring}</Item>
     <ItemSet id="1"><Slot name="Ring 2" itemId="1"/></ItemSet></Items></PathOfBuilding2>`).toString('base64url'));
-  const expected = [{ ...entries[0], slot: 'ring2' }, entries[1]];
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-library')!).items)).toEqual(expected);
+  const expected = await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-library')!).items);
+  expect(expected.slice(0, 2)).toEqual([{ ...entries[0], slot: 'ring2' }, entries[1]]);
+  expect(expected[0].sourceBuild).toBeUndefined();
+  expect(expected[1].sourceBuild).toBeUndefined();
+  expect(expected[2]).toMatchObject({ text: ring, slot: 'ring2', sourceBuild: { id: (await snapshot(page)).workspace.activeBuild } });
   await pageLink(page, 'Items').click();
   await page.locator('.paper-doll').getByRole('button', { name: 'Ring 1', exact: true }).click();
   const equip = page.locator('.items-library').getByRole('button', { name: 'Equip', exact: true });
-  await expect(equip).toHaveCount(2);
+  await expect(equip).toHaveCount(3);
+  await expect(page.locator('.items-library')).toContainText('Source unknown');
+  await page.getByRole('checkbox', { name: 'This build only', exact: true }).check();
+  await expect(equip).toHaveCount(1);
+  await expect(page.locator('.items-library')).not.toContainText('Source unknown');
   await equip.first().click();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   expect((await snapshot(page)).state.items).toEqual(expect.arrayContaining([
@@ -411,7 +424,7 @@ test('identical weapon text retains observed main-hand and offhand library eligi
   const library = page.locator('.items-library');
   await expect(library.getByRole('button', { name: 'Equip', exact: true })).toHaveCount(0);
   await page.locator('.shell-builds-button').click();
-  await importCode(page, source(true));
+  await importCode(page, source(true), 'currentStage');
   const baseline = (await snapshot(page)).state;
   await pageLink(page, 'Items').click();
   await page.locator('.paper-doll').getByRole('button', { name: 'Off Hand', exact: true }).click();
@@ -427,7 +440,7 @@ test('identical weapon text retains observed main-hand and offhand library eligi
     { slot: 'weapon1', text: weapon }, { slot: 'weapon2', text: other }, { slot: 'weapon2', text: weapon },
   ]);
   await page.locator('.shell-builds-button').click();
-  await importCode(page, source(true));
+  await importCode(page, source(true), 'currentStage');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-library')!).items)).toEqual(collected);
   await page.reload();
   await ready(page);
