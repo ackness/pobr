@@ -1,0 +1,128 @@
+@layer app {
+  :root {
+    --disclosure-icon-size: 1rem;
+    --disclosure-gap: .5rem;
+    --segmented-padding: .1875rem;
+  }
+
+  /* The repeated shared classes outrank legacy page rules without !important. The unscoped
+     versions also cover settings, pickers and the inspector in Radix portals. */
+  .disclosure {
+    --disclosure-font-size: var(--text-sm);
+    --disclosure-font-weight: 450;
+    --disclosure-color: var(--muted-foreground);
+  }
+  .disclosure[data-disclosure-level],
+  .shell-root .disclosure.disclosure[data-disclosure-level]:is(summary, button) {
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--disclosure-gap);
+    min-width: 0;
+    font-size: var(--disclosure-font-size);
+    font-weight: var(--disclosure-font-weight);
+    line-height: 1.5;
+    letter-spacing: normal;
+    text-transform: none;
+    text-align: start;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    color: var(--disclosure-color);
+    cursor: pointer;
+  }
+  .disclosure[data-disclosure-level='section'] { --disclosure-font-size: var(--text-lg); --disclosure-font-weight: 600; --disclosure-color: var(--foreground); }
+  .disclosure[data-disclosure-level='group'] { --disclosure-font-size: var(--text-base); --disclosure-font-weight: 560; --disclosure-color: var(--foreground); }
+  summary.disclosure { display: flex; list-style: none; }
+  summary.disclosure::marker { content: ''; }
+  summary.disclosure::-webkit-details-marker { display: none; }
+  .disclosure > :is(h2, h3, h4) { min-width: 0; margin: 0; font: inherit; color: inherit; }
+  .disclosure-label { display: inline-flex; align-items: center; gap: var(--disclosure-gap); min-width: 0; }
+
+  summary.disclosure::before,
+  .disclosure-caret,
+  .shell-root .disclosure .disclosure-caret {
+    content: '';
+    display: inline-block;
+    flex: 0 0 var(--disclosure-icon-size);
+    width: var(--disclosure-icon-size);
+    height: var(--disclosure-icon-size);
+    margin: 0;
+    background: var(--muted-foreground);
+    mask: url('../components/shared/disclosure-chevron.svg') center / contain no-repeat;
+    transform: rotate(0deg);
+    transition: transform var(--dur-fast) var(--ease-out);
+    pointer-events: none;
+  }
+  details[open] > summary.disclosure::before,
+  .disclosure[aria-expanded='true'] > .disclosure-caret,
+  .disclosure[aria-expanded='true'] > .disclosure-label > .disclosure-caret,
+  .shell-root .disclosure[aria-expanded='true'] .disclosure-caret { transform: rotate(90deg); }
+
+  /* A common presentation for native pressed buttons and Radix radio/tab
+     primitives. Semantics and keyboard handling belong to their callers. */
+  .segmented.segmented,
+  .shell-root .segmented.segmented {
+    --segmented-height: var(--control-height);
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: .125rem;
+    box-sizing: border-box;
+    width: fit-content;
+    max-width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: var(--segmented-height);
+    padding: var(--segmented-padding);
+    border: 0;
+    border-radius: var(--radius-md);
+    background: var(--muted);
+  }
+  .segmented.segmented--sm,
+  .shell-root .segmented.segmented--sm { --segmented-height: var(--control-height-sm); }
+  .segmented > button,
+  .shell-root .segmented.segmented > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .375rem;
+    flex: 0 1 auto;
+    box-sizing: border-box;
+    min-width: 0;
+    height: auto;
+    min-height: calc(var(--segmented-height) - 2 * var(--segmented-padding));
+    padding: .125rem .75rem;
+    border: 0;
+    border-radius: calc(var(--radius-md) - var(--segmented-padding));
+    background: transparent;
+    box-shadow: none;
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    transition: background var(--dur-fast) linear, color var(--dur-fast) linear;
+  }
+  .segmented > button:hover:not(:disabled),
+  .shell-root .segmented.segmented > button:hover:not(:disabled) { color: var(--foreground); }
+  .segmented > button:is([aria-pressed='true'], [aria-checked='true'], [aria-selected='true'], [data-state='on']),
+  .shell-root .segmented.segmented > button:is([aria-pressed='true'], [aria-checked='true'], [aria-selected='true'], [data-state='on']) {
+    background: var(--card);
+    color: var(--foreground);
+    box-shadow: 0 0 0 1px var(--border);
+  }
+  .segmented > button::after { display: none; }
+  .segmented > button:focus-visible { outline: 2px solid var(--ring); outline-offset: -1px; }
+  .segmented > button:disabled { opacity: .5; cursor: default; }
+  .segmented.segmented--sm > button,
+  .shell-root .segmented.segmented--sm > button { padding-block: 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    summary.disclosure::before, .disclosure-caret,
+    .shell-root .disclosure .disclosure-caret,
+    .segmented > button, .shell-root .segmented.segmented > button { transition: none; }
+  }
+}

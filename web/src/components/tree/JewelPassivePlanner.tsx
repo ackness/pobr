@@ -1,3 +1,4 @@
+import { DisclosureChevron } from '../shared/DisclosureChevron';
 import { formatStatValue, statFormat, formatNumber } from '../../lib/statDisplay';
 import { useHeadlineDamage } from '../../hooks/useMainMinion';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
@@ -185,7 +186,7 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
     : `${value >= baseline ? '+' : ''}${format((value / baseline - 1) * 100)}%`;
   const [open, setOpen] = useState(true);
   return <section className="jewel-passive-planner" aria-label={text.title}>
-    <AppButton className="tree-planner-toggle" aria-expanded={open} onClick={() => { if (open) stop(); setOpen(!open); }}><span aria-hidden>{open ? '▾' : '▸'}</span>{text.title}</AppButton>
+    <AppButton className="tree-planner-toggle disclosure" data-disclosure-level="section" aria-expanded={open} onClick={() => { if (open) stop(); setOpen(!open); }}><DisclosureChevron />{text.title}</AppButton>
     {open && <><p className="tree-planner-hint">{text.hint}</p>
     {applied && <p className="tree-planner-hint jewel-plan-applied" role="status">
       <strong>{text.applied}</strong><br />
@@ -205,11 +206,11 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
     {candidates.length >= JEWEL_PASSIVE_CANDIDATE_LIMIT && <p className="tree-planner-hint">{text.full}</p>}
     {!candidates.length && <p className="tree-planner-hint">{text.empty}</p>}
     <ul className="jewel-plan-candidates">{candidates.map(candidate => <li key={candidate.id}>
-      <details><summary>{candidate.label} · {nodeLabel(candidate.jewel.socket_node)}</summary><pre>{candidate.jewel.text}</pre></details>
+      <details><summary className="disclosure" data-disclosure-level="inline">{candidate.label} · {nodeLabel(candidate.jewel.socket_node)}</summary><pre>{candidate.jewel.text}</pre></details>
       <AppButton disabled={!onLocate} onClick={() => onLocate?.(candidate.jewel.socket_node)}>{text.locate}</AppButton>
       <AppButton disabled={Boolean(progress)} onClick={() => remove(candidate.id)}>{text.remove}</AppButton>
     </li>)}</ul>
-    <details><summary>{messages(lang, 'nodePower').calculationDetails}</summary><p className="tree-planner-hint">{text.limit}</p></details>
+    <details><summary className="disclosure" data-disclosure-level="inline">{messages(lang, 'nodePower').calculationDetails}</summary><p className="tree-planner-hint">{text.limit}</p></details>
     {exclusive.length > 0 && <p className="tree-planner-hint">{text.exclusive}</p>}
     <AppButton className="tree-planner-run" disabled={!candidates.length || session.busy || Boolean(session.calcError) || !session.calc || Boolean(progress) || exclusive.length > 0}
       onClick={() => void run()}>{text.run}</AppButton>
@@ -220,7 +221,7 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
       {damage.note && <p className="tree-planner-hint">{damage.note}</p>}
       {result.limited && <p className="tree-planner-hint">{text.bounded}</p>}
       {result.unmodeled > 0 && <p className="tree-planner-hint">{text.skipped}{colon}{result.unmodeled}</p>}
-      {result.diagnostics.length > 0 && <details><summary>{text.diagnostics}</summary><ul>{result.diagnostics.map((reason, index) => <li key={index}>{reason}</li>)}</ul></details>}
+      {result.diagnostics.length > 0 && <details><summary className="disclosure" data-disclosure-level="group">{text.diagnostics}</summary><ul>{result.diagnostics.map((reason, index) => <li key={index}>{reason}</li>)}</ul></details>}
       {!result.plans.length && <p>{text.none}</p>}
       {preview !== null && <AppButton onClick={() => show(null)}>{text.clear}</AppButton>}
       <ol className="tree-planner-results">{result.plans.map((plan, index) => <li key={index} className={preview === index ? 'is-previewed' : ''}>
@@ -230,7 +231,7 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
           {stat === damage.stat ? damage.label : statNameLabel(lang, stat)} <b>{delta(plan.stats[stat] ?? 0, result.baseline[stat] ?? 0)}</b>
           <small>{formatStatValue(result.baseline[stat] ?? 0, statFormat(stat), lang)} → <output data-stat={stat}>{formatStatValue(plan.stats[stat] ?? 0, statFormat(stat), lang)}</output></small>
         </span>)}</div>
-        <details><summary>{text.route}</summary><p>{text.addNodes}{colon}{plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>
+        <details><summary className="disclosure" data-disclosure-level="inline">{text.route}</summary><p>{text.addNodes}{colon}{plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>
           <p>{text.removeNodes}{colon}{plan.deallocate.map(nodeLabel).join(' · ') || '—'}</p>
           {plan.candidateId !== null && <pre>{completed!.candidates.find(candidate => candidate.id === plan.candidateId)?.jewel.text}</pre>}</details>
         <div className="tree-plan-actions"><AppButton onClick={() => show(index)}>{text.preview}</AppButton>

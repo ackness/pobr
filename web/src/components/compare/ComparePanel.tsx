@@ -99,7 +99,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
           {(gem.enable_global_1 === false || gem.enable_global_2 === false) && <span> · {tt('compare.disabled')}</span>}
         </li>;
       })}</ul>
-      <details><summary>{tt('compare.advanced')}</summary><pre>{JSON.stringify(group, null, 2)}</pre></details>
+      <details><summary className="disclosure" data-disclosure-level="inline">{tt('compare.advanced')}</summary><pre>{JSON.stringify(group, null, 2)}</pre></details>
     </>;
   };
   const textRow = (id: string, title: string, before: string | undefined, after: string | undefined, section: CopySection) => {
@@ -175,7 +175,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
         </div>}
         {minion && <p className="cmp-note">{minionDpsNote(lang, minionName ?? minion.name, minionOutput?.stats.find(stat => stat.id === 'ActiveMinionLimit')?.value)}</p>}
         {a && b && <>
-          <TabsPrimitive.List className="cmp-tablist" aria-label={words(lang, 'Comparison sections', '对比分区', '比較分區')}>
+          <TabsPrimitive.List className="cmp-tablist segmented" aria-label={words(lang, 'Comparison sections', '对比分区', '比較分區')}>
             {COMPARE_TABS.map(id => <TabsPrimitive.Trigger key={id} value={id} className="cmp-tab">
               {tabLabel[id]}<span className="cmp-count" data-zero={counts[id] === 0 || (id === 'stats' && !value) || undefined}>{id === 'stats' && !value ? '…' : id === 'tree' && treeChanges === null ? '≠' : counts[id]}</span>
             </TabsPrimitive.Trigger>)}
@@ -208,7 +208,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
             })}</table></div>}
             {changedOnly && counts.stats === 0 && <p className="cmp-none">{tt('compare.none')}</p>}
             <p className="cmp-note">{session.dataVersion ? tt('compare.basisHint').replace('{value}', session.dataVersion) : tt('compare.basisHint').replace(/\s*[(（]\{value\}[)）]/, '')}</p>
-            <details className="cmp-details" open={[value.before, value.after].some(output => output.unsupported_modifiers.length || output.item_errors.length)}><summary>{tt('compare.diagnostics')}</summary>{[value.before, value.after].map((output, index) => <div key={index}>
+            <details className="cmp-details" open={[value.before, value.after].some(output => output.unsupported_modifiers.length || output.item_errors.length)}><summary className="disclosure" data-disclosure-level="group">{tt('compare.diagnostics')}</summary>{[value.before, value.after].map((output, index) => <div key={index}>
               <strong>{index === 0 ? 'A' : 'B'} · {tt('sidebar.mainSkill')}{lang === 'en-US' ? ': ' : '：'}{output.main_skill ? skillDisplayName(output.main_skill.skill_id, lang, catalog) : absent}</strong>
               <UnincludedModifiers lines={output.unsupported_modifiers} lang={lang} /><ul>{output.item_errors.map((error, i) => <li key={i}>{slotLabel(lang, error.slot)}{lang === 'en-US' ? ': ' : '：'}{error.message}</li>)}</ul>
             </div>)}</details>

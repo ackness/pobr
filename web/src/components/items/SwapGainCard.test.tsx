@@ -12,7 +12,7 @@ it('prioritizes combined DPS, effective HP and life with before/after and percen
   expect(html).toContain('+50.0%');
   expect(html).toContain('-20.0%');
   expect(html).toContain('100</span> → <b class="swap-after">150');
-  expect(html).toContain('<details><summary>全部变化（1）</summary>');
+  expect(html).toContain('<details><summary class="disclosure" data-disclosure-level="inline">全部变化（1）</summary>');
   expect(html).not.toContain('<details open');
   expect(html).not.toContain('Armour');
   expect(html.match(/data-stat="CombinedDPS"/g)).toHaveLength(1);

@@ -104,13 +104,13 @@ it('remounts same-skill editors when switching groups and on revision changes, r
     updateParams: (patch: object) => { Object.assign(session.calcParams, patch); root.render(<SkillsPanel session={session} lang="en-US" active />); },
   } as unknown as BuildSession;
   const click = async (button: ComponentProps<'button'>) => { await act(async () => { button.onClick!({} as never); }); };
-  const lastButton = (className: string) => ui.buttons.filter(button => button.className === className).at(-1)!;
+  const lastButton = (className: string) => ui.buttons.filter(button => button.className?.split(' ').includes(className)).at(-1)!;
   const capacity = () => ui.inputs.filter(input => input.type === 'number' && input.min === 2 && input.max === 5).at(-1)!;
   await act(async () => root.render(<SkillsPanel session={session} lang="en-US" active />));
   await click(lastButton('gem-optimizer-toggle'));
   expect(capacity().value).toBe(5);
 
-  await click(ui.buttons.filter(button => button.className === 'skill-group-title').at(-1)!);
+  await click(ui.buttons.filter(button => button.className?.split(' ').includes('skill-group-title')).at(-1)!);
   const expandedOnSwitch = lastButton('gem-optimizer-toggle')['aria-expanded'];
   if (!expandedOnSwitch) await click(lastButton('gem-optimizer-toggle'));
   expect(capacity().value).toBe(2);

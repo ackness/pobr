@@ -1,3 +1,4 @@
+import { DisclosureChevron } from '../shared/DisclosureChevron';
 import { localizedName } from '../../lib/chinese';
 import { replaceUtility } from '../../lib/utilityItems';
 import { AppButton, AppInput, AppTextarea } from '../shared/controls';
@@ -74,10 +75,8 @@ function ItemRow({
   return (
     <article className={`library-row rarity-${rarityOf(text)}`} onMouseEnter={hover?.onEnter} onMouseLeave={hover?.onLeave} onFocus={hover?.onEnter} onBlur={hover?.onLeave}>
       <header className="library-row-head">
-        <AppButton className="library-row-toggle" aria-expanded={open} onClick={onToggle}>
-          <span className="row-caret" aria-hidden>
-            ▸
-          </span>
+        <AppButton className="library-row-toggle disclosure" data-disclosure-level="group" aria-expanded={open} onClick={onToggle}>
+          <DisclosureChevron className="row-caret" />
           <span className="item-name">{name}</span>
           {slotTag && <span className="library-row-slot">{slotTag}</span>}
         </AppButton>

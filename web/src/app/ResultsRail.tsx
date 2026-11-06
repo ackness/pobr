@@ -1,3 +1,4 @@
+import { DisclosureChevron } from '../components/shared/DisclosureChevron';
 import { ComparisonBaseline } from './ComparisonBaseline';
 import { EnergyTriggerNote } from '../components/config/EnergyTriggerNote';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -217,7 +218,7 @@ export function ResultsRail({ route, session, view, lang, onStatClick, onNavigat
       const key = section.title['en-US'];
       const folded = collapsed.includes(key);
       return <section key={key} className="rail-section" data-folded={folded || undefined}>
-        <h3 className="rail-title"><button type="button" aria-expanded={!folded} onClick={() => toggle(key)}><ChevronRight />{section.title[lang]}</button></h3>
+        <h3 className="rail-title"><button type="button" className="disclosure" data-disclosure-level="group" aria-expanded={!folded} onClick={() => toggle(key)}><DisclosureChevron />{section.title[lang]}</button></h3>
         <div className="rail-fold" data-open={!folded || undefined} inert={folded || undefined}><div>
           {section.playerDamage && calc?.main_skill && !minion && <DamageShare mainSkill={calc.main_skill} lang={lang} />}
           {rows.map(row => <Row key={row.id} stat={row.id} label={row.id === 'TotalDotDPS' ? bindT(lang)('sidebar.dotDps') : row.label[lang]} color={row.colorVar ? `var(--${row.colorVar})` : undefined} change={changes.get(row.id)} pin={pinFor(row.id)}

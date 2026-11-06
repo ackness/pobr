@@ -204,19 +204,6 @@ pre {
   background: var(--accent-gold);
 }
 
-/* 展开/收起箭头（物品库行 / 技能组行共用；随 aria-expanded 旋转） */
-.row-caret {
-  display: inline-block;
-  flex: none;
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-  transition: transform var(--duration-fast) var(--ease-out);
-}
-
-[aria-expanded='true'] > .row-caret {
-  transform: rotate(90deg);
-}
-
 /* 页签切换：主区面板轻微上浮淡入（compositor-only） */
 @keyframes panel-in {
   from {

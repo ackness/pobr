@@ -129,7 +129,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
   ];
 
   const panelContents = <>
-          <div className="gem-picker-chips" role="group" aria-label={tt('picker.colour')}>
+          <div className="gem-picker-chips segmented segmented--sm" role="group" aria-label={tt('picker.colour')}>
             {chips.map((chip) => (
               <AppButton
                 key={chip.id}

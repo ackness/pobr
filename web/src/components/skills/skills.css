@@ -345,10 +345,6 @@
   padding: 0;
 }
 
-.gem-optimizer-toggle[aria-expanded='true'] .row-caret {
-  transform: rotate(90deg);
-}
-
 .gem-optimizer-body {
   margin-top: var(--space-2);
   display: flex;

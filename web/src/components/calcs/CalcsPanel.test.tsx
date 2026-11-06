@@ -219,7 +219,7 @@ test('modifiers fold by source with a count and separate stacking subtotals', ()
     { mod_type: 'INC', value: 10, active: true, source_text: '10% increased Life', origin_kind: 'PassiveNode', origin_id: 'node.2', slot: null },
   ];
   const html = renderToStaticMarkup(<BreakdownTable breakdown={{ ...empty, mods }} modifierMeasure={{ stat: 'Life', unit: 'points' }} lang="en-US" />);
-  expect(html).toContain('<details class="modifier-source-group"><summary><strong>Passive tree</strong> <span>(2)</span>');
+  expect(html).toContain('<details class="modifier-source-group"><summary class="disclosure" data-disclosure-level="group"><strong>Passive tree</strong> <span>(2)</span>');
   expect(html).toContain('Base 20');
   expect(html).toContain('Increased / Reduced 10%');
   expect(html).not.toContain('Base 30');
@@ -234,7 +234,7 @@ test('resource formula summary preserves operation order and reports missing con
   expect(html.replace(/<[^>]*>/g, '')).toContain('(((100 ×0.5) +10) ×1.3)');
   expect(html).toContain('78 points');
   expect(html).toContain('Conversion destination is not returned');
-  expect(html).toContain('<details class="formula-steps"><summary>How it&#x27;s calculated</summary>');
+  expect(html).toContain('<details class="formula-steps"><summary class="disclosure" data-disclosure-level="inline">How it&#x27;s calculated</summary>');
 });
 
 test('resistance figures use returned total, cap and over-cap and show missing sources honestly', () => {

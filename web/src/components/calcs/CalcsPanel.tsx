@@ -288,7 +288,7 @@ function DamageLinesView({ damage, lang }: { damage: HitDamageTable; lang: Lang 
     <div className="damage-lines">
       {groups.map((group) => (
         <details key={group.key} className={`damage-lines-group damage-lines-${group.key.toLowerCase()}`}>
-          <summary>
+          <summary className="disclosure" data-disclosure-level="group">
             {group.label}
             <span className="breakdown-count">
               {group.mods.filter((m) => m.active).length} {tt('calcs.mods')}
@@ -432,7 +432,7 @@ function SkillDotView({ rows, lang }: { rows: SkillDotRow[]; lang: Lang }) {
       <div className="damage-lines">
         {rows.filter((row) => row.mods.length > 0).map((row) => (
           <details key={row.damage_type} className={`damage-lines-group damage-lines-${row.damage_type.toLowerCase()}`}>
-            <summary>
+            <summary className="disclosure" data-disclosure-level="group">
               {damageTypeLabel(lang, row.damage_type)} · {tt('calcs.skillDot.lines')}
               <span className="breakdown-count">
                 {row.mods.filter((m) => m.active).length} {tt('calcs.mods')}
@@ -519,7 +519,7 @@ function AilmentView({ ailment, lang }: { ailment: AilmentDetail; lang: Lang }) 
         <div className="damage-lines ailment-lines">
           {lineGroups.map(([key, mods]) => (
             <details key={key} className={`damage-lines-group ailment-lines-${key}`}>
-              <summary>
+              <summary className="disclosure" data-disclosure-level="group">
                 {tt(`calcs.ailment.${key}Lines`)}
                 <span className="breakdown-count">
                   {mods.filter((m) => m.active).length} {tt('calcs.mods')}
@@ -605,7 +605,7 @@ function ReloadView({ reload, lang }: { reload: ReloadDetail; lang: Lang }) {
 export function ModLines({ mods, lang, measure }: { mods: BreakdownMod[]; lang: Lang; measure?: ModifierMeasure }) {
   const tt = bindT(lang);
   return <div className="modifier-groups">{groupModifiers(mods, measure).map(group => <details className="modifier-source-group" key={group.source}>
-    <summary><strong>{sourceGroupLabel(lang, group.source)}</strong> <span>({group.mods.length})</span>
+    <summary className="disclosure" data-disclosure-level="group"><strong>{sourceGroupLabel(lang, group.source)}</strong> <span>({group.mods.length})</span>
       {group.subtotals.length > 0 && <span className="modifier-subtotals">{tt('calcs.sourceTotals')}{lang === 'en-US' ? ': ' : '：'}{group.subtotals.map(total => <span key={total.type}>
         {modTypeLabel(lang, total.type)} {total.type === 'MORE' ? '×' : ''}{fmtNum(total.value)}{total.type === 'INC' || (total.type === 'BASE' && measure?.unit === 'percent') ? '%' : ''}
       </span>)}</span>}
@@ -642,7 +642,7 @@ function ModifierRows({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
       <div className="modifier-row-head"><span className={`mod-type mod-type-${mod.mod_type.toLowerCase()}`}>{modTypeLabel(lang, mod.mod_type)}</span><strong className="mod-value">{mod.value === null ? '—' : fmtNum(mod.value)}</strong></div>
       <div className="mod-text">{!mod.source_text || (mod.origin_kind === 'Item' && !/[0-9%:]/.test(mod.source_text))
         ? <>{tt(mod.origin_kind === 'Item' ? 'calcs.missingModifier' : mod.origin_kind === 'CharacterBase' ? 'calcs.baseFrom.CharacterBase' : mod.origin_kind === 'GameConstant' ? 'calcs.baseFrom.GameConstant' : mod.origin_kind === 'SupportGem' ? 'calcs.baseFrom.SupportGem' : 'calcs.baseDerived')}
-          {mod.source_text && <details><summary>{tt('calcs.details')}</summary><pre>{mod.source_text}</pre></details>}</>
+          {mod.source_text && <details><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.details')}</summary><pre>{mod.source_text}</pre></details>}</>
         : <ModifierText raw={mod.source_text} translated={translated[index]} lang={lang} />}
         {!mod.active && <> <span className="mod-inactive-tag">{tt('calcs.inactive')}</span></>}</div>
       <p className="mod-origin">{source(mod, index)}{lang !== 'en-US' && /[A-Za-z]{3}/.test(names[index] ?? '') && <small className="modifier-fallback">{tt('calcs.untranslated')}</small>}</p>
@@ -696,7 +696,7 @@ function ResistanceView({ breakdown, stat, lang, values, related, onSelect }: { 
     const value = values?.get(id) ?? related?.[id]?.formula?.value ?? fallback[index];
     return <section key={id}><h4>{tt(labels[index])}</h4><strong className="mod-value">{value == null ? tt('calcs.missingValue') : `${fmtNum(value)}%`}</strong></section>;
   })}</div>
-    {ids.map((id, index) => <details className="resistance-sources" key={id}><summary>{tt(labels[index])}：{tt('calcs.source')}</summary>
+    {ids.map((id, index) => <details className="resistance-sources" key={id}><summary className="disclosure" data-disclosure-level="group">{tt(labels[index])}：{tt('calcs.source')}</summary>
       {onSelect && <AppButton onClick={() => onSelect(id)}>{statNameLabel(lang, id)}</AppButton>}
       {source(id)?.mods.length ? <ModLines mods={source(id)!.mods} lang={lang} />
         : source(id)?.sources?.some(group => group.mods.length) ? source(id)!.sources!.filter(group => group.mods.length).map(group => <section key={group.name}><h5>{statNameLabel(lang, group.name)}</h5><ModLines mods={group.mods} lang={lang} measure={{ stat: group.name, unit: statFormat(group.name) }} /></section>)
@@ -721,7 +721,7 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
       <p className="breakdown-note">{tt('calcs.derivedHint')}</p>
       {sourceHints.map(hint => <p className="breakdown-note" key={hint.id}>{statNameLabel(lang, hint.id)}</p>)}
       <p className="formula-conclusion">{detailFormula(derived.formula, derived.inputs, lang, true)}{stat && values?.has(stat) ? ` = ${formatStatValue(values.get(stat) ?? null, statFormat(stat), lang)}` : ''}</p>
-      <details className="formula-steps"><summary>{tt('calcs.formula')}</summary><p className="derived-formula">{detailFormula(derived.formula, derived.inputs, lang)}</p></details>
+      <details className="formula-steps"><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.formula')}</summary><p className="derived-formula">{detailFormula(derived.formula, derived.inputs, lang)}</p></details>
       <table className="breakdown-table"><caption>{tt('calcs.inputs')}</caption><tbody>
         {derived.inputs.map(input => <tr key={input.id}><th scope="row">{detailInputLabel(input.id, derived.inputs, lang)}</th><td>{inputValue(input)}</td></tr>)}
       </tbody></table>
@@ -766,7 +766,7 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
         <>
           <h4 className="breakdown-heading">{calcsLabel(lang, 'steps')}</h4>
           <p className="breakdown-note">{tt('calcs.stepsHint')}</p>
-          <details className="formula-steps"><summary>{tt('calcs.formula')}</summary>
+          <details className="formula-steps"><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.formula')}</summary>
           <div className="breakdown-scroll"><table className="breakdown-formula" aria-label={tt('calcs.formula')}>
             <tbody>
               {breakdown.formula.steps.map((step, i) => (
@@ -811,7 +811,7 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
               </ConfigFieldLink>
             </li>)}</ul></aside>
           </div>
-          <details className="enemy-modifiers"><summary>{tt('calcs.modifier')} ({breakdown.mitigation.reduce((sum, row) => sum + row.defence_mods.length + row.taken_mods.length, 0)})</summary><EnemyLinesView rows={breakdown.mitigation} lang={lang} /></details>
+          <details className="enemy-modifiers"><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.modifier')} ({breakdown.mitigation.reduce((sum, row) => sum + row.defence_mods.length + row.taken_mods.length, 0)})</summary><EnemyLinesView rows={breakdown.mitigation} lang={lang} /></details>
         </>
       )}
       {breakdown.ailment && <AilmentView ailment={breakdown.ailment} lang={lang} />}
@@ -851,7 +851,7 @@ export function FullDpsView({ calc, lang }: { calc: CalculateBuildResponse | nul
         <thead><tr><th>{tt('calcs.skill')}</th><th>{tt('skills.count')}</th><th>{tt('calcs.fullDpsContribution')}</th><th>{tt('calcs.diagnostics')}</th></tr></thead>
         <tbody>{full.skills.map(row => <tr key={`${row.group_index}-${row.active_skill_index}`}>
           <th>{tt('calcs.group')} {row.group_index + 1} · {skillName(row.skill_id)}</th><td>{fmtNum(row.count)}</td>
-          <td>{row.error ? '—' : formatStatValue(row.dps, statFormat('FullDPS'), lang)}</td><td>{row.error}{row.unsupported_modifiers.length > 0 && <details><summary>{tt('calcs.unsupported')} ({row.unsupported_modifiers.length})</summary>
+          <td>{row.error ? '—' : formatStatValue(row.dps, statFormat('FullDPS'), lang)}</td><td>{row.error}{row.unsupported_modifiers.length > 0 && <details><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.unsupported')} ({row.unsupported_modifiers.length})</summary>
             <UnincludedModifiers lines={row.unsupported_modifiers} lang={lang} /></details>}</td>
         </tr>)}</tbody>
       </table></div>
@@ -905,12 +905,12 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
       {running && <p className="calcs-hint" role="status">{tt('calcs.running')}</p>}
       {error && <div className="calc-error" role="alert">
         <p>{tt('calcs.overviewFailed')}</p>
-        <details><summary>{tt('calcs.errorDetails')}</summary><p>{error}</p></details>
+        <details><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.errorDetails')}</summary><p>{error}</p></details>
       </div>}
       {report?.item_errors.map((issue, index) => (
         <div className="calc-error" key={`${issue.slot}-${index}`}>
           <p>{slotLabel(lang, issue.slot)}{lang === 'en-US' ? ': ' : '：'}{tt('calcs.itemExcluded')}</p>
-          <details><summary>{tt('calcs.errorDetails')}</summary><p>{issue.message}</p></details>
+          <details><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.errorDetails')}</summary><p>{issue.message}</p></details>
         </div>
       ))}
       {displayed && (displayed.skills.length === 0 ? (
@@ -1247,7 +1247,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
               {session.busy && <span role="status">{calcsLabel(lang, 'stale')}</span>}
             </div>
             <div className="calcs-filters">
-              <div className="calcs-metric-scope" role="group" aria-label={words(lang, 'Metric list', '指标范围', '指標範圍')}>
+              <div className="calcs-metric-scope segmented" role="group" aria-label={words(lang, 'Metric list', '指标范围', '指標範圍')}>
                 <AppButton aria-pressed={commonOnly && !query.trim() && category === 'all'} onClick={() => { setCommonOnly(true); setQuery(''); setCategory('all'); }}>{words(lang, 'Common', '常用指标', '常用指標')}</AppButton>
                 <AppButton aria-pressed={!commonOnly || !!query.trim() || category !== 'all'} onClick={() => setCommonOnly(false)}>{words(lang, 'All metrics', '全部指标', '全部指標')}</AppButton>
               </div>

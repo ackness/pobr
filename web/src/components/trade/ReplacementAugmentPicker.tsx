@@ -30,7 +30,7 @@ export function ReplacementAugmentPicker({ plan, level, lang, disabled, onChange
   return <section className="replacement-augments" aria-label={ut('augmentTitle')}>
     <div className="replacement-augment-heading"><h4>{ut('augmentTitle')}</h4><span>{plan.sockets} / {plan.info.max_sockets}</span></div>
     {!plan.info.editable ? <p className="replacement-augment-note">{ut('augmentLocked')}</p> : <>
-      <div className="replacement-augment-modes" role="group" aria-label={ut('augmentTitle')}>
+      <div className="replacement-augment-modes segmented" role="group" aria-label={ut('augmentTitle')}>
         {(['inherit', 'original', 'custom'] as const).map(mode => <AppButton key={mode} disabled={disabled}
           aria-pressed={plan.selection.mode === mode} onClick={() => mode === 'custom' ? custom(plan.sockets || Math.min(1, plan.info.max_sockets)) : onChange({ mode })}>
           {ut(mode === 'inherit' ? 'augmentInherit' : mode === 'original' ? 'augmentOriginal' : 'augmentCustom')}</AppButton>)}

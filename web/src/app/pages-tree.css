@@ -106,9 +106,6 @@
   .shell-root .tree-panel .node-power > summary, .shell-root .tree-panel .tree-planner-toggle { display: flex; align-items: center; gap: .4rem; width: 100%; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; font-size: var(--text-sm); font-weight: 600; letter-spacing: normal; text-transform: none; text-align: left; justify-content: flex-start; white-space: normal; color: var(--foreground); cursor: pointer; }
   .shell-root .tree-panel .node-power > summary:hover, .shell-root .tree-panel .tree-planner-toggle:hover:not(:disabled) { background: none; color: var(--foreground); }
   .shell-root .tree-panel .node-power > summary { list-style: none; }
-  .shell-root .tree-panel .node-power > summary::-webkit-details-marker { display: none; }
-  .shell-root .tree-panel .node-power > summary::before { content: '▸'; font-size: .75rem; transition: transform var(--dur-fast) var(--ease-out); }
-  .shell-root .tree-panel .node-power[open] > summary::before { transform: rotate(90deg); }
   .shell-root .tree-panel .tree-planner { margin: 0; padding: 1rem 0 0; border: 0; border-radius: 0; background: none; scroll-margin: 0; }
   .shell-root .tree-panel .tree-planner-body { padding: .6rem 0 0; }
   .shell-root .tree-panel .tree-planner-hint, .shell-root .tree-panel .node-power p { margin: .5rem 0; font-size: var(--text-xs); line-height: 1.6; color: var(--muted-foreground); }
@@ -179,9 +176,6 @@
     .shell-root .tree-panel .tree-side { overflow: visible; border-left: 0; border-top: 1px solid var(--border); }
     .shell-root .tree-panel .tree-edit-tools { padding-inline: .9rem; }
     .shell-root .tree-panel .asc-hint { top: .75rem; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .shell-root .tree-panel .node-power > summary::before { transition: none; }
   }
 }
 

@@ -21,7 +21,7 @@ export function PartyEditor({ session, lang }: { session: BuildSession; lang: La
   const change = (id: string, patch: Partial<PartyMember>) => update(party.members.map(m => m.id === id ? { ...m, ...patch } : m));
   const add = (member?: PartyMember) => update([...party.members, { ...(member ?? { name: label('member'), enabled: true, blocks: {}, warnings: [] }), id: createId() }]);
   return <details className="party-editor" open>
-    <summary>{label('party')} ({party.members.filter(m => m.enabled).length})</summary>
+    <summary className="disclosure" data-disclosure-level="section">{label('party')} ({party.members.filter(m => m.enabled).length})</summary>
     <p>{label('partyHint')}</p>
     <label>{label('memberCode')}<AppTextarea disabled={session.busy || importing} aria-label={label('memberCode')} value={code} onChange={e => setCode(e.target.value)} /></label>
     {!code.trim() && <p id="party-import-hint">{label('pasteMemberFirst')}</p>}
@@ -43,7 +43,7 @@ export function PartyEditor({ session, lang }: { session: BuildSession; lang: La
       <AppButton disabled={session.busy || importing} onClick={() => update(party.members.filter(m => m.id !== member.id))}>{label('remove')}</AppButton>
       {member.warnings.map((warning, i) => <p key={i} role="status">{warning}</p>)}
       {destinations.map(destination => <details key={destination} open={!!member.blocks[destination]}>
-        <summary>{label(destination)}</summary>
+        <summary className="disclosure" data-disclosure-level="group">{label(destination)}</summary>
         <AppTextarea disabled={session.busy || importing} aria-label={`${member.name} ${label(destination)}`} rows={5}
           key={member.blocks[destination] ?? ''} defaultValue={member.blocks[destination] ?? ''}
           onBlur={event => {
