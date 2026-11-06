@@ -54,7 +54,7 @@ test('overview deduplicates limitations, keeps errors in collapsed details and p
     calcParams: {}, stateVersion: 7, inspectSkill } as unknown as BuildSession;
   harness.clicks = [];
   const html = renderToStaticMarkup(<SkillMetricsTable session={session} lang="en-US" report={report} displayed={report} />);
-  expect(html.match(/Shared limitation/g)).toHaveLength(1);
+  expect(html.match(/<span>Shared limitation<\/span>/g)).toHaveLength(1);
   expect(html).toContain('<details><summary>Details</summary><p>Cannot resolve effect EnemyExplode</p></details>');
   expect(html).toContain('Not supported yet');
   expect(html).not.toContain('<details open');
@@ -74,8 +74,8 @@ test('overview deduplicates limitations, keeps errors in collapsed details and p
 
 test.each([
   ['en-US', 'Spark (Group 1, effect 1)', 'Spark (Group 2, effect 1)', 'Spark (Group 2, effect 2)'],
-  ['zh-CN', 'Spark（技能组 1，效果 1）', 'Spark（技能组 2，效果 1）', 'Spark（技能组 2，效果 2）'],
-  ['zh-TW', 'Spark（技能組 1，效果 1）', 'Spark（技能組 2，效果 1）', 'Spark（技能組 2，效果 2）'],
+  ['zh-CN', 'Spark（未翻译）（技能组 1，效果 1）', 'Spark（未翻译）（技能组 2，效果 1）', 'Spark（未翻译）（技能组 2，效果 2）'],
+  ['zh-TW', 'Spark（尚未翻譯）（技能組 1，效果 1）', 'Spark（尚未翻譯）（技能組 2，效果 1）', 'Spark（尚未翻譯）（技能組 2，效果 2）'],
 ] as const)('duplicate skills have distinct localized button names and inspect the exact instance in %s', (lang, ...labels) => {
   harness.catalog = new Map([['Spark', gem('Spark', ['Spell', 'Damage'])], ['Fireball', gem('Fireball', ['Spell', 'Damage'])]]);
   const report: SkillMetricsResponse = { item_errors: [], skills: [
@@ -88,7 +88,7 @@ test.each([
   harness.clicks = [];
   const html = renderToStaticMarkup(<SkillMetricsTable session={session} lang={lang} report={report} displayed={report} />);
   const buttons = [...html.matchAll(/<button[^>]*>([^<]*)<\/button>/g)];
-  expect(buttons.map(button => button[1])).toEqual([...labels, 'Fireball']);
+  expect(buttons.map(button => button[1])).toEqual([...labels, lang === 'en-US' ? 'Fireball' : `Fireball${lang === 'zh-CN' ? '（未翻译）' : '（尚未翻譯）'}`]);
   expect(new Set(buttons.map(button => button[1])).size).toBe(4);
   expect(buttons[2][0]).toContain('aria-pressed="true"');
   for (let index = 0; index < 3; index++) harness.clicks[index]({ stopPropagation: vi.fn() } as never);

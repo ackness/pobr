@@ -5,8 +5,7 @@ test(`item roll ranges preserve keyboard edits, endpoints and disabled state`, a
   await page.goto('/e2e/fixtures/ranges.html?engine=main');
   const catalogue = page.getByRole('region', { name: 'Unique catalogue', exact: true });
   await catalogue.getByRole('searchbox', { name: 'Search unique names and modifiers' }).fill('Astramentis');
-  await catalogue.getByRole('combobox', { name: 'Choose a unique', exact: true }).click();
-  await page.getByRole('option', { name: /^Astramentis/ }).click();
+  await catalogue.getByRole('button', { name: /^Astramentis/ }).click();
   await catalogue.getByRole('combobox', { name: 'Variant', exact: true }).click();
   await page.getByRole('option', { name: 'Pre 0.2.0', exact: true }).click();
   const first = catalogue.getByRole('slider', { name: 'Roll 1', exact: true });
@@ -29,7 +28,8 @@ test(`item roll ranges preserve keyboard edits, endpoints and disabled state`, a
   await value(second, 100);
 
   const editor = page.locator('.replacement-affix-editor');
-  await editor.locator('summary').click();
+  if (!(await editor.evaluate(element => (element as HTMLDetailsElement).open))) await editor.locator(':scope > summary').click();
+  await expect(editor).toHaveAttribute('open', '');
   const life = editor.locator('[data-affix-id="equipment:IncreasedLife6"]');
   await life.getByRole('button', { name: 'Tier midpoint estimate', exact: true }).click();
   const roll = life.getByRole('slider', { name: 'Roll within tier: equipment:IncreasedLife6', exact: true });

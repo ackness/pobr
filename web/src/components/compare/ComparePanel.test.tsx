@@ -109,3 +109,16 @@ test('an inherited enemy tier is named in the comparison instead of showing an a
   expect(html).toContain('Mapping');
   expect(a.saved.state.params.enemy_tier).toBeUndefined();
 });
+
+test('skill comparison preserves the imported name of an unresolved gem', () => {
+  const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Target');
+  const [a, b] = workspace.builds[0].stages;
+  b.saved = structuredClone(b.saved);
+  b.saved.state.socketGroups[0].gems.push({ skill_id: '', name_spec: 'Imported original gem', level: 0, quality: 0 });
+  ui.values = [a.id, b.id, 'own', true, '', 'skills', {}, {
+    key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
+    value: { stats: [], before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
+  }];
+  const html = render({ workspace, dataVersion: '0.5' } as unknown as BuildSession);
+  expect(html).toContain('Imported original gem · Unresolved gem');
+});

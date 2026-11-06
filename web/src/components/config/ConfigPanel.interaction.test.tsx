@@ -1,3 +1,4 @@
+import { requestConfigField, takeConfigField } from '../../lib/configNavigation';
 import type { ComponentProps, ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test, vi } from 'vitest';
@@ -9,6 +10,7 @@ import { ConfigPanel } from './ConfigPanel';
 // Replay the panel's state and actual control handlers in the SSR test environment.
 // Child rows can render their own draft state, but only panel state is persisted.
 const harness = vi.hoisted(() => ({ presets: null as EnemyPresets | null, index: 0, values: [] as unknown[],
+  effects: [] as { effect: () => void; deps?: readonly unknown[] }[],
   category: undefined as ComponentProps<'select'> | undefined,
   search: undefined as ComponentProps<'input'> | undefined,
   inputs: new Map<string, ComponentProps<'input'>>(),
@@ -17,6 +19,7 @@ const harness = vi.hoisted(() => ({ presets: null as EnemyPresets | null, index:
 }));
 vi.mock('react', async original => ({
   ...await original<typeof import('react')>(),
+  useEffect: (effect: () => void, deps?: readonly unknown[]) => { harness.effects.push({ effect, deps }); },
   useState: (initial: unknown) => {
     const index = harness.index++;
     if (index >= 14) return [initial, () => {}];
@@ -61,6 +64,9 @@ vi.mock('../shared/controls', () => ({
 
 afterEach(() => {
   harness.inputs.clear();
+  harness.effects = [];
+  vi.unstubAllGlobals();
+  takeConfigField();
   harness.restore = undefined;
   harness.presets = null;
 });
@@ -173,6 +179,9 @@ test.each([true, false])('Modified retains rapid edits to an option initially se
   const render = () => {
     harness.index = 0;
     harness.inputs.clear();
+    harness.effects = [];
+    vi.unstubAllGlobals();
+    takeConfigField();
     return renderToStaticMarkup(<ConfigPanel session={session} lang="en-US" />);
   };
   const change = (checked: boolean) => harness.inputs.get(id)!.onChange!({ target: { checked } } as never);
@@ -228,4 +237,32 @@ test.each([true, false])('Modified retains rapid edits to an option initially se
   expect(render()).not.toContain(`id="${id}"`);
   harness.search!.onChange!({ target: { value: variable } } as never);
   expect(render()).not.toContain(`id="${id}"`);
+});
+
+
+test('a linked configuration field clears filters, reveals its group and focuses the original control', () => {
+  const option: ConfigOption = { var: 'conditionLowLife', label: 'Always on Low Life?', section: 'General', input_type: 'check', default: false };
+  harness.values = ['options', null, [option], 'ready', 0, 'unrelated search', 'modified', 'Enemy Stats', new Set(), {}, {}, new Set()];
+  const session = { calcParams: { config_inputs: {} }, calc: null, busy: false, stateVersion: 1 } as unknown as BuildSession;
+  vi.stubGlobal('window', new EventTarget());
+  class Control { focus = vi.fn(); scrollIntoView = vi.fn(); }
+  const control = new Control();
+  vi.stubGlobal('HTMLElement', Control);
+  vi.stubGlobal('document', { getElementById: vi.fn(id => id === 'config-conditionLowLife' ? control : null) });
+  const render = () => {
+    harness.index = 0; harness.effects = [];
+    return renderToStaticMarkup(<ConfigPanel session={session} lang="en-US" />);
+  };
+  requestConfigField('conditionLowLife');
+  render();
+  harness.effects.find(entry => entry.deps?.length === 3 && entry.deps[2] === 'ready')!.effect();
+  expect(harness.values[5]).toBe('');
+  expect(harness.values[6]).toBe('all');
+  expect(harness.values[1]).toBe('conditionLowLife');
+  const html = render();
+  expect(html).toContain('id="config-conditionLowLife"');
+  harness.effects.find(entry => entry.deps?.length === 4 && entry.deps[0] === 'conditionLowLife')!.effect();
+  expect(control.focus).toHaveBeenCalledWith({ preventScroll: true });
+  expect(control.scrollIntoView).toHaveBeenCalledWith({ block: 'center' });
+  expect(harness.values[1]).toBeNull();
 });

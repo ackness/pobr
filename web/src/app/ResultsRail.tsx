@@ -58,13 +58,13 @@ function percentText(change: StatChange) {
   return `${change.percent > 0 ? '+' : '−'}${formatNumber(Math.abs(change.percent), 1, 1)}%`;
 }
 
-interface RowProps { label: string; value: ReactNode; color?: string; change?: StatChange; onOpen?: () => void; pin?: { on: boolean; toggle: () => void; label: string } }
+interface RowProps { stat?: string; label: string; value: ReactNode; color?: string; change?: StatChange; onOpen?: () => void; pin?: { on: boolean; toggle: () => void; label: string } }
 /** One result. If an edit just moved it, a tinted wash says so; if there is a calculation behind it, it opens; a pin keeps it at the top. */
-function Row({ label, value, color, change, onOpen, pin }: RowProps) {
+function Row({ stat, label, value, color, change, onOpen, pin }: RowProps) {
   const content = <>
     {change && <span key={`${change.before}>${change.after}`} className="rail-flash" data-tone={change.tone} aria-hidden="true" />}
     <span className="rail-label">{label}</span><span className="rail-value" style={color ? { color } : undefined}>{value}</span></>;
-  const row = onOpen ? <button type="button" className="rail-row is-link" onClick={onOpen}>{content}</button> : <div className="rail-row">{content}</div>;
+  const row = onOpen ? <button type="button" className="rail-row is-link" data-stat={stat} onClick={onOpen}>{content}</button> : <div className="rail-row" data-stat={stat}>{content}</div>;
   // The pin is for the pointer; the keyboard pins from the inspector, so it adds no tab stops to a long list.
   return pin ? <div className="rail-item">{row}<button type="button" className="rail-pin" tabIndex={-1} aria-pressed={pin.on} aria-label={pin.label} onClick={pin.toggle}><Pin /></button></div> : row;
 }
@@ -137,7 +137,7 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
           {chip && <span className="rail-chip" data-tone={chip.tone} role="status">{percentText(chip)}</span>}
         </div>
       </div>
-      <Row label={tt('sidebar.hitDps')} change={changes.get('TotalDPS')} value={<AnimatedNumber value={mainSkill.hit_dps} format={numberOf(mainSkill.hit_dps)} />} onOpen={open('TotalDPS')} />
+      <Row stat="TotalDPS" label={tt('sidebar.hitDps')} change={changes.get('TotalDPS')} value={<AnimatedNumber value={mainSkill.hit_dps} format={numberOf(mainSkill.hit_dps)} />} onOpen={open('TotalDPS')} />
       {mainSkill.dot_dps > 0 && <Row label={tt('sidebar.dotDps')} change={changes.get('TotalDotDPS')} value={<AnimatedNumber value={mainSkill.dot_dps} format={numberOf(mainSkill.dot_dps)} />} onOpen={open('TotalDotDPS')} />}
       {total > 0 && <div className="rail-share" role="list" aria-label={tt('sidebar.damageShare')}>
         <div className="rail-share-bar" aria-hidden="true">{parts.map(part => <span key={part.damage_type} style={{ flexGrow: part.avg, background: DAMAGE_COLOR[part.damage_type] ?? 'var(--primary)' }} />)}</div>
@@ -192,6 +192,8 @@ export function ResultsRail({ route, session, view, lang, onStatClick, onNavigat
       if (section.playerDamage && minion && !((calc?.main_skill?.combined_dps ?? 0) > 0)) return null;
       const rows = section.rows.filter(row => {
         if (!values) return false;
+        // TotalDPS is already shown under the calculated skill's headline.
+        if (row.id === 'TotalDPS' && !minion && session.calcParams.main_socket_group !== undefined && calc?.main_skill) return false;
         const value = values.get(row.id);
         if (row.id === 'QuantityMultiplier' && value === 1) return false;
         if (['WithIgniteDPS', 'WithBleedDPS', 'WithPoisonDPS', 'WithDotDPS'].includes(row.id) && typeof value === 'number'

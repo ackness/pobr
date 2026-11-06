@@ -47,7 +47,7 @@ test('import build code and browse tabs', async ({ page }) => {
   // Calcs 页：点开一项，明细出现在右侧详情里。
   await pageLink(page, 'Calculations').click();
   await page.locator('#breakdown-Life').click();
-  await expect(page.locator('#calcs-detail .formula-final, #calcs-detail .breakdown-table').first()).toBeVisible();
+  await expect(page.locator('#calcs-detail .formula-conclusion, #calcs-detail .breakdown-table').first()).toBeVisible();
 
   // Tree 页：SVG 渲染 + 已加点数量显示。
   await pageLink(page, 'Tree').click();

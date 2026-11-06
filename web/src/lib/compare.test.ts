@@ -275,3 +275,13 @@ test.each([['en-US', 'Form'], ['zh-CN', '形态'], ['zh-TW', '形態']] as const
     expect(comparisonGemForm(b, a, new Map(), lang)).toBe(`${label} 3`);
   },
 );
+
+test('comparison form names use the same localized labels as the skill editor', () => {
+  const gem = { skill_id: 'BonestormPlayer', level: 20, quality: 0, stat_set_index: 2 };
+  const catalog = new Map([[gem.skill_id, { name: 'Bonestorm', effect_forms: [{ skill_id: gem.skill_id, stat_sets: [
+    { id: gem.skill_id, index: 1, label: 'Projectile', stage: null },
+    { id: 'BonestormExplosionPlayer', index: 2, label: 'Explosion', stage: null },
+  ] }] } as GemCatalogEntry]]);
+  expect(comparisonGemForm(gem, undefined, catalog, 'zh-CN')).toBe('爆炸');
+  expect(comparisonGemForm(gem, undefined, catalog, 'zh-TW')).toBe('爆炸');
+});

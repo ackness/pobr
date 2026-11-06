@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openItemsAfterImport, statValue } from './shell';
+import { openItemsAfterImport, statValue, playerHitDps } from './shell';
 import { augmentOption, choose, copyCurrentStage, currentStage, goTo, openCustomModifiers, openOptimizerSettings, openStage, reduceMotion } from './upgradesPage';
 import type { SlotItemInput } from '../src/api/types';
 
@@ -125,9 +125,9 @@ test('complete text, nondefault ring, full receipt and limits survive Upgrades â
   await expect(page.locator('.replacement-position').filter({ hasText: /^Ring 2/ })).toHaveAttribute('aria-pressed', 'true');
   await page.locator('.replacement-position').filter({ hasText: /^Ring 1/ }).click();
   const receipt = await replacement(page).innerText();
-  const predictedDps = numeric(await page.locator('.upgrade-replacement-result tbody tr').nth(0).locator('td').nth(1).innerText());
-  const predictedLife = numeric(await page.locator('.upgrade-replacement-result tbody tr').nth(2).locator('td').nth(1).innerText());
-  const predictedEhp = numeric(await page.locator('.upgrade-replacement-result tbody tr').nth(1).locator('td').nth(1).innerText());
+  const predictedDps = numeric(await page.locator('.swap-gain-card [data-stat="CombinedDPS"] .swap-after').innerText());
+  const predictedLife = numeric(await page.locator('.swap-gain-card [data-stat="Life"] .swap-after').innerText());
+  const predictedEhp = numeric(await page.locator('.swap-gain-card [data-stat="TotalEHP"] .swap-after').innerText());
   await awayAndBack(page);
   await expect(input(page)).toHaveValue(ring);
   await expect(page.locator('.replacement-position').filter({ hasText: /^Ring 1/ })).toHaveAttribute('aria-pressed', 'true');
@@ -135,7 +135,7 @@ test('complete text, nondefault ring, full receipt and limits survive Upgrades â
   expect(await saved(page)).toEqual(before);
   await page.getByRole('button', { name: 'Apply to build Â· Ring 1', exact: true }).click();
   await assertExactItems(page, before, [{ slot: 'ring1', text: ring }]);
-  await expect.poll(async () => numeric(await stat(page, 'Hit DPS').innerText())).toBeCloseTo(predictedDps, 0);
+  await expect.poll(async () => numeric(await playerHitDps(page).innerText())).toBeCloseTo(predictedDps, 0);
   await expect.poll(async () => numeric(await stat(page, 'Life').innerText())).toBe(Math.round(predictedLife));
   await expect.poll(async () => numeric(await stat(page, 'Effective HP').innerText())).toBe(Math.round(predictedEhp));
 });
@@ -155,9 +155,9 @@ test('custom prepared augments and exact evaluated Apply survive navigation with
   expect(prepared).toContain('Rune: Iron Rune');
   expect(prepared).not.toContain('Perfect Iron Rune');
   const receipt = await replacement(page).innerText();
-  const predictedDps = numeric(await page.locator('.upgrade-replacement-result tbody tr').first().locator('td').nth(1).innerText());
-  const predictedEhp = numeric(await page.locator('.upgrade-replacement-result tbody tr').nth(1).locator('td').nth(1).innerText());
-  const predictedLife = numeric(await page.locator('.upgrade-replacement-result tbody tr').nth(2).locator('td').nth(1).innerText());
+  const predictedDps = numeric(await page.locator('.swap-gain-card [data-stat="CombinedDPS"] .swap-after').innerText());
+  const predictedEhp = numeric(await page.locator('.swap-gain-card [data-stat="TotalEHP"] .swap-after').innerText());
+  const predictedLife = numeric(await page.locator('.swap-gain-card [data-stat="Life"] .swap-after').innerText());
   await awayAndBack(page);
   await expect(input(page)).toHaveValue(bow);
   await expect(page.getByRole('button', { name: 'Customize', exact: true })).toHaveAttribute('aria-pressed', 'true');
@@ -165,7 +165,7 @@ test('custom prepared augments and exact evaluated Apply survive navigation with
   await expect.poll(() => replacement(page).innerText()).toBe(receipt);
   await page.getByRole('button', { name: /^Apply to build/ }).click();
   await assertExactItems(page, before, [{ slot: 'weapon1', text: prepared! }]);
-  await expect.poll(async () => numeric(await stat(page, 'Hit DPS').innerText())).toBeCloseTo(predictedDps, 0);
+  await expect.poll(async () => numeric(await playerHitDps(page).innerText())).toBeCloseTo(predictedDps, 0);
   await expect.poll(async () => numeric(await stat(page, 'Effective HP').innerText())).toBe(Math.round(predictedEhp));
   await expect.poll(async () => numeric(await stat(page, 'Life').innerText())).toBe(Math.round(predictedLife));
 });
@@ -201,7 +201,7 @@ test('equipment candidates, nondefault cap and complete joint receipt survive na
     slot: candidate.label.includes('Ring 1') ? 'ring1' : candidate.label.includes('Ring 2') ? 'ring2' : 'amulet', text: candidate.text,
   })));
   await expect.poll(async () => numeric(await stat(page, 'Life').innerText())).toBe(Math.round(expectedLife));
-  await expect.poll(async () => numeric(await stat(page, 'Hit DPS').innerText())).toBeCloseTo(expectedDps, 0);
+  await expect.poll(async () => numeric(await playerHitDps(page).innerText())).toBeCloseTo(expectedDps, 0);
   await expect.poll(async () => numeric(await stat(page, 'Effective HP').innerText())).toBe(Math.round(expectedEhp));
   await expect(jointResults(page)).toHaveCount(0);
 });
@@ -226,9 +226,9 @@ for (const [edit, maximum] of [['build', 2], ['goal', 1], ['goal', 2], ['goal', 
       await goTo(page, 'Skills');
       const group = page.locator('.skill-group').first();
       await group.locator('.skill-group-title').click();
-      const toggle = group.locator('.gem-optimizer-toggle');
+      const toggle = page.locator('.skill-detail').locator('.gem-optimizer-toggle');
       if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
-      await openOptimizerSettings(group);
+      await openOptimizerSettings(page.locator('.skill-detail'));
       await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
       await page.getByRole('option', { name: 'Max Life', exact: true }).click();
     }

@@ -9,22 +9,33 @@ import type { Route } from './routes';
 
 vi.mock('../hooks/useSkillName', () => ({ useSkillCatalog: () => new Map() }));
 
-function render(route: Route, quantity = 1, withIgnite = 100, extra: Partial<CalculateBuildResponse> = {}, groups: SocketGroupInput[] = []) {
+function render(route: Route, quantity = 1, withIgnite = 100, lang: 'en-US' | 'zh-CN' | 'zh-TW' = 'en-US', extra: Partial<CalculateBuildResponse> = {}, groups: SocketGroupInput[] = []) {
   const calc = { stats: Object.entries({ CritMultiplier: 7.36, QuantityMultiplier: quantity, TotalDPS: 100,
     CombinedDPS: 100, WithIgniteDPS: withIgnite, WithBleedDPS: 100, WithPoisonDPS: 100, CombinedAvgToMonsterLife: 10 }).map(([id, value]) => ({ id, value })),
     main_skill: { skill_id: 'Fireball', hit_damage: [], combined_dps: 100, hit_dps: 100, dot_dps: 0 },
     item_errors: [], unsupported_modifiers: [], minions: [], breakdowns: {}, breakdown_descriptors: {}, ...extra,
   } as unknown as CalculateBuildResponse;
   const session = { calcParams: { main_socket_group: 0 }, socketGroups: groups.length ? groups : [{ gems: [] }], calcMs: 77, dataVersion: '0.5.5.5' } as unknown as BuildSession;
-  return renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider><ResultsRail route={route} session={session}
-    view={{ calc, previous: null, stale: false }} lang="en-US" onStatClick={() => {}} onNavigate={() => {}} pinned={[]} onTogglePin={() => {}} /></TooltipProvider></UiProvider>);
+  return renderToStaticMarkup(<UiProvider lang={lang}><TooltipProvider><ResultsRail route={route} session={session}
+    view={{ calc, previous: null, stale: false }} lang={lang} onStatClick={() => {}} onNavigate={() => {}} pinned={[]} onTogglePin={() => {}} /></TooltipProvider></UiProvider>);
 }
 
 it('explains energy-trigger mapping beside the enemy tier only for a confirmed trigger', () => {
   const energy_trigger = { maximum_energy: 100, source: 'SparkPlayer', at_own_rate: false, missing_source: null } as NonNullable<CalculateBuildResponse['energy_trigger']>;
-  const html = render('config', 1, 100, { energy_trigger, main_skill: { group_index: 0, active_skill_index: 2, skill_id: 'CometPlayer', hit_damage: [], hit_dps: 10, dot_dps: 0, combined_dps: 10 } }, [{ enabled: true, gems: [{ skill_id: 'MetaCastOnCritPlayer', level: 16, quality: 0 }, { skill_id: 'CometPlayer', level: 16, quality: 0 }] }, { enabled: true, gems: [{ skill_id: 'SparkPlayer', level: 16, quality: 0 }] }]);
+  const html = render('config', 1, 100, 'en-US', { energy_trigger, main_skill: { group_index: 0, active_skill_index: 2, skill_id: 'CometPlayer', hit_damage: [], hit_dps: 10, dot_dps: 0, combined_dps: 10 } }, [{ enabled: true, gems: [{ skill_id: 'MetaCastOnCritPlayer', level: 16, quality: 0 }, { skill_id: 'CometPlayer', level: 16, quality: 0 }] }, { enabled: true, gems: [{ skill_id: 'SparkPlayer', level: 16, quality: 0 }] }]);
   expect(html).toContain('Mapping is calculated against one normal monster (power 1); clearing packs fills energy faster');
   expect(render('config')).not.toContain('clearing packs');
+});
+
+it.each([
+  ['en-US', 'Hit DPS', 'Combined DPS'],
+  ['zh-CN', '击中 DPS', '综合 DPS'],
+  ['zh-TW', '擊中 DPS', '綜合 DPS'],
+] as const)('shows one calculated-skill Hit DPS row and a distinct Combined DPS headline in %s', (lang, hit, combined) => {
+  const html = render('overview', 1, 100, lang);
+  expect(html.match(new RegExp(`class="rail-label">${hit}</span>`, 'g'))).toHaveLength(1);
+  expect(html).toContain(`data-stat="TotalDPS"><span class="rail-label">${hit}</span><span class="rail-value">100</span>`);
+  expect(html).toContain(`<span class="rail-hero-label">${combined}</span>`);
 });
 
 it('hides the duplicate attention link on Overview and names destinations elsewhere', () => {

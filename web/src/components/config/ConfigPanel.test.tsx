@@ -75,6 +75,22 @@ describe('materialized configuration display', () => {
   });
 });
 
+test('configuration exclusions use the shared modifier list with one original-text disclosure', () => {
+  const lines = ['Config: First unknown effect', 'Config: Second unknown effect'];
+  const session = { calcParams: { config_inputs: {} }, items: [], busy: false, stateVersion: 1,
+    calc: { stats: [], main_skill: null, item_errors: [], breakdowns: {}, unsupported_modifiers: [...lines, 'Tree:123: Unrelated effect'] },
+  } as unknown as BuildSession;
+  const html = renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider>
+    <ConfigPanel session={session} lang="en-US" />
+  </TooltipProvider></UiProvider>);
+  expect(html).toContain('Modifiers not included');
+  expect(html).toContain('class="unincluded-modifiers"');
+  expect(html.match(/class="unincluded-raw"/g)).toHaveLength(1);
+  expect(html).toContain(`<pre>${lines.join('\n')}</pre>`);
+  expect(html).not.toContain('class="modifier-raw"');
+  expect(html).not.toContain('Unrelated effect');
+});
+
 test('keeps a saved inapplicable option, typed value and collapsed help', () => {
   const html = renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider>
     <OptionRow option={{ var: 'testOption', label: 'Test option', input_type: 'count', tooltip: 'Catalog help' }}

@@ -71,11 +71,12 @@ for (const lang of ['en-US', 'zh-CN', 'zh-TW']) {
     await expect(page.getByRole('option')).toHaveCount(1);
     await input.press('Enter');
     await expect(page.getByLabel('Gem', { exact: true })).toHaveText('lightning');
+    // Home selects the first localized name: 冰霜新星 in zh-CN, Fireball/火球 otherwise.
     await input.fill('');
     await input.press('ArrowDown');
     await input.press('Home');
     await input.press('Enter');
-    await expect(page.getByLabel('Gem', { exact: true })).toHaveText('fire');
+    await expect(page.getByLabel('Gem', { exact: true })).toHaveText(lang === 'zh-CN' ? 'ice' : 'fire');
     await input.fill('Ice');
     await page.getByRole('option').click();
     await expect(input).toBeFocused();

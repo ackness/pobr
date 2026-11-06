@@ -34,6 +34,7 @@ export async function openStat(page: Page, id: string): Promise<Locator> {
     // The loading, stale and error messages share the class on a <p> or carry a role; the table does not.
     await expect(detail.locator('div.breakdown-detail:not([role])').first()).toBeVisible({ timeout: 90_000 });
   }
+  await expandFormulaDetails(detail);
   return detail;
 }
 
@@ -109,4 +110,41 @@ export async function closeInspector(page: Page) {
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.locator('.insp')).toHaveCount(0);
   await expect(page.locator('[data-slot="sheet-overlay"], [data-slot="sheet-content"]')).toHaveCount(0);
+}
+
+/** Formulas start folded; tests that inspect the steps explicitly reveal them. */
+export async function expandFormulaDetails(detail: Locator) {
+  await expandDetailSections(detail, 'details.formula-steps');
+}
+
+/** Resolve sections without filtering by mutable open state; use their own native summary. */
+async function expandDetailSections(root: Locator, selector: string) {
+  for (const section of await root.locator(selector).all()) {
+    if (!(await section.evaluate(element => (element as HTMLDetailsElement).open))) await section.locator(':scope > summary').click();
+  }
+}
+
+export async function expandModifierSources(root: Locator) {
+  await expandDetailSections(root, 'details.modifier-source-group');
+}
+
+/** Original text stays one native disclosure per list, reachable without a pointer. */
+export async function expectOriginalModifiersKeyboard(root: Locator) {
+  const originals = root.locator('.unincluded-modifiers > details.unincluded-raw');
+  expect(await originals.count()).toBeGreaterThan(0);
+  const outer = root.locator(':scope > summary');
+  await outer.focus();
+  let previous = outer;
+  for (const original of await originals.all()) {
+    const summary = original.locator(':scope > summary');
+    await previous.press('Tab');
+    await expect(summary).toBeFocused();
+    if (!(await original.evaluate(element => (element as HTMLDetailsElement).open))) await summary.press('Enter');
+    await expect(original.locator(':scope > pre')).toBeVisible();
+    expect(await original.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+    await summary.press('Space');
+    await expect(original).not.toHaveAttribute('open', '');
+    previous = summary;
+  }
+  await outer.focus();
 }
