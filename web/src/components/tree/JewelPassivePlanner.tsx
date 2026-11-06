@@ -1,9 +1,10 @@
+import { formatStatValue, statFormat, formatNumber } from '../../lib/statDisplay';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { AttributeChoice, CalculateBuildRequest, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { bindT, messages, type Lang } from '../../lib/i18n';
+import { statNameLabel, messages, type Lang } from '../../lib/i18n';
 import { normalizeCopiedItem } from '../../lib/itemReplacement';
 import {
   JEWEL_PASSIVE_CANDIDATE_LIMIT, planJewelPassiveUpgrades,
@@ -176,9 +177,8 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
   const { session, lang, nodeLabel, onLocate, raw, setRaw, selectedSocket, setSocket, sockets,
     candidates, remove, completed, result, progress, error, preview, exclusive, applied, add, run, apply, stop, show } = planner;
   const text = messages(lang, 'jewelPlanner');
-  const tt = bindT(lang);
   const colon = lang === 'en-US' ? ': ' : '：';
-  const format = (value: number) => value.toLocaleString(lang, { maximumFractionDigits: 2 });
+  const format = (value: number) => formatNumber(value);
   const delta = (value: number, baseline: number) => baseline === 0 ? `${value >= 0 ? '+' : ''}${format(value)}`
     : `${value >= baseline ? '+' : ''}${format((value / baseline - 1) * 100)}%`;
   const [open, setOpen] = useState(true);
@@ -224,8 +224,8 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
         <div className="tree-plan-heading"><strong>{plan.candidateId === null ? text.current : plan.candidateLabel}</strong>
           <span>{plan.candidateId !== null && <>{nodeLabel(completed!.candidates.find(candidate => candidate.id === plan.candidateId)!.jewel.socket_node)} · </>}{text.addNodes} {plan.allocate.length} · {text.removeNodes} {plan.deallocate.length}</span></div>
         <div className="tree-plan-metrics">{(['TotalDPS', 'TotalEHP', 'Life'] as const).map(stat => <span key={stat}>
-          {stat === 'TotalDPS' ? 'DPS' : stat === 'TotalEHP' ? 'EHP' : tt('opt.objLife')} <b>{delta(plan.stats[stat] ?? 0, result.baseline[stat] ?? 0)}</b>
-          <small>{format(result.baseline[stat] ?? 0)} → <output data-stat={stat}>{format(plan.stats[stat] ?? 0)}</output></small>
+          {statNameLabel(lang, stat)} <b>{delta(plan.stats[stat] ?? 0, result.baseline[stat] ?? 0)}</b>
+          <small>{formatStatValue(result.baseline[stat] ?? 0, statFormat(stat), lang)} → <output data-stat={stat}>{formatStatValue(plan.stats[stat] ?? 0, statFormat(stat), lang)}</output></small>
         </span>)}</div>
         <details><summary>{text.route}</summary><p>{text.addNodes}{colon}{plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>
           <p>{text.removeNodes}{colon}{plan.deallocate.map(nodeLabel).join(' · ') || '—'}</p>

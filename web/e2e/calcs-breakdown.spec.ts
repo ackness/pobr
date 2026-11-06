@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { pageLink, statRow } from './shell';
 import { choose, closeInspector, detailValue, importBuild, openStat, expandFormulaDetails, expandModifierSources } from './skillsAndCalcs';
+import { formatStatValue } from '../src/lib/statDisplay';
 
 // A committed PoB2 build whose Armour bucket holds a conditional line that is not met
 // ("if you haven't been Hit Recently") next to active INC and MORE lines.
@@ -25,7 +26,7 @@ async function inspectFromRail(page: Page, label: string | RegExp, heading: stri
 
 test('View minion selects its actor and default metric and focuses the detail heading', async ({ page }) => {
   await importBuild(page, code);
-  await pageLink(page, 'Calcs').click();
+  await pageLink(page, 'Calculations').click();
   const actor = page.getByRole('combobox', { name: 'Actor', exact: true });
   const detail = page.locator('#calcs-detail');
   // A summoner build opens on the calculated skill's minion.
@@ -70,7 +71,7 @@ test('a stat breakdown counts only the lines the calculation applies', async ({ 
   // The steps count the equipped items' armour, the increases and the more multiplier, and
   // end at the value shown.
   const steps = armour.locator('.breakdown-formula');
-  await expect(steps.locator('tr.formula-flat th')).toHaveText('Flat modifiers (BASE)');
+  await expect(steps.locator('tr.formula-flat th')).toHaveText('Flat modifiers');
   await expect(steps.locator('tr.formula-increased')).toHaveCount(1);
   await expect(steps.locator('tr.formula-more')).toHaveCount(1);
   const shown = num(await detailValue(armour).textContent());
@@ -200,7 +201,7 @@ test('average hit and total DPS show how they are built', async ({ page }) => {
   await expect(sources.locator('tbody tr.damage-physical')).toHaveCount(1);
   await expect(average.locator('.damage-lines-physical-gain .modifier-rows > li:not(.is-inactive)')).not.toHaveCount(0);
 
-  // Total DPS: starts from that average hit and multiplies in rate and chance to hit.
+  // Hit DPS: starts from that average hit and multiplies in rate and chance to hit.
   const dps = await openStat(page, 'TotalDPS');
   expect(Math.abs(num(await dps.locator('tr.formula-average_hit .formula-result').textContent()) - shownAverage)).toBeLessThanOrEqual(0.5);
   await expect(dps.locator('tr.formula-uses_per_second')).toHaveCount(1);
@@ -255,11 +256,15 @@ test('combined DPS adds the damage over time to the hits', async ({ page }) => {
   await expandFormulaDetails(combined);
   await expect(combined.locator('tr.formula-hit_dps')).toBeVisible({ timeout: 90_000 });
   expect(await stepResult(combined.locator('tr.formula-dot_dps'))).toBeCloseTo(total, 1);
+  const addedDot = num(await combined.locator('tr.formula-dot_dps .formula-operand').textContent());
+  // The final total is rounded for display. The added amount retains two decimals,
+  // so use it rather than subtracting two independently rounded running totals.
+  expect(Math.abs(total - (hit + addedDot))).toBeLessThanOrEqual(0.51);
 
   const dot = await openStat(page, 'TotalDotDPS');
   await expect(dot.locator('tr.formula-ignite_dps th')).toHaveText('Ignite DPS');
   await expect(dot.locator('tr.formula-bleed_dps')).toHaveCount(1);
-  expect(await stepResult(dot.locator('tr.formula-final'))).toBeCloseTo(total - hit, 0);
+  await expect(dot.locator('tr.formula-final .formula-result')).toHaveText(formatStatValue(addedDot, 'float2'));
 });
 
 test("a skill's own damage over time is listed per type", async ({ page }) => {
@@ -282,7 +287,7 @@ test('an ailment shows the hit it comes from and how many are active', async ({ 
   // Ignite on a hit build: the steps run from the hit to the shown DPS, and the table below
   // gives the numbers behind the hit and the active instance count.
   await loadBuild(page, 'warrior-titan-shield-wall');
-  await pageLink(page, 'Calcs').click();
+  await pageLink(page, 'Calculations').click();
   const ignite = await openStat(page, 'IgniteDPS');
   const source = await stepResult(ignite.locator('tr.formula-ailment_source'));
   expect(source).toBeGreaterThan(0);
@@ -302,7 +307,7 @@ test('an ailment shows the hit it comes from and how many are active', async ({ 
 test('a defence lists what each item slot adds on its own', async ({ page }) => {
   // Lines scoped to one item slot: the per-slot rows add up to the step of the formula.
   await loadBuild(page, 'warrior-titan-shield-wall');
-  await pageLink(page, 'Calcs').click();
+  await pageLink(page, 'Calculations').click();
   const armour = await openStat(page, 'Armour');
   const slots = armour.locator('.defence-slots-table');
   await expect(slots.locator('tbody tr')).not.toHaveCount(0);
@@ -321,7 +326,7 @@ test('on-demand details cover steps, sources, derived inputs and an explicit emp
   await expect(life.locator('.breakdown-formula')).toBeVisible();
   await closeInspector(page);
 
-  await pageLink(page, 'Calcs').click();
+  await pageLink(page, 'Calculations').click();
   const lifeRow = page.locator('#breakdown-Life');
   await expect(lifeRow).toHaveAttribute('data-detail-kind', 'steps');
   await openStat(page, 'Life');
@@ -372,7 +377,7 @@ test('on-demand details cover steps, sources, derived inputs and an explicit emp
   // Reopening a detail after an edit must describe the new calculation.
   await page.locator('.shell-builds-button').click();
   await page.getByLabel('Level', { exact: true }).fill('75');
-  await pageLink(page, 'Calcs').click();
+  await pageLink(page, 'Calculations').click();
   const reopened = await openStat(page, 'Life');
   await expect(reopened.locator('.breakdown-formula')).toBeVisible();
   await expect.poll(async () => Math.round(num(await reopened.locator('.formula-final .formula-result').textContent())))

@@ -135,8 +135,8 @@ test('completed support plans and nondefault socket and lineage settings survive
   const recommended = await page.locator('.support-plan').first().locator('.support-plan-metrics').innerText();
   await expect(page.locator('.support-plan .gem-lineage-badge')).toHaveCount(0);
 
-  await goTo(page, 'Calcs');
-  await expect(page.getByRole('heading', { name: 'Skill groups', exact: true })).toBeHidden();
+  await goTo(page, 'Calculations');
+  await expect(page.getByRole('heading', { name: 'Skills', exact: true })).toBeHidden();
   await expect(run(page)).toHaveCount(0);
   await expect(capacity(page)).toHaveCount(0);
   await expect(lineage(page)).toHaveCount(0);
@@ -158,7 +158,7 @@ test('same-stage Apply after returning to Skills equips the displayed complete s
   await openOptimizer(page);
   await capacity(page).fill('3');
   await lineage(page).uncheck();
-  await selectObjective(page, 'Max total DPS');
+  await selectObjective(page, 'Max Hit DPS');
   const groupsBefore = await socketGroups(page);
   const beforeDps = await settledNumber(dps(page));
   await completePlan(page);
@@ -170,7 +170,7 @@ test('same-stage Apply after returning to Skills equips the displayed complete s
   const previewDps = await previewMetric(page, 'Combined DPS');
   expect(previewDps).toBeGreaterThan(beforeDps);
 
-  await goTo(page, 'Calcs');
+  await goTo(page, 'Calculations');
   await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
   await returnToSkills(page);
   await expect(first).toBeVisible();
@@ -199,7 +199,7 @@ for (const edit of ['build', 'goal'] as const) {
     const floor = Math.max(0, await settledNumber(ehpValue(page)) - 1);
 
     if (edit === 'build') {
-      await goTo(page, 'Config');
+      await goTo(page, 'Configuration');
       await openCustomModifiers(page);
       await page.locator('.config-modifier-add').click();
       const block = page.locator('.config-modifier-block').last();
@@ -209,7 +209,7 @@ for (const edit of ['build', 'goal'] as const) {
       await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
     } else {
       await goTo(page, 'Upgrades');
-      await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
+      await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
       await page.locator('.upgrade-goal-details > summary').click();
       await page.getByRole('combobox', { name: 'Constraint', exact: true }).click();
       await page.getByRole('option', { name: 'Effective HP', exact: true }).click();
@@ -228,7 +228,7 @@ for (const edit of ['build', 'goal'] as const) {
     expect(Math.abs(baselineDps - currentDps), 'New results must use the current equipped build, not the hidden old request')
       .toBeLessThanOrEqual(0.5);
     if (edit === 'goal') {
-      await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Max total DPS');
+      await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Max Hit DPS');
       await expect(page.getByRole('spinbutton', { name: 'min', exact: true })).toHaveValue(String(floor));
       const planCount = await page.locator('.support-plan').count();
       for (let index = 0; index < planCount; index++) {
@@ -371,7 +371,7 @@ test('leaving Skills cancels an active real-WASM batch and its late continuation
   const equipped = await socketGroups(page);
   const beforeDps = await settledText(dps(page));
   await pauseAfterRealBatch(page);
-  await goTo(page, 'Calcs', { force: true });
+  await goTo(page, 'Calculations', { force: true });
   await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toHaveCount(0);
   await expect(run(page)).toHaveCount(0);
   await expect(capacity(page)).toHaveCount(0);
@@ -402,14 +402,14 @@ test('a hidden shared-goal edit cannot be overwritten by the previous real suppo
   const beforeDps = await settledText(dps(page));
   await pauseAfterRealBatch(page);
   await goTo(page, 'Upgrades', { force: true });
-  await page.getByRole('button', { name: 'Max total DPS', exact: true }).click({ force: true });
+  await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click({ force: true });
   await page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true }).check({ force: true });
   await page.clock.runFor(1000);
   await expect(page.locator('.support-results')).toHaveCount(0);
   await expect(page.locator('.opt-progress')).toHaveCount(0);
   await returnToSkills(page, { force: true });
   await expectNoPlans(page);
-  await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Max total DPS');
+  await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Max Hit DPS');
   await expect(page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true })).toBeChecked();
   await expect(capacity(page)).toHaveValue('3');
   await expect(lineage(page)).not.toBeChecked();
@@ -426,8 +426,8 @@ test('replacing a skill set with identical groups resets selected support worksp
   const initialCapacity = await capacity(page).inputValue();
   const initialLineage = await lineage(page).isChecked();
   const groups = await socketGroups(page);
-  await page.getByRole('textbox', { name: 'Template name…', exact: true }).fill('Identical support set');
-  await page.getByRole('button', { name: 'Save as template', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Skill template name…', exact: true }).fill('Identical support set');
+  await page.getByRole('button', { name: 'Save as skill template', exact: true }).click();
   await capacity(page).fill('3');
   await lineage(page).uncheck();
   await completePlan(page);

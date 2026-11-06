@@ -47,12 +47,12 @@ export function SkillMetricsTable({ session, lang, report, displayed }: {
     nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
   }
   const columns = [
-    ['combined_dps', 'sidebar.combinedDps'],
-    ['average_hit', 'calcs.averageHit'],
-    ['action_rate', 'calcs.actionRate'],
-    ['mana_cost', 'calcs.manaCost'],
-    ['life_cost', 'calcs.lifeCost'],
-    ['cooldown', 'calcs.cooldown'],
+    ['combined_dps', 'sidebar.combinedDps', 'float2'],
+    ['average_hit', 'calcs.averageHit', 'float2'],
+    ['action_rate', 'calcs.actionRate', 'rate'],
+    ['mana_cost', 'calcs.manaCost', 'int'],
+    ['life_cost', 'calcs.lifeCost', 'int'],
+    ['cooldown', 'calcs.cooldown', 'float2'],
   ] as const;
   return <>
     {unsupported.length > 0 && <details className="skill-metrics-limits">
@@ -63,7 +63,7 @@ export function SkillMetricsTable({ session, lang, report, displayed }: {
       <table className="breakdown-table skill-metrics-table">
         <thead><tr>
           <th scope="col">{tt('calcs.skill')}</th>
-          {columns.map(([key, label]) => <th scope="col" key={key}>{tt(label)}</th>)}
+          {columns.map(([key, label]) => <th scope="col" key={key}>{tt(label)}{key === 'combined_dps' && minion && <> / {tt('sidebar.minionHitDps')}</>}</th>)}
           <th scope="col">{tt('calcs.diagnostics')}</th>
         </tr></thead>
         <tbody>{displayed.skills.map(entry => {
@@ -94,12 +94,12 @@ export function SkillMetricsTable({ session, lang, report, displayed }: {
               {granted && <span className="granted-badge">{granted}</span>}
               {nonDamaging && <span className="granted-badge">{tt('calcs.nonDamaging')}</span>}
               {minionDps !== null && <span className="granted-badge">{tt('skills.minionDps')}</span>}
-              {entry === highest && dpsOf(entry) > 0 && <span className="granted-badge">{tt('calcs.highestDps')}</span>}
+              {entry === highest && dpsOf(entry) > 0 && <span className="granted-badge">{tt(minionDps !== null ? 'calcs.highestMinionDps' : 'calcs.highestDps')}</span>}
             </td>
-            {columns.map(([key]) => <td className="mod-value" key={key}>
-              {key === 'combined_dps' && minionDps !== null ? formatStatValue(minionDps, 'float2')
+            {columns.map(([key, , format]) => <td className="mod-value" key={key}>
+              {key === 'combined_dps' && minionDps !== null ? formatStatValue(minionDps, 'float2', lang)
                 : available && !((nonDamaging || summoner) && (key === 'combined_dps' || key === 'average_hit'))
-                  ? formatStatValue(entry.metrics![key], 'float2') : '—'}
+                  ? formatStatValue(entry.metrics![key], format, lang) : '—'}
             </td>)}
             <td className="skill-metrics-diagnostics">
               {report && !available && <p>{tt('calcs.unavailable')}</p>}

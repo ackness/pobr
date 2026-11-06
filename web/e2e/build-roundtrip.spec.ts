@@ -1,5 +1,6 @@
+import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
-import { openItemsAfterImport, pageLink, statValue } from './shell';
+import { openItemsAfterImport, pageLink, statValue, playerHitDps } from './shell';
 import { openBuild, openExport, openLoadouts, stableText } from './buildLibrary';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
@@ -13,8 +14,8 @@ const xml = `<PathOfBuilding2>
   <Notes>Original notes</Notes>
 </PathOfBuilding2>`;
 
-const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
-const hitDps = (page: Page) => statValue(page, /^Hit DPS$/).first();
+const mainSkill = (page: Page) => page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
+const hitDps = (page: Page) => playerHitDps(page);
 /** Opens the Imported PoB loadouts section of the Build page and switches to one of them by its position. */
 async function switchLoadout(page: Page, index: number) {
   const picker = page.getByRole('combobox', { name: 'PoB loadout', exact: true });
@@ -30,7 +31,7 @@ async function importCode(page: Page, code: string) {
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
 }
 
@@ -155,7 +156,7 @@ test('switch, reload, edit and share preserve the selected loadout and global fi
   await expect(page.getByRole('combobox', { name: 'PoB loadout', exact: true })).toBeEnabled();
   await page.getByLabel('Level', { exact: true }).fill('90');
   await page.getByRole('textbox', { name: 'Notes', exact: true }).fill('Edited <notes> & 中文');
-  await pageLink(page, 'Config').click();
+  await pageLink(page, 'Configuration').click();
   await page.getByLabel('Search config options…').fill('Onslaught');
   await page.locator('.config-item input[type="checkbox"]').first().check();
   // The enemy is chosen with the fight presets above the options ("Mapping" is the tier without a boss).

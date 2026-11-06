@@ -27,6 +27,24 @@ it('keeps unavailable stats unavailable and uses an absolute change for a zero b
   expect(html).toContain('>—<');
 });
 
+it.each(['en-US', 'zh-CN', 'zh-TW'] as const)('uses metric precision for absolute gains and groups negative DPS in %s', lang => {
+  const html = renderToStaticMarkup(<SwapGainCard
+    before={[{ id: 'CombinedDPS', value: 0 }, { id: 'TotalEHP', value: 0 }, { id: 'Life', value: 0 }, { id: 'TotalDPS', value: 12345.67 }]}
+    after={[{ id: 'CombinedDPS', value: 12345.67 }, { id: 'TotalEHP', value: 1001.83 }, { id: 'Life', value: 1.83 }, { id: 'TotalDPS', value: 0 }]} lang={lang} />);
+  const metric = (id: string) => html.match(new RegExp(`data-stat="${id}"[\\s\\S]*?</div>`))![0];
+  expect(metric('CombinedDPS')).toContain('<strong class="delta-pos">+12,346</strong>');
+  expect(metric('TotalEHP')).toContain('<strong class="delta-pos">+1,002</strong>');
+  expect(metric('Life')).toContain('<strong class="delta-pos">+2</strong>');
+  expect(metric('Life')).toContain('<span><span>0</span> → <b class="swap-after">2</b></span>');
+  expect(html).toContain('<td>12,346</td><td>0</td><td>-12,346</td>');
+});
+
+it('uses shared grouping and precision for relative gains too', () => {
+  const html = renderToStaticMarkup(<SwapGainCard before={[{ id: 'Life', value: 100 }]}
+    after={[{ id: 'Life', value: 12445.67 }]} lang="en-US" />);
+  expect(html).toContain('<strong class="delta-pos">+12,345.7%</strong>');
+});
+
 
 it.each([
   [null, 100, '—', '100'],

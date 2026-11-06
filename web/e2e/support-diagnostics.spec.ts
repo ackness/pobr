@@ -95,7 +95,7 @@ test('real baseline limits remain keyboard-readable across first page visits and
   const before = await groups(page);
   await capacity(page).fill('2');
   await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
-  await choose(page, page.getByRole('combobox', { name: 'Objective', exact: true }), 'Max total DPS');
+  await choose(page, page.getByRole('combobox', { name: 'Objective', exact: true }), 'Max Hit DPS');
   await completeSearch(page);
 
   const summary = baseline(page).locator(':scope > summary');
@@ -134,9 +134,9 @@ test('real baseline limits remain keyboard-readable across first page visits and
   const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Combined DPS / }).innerText();
   const preview = numeric(metric.match(/^Combined DPS ([\d,.]+)/)![1]);
 
-  for (const name of ['Calcs', 'Tree', 'Upgrades']) {
+  for (const name of ['Calculations', 'Tree', 'Upgrades']) {
     await goTo(page, name);
-    await expect(page.locator(name === 'Calcs' ? '.calcs-page' : name === 'Tree' ? '.tree-canvas' : '.upgrade-paths'))
+    await expect(page.locator(name === 'Calculations' ? '.calcs-page' : name === 'Tree' ? '.tree-canvas' : '.upgrade-paths'))
       .toBeVisible();
     await expect(run(page)).toHaveCount(0);
     await goTo(page, 'Skills');

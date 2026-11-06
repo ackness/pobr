@@ -30,7 +30,7 @@ import { planGemUpgrades } from '../../lib/tradeMarket';
 import { AppSelect } from '../shared/AppSelect';
 import { CopyButton } from '../shared/CopyButton';
 import { objectiveOf, ObjectiveEditor, OptimizerProgress } from '../shared/OptimizerControls';
-import { statMap } from '../../lib/statDisplay';
+import { formatStatValue, statFormat, formatNumber, statMap } from '../../lib/statDisplay';
 import { rankUpgradePositions, type PositionAnalysis } from '../../lib/tradePriority';
 import { hasReusableTradeAnalysis, hasUsableTradeWeights, reusableTradeCount, type CachedTradeAnalysis, type TradeAnalysisMode } from '../../lib/tradeAnalysis';
 import { tradeAnalysisText } from '../../lib/tradeAnalysisText';
@@ -188,7 +188,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   }) : null;
   const maxGain = Math.max(...(weights?.weighted.map(weight => weight.gain) ?? []), 1e-9);
   const disabled = !active || running !== null || session.busy || !catalog || !canAnalyze;
-  const number = (value: number, digits = 2) => value.toLocaleString(lang, { maximumFractionDigits: digits });
+  const number = (value: number, digits = 2) => formatNumber(value, digits);
 
   const priorities = rankUpgradePositions(results, objective);
   const fullTargets = [...slots.filter(slot => (bySlot.has(slot) || slot.startsWith('Jewel@')) && baseOf(slot)),
@@ -338,7 +338,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
         {allProgress && <span className="ui-badge" role="status">{allProgress.done} / {allProgress.total} {tt('trade.positions')}</span>}</div>
       <p className="trade-priority-hint">{tt('trade.priorityHint')}</p>
       {interrupted && <p className="trade-notice" role="status">{tradeAnalysisText(lang, 'stopped')}</p>}
-      {running && <div className="trade-progress"><span>{tt('trade.analyzingSlot')}: {labelOf(running)}</span>
+      {running && <div className="trade-progress"><span>{tt('trade.analyzingSlot')}{lang === 'en-US' ? ': ' : '：'}{labelOf(running)}</span>
         {progress && <OptimizerProgress {...progress} onCancel={cancelAnalysis} lang={lang} />}</div>}
       <ol className="trade-priority-list">
         {priorities.map((entry, index) => <li key={entry.slot}>
@@ -351,7 +351,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
             <span className="trade-priority-delta"><strong className={entry.gain < 0 ? 'delta-neg' : 'trade-gain'}>{entry.gain >= 0 ? '+' : ''}{number(entry.gainPercent ?? entry.gain)}{entry.gainPercent === undefined ? '' : '%'}</strong><small>{tt('trade.referencePotential')}</small></span>
             <span aria-hidden>→</span>
           </AppButton>
-          <div className="trade-priority-defence"><span className={deltaClass(entry.dpsDelta)}>DPS {entry.dpsDelta > 0 ? '+' : ''}{number(entry.dpsDelta, 0)}</span><span className={deltaClass(entry.lifeDelta)}>{statNameLabel(lang, 'Life')} {entry.lifeDelta > 0 ? '+' : ''}{number(entry.lifeDelta, 0)}</span><span className={deltaClass(entry.ehpDelta)}>EHP {entry.ehpDelta > 0 ? '+' : ''}{number(entry.ehpDelta, 0)}</span>{resistanceFirst && <span>{tt('trade.resistanceGap')} {number(entry.deficit)}%</span>}</div>
+          <div className="trade-priority-defence"><span className={deltaClass(entry.dpsDelta)}>{statNameLabel(lang, 'TotalDPS')} {entry.dpsDelta > 0 ? '+' : ''}{number(entry.dpsDelta, 0)}</span><span className={deltaClass(entry.lifeDelta)}>{statNameLabel(lang, 'Life')} {entry.lifeDelta > 0 ? '+' : ''}{number(entry.lifeDelta, 0)}</span><span className={deltaClass(entry.ehpDelta)}>{statNameLabel(lang, 'TotalEHP')} {entry.ehpDelta > 0 ? '+' : ''}{number(entry.ehpDelta, 0)}</span>{resistanceFirst && <span>{tt('trade.resistanceGap')} {number(entry.deficit)}%</span>}</div>
         </li>)}
       </ol>
       {!running && priorities.length === 0 && <p className="trade-notice">{tt('trade.noPriority')}</p>}
@@ -400,7 +400,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
             onChange={category => setCategories(prev => ({ ...prev, [selected]: category }))} />
         </details>}
         {!overview && interrupted && <p className="trade-notice" role="status">{tradeAnalysisText(lang, 'stopped')}</p>}
-        {!overview && running && progress && <div className="trade-progress"><span>{tt('trade.analyzingSlot')}: {labelOf(running)}</span>
+        {!overview && running && progress && <div className="trade-progress"><span>{tt('trade.analyzingSlot')}{lang === 'en-US' ? ': ' : '：'}{labelOf(running)}</span>
           <OptimizerProgress {...progress} onCancel={cancelAnalysis} lang={lang} /></div>}
         {result?.error && <div role="alert" className="trade-notice trade-error">{tt('trade.analysisFailed')}<details><summary>{tt('trade.errorDetails')}</summary>{result.error}</details></div>}
         {!weights && !result?.gems && running !== selected && <div className="trade-empty-state">
@@ -412,7 +412,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
           <section className="upgrade-score-reference ui-card" aria-label={ut('currentScore')}>
             <div><span>{ut('currentScore')}</span><strong>{weights.currentItemScore ? number(weights.currentItemScore.score, 0) : '—'}</strong>
               <small>{ut(!weights.currentItemScore ? 'noScore' : weights.currentItemScore.complete ? 'complete' : 'partial')}</small></div>
-            <div className="upgrade-current-stats"><span>DPS <b>{number(weights.baseline.TotalDPS ?? 0)}</b></span><span>EHP <b>{number(weights.baseline.TotalEHP ?? 0)}</b></span></div>
+            <div className="upgrade-current-stats"><span>{statNameLabel(lang, 'TotalDPS')} <b>{formatStatValue(weights.baseline.TotalDPS ?? 0, statFormat('TotalDPS'), lang)}</b></span><span>{statNameLabel(lang, 'TotalEHP')} <b>{formatStatValue(weights.baseline.TotalEHP ?? 0, statFormat('TotalEHP'), lang)}</b></span></div>
             <p>{ut('scoreHint')}</p>
             {weights.scoreWarnings.includes('unmodeled-candidates') && <p>{ut('skippedUnmodeled')}</p>}
             {weights.scoreWarnings.includes('constraints-not-in-query') && <p className="upgrade-score-caution">{ut('marketConstraints')}</p>}
@@ -428,7 +428,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
             {weights.weighted.map((weight, index) => <div key={weight.id} className="trade-score-row" role="row">
               <span className="trade-affix" role="cell"><span className="trade-rank">{String(index + 1).padStart(2, '0')}</span>{lineText(weight.line, localized[index])}</span>
               <span className="trade-priority" role="cell"><span className="trade-bar"><span style={{ width: `${weight.gain / maxGain * 100}%` }} /></span><b>{Math.round(weight.gain / maxGain * 100)}</b></span>
-              <span className="trade-gain" role="cell">+{weight.gainPercent.toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span>
+              <span className="trade-gain" role="cell">+{formatNumber(weight.gainPercent, 1, 1)}%</span>
             </div>)}
           </div>}
           {Boolean(weights.situational?.length) && <div className="trade-situational">
@@ -443,7 +443,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
           {weights.combinations[0] && <details className="trade-method"><summary>{tt('trade.referenceItem')}</summary><pre className="trade-reference">{weights.combinations[0].text}</pre></details>}
           <details className="trade-method"><summary>{ut('weightDetails')}</summary><p>{tt('trade.methodDescription')}</p>
             <ul>{weights.weighted.map((weight, index) => <li key={weight.id}>{lineText(weight.line, localized[index])} · {tt('trade.marketWeight')}{lang === 'en-US' ? ': ' : '：'}{number(weight.weight, 3)}</li>)}</ul>
-            <p>{tt('trade.currentGoal')}: {(preset === 'balanced' ? tt('trade.balanced') : statNameLabel(lang, objective.stat))} {number(scoreOf(weights.baseline, objective))} · {weights.evaluated} {tt('trade.evaluations')}</p></details>
+            <p>{tt('trade.currentGoal')}{lang === 'en-US' ? ': ' : '：'}{(preset === 'balanced' ? tt('trade.balanced') : statNameLabel(lang, objective.stat))} {number(scoreOf(weights.baseline, objective))} · {weights.evaluated} {tt('trade.evaluations')}</p></details>
           {weights.unsupported.length > 0 && <details className="trade-notice trade-unsupported"><summary>{tt('trade.unsupportedHint')} ({weights.unsupported.length})</summary><pre>{weights.unsupported.join('\n')}</pre></details>}
           {searchUrl && league.trim() && <div className="trade-search-card">
             <div><span className="trade-section-label">{tt('trade.nextStep')}</span><h4>{tt('trade.searchReady')}</h4><p>{tt(realm === 'cn' ? 'trade.cnMarketHint' : 'trade.directMarketHint')}</p>
@@ -469,7 +469,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
                 ? `${tt('trade.replacesGem')} ${skillName(session.socketGroups[plan.group].gems[plan.position].skill_id)}`
                 : tt('trade.addsGem')}</p>
               {plan.gainPercent !== undefined && <span className={plan.gainPercent < 0 ? 'delta-neg' : 'trade-gain'}>{tt('trade.referenceGain')} {plan.gainPercent >= 0 ? '+' : ''}{number(plan.gainPercent)}%</span>}</div>
-            <div className="upgrade-gem-stats">{['TotalDPS', 'TotalEHP'].map(stat => { const before = plan.baseline?.[stat] ?? 0, after = plan.stats?.[stat] ?? 0; return <span key={stat}>{stat === 'TotalDPS' ? 'DPS' : 'EHP'} <b className={after < before ? 'delta-neg' : 'delta-pos'}>{number(before)} → {number(after)}</b></span>; })}</div>
+            <div className="upgrade-gem-stats">{['TotalDPS', 'TotalEHP'].map(stat => { const before = plan.baseline?.[stat] ?? 0, after = plan.stats?.[stat] ?? 0; return <span key={stat}>{statNameLabel(lang, stat)} <b className={after < before ? 'delta-neg' : 'delta-pos'}>{formatStatValue(before, statFormat(stat), lang)} → {formatStatValue(after, statFormat(stat), lang)}</b></span>; })}</div>
             {plan.acquisition !== 'skill-adjustment' && league.trim() && <a className="trade-secondary" href={gemTradeUrl({ realm, league, category: 'gem', price: priceCap, maxLevel: session.character?.level,
               gem: { name: realm === 'cn' ? cnSkillName(plan.gem.skill_id) : plan.gem.name, level: plan.level, quality: plan.quality } })} target="_blank" rel="noreferrer">{tt('trade.browseMarket')}</a>}
             <AppButton disabled={session.busy} onClick={() => {

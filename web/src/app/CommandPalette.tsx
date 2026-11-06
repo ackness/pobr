@@ -69,8 +69,8 @@ export function CommandPalette({ open, onOpenChange, session, view, lang, pageLa
           <Command.Empty>{w('Nothing matches.', '没有匹配项。', '沒有符合的項目。')}</Command.Empty>
           {pages.length > 0 && <Command.Group heading={w('Pages', '页面', '頁面')}>{pages.map(page => item(`page:${page.route}`, page.label, page.key, () => onNavigate(page.route)))}</Command.Group>}
           {stats.length > 0 && <Command.Group heading={w('Why this number', '这个数从哪来', '這個數從哪來')}>{stats.map(stat => item(`stat:${stat.id}`, stat.label, stat.value, () => onInspect(stat.id)))}</Command.Group>}
-          {skills.length > 0 && <Command.Group heading={w('Main skill', '主技能', '主技能')}>{skills.map(skill => item(`skill:${skill.index}`, skill.label, undefined, () => session.updateParams({ main_socket_group: skill.index })))}</Command.Group>}
-          {tiers.length > 0 && <Command.Group heading={w('Enemy', '敌人', '敵人')}>{tiers.map(entry => item(`tier:${entry.tier}`, entry.label, undefined, () => session.updateParams({ enemy_tier: entry.tier })))}</Command.Group>}
+          {skills.length > 0 && <Command.Group heading={w('Calculated skill', '计算技能', '計算技能')}>{skills.map(skill => item(`skill:${skill.index}`, skill.label, undefined, () => session.updateParams({ main_socket_group: skill.index })))}</Command.Group>}
+          {tiers.length > 0 && <Command.Group heading={w('Enemy tier', '敌人档位', '敵人檔位')}>{tiers.map(entry => item(`tier:${entry.tier}`, entry.label, undefined, () => session.updateParams({ enemy_tier: entry.tier })))}</Command.Group>}
           {actions.length > 0 && <Command.Group heading={w('Actions', '操作', '操作')}>{actions.map(action => item(`action:${action.id}`, action.label, undefined, action.run))}</Command.Group>}
         </Command.List>
         <footer className="palette-foot"><span><kbd>↑</kbd><kbd>↓</kbd>{w('Move', '移动', '移動')}</span><span><kbd><CornerDownLeft /></kbd>{w('Select', '选择', '選擇')}</span><span><kbd>Esc</kbd>{w('Close', '关闭', '關閉')}</span></footer>

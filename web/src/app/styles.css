@@ -78,21 +78,23 @@
   .shell-skip-link:focus { transform: none; }
 
   /* Top bar: identity, which build you are editing, the workflow, then status. */
-  .shell-topbar { flex: none; display: flex; align-items: center; gap: 1rem; min-height: var(--topbar-height); padding-inline: 1rem; background: var(--card); border-bottom: 1px solid var(--border); }
+  .shell-topbar { flex: none; display: flex; flex-wrap: wrap; align-items: center; column-gap: 1rem; row-gap: 0; min-height: var(--topbar-height); padding-inline: 1rem; background: var(--card); border-bottom: 1px solid var(--border); }
   .shell-brand { display: flex; align-items: center; gap: .55rem; color: var(--foreground); text-decoration: none; flex: none; }
   .shell-brand-mark { display: grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: .4rem; background: var(--primary); color: var(--primary-foreground); font-size: .9rem; font-weight: 700; line-height: 1; }
   .shell-brand strong { font-size: .95rem; font-weight: 650; letter-spacing: .04em; }
   .shell-brand-version { font-size: var(--text-xs); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
   .shell-source-button svg { width: 1.05rem; height: 1.05rem; }
-  .shell-crumb { display: flex; align-items: center; min-width: 0; flex: 0 1 auto; }
+  .shell-crumb { display: flex; align-items: center; min-width: 0; flex: 1 1 14rem; }
   .shell-crumb-sep { color: var(--muted-foreground); opacity: .5; padding-inline: .1rem; }
-  .shell-crumb [data-slot='select-trigger'] { width: auto; max-width: 11rem; min-height: 0; height: 2rem; padding: 0 .5rem; gap: .35rem; border: 0; background: transparent; box-shadow: none; font-size: var(--text-base); font-weight: 500; border-radius: .4rem; }
+  .shell-crumb [data-slot='select-trigger'] { flex: 0 1 auto; min-width: 0; width: auto; max-width: 11rem; min-height: 0; height: 2rem; padding: 0 .5rem; gap: .35rem; border: 0; background: transparent; box-shadow: none; font-size: var(--text-base); font-weight: 500; border-radius: .4rem; }
   .shell-crumb [data-slot='select-trigger']:hover { background: var(--muted); }
   .shell-crumb [data-slot='select-value'] { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .shell-crumb [data-slot='select-trigger'] svg { opacity: .5; }
 
   /* The workflow. Left group describes the character; right group reads and improves it. */
   .shell-tabs { display: flex; align-items: stretch; align-self: stretch; gap: .1rem; margin-left: .5rem; }
+  /* Long translated page names get their own row until there is room for every control. */
+  .shell-topbar > .shell-tabs { order: 3; flex: 1 0 100%; min-width: 0; flex-wrap: wrap; justify-content: center; margin-left: 0; }
   .shell-tab { position: relative; display: inline-flex; align-items: center; gap: .6rem; padding-inline: .7rem; font-size: var(--text-base); color: var(--muted-foreground); text-decoration: none; white-space: nowrap; transition: color .12s; }
   .shell-tab:hover { color: var(--foreground); }
   .shell-tab[aria-current='page'] { color: var(--foreground); font-weight: 550; }
@@ -216,7 +218,18 @@
   .shell-root .app-disabled-tooltip { min-width: 0; max-width: 100%; }
 
   /* ── Responsive: the rail moves into a drawer, the workflow into a menu ── */
-  @container shell-container (min-width: 112rem) { .shell-main { padding: 2rem 3rem 4rem; } }
+  @container shell-container (min-width: 112rem) {
+    .shell-main { padding: 2rem 3rem 4rem; }
+    .shell-topbar { flex-wrap: nowrap; }
+    .shell-crumb { flex: 0 1 auto; max-width: 22rem; }
+    .shell-topbar > .shell-tabs { order: 0; flex: 1 0 auto; justify-content: flex-start; }
+  }
+  /* Chinese page names are short: one row fits from 90rem and still leaves the crumb about 16rem. */
+  @container shell-container (min-width: 90rem) {
+    .shell-topbar:lang(zh) { flex-wrap: nowrap; }
+    .shell-topbar:lang(zh) > .shell-crumb { flex: 0 1 auto; max-width: 22rem; }
+    .shell-topbar:lang(zh) > .shell-tabs { order: 0; flex: 1 0 auto; justify-content: flex-start; }
+  }
   @container shell-container (max-width: 72rem) {
     .shell-body { grid-template-columns: minmax(0, 1fr); }
     .shell-root .shell-rail, .shell-root .shell-tabs { display: none; }
@@ -294,7 +307,7 @@
   .ov-bar { height: .4rem; border-radius: 999px; background: var(--muted); overflow: hidden; }
   .ov-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--primary); opacity: .85; }
   .ov-bar[data-sign='neg'] > span { background: var(--destructive); }
-  .ov-toggle { display: inline-flex; padding: .15rem; border-radius: .45rem; background: var(--muted); }
+  .ov-toggle { display: inline-flex; flex-wrap: wrap; max-width: 100%; padding: .15rem; border-radius: .45rem; background: var(--muted); }
   .ov-toggle button { min-height: 0; padding: .2rem .65rem; border: 0; border-radius: .3rem; background: none; font: inherit; font-size: var(--text-xs); color: var(--muted-foreground); }
   .ov-toggle button[aria-pressed='true'] { background: var(--card); color: var(--foreground); box-shadow: 0 0 0 1px var(--border); }
   .ov-compute { display: grid; gap: .8rem; justify-items: start; }

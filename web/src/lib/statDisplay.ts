@@ -63,7 +63,7 @@ export const STAT_SECTIONS: StatSectionDef[] = [
       { id: 'OffHandAccuracy', label: { 'en-US': 'Off Hand Accuracy', 'zh-TW': '副手命中值', 'zh-CN': '副手命中值' }, format: 'int', hideZero: true },
       { id: 'AccuracyHitChanceUncapped', label: { 'en-US': 'Uncapped Chance to Hit', 'zh-TW': '無上限命中率', 'zh-CN': '无上限命中率' }, format: 'percent', hideZero: true },
       { id: 'QuantityMultiplier', label: { 'en-US': 'Quantity Multiplier', 'zh-TW': '數量倍率', 'zh-CN': '数量倍率' }, format: 'float2', hideZero: true },
-      { id: 'TotalDPS', label: { 'en-US': 'Total DPS', 'zh-TW': '總 DPS', 'zh-CN': '总 DPS' }, format: 'float2', colorVar: 'accent-gold-bright' },
+      { id: 'TotalDPS', label: { 'en-US': 'Hit DPS', 'zh-TW': '擊中 DPS', 'zh-CN': '击中 DPS' }, format: 'float2', colorVar: 'accent-gold-bright' },
       { id: 'TotalHitAvg', label: { 'en-US': 'Average Hit', 'zh-TW': '平均擊中', 'zh-CN': '平均击中' }, format: 'float2' },
       { id: 'ActionRate', label: { 'en-US': 'Attack/Cast Rate', 'zh-TW': '攻擊/施放速率', 'zh-CN': '攻击/施放速率' }, format: 'rate' },
       { id: 'HitChance', label: { 'en-US': 'Hit Chance', 'zh-TW': '命中率', 'zh-CN': '命中率' }, format: 'percent' },
@@ -86,7 +86,7 @@ export const STAT_SECTIONS: StatSectionDef[] = [
       { id: 'Mana', label: { 'en-US': 'Mana', 'zh-TW': '魔力', 'zh-CN': '魔力' }, format: 'int', colorVar: 'color-mana' },
       { id: 'EnergyShield', label: { 'en-US': 'Energy Shield', 'zh-TW': '能量護盾', 'zh-CN': '能量护盾' }, format: 'int', colorVar: 'color-es' },
       { id: 'Spirit', label: { 'en-US': 'Spirit', 'zh-TW': '精魂', 'zh-CN': '精魂' }, format: 'int', colorVar: 'color-chaos' },
-      { id: 'SpiritUnreserved', label: { 'en-US': 'Spirit Unreserved', 'zh-TW': '未保留精魂', 'zh-CN': '未保留精魂' }, format: 'int' },
+      { id: 'SpiritUnreserved', label: { 'en-US': 'Unreserved Spirit', 'zh-TW': '未保留精魂', 'zh-CN': '未保留精魂' }, format: 'int' },
       { id: 'Ward', label: { 'en-US': 'Ward', 'zh-TW': '結界', 'zh-CN': '结界' }, format: 'int', hideZero: true },
       { id: 'Rage', label: { 'en-US': 'Rage', 'zh-TW': '盛怒', 'zh-CN': '怒火' }, format: 'int', hideZero: true },
       { id: 'LifeUnreservedPercent', label: { 'en-US': 'Unreserved Life', 'zh-TW': '未保留生命', 'zh-CN': '未保留生命' }, format: 'percent' },
@@ -110,7 +110,7 @@ export const STAT_SECTIONS: StatSectionDef[] = [
     title: { 'en-US': 'Resistances', 'zh-TW': '抗性', 'zh-CN': '抗性' },
     rows: [
       { id: 'FireResist', label: { 'en-US': 'Fire Res.', 'zh-TW': '火焰抗性', 'zh-CN': '火焰抗性' }, format: 'percent', colorVar: 'color-fire' },
-      { id: 'ColdResist', label: { 'en-US': 'Cold Res.', 'zh-TW': '冰冷抗性', 'zh-CN': '冰冷抗性' }, format: 'percent', colorVar: 'color-cold' },
+      { id: 'ColdResist', label: { 'en-US': 'Cold resistance', 'zh-TW': '冰冷抗性', 'zh-CN': '冰冷抗性' }, format: 'percent', colorVar: 'color-cold' },
       { id: 'LightningResist', label: { 'en-US': 'Lightning Res.', 'zh-TW': '閃電抗性', 'zh-CN': '闪电抗性' }, format: 'percent', colorVar: 'color-lightning' },
       { id: 'ChaosResist', label: { 'en-US': 'Chaos Res.', 'zh-TW': '混沌抗性', 'zh-CN': '混沌抗性' }, format: 'percent', colorVar: 'color-chaos' },
       { id: 'FireResistOverCap', label: { 'en-US': 'Fire Res. Over Max', 'zh-TW': '超過上限火焰抗性', 'zh-CN': '超过上限火焰抗性' }, format: 'percent', hideZero: true },
@@ -143,7 +143,7 @@ export const STAT_SECTIONS: StatSectionDef[] = [
       { id: 'NetWardRegen', label: { 'en-US': 'Net Runic Ward Regeneration', 'zh-TW': '符文守護淨再生', 'zh-CN': '符文守护净再生' }, format: 'float2', hideZero: true },
       { id: 'NetEnergyShieldRegen', label: { 'en-US': 'Net Energy Shield Recovery per Second', 'zh-TW': '每秒能量護盾淨恢復', 'zh-CN': '每秒能量护盾净恢复' }, format: 'float2', hideZero: true },
       { id: 'TotalNetRegen', label: { 'en-US': 'Total Net Recovery per Second', 'zh-TW': '每秒總淨恢復', 'zh-CN': '每秒总净恢复' }, format: 'float2', hideZero: true },
-      { id: 'TotalBuildDegen', label: { 'en-US': 'Build Resource Loss per Second', 'zh-TW': '每秒構築資源損失', 'zh-CN': '每秒构筑资源损失' }, format: 'float2', hideZero: true },
+      { id: 'TotalBuildDegen', label: { 'en-US': 'Build Resource Loss per Second', 'zh-TW': '每秒 BD 資源損失', 'zh-CN': '每秒 BD 资源损失' }, format: 'float2', hideZero: true },
       { id: 'LifeLeechGainRate', label: { 'en-US': 'Life Leech and Gain on Hit per Second', 'zh-TW': '每秒生命偷取與擊中獲得', 'zh-CN': '每秒生命偷取与击中获得' }, format: 'float2', hideZero: true },
       { id: 'ManaLeechGainRate', label: { 'en-US': 'Mana Leech and Gain on Hit per Second', 'zh-TW': '每秒魔力偷取與擊中獲得', 'zh-CN': '每秒魔力偷取与击中获得' }, format: 'float2', hideZero: true },
       { id: 'EnergyShieldLeechGainRate', label: { 'en-US': 'Energy Shield Leech and Gain on Hit per Second', 'zh-TW': '每秒能量護盾偷取與擊中獲得', 'zh-CN': '每秒能量护盾偷取与击中获得' }, format: 'float2', hideZero: true },
@@ -298,7 +298,12 @@ export function statFormat(stat: string): StatFormat {
   return STAT_FORMATS.get(stat) ?? 'float2';
 }
 
-/** 数值格式化（null = 计算侧的 ∞ / 不适用）。 */
+/** Shared display rounding and grouping for numbers that are not tied to a stat. */
+export function formatNumber(value: number, digits = 2, minimumDigits = 0): string {
+  return value.toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: minimumDigits });
+}
+
+/** Format a result consistently in headlines, detail results and comparisons. */
 export function formatStatValue(value: number | null, format: StatFormat, lang: Lang = 'en-US'): string {
   if (value === null || !Number.isFinite(value)) return '∞';
   switch (format) {
@@ -307,17 +312,17 @@ export function formatStatValue(value: number | null, format: StatFormat, lang: 
     case 'modifier':
       return `${value >= 1 ? '+' : ''}${roundTo((value - 1) * 100, 1)}%`;
     case 'pierce':
-      return value >= 100 ? ({ 'en-US': 'All targets', 'zh-TW': '所有目標', 'zh-CN': '所有目标' }[lang]) : Math.round(value).toLocaleString('en-US');
+      return value >= 100 ? ({ 'en-US': 'All targets', 'zh-TW': '所有目標', 'zh-CN': '所有目标' }[lang]) : formatNumber(Math.round(value), 0);
     case 'int':
-      return Math.round(value).toLocaleString('en-US');
+      return formatNumber(Math.round(value), 0);
     case 'percent':
       return `${roundTo(value, 1)}%`;
     case 'rate':
-      return roundTo(value, 2).toFixed(2);
+      return formatNumber(roundTo(value, 2), 2, 2);
     case 'float2':
       return Math.abs(value) >= 1000
-        ? Math.round(value).toLocaleString('en-US')
-        : roundTo(value, 2).toString();
+        ? formatNumber(Math.round(value), 0)
+        : formatNumber(roundTo(value, 2));
   }
 }
 

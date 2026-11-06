@@ -47,7 +47,7 @@ async function openTrade(page: Page, rings = 1) {
   await goTo(page, 'Upgrades');
   await page.getByRole('button', { name: 'Max Life', exact: true }).click();
   await page.locator('.trade-position').filter({ hasText: /^Ring 1/ }).click();
-  await expect(page.getByRole('button', { name: 'Calculate affix scores', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Calculate modifier scores', exact: true })).toBeEnabled();
 }
 
 async function completeAll(page: Page) {
@@ -73,7 +73,7 @@ async function pauseScoringClock(page: Page) {
 
 test('completed trade analysis and Ring 1 selection survive tabs and market edits but reset for a new goal', async ({ page }) => {
   await openTrade(page);
-  await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+  await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
   await expect(page.locator('.upgrade-score-reference')).toBeVisible({ timeout: 90_000 });
   const reference = page.locator('.upgrade-score-reference');
   const score = await reference.locator('div > strong').first().innerText();
@@ -86,7 +86,7 @@ test('completed trade analysis and Ring 1 selection survive tabs and market edit
   expect(Math.round(query.query.stats[0].value.min)).toBe(numericScore);
   await expect(page.getByRole('button', { name: 'Analyze all positions', exact: true })).toBeEnabled();
 
-  await goTo(page, 'Calcs');
+  await goTo(page, 'Calculations');
   await expect(page.locator('.trade-page')).toBeHidden();
   await expect(page.getByRole('button', { name: 'Analyze all positions', exact: true })).toHaveCount(0);
   await expect(page.getByRole('spinbutton', { name: 'Max price', exact: true })).toHaveCount(0);
@@ -117,7 +117,7 @@ test('completed trade analysis and Ring 1 selection survive tabs and market edit
   await expect(page.locator('.trade-priorities .ui-badge')).toContainText('1 / 1');
 
   // The build has no skill, so a damage goal cannot be analysed at all; a defence goal is a new goal that still can.
-  await page.getByRole('button', { name: 'Max total EHP', exact: true }).click();
+  await page.getByRole('button', { name: 'Max Effective HP', exact: true }).click();
   await expectCleared(page);
 });
 
@@ -175,7 +175,7 @@ test('leaving all-position analysis stops hidden work and resumes only the unfin
   const scores = await page.locator('.trade-score-table').innerText();
   const href = (await page.locator('.trade-market-link').first().getAttribute('href'))!;
 
-  await goTo(page, 'Calcs', { force: true });
+  await goTo(page, 'Calculations', { force: true });
   await expect(page.getByRole('button', { name: 'Resume remaining positions', exact: true })).toHaveCount(0);
   // Drain the pending scoring yield: abort must prevent hidden completion/publication.
   await page.clock.runFor(1000);

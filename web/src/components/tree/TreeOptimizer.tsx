@@ -1,13 +1,13 @@
+import { formatStatValue, statFormat, formatNumber } from '../../lib/statDisplay';
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { treeStatLabel } from './treePresentation';
-import { words } from '../../app/text';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppInput } from '../shared/controls';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { formatApiError } from '../../api/error';
 import type { AttributeChoice, CalculateBuildRequest, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { bindT, messages, statNameLabel, type Lang } from '../../lib/i18n';
+import { bindT, statNameLabel, messages, type Lang } from '../../lib/i18n';
 import { scoreOf, type Objective } from '../../lib/optimize';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import {
@@ -255,9 +255,9 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
   const text = messages(lang, 'treeOptimizer');
   const colon = lang === 'en-US' ? ': ' : '：';
   const tt = bindT(lang);
-  const number = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  const number = (value: number) => formatNumber(value);
   const delta = (value: number, baseline: number) => baseline > 0 && Math.abs(value / baseline - 1) >= 0.0005
-    ? `${value >= baseline ? '+' : ''}${((value / baseline - 1) * 100).toFixed(1)}%`
+    ? `${value >= baseline ? '+' : ''}${formatNumber((value / baseline - 1) * 100, 1, 1)}%`
     : `${value >= baseline ? '+' : ''}${number(value - baseline)}`;
   const currentStats = evaluated?.baseline ?? {};
 
@@ -298,7 +298,7 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
         {error && <p className="opt-error">{error}</p>}
         {evaluated && <PlannerResultsNotice count={evaluated.plans.length} lang={lang}>
           <div className="tree-planner-summary">
-            {evaluated.evaluated > 0 && <span>{text.baseline}{colon}{words(lang, 'Hit DPS', '击中 DPS', '擊中 DPS')} {number(currentStats.TotalDPS ?? 0)} · {statNameLabel(lang, 'TotalEHP')} {number(currentStats.TotalEHP ?? 0)}</span>}
+            {evaluated.evaluated > 0 && <span>{text.baseline}{colon}{statNameLabel(lang, 'TotalDPS')} {formatStatValue(currentStats.TotalDPS ?? 0, statFormat('TotalDPS'), lang)} · {statNameLabel(lang, 'TotalEHP')} {formatStatValue(currentStats.TotalEHP ?? 0, statFormat('TotalEHP'), lang)}</span>}
             <details><summary>{messages(lang, 'nodePower').calculationDetails}</summary><span>{text.evaluated}{colon}{evaluated.evaluated}</span><p>{text.data}{colon}{completed!.dataVersion ?? text.unknownVersion} · {text.tree}{colon}{completed!.treeVersion ?? text.defaultTree}</p></details>
             {preview !== null && <AppButton onClick={() => show(null)}>{text.clear}</AppButton>}
           </div>
@@ -333,14 +333,13 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
               <div className="tree-plan-metrics">
                 {Math.abs(scoreOf(plan.stats, completed!.objective) - scoreOf(currentStats, completed!.objective)) >= 0.005 && <span>{text.score} <b>{delta(scoreOf(plan.stats, completed!.objective), scoreOf(currentStats, completed!.objective))}</b></span>}
                 {(['TotalDPS', 'TotalEHP', 'Life'] as const).filter(stat => Math.abs((plan.stats[stat] ?? 0) - (currentStats[stat] ?? 0)) >= 0.005).map(stat => <span key={stat}>
-                  {stat === 'TotalDPS' ? words(lang, 'Hit DPS', '击中 DPS', '擊中 DPS') : statNameLabel(lang, stat)} <b className={(plan.stats[stat] ?? 0) >= (currentStats[stat] ?? 0) ? 'is-positive' : 'is-negative'}>{delta(plan.stats[stat] ?? 0, currentStats[stat] ?? 0)}</b>
-
+                  {treeStatLabel(lang, stat)} <b className={(plan.stats[stat] ?? 0) >= (currentStats[stat] ?? 0) ? 'is-positive' : 'is-negative'}>{delta(plan.stats[stat] ?? 0, currentStats[stat] ?? 0)}</b>
                 </span>)}
               </div>
               <details><summary>{text.route} · +{plan.allocate.length} {plan.allocate.slice(0, 2).map(nodeLabel).join(' · ')}{plan.allocate.length > 2 ? '…' : ''}{plan.deallocate.length > 0 ? ` · −${plan.deallocate.length} ${plan.deallocate.slice(0, 2).map(nodeLabel).join(' · ')}${plan.deallocate.length > 2 ? '…' : ''}` : ''}</summary><p>{text.add}{colon}{plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>
                 <p>{text.remove}{colon}{plan.deallocate.map(nodeLabel).join(' · ') || '—'}</p>
                 {(['TotalDPS', 'TotalEHP', 'Life'] as const).map(stat => <p key={stat}>
-                  {stat === 'TotalDPS' ? words(lang, 'Hit DPS', '击中 DPS', '擊中 DPS') : statNameLabel(lang, stat)}：{number(currentStats[stat] ?? 0)} → <output data-stat={stat}>{number(plan.stats[stat] ?? 0)}</output>
+                  {statNameLabel(lang, stat)}{colon}{formatStatValue(currentStats[stat] ?? 0, statFormat(stat), lang)} → <output data-stat={stat}>{formatStatValue(plan.stats[stat] ?? 0, statFormat(stat), lang)}</output>
                 </p>)}
               </details>
               <div className="tree-plan-actions"><AppButton onClick={() => show(index)}>{text.preview}</AppButton><AppButton disabled={session.busy} onClick={() => apply(plan)}>{text.apply}</AppButton></div>

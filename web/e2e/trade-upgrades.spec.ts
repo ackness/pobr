@@ -1,3 +1,4 @@
+import { t } from '../src/lib/i18n';
 import { expect, test } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { dpsValue, goTo, inspectedSkill, openLibrary, openMarketSettings } from './upgradesPage';
@@ -36,7 +37,7 @@ Implicits: 0</Item>
     await goTo(page, 'Upgrades');
     await page.getByRole('button', { name: 'Max Life', exact: true }).click();
     await page.locator('.trade-position').filter({ hasText: 'Body Armour' }).click();
-    await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+    await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
     const reference = page.locator('.upgrade-score-reference');
     await expect(reference).toContainText('All recognised modifiers scored', { timeout: 60_000 });
     const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
@@ -51,7 +52,7 @@ Implicits: 0</Item>
     if (!nodes) await openLibrary(page);
   }
   await page.locator('.trade-position').filter({ hasText: /^Main Hand/ }).click();
-  await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+  await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
   const puppet = page.locator('.trade-situational label').filter({ hasText: 'Puppet Master stack' });
   await expect(puppet).toContainText('not modeled', { timeout: 60_000 });
   await puppet.getByRole('checkbox').check();
@@ -78,9 +79,9 @@ test('alloy hybrid effects enter real-WASM weights and the crafted item market m
   await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible();
   await goTo(page, 'Upgrades');
-  await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
+  await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
   await page.locator('.trade-position').filter({ hasText: /^Main Hand/ }).click();
-  await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+  await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
   const reference = page.locator('.upgrade-score-reference');
   await expect(reference).toContainText('All recognised modifiers scored');
   const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
@@ -137,7 +138,7 @@ test('imported PoB armour and belt use their full explicit Sum as the market min
   await page.getByRole('button', { name: 'Max Life', exact: true }).click();
   for (const [slot, life] of [['Body Armour', 97], ['Belt', 75]] as const) {
     await page.locator('.trade-position').filter({ hasText: slot }).click();
-    await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+    await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
     const reference = page.locator('.upgrade-score-reference');
     await expect(reference).toContainText('All recognised modifiers scored', { timeout: 60_000 });
     const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
@@ -162,7 +163,7 @@ test('local affix scores work for empty slots and budget edits only update marke
   await expect(page.getByRole('combobox', { name: 'League', exact: true })).toContainText('Future League');
   await page.getByRole('button', { name: 'Max Life', exact: true }).click();
   await page.locator('.trade-position').filter({ hasText: /^Amulet/ }).click();
-  await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+  await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
   const table = page.locator('.trade-score-table');
   await expect(table).toBeVisible({ timeout: 90_000 });
   await expect(table).toContainText('maximum Life');
@@ -196,7 +197,7 @@ test('local affix scores work for empty slots and budget edits only update marke
   await page.getByRole('checkbox', { name: 'Include unique items' }).check();
   expect(searchQuery((await link.getAttribute('href'))!).query.filters.type_filters.filters.rarity).toBeUndefined();
   expect(await table.innerText()).toBe(originalScores);
-  await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
+  await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
   await expect(table).toHaveCount(0);
   await expect(link).toHaveCount(0);
   expect(marketCalls).toBe(0);
@@ -238,7 +239,7 @@ test('WeGame quiver analysis opens the CN instant-buy market without JSON or bas
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
   await goTo(page, 'Upgrades');
   await openMarketSettings(page);
   await page.getByRole('combobox', { name: 'Server', exact: true }).click();
@@ -246,7 +247,7 @@ test('WeGame quiver analysis opens the CN instant-buy market without JSON or bas
   await page.locator('.trade-position').filter({ hasText: /^Off Hand/ }).click();
   await expect(page.locator('.trade-scope')).toContainText('Quiver');
   await expect(page.getByRole('combobox', { name: 'Skill used for scoring' })).toContainText('Ice Shot');
-  await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+  await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
   await expect(page.locator('.trade-score-table')).toBeVisible({ timeout: 90_000 });
   const utility = page.locator('.trade-situational label').filter({ hasText: /Surpassing/ }).first();
   await expect(utility).toBeVisible();
@@ -286,12 +287,12 @@ for (const [characterLevel, gemLevel] of [[71, 16], [90, 21]]) test(`gem plans a
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
-  await page.getByRole('combobox', { name: 'Inspected skill', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true }).click();
   await page.getByRole('option', { name: '1. Fireball', exact: true }).click();
   await goTo(page, 'Upgrades');
   await page.locator('.trade-position').filter({ hasText: 'Skill and support gems' }).click();
-  await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+  await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
   // Other gems (lineage supports from the full game data) can outrank Fireball; this test is about Fireball's own plan.
   const card = page.locator('.trade-gem-card').filter({ hasText: 'Fireball' }).first();
   await expect(card).toContainText('Fireball', { timeout: 90_000 });
@@ -335,7 +336,7 @@ test('explicit damage skill selection, weapon binding and whole-build priority s
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
   // The import carries no selection; the highest-DPS skill becomes the default.
   await expect(inspectedSkill(page)).not.toHaveText('Not selected');
   await goTo(page, 'Upgrades');
@@ -354,13 +355,13 @@ test('explicit damage skill selection, weapon binding and whole-build priority s
   await expect(page.locator('.paper-doll')).not.toContainText('Primed Quiver');
   await goTo(page, 'Upgrades');
   await expect(page.getByRole('combobox', { name: 'Skill used for scoring' })).toContainText('Fireball');
-  await expect(page.getByRole('checkbox', { name: 'Keep at least current EHP' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Keep at least current Effective HP' })).toBeChecked();
   await page.getByRole('button', { name: 'Analyze all positions', exact: true }).click();
   await expect(page.locator('.trade-priorities')).toBeVisible({ timeout: 90_000 });
   await expect(page.locator('.trade-analyze-all')).toBeEnabled({ timeout: 90_000 });
   const ranking = await page.locator('.trade-priorities').innerText();
   expect(ranking).toContain('DPS');
-  expect(ranking).toContain('EHP');
+  expect(ranking).toContain('Effective HP');
   await page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances' }).check();
   await expect(page.locator('.trade-priority-position')).toHaveCount(0);
   await goTo(page, 'Items');
@@ -395,8 +396,8 @@ Small Passive Skills in Radius also grant 2% increased Spell Damage</Item><ItemS
     await goTo(page, 'Upgrades');
     await page.locator('.trade-position[data-slot-id="Jewel@2491"]').click();
     await expect(page.getByRole('combobox', { name: 'Jewel type' })).toContainText('Time-Lost jewel search');
-    await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
-    await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+    await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
+    await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
     await expect(page.locator('.upgrade-score-reference')).toBeVisible({ timeout: 60_000 });
     if (nodes.includes('9583')) {
       const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
@@ -438,7 +439,7 @@ test('applying a gem replacement preserves the evaluated secondary effect throug
   await goTo(page, 'Upgrades');
   await expect(page.getByRole('combobox', { name: 'Skill used for scoring', exact: true })).toContainText('1. Spark');
   await page.locator('.trade-position').filter({ hasText: 'Skill and support gems' }).click();
-  await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+  await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
   const replacement = page.locator('.trade-gem-card').filter({ hasText: 'Replaces Impending Doom' }).first();
   await expect(replacement).toBeVisible({ timeout: 90_000 });
   // The card shows "before → after"; the prediction is the value after the arrow.
@@ -485,7 +486,7 @@ Grants a special buff that no trade stat carries</Item>
   await goTo(page, 'Upgrades');
   await page.getByRole('button', { name: 'Max Life', exact: true }).click();
   await page.locator('.trade-position').filter({ hasText: 'Body Armour' }).click();
-  await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+  await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
   await expect(page.locator('.upgrade-score-reference')).toContainText('Partial score', { timeout: 60_000 });
   const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
   const sum = query.query.stats[0];

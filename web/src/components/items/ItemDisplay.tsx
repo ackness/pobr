@@ -62,12 +62,12 @@ export function ItemDisplayContent({ text, lang, lines, translated }: {
   const hasUnknownTiers = hasTiers && model.explicit.some(line => line.tier == null);
   const prefixLabel = w('Prefixes', '前缀', '前綴');
   const suffixLabel = w('Suffixes', '后缀', '後綴');
-  const otherLabel = fixedAffixes ? w('Modifiers', '词条', '詞綴') : w('Unclassified modifiers', '未分类词条', '未分類詞綴');
+  const otherLabel = fixedAffixes ? w('Modifiers', '词缀', '詞綴') : w('Unclassified modifiers', '未分类词缀', '未分類詞綴');
   const labels = {
     prefix: w('Prefix', '前缀', '前綴'), suffix: w('Suffix', '后缀', '後綴'),
     implicit: w('Implicit', '固有', '固定'), enchant: w('Enchant', '附魔'), rune: w('Rune', '符文'),
     class_req: w('Requirement', '需求'),
-    explicit: fixedAffixes ? w('Modifier', '词条', '詞綴') : w('Unclassified', '未分类', '未分類'),
+    explicit: fixedAffixes ? w('Modifier', '词缀', '詞綴') : w('Unclassified', '未分类', '未分類'),
   };
   const rarityLabel = ({ normal: w('Normal', '普通'), magic: w('Magic', '魔法'), rare: w('Rare', '稀有'), unique: w('Unique', '传奇', '傳奇'), relic: w('Relic', '遗珍', '遺珍') } as Record<string, string>)[rarity];
 
@@ -121,7 +121,7 @@ export function ItemDisplayContent({ text, lang, lines, translated }: {
         {style === 'game' && extras}
         {style === 'compact' && model.explicit.length > 0 ? <table className="item-affix-table">
           <caption className="sr-only">{w('Equipment modifiers', '装备词缀', '裝備詞綴')}</caption>
-          <thead><tr><th scope="col">{w('Type', '类型', '類型')}</th><th scope="col">{w('Modifier and values', '词条与数值', '詞綴與數值')}</th>{hasTiers && <th scope="col">{w('Tier', '档位', '階級')}</th>}</tr></thead>
+          <thead><tr><th scope="col">{w('Type', '类型', '類型')}</th><th scope="col">{w('Modifier and values', '词缀与数值', '詞綴與數值')}</th>{hasTiers && <th scope="col">{w('Tier', '档位', '階級')}</th>}</tr></thead>
           <tbody>{model.explicit.map(line => <tr className="item-line" key={line.index} data-affix={line.affix} data-damage={itemDamageType(line.original)}>
             <td>{line.affix && !fixedAffixes ? <Badge variant={line.affix === 'prefix' ? 'secondary' : 'outline'}>{labels[line.affix]}</Badge>
               : <span className="item-unclassified">{labels.explicit}</span>}</td>

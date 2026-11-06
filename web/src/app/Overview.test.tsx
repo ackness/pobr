@@ -47,9 +47,9 @@ describe('Overview skill damage', () => {
   });
 });
 
-function summary(stats: Record<string, number>, lang: 'en-US' | 'zh-CN' | 'zh-TW' = 'zh-CN') {
+function summary(stats: Record<string, number>, lang: 'en-US' | 'zh-CN' | 'zh-TW' = 'zh-CN', extra: Partial<CalculateBuildResponse> = {}) {
   const calc = { stats: Object.entries(stats).map(([id, value]) => ({ id, value })),
-    item_errors: [], unsupported_modifiers: [] } as unknown as CalculateBuildResponse;
+    item_errors: [], unsupported_modifiers: [], ...extra } as unknown as CalculateBuildResponse;
   const session = { socketGroups: [], hasBuildContent: true, classNames: { classes: {}, ascendancies: {} },
     stateVersion: 1 } as unknown as BuildSession;
   return renderToStaticMarkup(<UpgradeGoalProvider><Overview session={session} view={{ calc, previous: null, stale: false }}
@@ -80,4 +80,19 @@ it('keeps the overlap explanation after showing removal losses and gains', () =>
   expect(html).toContain('合计可超过 100%');
   expect(html).toContain('装备 · 主手');
   expect(html).toContain('技能组 2');
+});
+
+it('uses the main minion damage for the headline and source contributions with shared precision', () => {
+  job.result = { version: 1, data: { baseline: { MainMinionDPS: 12345.67 }, entries: [
+    { kind: 'item', id: 'weapon1', deltas: { MainMinionDPS: 10999.8 } },
+  ] } };
+  const html = summary({ MainMinionDPS: 12345.67, ActiveMinionLimit: 7 }, 'zh-CN', {
+    main_minion_index: 4,
+    minions: [{ index: 4, name: 'Wolf', dps: 12345.67 } as NonNullable<CalculateBuildResponse['minions']>[number]],
+  });
+  expect(html).toContain('召唤物击中 DPS');
+  expect(html).toContain('>12,346<span class="ov-source">');
+  expect(html).toContain('移除后损失 11,000');
+  expect(html).toContain('单只');
+  expect(html).toContain('上限 7 只');
 });

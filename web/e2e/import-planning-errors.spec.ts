@@ -357,7 +357,7 @@ for (const planner of ['route', 'joint'] as const) {
     await expect(page.getByRole('alert')).toHaveCount(0);
     for (const destination of ['newBuild', 'currentStage'] as const) {
       await reject(page, before, destination);
-      await pageLink(page, 'Calcs').click();
+      await pageLink(page, 'Calculations').click();
       await openTree(page);
       await expect.poll(() => routeResults(page).innerText()).toBe(routeReceipt);
       await expect.poll(() => results(page, 'joint').innerText()).toBe(jointReceipt);

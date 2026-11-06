@@ -1,3 +1,4 @@
+import { formatNumber } from '../../lib/statDisplay';
 import { AppButton, AppSelectControl } from '../shared/controls';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
@@ -107,7 +108,7 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
   const count = (side: string) => overlay.nodes.filter(entry => entry.side === side).length;
   const sockets = [...new Set([...a.jewels.map(jewel => jewel.socket_node), ...b.jewels.map(jewel => jewel.socket_node)])].sort((x, y) => x - y);
   const tableRow = (key: string, label: string, values: (number | null | undefined)[]) => <tr key={key} data-total={key}>
-    <th scope="row">{label}</th>{values.map((value, index) => <td key={index}>{typeof value === 'number' && Number.isFinite(value) ? value.toLocaleString(lang) : '—'}</td>)}
+    <th scope="row">{label}</th>{values.map((value, index) => <td key={index}>{typeof value === 'number' && Number.isFinite(value) ? formatNumber(value) : '—'}</td>)}
   </tr>;
   const legend = <ul className="compare-tree-legend" aria-label={tt('compare.legend')}>
       {(['a', 'b', 'both'] as const).map(side => <li key={side} data-side={side}>
@@ -204,7 +205,7 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
         {tableRow('choice-unassigned', tt('compare.unassigned'), totals.map(total => total.attributes.unassigned))}
       </tbody></table></div>
     <p className="compare-hint">{tt('compare.totalsHint')}</p>
-    {totals.map((total, index) => total.unknown.length > 0 && <p className="compare-tree-warning" key={index}>{index ? 'B' : 'A'} · {tt('compare.unknownNodes')}: {total.unknown.join(', ')}</p>)}
+    {totals.map((total, index) => total.unknown.length > 0 && <p className="compare-tree-warning" key={index}>{index ? 'B' : 'A'} · {tt('compare.unknownNodes')}{lang === 'en-US' ? ': ' : '：'}{total.unknown.join(', ')}</p>)}
     <h4>{tt('compare.socketJewels')}</h4>
     {!sockets.length && <p>{tt('compare.noJewels')}</p>}
     {sockets.map(id => <article className="compare-difference" key={id} data-socket={id}>
@@ -214,7 +215,7 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
       </div>)}</div>
     </article>)}
     <details><summary>{tt('compare.passives')}</summary>{(['a', 'b', 'both'] as const).map(side => <p key={side}>
-      {tt(side === 'a' ? 'compare.removed' : side === 'b' ? 'compare.added' : 'compare.both')}: {overlay.nodes.filter(entry => entry.side === side).map(entry => entry.node.skill).join(', ') || '—'}
+      {tt(side === 'a' ? 'compare.removed' : side === 'b' ? 'compare.added' : 'compare.both')}{lang === 'en-US' ? ': ' : '：'}{overlay.nodes.filter(entry => entry.side === side).map(entry => entry.node.skill).join(', ') || '—'}
     </p>)}</details>
   </>;
   const noCoordinates = <p role="note">{tt('compare.noCoordinates')}</p>;
@@ -265,7 +266,7 @@ function NodeDetails({ node, state, output, side, lang }: {
     <h4>{name ? cleanLine(shownName ?? name) : `#${node.skill}`} · #{node.skill}</h4>
     <p>{tt(state.allocatedNodes.includes(node.skill) ? 'compare.allocated' : 'compare.unallocated')}</p>
     <ul>{shownLines(lines, translated).map((line, index) => <li key={index}>{cleanLine(line)}</li>)}</ul>
-    {state.attributeChoices[String(node.skill)] && <p>{tt('tree.attributeChoice')}: {statNameLabel(lang, { str: 'Str', dex: 'Dex', int: 'Int' }[state.attributeChoices[String(node.skill)]])}</p>}
+    {state.attributeChoices[String(node.skill)] && <p>{tt('tree.attributeChoice')}{lang === 'en-US' ? ': ' : '：'}{statNameLabel(lang, { str: 'Str', dex: 'Dex', int: 'Int' }[state.attributeChoices[String(node.skill)]])}</p>}
     {change && <p className="compare-hint">{tt('compare.jewelEffect')}</p>}
     {state.jewels.find(jewel => jewel.socket_node === node.skill) && <pre>{state.jewels.find(jewel => jewel.socket_node === node.skill)!.text}</pre>}
   </>}</div>;

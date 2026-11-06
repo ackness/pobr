@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
 import type { ConfigInputValue, PassiveNode } from '../src/api/types';
 import type { SavedSession } from '../src/hooks/useBuildSession';
+import { t } from '../src/lib/i18n';
 import { booted, copyCurrentStage, currentStageName, go, hitDps, idle, importCode as importInto, noMotion, openStage, savedState, setLanguage, shareCode as exportCode } from './configPage';
 
 test.use(noMotion);
@@ -98,7 +99,7 @@ async function bumpToTwo(input: Locator) {
 const row = (page: Page, input: Locator) => page.locator('.config-item').filter({ has: input });
 
 async function openCharge(page: Page, lang: Lang, charge: Charge) {
-  await go(page, lang === 'en-US' ? 'Config' : '配置');
+  await go(page, t(lang, 'tab.config'));
   // Show both actors together. The stable suffix is only a search query, never
   // the input locator: removing actor labels must make these scenarios fail.
   await page.locator('.config-search').fill(`${charge}Charges`);

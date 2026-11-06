@@ -1,5 +1,6 @@
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { SwapGainCard } from '../items/SwapGainCard';
+import { formatNumber } from '../../lib/statDisplay';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
 import { usePreview } from '../shared/PreviewContext';
@@ -15,7 +16,7 @@ import { isContinuation } from '../../lib/continuedLines';
 import { compareReplacementPositions, pasteNotStarted, replacementAffixes, type ReplacementReport } from '../../lib/itemReplacement';
 import { compareObjectiveStats, feasibleOf, type Objective } from '../../lib/optimize';
 import type { TradeCatalog } from '../../lib/tradeOptimizer';
-import { slotLabel, type Lang } from '../../lib/i18n';
+import { slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
 import { upgradeT } from '../../lib/upgradeText';
 import type { AugmentSelection } from '../../lib/replacementAugments';
 import { ReplacementAugmentPicker } from './ReplacementAugmentPicker';
@@ -93,7 +94,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   const selectedItem = selected?.variant.set_items?.length === 1 ? selected.variant.set_items[0] : undefined;
   const alreadyAdded = !!report && !!selectedItem && equipmentCandidates.some(candidate =>
     candidate.itemId === report.text && candidate.slot === selectedItem.slot && candidate.text === selectedItem.text);
-  const format = (value: number) => value.toLocaleString(lang, { maximumFractionDigits: 2 });
+  const format = (value: number) => formatNumber(value);
   const deltaText = (value: number) => `${value > 0 ? '+' : ''}${format(value)}`;
   const positionLabel = (slot: string) => slot.startsWith('Jewel@') ? socketLabel?.(Number(slot.slice(6))) ?? ut('jewelPosition') : slotLabel(lang, slot);
   const errorText = useCallback((message: string) => ({
@@ -244,8 +245,8 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
             onMouseEnter={preview ? () => preview.showChanges(`${positionLabel(row.slot)} ← ${ut('replacementOutcome')}`, changesFromRecords(report.baseline, row.stats)) : undefined}
             onMouseLeave={preview?.clear} onFocus={preview ? () => preview.showChanges(`${positionLabel(row.slot)} ← ${ut('replacementOutcome')}`, changesFromRecords(report.baseline, row.stats)) : undefined} onBlur={preview?.clear}>
             <strong>{positionLabel(row.slot)}</strong>{recommended === row.slot && <span className="replacement-recommended">{ut('recommendedPosition')}</span>}
-            <span className={(row.stats.TotalDPS ?? 0) < (report.baseline.TotalDPS ?? 0) ? 'delta-neg' : ''}>DPS {deltaText((row.stats.TotalDPS ?? 0) - (report.baseline.TotalDPS ?? 0))}</span>
-            <span className={(row.stats.TotalEHP ?? 0) < (report.baseline.TotalEHP ?? 0) ? 'delta-neg' : ''}>EHP {deltaText((row.stats.TotalEHP ?? 0) - (report.baseline.TotalEHP ?? 0))}</span>
+            <span className={(row.stats.TotalDPS ?? 0) < (report.baseline.TotalDPS ?? 0) ? 'delta-neg' : ''}>{statNameLabel(lang, 'TotalDPS')} {deltaText((row.stats.TotalDPS ?? 0) - (report.baseline.TotalDPS ?? 0))}</span>
+            <span className={(row.stats.TotalEHP ?? 0) < (report.baseline.TotalEHP ?? 0) ? 'delta-neg' : ''}>{statNameLabel(lang, 'TotalEHP')} {deltaText((row.stats.TotalEHP ?? 0) - (report.baseline.TotalEHP ?? 0))}</span>
           </AppButton>)}
         </div>
         <div className="replacement-verdict"><span className="trade-section-label">{ut('replacementOutcome')}</span>

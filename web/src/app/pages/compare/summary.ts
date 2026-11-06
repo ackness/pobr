@@ -1,3 +1,4 @@
+import { formatNumber } from '../../../lib/statDisplay';
 import type { StatComparison } from '../../../lib/compare';
 import type { Lang } from '../../../lib/i18n';
 import { words } from '../../text';
@@ -76,7 +77,7 @@ export function treeDifferenceCount(
 }
 
 export function signedPercent(percent: number, digits = 1): string {
-  const text = Math.abs(percent).toFixed(digits);
+  const text = formatNumber(Math.abs(percent), digits, digits);
   return `${percent > 0 ? '+' : percent < 0 ? '−' : ''}${text}%`;
 }
 
