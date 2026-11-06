@@ -937,9 +937,7 @@
     "calcs.unknownReason": "Reason has no translation; open Details.",
     "calcs.unincludedReason": "The calculation could not interpret these modifiers. Their effects are not included.",
     "calcs.hitDps": "Hit DPS",
-    "calcs.originalModifiers": "Original modifier text",
-    "trade.priorityHint": "Each position replaces one item with a bounded modifier-combination reference and recalculates your build. Ranked by the selected goal, with life and Effective HP changes shown below. This is potential, not a priced listing: budget and level filter the market links. Buying one upgrade changes the order; analyze again afterwards.",
-    "trade.stepScore": "Calculate useful modifiers"
+    "calcs.originalModifiers": "Original modifier text"
   },
   "bootMessage": {
     "初始化…": "Initializing…",

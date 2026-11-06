@@ -937,9 +937,7 @@
     "calcs.unknownReason": "原因暂无译文，请展开详情查看原文。",
     "calcs.unincludedReason": "计算未能识别这些词缀，因此未计入其效果。",
     "calcs.hitDps": "击中 DPS",
-    "calcs.originalModifiers": "词缀原文",
-    "trade.priorityHint": "每个位置以词缀组合参考方案替换一件物品并重算，按目标提升排序，下方同时显示生命与 有效生命 变化。这是提升空间，并非在售商品；预算与等级用于市集筛选。买入一件后请重新分析。",
-    "trade.stepScore": "计算有用词缀"
+    "calcs.originalModifiers": "词缀原文"
   },
   "bootMessage": {
     "初始化…": "初始化…",
