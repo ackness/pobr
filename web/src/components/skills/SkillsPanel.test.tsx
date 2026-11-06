@@ -96,6 +96,25 @@ it('labels a nonempty unrecognised group and preserves the raw gem name', () => 
   expect(html).toContain('Imported Gem');
 });
 
+for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
+  it(`retains and displays an imported unique-granted gem in ${lang}`, () => {
+    const current = session();
+    const spark: GemCatalogEntry = { ...fire, skill_id: 'UniqueEarthboundTriggeredSparkPlayer', name: 'Spark',
+      name_zh_cn: '电球', name_zh_tw: '電球', active_effect_ids: ['UniqueEarthboundTriggeredSparkPlayer'],
+      effect_forms: [{ skill_id: 'UniqueEarthboundTriggeredSparkPlayer', stat_sets: [] }],
+      tags: ['InbuiltTrigger', 'Lightning', 'Spell', 'Triggered'] };
+    current.socketGroups[0].gems = [{ skill_id: spark.skill_id, name_spec: 'Spark', level: 17, quality: 12 }];
+    const original = structuredClone(current.socketGroups);
+    harness.states = [[fire, support, spark], [], false, false];
+    const html = render(current, false, lang);
+    expect(html).toContain(lang === 'en-US' ? 'Spark' : lang === 'zh-CN' ? '电球' : '電球');
+    expect(html).not.toContain(bindT(lang)('skills.unrecognisedActive'));
+    expect(harness.inputs.find(input => input['aria-label'] === bindT(lang)('skills.level'))?.value).toBe(17);
+    expect(current.socketGroups).toEqual(original);
+    expect(current.setSocketGroups).not.toHaveBeenCalled();
+  });
+}
+
 it('localises the default skill-set title as well as the configuration-set title', () => {
   const current = session();
   const html = renderToStaticMarkup(<NamedSets session={current} lang="zh-CN" kind="skill" />);

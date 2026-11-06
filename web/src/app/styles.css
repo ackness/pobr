@@ -191,8 +191,9 @@
   .shell-nav-footer { margin-top: auto; padding-top: 1.5rem; }
   .shell-nav-footer > button { justify-content: flex-start; width: 100%; }
   .shell-stat-sheet, .shell-settings { width: min(26rem, 100vw) !important; max-width: 100vw !important; overflow: auto; overscroll-behavior: contain; }
-  .shell-settings-fields { display: grid; gap: 1.5rem; padding: 0 1.5rem 2rem; min-width: 0; }
-  .shell-settings-fields > div { display: grid; gap: .6rem; }
+  .shell-settings-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; padding: 0 1.5rem 2rem; min-width: 0; }
+  .shell-settings-fields > * { min-width: 0; }
+  .shell-settings-fields > div { display: grid; grid-template-columns: minmax(0, 1fr); gap: .6rem; }
   .shell-settings-fields legend { margin-bottom: .7rem; font-size: var(--text-base); font-weight: 500; }
   .shell-settings-fields [data-slot='select-trigger'] { width: 100%; }
   .shell-theme-options { display: flex; flex-wrap: wrap; gap: .5rem; }
@@ -209,6 +210,11 @@
   @media (pointer: coarse) { [data-slot='button'], [data-slot='select-trigger'], [data-slot='input'] { min-height: 44px; } .shell-tab { min-height: 44px; } }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
   /* Enlarged text changes the room available in rem; wrap rather than clip. */
+  .shell-settings { overflow-wrap: anywhere; }
+  .shell-settings .display-mode-picker { grid-template-columns: minmax(0, 1fr); }
+  .shell-settings .display-mode-choice { flex-wrap: wrap; }
+  .shell-settings .display-mode-choice > span:last-child { flex: 1 1 10rem; min-width: 0; }
+  .shell-settings-about a { max-width: 100%; }
   :is(.shell-main, .shell-stat-sheet, .shell-settings, .shell-mobile-navigation) :is([data-slot='button'], [data-slot='select-trigger']) { min-width: 0; max-width: 100%; height: auto; white-space: normal; overflow-wrap: anywhere; }
   :is(.shell-main, .shell-stat-sheet, .shell-settings) [data-slot='select-trigger'] { min-height: var(--control-height); }
   :is(.shell-main, .shell-stat-sheet, .shell-settings) [data-slot='select-trigger'] [data-slot='select-value'] { display: block; min-width: 0; white-space: normal; overflow: visible; overflow-wrap: anywhere; -webkit-line-clamp: unset; }
