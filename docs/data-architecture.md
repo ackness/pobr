@@ -194,7 +194,7 @@ RePoE 发布 ───┐
   整条回退链的官方模板排在全部补译之前（各自保持链与文件顺序），同一匹配渠道内官方优先（锚点更长的补译也不例外）；
   更具体的整行模板（数值桶，范围显示行连同其去掉括号的桶）先于通用的字符串模板，翻译库保证补译行不与官方行同英文，
   所以补译行只填空缺。`display_texts.json` 可带可选顶层 `origins`，见[Web 契约](web-contracts.md)。
-  下一个修订（合并后打 `contract/1.3`）：游戏包可带可选文件 `overlay/gem_descriptions.json`（英文宝石说明），
+  `contract/1.3`（打在定义它的 #322 合并提交上）：游戏包可带可选文件 `overlay/gem_descriptions.json`（英文宝石说明），
   语言包 `display_texts.json` 可带作用域 `GemEffects.SupportText`、`ActiveSkills.Description`，另有新的
   `i18n/zh-TW/display_texts.json`，定义见上文"宝石说明"。这是新增的可选文件与作用域：缺失时含义与以前相同
   （没有说明），已有类型、字段和加载器对已有字节的解释都不变，所以 `CONTRACT_VERSION` 不加 1，与 1.1 新增
