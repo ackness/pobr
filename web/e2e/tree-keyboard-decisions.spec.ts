@@ -13,7 +13,7 @@ import * as wasmReplay from '../src/wasm/pkg/pobr_wasm.js';
 import { busy, pageLink } from './shell';
 import { answerConfirm } from './confirmDialog';
 import { choose, newControlContext, setLanguage } from './treePage';
-import { QUARANTINE, matrixCell } from './tags';
+import { matrixCell } from './tags';
 
 const fixture = readFileSync(new URL('../../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', import.meta.url), 'utf8').trim();
 const version = readFileSync(new URL('../../data/CURRENT', import.meta.url), 'utf8').trim();
@@ -624,17 +624,23 @@ test('1/2/3 choose the attribute of a hovered Attribute node instead of switchin
   await expect(page.locator('.tree-canvas')).toBeVisible();
 });
 
-// Quarantined: the planner lets a node next to an imported island be allocated (it may be extended); owner to decide.
-
-test('disconnected imported islands remain preserved and cannot receive a new allocation', QUARANTINE, async ({ page }) => {
+// A disconnected imported island is never refunded behind the player's back. Allocating a node next to it
+// takes the shortest path from the class start; when that path reaches the island, the island is reconnected.
+test('allocating next to a disconnected island reconnects it from the class start', async ({ page }) => {
   await seeded(page, { allocatedNodes: [3419], attributeChoices: {}, jewels: [] });
-  const original = await savedBytes(page);
+  await expect(page.locator('.tree-import-notice')).toContainText('disconnected');
+  // The island is not connected to the start, so the expected route is computed from the Witch start alone.
+  const path = shortestAllocationPath(graph, new Set(), witchRoot, 722);
+  expect(path).toContain(722);
   const details = await keyboardResult(page, 'Attribute', 722);
-  await expect(details.getByRole('button', { name: 'Allocate', exact: true })).toBeDisabled();
-  await expect(page.locator('.tree-edit-preview')).toContainText('disconnected');
-  await pointerNode(page, 722);
-  await expect(page.getByRole('alert')).toContainText('disconnected');
-  expect(await savedBytes(page)).toEqual(original);
+  const allocate = details.getByRole('button', { name: 'Allocate', exact: true });
+  await expect(allocate).toBeEnabled();
+  await allocate.click();
+  await idle(page);
+  const after = (await saved(page)).allocatedNodes;
+  expect(after).toContain(3419);
+  expect([...after].sort((a, b) => a - b)).toEqual([...new Set([3419, ...path])].sort((a, b) => a - b));
+  await expect(page.locator('.tree-import-notice')).toHaveCount(0);
 });
 
 test('keyboard socket inspection is read-only and Refund matches pointer jewel dependency cleanup in both weapon sets', async ({ page, browser }) => {
