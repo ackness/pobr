@@ -135,7 +135,7 @@ PoB 导出需要可靠的来源名称；无法恢复时会报错，不丢弃插�
 词典由独立翻译库的精确锁定产物导入，宝石选择器可搜索三种语言。
 简中物品基底和词条通过模板转为英文再解析，`Rarity:` 等 PoB 结构行保留原格式。
 未知文本保留并给出诊断。繁中有名词字典，没有原生词条模板；显示可通过繁简转换回退，
-不能视为官方译名。界面翻译不改导入原文或稳定计算 id。
+不能视为官方译名。繁中宝石说明和召唤物名使用语言包自带的 `display_texts.json`（国际服客户端表）。界面翻译不改导入原文或稳定计算 id。
 
 ## 快速开始
 
@@ -175,6 +175,7 @@ E2E 使用当前生产 `dist`，`build` 已包含 typecheck。
 | `mise run web test:wasm-contract` | 用已准备的真实 WASM／数据检查前端请求转换。 |
 | `mise run web test:worker` | 在 workerd 中检查 HTTP Worker。 |
 | `mise run web exec playwright test e2e/build-roundtrip.spec.ts` | 使用当前 dist／WASM／数据的定向浏览器回归。 |
+| `POBR_E2E_ALL=1 mise run web exec playwright test` | 同时运行默认跳过的 `@extended` 用例（标签见 `e2e/tags.ts`；`@quarantine` 已定义，目前没有用例使用）；`POBR_E2E_TRACE=1` 在本地记录失败 trace。 |
 | `mise run web build-wasm` / `mise run web sync-data` | 准备 WASM／复制版本数据到 public。 |
 | `mise run web package-wasm` / `mise run web smoke-wasm-package` | 打包／验证 `.cache/wasm-release/` 中的独立包。 |
 

@@ -49,9 +49,9 @@
 
 | 改动 | 相关验收证据 |
 |------|------|
-| Rust 局部逻辑 / 算法 | 代码与调用方审阅、能复现变化的回归断言；需要时 `mise run verify <crate> <suite> [filter]` |
+| Rust 局部逻辑 / 算法 | 代码与调用方审阅、能复现变化的回归断言；需要时 `mise run verify <crate> <suite> [filter]`；合并前须有绿色的 `mise run ci <branch>` |
 | 词条规则 | 填写游戏来源与 `examples`；协调者整批运行一次 `mise run regen`，解析覆盖率上升时同步抬高 `devs/ci/parse-coverage-baseline.json` |
-| 计算 / Modifier / parser | 定向机制用例；远端完整 CI 的 parity / reference 基线；调查性 accuracy/triage 按批次另选 |
+| 计算 / Modifier / parser | 定向机制用例；合并前须有绿色的 `mise run ci <branch>`（含 parity / reference 基线）；调查性 accuracy/triage 按批次另选 |
 | 跨 crate API / 数据结构 | 直接使用者的契约与回归用例；合并前须有绿色的 `mise run ci <branch>` |
 | Web TS / React / Worker | typecheck、相关 Vitest / Worker 测试；交互风险需要时运行相关 Playwright spec |
 | Rust → WASM / Web 契约 | 完整 CI 重建 WASM、真实 WASM 契约与打包计算；相关交互 E2E 按需开启 |
@@ -66,6 +66,7 @@
 - **集中集成**：协调者先合并 worker 的变更与生成产物，再选一次批次验证，优先 `mise run ci <pushed-ref>`。`mise run gate` 保留为 warm checkout 上的显式本地方案，含额外 accuracy 报告；不要求与远端完整 CI 重复执行。修复后可用 `--only` 重跑本地失败步骤。
 - **CI 分层**：PR 按整个变更范围运行轻量检查；master 代码改动、手动、nightly 与 tag 运行完整 CI。Rust、data 或 pipeline 改动合并前须有绿色的 `mise run ci <分支>`；其他改动按风险选择。E2E 显式开启，数据锁改变时完整 CI 自动加跑一个冒烟 spec。`PR gate` 只证明应运行的轻量检查通过，不能代替完整集成结论。推送前的本地检查、选路、分片与缓存复用见[开发工作流](development-workflow.md#ci-的责任与触发)。
 - 上述合并前完整 CI 要求是 review 规则，`pr-ready` 不强制执行。
+- **推送前检查**：执行 push 的协调者在推送前运行 `mise run check:pr`（opt-in hook 与跳过方法见[开发工作流](development-workflow.md#日常命令)）；只在本地提交的 worker 不必运行。它是 push 前按变更选区的检查，不改变上面"不固定串联"的 worker 规则，也不代替合并前的完整 CI。
 - **Review 按风险选择**：复杂、跨边界或高风险改动（核心计算、持久化／导入兼容、工具链、发布）使用独立 reviewer，说明检查过的 head/base 与未验证范围，建议与阻断问题分开；文档和明显小改动不增加审计表或固定 agent。修正留在同一 PR，新提交后重看受影响的证据。合并前的核对（`mise run pr-ready`）见[开发工作流](development-workflow.md#agent-提交review-与合并)。
 - Web 纯 TS/CSS 修改复用已构建的 WASM。WASM/Rust/features/工具链变化时再重建；`mise run web build` 已含 typecheck，E2E 使用对应代码的 dist/WASM/data。
 

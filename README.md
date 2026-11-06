@@ -51,8 +51,8 @@ interface. They illustrate the app, not a recommended build.
 1. [Open the web app](https://pobr.win), then choose **Build library** in the top
    bar, or **Import or create a build** on the empty Overview.
 2. Paste a **PoB2 build code** or a **WeGame PoE2 share link** and import it.
-   You can also import supported build-share links or a `.build` file, or start
-   a new character.
+   You can also import supported build-share links, an in-game planner or
+   China-client `.build` file, or start a new character.
 3. Check your main skill, combat configuration and unsupported effects, then use
    **Upgrades**, **Skills** or **Tree** to compare changes.
 

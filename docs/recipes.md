@@ -9,7 +9,7 @@
 **验证按风险和成本选择。** 文档改动只审阅 diff、链接与示例；代码改动检查调用方与相关契约，
 补充必要的回归用例。算法或大幅修改可提前测试、编译或独立 review，普通 worker 不必逐项编译。
 交付说明已审阅、实际执行和未运行项；不要默认启动 parity、CLI、WASM 或整组构筑的分析。
-协调者汇总后一次验证，优先远端 CI；PR 轻量、master 合并后全量，高风险可先手动全量。
+协调者汇总后一次验证，优先远端 CI；PR 只跑轻量检查，Rust、data 或 pipeline 改动合并前须有绿色的 `mise run ci <分支>`，其他改动按风险选择，master 合并后再跑全量。
 
 <a id="find-what-already-exists-no-compilation"></a>
 
@@ -101,7 +101,7 @@ PoB2（`vendor/`）只用于交叉核对，不引用其行号来解释游戏规�
 需要本地批次诊断时，在 warm checkout 选择一次门禁：
 
 ```bash
-mise run check:pr                # 推送前检查当前分支和未提交变更；hook 自动运行
+mise run check:pr                # 推送前检查当前分支和未提交变更（装了 `mise run hooks:install` 后由 pre-push 自动运行）
 mise run ci <pushed-ref>          # Rust、data 或 pipeline 改动：合并前须为绿色
 mise run gate                    # 按需本地验证，含额外accuracy报告
 mise run gate --only core,parity # 修复后只重跑失败项

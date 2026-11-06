@@ -29,8 +29,8 @@ PoBR is one of three owned repositories; data work crosses repo boundaries:
   `tools/pobr-data-adapter` domain policies that project facts into PoBR's
   runtime JSON. Publishes `game/<patch>-<n>` Releases and test fixtures.
 - `ackness/poe2-zh-cn-stats`: locale/term curation, translation sources and
-  language artifacts. Publishes `locale/<patch>-<n>` Releases with the support
-  display.
+  language artifacts. Publishes `locale/<patch>-<n>` Releases (the support-display
+  attachments stopped with `locale/0.5.5.5-4`).
 
 PoBR adopts an owner Release only through a reviewed `mise run data:bump` PR that
 changes the lock; never through a branch-tracked pull or automatic sync. The

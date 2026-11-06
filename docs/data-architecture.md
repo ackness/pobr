@@ -126,9 +126,9 @@ RePoE 发布 ───┐
     （`null` 表示"停在英文"，会挡住 zh-TW 回退到 zh-CN），也不写 `origins`（官方文本）。
     zh-CN 在现有文件里；zh-TW 是新文件 `i18n/zh-TW/display_texts.json`（`locale: "zh-TW"`，形状相同，已按 manifest
     `files` 读取），作用域还可以包括已有的 `MonsterVarieties.Name` 等。
-  - **`support_display` 退役。** 上面的作用域取代辅助显示附件，只保留一条说明来源。语言 owner 的下一份语言 Release
-    不再带两件辅助显示附件；目标不变时 `data:bump` 保留锁里原有的 `support_display` 条目（它绑定的交易目录不变），
-    所以先 bump 新的游戏与语言 Release 是安全的。随后的 PoBR PR 删除 `web/src/lib/supportDescriptions.ts`、
+  - **`support_display` 退役。** 上面的作用域取代辅助显示附件，只保留一条说明来源。语言 owner 自 `locale/0.5.5.5-4`
+    起不再带两件辅助显示附件；目标不变时 `data:bump` 保留锁里原有的 `support_display` 条目（`locale/0.5.5.5-3`
+    的附件，它绑定的交易目录不变），所以 game -3 + locale -4 的 bump 是安全的。随后的 PoBR PR（待办）删除 `web/src/lib/supportDescriptions.ts`、
     忽略的 `supportDescriptions.zh-CN.json`、锁的 `support_display`，以及（可选）`pipeline/imports/display_assets.py`
     与它的测试；删除后"新目标的语言 Release 须带新显示附件"的要求一并取消。在那之前，上一条的辅助显示规则照旧有效。
 - **寻址。** Release 产物按 `repository` + `tag` + `asset` 下载（匿名 HTTPS；私有仓库设
@@ -232,7 +232,8 @@ RePoE 发布 ───┐
 2. **改锁。** 维护者在审阅分支中运行 `mise run data:bump <owner> <tag> [<owner> <tag>]`：下载并按 `SHA256SUMS` 校验附件，
    读取 `receipt.json`，替换该 owner 的锁条目（语言 Release 带辅助显示附件时一并替换 `support_display`），
    重算快照 pin、运行身份与紧凑发行身份，再 `data:prepare` 导入并打印身份差异。
-   新补丁两个 owner 一起 bump，语言 Release 须带新目标与新交易目录的辅助显示。PoBR 不自动发现或采用 owner 发布；owner 尚无完整新发布时保留现有默认。
+   新补丁两个 owner 一起 bump，语言 Release 须带新目标与新交易目录的辅助显示（`locale/0.5.5.5-4` 起翻译库不再发布它：
+   退役 PR 合并前，换补丁或换交易目录的 bump 会被拒绝）。PoBR 不自动发现或采用 owner 发布；owner 尚无完整新发布时保留现有默认。
 3. **验证。** 候选在精确 head 上通过 PR gate 和 Full gate：完整快照按摘要导入、
    从同一快照组出的紧凑发行包，以及同次构建的 WASM 消费该包。对 bump 分支运行 `mise run ci <分支>`，
    完整 CI 因数据锁改变而自动加跑普通 Web 流程的冒烟 E2E（[开发工作流](development-workflow.md)）。PoBR 不在 CI 中重跑 owner 的领域生产。

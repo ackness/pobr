@@ -24,7 +24,7 @@
 ### 冻结输入与退出顺序
 
 仍依赖 PoB2 或手工整理的输入只在这里维护一份清单。权威的冻结队列是 RePoE 的
-[`release/0.5.5.5-2/frozen-inputs.json`](https://github.com/ackness/repoe/blob/master/release/0.5.5.5-2/frozen-inputs.json)，
+[`release/0.5.5.5-3/frozen-inputs.json`](https://github.com/ackness/repoe/blob/master/release/0.5.5.5-3/frozen-inputs.json)，
 它按成员记录类别、字节与摘要、原因和退出方式；本表不复制摘要。
 表中标“冻结”的是该队列的全部成员，它们以固定字节随游戏包发布，没有 RePoE producer 或缺固定输入。
 标“重放”的已有 RePoE adapter，但从固定的 `0.5.5.4.2` codec 或 prepared 政策重放 PoB2 解释，不在冻结队列中，退出同样按本表顺序。

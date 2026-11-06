@@ -60,7 +60,8 @@ merge and release mechanics: [development workflow](docs/development-workflow.md
   baseline to make a test pass.
 - **Before merging.** Rust, data or pipeline changes need a green
   `mise run ci <branch>`; PR gate omits Clippy and Rust tests. Run
-  `mise run check:pr` before pushing ([local checks and hook](docs/development-workflow.md#日常命令)).
+  `mise run check:pr` before pushing ([local checks and hook](docs/development-workflow.md#日常命令)):
+  the coordinator who pushes runs it; workers that only commit locally do not.
 - **Builds.** One `./target` per worktree and one Cargo command at a time; never
   share a writable `CARGO_TARGET_DIR` across worktrees. Do not change the
   dev/test profile, run `cargo clean` automatically, or chain

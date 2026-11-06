@@ -121,7 +121,8 @@ The `support_display` entry also imports the translation owner's support
 description asset before Web builds/tests: from a retained `handoff/*` commit and
 path, or from the `support-display.zh-CN.json` and `supportDescriptions.zh-CN.json`
 assets of a `locale/<patch>-<n>` Release, which `data:bump` adopts with the
-language package. Its manifest, asset and complete target trade-catalog hashes
+language package (`locale/0.5.5.5-4` and later carry none; the lock keeps the
+`locale/0.5.5.5-3` entry). Its manifest, asset and complete target trade-catalog hashes
 must match; the asset's original generation version and source
 provenance remain unchanged. The ignored Web JSON is installed atomically only for
 the selected version.

@@ -181,6 +181,8 @@ lines are translated through templates to canonical English before parsing; PoB
 structural lines such as `Rarity:` keep their format. Unknown text remains visible
 with diagnostics. Traditional Chinese has noun dictionaries but no native mod-line
 templates; display can fall back through script conversion, not official translations.
+Traditional Chinese gem descriptions and minion names use the language
+package's own `display_texts.json` (the international client's tables).
 Rendering never rewrites imported text or stable calculation ids.
 
 ## Quick start
@@ -225,7 +227,7 @@ clearing Cargo caches.
 | `mise run web test:wasm-contract` | Frontend request conversion against prepared real WASM/data. |
 | `mise run web test:worker` | HTTP Worker tests in workerd. |
 | `mise run web exec playwright test e2e/build-roundtrip.spec.ts` | Focused browser regression with current dist/WASM/data. |
-| `POBR_E2E_ALL=1 mise run web exec playwright test` | Also run the `@quarantine` and `@extended` tests the default run leaves out (`e2e/tags.ts`); `POBR_E2E_TRACE=1` records failure traces locally. |
+| `POBR_E2E_ALL=1 mise run web exec playwright test` | Also run the `@extended` tests the default run leaves out (tags in `e2e/tags.ts`; `@quarantine` is defined but no test uses it now); `POBR_E2E_TRACE=1` records failure traces locally. |
 | `mise run web build-wasm` / `mise run web sync-data` | Prepare WASM / copy versioned data into public. |
 | `mise run web package-wasm` / `mise run web smoke-wasm-package` | Package / verify the standalone archive in `.cache/wasm-release/`. |
 
