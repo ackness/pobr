@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { dpsValue, goTo, openOptimizerSettings, settledNumber, settledText } from './upgradesPage';
+import { openImport } from './buildLibrary';
 
 async function caster(page: Page) {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
@@ -13,11 +14,12 @@ async function caster(page: Page) {
   } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticGuidanceFixture');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('combobox', { name: 'Inspected skill', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Calculation skill', exact: true }).click();
   await page.getByRole('option', { name: '1. Fireball', exact: true }).click();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
 }

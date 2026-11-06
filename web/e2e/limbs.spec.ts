@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport, statValue } from './shell';
 import { settledNumber, shareCode } from './skillsAndCalcs';
 import { deflateSync, inflateSync } from 'node:zlib';
+import { openImport } from './buildLibrary';
 
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 const numeric = (value: string) => Number(value.replaceAll(',', ''));
@@ -20,7 +21,9 @@ ${leg}
 
 test('limbs are a set of their own: imported, calculated, edited and exported', async ({ page }) => {
   await page.goto('/build');
+  await openImport(page);
   await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill(code);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);

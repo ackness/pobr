@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport, statValue } from './shell';
 import { settledText } from './upgradesPage';
+import { openImport } from './buildLibrary';
 
 const chest = [
   'Rarity: RARE', 'Local Defence Fixture', 'Chain Mail', 'Item Level: 50',
@@ -38,6 +39,7 @@ async function loadBuild(page: Page) {
   } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticLocalAffixFixture');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);

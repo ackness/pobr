@@ -6,7 +6,7 @@ import { deflateSync } from 'node:zlib';
 
 const monk = readFileSync('../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', 'utf8');
 // The skill picker at the top of the results panel.
-const inspected = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
+const inspected = (page: Page) => page.getByRole('combobox', { name: 'Calculation skill', exact: true });
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 /** Import a build and open Items. Below the wide breakpoint the page links sit in the menu sheet. */
 async function start(page: Page, code: string) {

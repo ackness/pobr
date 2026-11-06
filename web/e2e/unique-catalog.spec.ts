@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { lifeValue, settledText } from './upgradesPage';
+import { openImport } from './buildLibrary';
 
 test('find a unique by modifier, choose a variant and rolls, then save and equip its preview', async ({ page }, testInfo) => {
   await page.route('**/api/import/wegame', route => route.fulfill({ json: {
@@ -12,6 +13,7 @@ test('find a unique by modifier, choose a variant and rolls, then save and equip
   } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticUniqueFixture');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);

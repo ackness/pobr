@@ -3,6 +3,7 @@ import { openItemsAfterImport } from './shell';
 import { dpsValue, goTo, inspectedSkill, openLibrary, openMarketSettings } from './upgradesPage';
 import { deflateSync } from 'node:zlib';
 import { installTradeCatalogFixture } from './tradeCatalogFixture';
+import { openImport } from './buildLibrary';
 
 const searchQuery = (href: string) => JSON.parse(new URL(href).searchParams.get('q')!);
 
@@ -29,6 +30,7 @@ Implicits: 0</Item>
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
   for (const nodes of ['', '47316']) {
+    await openImport(page);
     await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code(nodes));
     await page.locator('.import-submit').click();
     await openItemsAfterImport(page);
@@ -73,6 +75,7 @@ test('alloy hybrid effects enter real-WASM weights and the crafted item market m
   } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticAlloyFixture');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -129,6 +132,7 @@ test('imported PoB armour and belt use their full explicit Sum as the market min
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -235,6 +239,7 @@ test('WeGame quiver analysis opens the CN instant-buy market without JSON or bas
   await context.route('https://poe.game.qq.com/**', route => route.fulfill({ contentType: 'text/html', body: '<h1>Official market fixture</h1>' }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Import a build', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -283,11 +288,12 @@ for (const [characterLevel, gemLevel] of [[71, 16], [90, 21]]) test(`gem plans a
   } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Import a build', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
   await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
-  await page.getByRole('combobox', { name: 'Inspected skill', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Calculation skill', exact: true }).click();
   await page.getByRole('option', { name: '1. Fireball', exact: true }).click();
   await goTo(page, 'Upgrades');
   await page.locator('.trade-position').filter({ hasText: 'Skill and support gems' }).click();
@@ -332,6 +338,7 @@ test('explicit damage skill selection, weapon binding and whole-build priority s
   } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Import a build', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -388,6 +395,7 @@ Small Passive Skills in Radius also grant 2% increased Spell Damage</Item><ItemS
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
   for (const nodes of ['2491,9583,47316', '2491']) {
+    await openImport(page);
     await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code(nodes));
     await page.locator('.import-submit').click();
     await openItemsAfterImport(page);
@@ -431,7 +439,9 @@ test('applying a gem replacement preserves the evaluated secondary effect throug
       <Gem skillId="FireballPlayer" level="15" quality="20" enabled="true"/>
     </Skill></Skills><Items/><Config/></PathOfBuilding2>`).toString('base64url');
   await page.goto('/build');
+  await openImport(page);
   await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill(code);
   await page.locator('.import-submit').click();
   await expect(inspectedSkill(page)).toHaveText('1. Spark');
@@ -479,6 +489,7 @@ Grants a special buff that no trade stat carries</Item>
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);

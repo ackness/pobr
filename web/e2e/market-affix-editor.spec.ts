@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { lifeValue, settledText } from './upgradesPage';
+import { openImport } from './buildLibrary';
 
 test('manual affix tiers respect item level and recalculate a whole item before application', async ({ page }) => {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
@@ -15,6 +16,7 @@ test('manual affix tiers respect item level and recalculate a whole item before 
   } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticAffixFixture');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);

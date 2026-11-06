@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { augmentOption, choose, dpsValue, ehpValue, lifeValue, settledText } from './upgradesPage';
+import { openImport } from './buildLibrary';
 
 async function loadRings(page: Page, includeAmulet = false) {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
@@ -18,6 +19,7 @@ async function loadRings(page: Page, includeAmulet = false) {
   } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticCopiedItemFixture');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -253,6 +255,7 @@ async function loadAugmentedBuild(page: Page, extraEquipment: unknown[] = []) {
   } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticAugmentFixture');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);

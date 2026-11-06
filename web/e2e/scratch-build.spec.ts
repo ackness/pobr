@@ -32,7 +32,8 @@ test('scratch build: class picker, level edit, tree allocation', async ({ page }
   // 让树数据一升级就挂。
   await pageLink(page, 'Tree').click();
   await expect(page.locator('.tree-canvas svg')).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('.tree-count')).toContainText('Used 0 / 24 points', { timeout: 30_000 });
+  // Level 90 gives 89 level points plus the 24 quest points.
+  await expect(page.locator('.tree-count')).toContainText('Used 0 / 113 points', { timeout: 30_000 });
   // Search and center a reachable notable so the click uses a visible target.
   await page.getByRole('searchbox', { name: 'Search nodes…' }).fill('Practiced Signs');
   const target = page.locator('.node-search-hit');
@@ -44,7 +45,7 @@ test('scratch build: class picker, level edit, tree allocation', async ({ page }
 
   // 手动添加技能：自定义选择器搜 Comet → 回车选中首项 → 新组出现 → Total DPS 出数。
   await pageLink(page, 'Skills').click();
-  const picker = page.getByRole('combobox', { name: /Search an active gem/ });
+  const picker = page.getByPlaceholder('Add a skill group…');
   await picker.fill('Comet');
   await expect(page.locator('.gem-picker-item').first()).toBeVisible();
   await picker.press('Enter');

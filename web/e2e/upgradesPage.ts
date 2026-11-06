@@ -36,8 +36,8 @@ export async function goTo(page: Page, name: string, options?: { force?: boolean
   await expect(pageLink(page, name)).toHaveAttribute('aria-current', 'page');
 }
 
-/** The "Inspected skill" selector at the head of the results panel. */
-export const inspectedSkill = (page: Page): Locator => page.locator('#character-stats').getByRole('combobox', { name: 'Inspected skill', exact: true });
+/** The "Calculation skill" selector at the head of the results panel. */
+export const inspectedSkill = (page: Page): Locator => page.locator('#character-stats').getByRole('combobox', { name: 'Calculation skill', exact: true });
 
 /**
  * The results panel eases a number to its new value over a fraction of a second, so a single read right after an

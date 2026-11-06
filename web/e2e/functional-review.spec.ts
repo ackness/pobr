@@ -4,9 +4,10 @@ import { answerConfirm } from './confirmDialog';
 import { choose, goTo } from './skillsAndCalcs';
 import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
+import { openImport } from './buildLibrary';
 
 // The skill picker at the top of the results panel. `goTo` opens the menu sheet where the page links are folded away.
-const inspected = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
+const inspected = (page: Page) => page.getByRole('combobox', { name: 'Calculation skill', exact: true });
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 const ring = 'Rarity: RARE\nDraft Ring\nSapphire Ring\n+100 to maximum Life';
 const monk = readFileSync('../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', 'utf8');
@@ -19,6 +20,7 @@ async function start(page: Page, code?: string) {
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
   if (code) {
+    await openImport(page);
     await page.getByRole('textbox', { name: 'Build code' }).fill(code);
     await page.locator('.import-submit').click();
     await openItemsAfterImport(page);
@@ -88,9 +90,9 @@ test('weapon binding and gem menus remain clickable at the bottom of the scroll 
   await trigger.click();
   // The drop-down's list is not labelled itself; only one is open.
   const menu = page.getByRole('listbox');
-  const rect = await menu.boundingBox();
+  // Open lists are placed against their trigger a frame after they appear, so measure them by polling.
   const mainRect = await page.locator('main').boundingBox();
-  expect(rect!.y + rect!.height).toBeLessThanOrEqual(mainRect!.y + mainRect!.height);
+  await expect.poll(async () => { const rect = await menu.boundingBox(); return rect!.y + rect!.height; }).toBeLessThanOrEqual(mainRect!.y + mainRect!.height);
   await page.getByRole('option', { name: 'Set 2', exact: true }).click();
   await expect(trigger).toContainText('Set 2');
   const search = page.getByRole('combobox', { name: 'Add a support gem…', exact: true });
@@ -117,9 +119,7 @@ test('equipment menus in short viewports can scroll to and select the final posi
   const list = page.getByRole('listbox');
   const menu = list.locator('[data-radix-select-viewport]');
   // The list is cut to the room the short viewport leaves, so it has to scroll.
-  const box = await list.boundingBox();
-  expect(box!.y).toBeGreaterThanOrEqual(0);
-  expect(box!.y + box!.height).toBeLessThanOrEqual(500);
+  await expect.poll(async () => { const box = await list.boundingBox(); return box!.y >= 0 && box!.y + box!.height <= 500; }).toBe(true);
   expect(await menu.evaluate(element => element.scrollHeight - element.clientHeight)).toBeGreaterThan(0);
   await menu.hover();
   await page.mouse.wheel(0, 1500);
@@ -135,10 +135,10 @@ test('nested gem lists in short viewports can scroll to and select their final r
   const search = page.locator('.skills-toolbar input');
   await search.click();
   const menu = page.locator('.gem-picker-list');
-  // The list is capped at 20rem (320px) and is shorter still when the viewport leaves less room.
-  expect(await menu.evaluate(element => element.clientHeight)).toBeLessThan(320);
-  const popover = await page.locator('.gem-picker-popover').boundingBox();
-  expect(popover!.y + popover!.height).toBeLessThanOrEqual(500);
+  // The list is capped at 20rem (320px) and is shorter still when the viewport leaves less room. The popover
+  // fits itself to the room a frame after it opens, so poll rather than read once.
+  await expect.poll(() => menu.evaluate(element => element.clientHeight)).toBeLessThan(320);
+  await expect.poll(async () => { const box = await page.locator('.gem-picker-popover').boundingBox(); return box!.y + box!.height; }).toBeLessThanOrEqual(500);
   const last = menu.getByRole('option').last();
   const name = await last.locator('.gem-primary').innerText();
   await menu.hover();
@@ -184,6 +184,7 @@ test('cascading socket removal clears refunded attribute choices and preserves c
 test('importing a build with no notes and starting a new character clear previous notes', async ({ page }) => {
   await start(page);
   await page.getByRole('textbox', { name: 'Notes', exact: true }).fill('Notes belonging to the previous build');
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill(emptyNotes);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);

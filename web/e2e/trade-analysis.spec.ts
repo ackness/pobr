@@ -4,6 +4,7 @@ import { copyCurrentStage, currentStage, goTo, openLibrary, openMarketSettings, 
 import { deflateSync } from 'node:zlib';
 import { installTradeCatalogFixture } from './tradeCatalogFixture';
 import { categoryAffixPool } from '../src/lib/tradeOptimizer';
+import { openImport } from './buildLibrary';
 
 declare global {
   interface Window {
@@ -39,6 +40,7 @@ async function openTrade(page: Page, rings = 1) {
   });
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code(rings));
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);

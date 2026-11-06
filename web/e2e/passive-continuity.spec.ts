@@ -5,6 +5,7 @@ import type { AttributeChoice, JewelInput, PassiveNode, SlotItemInput, SocketGro
 import { buildPassiveGraph, shortestAllocationPath } from '../src/lib/passiveGraph';
 import { busy, pageLink, statValue } from './shell';
 import { choose } from './treePage';
+import { openImport } from './buildLibrary';
 
 const version = readFileSync('../data/CURRENT', 'utf8').trim();
 const nodes: PassiveNode[] = JSON.parse(readFileSync(`../data/${version}/base/passive_tree.json`, 'utf8'));
@@ -539,6 +540,7 @@ test('historical tree replacement discards current-tree receipts and exposes no 
   await page.locator('.shell-builds-button').click();
   // Synthetic PoB document only; decoding/calculation/version rejection remain real.
   const historical = deflateSync('<PathOfBuilding2><Build level="80" className="Witch"/><Tree activeSpec="1"><Spec nodes="770" treeVersion="0_1"/></Tree><Skills/><Items/></PathOfBuilding2>').toString('base64url');
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(historical);
   await page.locator('.import-submit').click();
   await expect.poll(async () => (await saved(page)).treeVersion).toBe('0_1');

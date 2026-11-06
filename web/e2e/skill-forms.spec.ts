@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { statRow } from './shell';
 import { choose, goTo, importBuild, shareCode } from './skillsAndCalcs';
+import { openImport } from './buildLibrary';
 
 const source = `<PathOfBuilding2>
   <Build level="90" className="Sorceress" mainSocketGroup="1"/>
@@ -61,6 +62,7 @@ test('forms, stages, disabled supports and Full DPS can be edited and shared', a
   expect(xml).toContain('groupCount="2.5"');
   expect(xml).toMatch(/<Gem\b[^>]*statSetIndex="2"[^>]*count="1.5"/);
   expect(xml).toMatch(/<Gem\b[^>]*skillId="SupportControlledDestructionPlayer"[^>]*enabled="false"/);
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await expect.poll(async () => (await state()).socketGroups[0].gems[0].stat_set_index).toBe(2);

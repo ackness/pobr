@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport, pageLink, statValue } from './shell';
-import { openBuild, openExport, openLoadouts, stableText } from './buildLibrary';
+import { openBuild, openExport, openLoadouts, stableText, openImport } from './buildLibrary';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 
@@ -13,7 +13,7 @@ const xml = `<PathOfBuilding2>
   <Notes>Original notes</Notes>
 </PathOfBuilding2>`;
 
-const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
+const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Calculation skill', exact: true });
 const hitDps = (page: Page) => statValue(page, /^Hit DPS$/).first();
 /** Opens the Imported PoB loadouts section of the Build page and switches to one of them by its position. */
 async function switchLoadout(page: Page, index: number) {
@@ -27,6 +27,7 @@ const loadoutValue = (page: Page) => page.locator('details.bd-details select');
 
 async function importCode(page: Page, code: string) {
   await openBuild(page);
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);

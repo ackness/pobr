@@ -10,7 +10,8 @@ const utilities = (page: Page) => page.evaluate(() =>
   (JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state.flasks as { slot: string; text: string; active: boolean }[]));
 const selected = (page: Page) => page.getByRole('checkbox', { name: 'Selected for use', exact: true });
 const openSlot = async (page: Page, slot: string) => {
-  await page.locator('.paper-doll').getByRole('button', { name: slot, exact: true }).click();
+  // Flasks and charms sit in their own group beside the figure (`.paper-doll` is only the body).
+  await page.locator('.doll').getByRole('button', { name: slot, exact: true }).click();
   await expect(selected(page)).toBeEnabled();
 };
 

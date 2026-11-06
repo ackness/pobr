@@ -2,6 +2,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import { workspaceText } from '../src/lib/workspaceText';
 import { answerConfirm } from './confirmDialog';
 import { bdLibraryButton } from './shell';
+import { openImport } from './buildLibrary';
 
 export type Lang = 'en-US' | 'zh-CN' | 'zh-TW';
 
@@ -22,6 +23,8 @@ export const pickerValue = (trigger: Locator): Promise<string> => nativeSelect(t
 export async function go(page: Page, name: string) {
   const link = page.locator('nav.shell-tabs').getByRole('link', { name, exact: true });
   const menu = page.locator('.shell-menu-button');
+  // The menu drawer stays in place while it slides away after the previous page change; its links are not the ones to use.
+  await expect(page.locator('.shell-mobile-navigation')).toHaveCount(0);
   // Right after a reload the shell is still booting: wait for whichever of the two shows up.
   await expect(async () => { expect(await link.isVisible() || await menu.isVisible()).toBe(true); }).toPass({ timeout: 90_000 });
   if (!(await link.isVisible())) await menu.click();
@@ -63,6 +66,7 @@ export async function importCode(page: Page, code: string, destination: 'newBuil
   const text = workspaceText(lang);
   const group = page.getByRole('group', { name: text.importDestination, exact: true });
   await group.getByRole('button').nth(destination === 'newBuild' ? 0 : 1).click();
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   if (destination === 'currentStage') await answerConfirm(page, true);

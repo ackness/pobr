@@ -1,11 +1,13 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { bdLibraryButton, busy, pageLink } from './shell';
+import { openImport } from './buildLibrary';
 
 /** Import a build code on the Build page and wait until the import has landed on the Overview. */
 export async function importBuild(page: Page, code: string) {
   await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
   if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });

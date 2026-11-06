@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { pageLink, statValue } from './shell';
-import { displayedRail, goTo, importInto, openBuild, openSupportSettings, selectStage, settled } from './buildLibrary';
+import { displayedRail, goTo, importInto, openBuild, openSupportSettings, selectStage, settled, openImport } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
 import type { BuildJson, CalculateBuildRequest, CalculateBuildResponse, PassiveNode } from '../src/api/types';
@@ -105,11 +105,13 @@ async function start(page: Page, lang: Lang = 'en-US') {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await page.addInitScript(lang => localStorage.setItem('pobr-lang', lang), lang);
   await page.goto('/build');
+  await openImport(page);
   await expect(page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true })).toBeEnabled({ timeout: 90_000 });
   await settled(page);
 }
 
 async function importSource(page: Page, source: string, lang: Lang = 'en-US') {
+  await openImport(page);
   await page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true }).fill(source);
   await page.locator('.import-submit').click();
   // An import lands on the Overview; follow it to the Items page and come back to the Build page afterwards.

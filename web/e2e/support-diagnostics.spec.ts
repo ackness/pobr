@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { bdLibraryButton, statValue } from './shell';
 import { choose, goTo } from './skillsAndCalcs';
 import type { GemInput, SocketGroupInput } from '../src/api/types';
+import { openImport } from './buildLibrary';
 
 // A charm line the engine does not calculate: it shows as a limit of the baseline. ("Also grants 102 Guard",
 // used here before, is calculated by now.)
@@ -34,6 +35,7 @@ async function casterWithLimit(page: Page) {
   } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true })
     .fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticSupportDiagnostics');
   await page.locator('.import-submit').click();

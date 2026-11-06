@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { pageLink } from './shell';
+import { openImport } from './buildLibrary';
 
 test('WeGame import preserves gem levels and ranks quiver upgrades', async ({ page }) => {
   await page.route('**/api/import/wegame', async route => {
@@ -23,6 +24,7 @@ test('WeGame import preserves gem levels and ranks quiver upgrades', async ({ pa
   });
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Import a build' })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill(
     'https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456',
   );

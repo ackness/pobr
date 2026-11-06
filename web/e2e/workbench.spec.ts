@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { deflateSync } from 'node:zlib';
 import { installTradeCatalogFixture } from './tradeCatalogFixture';
+import { openImport } from './buildLibrary';
 
 // Same minimal Witch build as workspace.spec.ts; the engine calculates it for real.
 const code = deflateSync('<PathOfBuilding2><Build level="60" className="Witch" mainSocketGroup="1"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree><Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="FireballPlayer" level="12" quality="0" enabled="true"/></Skill></SkillSet></Skills><Items/><Config><Input name="enemyLevel" number="82"/></Config></PathOfBuilding2>').toString('base64url');
@@ -10,7 +11,9 @@ async function importBuild(page: Page) {
     if (!localStorage.getItem('pobr-v2-preferences')) localStorage.setItem('pobr-v2-preferences', JSON.stringify({ lang: 'en-US', theme: 'dark', font: 'system', fontSize: 16, density: 'comfortable' }));
   });
   await page.goto('/build');
+  await openImport(page);
   await expect(page.getByRole('textbox', { name: 'Build code', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await expect(page.locator('#ov-title')).toBeVisible();
@@ -135,6 +138,7 @@ test('number keys, [ and ? work outside text fields and stay out of the way insi
   await expect(page.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeVisible();
   await page.keyboard.press('Escape');
   await page.goto('/build');
+  await openImport(page);
   const box = page.getByRole('textbox', { name: 'Build code', exact: true });
   await box.click(); await page.keyboard.type('3');
   await expect(box).toHaveValue('3');

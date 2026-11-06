@@ -12,6 +12,8 @@ export const mainNav = (page: Page, lang: Lang = 'en-US') => page.getByRole('nav
  */
 export async function goTo(page: Page, name: string, lang: Lang = 'en-US') {
   const link = mainNav(page, lang).getByRole('link', { name, exact: true });
+  // The menu drawer stays in place while it slides away after the previous page change; its links are not the ones to use.
+  await expect(page.locator('.shell-mobile-navigation')).toHaveCount(0);
   if (await link.isVisible()) { await link.click(); return; }
   await page.locator('.shell-menu-button').click();
   await page.getByRole('dialog').getByRole('link', { name, exact: true }).click();
@@ -44,9 +46,17 @@ export async function selectStage(page: Page, name: string) {
   await choose(page, page.getByRole('combobox', { name: 'Current stage', exact: true }), name);
 }
 
+/** The Build page's import section starts open only while the browser has no build; open it before pasting. */
+export async function openImport(page: Page) {
+  const fold = page.locator('details.bd-import');
+  await expect(fold).toBeAttached({ timeout: 90_000 }); // the Build page renders once the engine has booted
+  if (!await fold.evaluate(el => (el as HTMLDetailsElement).open)) await fold.locator(':scope > summary').click();
+  await expect(fold).toHaveJSProperty('open', true);
+}
+
 /** Picks where the next import goes: a new BD, or the current stage (which asks before it replaces anything). */
 export async function importInto(page: Page, destination: 'newBuild' | 'currentStage', lang: Lang = 'en-US') {
-  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
+  await openImport(page);
   const choices = page.getByRole('group', { name: workspaceText(lang).importDestination, exact: true }).getByRole('button');
   await choices.nth(destination === 'newBuild' ? 0 : 1).click();
   await expect(choices.nth(destination === 'newBuild' ? 0 : 1)).toHaveAttribute('aria-pressed', 'true');

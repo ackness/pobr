@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { statValue } from './shell';
 import { choose, goTo } from './skillsAndCalcs';
 import type { GemInput, SocketGroupInput } from '../src/api/types';
+import { openImport } from './buildLibrary';
 
 // Swift Affliction III still has an unmodelled conditional duration threshold.
 const swift = 'SupportSwiftAfflictionPlayerThree';
@@ -59,6 +60,7 @@ async function syntheticCaster(page: Page, equippedSwift: boolean) {
   } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true })
     .fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticSupportCoverageFixture');
   await page.locator('.import-submit').click();

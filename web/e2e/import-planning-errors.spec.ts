@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { pageLink, statValue } from './shell';
-import { displayedRail, goTo, importInto, mainSkillPinned, openBuild, openSupportSettings, settled } from './buildLibrary';
+import { displayedRail, goTo, importInto, mainSkillPinned, openBuild, openSupportSettings, settled, openImport } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
 import type { AttributeChoice, CalculateBuildRequest, CalculateBuildResponse, PassiveNode } from '../src/api/types';
@@ -108,6 +108,7 @@ async function start(page: Page, lang: Lang = 'en-US') {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await page.addInitScript(lang => localStorage.setItem('pobr-lang', lang), lang);
   await page.goto('/build');
+  await openImport(page);
   await expect(page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true })).toBeEnabled({ timeout: 90_000 });
   await settled(page);
 }
@@ -123,6 +124,7 @@ async function copyStage(page: Page, lang: Lang = 'en-US') {
 
 async function frostWorkspace(page: Page, lang: Lang) {
   await start(page, lang);
+  await openImport(page);
   await page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true }).fill(frostBomb);
   await page.locator('.import-submit').click();
   // An import lands on the Overview; follow it to the Items page and come back to the Build page afterwards.
@@ -258,7 +260,8 @@ async function exactApply(page: Page, card: Locator, planner: Planner, before: C
   const metrics = ['Life', 'TotalDPS', 'TotalEHP'] as const;
   for (const id of metrics) {
     const value = expectedResult.stats.find(stat => stat.id === id)!.value!;
-    expect(Math.abs(numeric(await card.locator(`output[data-stat="${id}"]`).innerText()) - value),
+    // A route card folds its before → after values into a closed details element: read the text, not the rendering.
+    expect(Math.abs(numeric((await card.locator(`output[data-stat="${id}"]`).textContent())!) - value),
       `${id} must match the independently replayed route to its displayed precision`).toBeLessThanOrEqual(0.00501);
   }
   await card.getByRole('button', { name: planner === 'route' ? labels[lang].apply : 'Apply jewel and passive plan', exact: true }).click();
@@ -445,6 +448,7 @@ test('strict saved-file rejection stays local and external decoder rejection als
   await configure(page);
   const before = await capture(page);
   await openBuild(page);
+  await openImport(page); // the file button and its error live in the import section
   const damaged = { version: 1, notes: 'Saved identity wins over valid legacy collections', state: null, passives: [], items: [], skills: [] };
   await page.locator('input[type=file]').setInputFiles({ name: 'damaged-saved-session.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(damaged)) });
   await expect(page.getByRole('alert').last()).toBeVisible();
@@ -454,6 +458,7 @@ test('strict saved-file rejection stays local and external decoder rejection als
   await complete(page);
   const receipt = await routeResults(page).innerText();
   await openBuild(page);
+  await openImport(page);
   await page.locator('input[type=file]').setInputFiles({ name: 'unrecognized-external.build', mimeType: 'application/json', buffer: Buffer.from('{}') });
   await expect(page.getByRole('alert').last()).toBeVisible();
   expect(await capture(page)).toEqual(before);

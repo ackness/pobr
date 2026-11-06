@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { copyCurrentStage, currentStage, dpsValue, ehpValue, goTo, openCustomModifiers, openOptimizerSettings, openStage, reduceMotion, settledNumber, settledText } from './upgradesPage';
 import type { SocketGroupInput } from '../src/api/types';
+import { openImport } from './buildLibrary';
 
 const dps = dpsValue;
 const capacity = (page: Page) => page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
@@ -21,6 +22,7 @@ async function syntheticCaster(page: Page) {
   } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true })
     .fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticSupportContinuityFixture');
   await page.locator('.import-submit').click();

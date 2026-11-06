@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { deflateSync } from 'node:zlib';
-import { mainSkillPinned } from './buildLibrary';
+import { mainSkillPinned, openImport } from './buildLibrary';
 
 const code = deflateSync('<PathOfBuilding2><Build level="60" className="Witch" mainSocketGroup="1"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree><Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="FireballPlayer" level="12" quality="0" enabled="true"/></Skill></SkillSet></Skills><Items/><Config><Input name="enemyLevel" number="82"/><Input name="buffOnslaught" boolean="false"/></Config></PathOfBuilding2>').toString('base64url');
 const nav = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name, exact: true });
@@ -15,7 +15,9 @@ async function preferences(page: Page, extra: Record<string, unknown> = {}) {
 async function importBuild(page: Page) {
   await preferences(page);
   await page.goto('/build');
+  await openImport(page);
   await expect(page.getByRole('textbox', { name: 'Build code', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await expect(page.locator('#ov-title')).toBeVisible();
@@ -40,7 +42,9 @@ test('copies saves of the first interface once and config edits preserve the ori
   const dialogs: string[] = []; page.on('dialog', dialog => { dialogs.push(dialog.type()); void dialog.dismiss(); });
   await preferences(page);
   await page.goto('/build');
+  await openImport(page);
   await expect(page.getByRole('textbox', { name: 'Build code', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click(); await expect(page.locator('#ov-title')).toBeVisible();
   await expect(page.locator('.shell-save-state')).toHaveText('Saved in this browser');

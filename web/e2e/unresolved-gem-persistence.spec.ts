@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { openItemsAfterImport, pageLink, statValue } from './shell';
-import { importInto, openBuild, openExport, selectStage as chooseStage, settled, stableText } from './buildLibrary';
+import { importInto, openBuild, openExport, selectStage as chooseStage, settled, stableText, openImport } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
@@ -10,7 +10,7 @@ import type { BuildWorkspace } from '../src/lib/buildWorkspace';
 type Envelope = SavedSession & { workspace: BuildWorkspace };
 const cometCode = readFileSync(new URL('../../examples/demo-bd-test/builds/sorceress-stormweaver-comet/code.txt', import.meta.url), 'utf8').trim();
 const hitDps = (page: Page) => statValue(page, /^Hit DPS$/).first();
-const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
+const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Calculation skill', exact: true });
 
 async function snapshot(page: Page): Promise<Envelope> {
   return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));
@@ -234,6 +234,7 @@ test('Comet PoB share-code reimport retains the unresolved slot and source gem m
     nameSpec: 'Unleash', level: '0', quality: '0',
     count: '1', enableGlobal1: 'true', enableGlobal2: 'true',
   });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(sharedCode);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -266,6 +267,7 @@ test('unresolved gems without count or global weapon attributes keep them absent
 </Skill></SkillSet></Skills></PathOfBuilding2>`).toString('base64url');
   await page.goto('/build');
   await ready(page);
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -289,6 +291,7 @@ test('unresolved gems without count or global weapon attributes keep them absent
   for (const attribute of ['count', 'enableGlobal1', 'enableGlobal2']) {
     expect(attributes).not.toHaveProperty(attribute);
   }
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(sharedCode);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -307,6 +310,8 @@ test('malformed inactive Comet stage import preserves the current workspace and 
   const library = await page.evaluate(() => localStorage.getItem('pobr-v2-library'));
   const malformed = structuredClone(before);
   activeBuild(malformed).stages[0].saved.state.socketGroups[8].gems[1].quality = -1;
+  // The file button and its error live in the import section, which is folded once the browser has a build.
+  await openImport(page);
   await page.locator('input[type=file]').setInputFiles({
     name: 'malformed-workspace.json', mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(malformed)),
@@ -330,6 +335,7 @@ test('removing an unresolved slot does not change the selected second active ski
 </Skill></SkillSet></Skills></PathOfBuilding2>`).toString('base64url');
   await page.goto('/build');
   await ready(page);
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -358,6 +364,7 @@ for (const count of [1, 2]) {
     const code = deflateSync(Buffer.from(xml)).toString('base64url');
     await page.goto('/build');
     await ready(page);
+    await openImport(page);
     await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
     await page.locator('.import-submit').click();
     await openItemsAfterImport(page);

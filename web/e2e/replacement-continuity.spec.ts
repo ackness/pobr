@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport, statValue } from './shell';
 import { augmentOption, choose, copyCurrentStage, currentStage, goTo, openCustomModifiers, openOptimizerSettings, openStage, reduceMotion } from './upgradesPage';
 import type { SlotItemInput } from '../src/api/types';
+import { openImport } from './buildLibrary';
 
 interface FixtureState {
   items: SlotItemInput[];
@@ -43,6 +44,7 @@ async function syntheticBuild(page: Page, augmented = false) {
   } }));
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true })
     .fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticReplacementContinuityFixture');
   await page.locator('.import-submit').click();

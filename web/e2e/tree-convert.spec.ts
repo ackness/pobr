@@ -4,6 +4,7 @@ import { choose, generateShareCode } from './treePage';
 import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
 import type { SavedSession } from '../src/hooks/useBuildSession';
+import { openImport } from './buildLibrary';
 
 // Synthetic, connected 0_4 Ranger allocation. Construction and local topology
 // cross-check are recorded in the shared fixture's XML comment; no player code.
@@ -19,6 +20,7 @@ async function idle(page: Page) {
 }
 async function importCode(page: Page, value: string) {
   await page.locator('.shell-builds-button').click();
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(value);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -30,6 +32,7 @@ test('synthetic historical conversion previews, confirms, undoes and exports eac
   await page.setViewportSize({ width: 1440, height: 1100 });
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await page.goto('/build');
+  await openImport(page);
   await expect(page.getByRole('textbox', { name: 'Build code', exact: true })).toBeVisible({ timeout: 90_000 });
   await importCode(page, code);
   const before = await saved(page);

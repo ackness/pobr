@@ -108,7 +108,7 @@ test('localized triggered skill uses a readable popup and keyboard selection', a
   // The Overview names the skill the calculation resolved to, in the interface language.
   await expect(page.locator('.ov-figure').first().locator('small')).toHaveText('风舞者');
   // The skill whose numbers the results panel shows is picked in a popup at the head of the panel.
-  const selector = page.locator('.shell-rail').getByRole('combobox', { name: '查看技能', exact: true });
+  const selector = page.locator('.shell-rail').getByRole('combobox', { name: '计算技能', exact: true });
   await expect(selector).toHaveText(/2\. 风舞者/);
   await go(page, '技能');
   await expect(page.locator('.skill-group.is-main .skill-group-name')).toHaveText('风舞者');

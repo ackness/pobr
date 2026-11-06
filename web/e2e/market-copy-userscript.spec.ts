@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { readFileSync } from 'node:fs';
+import { openImport } from './buildLibrary';
 
 const script = readFileSync(new URL('../public/userscripts/pobr-market-copy.user.js', import.meta.url), 'utf8');
 const id = 'a'.repeat(64), otherId = 'b'.repeat(64);
@@ -184,6 +185,7 @@ test('text copied from a market response reaches real WASM replacement compariso
     skills: [{ baseType: 'Fireball', support: false, properties: [{ type: 5, values: [['16', 0]] }] }],
   } }));
   await page.goto('/build');
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticUserscriptFixture');
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);

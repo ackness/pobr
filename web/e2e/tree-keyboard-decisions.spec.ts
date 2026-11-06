@@ -13,6 +13,7 @@ import * as wasmReplay from '../src/wasm/pkg/pobr_wasm.js';
 import { busy, pageLink } from './shell';
 import { answerConfirm } from './confirmDialog';
 import { choose, newControlContext, setLanguage } from './treePage';
+import { openImport } from './buildLibrary';
 
 const fixture = readFileSync(new URL('../../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', import.meta.url), 'utf8').trim();
 const version = readFileSync(new URL('../../data/CURRENT', import.meta.url), 'utf8').trim();
@@ -146,7 +147,9 @@ async function imported(page: Page, code = fixture) {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/build');
+  await openImport(page);
   await expect(page.getByRole('textbox', { name: 'Build code', exact: true })).toBeVisible({ timeout: 90_000 });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await expect.poll(async () => (await saved(page)).pobCode).toBe(code);
@@ -441,7 +444,9 @@ test('historical replacement keeps exact version and calculation but exposes no 
   await keyboardResult(page, 'WITCH', witchRoot);
   await page.locator('.shell-builds-button').click();
   const code = deflateSync('<PathOfBuilding2><Build level="80" className="Witch"/><Tree activeSpec="1"><Spec nodes="770" treeVersion="0_1"/></Tree><Skills/><Items/></PathOfBuilding2>').toString('base64url');
+  await openImport(page);
   await page.getByRole('group', { name: 'Import as', exact: true }).getByRole('button', { name: /^Replace this stage/ }).click();
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await answerConfirm(page, true);

@@ -3,6 +3,7 @@ import { bdLibraryButton, openItemsAfterImport } from './shell';
 import { answerConfirm } from './confirmDialog';
 import { choose, goTo } from './skillsAndCalcs';
 import { deflateSync } from 'node:zlib';
+import { openImport } from './buildLibrary';
 
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));
 
@@ -108,6 +109,7 @@ test('class changes in both entry points can be cancelled without clearing a bui
 });
 
 test('config drafts commit on Enter and reset restores imported values in the saved request', async ({ page }) => {
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(importedCode);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -183,7 +185,7 @@ test('selects support keyboard selection, Escape and leaving the control', async
 
 test('gem filters activate by keyboard without adding a gem; Escape can be reopened', async ({ page }) => {
   await goTo(page, 'Skills');
-  const picker = page.getByRole('combobox', { name: /Search an active gem/ });
+  const picker = page.getByPlaceholder('Add a skill group…');
   await picker.fill('Spark');
   await expect(page.locator('.gem-picker-item').first()).toBeVisible();
   await picker.press('Tab');
@@ -225,16 +227,14 @@ test('open dropdowns stay within the content area on narrow and wide screens', a
     await trigger.click();
     const list = page.getByRole('listbox');
     await expect(list).toBeVisible();
-    // The list is drawn outside the page's own container, so compare it with the content area's bounds.
-    const bounds = await list.evaluate(element => {
+    // The list is drawn outside the page's own container, so compare it with the content area's bounds. It is
+    // placed against its trigger a frame after it opens, so poll rather than read once.
+    await expect.poll(() => list.evaluate(element => {
       const rect = element.getBoundingClientRect();
       const main = document.querySelector('main')!;
       const content = main.getBoundingClientRect();
-      return { left: rect.left - content.left, right: content.right - rect.right, overflow: main.scrollWidth - main.clientWidth };
-    });
-    expect(bounds.left).toBeGreaterThanOrEqual(0);
-    expect(bounds.right).toBeGreaterThanOrEqual(0);
-    expect(bounds.overflow).toBeLessThanOrEqual(1);
+      return rect.left - content.left >= 0 && content.right - rect.right >= 0 && main.scrollWidth - main.clientWidth <= 1;
+    })).toBe(true);
     await page.keyboard.press('Escape');
     await expect(list).toHaveCount(0);
   }
