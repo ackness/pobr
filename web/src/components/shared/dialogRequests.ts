@@ -5,6 +5,7 @@ export interface DialogRequest {
   kind: 'confirm' | 'prompt';
   message: string;
   defaultValue: string;
+  acceptLabel?: string;
   lang: Lang;
   trigger: HTMLElement | null;
   resolve: (value: string | boolean | null) => void;
@@ -22,11 +23,11 @@ export class DialogRequests {
   };
   snapshot = () => this.requests[0] ?? null;
   private emit() { this.listeners.forEach(listener => listener()); }
-  open(kind: DialogRequest['kind'], message: string, lang: Lang, defaultValue = '') {
+  open(kind: DialogRequest['kind'], message: string, lang: Lang, defaultValue = '', acceptLabel?: string, returnFocus?: HTMLElement | null) {
     if (this.disposed) return Promise.resolve(kind === 'confirm' ? false : null);
     return new Promise<string | boolean | null>(resolve => {
-      this.requests.push({ id: this.nextId++, kind, message, lang, defaultValue, resolve,
-        trigger: typeof document !== 'undefined' && document.activeElement instanceof HTMLElement ? document.activeElement : null });
+      this.requests.push({ id: this.nextId++, kind, message, lang, defaultValue, acceptLabel, resolve,
+        trigger: returnFocus ?? (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement ? document.activeElement : null) });
       this.emit();
     });
   }
@@ -43,4 +44,10 @@ export class DialogRequests {
     this.emit();
   }
   activate() { this.disposed = false; }
+}
+
+/** The caller may provide a persistent trigger when a menu item opens a dialog. */
+export function restoreDialogFocus(request: DialogRequest, event: Pick<Event, 'preventDefault'>) {
+  event.preventDefault();
+  if (request.trigger?.isConnected) request.trigger.focus();
 }

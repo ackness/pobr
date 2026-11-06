@@ -3,14 +3,16 @@ import { compareStats, formatComparisonDelta } from '../../lib/compare';
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
 import { formatNumber, formatStatValue, statFormat } from '../../lib/statDisplay';
 import { upgradeT } from '../../lib/upgradeText';
+import type { DamageHeadline } from '../../lib/mainMinion';
 import './swapGainCard.css';
 
-const primary = ['CombinedDPS', 'TotalEHP', 'Life'];
 
 /** The same before/after projection for crafted items and saved-item comparisons. */
-export function SwapGainCard({ before, after, lang }: { before: readonly Pick<DisplayStatValue, 'id' | 'value'>[]; after: readonly Pick<DisplayStatValue, 'id' | 'value'>[]; lang: Lang }) {
+export function SwapGainCard({ before, after, lang, damage }: { before: readonly Pick<DisplayStatValue, 'id' | 'value'>[]; after: readonly Pick<DisplayStatValue, 'id' | 'value'>[]; lang: Lang; damage?: DamageHeadline }) {
   const tt = bindT(lang);
-  const label = (id: string) => id === 'TotalDPS' ? tt('sidebar.hitDps') : statNameLabel(lang, id);
+  const headline = damage ?? { stat: 'CombinedDPS', label: tt('sidebar.combinedDps') };
+  const primary = [headline.stat, 'TotalEHP', 'Life'];
+  const label = (id: string) => id === headline.stat ? headline.label : id === 'TotalDPS' ? tt('sidebar.hitDps') : statNameLabel(lang, id);
   const rows = compareStats(before, after);
   const changes = rows.filter(row => row.changed && !primary.includes(row.id));
   const value = (id: string, number: number | null | undefined) => number == null ? '—' : formatStatValue(number, statFormat(id), lang);
@@ -19,6 +21,7 @@ export function SwapGainCard({ before, after, lang }: { before: readonly Pick<Di
       const row = rows.find(row => row.id === id);
       return <div className="replacement-metric" data-stat={id} key={id}>
         <span>{label(id)}</span>
+        {id === headline.stat && headline.note && <small>{headline.note}</small>}
         <strong className={(row?.delta ?? 0) < 0 ? 'delta-neg' : (row?.delta ?? 0) > 0 ? 'delta-pos' : ''}>
           {row?.percent != null ? `${row.percent > 0 ? '+' : ''}${formatNumber(row.percent, 1, 1)}%` : row ? formatComparisonDelta(row.delta, statFormat(id), lang) : '—'}
         </strong>

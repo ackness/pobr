@@ -27,3 +27,12 @@ describe('dialog request lifetime', () => {
     expect(scope.snapshot()).toBeNull();
   });
 });
+
+
+it('retains an action-specific confirmation label without changing cancellation semantics', async () => {
+  const requests = new DialogRequests();
+  const result = requests.open('confirm', 'Reset this stage?', 'en-US', '', 'Change and clear');
+  expect(requests.snapshot()?.acceptLabel).toBe('Change and clear');
+  requests.finish(requests.snapshot()!, false);
+  expect(await result).toBe(false);
+});

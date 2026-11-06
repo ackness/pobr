@@ -29,6 +29,9 @@ vi.mock('react', async original => ({ ...await original<typeof import('react')>(
   useMemo: (fn: () => unknown) => fn(), useLayoutEffect: () => {}, useEffect: () => {},
 }));
 vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: { preset: 'life', cStat: '', cMin: '', cMax: '' }, setGoal: vi.fn() }) }));
+vi.mock('../../hooks/useLocalizedLines', async original => ({ ...await original<typeof import('../../hooks/useLocalizedLines')>(),
+  useLocalizedNames: (names: { name: string }[]) => names.map(entry => entry.name),
+}));
 vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
 vi.mock('../../lib/nodePower', async original => ({ ...await original<typeof import('../../lib/nodePower')>(),
   evaluateNodePower: (...args: unknown[]) => ui.evaluate(...args),
@@ -123,6 +126,19 @@ test('jewel planning locates the selected socket and its child section can colla
   toggle.onClick?.({} as never);
   expect(stop).toHaveBeenCalledTimes(1);
   expect(render(() => JewelPassivePlanner({ planner })).html).not.toContain('Candidate jewel text');
+});
+
+test('joint jewel and passive results show a minion-only gain with the same damage headline', () => {
+  const planner = { session: { ...session, calc: { stats: [], main_minion_index: 2, minions: [{ index: 2, name: 'Wolf' }] } },
+    lang: 'en-US', nodeLabel: () => 'Jewel socket', raw: '', selectedSocket: '2', sockets: [], candidates: [], exclusive: [], preview: null,
+    completed: { objective: { stat: 'MainMinionDPS', constraints: [] } },
+    result: { baseline: { TotalDPS: 0, CombinedDPS: 0, MainMinionDPS: 100 }, evaluated: 1, diagnostics: [],
+      plans: [{ candidateId: null, allocate: [], deallocate: [], stats: { TotalDPS: 0, CombinedDPS: 0, MainMinionDPS: 150 } }] },
+  } as unknown as JewelPassivePlannerState;
+  const html = render(() => JewelPassivePlanner({ planner })).html;
+  expect(html).toContain('Minion hit DPS <b>+50%');
+  expect(html).toContain('data-stat="MainMinionDPS">150');
+  expect(html).toContain('Wolf · per minion');
 });
 
 test('the passive planner starts collapsed and its main disclosure updates the expansion state', () => {

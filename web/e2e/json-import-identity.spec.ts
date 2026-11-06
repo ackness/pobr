@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { pageLink } from './shell';
+import { buildAction, pageLink } from './shell';
 import { headlineDps } from './skillsAndCalcs';
 import { displayedRail, goTo, importInto, openBuild, openSupportSettings, selectStage, settled } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
@@ -124,8 +124,8 @@ async function importSource(page: Page, source: string, lang: Lang = 'en-US') {
 
 async function editName(page: Page, action: string, name: string, lang: Lang = 'en-US') {
   const text = workspaceText(lang);
-  // The import form has a "New build" choice of its own; the library action is the later of the two.
-  await page.getByRole('button', { name: action, exact: true }).last().click();
+  if (action === text.renameBuild) await buildAction(page, action);
+  else await page.locator('.bd-actions').getByRole('button', { name: action, exact: true }).click();
   await page.getByRole('textbox', { name: text.name, exact: true }).fill(name);
   await page.getByRole('button', { name: text.save, exact: true }).click();
   await settled(page);
