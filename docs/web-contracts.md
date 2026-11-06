@@ -686,6 +686,8 @@ stats 的 `MainMinionDPS` 是主召唤物单只击中 DPS，无主召唤物时�
   useJobBeacon 让原有 AbortController／progress 优化器共用顶栏进度，保留各面板取消按钮。
 - 数字 280ms 过渡，共用动画循环，最多 24 项；变化色、标题旁变化提示（4s）、页面 View Transition 和
   工作超过 200ms 后出现的 2px 进度线只说明状态。减少动态效果设置下数值直接更新，不滑动／循环。
+  该设置关闭全部 CSS 过渡（`transition: none`，不是极短时长：极短过渡仍会逐元素启动，天赋树平移曾因此卡住数十秒）；
+  一次性动画保留极短时长，让等待 `animationend` 的弹层照常卸载。
 - VITE_POBR_BACKEND=mock 使用 fixture，DPS 随 enemy_tier 变化以便界面测试，不证明真实引擎行为。
 
 ### 各页面的布局

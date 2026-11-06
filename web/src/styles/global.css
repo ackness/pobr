@@ -216,11 +216,12 @@ pre {
   }
 }
 
+/* Reduced motion: no transitions at all (see the same rule in app/styles.css for why not a tiny duration). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    transition-duration: 0.01ms !important;
+    transition: none !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
