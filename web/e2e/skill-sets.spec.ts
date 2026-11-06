@@ -62,7 +62,6 @@ test('skill sets keep their main group and weapon bindings across copy, edits, s
   expect(xml).toContain('set2="false"');
   expect(xml).toContain('name="futureConfig" string="keep"');
   expect(xml.match(/label="Keep label"/g)).toHaveLength(2);
-  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   await page.getByRole('textbox', { name: 'Build code' }).fill(exported);
   await page.locator('.import-submit').click();
   await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });

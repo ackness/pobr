@@ -23,6 +23,8 @@ import { words, pageNames } from './text';
 import { Settings } from './Settings';
 import { TopbarAction, TopbarHint } from './TopbarHint';
 import { ImportReviewNotice } from './ImportReviewNotice';
+import { advanceImportReview, type ImportReview } from './importReview';
+import { useImportFocus } from './useImportFocus';
 import { calculationVersion } from './calculationVersion';
 import { ResultsRail } from './ResultsRail';
 import { useSettledCalc } from './motion/useSettledCalc';
@@ -135,7 +137,9 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const [upgradeFocus, setUpgradeFocus] = useState<{ slot: string; nonce: number; jewelType?: 'base' | 'radius' }>();
   const [skillFocus, setSkillFocus] = useState<{ group: number; nonce: number }>();
   const [treeFocus, setTreeFocus] = useState<{ nonce: number; node?: number }>();
-  const [reviewStage, setReviewStage] = useState<{ scope: string | null } | null>(null);
+  const [importFocusRequest, setImportFocusRequest] = useState(0);
+  const claimImportFocus = useImportFocus(route, importFocusRequest);
+  const [reviewStage, setReviewStage] = useState<ImportReview | null>(null);
   const previousStage = useRef(stageKey);
   const stageChanged = previousStage.current !== stageKey;
   useEffect(() => {
@@ -144,10 +148,9 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
     setStatsOpen(false); setInspect(null);
   }, [stageKey]);
   useEffect(() => {
-    if (!reviewStage || !stageKey) return;
-    if (reviewStage.scope === null) setReviewStage({ scope: stageKey });
-    else if (reviewStage.scope !== stageKey) setReviewStage(null);
-  }, [stageKey, reviewStage]);
+    const next = advanceImportReview(reviewStage, stageKey, session);
+    if (next !== reviewStage) setReviewStage(next);
+  }, [reviewStage, stageKey, session.busy, session.calcError, session.calc, session.character, session.classNames]);
   useEffect(() => {
     const pop = () => { setRoute(readRoute(location.pathname)); setMenuOpen(false); setStatsOpen(false); };
     addEventListener('popstate', pop); return () => removeEventListener('popstate', pop);
@@ -197,6 +200,9 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const shortcutKey = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
   const saveState = session.storageFailed ? w('Save failed', '保存失败', '儲存失敗') : session.busy ? w('Calculating', '计算中', '計算中') : t(lang, 'shell.saved');
   const rail = <ResultsRail route={route} session={session} view={view} lang={lang} onStatClick={inspectStat} onNavigate={navigate} pinned={pinned} onTogglePin={togglePin} />;
+  const importNotice = reviewStage && reviewStage.scope === stageKey && <ImportReviewNotice route={route} lang={lang}
+    summary={reviewStage.summary ?? { character: session.character, classNames: session.classNames, calc: null, failed: !!session.calcError }}
+    onDismiss={() => setReviewStage(null)} onReview={() => { setReviewStage(null); navigate('config'); }} />;
   return <AppDialogsProvider scope={stageKey}><PreviewProvider session={session} view={view}><NavigateContext.Provider value={navigate}><div className="shell-root" ref={setShellEl}>
     <a href="#shell-main" className="shell-skip-link">{t(lang, 'a11y.skipToContent')}</a>
     <header className="shell-topbar">
@@ -210,7 +216,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
       {tabs()}
       <div className="shell-topbar-actions">
         <TopbarAction hint={t(lang, 'shell.searchHint').replace('{key}', shortcutKey)} variant="ghost" size="sm" className="shell-palette-button" aria-label={w('Search and commands', '搜索与命令', '搜尋與命令')} onClick={() => setPaletteOpen(true)}><Search /><kbd>{/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'}</kbd></TopbarAction>
-        <TopbarAction hint={w('Build library', 'BD 库', 'BD 庫')} variant="ghost" size="sm" className="shell-builds-button" aria-current={route === 'build' ? 'page' : undefined} onClick={() => navigate('build')}><Library /><span className="shell-quiet-label">{w('Build library', 'BD 库', 'BD 庫')}</span></TopbarAction>
+        <TopbarAction hint={w('Build library', 'BD 库', 'BD 庫')} variant="ghost" size="sm" className="shell-builds-button" aria-current={route === 'build' ? 'page' : undefined} onClick={() => { setImportFocusRequest(value => value + 1); navigate('build'); }}><Library /><span className="shell-quiet-label">{w('Build library', 'BD 库', 'BD 庫')}</span></TopbarAction>
         <TopbarHint hint={saveState}><span tabIndex={0} className={`shell-save-state${session.storageFailed ? ' is-error' : ''}`} role="status" data-busy={session.busy || undefined}>{session.busy ? <LoaderCircle className="animate-spin" /> : <Check />}<span className="shell-quiet-label">{saveState}</span></span></TopbarHint>
         <TopbarAction hint={`${t(lang, 'shell.undoHint').replace('{key}', shortcutKey)} · ${session.busy ? t(lang, 'shell.waitForCalculation') : !session.canUndo ? t(lang, 'shell.noUndo') : ''}`.replace(/ · $/, '')} className="shell-history-button" variant="ghost" size="icon" aria-label={w('Undo', '撤销', '復原')} disabled={!session.canUndo || session.busy} onClick={session.undoEdit}><Undo2 /></TopbarAction>
         <TopbarAction hint={`${t(lang, 'shell.redoHint').replace('{key}', shortcutKey)} · ${session.busy ? t(lang, 'shell.waitForCalculation') : !session.canRedo ? t(lang, 'shell.noRedo') : ''}`.replace(/ · $/, '')} className="shell-history-button" variant="ghost" size="icon" aria-label={w('Redo', '重做', '重做')} disabled={!session.canRedo || session.busy} onClick={session.redoEdit}><Redo2 /></TopbarAction>
@@ -227,13 +233,13 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
         {session.storageFailed && <div className="shell-alert" role="alert"><p>{w('Browser storage is full or unavailable. Download a backup before leaving.', '浏览器存储已满或不可用，请先下载完整备份。', '瀏覽器儲存空間已滿或無法使用，請先下載完整備份。')}</p><Button onClick={() => download(session.exportWorkspace(), 'pobr-backup.json')}><Download />{w('Download backup', '下载备份', '下載備份')}</Button></div>}
         {preferencesFailed && <p className="shell-alert" role="alert">{w('Display preferences could not be saved on this device.', '显示偏好暂时无法保存到当前设备。', '顯示偏好暫時無法儲存至目前裝置。')}</p>}
         {session.syncNotice && <div className="shell-notice" role="status" data-sync={session.syncNotice.kind}><p>{syncMessage(session.syncNotice.kind, w)}</p><Button variant="ghost" onClick={session.dismissSyncNotice}>{w('Dismiss', '知道了', '知道了')}</Button></div>}
-        {reviewStage?.scope === stageKey && <ImportReviewNotice route={route} lang={lang} onDismiss={() => setReviewStage(null)} onReview={() => { setReviewStage(null); navigate('config'); }} />}
+        {route !== 'build' && importNotice}
         {Object.keys(session.editorDrafts).length > 0 && <div className="shell-notice" role="status"><p>{t(lang, 'editor.draftHint')}</p><Button variant="outline" onClick={() => navigate('items')}>{t(lang, 'editor.reviewItems')}</Button><Button variant="outline" onClick={() => navigate('tree')}>{t(lang, 'editor.reviewJewels')}</Button></div>}
         {session.calcError && <div className="shell-alert" role="alert"><strong>{w('Calculation unavailable', '当前计算不可用', '目前計算無法使用')}</strong><p>{session.calcError}</p></div>}
         {session.operationError && <div className="shell-alert" role="alert">{buildImportErrorMessage(session.operationError, lang)}</div>}
         <UiProvider lang={lang} displayMode={pageDisplayMode(preferences, route)}><div className="shell-page-content">
           {route === 'overview' && <Overview session={session} view={view} lang={lang} navigate={navigate} focusStat={inspectStat} />}
-          {route === 'build' && <BuildPage session={session} lang={lang} onImported={() => { setReviewStage({ scope: null }); navigate('overview'); }} />}
+          {route === 'build' && <BuildPage session={session} lang={lang} claimImportFocus={claimImportFocus} importNotice={importNotice} onImported={() => { setReviewStage({ scope: null }); navigate('overview'); }} />}
           {route === 'items' && <ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({ slot, nonce: Date.now() }); navigate('trade'); }} />}
           {route === 'config' && <ConfigPanel session={session} lang={lang} settledCalc={view.calc} />}
           {/* One boundary per lazy page: a page that is still loading must not hide, and so re-run the effects of, the planners kept mounted beside it. */}

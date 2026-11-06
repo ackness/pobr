@@ -1,3 +1,4 @@
+import { buildAction, openBuildMenu } from './shell';
 import { expect, test, type Page } from '@playwright/test';
 import { deflateSync } from 'node:zlib';
 import { mainSkillPinned } from './buildLibrary';
@@ -94,7 +95,7 @@ test('tabs of one browser follow each other and merge what a tab missed', async 
   const names = (tab: Page, list: string[]) => expect(shown(tab)).toHaveText(list.map((name, index) => name || `Build ${index + 1}`));
   const notice = (tab: Page) => tab.locator('.shell-notice[data-sync]');
   const create = async (tab: Page, value: string) => {
-    await tab.getByRole('button', { name: 'New build', exact: true }).last().click();
+    await tab.locator('.bd-library').getByRole('button', { name: 'New build', exact: true }).click();
     await tab.getByRole('textbox', { name: 'Name', exact: true }).fill(value);
     await tab.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(tab.locator('.shell-save-state')).toHaveText('Saved in this browser');
@@ -110,10 +111,10 @@ test('tabs of one browser follow each other and merge what a tab missed', async 
   await expect(notice(other)).toHaveAttribute('data-sync', 'updated');
 
   // Deleting the build the other tab has open: that tab moves on to one that is still there.
-  await other.getByRole('group', { name: 'Saved builds', exact: true }).getByRole('button', { name: /Made here/ }).click();
+  await other.getByRole('group', { name: 'Saved builds', exact: true }).locator('.bd-build-select').filter({ hasText: 'Made here' }).click();
   await expect(other.locator('.shell-save-state')).toHaveText('Saved in this browser');
   await openBuilds(page);
-  await page.getByRole('button', { name: 'Delete build', exact: true }).click();
+  await buildAction(page, 'Delete build');
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
   await names(other, start);
   await expect(notice(other)).toHaveAttribute('data-sync', 'current-removed');
@@ -206,12 +207,16 @@ test('navigation, settings and confirmations retain the current editor', async (
 
 test('deletes a build or a stage only after asking, and keeps the last of each', async ({ page }) => {
   await importBuild(page);
-  const deleteBuild = page.getByRole('button', { name: 'Delete build', exact: true });
+  const deleteBuild = () => buildAction(page, 'Delete build');
+  const deletionAvailable = async (available: boolean) => {
+    await openBuildMenu(page);
+    await expect(page.getByRole('menuitem', { name: 'Delete build', exact: true })).toHaveCount(available ? 1 : 0);
+    await page.keyboard.press('Escape');
+  };
   const deleteStage = page.getByRole('button', { name: 'Delete stage', exact: true });
   const undo = page.getByRole('button', { name: 'Undo', exact: true });
   const name = async (action: string, value: string) => {
-    // The import form has a "New build" choice of its own; the action is the later of the two.
-    await page.getByRole('button', { name: action, exact: true }).last().click();
+    await page.locator('.bd-actions').getByRole('button', { name: action, exact: true }).click();
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill(value);
     await page.getByRole('button', { name: 'Save', exact: true }).click();
   };
@@ -220,12 +225,12 @@ test('deletes a build or a stage only after asking, and keeps the last of each',
   // First import replaces the untouched starter; the only remaining build cannot be deleted.
   const start: string[] = await builds();
   expect(start).toHaveLength(1);
-  await expect(deleteBuild).toHaveCount(0);
+  await deletionAvailable(false);
   // Each build here has one stage, and a build's only stage is not offered for deletion.
   await expect(deleteStage).toHaveCount(0);
 
   await name('New build', 'Second');
-  await expect(deleteBuild).toBeVisible();
+  await deletionAvailable(true);
   // Opening another build is not an edit to take back: Undo would otherwise put the build
   // that was just left over this one.
   await expect(undo).toBeDisabled();
@@ -246,11 +251,11 @@ test('deletes a build or a stage only after asking, and keeps the last of each',
   await expect(undo).toBeDisabled();
 
   // A build: the confirmation names it, declining changes nothing, and confirming removes it.
-  await deleteBuild.click();
+  await deleteBuild();
   await expect(page.getByRole('alertdialog')).toContainText('Second');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   expect(await builds()).toEqual([...start, 'Second:1']);
-  await deleteBuild.click();
+  await deleteBuild();
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect.poll(builds).toEqual(start);
   // Undo must not bring the deleted build's data back into the one that opened.
@@ -261,12 +266,12 @@ test('deletes a build or a stage only after asking, and keeps the last of each',
 
   // Deleting down to the last build: it stays, and nothing offers to delete it.
   while ((await builds()).length > 1) {
-    await deleteBuild.click();
+    await deleteBuild();
     await page.getByRole('button', { name: 'Confirm', exact: true }).click();
     await expect.poll(async () => (await builds()).length).toBeLessThan(start.length);
     start.pop();
   }
-  await expect(deleteBuild).toHaveCount(0);
+  await deletionAvailable(false);
   await expect(page.locator('.shell-save-state')).toHaveText('Saved in this browser');
 
   // It is gone for good: still one build after a reload, and it is the one that was kept.
