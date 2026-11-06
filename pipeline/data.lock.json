@@ -9,38 +9,38 @@
   "packages": {
     "game": {
       "repository": "ackness/repoe",
-      "tag": "game/0.5.5.5-2",
+      "tag": "game/0.5.5.5-3",
       "asset": "pobr-game-0.5.5.5.zip",
-      "bytes": 4559376,
-      "sha256": "c46df616c802d9c068b9516d77403147b9515a2d551d668e134623539d692ecb",
+      "bytes": 4611967,
+      "sha256": "7f8d343b53bbbffa221b750c42fa71da4eda6fde909426c130a07d5b4dd4a7c9",
       "manifest": {
-        "bytes": 8935,
-        "sha256": "7310688be921e799cdd055652fe326a95cef0d1684b88f65f7bccbbb6d8cded5"
+        "bytes": 9073,
+        "sha256": "480e4b1ec62a1ce8e98b10b71fe3752e002b01c6a5e9c8188ea1dd89e95a0169"
       },
-      "expanded_bytes": 66879934,
+      "expanded_bytes": 67114847,
       "receipt": {
-        "bytes": 39774,
-        "sha256": "c61923464eb4a9235d3ec70a783310fd255385d1572cc54c32d45d1724f71347"
+        "bytes": 40692,
+        "sha256": "7533dab3ee4008686d985eab5de355cbb9d69fa46dc3148adbc32b632bf7eb6e"
       },
-      "producer_commit": "a86e54c0f824bbba7bfe6f411ff192a038e2cfb9",
+      "producer_commit": "8e76b9a97e2427adcc9561c2fbd89778c497d828",
       "contract_version": 1
     },
     "language": {
       "repository": "ackness/poe2-zh-cn-stats",
-      "tag": "locale/0.5.5.5-3",
+      "tag": "locale/0.5.5.5-4",
       "asset": "pobr-locale-0.5.5.5.zip",
-      "bytes": 7492433,
-      "sha256": "dc3a809805bf415e05b9f097f38a43cf5afe65c1799d7b7ecb459bf4a3543f16",
+      "bytes": 8479677,
+      "sha256": "d0d7419903ab22bcc3040881ebf668e44cd20accf40fb711b1a61672f1635cbf",
       "manifest": {
-        "bytes": 2502,
-        "sha256": "a7063a814cb3a6d7a9223f28dd2aae25f7f7eaec005768894795936049939292"
+        "bytes": 2667,
+        "sha256": "8b6350df04231aeb4389b0c6b7d63134381c8300a43aee8930fbead49778e530"
       },
-      "expanded_bytes": 7490361,
+      "expanded_bytes": 8477445,
       "receipt": {
-        "bytes": 11327,
-        "sha256": "115d084fef83ed525cbdb5dda4addc20188d7762f875bf44e6492743c61db085"
+        "bytes": 9573,
+        "sha256": "1f4708d8ce255f4fe7eb495ed792d3d623ee60cf4521ed6d4f25fa0a1dbe69b5"
       },
-      "producer_commit": "df785f56251f22f1c4d83e228ec154d02ca39f2a",
+      "producer_commit": "a4b6712c8b2c4e773f658ead973711dde725e77f",
       "contract_version": null
     }
   },
@@ -95,9 +95,9 @@
     }
   },
   "snapshot_manifest": {
-    "bytes": 7045,
-    "sha256": "54c7595a2f37cee132f072d2d5a58d78a4b4779a748a63c05b21310605618715"
+    "bytes": 7176,
+    "sha256": "bf8fb4a4b5c3773bd13b3924173b3252379ac3fcaa58c431210e5f76e6977a10"
   },
-  "runtime_identity": "a074621b43164649f1b36798f6412890fe45a12a01c8e46efcaac23c8b0f701d",
-  "release_id": "4c9954a2d97b312b9b19161b68245b38d28448b2d1d89c967c6b4c69b609a974"
+  "runtime_identity": "8c119c2e2d9e41b0bd43696118b32944f81b3492cd712c9813aa7db9c22f30c9",
+  "release_id": "180932a10aa991941420358c820b5385d109fcf938640f81c243dc17c77f5fb5"
 }

@@ -13,15 +13,15 @@ PoBR 一侧的换数据、发版与回退步骤见 [RELEASING.md](../RELEASING.m
 
 | 能力 | 状态 | 阻塞项 |
 | --- | --- | --- |
-| 游戏包 | `game/0.5.5.5-2`，从 Release 采用。这一批计算结果不变：新增 `base/active_skill_types.json`，`base/game_constants.json` 增加 `base_maximum_rage`，天赋树节点携带原生 stat packet；引擎不再内嵌这些表（保留项见 `crates/pobr-data/tests/no_embedded_data.rs`） | 无 |
-| 语言包 | `locale/0.5.5.5-2`，从 Release 采用；繁中词缀名与简中一样以英文为键。只换语言发布不需要新的游戏发布；锁的 `locale` 须是语言包提供的语言（当前支持英文、简中、繁中） | 无 |
-| 辅助显示 | 随语言 Release `locale/0.5.5.5-2` 的附件采用，`catalog_sha256` 绑定游戏包的交易目录 | 无 |
+| 游戏包 | `game/0.5.5.5-3`，从 Release 采用。比 `-2` 只多可选文件 `overlay/gem_descriptions.json`（英文宝石说明，`contract/1.3`），计算结果不变。`-2` 起包含 `base/active_skill_types.json`、`base_maximum_rage` 与天赋节点的原生 stat packet，引擎不再内嵌这些表（保留项见 `crates/pobr-data/tests/no_embedded_data.rs`） | 无 |
+| 语言包 | `locale/0.5.5.5-4`，从 Release 采用。简中词条与宝石说明（`GemEffects.SupportText`、`ActiveSkills.Description`）优先取国服客户端的官方文本（RePoE `inputs/0.5.5.5-1`），繁中宝石说明来自国际服客户端（`inputs/0.5.5.5-2`）；繁中词缀名与简中一样以英文为键。只换语言发布不需要新的游戏发布；锁的 `locale` 须是语言包提供的语言（当前支持英文、简中、繁中） | 无 |
+| 辅助显示 | 沿用 `locale/0.5.5.5-3` 的附件（`-4` 不再发布它，交易目录未变，`catalog_sha256` 仍绑定游戏包的交易目录）；宝石说明改由语言包 `display_texts.json` 提供 | 退役旧附件路径（P2） |
 | 测试夹具 | `test_fixtures` 按 `handoff/*` tag + commit 拉取，换目标时保留 | 无 |
 | 运行 manifest | 按 owner 组合：游戏 snapshot 只列游戏成员，`data:prepare` 加入语言包的 `i18n/**` 并推出 `languages`。仍列语言成员的旧游戏 snapshot（`game/0.5.5.5-1` 及更早）和未声明 `contract_version` 的 schema 3 manifest 都被拒绝 | 无（已生效；真实 Release 的采用见“游戏包”） |
 | PoBR 自有规则 | `local_mods.json`、`special_mods.json` 在锁的 `shared_files`；九份构筑配置选项编译进 `crates/pobr-gamedata/src/domains/config_options/`，计入引擎身份 | 无 |
 | 采用流程 | 人工审阅的锁修改：精确 head 通过 PR gate 与 Full CI，合并后再确认主线 Full CI。固定测试绑定组合 manifest 的游戏部分，换游戏包时需复核成员差异再重绑 | 无 |
 | 新补丁迁移与回退 | 步骤见 [RELEASING.md](../RELEASING.md)，尚未用真实新补丁走过 | 一次真实新补丁：两个 owner 一起发布并 bump，发版后验证线上回退 |
-| 部署 | 锁合并到 master 只跑 Full CI；生产站点只由稳定 `v0.x.y` tag 部署（[RELEASING.md](../RELEASING.md)）。线上为 `v0.0.44`，使用锁中的 `game/0.5.5.5-2` 与 `locale/0.5.5.5-2` | 无 |
+| 部署 | 锁合并到 master 只跑 Full CI；生产站点只由稳定 `v0.x.y` tag 部署（[RELEASING.md](../RELEASING.md)）。线上为 `v0.0.45`，使用 `game/0.5.5.5-2` 与 `locale/0.5.5.5-3`；本锁随下一个 `v0.x.y` 上线 | 无 |
 | 发行包 | Web 与独立 WASM 发布逐文件快照；紧凑发行包只在 CI 中由同次 WASM 消费验证 | 见下表“玩家验收与性能” |
 
 ## 领域现状
