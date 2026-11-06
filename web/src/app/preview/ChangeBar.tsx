@@ -23,7 +23,7 @@ export function ChangeBar({ lang }: { lang: Lang }) {
         : state.changes.length === 0 ? <span className="cb-note">{w('No stat changes', '没有任何数值变化', '沒有任何數值變化')}</span>
           : <ul>{state.changes.map(change => <li key={change.id} data-tone={change.tone}>
             <span className="cb-stat">{statLabel(lang, change.id)}</span>
-            <span className="cb-values">{formatStatValue(change.before, statFormat(change.id), lang)} → {formatStatValue(change.after, statFormat(change.id), lang)}</span>
+            <span className="cb-values">{formatStatValue(change.before, change.id === 'CombinedDPS' ? 'int' : statFormat(change.id), lang)} → {formatStatValue(change.after, change.id === 'CombinedDPS' ? 'int' : statFormat(change.id), lang)}</span>
             <strong>{percentText(change)}</strong></li>)}</ul>}
     </div>
   </div>;

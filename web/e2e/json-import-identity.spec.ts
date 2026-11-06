@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { pageLink, statValue } from './shell';
+import { pageLink } from './shell';
+import { headlineDps } from './skillsAndCalcs';
 import { displayedRail, goTo, importInto, openBuild, openSupportSettings, selectStage, settled } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
@@ -275,9 +276,9 @@ for (const destination of ['newBuild', 'currentStage'] as const) {
     const group = page.locator('.skill-group').first();
     const title = group.locator('.skill-group-title');
     if (await title.getAttribute('aria-expanded') === 'false') await title.click();
-    const toggle = group.locator('.gem-optimizer-toggle');
+    const toggle = page.locator('.skill-detail').locator('.gem-optimizer-toggle');
     if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
-    await expect(group.locator('.gem-optimizer-body')).toBeVisible();
+    await expect(page.locator('.skill-detail').locator('.gem-optimizer-body')).toBeVisible();
     await openSupportSettings(page);
     const capacity = page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
     const lineage = page.getByRole('checkbox', { name: 'Include lineage supports', exact: true });
@@ -297,7 +298,7 @@ for (const destination of ['newBuild', 'currentStage'] as const) {
     }));
     const dpsText = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Combined DPS / }).innerText();
     const preview = numeric(dpsText.match(/^Combined DPS ([\d,.]+)/)![1]);
-    const totalDps = page.locator('#character-stats .rail-hero-value').first();
+    const totalDps = headlineDps(page);
     expect(preview).toBeGreaterThan(numeric(await totalDps.innerText()));
     await openBuild(page);
     await submitPaste(page, '{}', 'currentStage', 'en-US', true);
@@ -323,7 +324,7 @@ for (const destination of ['newBuild', 'currentStage'] as const) {
     expected.workspace.builds.find(build => build.id === activeBuild)!.stages.find(stage => stage.id === activeStage)!.saved.state = expected.state;
     expect(after.envelope).toEqual(expected);
     expect(after.bytes.library).toBe(before.bytes.library);
-    expect(Math.abs(numeric(await totalDps.innerText()) - preview)).toBeLessThanOrEqual(0.06);
+    expect(Math.abs(numeric(await totalDps.innerText()) - preview)).toBeLessThanOrEqual(0.5);
     await expect(page.locator('.support-results')).toHaveCount(0);
     await page.reload();
     await expect(page.locator('.skills-toolbar input')).toBeEnabled({ timeout: 90_000 });
