@@ -679,11 +679,7 @@ fn a_continuation_line_has_no_origin_of_its_own() {
          "en": "Gain {0}% of Damage as Extra Fire Damage for\nevery different Grenade fired in the past 8 seconds",
          "origin": "agent"}
     ]);
-    let pack = LocalePack::from_files(
-        "zz",
-        [("stat_lines.json", templates.to_string().into_bytes())],
-    )
-    .unwrap();
+    let pack = templates_pack("zz", templates);
     let renderer = LineRenderer::new(&[&pack], []).unwrap();
     assert_eq!(
         renderer.render_lines_with_origins(
@@ -887,11 +883,7 @@ fn a_bonded_line_renders_through_the_packs_own_templates() {
         {"src": "{0:d} 魔力上限", "en": "{0:d} to maximum Mana"},
         {"src": "伤害提高 {0}%", "en": "{0}% increased Damage"}
     ]);
-    let pack = LocalePack::from_files(
-        "zz",
-        [("stat_lines.json", templates.to_string().into_bytes())],
-    )
-    .unwrap();
+    let pack = templates_pack("zz", templates);
     let renderer = LineRenderer::new(&[&pack], []).unwrap();
     let render = |line: &str| renderer.render_line(line);
     // A whole-line row first; otherwise the prefix template around the effect's own rendering.

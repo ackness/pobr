@@ -43,14 +43,6 @@ pub enum TextOrigin {
 }
 
 impl TextOrigin {
-    /// The value as the packs spell it (`agent`, `human`).
-    pub fn as_str(self) -> &'static str {
-        match self {
-            TextOrigin::Agent => "agent",
-            TextOrigin::Human => "human",
-        }
-    }
-
     /// The origin of a text assembled from two parts: official only when
     /// both are; a part a model wrote makes the whole a model's.
     pub fn combine(a: Option<Self>, b: Option<Self>) -> Option<Self> {

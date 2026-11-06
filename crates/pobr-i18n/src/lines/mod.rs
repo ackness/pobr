@@ -174,15 +174,15 @@ pub fn parse_text_with<'t>(
 
 /// A stretch of adjacent input lines translated as one text.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Run {
+pub struct Run<T = String> {
     /// The index of its first input line.
     pub start: usize,
     /// How many input lines it covers (more than one only when a multi-line
     /// template recognized them together).
     pub len: usize,
-    /// The translation (its lines joined with `\n`); `None` when nothing
-    /// recognized the line.
-    pub text: Option<String>,
+    /// The translation and any accompanying data; `None` when nothing
+    /// recognized the line. String translations have their lines joined with `\n`.
+    pub text: Option<T>,
 }
 
 /// Translates `lines` in order, one [`Run`] per stretch. The game writes
@@ -196,11 +196,11 @@ pub struct Run {
 /// text (see [`LineTranslator::translate_line`]), so unrelated neighbours are
 /// never joined. A blank line or one that already holds a line break is never
 /// joined: an element holding `\n` is translated whole, as given.
-pub fn translate_runs<S: AsRef<str>>(
+pub fn translate_runs<S: AsRef<str>, T>(
     lines: &[S],
     mut span: impl FnMut(&str) -> usize,
-    mut translate: impl FnMut(&str) -> Option<String>,
-) -> Vec<Run> {
+    mut translate: impl FnMut(&str) -> Option<T>,
+) -> Vec<Run<T>> {
     let mut runs = Vec::new();
     let mut start = 0;
     while start < lines.len() {
@@ -253,18 +253,27 @@ pub fn is_continuation(source: &str, translated: &str) -> bool {
 /// whole translation goes to its first line and the others get `""` (the
 /// text they held is in it). `None` for a line nothing recognized.
 pub fn spread_runs(runs: &[Run], len: usize) -> Vec<Option<String>> {
+    spread_runs_with(runs, len, String::as_str)
+}
+
+fn spread_runs_with<T>(
+    runs: &[Run<T>],
+    len: usize,
+    text: impl Fn(&T) -> &str,
+) -> Vec<Option<String>> {
     let mut out = vec![None; len];
     for run in runs {
-        let Some(text) = &run.text else {
+        let Some(value) = &run.text else {
             continue;
         };
+        let text = text(value);
         let parts: Vec<&str> = text.split('\n').collect();
         if run.len > 1 && parts.len() == run.len {
             for (slot, part) in out[run.start..run.start + run.len].iter_mut().zip(parts) {
                 *slot = Some(part.to_string());
             }
         } else {
-            out[run.start] = Some(text.clone());
+            out[run.start] = Some(text.to_string());
             for slot in &mut out[run.start + 1..run.start + run.len] {
                 *slot = Some(String::new());
             }
@@ -361,9 +370,16 @@ impl LineRenderer {
     /// the same lines (see [`spread_runs`]: a line whose text went into the
     /// line before it renders as `""`).
     pub fn render_lines(&self, lines: impl IntoIterator<Item = String>) -> Vec<String> {
-        self.render_lines_with_origins(lines)
+        let lines: Vec<String> = lines.into_iter().collect();
+        let runs = translate_runs(
+            &lines,
+            |line| self.span_from(line),
+            |line| self.render_line(line),
+        );
+        spread_runs(&runs, lines.len())
             .into_iter()
-            .map(|(text, _)| text)
+            .zip(lines)
+            .map(|(rendered, line)| rendered.unwrap_or(line))
             .collect()
     }
 
@@ -377,36 +393,18 @@ impl LineRenderer {
         lines: impl IntoIterator<Item = String>,
     ) -> Vec<(String, Option<TextOrigin>)> {
         let lines: Vec<String> = lines.into_iter().collect();
-        // The origin of every text that rendered, by the text sent (the runs
-        // keep only the rendered text).
-        let mut origins: HashMap<String, Option<TextOrigin>> = HashMap::new();
         let runs = translate_runs(
             &lines,
             |line| self.span_from(line),
-            |line| {
-                let (text, origin) = self.render_line_with_origin(line)?;
-                origins.insert(line.to_string(), origin);
-                Some(text)
-            },
+            |line| self.render_line_with_origin(line),
         );
         let mut line_origins = vec![None; lines.len()];
-        for run in runs.iter().filter(|run| run.text.is_some()) {
-            let source = &lines[run.start..run.start + run.len];
-            let sent = if run.len == 1 {
-                source[0].clone()
-            } else {
-                source
-                    .iter()
-                    .map(|line| line.trim())
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            };
-            let origin = origins.get(&sent).copied().flatten();
-            for slot in &mut line_origins[run.start..run.start + run.len] {
-                *slot = origin;
+        for run in &runs {
+            if let Some((_, origin)) = &run.text {
+                line_origins[run.start..run.start + run.len].fill(*origin);
             }
         }
-        spread_runs(&runs, lines.len())
+        spread_runs_with(&runs, lines.len(), |(text, _)| text)
             .into_iter()
             .zip(lines)
             .zip(line_origins)

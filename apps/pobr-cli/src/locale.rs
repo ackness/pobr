@@ -31,7 +31,7 @@ pub const SUPPLEMENT_FOOTNOTE: &str = "† 非官方译文（本项目补译）"
 /// stronger (agent over human), and an official line whose text equals a
 /// supplement's is marked too. Both over-mark, so supplement text is never
 /// shown as official.
-type Origins = BTreeMap<String, TextOrigin>;
+pub(crate) type Origins = BTreeMap<String, TextOrigin>;
 
 // Untranslated report lines are what the user typed already; translated ones
 // are mapped back to it ([`TypedInput`]), never re-rendered.
@@ -263,9 +263,7 @@ impl Locale {
             renderer.render_lines_with_origins(lines.iter().map(|line| line.to_string()));
         for (line, (rendered, origin)) in lines.iter_mut().zip(rendered) {
             if !pobr_i18n::lines::is_continuation(line, &rendered) {
-                if let Some(origin) = origin {
-                    record(origins, &rendered, origin);
-                }
+                record(origins, &rendered, origin);
                 **line = rendered;
             }
         }
@@ -307,9 +305,7 @@ impl Locale {
                 Some(original) => original.to_string(),
                 None => {
                     let (rendered, origin) = self.render_line_with_origin(line);
-                    if let Some(origin) = origin {
-                        record(&mut origins, &rendered, origin);
-                    }
+                    record(&mut origins, &rendered, origin);
                     rendered
                 }
             };
@@ -321,7 +317,10 @@ impl Locale {
 
 /// Records that `text` is `origin`'s; a text two origins rendered keeps the
 /// one [`TextOrigin::combine`] gives.
-fn record(origins: &mut Origins, text: &str, origin: TextOrigin) {
+fn record(origins: &mut Origins, text: &str, origin: Option<TextOrigin>) {
+    let Some(origin) = origin else {
+        return;
+    };
     let entry = origins.entry(text.to_string()).or_insert(origin);
     *entry = TextOrigin::combine(Some(*entry), Some(origin)).unwrap_or(origin);
 }
@@ -365,7 +364,7 @@ fn build_lines(report: &mut CalculateBuildReport) -> Vec<Vec<&mut String>> {
 
 /// Appends [`SUPPLEMENT_MARKER`] to each line in `lines` that `origins`
 /// lists; whether any was.
-fn mark<'a>(lines: impl IntoIterator<Item = &'a mut String>, origins: &Origins) -> bool {
+pub(crate) fn mark<'a>(lines: impl IntoIterator<Item = &'a mut String>, origins: &Origins) -> bool {
     let mut marked = false;
     for line in lines {
         if origins.contains_key(line.as_str()) {
@@ -399,12 +398,6 @@ pub fn render_build_text(mut report: CalculateBuildReport) -> String {
         push_supplement_footnote(&mut text);
     }
     text
-}
-
-/// Marks the lines an `explain-mod --build` text shows (its unsupported
-/// lines) that are supplement text; whether any was.
-pub(crate) fn mark_marginal_for_text(report: &mut MarginalReport) -> bool {
-    mark(&mut report.unsupported_modifiers, &report.origins)
 }
 
 /// Input lines as the parser reads them, with the line each translated one
