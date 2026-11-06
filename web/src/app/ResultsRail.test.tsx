@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, it, vi } from 'vitest';
-import type { CalculateBuildResponse } from '../api/types';
+import type { CalculateBuildResponse, SocketGroupInput } from '../api/types';
 import type { BuildSession } from '../hooks/useBuildSession';
 import { UiProvider } from '../components/shared/UiContext';
 import { TooltipProvider } from '../components/ui/tooltip';
@@ -12,23 +12,34 @@ vi.mock('../hooks/useSkillName', () => ({ useSkillCatalog: () => new Map() }));
 
 afterEach(() => vi.unstubAllGlobals());
 
-function render(route: Route, quantity = 1, withIgnite = 100, hasContent = true, dot = 0, lang: 'en-US' | 'zh-CN' | 'zh-TW' = 'en-US', hit = 100) {
+function render(route: Route, {
+  quantity = 1, withIgnite = 100, hasContent = true, dot = 0, lang = 'en-US', hit = 100, extra = {},
+  groups = hasContent ? [{ enabled: true, gems: [] }] : [],
+}: { quantity?: number; withIgnite?: number; hasContent?: boolean; dot?: number; lang?: 'en-US' | 'zh-CN' | 'zh-TW'; hit?: number;
+  extra?: Partial<CalculateBuildResponse>; groups?: SocketGroupInput[] } = {}) {
   const calc = { stats: Object.entries({ CritMultiplier: 7.36, QuantityMultiplier: quantity, TotalDPS: hit,
     CombinedDPS: 100, TotalDotDPS: dot, TotalDot: 17, Life: 1000, EnergyShield: 500, TotalEHP: 5000, FireResist: 75, ColdResist: 60, LightningResist: 75, ChaosResist: -20, Spirit: 100, SpiritUnreserved: 100, WithIgniteDPS: withIgnite, WithBleedDPS: 100, WithPoisonDPS: 100, CombinedAvgToMonsterLife: 10 }).map(([id, value]) => ({ id, value })),
     main_skill: { skill_id: 'Fireball', hit_damage: [], combined_dps: 100, hit_dps: hit, dot_dps: 0 },
-    item_errors: [], unsupported_modifiers: [], minions: [], breakdowns: {}, breakdown_descriptors: { TotalDotDPS: 'steps' },
+    item_errors: [], unsupported_modifiers: [], minions: [], breakdowns: {}, breakdown_descriptors: { TotalDotDPS: 'steps' }, ...extra,
   } as unknown as CalculateBuildResponse;
-  const session = { calcParams: { main_socket_group: 0 }, socketGroups: hasContent ? [{ gems: [] }] : [], hasBuildContent: hasContent, calcMs: 77, dataVersion: '0.5.5.5' } as unknown as BuildSession;
+  const session = { calcParams: { main_socket_group: 0 }, socketGroups: groups, hasBuildContent: hasContent, calcMs: 77, dataVersion: '0.5.5.5' } as unknown as BuildSession;
   return renderToStaticMarkup(<UiProvider lang={lang}><TooltipProvider><ResultsRail route={route} session={session}
     view={{ calc, previous: null, stale: false }} lang={lang} onStatClick={() => {}} onNavigate={() => {}} pinned={[]} onTogglePin={() => {}} /></TooltipProvider></UiProvider>);
 }
+
+it('explains energy-trigger mapping beside the enemy tier only for a confirmed trigger', () => {
+  const energy_trigger = { maximum_energy: 100, source: 'SparkPlayer', at_own_rate: false, missing_source: null } as NonNullable<CalculateBuildResponse['energy_trigger']>;
+  const html = render('config', { quantity: 1, withIgnite: 100, lang: 'en-US', extra: { energy_trigger, main_skill: { group_index: 0, active_skill_index: 2, skill_id: 'CometPlayer', hit_damage: [], hit_dps: 10, dot_dps: 0, combined_dps: 10 } }, groups: [{ enabled: true, gems: [{ skill_id: 'MetaCastOnCritPlayer', level: 16, quality: 0 }, { skill_id: 'CometPlayer', level: 16, quality: 0 }] }, { enabled: true, gems: [{ skill_id: 'SparkPlayer', level: 16, quality: 0 }] }] });
+  expect(html).toContain('Mapping is calculated against one normal monster (power 1); clearing packs fills energy faster');
+  expect(render('config')).not.toContain('clearing packs');
+});
 
 it.each([
   ['en-US', 'Hit DPS', 'Combined DPS'],
   ['zh-CN', '击中 DPS', '综合 DPS'],
   ['zh-TW', '擊中 DPS', '綜合 DPS'],
 ] as const)('shows one distinct Hit DPS detail and a Combined DPS headline in %s', (lang, hit, combined) => {
-  const html = render('overview', 1, 100, true, 0, lang, 80);
+  const html = render('overview', { quantity: 1, withIgnite: 100, hasContent: true, dot: 0, lang, hit: 80 });
   expect(html.match(new RegExp(`class="rail-label">${hit}</span>`, 'g'))).toHaveLength(1);
   expect(html).toMatch(new RegExp(`data-stat="TotalDPS"><span class="rail-label">${hit}</span><span class="rail-value"[^>]*>80</span>`));
   expect(html).toContain(`<span class="rail-hero-label">${combined}</span>`);
@@ -49,8 +60,8 @@ it('hides neutral quantity and duplicate ailment totals while preserving distinc
   expect(html).toContain('Critical damage bonus');
   expect(html).toContain('+636%');
   expect(html).toContain('Enemy life dealt per hit');
-  expect(render('overview', 2, 150)).toContain('Quantity Multiplier');
-  expect(render('overview', 2, 150)).toContain('DPS including Ignite');
+  expect(render('overview', { quantity: 2, withIgnite: 150 })).toContain('Quantity Multiplier');
+  expect(render('overview', { quantity: 2, withIgnite: 150 })).toContain('DPS including Ignite');
 });
 
 it('leads a summoner build with one minion\'s hit DPS and keeps the player\'s own damage secondary', () => {
@@ -93,14 +104,14 @@ it('loads existing fold preferences, including an explicitly expanded rail', () 
   expect(render('overview')).toMatch(/data-folded="true"[^]*?aria-expanded="false"[^]*?Offence/);
 });
 it('gives a first visit an import/create entry without blank-character stats', () => {
-  const html = render('overview', 1, 100, false);
+  const html = render('overview', { quantity: 1, withIgnite: 100, hasContent: false });
   expect(html).toContain('Import or create a build');
   expect(html).not.toContain('rail-row');
   expect(html).not.toContain('Life');
 });
 
 it('keeps total DoT DPS and its inspector action in folded Offence, distinct from skill-only DoT', () => {
-  const html = render('overview', 1, 100, true, 40);
+  const html = render('overview', { quantity: 1, withIgnite: 100, hasContent: true, dot: 40 });
   const offence = html.match(/<section[^>]*data-folded="true"[^>]*>\s*<h3[^>]*>[\s\S]*?Offence[\s\S]*?<\/section>/)![0];
   expect(offence).toContain('aria-expanded="false"');
   expect(statLabel('en-US', 'TotalDotDPS')).toBe('Total DoT DPS');

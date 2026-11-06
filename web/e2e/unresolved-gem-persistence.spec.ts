@@ -1,6 +1,6 @@
 import { t } from '../src/lib/i18n';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { openItemsAfterImport, pageLink, playerHitDps } from './shell';
+import { buildAction, openItemsAfterImport, pageLink, playerHitDps } from './shell';
 import { importInto, openBuild, openExport, selectStage as chooseStage, settled, stableText } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
@@ -67,8 +67,8 @@ async function importComet(page: Page) {
 }
 
 async function editName(page: Page, action: string, name: string) {
-  // The import form has a "New build" choice of its own; the library action is the later of the two.
-  await page.getByRole('button', { name: action, exact: true }).last().click();
+  if (action === 'Rename build') await buildAction(page, action);
+  else await page.locator('.bd-actions').getByRole('button', { name: action, exact: true }).click();
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await idle(page);

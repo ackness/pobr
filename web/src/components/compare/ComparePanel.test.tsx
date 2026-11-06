@@ -95,6 +95,21 @@ test.each([
   expect(b.saved.state.params.enemy_tier).toBe('none');
 });
 
+test('an inherited enemy tier is named in the comparison instead of showing an absent setting', () => {
+  const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Target');
+  const [a, b] = workspace.builds[0].stages;
+  a.saved = { ...a.saved, state: { ...a.saved.state, params: { ...a.saved.state.params, enemy_tier: undefined } } };
+  b.saved = { ...b.saved, state: { ...b.saved.state, params: { ...b.saved.state.params, enemy_tier: 'none' } } };
+  ui.values = [a.id, b.id, 'own', true, '', 'config', {}, {
+    key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
+    value: { stats: [], before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
+  }];
+  const html = render({ workspace, dataVersion: '0.5', applyComparedStage: vi.fn() } as unknown as BuildSession);
+  expect(html).toContain('Pinnacle Boss');
+  expect(html).toContain('Mapping');
+  expect(a.saved.state.params.enemy_tier).toBeUndefined();
+});
+
 test('skill comparison preserves the imported name of an unresolved gem', () => {
   const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Target');
   const [a, b] = workspace.builds[0].stages;

@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { AttributionResponse, CalculateBuildResponse } from '../api/types';
+import type { AttributionResponse, CalculateBuildResponse, SocketGroupInput } from '../api/types';
 import type { BuildSession } from '../hooks/useBuildSession';
 import { UpgradeGoalProvider } from '../hooks/useUpgradeGoal';
 import { Overview } from './Overview';
@@ -47,10 +47,12 @@ describe('Overview skill damage', () => {
   });
 });
 
-function summary(stats: Record<string, number>, lang: 'en-US' | 'zh-CN' | 'zh-TW' = 'zh-CN', extra: Partial<CalculateBuildResponse> = {}) {
+function summary(stats: Record<string, number>, {
+  lang = 'zh-CN', extra = {}, groups = [],
+}: { lang?: 'en-US' | 'zh-CN' | 'zh-TW'; extra?: Partial<CalculateBuildResponse>; groups?: SocketGroupInput[] } = {}) {
   const calc = { stats: Object.entries(stats).map(([id, value]) => ({ id, value })),
     item_errors: [], unsupported_modifiers: [], ...extra } as unknown as CalculateBuildResponse;
-  const session = { socketGroups: [], calcParams: {}, hasBuildContent: true, classNames: { classes: {}, ascendancies: {} },
+  const session = { socketGroups: groups, calcParams: {}, hasBuildContent: true, classNames: { classes: {}, ascendancies: {} },
     stateVersion: 1 } as unknown as BuildSession;
   return renderToStaticMarkup(<UpgradeGoalProvider><Overview session={session} view={{ calc, previous: null, stale: false }}
     lang={lang} navigate={() => {}} focusStat={() => {}} /></UpgradeGoalProvider>);
@@ -86,10 +88,10 @@ it('uses the main minion damage for the headline and source contributions with s
   job.result = { version: 1, data: { baseline: { MainMinionDPS: 12345.67 }, entries: [
     { kind: 'item', id: 'weapon1', deltas: { MainMinionDPS: 10999.8 } },
   ] } };
-  const html = summary({ MainMinionDPS: 12345.67, ActiveMinionLimit: 7 }, 'zh-CN', {
+  const html = summary({ MainMinionDPS: 12345.67, ActiveMinionLimit: 7 }, { lang: 'zh-CN', extra: {
     main_minion_index: 4,
     minions: [{ index: 4, name: 'Wolf', dps: 12345.67 } as NonNullable<CalculateBuildResponse['minions']>[number]],
-  });
+  } });
   expect(html).toContain('召唤物击中 DPS');
   expect(html).toContain('>12,346<span class="ov-source">');
   expect(html).toContain('移除后损失 11,000');
@@ -101,4 +103,12 @@ it('shows all four base resistances in a compact summary', () => {
   const html = summary({ FireResist: 75, ColdResist: 60, LightningResist: 76, ChaosResist: -20 });
   const resistance = html.match(/<dl class="ov-resistances"[\s\S]*?<\/dl>/)![0];
   for (const text of ['火焰抗性', '冰冷抗性', '闪电抗性', '混沌抗性', '75%', '60%', '76%', '-20%']) expect(resistance).toContain(text);
+});
+
+it('explains mapping beside the DPS only when the result confirms an energy trigger', () => {
+  const energy_trigger = { maximum_energy: 100, source: 'SparkPlayer', at_own_rate: false, missing_source: null } as NonNullable<CalculateBuildResponse['energy_trigger']>;
+  const html = summary({}, { lang: 'zh-CN', extra: { energy_trigger, main_skill: { group_index: 0, active_skill_index: 2, skill_id: 'CometPlayer', hit_damage: [], hit_dps: 10, dot_dps: 0, combined_dps: 10 } }, groups: [{ enabled: true, gems: [{ skill_id: 'MetaCastOnCritPlayer', level: 16, quality: 0 }, { skill_id: 'CometPlayer', level: 16, quality: 0 }] }, { enabled: true, gems: [{ skill_id: 'SparkPlayer', level: 16, quality: 0 }] }] });
+  const damage = html.match(/<div[^>]+class="ov-figure is-dps"[\s\S]*?<\/div>/)![0];
+  expect(damage).toContain('刷图按单个普通怪（力量 1）计算，清群时实际更快充满');
+  expect(summary({})).not.toContain('刷图按单个普通怪');
 });

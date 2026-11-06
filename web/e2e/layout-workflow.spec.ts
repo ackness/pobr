@@ -1,6 +1,6 @@
 import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
-import { bdLibraryButton, statRow, statValue } from './shell';
+import { buildAction, bdLibraryButton, statRow, statValue } from './shell';
 import { choose, goTo, importAndOpen } from './skillsAndCalcs';
 import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
@@ -26,7 +26,9 @@ for (const [lang, buildLabel, stageLabel] of [
     await start(page, monk);
     await bdLibraryButton(page).click();
     for (const action of ['Rename build', 'Rename stage']) {
-      await page.locator('.bd-actions').getByRole('button', { name: action, exact: true }).click();
+      // Builds are renamed from their row menu; stages from the stage actions.
+      if (action === 'Rename build') await buildAction(page, action);
+      else await page.locator('.bd-actions').getByRole('button', { name: action, exact: true }).click();
       await page.getByRole('textbox', { name: 'Name', exact: true }).fill(`${action} with a very long name · 很长的中文名称測試`);
       await page.getByRole('button', { name: 'Save', exact: true }).click();
     }
