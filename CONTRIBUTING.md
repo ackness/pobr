@@ -27,7 +27,7 @@ pull request where the fix belongs:
 | Problem | Repository |
 | --- | --- |
 | Wrong or missing game facts (bases, affixes, skills, passive tree, stat values), client decoding, or how facts are projected into PoBR's runtime JSON (`pobr-data-adapter`) | [ackness/repoe](https://github.com/ackness/repoe) |
-| Wrong or missing Chinese game text: affix and stat wording, item and skill names, support-gem descriptions | [ackness/poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats) |
+| Wrong or missing Chinese game text: affix and stat wording, item and skill names, gem descriptions | [ackness/poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats) |
 | Modifier rules, stat meaning, calculations, build import/export, CLI/WASM, the web app and its interface text | ackness/pobr (here) |
 
 A data fix reaches PoBR when its owner publishes a new Release and a maintainer
@@ -69,6 +69,7 @@ mise run verify build skills <filter>                # Optional tests, fmt and C
 mise run regen                                       # Once when integrating a rule batch
 mise run check:workflows                             # Automation changes; no Rust build
 mise run web test <file>
+mise run check:pr                                    # Before pushing: changed areas, offline; optional pre-push hook
 ```
 
 Add regression cases for changed behavior even when execution is deferred. Report
@@ -78,6 +79,7 @@ compiler check does not prove runtime assertions passed.
 Your PR runs the relevant quick checks automatically (`PR gate`). Changes to Rust,
 data or pipeline require a green `mise run ci <branch>` before merging; choose full
 CI for other changes by risk. This is a review rule; `pr-ready` does not enforce it.
+For a fork PR a maintainer runs it on a branch.
 Master also runs full CI after merge. CI details are in the
 [development workflow](docs/development-workflow.md#ci-的责任与触发).
 

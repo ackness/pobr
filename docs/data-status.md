@@ -1,6 +1,6 @@
 # 数据现状
 
-最后核对：2026-11-05 UTC。本页原地更新：状态变化时直接改写，不追加历史。
+最后核对：2026-11-06 UTC。本页原地更新：状态变化时直接改写，不追加历史。
 长期设计与规则见[数据架构](data-architecture.md)，命令见[数据管线](../pipeline/README.md)。
 
 活动目标为 `0.5.5.5`／international。包、manifest、运行身份与紧凑发行身份都以[数据锁](../pipeline/data.lock.json)为准，
@@ -15,13 +15,13 @@ PoBR 一侧的换数据、发版与回退步骤见 [RELEASING.md](../RELEASING.m
 | --- | --- | --- |
 | 游戏包 | `game/0.5.5.5-3`，从 Release 采用。比 `-2` 只多可选文件 `overlay/gem_descriptions.json`（英文宝石说明，`contract/1.3`），计算结果不变。`-2` 起包含 `base/active_skill_types.json`、`base_maximum_rage` 与天赋节点的原生 stat packet，引擎不再内嵌这些表（保留项见 `crates/pobr-data/tests/no_embedded_data.rs`） | 无 |
 | 语言包 | `locale/0.5.5.5-4`，从 Release 采用。简中词条与宝石说明（`GemEffects.SupportText`、`ActiveSkills.Description`）优先取国服客户端的官方文本（RePoE `inputs/0.5.5.5-1`），繁中宝石说明来自国际服客户端（`inputs/0.5.5.5-2`）；繁中词缀名与简中一样以英文为键。只换语言发布不需要新的游戏发布；锁的 `locale` 须是语言包提供的语言（当前支持英文、简中、繁中） | 无 |
-| 辅助显示 | 沿用 `locale/0.5.5.5-3` 的附件（`-4` 不再发布它，交易目录未变，`catalog_sha256` 仍绑定游戏包的交易目录）；宝石说明改由语言包 `display_texts.json` 提供 | 退役旧附件路径（P2） |
+| 辅助显示 | 沿用 `locale/0.5.5.5-3` 的附件（`-4` 不再发布它，交易目录未变，`catalog_sha256` 仍绑定游戏包的交易目录）；宝石说明改由语言包 `display_texts.json` 提供 | 退役旧附件路径（P2）：未退役前 `data:bump` 拒绝换补丁，须在下一个补丁之前完成 |
 | 测试夹具 | `test_fixtures` 按 `handoff/*` tag + commit 拉取，换目标时保留 | 无 |
 | 运行 manifest | 按 owner 组合：游戏 snapshot 只列游戏成员，`data:prepare` 加入语言包的 `i18n/**` 并推出 `languages`。仍列语言成员的旧游戏 snapshot（`game/0.5.5.5-1` 及更早）和未声明 `contract_version` 的 schema 3 manifest 都被拒绝 | 无（已生效；真实 Release 的采用见“游戏包”） |
 | PoBR 自有规则 | `local_mods.json`、`special_mods.json` 在锁的 `shared_files`；九份构筑配置选项编译进 `crates/pobr-gamedata/src/domains/config_options/`，计入引擎身份 | 无 |
 | 采用流程 | 人工审阅的锁修改：精确 head 通过 PR gate 与 Full CI，合并后再确认主线 Full CI。固定测试绑定组合 manifest 的游戏部分，换游戏包时需复核成员差异再重绑 | 无 |
 | 新补丁迁移与回退 | 步骤见 [RELEASING.md](../RELEASING.md)，尚未用真实新补丁走过 | 一次真实新补丁：两个 owner 一起发布并 bump，发版后验证线上回退 |
-| 部署 | 锁合并到 master 只跑 Full CI；生产站点只由稳定 `v0.x.y` tag 部署（[RELEASING.md](../RELEASING.md)）。线上为 `v0.0.45`，使用 `game/0.5.5.5-2` 与 `locale/0.5.5.5-3`；本锁随下一个 `v0.x.y` 上线 | 无 |
+| 部署 | 锁合并到 master 只跑 Full CI；生产站点只由稳定 `v0.x.y` tag 部署（[RELEASING.md](../RELEASING.md)）。线上数据是该 tag 提交上的锁（`git show v0.x.y:pipeline/data.lock.json`），站点顶栏显示版本号 | 无 |
 | 发行包 | Web 与独立 WASM 发布逐文件快照；紧凑发行包只在 CI 中由同次 WASM 消费验证 | 见下表“玩家验收与性能” |
 
 ## 领域现状
@@ -39,7 +39,7 @@ PoBR 一侧的换数据、发版与回退步骤见 [RELEASING.md](../RELEASING.m
 | actor／常量／关系 | actor、怪物、图腾、玩家常量、Boss 数值与装备授予技能（[actor](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/docs/ordinary-actors.md#observed-three-root-ot-draft)） | 作用域与目录策展需要独立依据 |
 | 暗金 | RePoE 已投影关系候选（[暗金](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/docs/ordinary-uniques.md)） | 候选未进入游戏包，消费者未接入 |
 | PoB2 解释与 buff | 保留项按字段登记 | 按[冻结输入清单](pob2-differences.md#数据来源现状与退出顺序)的顺序退出 |
-| 语言／显示 | 简中与繁中接入，辅助说明与审核补译已接线（[翻译库](https://github.com/ackness/poe2-zh-cn-stats/tree/main/docs)；缺译统计 `mise run i18n:coverage`） | 每种语言 20 个 gem 名仍是英文；简中客户端版本与国服数值未确认 |
+| 语言／显示 | 简中与繁中接入，辅助说明与审核补译已接线（[翻译库](https://github.com/ackness/poe2-zh-cn-stats/tree/main/docs)；缺译统计 `mise run i18n:coverage`） | 每种语言仍有 2 个技能 gem 名缺译（`mise run i18n:coverage`）；国服客户端文本已接入（词条行、宝石说明、召唤物名），国服客户端版本与数值仍未确认 |
 | 玩家验收与性能 | 锁改变时完整 CI 跑 Web 冒烟；正式包继续用逐文件快照（[加载对比](wasm-package.md#web-data-load-comparison)） | 回滚需手动验证；真实玩家设备未测 |
 
 原料与采集记录在 [RePoE `sources/`](https://github.com/ackness/repoe/tree/master/sources) 与[翻译库 `sources/`](https://github.com/ackness/poe2-zh-cn-stats/tree/main/sources)；`pipeline/imports/sources.lock.json` 只保留 PoBR 消费范围的接受决定。

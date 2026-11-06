@@ -24,10 +24,11 @@ CI 与 release workflow 的机制见[开发工作流](docs/development-workflow.
    `CONTRACT_VERSION`；需要新契约字段时，先在 PoBR 合并契约改动并打 `contract/<n>.<m>`，RePoE 再升级依赖
    （[数据契约版本](docs/data-architecture.md#31-数据契约版本)）。
 2. **翻译库发布 `locale/<patch>-<n>`。** 在 [ackness/poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats)
-   按它的 [RELEASING.md](https://github.com/ackness/poe2-zh-cn-stats/blob/main/RELEASING.md) 发布语言包，并附上为新游戏包
-   交易目录生成的辅助显示（`support-display.zh-CN.json`、`supportDescriptions.zh-CN.json`）。辅助显示绑定
-   `game/<patch>-<n>` 中 `overlay/trade_catalog.json` 的 SHA-256，所以只能在游戏 Release 之后生成；
-   语言 Release 不带它时，PoBR 的 `data:bump` 拒绝换目标。
+   按它的 [RELEASING.md](https://github.com/ackness/poe2-zh-cn-stats/blob/main/RELEASING.md) 发布语言包。
+   `locale/0.5.5.5-4` 起语言 Release 不再附辅助显示（`support-display.zh-CN.json`、`supportDescriptions.zh-CN.json`），
+   宝石说明改由 `display_texts.json` 的作用域承担（[数据架构](docs/data-architecture.md#3-发布与导入契约)）。
+   PoBR 的 `data:bump` 目前仍要求换目标的语言 Release 带新的辅助显示，所以**下一个补丁之前须先合并退役
+   `support_display` 的 PoBR PR**，否则换目标会被拒绝。
 3. **翻译库的 `published` PR。** 发布后在翻译库另开 PR，把该 Release 的附件 pin 写进配置的 `published`，
    让它的 CI 持续下载并核对这个 Release；然后再到 PoBR 改锁。
 

@@ -156,7 +156,7 @@ PoBR构建时按`pipeline/data.lock.json`的`support_display`（旧`handoff/*`�
 无匹配时保留英文并标明来源，无原文时显示不可用，不能从名称或预测收益编造。
 这些说明不是当前等级／品质数值，也不证明已计算该效果。词典或辅助目录更新由翻译库重新配对并交付固定资产，
 PoBR更新锁后运行`mise run data:prepare`；目录摘要不符时拒绝导入，不使用旧说明作隐式回退。
-这条辅助说明路径将由下面的宝石说明取代，退役步骤见[数据架构](data-architecture.md#3-发布与导入契约)。
+宝石说明（下）已取代这条路径；它只在没有 `overlay/gem_descriptions.json` 的数据包上保留，随 `support_display` 一起退役，步骤见[数据架构](data-architecture.md#3-发布与导入契约)。
 
 宝石说明（数据契约 1.3）：主动、精魂、元技能与辅助宝石都有一段游戏自带的说明。英文来自游戏包可选文件
 `overlay/gem_descriptions.json`，译文来自 `display_texts.json` 的作用域 `GemEffects.SupportText` 与
@@ -738,6 +738,6 @@ stats 的 `MainMinionDPS` 是主召唤物单只击中 DPS，无主召唤物时�
 它用真实 WASM 和合成数据，对照有限穷举与应用后重算一致性，报告写入忽略的 `.cache`。
 真实 BD 验证还需覆盖候选适用性和所用配置；有限搜索不证明全局或预算最优。
 
-参考 BD 暂不进入导航或恢复页签。面板、匹配逻辑、fixture、目录生成仍保留，相关 UI 测试明确跳过，
-旧页签回退与匹配单测继续运行。启动时不加载参考库；现有样本是静态来源，
+参考 BD 暂不进入导航或恢复页签。面板、匹配逻辑、fixture、目录生成仍保留，`web/e2e/build-guidance.spec.ts`
+断言导航里没有入口且不请求参考数据，旧页签回退与匹配单测继续运行。启动时不加载参考库；现有样本是静态来源，
 不能承诺实时攻略、市场价格或在线角色服务。
