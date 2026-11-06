@@ -1,6 +1,11 @@
+import { TreeNodeChanges } from './TreeNodeChanges';
+import { useTreeHover } from './useTreeHover';
+import { hasDisconnectedTreeNodes, isDisconnectedTree, isImportProblem, needsTreeConversion } from './treeImportStatus';
+import { TreeRefundNotice, type RefundReceipt } from './TreeRefundNotice';
+import { evaluateHeatmap } from './heatmap';
 import { TreePointSummary } from './TreePointSummary';
 import { jewelSocketNames } from './jewelSocketNames';
-import { distributeAttributeChoices, passivePointSummary } from './treePresentation';
+import { defaultReportStat, distributeAttributeChoices, passivePointSummary } from './treePresentation';
 import { ValueText } from '../shared/ValueText';
 import { classDisplayName } from '../../lib/nativeDisplayNames';
 import { useAppDialogs } from '../shared/AppDialogs';
@@ -14,16 +19,17 @@ import type { AttributeChoice, PassiveNode, TreeAllocationMode } from '../../api
 import { useTreeEditPreview } from '../../hooks/useTreeEditPreview';
 import { treeAllocationRequest } from '../../lib/weaponSets';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { useItemDisplayNames } from '../../hooks/useLocalizedLines';
-import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
+import { cleanLine, useItemDisplayNames } from '../../hooks/useLocalizedLines';
+import { bindT, type Lang } from '../../lib/i18n';
 import {
   allocationAccess,
   buildPassiveGraph,
   classStartSkill,
 } from '../../lib/passiveGraph';
 import { NODE_RADIUS, clampView, isAttributeNode as isAttrNode, passiveTreeEdges, treeExtent, type ViewBox } from '../../lib/treeGeometry';
-import { previewDiff, type DiffEntry } from '../../lib/compare';
-import { DiffList } from '../shared/DiffList';
+import { diffStats, type DiffEntry } from '../../lib/compare';
+import { TreeHoverBenefits } from './TreeHoverBenefits';
+import { treeStatDelta, treeStatLabel, powerGain } from './treePresentation';
 import { AppSelect } from '../shared/AppSelect';
 import { NoteEditor } from '../shared/NoteEditor';
 import { TreeOptimizer, useTreeOptimizer, type TreeOptimizerState } from './TreeOptimizer';
@@ -59,7 +65,7 @@ export function TreePanel(props: Props) {
       : lang === 'zh-TW'
         ? `此角色使用 ${session.treeVersion} 天賦樹。計算與匯出會保留該版本，歷史天賦樹暫不支援互動編輯和路線規劃。`
         : `此角色使用 ${session.treeVersion} 天赋树。计算与导出会保留该版本，历史天赋树暂不支持交互编辑和路线规划。`;
-    return <section className="ui-page tree-historical"><TreeConversionControls session={session} conversion={conversion} /><p role="status">{text}</p></section>;
+    return <section className="ui-page tree-historical"><p role="status">{bindT(lang)('tree.invalidImport')}</p><TreeConversionControls session={session} conversion={conversion} /><p>{text}</p></section>;
   }
   // The conversion controls sit in the canvas toolbar, not above the page.
   return <EditableTreePanel key={JSON.stringify([session.dataVersion, session.treeVersion])} {...props}
@@ -141,13 +147,14 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
   const tt = bindT(lang);
   /** Whether the planner / details column beside the canvas is shown. */
   const [sideOpen, setSideOpen] = useState(true);
+  const [sideWidth, setSideWidth] = useState(27);
+  const { hover, setHover, hoverNode, keepHover, leaveHover, onFocus: focusHover, onBlur: blurHover } = useTreeHover();
   const dialogs = useAppDialogs(lang);
   const captureAction = useSessionAction(session);
   const treeEffects = session.calc?.tree_effects;
   const grants = useMemo(() => treeEffects?.allocation_grants ?? [], [treeEffects]);
   const canvasGeneration = useRef(0);
   useLayoutEffect(() => () => { canvasGeneration.current += 1; }, []);
-  const [hover, setHover] = useState<PassiveNode | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [hoverStats, setHoverStats] = useState<string[] | null>(null);
   /** hover 节点名的中文翻译（词典命中才有；null = 显示英文原名）。 */
@@ -192,6 +199,9 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     setJewelSocket(null);
   };
   /** hover 节点的加点/取消收益（防抖重算；按 stateVersion 失效的缓存）。 */
+  const [refundReceipt, setRefundReceipt] = useState<RefundReceipt | null>(null);
+  const [hoverGain, setHoverGain] = useState<number | null>(null);
+  const [hoverCalculating, setHoverCalculating] = useState(false);
   const [hoverDiff, setHoverDiff] = useState<DiffEntry[] | null>(null);
   const [viewBox, setViewBox] = useState<ViewBox | null>(null);
   const dragRef = useRef<{
@@ -252,21 +262,25 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     lang,
   );
 
-  // 热力图（PoB2 节点威力）：选定属性 + 深度，**点「计算」按钮才跑**——
-  // 计算量大（深度内逐词条组合完整重算），不随加点/编辑自动刷新。
+  // Heatmap probes run only on an explicit request, in cancellable windows.
   const [heatStat, setHeatStat] = useState('');
   const [heatDepth, setHeatDepth] = useState(5);
   const [heatData, setHeatData] = useState<Map<number, number> | null>(null);
   const [heatBusy, setHeatBusy] = useState(false);
+  const [heatComplete, setHeatComplete] = useState(false);
+  const [heatError, setHeatError] = useState(false);
+  const [reportStat, setReportStat] = useState('');
   /** 上次计算时的 stateVersion（build 变动后提示「已过期」而非自动重算）。 */
   const [heatVersion, setHeatVersion] = useState(-1);
   /** 每步算多少个候选：步间让出 Worker，进度可见，编辑不必排到整张热力图之后。 */
-  const HEAT_STEP = 64;
   const [heatProgress, setHeatProgress] = useState<{ done: number; total: number } | null>(null);
   /** 当前这一轮热力图计算的编号；放弃（改属性、编辑、再点计算）就换号，旧的一轮在下一步前收手。 */
   const heatRun = useRef(0);
+  const heatAbort = useRef<AbortController | null>(null);
+  useEffect(() => () => heatAbort.current?.abort(), []);
   const cancelHeat = () => {
     heatRun.current += 1;
+    heatAbort.current?.abort(); heatAbort.current = null;
     setHeatBusy(false);
     setHeatProgress(null);
   };
@@ -279,10 +293,13 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     const version = session.stateVersion;
     const generation = canvasGeneration.current;
     const run = ++heatRun.current;
+    const controller = new AbortController();
+    heatAbort.current = controller;
     const current = () => generation === canvasGeneration.current && run === heatRun.current;
     // The colours and routes the previous calculations painted describe results that are
     // about to be replaced; they must not stay lit while the new one runs.
     setHeatData(null);
+    setHeatComplete(false); setHeatError(false);
     setHeatVersion(-1);
     planner.clearPreview();
     setHeatBusy(true);
@@ -290,20 +307,14 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     void (async () => {
       try {
         const backend = await getBackend();
-        const powers = new Map<number, number>();
-        for (let offset = 0; ; offset += HEAT_STEP) {
-          if (!current()) return;
-          const res = await backend.nodePower(request, heatStat, heatDepth, undefined, { offset, limit: HEAT_STEP });
-          if (!current()) return;
-          res.entries.forEach((entry) => powers.set(entry.skill, entry.delta));
-          setHeatData(new Map(powers));
-          setHeatVersion(version);
-          // An engine that does not know windows answers with everything at once.
-          if (res.total === undefined || offset + HEAT_STEP >= res.total) break;
-          setHeatProgress({ done: offset + HEAT_STEP, total: res.total });
-        }
+        const complete = await evaluateHeatmap({ request, stat: heatStat, depth: heatDepth,
+          signal: controller.signal, probe: backend.nodePower, onBatch: (powers, done, total) => {
+            if (!current()) return;
+            setHeatData(powers); setHeatVersion(version); setHeatProgress({ done, total });
+          } });
+        if (current()) setHeatComplete(complete);
       } catch {
-        if (current()) setHeatData(null);
+        if (current()) { setHeatData(null); setHeatError(true); }
       } finally {
         if (current()) {
           setHeatBusy(false);
@@ -316,6 +327,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
   // A planner search that starts replaces the heatmap's colours the same way.
   useEffect(() => {
     if (overlayReset === 0) return;
+    cancelHeat();
     setHeatData(null);
     setHeatVersion(-1);
   }, [overlayReset]);
@@ -389,6 +401,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     }
     return hits;
   }, [placed, search, nodeNames]);
+  const [editError, setEditError] = useState<string | null>(null);
   const selectedNode = selectedSkill === null ? null : byId.get(selectedSkill) ?? null;
   const selectedAllocated = selectedSkill !== null && allocated.has(selectedSkill);
   const editRequest = session.currentRequest();
@@ -396,6 +409,13 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     selectedAllocated ? 'refund' : 'allocate');
   const hoverPreview = useTreeEditPreview(editRequest, hover?.skill ?? null, allocationMode,
     hover && allocated.has(hover.skill) ? 'refund' : 'allocate');
+  // Root previews detect incompatible allocations; topology is checked separately for both sets.
+  const importCheck = useTreeEditPreview(editRequest, startSkill, allocationMode, 'refund');
+  const importProblem = needsTreeConversion(importCheck?.reason) || needsTreeConversion(editError);
+  const disconnectedImport = useMemo(() => hasDisconnectedTreeNodes(nodes ?? [], graph, startSkill, grants,
+    session.allocatedNodes, session.weaponSwap), [nodes, graph, startSkill, grants, session.allocatedNodes, session.weaponSwap])
+    || isDisconnectedTree(importCheck?.reason) || isDisconnectedTree(editError);
+  useLayoutEffect(() => { setEditError(null); }, [session.stateVersion]);
   const selectedPath = selectedPreview?.result?.added ?? [];
   const preview = hover ? hoverPreview : selectedPreview;
   const previewResult = preview?.result;
@@ -405,7 +425,6 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
   }), [previewResult]);
   const owner = useMemo(() => new Map((session.weaponSwap?.exclusive_nodes ?? [[], []])
     .flatMap((ids, index) => ids.map(id => [id, index + 1] as const))), [session.weaponSwap]);
-  const [editError, setEditError] = useState<string | null>(null);
   const editPending = useRef(false);
   const modeRef = useRef(allocationMode);
   modeRef.current = allocationMode;
@@ -417,8 +436,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
   const selectedRefundCount = selectedPreview?.result?.removed.length ?? 0;
   const detailsLines = useMemo(() => selectedNode ? [
     selectedNode.name ?? selectedNode.id,
-    ...(selectedNode.stats ?? []).map(line =>
-      line.replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2').replace(/\[([^\]]*)\]/g, '$1')),
+    ...(selectedNode.stats ?? []).map(cleanLine),
   ] : [], [selectedNode]);
   const detailsTextKey = JSON.stringify([selectedSkill, lang, detailsLines]);
   const [translatedDetails, setTranslatedDetails] = useState<{ key: string; lines: string[] } | null>(null);
@@ -496,7 +514,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     action: 'allocate' | 'refund' | 'promote' | 'attribute' | 'jewel', choice?: AttributeChoice) => {
     const s = sessionRef.current;
     const node = byId.get(skill);
-    if (s.busy || editPending.current || !node) return;
+    if (s.busy || editPending.current || !node || importProblem) return;
     const isAlloc = s.allocatedNodes.includes(skill);
     if (action === 'attribute' && (!isAttrNode(node) || !choice)) return;
     if (action === 'attribute' && isAlloc) {
@@ -521,6 +539,8 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
       if (!sessionRef.current.applyTreeEdit(response.result, request, choice ? { [String(skill)]: choice } : undefined)) {
         setEditError('stale_edit'); return;
       }
+      if (action === 'refund') setRefundReceipt({ version: s.stateVersion + 1, points: response.result.removed.length, baseline: s.calc });
+      else setRefundReceipt(null);
       if (jewelSocket !== null && response.result.removed.includes(jewelSocket)) {
         s.setEditorDraft(`jewel:${jewelSocket}`, null); setJewelSocket(null);
       }
@@ -529,7 +549,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
       if (action !== 'refund' && node.kind === 'jewel_socket') setJewelSocket(skill);
     } catch { setEditError('backend_unavailable'); }
     finally { editPending.current = false; }
-  }, [byId, allocationMode, jewelSocket]);
+  }, [byId, allocationMode, jewelSocket, importProblem]);
 
   const handleNodeClick = useCallback((node: PassiveNode, e: React.MouseEvent) => {
     if (suppressClickRef.current || dragRef.current?.moved) return;
@@ -586,9 +606,9 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     const heatFill = (skill: number): string | undefined => {
       if (!heatStat || !heatData || allocated.has(skill)) return undefined;
       const delta = heatData.get(skill);
-      if (delta === undefined || delta === 0 || heatMax <= 0) return undefined;
+      if (delta === undefined || delta === 0) return undefined;
       if (delta < 0) return 'hsl(210 55% 32%)';
-      const t = Math.sqrt(Math.min(1, delta / heatMax));
+      const t = Math.sqrt(Math.min(1, delta / Math.max(1, heatMax)));
       return `hsl(${Math.round(20 + t * 25)} ${Math.round(70 + t * 30)}% ${Math.round(28 + t * 32)}%)`;
     };
     return (
@@ -609,7 +629,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
                 className={`node node-${node.kind}${node.ascendancy_id ? ' node-asc' : ''}${isAlloc ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}${selectedSkill === node.skill ? ' node-selected' : ''}${freeNodes.has(node.skill) ? ' node-jewel-allocatable' : ''}${treeEffects?.nodes[String(node.skill)] ? ' node-transformed' : ''}${plannedNodes?.allocate.includes(node.skill) ? ' node-planned-add' : ''}${plannedNodes?.deallocate.includes(node.skill) ? ' node-planned-remove' : ''}${owner.has(node.skill) ? ` node-weapon-${owner.get(node.skill)}` : ''}${previewNodes.added.has(node.skill) ? ' node-preview-add' : ''}${previewNodes.promoted.has(node.skill) ? ' node-preview-promote' : ''}${previewNodes.removed.has(node.skill) ? ' node-preview-refund' : ''}`}
                 onPointerEnter={(e) => {
                   if (dragRef.current?.moved) return;
-                  setHover(node);
+                  hoverNode(node);
                   setHoverPos({ x: e.clientX, y: e.clientY });
                 }}
                 onPointerMove={(e) => {
@@ -617,7 +637,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
                   // even while dragging disables hit testing for other nodes.
                   if (!dragRef.current) setHoverPos({ x: e.clientX, y: e.clientY });
                 }}
-                onPointerLeave={() => setHover((h) => (h?.skill === node.skill ? null : h))}
+                onPointerLeave={leaveHover}
                 onClick={(e) => handleNodeClick(node, e)}
               />
               {pulse.has(node.skill) && <circle className="node-pulse" cx={node.x} cy={node.y} r={r} />}
@@ -655,9 +675,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     }
     const chosen = session.attributeChoices[String(hover.skill)];
     const chosenLine = chosen ? [`→ ${tt(`tree.attr.${chosen}` as Parameters<typeof tt>[0])}`] : [];
-    const raw = [...(hover.stats ?? []), ...chosenLine.map((l) => l)].map((line) =>
-      line.replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2').replace(/\[([^\]]*)\]/g, '$1'),
-    );
+    const raw = [...(hover.stats ?? []), ...chosenLine].map(cleanLine);
     if (lang === 'en-US') {
       setHoverStats(raw);
       setHoverName(null);
@@ -706,15 +724,20 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
 
   // Preview the full validated edit, including both weapon sets and dependent refunds.
   useEffect(() => {
-    setHoverDiff(null);
+    setHoverDiff(null); setHoverGain(null); setHoverCalculating(false);
     if (!hover || !hoverPreview?.result || session.busy || !session.calc || !editRequest) return;
     let cancelled = false;
+    setHoverCalculating(true);
     const timer = setTimeout(() => {
-      previewDiff(treeAllocationRequest(editRequest, hoverPreview.result!.allocation), session.calc!)
-        .then(diffs => { if (!cancelled) setHoverDiff(diffs); }).catch(() => {});
+      getBackend().then(backend => backend.calculateBuild(treeAllocationRequest(editRequest, hoverPreview.result!.allocation)))
+        .then(next => {
+          if (cancelled) return;
+          setHoverDiff(diffStats(session.calc!.stats, next.stats));
+          setHoverGain(treeStatDelta(session.calc, next, heatStat));
+        }).catch(() => {}).finally(() => { if (!cancelled) setHoverCalculating(false); });
     }, 300);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [hover, hoverPreview, session.stateVersion, session.busy]);
+  }, [hover, hoverPreview, session.stateVersion, session.busy, heatStat]);
 
   // 快捷键 S/D/I（或 1/2/3）：弹窗打开时选择；hover 属性小点时直接加点或改选。
   useLayoutEffect(() => {
@@ -945,7 +968,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
             <option value="">{tt('tree.heatOff')}</option>
             {heatStatOptions.map((id) => (
               <option key={id} value={id}>
-                {statNameLabel(lang, id)}
+                {treeStatLabel(lang, id)}
               </option>
             ))}
           </AppSelectControl>
@@ -960,7 +983,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
                   value={heatDepth}
                   onChange={(e) => {
                     const v = Number(e.target.value);
-                    if (Number.isInteger(v) && v >= 1 && v <= 12) setHeatDepth(v);
+                    if (Number.isInteger(v) && v >= 1 && v <= 12) { cancelHeat(); setHeatDepth(v); setHeatData(null); setHeatComplete(false); }
                   }}
                 />
               </label>
@@ -969,6 +992,11 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
                   ? `${tt('tree.heatComputing')}${heatProgress ? ` ${heatProgress.done}/${heatProgress.total}` : ''}`
                   : tt('tree.heatRun')}
               </AppButton>
+              {!heatBusy && !heatData && <span>{tt('tree.heatReady')}</span>}
+              {heatBusy && <progress aria-label={tt('tree.heat')} value={heatProgress?.done} max={heatProgress?.total} />}
+              {heatData && !heatComplete && <span role="status">{tt('tree.heatPartial')}</span>}
+              {heatError && <span role="alert">{tt('tree.heatError')}</span>}
+              <details className="tree-heat-legend"><summary>{treeStatLabel(lang, heatStat)}<span className="tree-heat-scale" aria-hidden="true" /></summary><p>{tt('tree.heatLegend').replace('{stat}', treeStatLabel(lang, heatStat))}</p></details>
               {heatBusy && <AppButton onClick={cancelHeat}>{tt('tree.heatCancel')}</AppButton>}
               {heatData && heatVersion !== session.stateVersion && (
                 <span className="tree-hint">{tt('tree.heatStale')}</span>
@@ -1024,7 +1052,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     <AppButton onClick={() => setViewBox(null)}>{tt('tree.reset')}</AppButton>
   );
   const pointSummary = passivePointSummary(nodes ?? [], session.allocatedNodes, session.character?.level ?? 1, session.weaponSwap, treeEffects);
-  const countEl = <TreePointSummary current={pointSummary} preview={preview} invalidReason={treeEditError(preview?.reason ?? null, lang)} lang={lang} />;
+  const countEl = <TreePointSummary current={pointSummary} preview={preview} invalidReason={isImportProblem(preview?.reason) ? '' : treeEditError(preview?.reason ?? null, lang)} lang={lang} />;
   const canvasEl = (
     <div className="tree-canvas">
         <svg
@@ -1067,13 +1095,19 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
             stats={hoverStats ?? []}
             pos={hoverPos}
             canvasRef={svgRef}
-            benefit={
-              hoverDiff && (
+            onPointerEnter={keepHover}
+            onPointerLeave={leaveHover}
+            onFocus={focusHover}
+            onBlur={blurHover}
+            benefit={(
                 <div className="tooltip-benefit">
                   <span className="tooltip-benefit-title">
                     {allocated.has(hover.skill) ? tt('diff.ifDealloc') : tt('diff.ifAlloc')}
                   </span>
-                  <DiffList diffs={hoverDiff} lang={lang} limit={5} />
+                  {allocated.has(hover.skill) && !hoverDiff && (hoverPreview?.result?.removed.length ?? 0) > 1 && <p>{tt('tree.downstream').replace('{count}', String(hoverPreview!.result!.removed.length - 1))}</p>}
+                  {heatStat && !allocated.has(hover.skill) && <p>{tt('tree.pathGain').replace('{stat}', treeStatLabel(lang, heatStat)).replace('{value}',
+                    hoverCalculating || !hoverPreview ? tt('tree.deltaPending') : hoverGain !== null ? powerGain(hoverGain, heatStat, lang) : tt('tree.deltaUnavailable'))}</p>}
+                  {hoverDiff && <TreeHoverBenefits diffs={hoverDiff} lang={lang} refundCount={hoverPreview?.result?.removed.length} />}
                 </div>
               )
             }
@@ -1183,6 +1217,9 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
               </AppButton>
             )}
           </div>
+          <TreeNodeChanges request={editRequest} preview={selectedPreview} baseline={session.calc}
+            attributeChoices={!selectedAllocated && pendingAttribute ? { [String(selectedNode.skill)]: pendingAttribute } : undefined}
+            busy={session.busy} allocated={Boolean(selectedAllocated)} lang={lang} />
         </div>
       );
   const attrEl = (
@@ -1273,8 +1310,8 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
   const warnEl = Boolean(treeEffects?.warnings.length) && <p className="tree-hint" role="status">{tt('tree.jewelSeedMissing')}</p>;
   const powerEl = (
     <NodePowerTable session={session} nodes={nodes ?? []} nodeNames={nodeNames} lang={lang}
-        stat={heatStat || 'Life'} stats={heatStatOptions}
-        onStat={stat => { cancelHeat(); setHeatStat(stat); setHeatData(null); setHeatVersion(-1); }}
+        stat={heatStatOptions.includes(reportStat) ? reportStat : defaultReportStat(planner.goal.preset, heatStatOptions)} stats={heatStatOptions}
+        onStat={setReportStat}
         onFocus={focusNodeOnTree} />
   );
   const draftsEl = Object.keys(session.editorDrafts).filter(key => key.startsWith('jewel:')).map(key => (
@@ -1412,7 +1449,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     requestAnimationFrame(() => toolsRef.current?.focus({ preventScroll: true }));
   };
   return (
-    <section className="ui-page tree-panel" aria-labelledby="tree-heading" data-side={sideOpen ? 'open' : 'closed'} onKeyDown={onPanelKeyDown}>
+    <section className="ui-page tree-panel" aria-labelledby="tree-heading" style={{ '--tree-side-preference': `${sideWidth}rem` } as React.CSSProperties} data-side={sideOpen ? 'open' : 'closed'} onKeyDown={onPanelKeyDown}>
       <h2 id="tree-heading" className="sr-only">{tt('tree.title')}</h2>
       <div className="tree-stage">
         {canvasEl}
@@ -1425,8 +1462,10 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
           {sideOpen ? <PanelRightClose aria-hidden="true" /> : <PanelRightOpen aria-hidden="true" />}
           {tt('tree.editOptions')}
         </AppButton>
-        {editError && <p className="tree-edit-error" role="alert">{treeEditError(editError, lang)}</p>}
+        {(importProblem || disconnectedImport) && <p className="tree-edit-error tree-import-notice" role="status">{tt(importProblem ? 'tree.invalidImport' : 'tree.disconnectedImport')}</p>}
+        {editError && !isImportProblem(editError) && <p className="tree-edit-error" role="alert">{treeEditError(editError, lang)}</p>}
         <div className="tree-bar tree-bar-view" role="group" aria-label={words(lang, 'View and build', '视图与 BD', '檢視與 BD')}>
+          <TreeRefundNotice receipt={refundReceipt} session={session} lang={lang} onUndo={() => { session.undoTree(); setRefundReceipt(null); }} />
           {countEl}
           {classEl}
           {ascEl}
@@ -1437,6 +1476,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
       </div>
       <aside id="tree-side" className="tree-side" hidden={!sideOpen} aria-label={tt('tree.editOptions')}>
         <div className="tree-edit-tools" ref={toolsRef} tabIndex={-1}>
+          <label className="tree-sidebar-width">{tt('tree.sidebarWidth')}<AppInput type="range" min={22} max={38} value={sideWidth} onChange={event => setSideWidth(Number(event.target.value))} /></label>
           {toolsBody}
           <details className="tree-legend-help"><summary>{words(lang, 'Colors and weapon sets', '颜色与武器组', '顏色與武器組')}</summary><p className="tree-hint">{tt('tree.weaponRules')}</p></details>
         </div>
@@ -1453,6 +1493,7 @@ function TreeTooltip({
   pos,
   canvasRef,
   benefit,
+  onPointerEnter, onPointerLeave, onFocus, onBlur,
 }: {
   node: PassiveNode;
   /** 本地化节点名（词典命中才给；null = 显示英文原名）。 */
@@ -1461,6 +1502,8 @@ function TreeTooltip({
   pos: { x: number; y: number };
   canvasRef: React.RefObject<SVGSVGElement | null>;
   benefit?: React.ReactNode;
+  onPointerEnter: () => void; onPointerLeave: () => void;
+  onFocus: () => void; onBlur: React.FocusEventHandler<HTMLDivElement>;
 }) {
   const rect = canvasRef.current?.getBoundingClientRect();
   if (!rect) return null;
@@ -1474,7 +1517,7 @@ function TreeTooltip({
     bottom: flipY ? rect.height - (pos.y - rect.top) + OFFSET : undefined,
   };
   return (
-    <div className="tree-tooltip" role="tooltip" style={style}>
+    <div className="tree-tooltip" role="tooltip" style={style} onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave} onFocus={onFocus} onBlur={onBlur}>
       <strong className={`tooltip-name kind-${node.kind}`}>{name ?? node.name ?? node.id}</strong>
       {stats.map((line, i) => (
         <div key={i} className="tooltip-stat">
@@ -1496,6 +1539,7 @@ function treeEditError(reason: string | null, lang: Lang): string {
   if (reason === 'backend_unavailable') return tt('tree.editUnavailable');
   if (reason === 'protected_root') return tt('tree.currentStart');
   if (reason === 'wrong_weapon_set') return tt('tree.wrongSet');
-  if (['disconnected_shared_path', 'disconnected_weapon_path', 'overlapping_allocations', 'shared_only_node', 'unknown_node'].includes(reason ?? '')) return tt('tree.invalidImport');
+  if (isDisconnectedTree(reason)) return tt('tree.disconnectedImport');
+  if (needsTreeConversion(reason)) return tt('tree.invalidImport');
   return tt('tree.noLegalPath');
 }

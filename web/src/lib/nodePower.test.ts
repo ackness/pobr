@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { PobrBackend } from '../api/backend';
 import type { PassiveNode } from '../api/types';
 import { passivePlanningContext, withTravelAttributes } from './passivePlanner';
-import { evaluateNodePower, filterPowerRows, NODE_POWER_LIMIT, powerCandidates, rankPowerRows, type PowerRow } from './nodePower';
+import { evaluateNodePower, filterPowerRows, powerCandidates, rankPowerRows, type PowerRow } from './nodePower';
 import type { EvaluateOptions, EvaluateResult } from './optimize';
 
 const nodes: PassiveNode[] = [
@@ -69,13 +69,17 @@ describe('node power routes and ranking', () => {
     expect(result.rows[2]).toMatchObject({status:'error', gain:null, perPoint:null});
   });
 
-  test('caps work, bounds explicit probes, and stops before probing cancelled routes', async () => {
+  test('evaluates beyond 128 candidates in bounded batches and stops before probing cancelled routes', async () => {
     const many: PowerRow[] = Array.from({length:200}, (_,i) => ({ ...candidates()[0], node:{...nodes[2], skill:100+i}, path:[100+i] }));
     const probes = vi.fn(probeImplementation);
     let progress = 0;
-    const result = await evaluateNodePower({request:{}, rows:many, stat:'Life', evaluate, probe:probes, onBatch:(_rows,done)=>{progress=done;}});
-    expect(result.rows).toHaveLength(NODE_POWER_LIMIT);
-    expect(progress).toBe(NODE_POWER_LIMIT);
+    const totals: number[] = [];
+    const batchSizes: number[] = [];
+    const result = await evaluateNodePower({request:{}, rows:many, stat:'Life', evaluate: async opts => { batchSizes.push(opts.variants.length); return evaluate(opts); }, probe:probes, onBatch:(_rows,done,total)=>{progress=done; totals.push(total);}});
+    expect(result.rows).toHaveLength(200);
+    expect(progress).toBe(200);
+    expect(totals.every(total => total === 200)).toBe(true);
+    expect(batchSizes.every(size => size <= 128)).toBe(true);
     expect(probes.mock.calls.every(args => args[3]!.length <= 16)).toBe(true);
     const controller = new AbortController();
     const cancelledProbe = vi.fn(probeImplementation);
@@ -84,4 +88,19 @@ describe('node power routes and ranking', () => {
     expect(cancelled).toEqual({rows:[],cancelled:true});
     expect(cancelledProbe).not.toHaveBeenCalled();
   });
+});
+
+
+test('cancel after a completed batch preserves it and resume evaluates only pending candidates', async () => {
+  const rows: PowerRow[] = Array.from({ length: 150 }, (_, index) => ({ ...candidates()[0], node: { ...nodes[2], skill: 100 + index }, path: [100 + index] }));
+  const controller = new AbortController();
+  const first = await evaluateNodePower({ request: {}, rows, stat: 'Life', evaluate, probe,
+    signal: controller.signal, onBatch: () => controller.abort() });
+  expect(first.cancelled).toBe(true);
+  expect(first.rows).toHaveLength(16);
+  const scored = new Map(first.rows.map(row => [row.node.skill, row]));
+  const resumed = await evaluateNodePower({ request: {}, rows: rows.map(row => scored.get(row.node.skill) ?? row), stat: 'Life', evaluate, probe });
+  expect(resumed.cancelled).toBe(false);
+  expect(resumed.rows).toHaveLength(134);
+  expect(resumed.rows.some(row => scored.has(row.node.skill))).toBe(false);
 });

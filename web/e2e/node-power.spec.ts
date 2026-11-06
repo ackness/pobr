@@ -35,7 +35,7 @@ test('report filters, scores full paths, sorts and focuses without allocating; s
   await report.getByRole('searchbox', {name:'Filter nodes'}).fill(String(target.skill));
   const row = report.locator(`tr[data-node-id="${target.skill}"]`);
   await expect(report).toContainText('Run an evaluation to see candidate rankings');
-  await report.getByRole('button',{name:'Evaluate next 128 nodes',exact:true}).click();
+  await report.getByRole('button',{name:'Evaluate all candidate nodes',exact:true}).click();
   await expect(row).toHaveAttribute('data-status','ready',{timeout:60_000});
   await expect(row.locator('td').nth(2)).toHaveText(String(route.allocate.length));
   await expect(row.locator('td').nth(1)).not.toHaveText('—');
@@ -50,7 +50,7 @@ test('report filters, scores full paths, sorts and focuses without allocating; s
   await choose(page, report.getByRole('combobox',{name:'Report stat',exact:true}), 'Mana');
   await expect(report).toContainText('Run an evaluation to see candidate rankings');
   await expect(row).toHaveCount(0);
-  await report.getByRole('button',{name:'Evaluate next 128 nodes',exact:true}).click();
+  await report.getByRole('button',{name:'Evaluate all candidate nodes',exact:true}).click();
   await expect(row).toHaveAttribute('data-status','ready');
   await report.screenshot({path:'test-results/node-power-report.png'});
   await page.screenshot({path:'test-results/node-power-tree.png',fullPage:true});
@@ -65,11 +65,11 @@ test('small-node toggle and cancellation preserve the build and never restore st
   await expect(report.locator('tbody tr')).toHaveCount(0);
   await report.getByRole('checkbox',{name:'Include small nodes'}).check();
   await expect(report).toContainText('Run an evaluation to see candidate rankings');
-  await expect(report.getByRole('button', { name: 'Evaluate next 128 nodes', exact: true })).toBeEnabled();
+  await expect(report.getByRole('button', { name: 'Evaluate all candidate nodes', exact: true })).toBeEnabled();
   await report.getByRole('searchbox',{name:'Filter nodes'}).fill('');
-  await report.getByRole('button',{name:'Evaluate next 128 nodes',exact:true}).click();
+  await report.getByRole('button',{name:'Evaluate all candidate nodes',exact:true}).click();
   await report.getByRole('button',{name:'Cancel report',exact:true}).click();
-  await expect(report.getByRole('status')).toHaveText('Report cancelled; completed rows retained.');
+  await expect(report.getByRole('status')).toHaveText('Report cancelled; rankings are provisional. Completed rows retained.');
   await expect(report.getByRole('button',{name:'Cancel report',exact:true})).toHaveCount(0);
   await choose(page, report.getByRole('combobox',{name:'Report stat',exact:true}), 'Energy Shield');
   await expect(report.locator('tr[data-status=ready]')).toHaveCount(0);
@@ -78,3 +78,23 @@ test('small-node toggle and cancellation preserve the build and never restore st
   await expect(report.locator('tr[data-status=ready]')).toHaveCount(0);
   expect(await saved(page)).toBe(before);
 });
+
+for (const width of [390, 1440, 2560]) {
+  test(`report expansion keeps sidebar width and page bounds at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await ready(page);
+    const report = page.locator('.node-power');
+    const sidebar = page.locator('.tree-side');
+    const expandedWidth = (await sidebar.boundingBox())!.width;
+    await report.locator(':scope > summary').click();
+    expect((await sidebar.boundingBox())!.width).toBeCloseTo(expandedWidth, 0);
+    await report.locator(':scope > summary').click();
+    expect((await sidebar.boundingBox())!.width).toBeCloseTo(expandedWidth, 0);
+    await report.getByRole('searchbox', { name: 'Filter nodes' }).fill(String(target.skill));
+    await report.getByRole('button', { name: 'Evaluate all candidate nodes', exact: true }).click();
+    await expect(report.locator(`tr[data-node-id="${target.skill}"]`)).toHaveAttribute('data-status', 'ready', { timeout: 60_000 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(await report.locator('.node-power-scroll').evaluate(element => getComputedStyle(element).overflowY)).toBe('visible');
+    expect((await sidebar.boundingBox())!.width).toBeCloseTo(expandedWidth, 0);
+  });
+}

@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import type { PassiveNode } from '../../api/types';
 import { jewelSocketNames } from './jewelSocketNames';
 import { passiveNameKey } from './passiveNodeNames';
-import { distributeAttributeChoices, passivePointSummary, powerGain } from './treePresentation';
+import { defaultReportStat, distributeAttributeChoices, passivePointSummary, powerGain } from './treePresentation';
 
 const node = (skill: number, patch: Partial<PassiveNode> = {}): PassiveNode => ({ skill, id: String(skill), kind: 'normal', ...patch });
 
@@ -47,4 +47,19 @@ test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('socket labels use localized lan
   expect(labels.get(7960)).not.toMatch(/7960|\[|\]/);
   expect(new Set(labels.values()).size).toBe(3);
   expect(jewelSocketNames([...nodes].reverse(), names, lang)).toEqual(labels);
+});
+
+
+test('node report metric follows life, survival and damage goals with an available fallback', () => {
+  const stats = ['TotalDPS', 'Life', 'TotalEHP'];
+  expect(defaultReportStat('life', stats)).toBe('Life');
+  expect(defaultReportStat('ehp', stats)).toBe('TotalEHP');
+  expect(defaultReportStat('dps', stats)).toBe('TotalDPS');
+  expect(defaultReportStat('balanced', stats)).toBe('TotalDPS');
+  expect(defaultReportStat('dps', ['Life'])).toBe('Life');
+  // A summoner build measures its minion for a damage goal, and keeps other goals.
+  const summoner = ['MainMinionDPS', ...stats];
+  expect(defaultReportStat('dps', summoner)).toBe('MainMinionDPS');
+  expect(defaultReportStat('balanced', summoner)).toBe('MainMinionDPS');
+  expect(defaultReportStat('life', summoner)).toBe('Life');
 });

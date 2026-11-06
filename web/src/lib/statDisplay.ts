@@ -236,7 +236,7 @@ export function formatStatValue(value: number | null, format: StatFormat, lang: 
     case 'rate':
       return roundTo(value, 2).toFixed(2);
     case 'float2':
-      return value >= 1000
+      return Math.abs(value) >= 1000
         ? Math.round(value).toLocaleString('en-US')
         : roundTo(value, 2).toString();
   }

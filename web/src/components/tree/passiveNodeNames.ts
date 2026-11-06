@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { PobrBackend } from '../../api/backend';
 import type { PassiveNode } from '../../api/types';
-import { useLocalizedNames } from '../../hooks/useLocalizedLines';
+import { cleanLine, useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
 import { shownLines } from '../../lib/continuedLines';
 import type { Lang } from '../../lib/i18n';
 import type { GameNameRequest } from '../../lib/nativeDisplayNames';
@@ -17,6 +17,8 @@ export function passiveNameRequest(node: Pick<PassiveNode, 'id' | 'name'>): Game
   return node.name ? [{ kind: 'passive', id: node.id, name: node.name }] : [];
 }
 
+export const passiveStatsKey = (node: PassiveNode): string => JSON.stringify([node.id, node.name, node.stats]);
+
 /** Translate names once for the active tree's search and reports, never its calculation data. */
 export function usePassiveNodeNames(nodes: readonly PassiveNode[], lang: Lang, active: boolean): PassiveNodeNames {
   const unique = useMemo(() => {
@@ -25,8 +27,20 @@ export function usePassiveNodeNames(nodes: readonly PassiveNode[], lang: Lang, a
     return { keys: [...byKey.keys()], requests: [...byKey.values()] };
   }, [nodes, active]);
   const translated = useLocalizedNames(unique.requests, lang);
-  return useMemo(() => new Map(unique.keys.map((key, index) => [key, translated[index] ?? unique.requests[index].name])),
-    [unique, translated]);
+  // A blank separator prevents a multi-line description from spanning two nodes.
+  const statNodes = useMemo(() => active ? nodes : [], [nodes, active]);
+  const lines = useMemo(() => statNodes.flatMap(node => [...(node.stats ?? []).map(cleanLine), '']), [statNodes]);
+  const localized = useLocalizedLines(lines, lang);
+  return useMemo(() => {
+    const result = new Map(unique.keys.map((key, index) => [key, translated[index] ?? unique.requests[index].name]));
+    let offset = 0;
+    for (const node of statNodes) {
+      const count = node.stats?.length ?? 0;
+      result.set(passiveStatsKey(node), shownLines(lines.slice(offset, offset + count), localized.slice(offset, offset + count)).join('\n'));
+      offset += count + 1;
+    }
+    return result;
+  }, [unique, translated, statNodes, lines, localized]);
 }
 
 /** One node's heading (`node.name`, or its id when unnamed) and modifier lines for a tooltip or
@@ -51,7 +65,7 @@ export function passiveNodeName(node: PassiveNode, names: PassiveNodeNames): str
 export function passiveNodeMatches(node: PassiveNode, query: string, names: PassiveNodeNames): boolean {
   const normalized = query.trim().toLocaleLowerCase();
   if (!normalized) return true;
-  const raw = [passiveNodeName(node, names), node.name, node.id, node.skill, ...(node.stats ?? [])].join('\n');
+  const raw = [passiveNodeName(node, names), node.name, node.id, node.skill, names.get(passiveStatsKey(node)), ...(node.stats ?? [])].join('\n');
   const displayed = raw
     .replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2')
     .replace(/\[([^\]]*)\]/g, '$1')
