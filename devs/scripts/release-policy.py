@@ -151,26 +151,25 @@ def changelog_section(version):
         if line.startswith("```"):
             fenced = not fenced
         elif not fenced and line.startswith("## "):
-            headings.append(index)
-    starts = [index for index in headings
-              if (match := SECTION.fullmatch(lines[index])) and match[1] == version]
+            headings.append((index, SECTION.fullmatch(line)))
+    starts = [(index, match) for index, match in headings if match and match[1] == version]
     if len(starts) != 1:
         raise PolicyError(f"{CHANGELOG} needs exactly one '## [{version}] - YYYY-MM-DD' "
                           f"section, found {len(starts)}")
-    start = starts[0]
-    date = DATED.fullmatch(SECTION.fullmatch(lines[start])[2])
+    [(start, match)] = starts
+    date = DATED.fullmatch(match[2])
     try:
         datetime.date.fromisoformat(date[1] if date else "")
     except ValueError:
         raise PolicyError(f"{CHANGELOG} heading must read '## [{version}] - YYYY-MM-DD': "
                           f"{lines[start]!r}") from None
     # The section ends at the next heading; trailing link definitions (the
-    # file's compare links) are not part of it.
-    end = next((index for index in headings if index > start), len(lines))
-    while end > start + 1 and (not lines[end - 1].strip() or LINK.fullmatch(lines[end - 1])):
+    # file's compare links) are not part of it. The heading itself stops the loop.
+    end = next((index for index, _ in headings if index > start), len(lines))
+    while not lines[end - 1].strip() or LINK.fullmatch(lines[end - 1]):
         end -= 1
-    body = "\n".join(lines[start + 1:end]).strip()
-    if "### Breaking changes" not in (line.rstrip() for line in body.splitlines()):
+    section = lines[start + 1:end]
+    if "### Breaking changes" not in (line.rstrip() for line in section):
         raise PolicyError(f"{CHANGELOG} section {version} needs a '### Breaking changes' "
                           "subsection (write '- None.' when there are none)")
     links = [match[2] for line in lines
@@ -178,7 +177,7 @@ def changelog_section(version):
     if len(links) != 1:
         raise PolicyError(f"{CHANGELOG} needs exactly one '[{version}]: <compare URL>' "
                           f"link definition, found {len(links)}")
-    return body, links[0]
+    return "\n".join(section).strip(), links[0]
 
 
 def remote_tags(*patterns):
@@ -240,8 +239,9 @@ def check_tag(tag, sha):
 def notes(tag, output):
     tag_version(tag)
     body, link = changelog_section(tag[1:])
-    Path(output).parent.mkdir(parents=True, exist_ok=True)
-    Path(output).write_text(f"{body}\n\n**Full diff**: {link}\n", encoding="utf-8")
+    output = Path(output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(f"{body}\n\n**Full diff**: {link}\n", encoding="utf-8")
     return "notes", True
 
 
