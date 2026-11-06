@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
-import type { PobrBackend } from '../../api/backend';
+import { useEffect, useMemo, useState } from 'react';
+import { getBackend, type PobrBackend } from '../../api/backend';
 import type { PassiveNode } from '../../api/types';
-import { cleanLine, useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
+import { cleanLine, linesToTranslate, localizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
 import { shownLines } from '../../lib/continuedLines';
 import type { Lang } from '../../lib/i18n';
+import { cleanLineText } from '../../lib/modifierText';
 import type { GameNameRequest } from '../../lib/nativeDisplayNames';
 
 /** Display names keyed by {@link passiveNameKey}: one English name can have several translations. */
@@ -17,30 +18,82 @@ export function passiveNameRequest(node: Pick<PassiveNode, 'id' | 'name'>): Game
   return node.name ? [{ kind: 'passive', id: node.id, name: node.name }] : [];
 }
 
-export const passiveStatsKey = (node: PassiveNode): string => JSON.stringify([node.id, node.name, node.stats]);
+const passiveStatsKey = (node: Pick<PassiveNode, 'skill'>): string => `stats:${node.skill}`;
+
+type PassiveNodesBySkill = ReadonlyMap<string, PassiveNode>;
+const NO_PASSIVE_NODES: PassiveNodesBySkill = new Map();
+const passiveTrees = new WeakMap<PobrBackend, Map<string | undefined, Promise<PassiveNodesBySkill>>>();
+
+/** Share the loaded tree and its skill index across passive-source displays. */
+export function usePassiveNodesBySkill(enabled: boolean, treeVersion?: string): PassiveNodesBySkill {
+  const [loaded, setLoaded] = useState<{ treeVersion?: string; nodes: PassiveNodesBySkill } | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    getBackend().then(backend => {
+      let versions = passiveTrees.get(backend);
+      if (!versions) { versions = new Map(); passiveTrees.set(backend, versions); }
+      let pending = versions.get(treeVersion);
+      if (!pending) {
+        pending = backend.loadPassiveTree(treeVersion).then(nodes => new Map(nodes.map(node => [String(node.skill), node])));
+        versions.set(treeVersion, pending);
+        pending.catch(() => { versions.delete(treeVersion); });
+      }
+      return pending;
+    }).then(nodes => { if (!cancelled) setLoaded({ treeVersion, nodes }); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [enabled, treeVersion]);
+  return loaded && loaded.treeVersion === treeVersion ? loaded.nodes : NO_PASSIVE_NODES;
+}
+
+/** Search uses the same complete descriptions and continuation handling as modifier displays. */
+export async function translatePassiveStats(backend: Pick<PobrBackend, 'translateLines'>, nodes: readonly PassiveNode[], lang: Lang): Promise<PassiveNodeNames> {
+  // A blank separator prevents a multi-line description from spanning two nodes.
+  const lines = nodes.flatMap(node => [...(node.stats ?? []).map(cleanLine), '']);
+  const sent = linesToTranslate(lines, lang);
+  const translated = lang === 'en-US' || !sent.some(Boolean) ? [] : await backend.translateLines(sent, lang);
+  const localized = localizedLines(lines, lang, sent.map((line, index) => line ? translated[index] : undefined));
+  const result = new Map<string, string>();
+  let offset = 0;
+  for (const node of nodes) {
+    const count = node.stats?.length ?? 0;
+    result.set(passiveStatsKey(node), shownLines(lines.slice(offset, offset + count), localized.slice(offset, offset + count)).join('\n'));
+    offset += count + 1;
+  }
+  return result;
+}
 
 /** Translate names once for the active tree's search and reports, never its calculation data. */
-export function usePassiveNodeNames(nodes: readonly PassiveNode[], lang: Lang, active: boolean): PassiveNodeNames {
+export function usePassiveNodeNames(nodes: readonly PassiveNode[], lang: Lang, active: boolean, search = ''): PassiveNodeNames {
   const unique = useMemo(() => {
     const byKey = new Map<string, GameNameRequest>();
     if (active) for (const node of nodes) for (const request of passiveNameRequest(node)) byKey.set(passiveNameKey(node), request);
     return { keys: [...byKey.keys()], requests: [...byKey.values()] };
   }, [nodes, active]);
   const translated = useLocalizedNames(unique.requests, lang);
-  // A blank separator prevents a multi-line description from spanning two nodes.
-  const statNodes = useMemo(() => active ? nodes : [], [nodes, active]);
-  const lines = useMemo(() => statNodes.flatMap(node => [...(node.stats ?? []).map(cleanLine), '']), [statNodes]);
-  const localized = useLocalizedLines(lines, lang);
+  const cache = useMemo(() => new Map<Lang, Promise<PassiveNodeNames>>(), [nodes]);
+  const [stats, setStats] = useState<{ nodes: readonly PassiveNode[]; values: ReadonlyMap<Lang, PassiveNodeNames> } | null>(null);
+  const searching = Boolean(search.trim());
+  useEffect(() => {
+    if (!active || !searching || lang === 'en-US' || !nodes.length) return;
+    let pending = cache.get(lang);
+    if (!pending) {
+      pending = getBackend().then(backend => translatePassiveStats(backend, nodes, lang));
+      cache.set(lang, pending);
+      pending.catch(() => { cache.delete(lang); });
+    }
+    let cancelled = false;
+    pending.then(values => {
+      if (!cancelled) setStats(current => current?.nodes === nodes && current.values.get(lang) === values ? current
+        : { nodes, values: new Map([...(current?.nodes === nodes ? current.values : []), [lang, values]]) });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [nodes, lang, active, searching, cache]);
   return useMemo(() => {
     const result = new Map(unique.keys.map((key, index) => [key, translated[index] ?? unique.requests[index].name]));
-    let offset = 0;
-    for (const node of statNodes) {
-      const count = node.stats?.length ?? 0;
-      result.set(passiveStatsKey(node), shownLines(lines.slice(offset, offset + count), localized.slice(offset, offset + count)).join('\n'));
-      offset += count + 1;
-    }
+    if (stats?.nodes === nodes) for (const [key, value] of stats.values.get(lang) ?? []) result.set(key, value);
     return result;
-  }, [unique, translated, statNodes, lines, localized]);
+  }, [unique, translated, nodes, lang, stats]);
 }
 
 /** One node's heading (`node.name`, or its id when unnamed) and modifier lines for a tooltip or
@@ -66,9 +119,6 @@ export function passiveNodeMatches(node: PassiveNode, query: string, names: Pass
   const normalized = query.trim().toLocaleLowerCase();
   if (!normalized) return true;
   const raw = [passiveNodeName(node, names), node.name, node.id, node.skill, names.get(passiveStatsKey(node)), ...(node.stats ?? [])].join('\n');
-  const displayed = raw
-    .replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2')
-    .replace(/\[([^\]]*)\]/g, '$1')
-    .toLocaleLowerCase();
+  const displayed = cleanLineText(raw).toLocaleLowerCase();
   return raw.toLocaleLowerCase().includes(normalized) || displayed.includes(normalized);
 }

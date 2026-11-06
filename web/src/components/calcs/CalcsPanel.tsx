@@ -55,6 +55,8 @@ import { SkillMetricsTable } from './SkillMetricsTable';
 import { useNavigateToPage } from '../../app/pages/navigate';
 import { LedgerView } from '../../app/pages/calcs/LedgerView';
 import { words } from '../../app/text';
+import { cleanLineText } from '../../lib/modifierText';
+import { passiveNameRequest, usePassiveNodesBySkill } from '../tree/passiveNodeNames';
 
 interface Props {
   session: BuildSession;
@@ -75,13 +77,6 @@ function statNameLabel(lang: Lang, id: string): string {
 /** 数字统一格式：千分位 + 最多 2 位小数（清掉浮点尾巴）。 */
 function fmtNum(value: number): string {
   return formatNumber(value);
-}
-
-/** 词条展示清洗：剥 `[A|B]` 内部标注。 */
-function cleanModText(text: string): string {
-  return text
-    .replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2')
-    .replace(/\[([^\]]*)\]/g, '$1');
 }
 
 /** How a formula step changes the running value, e.g. `+120`, `×1.35 (+35%)`, `≤ 75`. */
@@ -632,23 +627,21 @@ export function ModLines({ mods, lang, measure }: { mods: BreakdownMod[]; lang: 
   </details>)}</div>;
 }
 
+function isNamelessItemMod(mod: BreakdownMod): boolean {
+  return mod.origin_kind === 'Item' && !/[0-9%:]/.test(mod.source_text ?? '');
+}
+
 function ModifierRows({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
   const tt = bindT(lang);
-  const raw = useMemo(() => mods.map(mod => cleanModText(mod.source_text ?? '')), [mods]);
+  const raw = useMemo(() => mods.map(mod => cleanLineText(mod.source_text ?? '')), [mods]);
   const translated = useLocalizedLines(raw, lang);
-  const [nodes, setNodes] = useState<Record<string, { id: string; name: string }>>({});
-  useEffect(() => {
-    if (!mods.some(mod => mod.origin_kind === 'PassiveNode' || mod.origin_kind === 'AscendancyNode')) return;
-    let cancelled = false;
-    getBackend().then(backend => backend.loadPassiveTree()).then(tree => {
-      if (!cancelled) setNodes(Object.fromEntries(tree.map(node => [String(node.skill), { id: node.id, name: node.name ?? '' }])));
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [mods]);
-  const names = useLocalizedNames(mods.map(mod => {
-    const node = nodes[(mod.origin_id ?? '').replace(/^node\./, '')];
-    return node ? { kind: 'passive' as const, ...node } : { kind: 'base' as const, name: mod.origin_kind === 'Item' && !/[0-9%:]/.test(mod.source_text ?? '') ? mod.source_text ?? '' : '' };
-  }), lang);
+  const nodes = usePassiveNodesBySkill(mods.some(mod => mod.origin_kind === 'PassiveNode' || mod.origin_kind === 'AscendancyNode'));
+  const nameRequests = useMemo(() => mods.map(mod => {
+    const node = nodes.get((mod.origin_id ?? '').replace(/^node\./, ''));
+    return (node ? passiveNameRequest(node)[0] : undefined)
+      ?? { kind: 'base' as const, name: !node && isNamelessItemMod(mod) ? mod.source_text ?? '' : '' };
+  }), [mods, nodes]);
+  const names = useLocalizedNames(nameRequests, lang);
   const source = (mod: BreakdownMod, index: number) => {
     if (mod.origin_id === 'campaign.resistance_penalty') return words(lang, 'Campaign resistance penalty', '剧情抗性惩罚', '劇情抗性懲罰');
     const label = mod.origin_kind ? originKindLabel(lang, mod.origin_kind) : sourceGroupLabel(lang, 'other');
@@ -658,7 +651,7 @@ function ModifierRows({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
     if (isContinuation(raw[index], translated[index])) return null;
     return <li key={index} className={mod.active ? undefined : 'is-inactive'}>
       <div className="modifier-row-head"><span className={`mod-type mod-type-${mod.mod_type.toLowerCase()}`}>{modTypeLabel(lang, mod.mod_type)}</span><strong className="mod-value">{mod.value === null ? '—' : fmtNum(mod.value)}</strong></div>
-      <div className="mod-text">{!mod.source_text || (mod.origin_kind === 'Item' && !/[0-9%:]/.test(mod.source_text))
+      <div className="mod-text">{!mod.source_text || isNamelessItemMod(mod)
         ? <>{tt(mod.origin_kind === 'Item' ? 'calcs.missingModifier' : mod.origin_kind === 'CharacterBase' ? 'calcs.baseFrom.CharacterBase' : mod.origin_kind === 'GameConstant' ? 'calcs.baseFrom.GameConstant' : mod.origin_kind === 'SupportGem' ? 'calcs.baseFrom.SupportGem' : 'calcs.baseDerived')}
           {mod.source_text && <details><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.details')}</summary><pre>{mod.source_text}</pre></details>}</>
         : <ModifierText raw={mod.source_text} translated={translated[index]} lang={lang} />}

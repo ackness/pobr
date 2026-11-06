@@ -1,5 +1,5 @@
 import { AppButton, AppInput } from '../shared/controls';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import { formatApiError } from '../../api/error';
 import type { PassiveNode, BuildJson, TreeConversionNode, TreeConversionResponse } from '../../api/types';
@@ -7,6 +7,7 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { cleanLine, useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
 import { shownLines } from '../../lib/continuedLines';
 import { bindT, type Lang } from '../../lib/i18n';
+import { passiveNameRequest } from './passiveNodeNames';
 
 /**
  * The conversion request and its preview. The state lives with the page, not with the canvas it is drawn
@@ -97,9 +98,11 @@ export function TreeConversionControls({ session, conversion }: { session: Build
 
 function ConversionNodeCard({ node, identity, lang }: { node: TreeConversionNode; identity?: string; lang: Lang }) {
   // Removed nodes may have no identity in the current tree. Resolve their original name by text.
-  const names = useLocalizedNames(identity ? [{ kind: 'passive', id: identity, name: node.name }] : [], lang);
-  const fallbackName = useLocalizedLines(identity ? [] : [cleanLine(node.name)], lang);
-  const lines = node.stats.map(cleanLine);
+  const nameRequests = useMemo(() => identity ? passiveNameRequest({ id: identity, name: node.name }) : [], [identity, node.name]);
+  const names = useLocalizedNames(nameRequests, lang);
+  const fallbackLines = useMemo(() => identity ? [] : [cleanLine(node.name)], [identity, node.name]);
+  const fallbackName = useLocalizedLines(fallbackLines, lang);
+  const lines = useMemo(() => node.stats.map(cleanLine), [node.stats]);
   const translated = useLocalizedLines(lines, lang);
   return <><strong>{names[0] ?? fallbackName[0] ?? node.name}</strong>{shownLines(lines, translated).map((line, index) => <div key={index}>{line}</div>)}</>;
 }

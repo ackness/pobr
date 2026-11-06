@@ -1,6 +1,7 @@
 import type { ItemLineJson } from '../api/types';
 import { itemForAffixProbes } from './equipmentScore';
 import { replacementAffixes } from './itemReplacement';
+import { cleanLineText } from './modifierText';
 import { normalizeTradeLine } from './trade';
 import { combinationLegal, type TradeAffix, type TradeBase, type TradeCatalog } from './tradeOptimizer';
 
@@ -24,8 +25,8 @@ export interface AffixDraft {
   locked?: 'rarity' | 'corrupted' | 'classification';
 }
 export type AffixAliases = ReadonlyMap<string, string>;
-const clean = (line: string) => line.replace(/\{[^}]*\}/g, '').replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2')
-  .replace(/\[([^\]]*)\]/g, '$1').replace(/\s*\((?:implicit|enchant|crafted|fractured|rune|tier:\s*\d+)\)/gi, '').trim();
+const clean = (line: string) => cleanLineText(line.replace(/\{[^}]*\}/g, ''))
+  .replace(/\s*\((?:implicit|enchant|crafted|fractured|rune|tier:\s*\d+)\)/gi, '').trim();
 const signature = (line: string) => normalizeTradeLine(clean(line)).toLocaleLowerCase().replace(/\s+/g, ' ');
 const numbers = (line: string) => [...clean(line).matchAll(/-?\d+(?:\.\d+)?/g)].map(match => Number(match[0]));
 

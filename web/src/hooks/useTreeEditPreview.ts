@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../api/backend';
 import type { CalculateBuildRequest, TreeAllocationMode, TreeEditAction, TreeEditResponse } from '../api/types';
 
 /** A preview is valid only for the exact request, allocation mode and action. */
 export function useTreeEditPreview(request: CalculateBuildRequest | null, node: number | null,
   mode: TreeAllocationMode, action: TreeEditAction) {
-  const key = JSON.stringify([request, node, mode, action]);
+  const key = useMemo(() => JSON.stringify([request, node, mode, action]), [request, node, mode, action]);
   const [resolved, setResolved] = useState<{ key: string; response: TreeEditResponse } | null>(null);
   useEffect(() => {
     if (!request || node === null) return;

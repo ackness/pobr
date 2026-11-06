@@ -78,7 +78,8 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     const change = session.calc?.tree_effects?.nodes[String(node.skill)];
     return change ? { ...node, name: change.name } : node;
   }), [treeNodes, session.calc?.tree_effects]);
-  const passiveNames = usePassiveNodeNames(namedTreeNodes.filter(node => ['notable', 'keystone'].includes(node.kind) && !node.ascendancy_id), lang, active);
+  const landmarks = useMemo(() => namedTreeNodes.filter(node => ['notable', 'keystone'].includes(node.kind) && !node.ascendancy_id), [namedTreeNodes]);
+  const passiveNames = usePassiveNodeNames(landmarks, lang, active);
   const socketLabels = jewelSocketNames(namedTreeNodes, passiveNames, lang);
   const jewelText = messages(lang, 'jewelPlanner');
   const [selected, setSelected] = useState('weapon1');

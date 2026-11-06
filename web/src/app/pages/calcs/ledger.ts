@@ -1,4 +1,5 @@
 import { plainModifierReason } from '../../../lib/diagnosticText';
+import { cleanLineText } from '../../../lib/modifierText';
 import { originLabel, type Lang } from '../../../lib/i18n';
 import type { LineUsage, LineUsageLine, LineUsageStatus } from '../../../api/types';
 import { words } from '../../text';
@@ -88,11 +89,6 @@ export function sourceGroupLabel(lang: Lang, group: SourceGroup): string {
     case 'skill': return w('Skills', '技能', '技能');
     case 'other': return w('Other', '其他', '其他');
   }
-}
-
-/** Strip `[A|B]` / `[A]` display markup from game text. */
-export function cleanLineText(text: string): string {
-  return text.replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2').replace(/\[([^\]]*)\]/g, '$1');
 }
 
 /** The text a row shows: the original line, or (for gem stats that have no line) the first modifier's name. */

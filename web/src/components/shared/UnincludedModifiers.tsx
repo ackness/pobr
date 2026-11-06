@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import { getBackend } from '../../api/backend';
+import { useMemo } from 'react';
 import { useItemDisplayNames, itemLines, useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
 import type { SlotItemInput } from '../../api/types';
 import { bindT, slotLabel, type Lang } from '../../lib/i18n';
 import { unsupportedLine } from '../../lib/diagnosticText';
 import { isContinuation } from '../../lib/continuedLines';
 import { ModifierText } from '../calcs/ModifierText';
+import { words } from '../../app/text';
+import { passiveNameRequest, usePassiveNodesBySkill } from '../tree/passiveNodeNames';
 
 /** Keep each source's adjacent lines together for whole-description translation. */
 export function unincludedGroups(lines: readonly string[], lang: Lang, items: readonly SlotItemInput[] = []) {
@@ -25,20 +26,14 @@ export function unincludedGroups(lines: readonly string[], lang: Lang, items: re
 function UnincludedGroup({ group, lang }: { group: ReturnType<typeof unincludedGroups>[number]; lang: Lang }) {
   const tt = bindT(lang);
   const translated = useLocalizedLines(group.lines, lang);
-  const [node, setNode] = useState<{ source: number; id: string; name: string } | null>(null);
-  useEffect(() => {
-    setNode(null);
-    if (group.node === null) return;
-    let cancelled = false;
-    getBackend().then(backend => backend.loadPassiveTree()).then(nodes => {
-      const found = nodes.find(node => node.skill === group.node);
-      if (!cancelled && found) setNode({ source: group.node!, id: found.id, name: found.name ?? '' });
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [group.node]);
-  const names = useLocalizedNames(node?.source === group.node ? [{ kind: 'passive', id: node.id, name: node.name }] : [], lang);
-  const itemNames = useItemDisplayNames([group.item?.text], lang);
-  const source = group.item ? `${itemNames[0]} · ${slotLabel(lang, group.item.slot)}` : group.node === null ? group.source ?? (lang === 'en-US' ? 'Source unavailable' : lang === 'zh-TW' ? '未提供來源' : '未提供来源') : names[0] ?? (lang === 'en-US' ? 'Passive tree (name unavailable)' : lang === 'zh-TW' ? '天賦樹（缺少名稱）' : '天赋树（缺少名称）');
+  const nodes = usePassiveNodesBySkill(group.node !== null);
+  const node = group.node === null ? undefined : nodes.get(String(group.node));
+  const nameRequests = useMemo(() => node ? passiveNameRequest(node) : [], [node]);
+  const names = useLocalizedNames(nameRequests, lang);
+  const nodeName = node && !node.name ? '' : names[0];
+  const itemTexts = useMemo(() => [group.item?.text], [group.item?.text]);
+  const itemNames = useItemDisplayNames(itemTexts, lang);
+  const source = group.item ? `${itemNames[0]} · ${slotLabel(lang, group.item.slot)}` : group.node === null ? group.source ?? words(lang, 'Source unavailable', '未提供来源', '未提供來源') : nodeName ?? words(lang, 'Passive tree (name unavailable)', '天赋树（缺少名称）', '天賦樹（缺少名稱）');
   return <li>{source && <h5>{source}{lang !== 'en-US' && /[A-Za-z]{3}/.test(source) && <small className="modifier-fallback">{tt('calcs.untranslated')}</small>}</h5>}<ul className="unincluded-lines">{group.lines.map((line, index) => isContinuation(line, translated[index]) ? null : <li key={index}>
     <ModifierText raw={line} translated={translated[index]} lang={lang} rawDetails={false} />
   </li>)}</ul></li>;
