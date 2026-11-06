@@ -1,3 +1,4 @@
+import { configListLabel } from '../../lib/configDisplay';
 import { CONFIG_FIELD_EVENT, takeConfigField } from '../../lib/configNavigation';
 import { AppButton, AppInput, AppSelectControl, AppTextarea } from '../shared/controls';
 import { PartyEditor } from './PartyEditor';
@@ -146,12 +147,7 @@ export function OptionRow({
               <option value={String(effective ?? '')}>{effective === undefined ? workflowLabel(lang, 'unset') : String(effective)}</option>}
             {(option.list_options ?? []).map((opt) => {
               const en = stripColorCodes(opt.label);
-              const zh = lang !== 'en-US'
-                ? en.split(/\r?\n/).map(line => {
-                  const text = line.trim();
-                  return configListOptionLabel(lang, text) ?? listLabels[text] ?? text;
-                }).join(' / ')
-                : en;
+              const zh = configListLabel(lang, en, listLabels);
               return (
                 <option key={opt.value} value={opt.value}>
                   {zh}
@@ -430,7 +426,8 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
     text: (session.calcParams.extra_modifiers ?? []).join('\n'),
   }];
   const unappliedLines = (calc?.unsupported_modifiers ?? [])
-    .filter(line => line.startsWith(UNAPPLIED_PREFIX));
+    .filter(line => line.startsWith(UNAPPLIED_PREFIX))
+    .map(line => line.slice(UNAPPLIED_PREFIX.length));
   const updateModifierBlocks = (blocks: CustomModifierBlock[]) => {
     session.updateParams({ custom_modifier_blocks: blocks, extra_modifiers: undefined });
   };

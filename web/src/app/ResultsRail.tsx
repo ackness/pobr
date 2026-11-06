@@ -1,3 +1,4 @@
+import { ComparisonBaseline } from './ComparisonBaseline';
 import { EnergyTriggerNote } from '../components/config/EnergyTriggerNote';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ChevronRight, CircleAlert, CircleCheck, Pin } from 'lucide-react';
@@ -186,6 +187,7 @@ export function ResultsRail({ route, session, view, lang, onStatClick, onNavigat
     <button type="button" className="rail-link" onClick={() => onNavigate('build')}>{bindT(lang)('sidebar.importCreate')}<ChevronRight /></button>
   </aside>;
   return <aside id="character-stats" className="shell-rail-content" data-stale={view.stale || undefined} aria-label={words(lang, 'Character stats', '角色属性', '角色屬性')}>
+    <ComparisonBaseline session={session} lang={lang} onNavigate={onNavigate} />
     <Headline route={route} session={session} view={view} lang={lang} onStatClick={onStatClick} changes={changes} onNavigate={onNavigate} minion={minion} />
     {essentials.length > 0 && <section className="rail-section rail-essentials">
       {essentials.map(id => <Row key={id} label={statLabel(lang, id)} color={statColor(id)} change={changes.get(id)}

@@ -82,3 +82,8 @@ describe('collapseContext', () => {
     expect(collapseContext([])).toEqual([]);
   });
 });
+
+it('a summoner headline never falls back to player damage when the minion did not change', () => {
+  const rows = compareStats([stat('MainMinionDPS', 500), stat('CombinedDPS', 100)], [stat('MainMinionDPS', 500), stat('CombinedDPS', 200)]);
+  expect(headlineDeltas(rows, 'MainMinionDPS')).toEqual([]);
+});

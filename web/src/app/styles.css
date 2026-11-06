@@ -115,6 +115,8 @@
   .shell-page-content { min-width: 0; max-width: var(--content-width); margin-inline: auto; overflow-wrap: anywhere; }
 
   :where(.rail-row, .rail-link, .rail-hero-value, .rail-section h3 button) { min-height: 0; background: none; border: 0; border-radius: 0; padding: 0; font: inherit; color: inherit; text-align: left; box-shadow: none; }
+  .rail-baseline { display: grid; gap: .4rem; padding: 0 1rem .8rem; border-bottom: 1px solid var(--border); margin-bottom: .8rem; font-size: var(--text-xs); color: var(--muted-foreground); }
+  .rail-baseline > div { display: flex; flex-wrap: wrap; gap: .35rem; }
   .shell-rail-content { padding: .9rem 0 2rem; }
   .rail-headline > :is(.app-select, .rail-hero, .rail-share, .rail-empty) { margin-inline: 1rem; }
   .rail-headline [data-slot='select-trigger'] { width: 100%; min-height: 0; height: 2.1rem; background: var(--muted); border-color: transparent; font-weight: 500; }

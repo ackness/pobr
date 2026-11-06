@@ -279,6 +279,16 @@ export function nearestCompareStage<T extends { buildId: string; stageId: string
   return stages[index - 1] ?? stages[index + 1];
 }
 
+/** Stage order is the saved before/after order; never infer chronology from names. */
+export function defaultCompareSides<T extends { buildId: string; stageId: string }>(entries: T[], activeId: string | undefined, baseline?: T): { a?: T; b?: T } {
+  const current = entries.find(entry => entry.stageId === activeId) ?? entries[0];
+  if (!current) return {};
+  if (baseline) return { a: baseline, b: current };
+  const stages = entries.filter(entry => entry.buildId === current.buildId);
+  const index = stages.indexOf(current);
+  return index > 0 ? { a: stages[index - 1], b: current } : { a: current, b: stages[index + 1] };
+}
+
 /** Empty B is not a removal action. Explicit false and zero config values are copyable. */
 export function hasComparisonSource(b: StageState, section: CopySection): boolean {
   switch (section.kind) {
