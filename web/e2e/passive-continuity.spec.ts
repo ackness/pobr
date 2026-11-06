@@ -317,7 +317,7 @@ for (const edit of ['equipment', 'goal'] as const) {
       await page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true }).check();
       await page.locator('.upgrade-goal-details > summary').click();
       await select(page, 'Constraint', 'Effective HP');
-      await page.getByRole('spinbutton', { name: 'Minimum Effective HP (points)', exact: true }).fill(String(floor));
+      await page.getByRole('spinbutton', { name: 'min', exact: true }).fill(String(floor));
       await expect(life(page)).toHaveText(beforeLife);
     }
     await expect(page.locator('.tree-canvas, .tree-planner-run')).toHaveCount(0);
