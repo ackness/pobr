@@ -7,7 +7,7 @@ import { GemDescriptionPanel } from './GemDescriptionPanel';
 import { GemPicker } from './GemPicker';
 
 const ui = vi.hoisted(() => ({ states: [] as unknown[], cursor: 0,
-  descriptions: undefined as GemDescriptionIndex | null | undefined,
+  descriptions: undefined as GemDescriptionIndex | null | undefined, descriptionsEnabled: false,
   input: {} as ComponentProps<'input'>, buttons: [] as ComponentProps<'button'>[],
   root: {} as ComponentProps<'div'>,
   options: [] as ComponentProps<'li'>[], panel: {} as ComponentProps<'div'>,
@@ -19,7 +19,7 @@ vi.mock('react', async original => ({ ...await original<typeof import('react')>(
     return [ui.states[index], (next: unknown) => { ui.states[index] = typeof next === 'function' ? next(ui.states[index]) : next; }];
   },
 }));
-vi.mock('../../hooks/useGemDescriptions', () => ({ useGemDescriptions: () => ui.descriptions }));
+vi.mock('../../hooks/useGemDescriptions', () => ({ useGemDescriptions: (enabled: boolean) => { ui.descriptionsEnabled = enabled; return ui.descriptions; } }));
 vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { ui.buttons.push(props); return <button {...props} />; },
   AppInput: (props: ComponentProps<'input'>) => { ui.input = props; return <input {...props} />; },
@@ -89,6 +89,12 @@ it('shows the highlighted gem, follows arrows/Home/End and pointer hover, and ke
   expect(render()).toContain('Fires a bolt.');
   key('Escape');
   expect(render()).not.toContain('gem-description-panel');
+});
+
+it('enables descriptions only while the picker is open', () => {
+  render(); expect(ui.descriptionsEnabled).toBe(false);
+  open(); expect(ui.descriptionsEnabled).toBe(true);
+  key('Escape'); render(); expect(ui.descriptionsEnabled).toBe(false);
 });
 
 it('Add, Enter and the list row use the same pick path and close the picker', () => {

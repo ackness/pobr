@@ -7,8 +7,8 @@ import { GemOptimizer } from './GemOptimizer';
 import { ChangeBar } from '../../app/preview/ChangeBar';
 
 const harness = vi.hoisted(() => ({ states: [] as unknown[], cursor: 0, buttons: [] as ComponentProps<'button'>[], optimize: vi.fn(), articles: [] as ComponentProps<'article'>[], show: vi.fn(), showChanges: vi.fn(), settings: null as { current: HTMLDetailsElement | null } | null, previewState: null as import('../shared/PreviewContext').PreviewState | null,
-  preset: 'dps', descriptions: null as GemDescriptionIndex | null }));
-vi.mock('../../hooks/useGemDescriptions', () => ({ useGemDescriptions: () => harness.descriptions }));
+  preset: 'dps', descriptions: null as GemDescriptionIndex | null, descriptionsEnabled: false }));
+vi.mock('../../hooks/useGemDescriptions', () => ({ useGemDescriptions: (enabled: boolean) => { harness.descriptionsEnabled = enabled; return harness.descriptions; } }));
 vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
   useState: (initial: unknown) => {
     const index = harness.cursor++;
@@ -136,8 +136,12 @@ function expand() {
 it('keeps recommendations collapsed until requested', () => {
   const { render } = setup();
   expect(render()).not.toContain('gem-optimizer-body');
+  expect(harness.descriptionsEnabled).toBe(false);
   expand();
   expect(render()).toContain('gem-optimizer-body');
+  expect(harness.descriptionsEnabled).toBe(true);
+  expand(); render();
+  expect(harness.descriptionsEnabled).toBe(false);
 });
 
 it('zero evaluations explain the blocker without claiming no improvement', async () => {

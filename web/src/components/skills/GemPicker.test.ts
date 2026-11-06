@@ -91,3 +91,14 @@ for (const [lang, first] of [['en-US', 'fire'], ['zh-CN', 'ice'], ['zh-TW', 'fir
     expect(rankGemResults(entries, '', 'all', lang)[0].skill_id).toBe(first);
   });
 }
+
+for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
+  test(`keeps localeCompare defaults and the default-locale skill ID tie-break in ${lang}`, () => {
+    const names = ['a', 'A', 'á', 'a 10', 'a 2', '电', '電', '火', '冰'];
+    const entries = names.map((name, index) => gem(`id-${index}`, name, name));
+    entries.push(gem('á-id', 'a', 'a'), gem('A-id', 'a', 'a'));
+    const expected = [...entries].sort((a, b) => gemDisplayName(a, lang).localeCompare(gemDisplayName(b, lang), lang)
+      || a.skill_id.localeCompare(b.skill_id));
+    expect(rankGemResults(entries, '', 'all', lang)).toEqual(expected);
+  });
+}

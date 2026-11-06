@@ -84,6 +84,10 @@ it('shows support level and quality as inapplicable and keeps count/corruption i
   expect(current.setSocketGroups).toHaveBeenLastCalledWith([{ ...current.socketGroups[0], gems: [{ ...current.socketGroups[0].gems[0], count: 1.5 }, current.socketGroups[0].gems[1]] }]);
   harness.inputs.find(input => input['aria-label'] === 'Corrupted')!.onChange!({ target: { checked: true } } as never);
   expect(vi.mocked(current.setSocketGroups).mock.calls.at(-1)![0][0].gems[0].corrupted).toBe(true);
+  current.socketGroups = [{ ...current.socketGroups[0], gems: [{ ...current.socketGroups[0].gems[0], corrupted: true }, current.socketGroups[0].gems[1]] }];
+  render(current);
+  harness.inputs.find(input => input['aria-label'] === 'Corrupted')!.onChange!({ target: { checked: false } } as never);
+  expect(vi.mocked(current.setSocketGroups).mock.calls.at(-1)![0][0].gems[0]).not.toHaveProperty('corrupted');
 });
 
 it('labels a nonempty unrecognised group and preserves the raw gem name', () => {

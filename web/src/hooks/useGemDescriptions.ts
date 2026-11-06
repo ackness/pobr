@@ -14,9 +14,10 @@ function loadDescriptions(): Promise<GemDescriptionIndex | null> {
 }
 
 /** Loading and absent/error packs keep the original picker and recommendation UI. */
-export function useGemDescriptions(): GemDescriptionIndex | null | undefined {
+export function useGemDescriptions(enabled: boolean): GemDescriptionIndex | null | undefined {
   const [index, setIndex] = useState<GemDescriptionIndex | null>();
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     loadDescriptions().then(value => {
       if (!cancelled) setIndex(value);
@@ -28,6 +29,6 @@ export function useGemDescriptions(): GemDescriptionIndex | null | undefined {
       if (!cancelled) setIndex(null);
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [enabled]);
   return index;
 }

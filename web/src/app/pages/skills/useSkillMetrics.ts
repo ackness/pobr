@@ -9,6 +9,30 @@ export interface SkillMetricsSnapshot {
   skills: SkillMetricsEntry[];
 }
 
+let latestMetrics: {
+  request: BuildSession['currentRequest'];
+  version: number;
+  revision: number;
+  result: Promise<SkillMetricsSnapshot>;
+} | undefined;
+
+function sharedMetrics(session: BuildSession): Promise<SkillMetricsSnapshot> | undefined {
+  const { currentRequest, stateVersion, socketGroupRevision } = session;
+  if (latestMetrics?.request === currentRequest && latestMetrics.version === stateVersion
+    && latestMetrics.revision === socketGroupRevision) return latestMetrics.result;
+  const request = currentRequest();
+  if (!request) return;
+  const entry = {
+    request: currentRequest, version: stateVersion, revision: socketGroupRevision,
+    result: getBackend().then(backend => backend.skillMetrics(request))
+      .then(result => ({ revision: socketGroupRevision, skills: result.skills })),
+  };
+  latestMetrics = entry;
+  // A failed batch must not prevent a later consumer from retrying the same state.
+  void entry.result.catch(() => { if (latestMetrics === entry) latestMetrics = undefined; });
+  return entry.result;
+}
+
 /**
  * Every active effect calculated on its own, kept up to date as the build is edited.
  * The previous result stays in place while the next one is computed so a list never blinks
@@ -23,12 +47,9 @@ export function useSkillMetrics(session: BuildSession, enabled: boolean, delay =
   useEffect(() => {
     if (!enabled || session.busy || session.calcError || !hasGroups) return;
     let stale = false;
-    const revision = session.socketGroupRevision;
     const timer = setTimeout(() => {
-      const request = session.currentRequest();
-      if (!request) return;
-      getBackend().then(backend => backend.skillMetrics(request))
-        .then(result => { if (!stale) setSnapshot({ revision, skills: result.skills }); })
+      sharedMetrics(session)
+        ?.then(result => { if (!stale) setSnapshot(result); })
         .catch(() => { if (!stale) setSnapshot(null); });
     }, delay);
     return () => { stale = true; clearTimeout(timer); };

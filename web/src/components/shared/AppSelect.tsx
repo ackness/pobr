@@ -15,6 +15,7 @@ interface Props {
   value: string;
   options: AppSelectOption[];
   onChange: (value: string) => void;
+  onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
   ariaLabel: string;
   /** 无匹配 value 时触发按钮上显示的文案。 */
@@ -25,10 +26,11 @@ interface Props {
  * 应用统一风格的下拉选择器（替代系统原生 select；面板视觉与 GemPicker 一致）。
  * 键盘：↑↓ 移动高亮、Enter/Space 打开或选中、Esc 关闭；点击组件外关闭。
  */
-export function AppSelect({ value, options, onChange, disabled, ariaLabel, placeholder }: Props) {
+export function AppSelect({ value, options, onChange, onOpenChange, disabled, ariaLabel, placeholder }: Props) {
   const active = usePanelActive();
   const [open, setOpen] = useState(false);
   useEffect(() => { if (!active) setOpen(false); }, [active]);
+  useEffect(() => { onOpenChange?.(open && active); }, [open, active, onOpenChange]);
   const current = options.find(option => option.value === value);
   return <div className="app-select">
     <Select open={open && active} onOpenChange={setOpen} value={current ? `value:${value}` : ''} disabled={disabled} onValueChange={next => onChange(next.slice(6))}>

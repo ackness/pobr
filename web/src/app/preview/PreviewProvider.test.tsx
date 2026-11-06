@@ -5,7 +5,8 @@ import type { PreviewApi } from '../../components/shared/PreviewContext';
 import { PreviewProvider } from './PreviewProvider';
 
 // Replay the provider's hooks without a browser. Keep effects and refs across renders.
-const h = vi.hoisted(() => ({ cursor: 0, slots: [] as any[], pending: [] as (() => void)[], calculate: vi.fn(), mutation: () => {} }));
+const h = vi.hoisted(() => ({ cursor: 0, slots: [] as any[], pending: [] as (() => void)[], calculate: vi.fn(), mutation: () => {},
+  observe: vi.fn(), disconnect: vi.fn() }));
 vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
   useState: (initial: unknown) => { const i = h.cursor++; if (!(i in h.slots)) h.slots[i] = initial;
     return [h.slots[i], (next: unknown) => { h.slots[i] = typeof next === 'function' ? next(h.slots[i]) : next; }]; },
@@ -29,10 +30,12 @@ function render(route = 'items', version = 1) {
   return element.props.value as PreviewApi;
 }
 beforeEach(() => {
-  h.cursor = 0; h.slots = []; h.pending = []; h.calculate.mockReset(); vi.useFakeTimers();
+  h.cursor = 0; h.slots = []; h.pending = []; h.calculate.mockReset(); h.observe.mockClear(); h.disconnect.mockClear(); vi.useFakeTimers();
   vi.stubGlobal('window', globalThis);
   vi.stubGlobal('document', { body: {} });
-  vi.stubGlobal('MutationObserver', class { constructor(callback: () => void) { h.mutation = callback; } observe() {} disconnect() {} });
+  vi.stubGlobal('MutationObserver', class { constructor(callback: () => void) { h.mutation = callback; }
+    observe = h.observe; disconnect = h.disconnect;
+  });
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
@@ -81,4 +84,25 @@ it('clears known changes when their retained panel becomes hidden', () => {
   expect(render().state?.label).toBe('Known upgrade');
   hidden = true; h.mutation();
   expect(render().state).toBeNull();
+});
+
+it('watches only while a preview has a target, disconnecting on leave, reset and unmount', () => {
+  const target = { isConnected: true, closest: () => null } as unknown as Element;
+  const preview = render();
+  expect(h.observe).not.toHaveBeenCalled();
+  preview.showChanges('No target', changes);
+  expect(h.observe).not.toHaveBeenCalled();
+  preview.showChanges('Known upgrade', changes, target);
+  expect(h.observe).toHaveBeenCalledExactlyOnceWith(document.body, {
+    childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'inert'],
+  });
+  preview.clear();
+  expect(h.disconnect).toHaveBeenCalledTimes(1);
+  preview.show({ key: 'item', label: 'Item', request: () => ({}) }, target);
+  expect(h.observe).toHaveBeenCalledTimes(2);
+  render('overview');
+  expect(h.disconnect).toHaveBeenCalledTimes(2);
+  render('overview').showChanges('Known upgrade', changes, target);
+  h.slots.forEach(slot => slot?.cleanup?.());
+  expect(h.disconnect).toHaveBeenCalledTimes(3);
 });

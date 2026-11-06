@@ -1,4 +1,5 @@
 import { useGemDescriptions } from '../../hooks/useGemDescriptions';
+import { useConsumedRequest } from '../../hooks/useConsumedRequest';
 import { GemDescriptionPanel } from './GemDescriptionPanel';
 import { DisclosureChevron } from '../shared/DisclosureChevron';
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
@@ -53,7 +54,6 @@ function savedExclusions(key: string): string[] {
 }
 
 export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemName, gemCatalog, skillKey, focusNonce }: Props) {
-  const descriptions = useGemDescriptions();
   const preview = usePreview();
   const tt = bindT(lang);
   const st = (key: Parameters<typeof supportText>[1]) => supportText(lang, key);
@@ -63,6 +63,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const byId = useMemo(() => new Map(catalog.map(gem => [gem.skill_id, gem])), [catalog]);
   const occupied = group?.gems.filter(gem => byId.get(gem.skill_id)?.is_support).length ?? 0;
   const [expanded, setExpanded] = useState(false);
+  const descriptions = useGemDescriptions(active && expanded);
   const [capacity, setCapacity] = useState(Math.max(2, Math.min(5, occupied)));
   const [includeLineage, setIncludeLineage] = useState(true);
   const preferenceKey = uiStorageKey(`pobr-support-exclusions:${skillKey}`);
@@ -77,7 +78,6 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const abortRef = useRef<AbortController | null>(null);
   const settingsRef = useRef<HTMLDetailsElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const consumedFocus = useRef<number | undefined>(undefined);
   const pool = useMemo(() => {
     if (!group) return { gems: [], unknown: 0, levelBlocked: 0, incompatible: 0 };
     const eligible = eligibleSupports(group, catalog, session.character?.level ?? 1, includeLineage);
@@ -88,9 +88,11 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const canSearch = candidateCount > 0 || occupied > 0;
   const query = search.trim().toLocaleLowerCase(lang);
   const visibleGems = pool.gems.filter(gem => !query || `${gemName(gem.skill_id)} ${gem.name}`.toLocaleLowerCase(lang).includes(query));
-  const requestKey = JSON.stringify(session.currentRequest());
-  const settingsKey = JSON.stringify([requestKey, session.stateVersion, session.socketGroupRevision,
-    session.dataVersion, session.treeVersion, session.activeWeaponSet, groupIndex, capacity, includeLineage, goal, excludedIds, damage.stat]);
+  const requestKey = useMemo(() => JSON.stringify(session.currentRequest()), [session.currentRequest, session.stateVersion]);
+  const settingsKey = useMemo(() => JSON.stringify([requestKey, session.stateVersion, session.socketGroupRevision,
+    session.dataVersion, session.treeVersion, session.activeWeaponSet, groupIndex, capacity, includeLineage, goal, excludedIds, damage.stat]),
+  [requestKey, session.stateVersion, session.socketGroupRevision, session.dataVersion, session.treeVersion,
+    session.activeWeaponSet, groupIndex, capacity, includeLineage, goal, excludedIds, damage.stat]);
   const result = evaluated?.settingsKey === settingsKey && evaluated.requestKey === requestKey
     && evaluated.catalog === catalog ? evaluated : null;
   const stop = () => {
@@ -115,12 +117,11 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const select = () => {
     if (mainIndex !== groupIndex) session.updateParams({ main_socket_group: groupIndex });
   };
-  useLayoutEffect(() => {
-    if (!active || focusNonce === undefined || consumedFocus.current === focusNonce) return;
-    consumedFocus.current = focusNonce;
+  const focusRequest = useConsumedRequest(active, focusNonce, () => {
     setExpanded(true);
     rootRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }, [active, focusNonce]);
+  });
+  useLayoutEffect(focusRequest, [focusRequest]);
   useLayoutEffect(() => {
     invalidate();
   }, [settingsKey, catalog]);

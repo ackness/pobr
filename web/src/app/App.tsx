@@ -63,6 +63,8 @@ function syncMessage(kind: SyncNotice['kind'], w: (en: string, cn: string, tw?: 
 }
 
 const RAIL_HIDDEN_KEY = uiStorageKey('pobr-rail-hidden');
+const IS_APPLE_PLATFORM = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+const shortcutKey = IS_APPLE_PLATFORM ? '⌘' : 'Ctrl';
 const icons = { overview: LayoutDashboard, build: Library, tree: Network, skills: Gem, items: Swords, trade: TrendingUp, calcs: Calculator, config: SlidersHorizontal, compare: Columns2 };
 
 function download(text: string, name: string) {
@@ -200,7 +202,6 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const inspector = inspect && <Suspense fallback={<div className="insp" role="status"><Skeleton className="h-6 w-1/2" /><Skeleton className="mt-4 h-40 w-full" /></div>}>
     <Inspector session={session} view={view} lang={lang} id={inspect} onClose={() => setInspect(null)} onNavigate={() => { skipInspectorRestore.current = !docked; setInspect(null); }} onOpenCalcs={focusStat} pinned={pinned.includes(inspect)} onTogglePin={() => togglePin(inspect)} /></Suspense>;
   const panelLoading = <div role="status" className="shell-panel-loading"><Skeleton className="h-12 w-2/3" /><Skeleton className="h-64 w-full" /><p>{t(lang, 'ui.loadingPanel')}</p></div>;
-  const shortcutKey = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
   const saveState = session.storageFailed ? w('Save failed', '保存失败', '儲存失敗') : session.busy ? w('Calculating', '计算中', '計算中') : t(lang, 'shell.saved');
   const rail = <ResultsRail route={route} session={session} view={view} lang={lang} onStatClick={inspectStat} onNavigate={navigate} pinned={pinned} onTogglePin={togglePin} />;
   const importNotice = reviewStage && reviewStage.scope === stageKey && <ImportReviewNotice route={route} lang={lang}
@@ -218,7 +219,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
       </div>
       {tabs()}
       <div className="shell-topbar-actions">
-        <TopbarAction hint={t(lang, 'shell.searchHint').replace('{key}', shortcutKey)} variant="ghost" size="sm" className="shell-palette-button" aria-label={w('Search and commands', '搜索与命令', '搜尋與命令')} onClick={() => setPaletteOpen(true)}><Search /><kbd>{/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'}</kbd></TopbarAction>
+        <TopbarAction hint={t(lang, 'shell.searchHint').replace('{key}', shortcutKey)} variant="ghost" size="sm" className="shell-palette-button" aria-label={w('Search and commands', '搜索与命令', '搜尋與命令')} onClick={() => setPaletteOpen(true)}><Search /><kbd>{IS_APPLE_PLATFORM ? '⌘K' : 'Ctrl K'}</kbd></TopbarAction>
         <TopbarAction hint={w('Build library', 'BD 库', 'BD 庫')} variant="ghost" size="sm" className="shell-builds-button" aria-current={route === 'build' ? 'page' : undefined} onClick={() => { setImportFocusRequest(value => value + 1); navigate('build'); }}><Library /><span className="shell-quiet-label">{w('Build library', 'BD 库', 'BD 庫')}</span></TopbarAction>
         <TopbarAction hint={t(lang, 'compare.saveBaseline')} aria-label={t(lang, 'compare.saveBaseline')} className="shell-baseline-button" variant="ghost" size="sm" disabled={session.busy} onClick={session.saveComparisonBaseline}><BookmarkPlus data-icon="inline-start" /><span className="shell-quiet-label">{t(lang, 'compare.saveBaseline')}</span></TopbarAction>
         <TopbarHint hint={saveState}><span tabIndex={0} className={`shell-save-state${session.storageFailed ? ' is-error' : ''}`} role="status" data-busy={session.busy || undefined}>{session.busy ? <LoaderCircle className="animate-spin" /> : <Check />}<span className="shell-quiet-label">{saveState}</span></span></TopbarHint>

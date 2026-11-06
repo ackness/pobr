@@ -1,14 +1,17 @@
-import { act, type ComponentProps } from 'react';
+import { act, useLayoutEffect, type ComponentProps } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import type { GemCatalogEntry } from '../../api/types';
 import type { SupportMetadata } from '../../lib/supportOptimizer';
 import { SkillsPanel } from './SkillsPanel';
+import { useConsumedRequest } from '../../hooks/useConsumedRequest';
 
 const ui = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], inputs: [] as ComponentProps<'input'>[],
-  gems: [] as GemCatalogEntry[], trade: [] as SupportMetadata[], optimize: vi.fn() }));
-vi.mock('../../api/backend', () => ({ getBackend: async () => ({ gemCatalog: async () => ui.gems, gemDescriptions: async () => null, supportGroupsCompatible: async (groups: unknown[]) => groups.map(() => true) }) }));
+  gems: [] as GemCatalogEntry[], trade: [] as SupportMetadata[], optimize: vi.fn(), metrics: vi.fn(),
+  pickers: [] as { placeholder: string; entries: GemCatalogEntry[] }[] }));
+vi.mock('../../api/backend', () => ({ getBackend: async () => ({ gemCatalog: async () => ui.gems, gemDescriptions: async () => null,
+  skillMetrics: ui.metrics, supportGroupsCompatible: async (groups: unknown[]) => groups.map(() => true) }) }));
 vi.mock('../../lib/tradeOptimizer', () => ({ loadTradeCatalog: async () => ({ gems: ui.trade }) }));
 vi.mock('../../lib/supportOptimizer', async original => ({ ...await original<typeof import('../../lib/supportOptimizer')>(), optimizeSupports: ui.optimize }));
 vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: { preset: 'dps' }, setGoal: () => {} }) }));
@@ -28,7 +31,7 @@ vi.mock('./MinionSelection', () => ({ MinionSelection: () => null }));
 vi.mock('./SkillFormControls', () => ({ SkillFormControls: () => null }));
 vi.mock('./GemNameCopy', () => ({ GemNameCopy: () => null }));
 vi.mock('./SupportDescriptions', () => ({ SupportDescriptions: () => null }));
-vi.mock('./GemPicker', () => ({ GemPicker: () => null }));
+vi.mock('./GemPicker', () => ({ GemPicker: (props: { placeholder: string; entries: GemCatalogEntry[] }) => { ui.pickers.push(props); return null; } }));
 vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { ui.buttons.push(props); return <button {...props} />; },
   AppInput: (props: ComponentProps<'input'>) => { ui.inputs.push(props); return <input {...props} />; },
@@ -84,11 +87,11 @@ beforeEach(() => {
   vi.stubGlobal('window', document.defaultView);
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('localStorage', { getItem: () => null });
-  ui.buttons = []; ui.inputs = [];
+  ui.buttons = []; ui.inputs = []; ui.pickers = []; ui.metrics.mockReset();
   ui.optimize.mockReset().mockResolvedValue({ baseline: { CombinedDPS: 100 }, baselineUnsupported: [], plans: [], excluded: [], candidates: 0, evaluated: 0, unmodeled: 0 });
   root = createRoot(document.createElement('div') as unknown as HTMLElement);
 });
-afterEach(async () => { await act(async () => root.unmount()); vi.unstubAllGlobals(); });
+afterEach(async () => { await act(async () => root.unmount()); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 it('remounts same-skill editors when switching groups and on revision changes, resetting capacity before evaluation', async () => {
   const fire: GemCatalogEntry = { skill_id: 'Fireball', name: 'Fireball', name_zh_cn: '火球', name_zh_tw: '火球', is_support: false, is_lineage: false, is_unique_only: false,
@@ -107,6 +110,10 @@ it('remounts same-skill editors when switching groups and on revision changes, r
   const lastButton = (className: string) => ui.buttons.filter(button => button.className?.split(' ').includes(className)).at(-1)!;
   const capacity = () => ui.inputs.filter(input => input.type === 'number' && input.min === 2 && input.max === 5).at(-1)!;
   await act(async () => root.render(<SkillsPanel session={session} lang="en-US" active />));
+  const supportEntries = () => ui.pickers.filter(picker => picker.placeholder === 'Add a support gem…').at(-1)!.entries;
+  const entries = supportEntries();
+  await click(lastButton('skills-list-toggle'));
+  expect(supportEntries()).toBe(entries);
   await click(lastButton('gem-optimizer-toggle'));
   expect(capacity().value).toBe(5);
 
@@ -125,4 +132,126 @@ it('remounts same-skill editors when switching groups and on revision changes, r
   expect(lastButton('gem-optimizer-toggle')['aria-expanded']).toBe(false);
   await click(lastButton('gem-optimizer-toggle'));
   expect(capacity().value).toBe(2);
+});
+
+// Reuse the mounted React host for the shared hook; SkillsPanel's visual tests above keep their stub.
+const { useSkillMetrics: useSharedSkillMetrics } = await vi.importActual<typeof import('../../app/pages/skills/useSkillMetrics')>('../../app/pages/skills/useSkillMetrics');
+type Snapshot = ReturnType<typeof useSharedSkillMetrics>;
+function metricsSession(): BuildSession {
+  return { stateVersion: 1, socketGroupRevision: 1, busy: false,
+    socketGroups: [{ enabled: true, gems: [] }], currentRequest: () => ({ socket_groups: [] }),
+  } as unknown as BuildSession;
+}
+function MetricsConsumer({ session, enabled = true, onSnapshot }: {
+  session: BuildSession; enabled?: boolean; onSnapshot: (snapshot: Snapshot) => void;
+}) {
+  onSnapshot(useSharedSkillMetrics(session, enabled));
+  return null;
+}
+async function debounceMetrics() {
+  await act(async () => { await vi.advanceTimersByTimeAsync(250); });
+}
+
+it('shares in-flight and resolved skill metrics, retaining a closed consumer snapshot on reopening', async () => {
+  vi.useFakeTimers();
+  const session = metricsSession();
+  let resolve!: (result: { skills: [] }) => void;
+  ui.metrics.mockReturnValue(new Promise(done => { resolve = done; }));
+  let rail: Snapshot = null, skills: Snapshot = null;
+  const render = async (open: boolean, page = true) => {
+    await act(async () => root.render(<>
+      <MetricsConsumer session={session} enabled={open} onSnapshot={snapshot => { rail = snapshot; }} />
+      {page && <MetricsConsumer session={session} onSnapshot={snapshot => { skills = snapshot; }} />}
+    </>));
+  };
+  await render(true); await debounceMetrics();
+  expect(ui.metrics).toHaveBeenCalledOnce();
+  await act(async () => { resolve({ skills: [] }); });
+  expect(rail).toEqual({ revision: 1, skills: [] });
+  expect(rail).toBe(skills);
+  const previous = rail;
+  await render(false, false); await debounceMetrics();
+  expect(rail).toBe(previous);
+  await render(true, false);
+  expect(rail).toBe(previous);
+  await debounceMetrics();
+  expect(ui.metrics).toHaveBeenCalledOnce();
+});
+
+it('keeps only the latest metric request key and separates independent sessions with equal versions', async () => {
+  vi.useFakeTimers(); ui.metrics.mockResolvedValue({ skills: [] });
+  const first = metricsSession(), second = metricsSession();
+  const render = async (session: BuildSession) => {
+    await act(async () => root.render(<MetricsConsumer session={session} onSnapshot={() => {}} />));
+    await debounceMetrics();
+  };
+  await render(first);
+  await render({ ...first, stateVersion: 2 });
+  expect(ui.metrics).toHaveBeenCalledTimes(2);
+  await render(first);
+  expect(ui.metrics).toHaveBeenCalledTimes(3);
+  await act(async () => root.render(null));
+  await render(second);
+  expect(ui.metrics).toHaveBeenCalledTimes(4);
+});
+
+it('retries failed metric batches and discards late results for a closed consumer', async () => {
+  vi.useFakeTimers();
+  const session = metricsSession();
+  let snapshot: Snapshot = null;
+  const render = async (enabled: boolean) => {
+    await act(async () => root.render(<MetricsConsumer session={session} enabled={enabled} onSnapshot={value => { snapshot = value; }} />));
+  };
+  ui.metrics.mockRejectedValueOnce(new Error('unavailable'));
+  await render(true); await debounceMetrics();
+  expect(snapshot).toBeNull();
+  await render(false);
+  let resolve!: (result: { skills: [] }) => void;
+  ui.metrics.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+  await render(true); await debounceMetrics();
+  expect(ui.metrics).toHaveBeenCalledTimes(2);
+  await render(false);
+  await act(async () => { resolve({ skills: [] }); });
+  expect(snapshot).toBeNull();
+  await render(true); await debounceMetrics();
+  expect(snapshot).toEqual({ revision: 1, skills: [] });
+  expect(ui.metrics).toHaveBeenCalledTimes(2);
+});
+
+it('does not request metric batches while closed, busy, failed or groupless and cancels pending debounce', async () => {
+  vi.useFakeTimers();
+  const session = metricsSession();
+  const render = async (current: BuildSession, enabled = true) => {
+    await act(async () => root.render(<MetricsConsumer session={current} enabled={enabled} onSnapshot={() => {}} />));
+  };
+  await render(session, false); await debounceMetrics();
+  await render({ ...session, busy: true }); await debounceMetrics();
+  await render({ ...session, calcError: 'failed' }); await debounceMetrics();
+  await render({ ...session, socketGroups: [] }); await debounceMetrics();
+  await render(session); await render(session, false); await debounceMetrics();
+  expect(ui.metrics).not.toHaveBeenCalled();
+});
+
+it('consumes focus nonces in the chosen effect phase only while active and before running the callback', async () => {
+  const run = vi.fn();
+  let consume!: () => void;
+  function FocusRequest({ active, nonce }: { active: boolean; nonce?: number }) {
+    consume = useConsumedRequest(active, nonce, () => { run(); consume(); });
+    useLayoutEffect(consume, [consume]);
+    return null;
+  }
+  const render = async (active: boolean, nonce?: number) => {
+    await act(async () => root.render(<FocusRequest active={active} nonce={nonce} />));
+  };
+  await render(true);
+  await render(false, 1);
+  expect(run).not.toHaveBeenCalled();
+  await render(true, 1);
+  expect(run).toHaveBeenCalledOnce();
+  await render(true, 1);
+  await render(false, 1);
+  await render(true, 1);
+  expect(run).toHaveBeenCalledOnce();
+  await render(true, 2);
+  expect(run).toHaveBeenCalledTimes(2);
 });

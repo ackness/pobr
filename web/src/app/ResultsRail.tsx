@@ -81,7 +81,8 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
   const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
   const catalog = useSkillCatalog();
   const calc = view.calc;
-  const skillMetrics = useSkillMetrics(session, true);
+  const [skillPickerOpen, setSkillPickerOpen] = useState(false);
+  const skillMetrics = useSkillMetrics(session, skillPickerOpen);
   const groups = session.socketGroups;
   const selected = session.calcParams.main_socket_group;
   const mainSkill: MainSkillInfo | null = calc && selected !== undefined ? calc.main_skill : null;
@@ -95,7 +96,7 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
   const numberOf = (value: number) => (shown: number | null) => formatStatValue(shown ?? value, 'float2');
   return <div className="rail-headline">
     {groups.length > 0 && <div className="rail-skill-picker"><span>{tt('sidebar.mainSkill')}</span><AppSelect ariaLabel={tt('sidebar.mainSkill')} value={selected === undefined ? '' : String(selected)} placeholder={tt('sidebar.unselected')}
-      disabled={session.busy} onChange={value => session.updateParams({ main_socket_group: Number(value) })}
+      disabled={session.busy} onOpenChange={setSkillPickerOpen} onChange={value => session.updateParams({ main_socket_group: Number(value) })}
       options={calculatedSkillOptions(groups, catalog, skillMetrics && skillMetrics.revision === session.socketGroupRevision ? skillMetrics.skills : [], calc, lang)} /></div>}
     <div className="rail-scenario"><span>{w('Enemy tier', '敌人档位', '敵人檔位')}</span>
       <AppSelect ariaLabel={w('Enemy tier', '敌人档位', '敵人檔位')} value={enemy === 'custom' ? '' : enemy} placeholder={w('Custom', '自定义', '自訂')} disabled={session.busy}
