@@ -114,7 +114,7 @@ describe('lineText', () => {
     expect(unmodelled.reason).toContain('life_flask_self_only');
     expect(ledgerReason({ ...unmodelled, status: 'no_effect' }, 'zh-CN')).toBe(unmodelled.reason);
     expect(ledgerReason(line('no_effect', { reason: 'a config option nothing in this build asks for' }), 'zh-TW'))
-      .toBe('目前構築沒有使用此配置項。');
+      .toBe('目前 BD 沒有使用此配置項。');
     expect(ledgerReason(line('inactive', { reason: 'Condition FutureCondition not met' }), 'zh-CN'))
       .toBe('Condition FutureCondition not met');
   });

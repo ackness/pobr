@@ -218,7 +218,7 @@ test('hovering a gem upgrade on Upgrades previews its effect from the stats it a
   await importBuild(page);
   await page.goto('/trade');
   await page.locator('.trade-position').filter({ hasText: 'Skill and support gems' }).click();
-  await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+  await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
   const card = page.locator('.trade-gem-card').first();
   await expect(card).toBeVisible({ timeout: 90_000 });
   await card.hover();

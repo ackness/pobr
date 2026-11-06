@@ -50,6 +50,19 @@ it('reuses the existing slot contribution with signed removal losses and explain
   expect(render(current, 'ring1')).toContain('Combined DPS 10 · Effective HP 50');
 });
 
+it.each([
+  ['en-US', 'Loss if removed: Combined DPS 12,346 · Effective HP -20'],
+  ['zh-CN', '移除此装备后的损失：综合 DPS 12,346 · 有效生命 -20'],
+  ['zh-TW', '移除此裝備後的損失：綜合 DPS 12,346 · 有效生命 -20'],
+] as const)('uses DPS and effective HP precision with localized punctuation in %s', (lang, expected) => {
+  const current: BuildSession = { ...session(), sourceContributions: { ...report, entries: [
+    { kind: 'item', id: 'weapon1', deltas: { CombinedDPS: 12345.67, TotalEHP: -20.49 } },
+  ] } };
+  ui.cursor = 0;
+  const html = renderToStaticMarkup(<ItemContribution session={current} slot="weapon1" lang={lang} />);
+  expect(html).toContain(expected);
+});
+
 it('offers the existing attribution action when the slot result is missing and keeps absent numbers unknown', async () => {
   const current = session();
   expect(render(current)).toContain('No contribution result');

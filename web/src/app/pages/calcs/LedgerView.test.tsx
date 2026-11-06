@@ -39,7 +39,7 @@ test('the check button is disabled until there is a calculation to read', () => 
 test('Calcs has a Ledger tab', () => {
   const html = render(<CalcsPanel session={session} lang="en-US" />);
   expect(html).toContain('role="tab"');
-  expect(html).toContain('>Ledger<');
+  expect(html).toContain('>Modifier ledger<');
 });
 
 test('the development mock is a realistic ledger: every status appears and the counts agree with the lines', () => {

@@ -94,7 +94,7 @@ async function openOptimizer(page: Page) {
 async function boundRealCandidatePool(page: Page) {
   await page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true }).fill('2');
   await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
-  await choose(page, page.getByRole('combobox', { name: 'Objective', exact: true }), 'Max total DPS');
+  await choose(page, page.getByRole('combobox', { name: 'Objective', exact: true }), 'Max Hit DPS');
   const pool = page.locator('.support-pool-details');
   await pool.locator('summary').click();
   for (const id of [swift, ...modeled]) {
@@ -164,9 +164,9 @@ for (const [layout, viewport] of [
       // Baseline limits are disclosed, not newly introduced rejection reasons.
       await expect(page.locator('.support-diagnostic-excluded')).toHaveCount(0);
       const plans = await recommendationsReceipt(page);
-      for (const name of ['Calcs', 'Tree']) {
+      for (const name of ['Calculations', 'Tree']) {
         await goTo(page, name);
-        await expect(page.locator(name === 'Calcs' ? '.calcs-page' : '.tree-canvas')).toBeVisible();
+        await expect(page.locator(name === 'Calculations' ? '.calcs-page' : '.tree-canvas')).toBeVisible();
         await expect(run(page)).toHaveCount(0);
         await goTo(page, 'Skills');
         await expect(baseline(page).locator('.unincluded-raw > pre')).toHaveText([normalReceipt]);
@@ -222,9 +222,9 @@ for (const [layout, viewport] of [
       expect(preview).toBeGreaterThan(beforeDps);
       const excluded = await rejectedReceipt(rejected);
       const recommendations = await recommendationsReceipt(page);
-      for (const name of ['Calcs', 'Tree', 'Upgrades']) {
+      for (const name of ['Calculations', 'Tree', 'Upgrades']) {
         await goTo(page, name);
-        await expect(page.locator(name === 'Calcs' ? '.calcs-page' : name === 'Tree' ? '.tree-canvas' : '.upgrade-paths')).toBeVisible();
+        await expect(page.locator(name === 'Calculations' ? '.calcs-page' : name === 'Tree' ? '.tree-canvas' : '.upgrade-paths')).toBeVisible();
         await expect(run(page)).toHaveCount(0);
         await goTo(page, 'Skills');
         await expect.poll(() => rejectedReceipt(rejected)).toEqual(excluded);

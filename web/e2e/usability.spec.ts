@@ -112,7 +112,7 @@ test('config drafts commit on Enter and reset restores imported values in the sa
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible();
-  await goTo(page, 'Config');
+  await goTo(page, 'Configuration');
   const search = page.getByRole('searchbox', { name: 'Search config options…' });
   await search.fill('enemyLevel');
   const level = page.locator('#config-enemyLevel');
@@ -145,7 +145,7 @@ test('config drafts commit on Enter and reset restores imported values in the sa
   await page.locator('.search-empty').getByRole('button', { name: 'All', exact: true }).click();
   await expect(search).toHaveValue('');
   await expect(page.locator('.config-section').first()).toBeVisible();
-  await goTo(page, 'Calcs');
+  await goTo(page, 'Calculations');
   await page.locator('.calcs-search').fill('no-such-stat-123');
   await expect(page.locator('.search-empty')).toBeVisible();
   await page.getByRole('button', { name: 'Clear search', exact: true }).click();

@@ -1,3 +1,4 @@
+import { t } from '../src/lib/i18n';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { answerConfirm } from './confirmDialog';
@@ -6,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
 // The skill picker at the top of the results panel. `goTo` opens the menu sheet where the page links are folded away.
-const inspected = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
+const inspected = (page: Page) => page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 const ring = 'Rarity: RARE\nDraft Ring\nSapphire Ring\n+100 to maximum Life';
 const monk = readFileSync('../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', 'utf8');
@@ -33,7 +34,7 @@ test('item drafts survive slot and page switches; cancel discards them and savin
   await page.getByRole('textbox', { name: 'ring1 item text' }).fill(ring);
   await page.getByRole('button', { name: 'Ring 2', exact: true }).click();
   await page.getByRole('textbox', { name: 'ring2 item text' }).fill(ring.replace('Draft Ring', 'Second Draft'));
-  await goTo(page, 'Calcs');
+  await goTo(page, 'Calculations');
   expect((await saved(page)).items).toEqual([]);
   await goTo(page, 'Items');
   await page.getByRole('button', { name: 'Ring 1', exact: true }).click();
@@ -62,7 +63,7 @@ test('jewel drafts survive navigation and unallocating removes both the socket p
   await node.dispatchEvent('click');
   const draft = 'Rarity: RARE\nJewel Draft\nSapphire\n10% increased maximum Energy Shield';
   await page.getByRole('textbox', { name: 'Jewel socket', exact: true }).fill(draft);
-  await goTo(page, 'Config');
+  await goTo(page, 'Configuration');
   await goTo(page, 'Tree');
   await expect(page.getByRole('textbox', { name: 'Jewel socket', exact: true })).toHaveValue(draft);
   await page.getByRole('button', { name: 'Apply changes', exact: true }).click();
@@ -198,7 +199,7 @@ test('importing a build with no notes and starting a new character clear previou
 
 test('changing the selected skill hides stale attribution until a new calculation completes', async ({ page }) => {
   await start(page, emptyNotes);
-  await goTo(page, 'Calcs');
+  await goTo(page, 'Calculations');
   await page.getByRole('tab', { name: 'Source contributions', exact: true }).click();
   await page.getByRole('button', { name: 'Source contributions', exact: true }).click();
   await expect(page.locator('.attribution-table')).toBeVisible();
@@ -243,7 +244,7 @@ test('attribution identifies the whole removed group when its selected active ge
   await start(page, code);
   await expect(inspected(page)).toContainText('Fireball');
   const before = await saved(page);
-  await goTo(page, 'Calcs');
+  await goTo(page, 'Calculations');
   await page.getByRole('tab', { name: 'Source contributions', exact: true }).click();
   await page.getByRole('button', { name: 'Source contributions', exact: true }).click();
   const group = page.locator('.attribution-table tbody tr').filter({ hasText: 'Skill group' });

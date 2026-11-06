@@ -1,5 +1,6 @@
+import { t } from '../src/lib/i18n';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { buildAction, openItemsAfterImport, pageLink, statValue } from './shell';
+import { buildAction, openItemsAfterImport, pageLink, playerHitDps } from './shell';
 import { importInto, openBuild, openExport, selectStage as chooseStage, settled, stableText } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
@@ -9,8 +10,8 @@ import type { BuildWorkspace } from '../src/lib/buildWorkspace';
 
 type Envelope = SavedSession & { workspace: BuildWorkspace };
 const cometCode = readFileSync(new URL('../../examples/demo-bd-test/builds/sorceress-stormweaver-comet/code.txt', import.meta.url), 'utf8').trim();
-const hitDps = (page: Page) => statValue(page, /^Hit DPS$/).first();
-const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
+const hitDps = (page: Page) => playerHitDps(page);
+const mainSkill = (page: Page) => page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
 
 async function snapshot(page: Page): Promise<Envelope> {
   return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));

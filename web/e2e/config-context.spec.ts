@@ -14,7 +14,7 @@ test('editing a deep combat option keeps the scroll position throughout recalcul
   const source = readFileSync(new URL('../../examples/wasm-benchmark/builds/ninja-2026-10-11-ranger-deadeye-ice-shot-b6ce7b3a4329/code.txt', import.meta.url), 'utf8').trim();
   await page.goto('/build');
   await importCode(page, source);
-  await go(page, 'Config');
+  await go(page, 'Configuration');
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   const option = page.locator('#config-conditionCritRecently');
   await option.scrollIntoViewIfNeeded();
@@ -38,7 +38,7 @@ test('editing a deep combat option keeps the scroll position throughout recalcul
   });
   expect(Math.min(...positions)).toBeGreaterThanOrEqual(top - 2);
   expect(await page.locator('#shell-main').evaluate(el => el.scrollTop)).toBeCloseTo(top, 0);
-  await go(page, 'Calcs');
+  await go(page, 'Calculations');
   await page.getByRole('button', { name: 'All metrics', exact: true }).click();
   const metrics = page.locator('.calcs-metric-list');
   await metrics.evaluate(el => { el.scrollTop = 800; });
@@ -52,8 +52,8 @@ test('applicable view hides irrelevant controls, all options exposes them, impor
   await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
   await importCode(page, code());
-  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
-  await go(page, 'Config');
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await go(page, 'Configuration');
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   const search = page.getByLabel('Search config options…');
   const stacks = page.locator('.config-item[data-config-var="demonFormStacks"]');
@@ -71,8 +71,8 @@ test('applicable view hides irrelevant controls, all options exposes them, impor
   await expect(stacks.locator('input')).toHaveValue('0');
 
   await importCode(page, code('<Input name="demonFormStacks" number="0"/><Input name="BrandsInLastHalf" boolean="false"/>'));
-  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible();
-  await go(page, 'Config');
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
+  await go(page, 'Configuration');
   await search.fill('demonFormStacks');
   await expect(stacks).toContainText('Not relevant to this build');
   await expect(stacks.locator('input')).toHaveValue('0');
@@ -96,7 +96,7 @@ test('applicable view hides irrelevant controls, all options exposes them, impor
   expect(xml).toMatch(/<Input name="demonFormStacks" number="0"/);
   expect(xml).toMatch(/<Input name="BrandsInLastHalf" boolean="false"/);
   await page.reload();
-  await go(page, 'Config');
+  await go(page, 'Configuration');
   await search.fill('demonFormStacks');
   await expect(stacks.locator('input')).toHaveValue('0');
 });
@@ -144,7 +144,7 @@ test('read tracking is requested only while Config is open, including edits and 
   await expect.poll(requests).toContainEqual({ configContext: false, level: 21 });
   expect((await requests()).every(request => !request.configContext)).toBe(true);
   await clear();
-  await go(page, 'Config');
+  await go(page, 'Configuration');
   await expect.poll(requests).toContainEqual({ configContext: true, level: 21 });
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   await page.getByLabel('Search config options…').fill('demonFormStacks');
@@ -164,7 +164,7 @@ test('read tracking is requested only while Config is open, including edits and 
   expect((await requests()).every(request => !request.configContext)).toBe(true);
 
   await clear();
-  await go(page, 'Config');
+  await go(page, 'Configuration');
   await expect.poll(requests).toContainEqual({ configContext: true, level: 23 });
   expect(await page.evaluate(() => localStorage.getItem('pobr-v2-build-state'))).not.toContain('"config_context"');
   await page.reload();
@@ -177,8 +177,8 @@ test('an option that depends on the one just set appears in its own group, not i
   await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
   await importCode(page, code());
-  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
-  await go(page, 'Config');
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await go(page, 'Configuration');
   await page.locator('.config-view').getByRole('radio', { name: 'All', exact: true }).click();
   const dependent = page.locator('#config-section-When-In-Combat .config-item[data-config-var="conditionChilledEffect"]');
   const promoted = page.locator('#config-section-Relevant-to-this-build .config-item[data-config-var="conditionChilledEffect"]');

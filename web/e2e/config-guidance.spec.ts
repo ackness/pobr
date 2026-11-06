@@ -1,4 +1,5 @@
 import { buildAction } from './shell';
+import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
@@ -14,7 +15,7 @@ const numeric = (text: string) => Number(text.replaceAll(',', ''));
 const controlIds = (page: Page) => page.locator('.config-section .config-item :is(input, button)[id^="config-"]')
   .evaluateAll(elements => elements.map(element => element.id).sort());
 /** The skill whose numbers the results panel shows. */
-const inspectedSkill = (page: Page) => page.locator('.shell-rail').getByRole('combobox', { name: 'Inspected skill', exact: true });
+const inspectedSkill = (page: Page) => page.locator('.shell-rail').getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
 const common = ['conditionEnemyShocked', 'conditionShockEffect'];
 const hitSettings: Record<string, string> = {
   Physical: 'enemyPhysicalReduction', Fire: 'enemyFireResist', Cold: 'enemyColdResist',
@@ -56,7 +57,7 @@ async function configInputs(page: Page): Promise<Record<string, ConfigInputValue
 
 /** The Config page with its quick-access card open (the card sits in a disclosure that starts closed). */
 async function openConfig(page: Page) {
-  await go(page, 'Config');
+  await go(page, 'Configuration');
   await openQuickAccess(page);
 }
 
@@ -401,7 +402,7 @@ for (const planner of ['support', 'replacement'] as const) {
       await page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true }).fill('2');
       await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
       await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
-      await page.getByRole('option', { name: 'Max total DPS', exact: true }).click();
+      await page.getByRole('option', { name: 'Max Hit DPS', exact: true }).click();
       await page.getByRole('button', { name: 'Calculate support combinations', exact: true }).click();
       await expect(page.locator('.support-plan').first()).toBeVisible({ timeout: 90_000 });
       await expect(page.getByRole('button', { name: 'Calculate support combinations', exact: true })).toBeEnabled();
@@ -410,7 +411,7 @@ for (const planner of ['support', 'replacement'] as const) {
         elements.map(element => element.getAttribute('data-skill-id')));
     } else {
       await go(page, 'Upgrades');
-      await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
+      await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
       await page.getByRole('textbox', { name: 'Complete item text', exact: true }).evaluate(element => {
         const data = new DataTransfer();
         data.setData('text/plain', 'Rarity: RARE\nSynthetic Guidance Replacement\nSapphire Ring\nImplicits: 0\n100% increased Fire Damage\n+100 to maximum Life');

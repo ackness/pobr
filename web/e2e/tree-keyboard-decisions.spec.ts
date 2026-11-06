@@ -344,7 +344,7 @@ test('keyboard selection and drafts retain real planner receipts until explicit 
   await expect.poll(() => receipts.innerText()).toBe(receipt);
   await expect.poll(() => jointResults.innerText()).toBe(jointReceipt);
   await details.press('Escape');
-  await nav(page, 'Calcs').click();
+  await nav(page, 'Calculations').click();
   await expect(page.locator('.tree-canvas')).toHaveCount(0);
   await nav(page, 'Tree').click();
   await expect.poll(() => receipts.innerText()).toBe(receipt);
@@ -536,7 +536,7 @@ test('focused inspector controls and hidden canvas cannot receive stale pointer-
     await page.keyboard.press(key);
     expect(await capture(page)).toEqual(original);
   }
-  await nav(page, 'Calcs').dispatchEvent('click');
+  await nav(page, 'Calculations').dispatchEvent('click');
   await expect(page.locator('.tree-canvas, .tree-node-details, .tree-tooltip')).toHaveCount(0);
   await page.locator('body').click({ position: { x: 2, y: 2 } });
   for (const key of ['s', 'd', 'i', '1', '2', '3']) await page.keyboard.press(key);

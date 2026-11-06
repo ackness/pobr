@@ -7,7 +7,7 @@ const code = deflateSync(Buffer.from('<PathOfBuilding2><Build level="80" classNa
 test('party members can be imported, edited, disabled, restored and removed', async ({ page }) => {
   await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
-  await go(page, 'Config');
+  await go(page, 'Configuration');
   await page.getByRole('tab', { name: 'Party', exact: true }).click();
   await page.getByLabel('Member build code', { exact: true }).fill(code);
   await page.getByRole('button', { name: 'Import member', exact: true }).click();

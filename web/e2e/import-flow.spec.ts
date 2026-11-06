@@ -31,7 +31,7 @@ test('import build code and browse tabs', async ({ page }) => {
 
   // 计算完成 → 自动落到概览页；结果栏出现非零 EnergyShield，再进入 Items 页。
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
   const sidebar = page.getByRole('complementary', { name: 'Character stats' });
   await expect(sidebar).toContainText('Energy Shield');
   const esValue = statValue(page, /^Energy Shield$/).first();
@@ -45,7 +45,7 @@ test('import build code and browse tabs', async ({ page }) => {
   await expect(page.locator('.skill-group.is-main')).toHaveCount(1);
 
   // Calcs 页：点开一项，明细出现在右侧详情里。
-  await pageLink(page, 'Calcs').click();
+  await pageLink(page, 'Calculations').click();
   await page.locator('#breakdown-Life').click();
   await expect(page.locator('#calcs-detail .formula-conclusion, #calcs-detail .breakdown-table').first()).toBeVisible();
 

@@ -17,16 +17,16 @@ describe('ScenarioBar', () => {
   it('presses exactly the preset that matches the enemy tier', () => {
     expect(pressed(render('boss'))).toEqual(['Boss']);
     expect(pressed(render('none'))).toEqual(['Mapping']);
-    expect(pressed(render('uber'))).toEqual(['Uber']);
+    expect(pressed(render('uber'))).toEqual(['Uber Boss']);
   });
 
   it('shows the engine default, a Pinnacle boss, when the build sets no enemy', () => {
-    expect(pressed(render(undefined))).toEqual(['Pinnacle']);
+    expect(pressed(render(undefined))).toEqual(['Pinnacle Boss']);
   });
 
   it.each([
     ['en-US', 'Using the build’s enemy settings.'],
-    ['zh-CN', '使用构筑中的敌人设置。'],
+    ['zh-CN', '使用 BD 中的敌人设置。'],
     ['zh-TW', '使用 BD 中的敵人設定。'],
   ] as const)('explains the custom enemy settings in %s without selecting a preset', (lang, message) => {
     const html = render(undefined, lang, { enemyIsBoss: 'Standard' });
@@ -35,7 +35,7 @@ describe('ScenarioBar', () => {
   });
 
   it.each([
-    ['en-US', 'Pinnacle', 'Mapping'],
+    ['en-US', 'Pinnacle Boss', 'Mapping'],
     ['zh-CN', '巅峰 Boss', '刷图'],
     ['zh-TW', '巔峰頭目', '刷圖'],
   ] as const)('identifies the selected enemy in %s without a duplicate status message', (lang, pinnacle, mapping) => {

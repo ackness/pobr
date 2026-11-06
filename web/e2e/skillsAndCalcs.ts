@@ -19,7 +19,7 @@ export async function importBuild(page: Page, code: string) {
 export async function openStat(page: Page, id: string): Promise<Locator> {
   const detail = page.locator('#calcs-detail');
   if (!(await detail.count())) {
-    await pageLink(page, 'Calcs').click();
+    await pageLink(page, 'Calculations').click();
     await detail.waitFor();
     // A summoner build opens Calcs on its minion; callers read the player's values. Only on arrival:
     // a caller already on Calcs keeps the actor it chose.

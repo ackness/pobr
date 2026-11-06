@@ -371,8 +371,8 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
             </span>
           )}
           <span className="skill-dps-value" data-kind={dps?.kind ?? 'unavailable'} title={dps?.kind === 'minion' ? tt('skills.minionDps') : dps?.kind === 'summoner' ? tt('skills.summonerPending') : undefined}>
-            {dps?.kind === 'damage' ? <>{formatStatValue(dps.dps, 'int')}<span className="sr-only"> DPS</span></>
-              : dps?.kind === 'minion' ? <>{formatStatValue(dps.dps, 'int')}<span className="sr-only"> {tt('skills.minionDps')}</span></>
+            {dps?.kind === 'damage' ? <>{formatStatValue(dps.dps, 'float2', lang)}<span className="sr-only"> DPS</span></>
+              : dps?.kind === 'minion' ? <>{formatStatValue(dps.dps, 'float2', lang)}<span className="sr-only"> {tt('skills.minionDps')}</span></>
               : dps?.kind === 'summoner' ? <span className="sr-only">{tt('skills.summonerPending')}</span>
               : dps?.kind === 'none' ? <span className="sr-only">{w('deals no damage', '不造成伤害', '不造成傷害')}</span> : null}
           </span>
@@ -411,8 +411,8 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
             {isMain && <span className="skill-detail-tag">{tt('skills.main')}</span>}
             {sourceLabel(idx) && <span className="skill-detail-tag">{sourceLabel(idx)}</span>}
           </div>
-          {dps?.kind === 'damage' && <div className="skill-detail-dps"><span>{tt('sidebar.combinedDps')}</span><strong>{formatStatValue(dps.dps, 'int')}</strong></div>}
-          {dps?.kind === 'minion' && <div className="skill-detail-dps"><span>{tt('skills.minionDps')}</span><strong>{formatStatValue(dps.dps, 'int')}</strong></div>}
+          {dps?.kind === 'damage' && <div className="skill-detail-dps"><span>{tt('sidebar.combinedDps')}</span><strong>{formatStatValue(dps.dps, 'float2', lang)}</strong></div>}
+          {dps?.kind === 'minion' && <div className="skill-detail-dps"><span>{tt('skills.minionDps')}</span><strong>{formatStatValue(dps.dps, 'float2', lang)}</strong></div>}
           {dps?.kind === 'summoner' && <p className="skill-detail-dps">{tt('skills.summonerPending')}</p>}
           {active && <div className="skill-detail-controls">
             {weaponBinding}
@@ -457,7 +457,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
       <div className="skill-groups" data-list-expanded={showAllGroups || undefined}>
         <aside className="skill-group-list">
           {groups.length > 0 ? toolbar : active && <div className="skills-empty">
-            <h3>{w('Start with the skill that deals your damage', '先加入造成伤害的主技能', '先加入造成傷害的主技能')}</h3>
+            <h3>{w('Start with the skill that deals your damage', '先加入造成伤害的计算技能', '先加入造成傷害的計算技能')}</h3>
             <p>{w('Search for an active skill below to create the first group, or import a build from the library.', '在下方搜索一个主动技能来创建第一个技能组，或到 BD 库导入一套 BD。', '在下方搜尋一個主動技能來建立第一個技能組，或到 BD 庫匯入一套 BD。')}</p>
             {toolbar}
           </div>}

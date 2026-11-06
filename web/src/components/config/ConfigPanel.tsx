@@ -201,7 +201,7 @@ export function OptionRow({
       )}
       {overridden && (
         <AppButton className="config-reset" disabled={busy} title={tt('config.reset')}
-          aria-label={`${tt('config.reset')}: ${label}`} onClick={onReset}>
+          aria-label={`${tt('config.reset')}${lang === 'en-US' ? ': ' : '：'}${label}`} onClick={onReset}>
           ↺
         </AppButton>
       )}
@@ -432,7 +432,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
         <p className="config-hint">{tt('config.quickHint')}</p>
         <p className="config-quick-context" role="status">
           {session.busy ? tt('config.quickUpdating')
-            : calculatedMain ? <>{tt('config.quickSkill')}: <span className="config-quick-skill">{skillName(calculatedMain.skill_id)}</span></>
+            : calculatedMain ? <>{tt('config.quickSkill')}{lang === 'en-US' ? ': ' : '：'}<span className="config-quick-skill">{skillName(calculatedMain.skill_id)}</span></>
             : tt('config.quickUnavailable')}
         </p>
         <p className="config-hint">{tt('config.quickScope')}</p>
@@ -451,19 +451,19 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
                 <div className="config-quick-description">
                   <strong>{label}</strong>
                   <p className="config-quick-value">
-                    {source}: <output aria-label={`${tt('config.valueLabel')}: ${label}`}>
+                    {source}: <output aria-label={`${tt('config.valueLabel')}${lang === 'en-US' ? ': ' : '：'}${label}`}>
                       {value === undefined ? tt('config.quickUnset')
                         : <><span>{type}</span> <code>{JSON.stringify(value)}</code></>}
                     </output>
                   </p>
                   <p className="config-hint">
                     {damageType
-                      ? `${tt('config.quickHitReason')}: ${damageTypeLabel(lang, damageType)}. ${tt('config.quickMitigationReason')}`
+                      ? `${tt('config.quickHitReason')}${lang === 'en-US' ? ': ' : '：'}${damageTypeLabel(lang, damageType)}. ${tt('config.quickMitigationReason')}`
                       : tt(option.var === 'conditionShockEffect' ? 'config.quickShockMagnitude' : 'config.quickShockState')}
                   </p>
                 </div>
                 <AppButton type="button" disabled={session.busy || loadState !== 'ready'}
-                  aria-label={`${tt('config.quickOpen')}: ${label}`} onClick={() => openSetting(option)}>
+                  aria-label={`${tt('config.quickOpen')}${lang === 'en-US' ? ': ' : '：'}${label}`} onClick={() => openSetting(option)}>
                   {tt('config.quickOpen')}
                 </AppButton>
               </li>
@@ -603,7 +603,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
                   }} />
               </label>
               <AppButton type="button" disabled={session.busy}
-                aria-label={`${tt('config.groupRemove')}: ${block.title || `${index + 1}`}`}
+                aria-label={`${tt('config.groupRemove')}${lang === 'en-US' ? ': ' : '：'}${block.title || `${index + 1}`}`}
                 onClick={() => updateModifierBlocks(modifierBlocks.filter((_, currentIndex) => currentIndex !== index))}>
                 {tt('config.groupRemove')}
               </AppButton>
@@ -616,7 +616,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
               placeholder={tt('config.extraModsPlaceholder')}
               defaultValue={block.text}
               disabled={session.busy}
-              aria-label={`${tt('config.groupText')}: ${block.title || index + 1}`}
+              aria-label={`${tt('config.groupText')}${lang === 'en-US' ? ': ' : '：'}${block.title || index + 1}`}
               onBlur={event => {
                 if (event.target.value !== block.text) {
                   updateModifierBlock(index, { text: event.target.value });
@@ -628,6 +628,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
       </div>
       {unappliedLines.length > 0 && (
         <div className="config-unapplied" role="status">
+          <p><strong>{tt('calcs.unsupported')}</strong></p>
           <p>{tt('config.unappliedLines')}</p>
           <ul>{unappliedLines.map((line, index) => <li key={index}>{line}</li>)}</ul>
         </div>
@@ -652,7 +653,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
                 onChange={value => session.setConfigInput(key, value)} />
               {isOverridden(key) && (
                 <AppButton className="config-reset" disabled={session.busy} title={tt('config.reset')}
-                  aria-label={`${tt('config.reset')}: ${key}`} onClick={() => resetInput(key)}>
+                  aria-label={`${tt('config.reset')}${lang === 'en-US' ? ': ' : '：'}${key}`} onClick={() => resetInput(key)}>
                   ↺
                 </AppButton>
               )}

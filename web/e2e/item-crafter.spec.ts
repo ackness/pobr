@@ -29,8 +29,8 @@ test('craft a rare from a game base, save it and equip the previewed delta', asy
   await crafter.getByRole('button', { name: 'Create draft', exact: true }).click();
   const editor = crafter.locator('.replacement-affix-editor');
   await expect(editor).toHaveAttribute('open', '');
-  await editor.getByRole('searchbox', { name: 'Search affixes' }).fill('to maximum Life');
-  await editor.getByRole('combobox', { name: 'Choose an affix and tier', exact: true }).click();
+  await editor.getByRole('searchbox', { name: 'Search modifiers' }).fill('to maximum Life');
+  await editor.getByRole('combobox', { name: 'Choose a modifier and tier', exact: true }).click();
   await expect(page.getByRole('option', { name: /\+119 to maximum Life/ })).toHaveCount(0);
   await page.getByRole('option', { name: /\+99 to maximum Life/ }).click();
   await editor.locator('.affix-editor-add > .trade-primary').click();

@@ -10,7 +10,7 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
 import { changesFromRecords } from '../../app/preview/fromRecords';
-import { formatStatValue, statMap } from '../../lib/statDisplay';
+import { formatStatValue, formatNumber, statMap } from '../../lib/statDisplay';
 import { supportText } from '../../lib/supportI18n';
 import type { Objective } from '../../lib/optimize';
 import { applySupportPlan, eligibleSupports, lineageAvailable, optimizeSupports, type SupportMetadata, type SupportOptimization } from '../../lib/supportOptimizer';
@@ -161,7 +161,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const number = (value: number | undefined) => value === undefined ? '—' : formatStatValue(value, 'int', lang);
   const metricLabel = (stat: string) => statNameLabel(lang, stat);
   const change = (before: number, after: number) => before > 0
-    ? `${after >= before ? '+' : ''}${((after / before - 1) * 100).toFixed(1)}%` : `${after >= before ? '+' : ''}${number(after - before)}`;
+    ? `${after >= before ? '+' : ''}${formatNumber((after / before - 1) * 100, 1, 1)}%` : `${after >= before ? '+' : ''}${number(after - before)}`;
 
   if (!active) return null;
 
@@ -224,22 +224,22 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     <p className="skills-hint">{st('results')} {result.evaluated} · {st('unsupported')} {result.unmodeled}</p>
     <p className="skills-hint">{st('data')}{lang === 'en-US' ? ': ' : '：'}{result.dataVersion ?? st('unknownVersion')} · {st('tree')}{lang === 'en-US' ? ': ' : '：'}{result.request.tree_version ?? st('defaultTree')}</p>
     {result.baselineUnsupported.length > 0 && <details className="support-diagnostics support-baseline-unsupported">
-      <summary>{st('baselineLimits')}: {result.baselineUnsupported.length}</summary>
+      <summary>{st('baselineLimits')}{lang === 'en-US' ? ': ' : '：'}{result.baselineUnsupported.length}</summary>
       <p className="skills-hint">{st('baselineLimitsHint')}</p>
       <UnincludedModifiers lines={result.baselineUnsupported} lang={lang} items={result.request.items} />
     </details>}
     {result.excluded.length > 0 && <details className="support-diagnostics">
-      <summary>{st('diagnosticExcluded')}: {result.excluded.length}</summary>
+      <summary>{st('diagnosticExcluded')}{lang === 'en-US' ? ': ' : '：'}{result.excluded.length}</summary>
       <p className="skills-hint">{st('diagnosticExcludedHint')}</p>
       <ol className="support-diagnostic-excluded">{result.excluded.map((edit, index) => <li key={index}>
         <details>
-          <summary>{st('completeSet')}: {edit.supports.map(gem => gemName(gem.skill_id)).join(' · ') || st('noSupports')}</summary>
+          <summary>{st('completeSet')}{lang === 'en-US' ? ': ' : '：'}{edit.supports.map(gem => gemName(gem.skill_id)).join(' · ') || st('noSupports')}</summary>
           <ul className="support-diagnostic-gems">{edit.supports.map(gem => <li key={gem.skill_id} data-skill-id={gem.skill_id}>
             {gemName(gem.skill_id)} · {st('level')} {gem.level} · {st('quality')} {gem.quality} · {st('statSet')} {gem.stat_set_index ?? 1}
           </li>)}</ul>
           {edit.unsupported.length > 0 && <><p>{st('newLimits')}</p>
             <UnincludedModifiers lines={edit.unsupported} lang={lang} /></>}
-          {edit.error && <p className="opt-error">{st('engineError')}: {edit.error}</p>}
+          {edit.error && <p className="opt-error">{st('engineError')}{lang === 'en-US' ? ': ' : '：'}{edit.error}</p>}
           {edit.invalidStats && <p className="opt-error">{st('invalidStats')}</p>}
         </details>
       </li>)}</ol>
