@@ -3,6 +3,7 @@ import { useTreeHover } from './useTreeHover';
 import { hasDisconnectedTreeNodes, isDisconnectedTree, isImportProblem, needsTreeConversion } from './treeImportStatus';
 import { TreeRefundNotice, type RefundReceipt } from './TreeRefundNotice';
 import { evaluateHeatmap } from './heatmap';
+import { fitToParentInPixels } from './pixelSize';
 import { TreePointSummary } from './TreePointSummary';
 import { jewelSocketNames } from './jewelSocketNames';
 import { defaultReportStat, distributeAttributeChoices, passivePointSummary } from './treePresentation';
@@ -216,6 +217,13 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     moved: boolean;
   } | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  // Size the SVG in pixels: a percentage size made every layout beside the canvas lay out the whole tree again.
+  const attachSvg = useCallback((svg: SVGSVGElement | null) => {
+    svgRef.current = svg;
+    if (!svg) return;
+    const stop = fitToParentInPixels(svg);
+    return () => { stop(); svgRef.current = null; };
+  }, []);
   const sceneRef = useRef<SVGGElement | null>(null);
   const dragRafRef = useRef<number | null>(null);
   const suppressClickRef = useRef(false);
@@ -248,9 +256,11 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     if (!svg) return;
     // React's delegated wheel listener is passive. Consume scrolling only over
     // the tree, so zooming does not also move the surrounding page.
-    const consume = (event: WheelEvent) => event.preventDefault();
-    svg.addEventListener('wheel', consume, { passive: false });
-    return () => svg.removeEventListener('wheel', consume);
+    // The listener sits on the canvas, so the drag shield that covers the SVG during a pan consumes it too.
+    const target = svg.closest('.tree-canvas') ?? svg;
+    const consume = (event: Event) => event.preventDefault();
+    target.addEventListener('wheel', consume, { passive: false });
+    return () => target.removeEventListener('wheel', consume);
   }, [nodes]);
 
   const allocated = useMemo(() => new Set(session.allocatedNodes), [session.allocatedNodes]);
@@ -849,7 +859,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     return fullExtent ? clampView(next, fullExtent) : next;
   };
 
-  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+  const onPointerMove = (e: React.PointerEvent<Element>) => {
     const drag = dragRef.current;
     const svg = svgRef.current;
     if (!drag || !svg || e.pointerId !== drag.pointerId) return;
@@ -857,8 +867,8 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     const dy = e.clientY - drag.startY;
     if (!drag.moved && Math.abs(dx) + Math.abs(dy) > 3) {
       drag.moved = true;
-      // 拖动确立后关闭节点命中测试（省掉每帧对 ~4900 个圆的 hover 命中）；
-      // pointer-events 关闭后 leave 不再触发，主动清掉悬停 tooltip。
+      // A confirmed drag shows .tree-drag-shield over the SVG, so moves no longer hit-test the
+      // ~4900 circles. The circles then get no leave event, so clear the hover tooltip here.
       svg.classList.add('is-dragging');
       setHover(null);
     }
@@ -872,7 +882,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     }
   };
 
-  const finishDrag = (e: React.PointerEvent<SVGSVGElement>, cancelled = false) => {
+  const finishDrag = (e: React.PointerEvent<Element>, cancelled = false) => {
     const drag = dragRef.current;
     const svg = svgRef.current;
     if (!drag || e.pointerId !== drag.pointerId) return;
@@ -1055,17 +1065,19 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
   const pointSummary = passivePointSummary(nodes ?? [], session.allocatedNodes, session.character?.level ?? 1, session.weaponSwap, treeEffects);
   const countEl = <TreePointSummary current={pointSummary} preview={preview} invalidReason={isImportProblem(preview?.reason) ? '' : treeEditError(preview?.reason ?? null, lang)} lang={lang} />;
   const canvasEl = (
-    <div className="tree-canvas">
+    // Drag moves and ends are handled on the canvas: once the shield covers the SVG, or if the captured
+    // node is removed mid-drag, the next pointer events reach the shield instead of the SVG.
+    <div className="tree-canvas"
+      onPointerMove={onPointerMove}
+      onPointerUp={e => finishDrag(e)}
+      onPointerCancel={e => finishDrag(e, true)}
+      onLostPointerCapture={e => finishDrag(e, true)}>
         <svg
-          ref={svgRef}
+          ref={attachSvg}
           tabIndex={-1}
           viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
           onWheel={onWheel}
           onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={e => finishDrag(e)}
-          onPointerCancel={e => finishDrag(e, true)}
-          onLostPointerCapture={e => finishDrag(e, true)}
           role="img"
           aria-label={tt('tree.title')}
         >
@@ -1089,6 +1101,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
           {nodesEl}
           </g>
         </svg>
+        <div className="tree-drag-shield" aria-hidden="true" />
         {hover && !attrPicker && (
           <TreeTooltip
             node={hover}

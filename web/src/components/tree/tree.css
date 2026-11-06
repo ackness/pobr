@@ -22,6 +22,7 @@
 }
 
 .tree-canvas svg {
+  /* TreePanel replaces this with the canvas size in pixels (see pixelSize.ts). */
   width: 100%;
   height: 100%;
   display: block;
@@ -29,13 +30,19 @@
   touch-action: none;
 }
 
-/* Avoid per-node hover hit testing while the scene is moving. */
-.tree-canvas svg.is-dragging .tree-nodes circle {
-  pointer-events: none;
+/* While a confirmed drag moves the scene, a transparent layer over the SVG takes the hit testing, so the
+   ~4,900 node circles are not tested on every move, and it shows the closed hand. Showing one layer does
+   not restyle the tree: switching `pointer-events` or the inherited cursor on the SVG or its groups
+   restyled every shape, 40-80 ms at the start and end of each drag and on each press. */
+.tree-drag-shield {
+  display: none;
+  position: absolute;
+  inset: 0;
+  cursor: grabbing;
 }
 
-.tree-canvas svg:active {
-  cursor: grabbing;
+.tree-canvas svg.is-dragging ~ .tree-drag-shield {
+  display: block;
 }
 
 .edge {
