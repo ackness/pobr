@@ -1,0 +1,10 @@
+.swap-gain-card { min-width: 0; }
+.swap-gain-card .replacement-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)); gap: .75rem; }
+.swap-gain-card .replacement-metric { display: grid; gap: .4rem; min-width: 0; }
+.swap-gain-card .replacement-metric > span:last-child { display: flex; flex-wrap: wrap; gap: .35rem; font-variant-numeric: tabular-nums; }
+.swap-gain-card .replacement-metric > span:last-child > * { white-space: nowrap; }
+.swap-gain-card details { margin-block: .75rem; }
+.swap-gain-card table { width: 100%; min-width: 480px; }
+.swap-gain-card th { overflow-wrap: anywhere; }
+.swap-gain-card td { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.swap-gain-card .replacement-table-wrap { overflow-x: auto; }

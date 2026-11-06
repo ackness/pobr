@@ -125,9 +125,9 @@ test('complete text, nondefault ring, full receipt and limits survive Upgrades â
   await expect(page.locator('.replacement-position').filter({ hasText: /^Ring 2/ })).toHaveAttribute('aria-pressed', 'true');
   await page.locator('.replacement-position').filter({ hasText: /^Ring 1/ }).click();
   const receipt = await replacement(page).innerText();
-  const predictedDps = numeric(await page.locator('.upgrade-replacement-result tbody tr').nth(0).locator('td').nth(1).innerText());
-  const predictedLife = numeric(await page.locator('.upgrade-replacement-result tbody tr').nth(2).locator('td').nth(1).innerText());
-  const predictedEhp = numeric(await page.locator('.upgrade-replacement-result tbody tr').nth(1).locator('td').nth(1).innerText());
+  const predictedDps = numeric(await page.locator('.swap-gain-card [data-stat="CombinedDPS"] .swap-after').innerText());
+  const predictedLife = numeric(await page.locator('.swap-gain-card [data-stat="Life"] .swap-after').innerText());
+  const predictedEhp = numeric(await page.locator('.swap-gain-card [data-stat="TotalEHP"] .swap-after').innerText());
   await awayAndBack(page);
   await expect(input(page)).toHaveValue(ring);
   await expect(page.locator('.replacement-position').filter({ hasText: /^Ring 1/ })).toHaveAttribute('aria-pressed', 'true');
@@ -155,9 +155,9 @@ test('custom prepared augments and exact evaluated Apply survive navigation with
   expect(prepared).toContain('Rune: Iron Rune');
   expect(prepared).not.toContain('Perfect Iron Rune');
   const receipt = await replacement(page).innerText();
-  const predictedDps = numeric(await page.locator('.upgrade-replacement-result tbody tr').first().locator('td').nth(1).innerText());
-  const predictedEhp = numeric(await page.locator('.upgrade-replacement-result tbody tr').nth(1).locator('td').nth(1).innerText());
-  const predictedLife = numeric(await page.locator('.upgrade-replacement-result tbody tr').nth(2).locator('td').nth(1).innerText());
+  const predictedDps = numeric(await page.locator('.swap-gain-card [data-stat="CombinedDPS"] .swap-after').innerText());
+  const predictedEhp = numeric(await page.locator('.swap-gain-card [data-stat="TotalEHP"] .swap-after').innerText());
+  const predictedLife = numeric(await page.locator('.swap-gain-card [data-stat="Life"] .swap-after').innerText());
   await awayAndBack(page);
   await expect(input(page)).toHaveValue(bow);
   await expect(page.getByRole('button', { name: 'Customize', exact: true })).toHaveAttribute('aria-pressed', 'true');

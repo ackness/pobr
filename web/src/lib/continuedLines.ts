@@ -21,3 +21,19 @@ export function shownLines(sources: readonly string[], translated: readonly (str
 export function lineText(source: string, translated: string | undefined): string {
   return translated === undefined || isContinuation(source, translated) ? source : translated;
 }
+
+/** PoB wraps some rune descriptions mid-sentence. Keep positions for classified
+ * rows, but send the complete effect to the language pack before translating. */
+export function mergeModifierContinuations(lines: readonly string[]): string[] {
+  const merged = [...lines];
+  for (let index = 0; index < merged.length; index++) {
+    if (!/^Bonded:\s*/.test(merged[index])) continue;
+    let next = index + 1;
+    while (next < merged.length && /\b(?:a|an|the|to|of|and|or|with|gain)\s*$/i.test(merged[index])
+      && /^[a-z]/.test(merged[next]) && !/^[a-z]+:/.test(merged[next])) {
+      merged[index] += ` ${merged[next].trim()}`;
+      merged[next++] = '';
+    }
+  }
+  return merged;
+}

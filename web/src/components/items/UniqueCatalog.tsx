@@ -3,12 +3,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { UniqueDraft, UniqueEntry, UniqueSelection } from '../../api/uniques';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { useLocalizedLines } from '../../hooks/useLocalizedLines';
+import { useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
 import { lineText } from '../../lib/continuedLines';
 import { slotLabel, type Lang } from '../../lib/i18n';
+import { itemClassName, itemClassLabel, itemNameLabel } from '../../lib/itemCrafting';
 import { craftT } from '../../lib/itemCraftingText';
-import { loadTradeCatalog, type TradeCatalog } from '../../lib/tradeOptimizer';
-import { defaultUniqueSelection, filterUniques, uniqueGroups, uniqueOptions, uniquePreviewCatalog, uniqueRolls } from '../../lib/uniqueCatalog';
+import { basesForSlot, loadTradeCatalog, type TradeCatalog } from '../../lib/tradeOptimizer';
+import { resolvedUniqueRolls, defaultUniqueSelection, filterUniques, uniqueGroups, uniqueOptions, uniquePreviewCatalog, uniqueRolls } from '../../lib/uniqueCatalog';
 import { uniqueT } from '../../lib/uniqueCatalogText';
 import { AppSelect } from '../shared/AppSelect';
 import { AppRange } from '../shared/AppRange';
@@ -17,13 +18,15 @@ import './itemCrafter.css';
 
 const slots = ['weapon1', 'weapon2', 'helmet', 'bodyarmour', 'gloves', 'boots', 'amulet', 'ring1', 'ring2', 'belt', 'Flask 1', 'Flask 2', 'Charm 1', 'Charm 2', 'Charm 3', 'Jewel@catalogue'];
 
-export function UniqueCatalog({ session, lang }: { session: BuildSession; lang: Lang }) {
+export function UniqueCatalog({ session, lang, selectedSlot }: { session: BuildSession; lang: Lang; selectedSlot?: string | null }) {
   const t = (key: Parameters<typeof uniqueT>[1]) => uniqueT(lang, key);
   const [data, setData] = useState<{ entries: UniqueEntry[]; catalog: TradeCatalog } | null>(null);
   const [error, setError] = useState(false);
   const [query, setQuery] = useState('');
   const [itemClass, setItemClass] = useState('');
-  const [slot, setSlot] = useState('');
+  // Null follows slot inspection; any catalogue interaction pins the filter.
+  const [slot, setSlot] = useState<string | null>(null);
+  const currentSlot = slot ?? (selectedSlot && slots.includes(selectedSlot) ? selectedSlot : '');
   const [picked, setPicked] = useState<number | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -33,34 +36,51 @@ export function UniqueCatalog({ session, lang }: { session: BuildSession; lang: 
     }).catch(() => { if (!cancelled) setError(true); });
     return () => { cancelled = true; };
   }, []);
+  const baseNames = useMemo(() => [...new Set(data?.entries.flatMap(entry => entry.bases.map(base => base.name)) ?? [])], [data]);
+  const bases = useLocalizedNames(baseNames.map(name => ({ kind: 'base' as const, name })), lang);
+  const baseLabel = (name: string) => itemNameLabel(name, bases[baseNames.indexOf(name)], lang);
   const names = useLocalizedLines(data?.entries.map(entry => entry.name) ?? [], lang);
   const lineLabels = useMemo(() => [...new Set(data?.entries.flatMap(entry => entry.raw.split('\n').map(line => line.replace(/\{[^}]*\}/g, ''))) ?? [])], [data]);
   const translatedLines = useLocalizedLines(lineLabels, lang);
   const localized = useMemo(() => {
     const lines = new Map(lineLabels.map((line, index) => [line, lineText(line, translatedLines[index])]));
-    return new Map(data?.entries.map((entry, i) => [entry.id, `${names[i]}\n${entry.raw.split('\n').map(line => lines.get(line.replace(/\{[^}]*\}/g, '')) ?? '').join('\n')}`]) ?? []);
-  }, [data, names, lineLabels, translatedLines]);
+    return new Map(data?.entries.map((entry, i) => [entry.id, `${names[i]}\n${entry.bases.map(base => bases[baseNames.indexOf(base.name)]).join('\n')}\n${entry.raw.split('\n').map(line => lines.get(line.replace(/\{[^}]*\}/g, '')) ?? '').join('\n')}`]) ?? []);
+  }, [data, names, lineLabels, translatedLines, bases, baseNames]);
   const classes = useMemo(() => [...new Set(data?.entries.flatMap(entry => entry.bases.map(base => base.item_class)) ?? [])].sort(), [data]);
-  const classNames = useLocalizedLines(classes, lang);
-  const results = useMemo(() => data ? filterUniques(data.entries, query, itemClass, slot, data.catalog, localized) : [], [data, query, itemClass, slot, localized]);
+  const classNames = useLocalizedNames(classes.map(name => ({ kind: 'itemClass' as const, name: itemClassName(name) })), lang);
+  const slotsByBase = useMemo(() => {
+    const map = new Map<string, string[]>();
+    if (data) for (const slot of slots) for (const base of basesForSlot(data.catalog, slot)) {
+      const matched = map.get(base.name) ?? [];
+      map.set(base.name, [...matched, slot]);
+    }
+    return map;
+  }, [data]);
+  const results = useMemo(() => data ? filterUniques(data.entries, query, itemClass, currentSlot, data.catalog, localized) : [], [data, query, itemClass, currentSlot, localized]);
   const entry = results.find(entry => entry.id === picked);
   if (error) return <p role="alert">{t('error')}</p>;
   if (!data) return <p role="status">{craftT(lang, 'loading')}</p>;
   return <section className="item-crafter unique-catalogue ui-card" aria-label={t('title')}>
     <p>{t('hint')}</p>
     <div className="item-crafter-fields">
-      <label>{t('search')}<AppInput type="search" aria-label={t('search')} value={query} onChange={event => { setQuery(event.target.value); setPicked(null); }} /></label>
+      <label>{t('search')}<AppInput type="search" aria-label={t('search')} value={query} onChange={event => { setSlot(currentSlot); setQuery(event.target.value); setPicked(null); }} /></label>
       <label>{t('itemClass')}<AppSelect ariaLabel={t('itemClass')} value={itemClass}
-        options={[{ value: '', label: t('allClasses') }, ...classes.map((value, i) => ({ value, label: classNames[i] ?? value }))]}
-        onChange={value => { setItemClass(value); setPicked(null); }} /></label>
-      <label>{t('slot')}<AppSelect ariaLabel={t('slot')} value={slot}
+        options={[{ value: '', label: t('allClasses') }, ...classes.map((value, i) => ({ value, label: itemClassLabel(value, classNames[i], lang) }))]}
+        onChange={value => { setSlot(currentSlot); setItemClass(value); setPicked(null); }} /></label>
+      <label>{t('slot')}<AppSelect ariaLabel={t('slot')} value={currentSlot}
         options={[{ value: '', label: t('allSlots') }, ...slots.map(value => ({ value, label: value.startsWith('Jewel@') ? t('jewel') : slotLabel(lang, value) }))]}
         onChange={value => { setSlot(value); setPicked(null); }} /></label>
     </div>
-    <p>{t('matches')}: {results.length}</p>
-    <AppSelect ariaLabel={t('choose')} placeholder={t('choose')} value={entry ? String(entry.id) : ''}
-      options={results.map(entry => ({ value: String(entry.id), label: names[data.entries.indexOf(entry)] ?? entry.name,
-        hint: entry.bases.map(base => base.name).join(' / ') }))} onChange={value => setPicked(Number(value))} />
+    <p>{t('matches')}{lang === 'en-US' ? ': ' : '：'}{results.length}</p>
+    <div className="unique-results" role="group" aria-label={t('choose')}>
+      {results.map(result => <AppButton key={result.id} className="unique-result" aria-pressed={entry?.id === result.id}
+        onClick={() => { setSlot(currentSlot); setPicked(result.id); }}>
+        <strong>{itemNameLabel(result.name, names[data.entries.indexOf(result)], lang)}</strong>
+        <span>{result.bases.map(base => baseLabel(base.name)).join(' / ')}</span>
+        <small>{[...new Set(result.bases.flatMap(base => slotsByBase.get(base.name) ?? []))]
+          .map(slot => slot.startsWith('Jewel@') ? t('jewel') : slotLabel(lang, slot)).join(' · ') || t('slotUnknown')}</small>
+      </AppButton>)}
+    </div>
     {!results.length && <p>{t('empty')}</p>}
     {entry && <UniqueItem key={entry.id} entry={entry} catalog={data.catalog} session={session} lang={lang} />}
   </section>;
@@ -80,12 +100,28 @@ function UniqueItem({ entry, catalog, session, lang }: { entry: UniqueEntry; cat
   const groups = uniqueGroups(entry, selection.version);
   const rolls = uniqueRolls(entry, selection);
   const labels = useLocalizedLines(rolls.map(line => line.text), lang);
+  const selectionKey = JSON.stringify(selection);
+  const [resolved, setResolved] = useState<{ key: string; text?: string } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getBackend().then(backend => backend.uniqueItemDraft(selection)).then(value => {
+      if (!cancelled) setResolved({ key: selectionKey, text: value.text });
+    }).catch(() => { if (!cancelled) setResolved({ key: selectionKey }); });
+    return () => { cancelled = true; };
+    // The serialized selection includes every variant and roll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectionKey]);
+  const resolvedLines = resolved?.key === selectionKey && resolved.text ? resolvedUniqueRolls(rolls, resolved.text) : [];
+  const resolvedLabels = useLocalizedLines(resolvedLines.map(line => line ?? ''), lang);
   const update = (value: UniqueSelection) => { setSelection(value); setDraft(null); setError(null); setSaved(false); };
   const prepare = async () => {
     setBusy(true); setError(null);
     try {
       const value = await (await getBackend()).uniqueItemDraft(selection);
-      if (alive.current) setDraft(previous => ({ value, revision: (previous?.revision ?? 0) + 1 }));
+      if (alive.current) {
+        setDraft(previous => ({ value, revision: (previous?.revision ?? 0) + 1 }));
+        setResolved({ key: selectionKey, text: value.text });
+      }
     } catch (error) {
       if (alive.current) setError(String(error instanceof Error ? error.message : JSON.stringify(error)).includes('unique_base_unavailable') ? 'baseUnavailable' : 'error');
     } finally { if (alive.current) setBusy(false); }
@@ -118,7 +154,7 @@ function UniqueItem({ entry, catalog, session, lang }: { entry: UniqueEntry; cat
           rolls: { ...selection.rolls, ...Object.fromEntries(rolls.map(line => [line.index, value])) } })}>{t(value === 0 ? 'minimum' : value === 1 ? 'maximum' : 'middle')}</AppButton>)}
       </div>{rolls.map((line, i) => <label key={line.index} className="unique-roll"><span>{lineText(line.text, labels[i])}</span>
         <div><AppRange min={0} max={100} step={1} aria-label={`${t('roll')} ${i + 1}`} value={line.roll * 100} disabled={busy || session.busy}
-          onValueChange={value => update({ ...selection, rolls: { ...selection.rolls, [line.index]: value / 100 } })} /></div><output>{Math.round(line.roll * 100)}%</output>
+          onValueChange={value => update({ ...selection, rolls: { ...selection.rolls, [line.index]: value / 100 } })} /></div><output>{Math.round(line.roll * 100)}%</output><p className="unique-roll-value">{resolvedLabels[i] || (resolved?.key !== selectionKey ? t('resolvingRoll') : t('rollUnavailable'))}</p>
       </label>)}</div>}
       <AppButton className="trade-primary" onClick={() => void prepare()}>{t(busy ? 'preparing' : 'preview')}</AppButton>
     </fieldset>

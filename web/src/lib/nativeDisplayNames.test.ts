@@ -251,3 +251,19 @@ test('a supplement scope record yields to an official text-path translation, nev
   expect(split.pending).toEqual([]);
   expect(split.mergeDetailed([])).toEqual([{ text: '狼', origin: 'agent' }]);
 });
+
+
+test('item class names use a unique current whole name, then the language-pack text path when unowned', () => {
+  const source = catalog({ 'ItemClasses.Name': { LifeFlask: ['Life Flasks', '生命药剂'],
+    Helmets: ['Helmets', null], BodyArmours: ['Different name', '旧译文'] } });
+  const index = new NativeNameIndex([source]);
+  expect(index.resolve({ kind: 'itemClass', name: 'Life Flasks' }, 'zh-CN')).toBe('生命药剂');
+  expect(index.resolve({ kind: 'itemClass', name: 'Helmets' }, 'zh-CN')).toBeNull();
+  expect(index.resolve({ kind: 'itemClass', name: 'BodyArmours' }, 'zh-CN')).toBeUndefined();
+  const { pending, merge } = index.split([{ kind: 'itemClass', name: 'Amulets' }], 'zh-CN');
+  expect(pending).toEqual(['Amulets']);
+  expect(merge(['项链'])).toEqual(['项链']);
+  expect(index.resolve({ kind: 'itemClass', name: 'Life Flasks' }, 'zh-TW')).toBeUndefined();
+  source.scopes['ItemClasses.Name'].OtherFlask = ['Life Flasks', '冲突名称'];
+  expect(index.resolve({ kind: 'itemClass', name: 'Life Flasks' }, 'zh-CN')).toBeNull();
+});

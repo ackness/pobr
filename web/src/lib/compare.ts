@@ -52,7 +52,7 @@ export function isPercentageStat(format: StatFormat | undefined): boolean {
 }
 
 /** Unknown, explicit null and unbounded results remain unavailable. */
-export function compareStats(before: DisplayStatValue[], after: DisplayStatValue[]): StatComparison[] {
+export function compareStats(before: readonly Pick<DisplayStatValue, 'id' | 'value'>[], after: readonly Pick<DisplayStatValue, 'id' | 'value'>[]): StatComparison[] {
   const a = new Map(before.map(stat => [stat.id, stat.value]));
   const b = new Map(after.map(stat => [stat.id, stat.value]));
   return [...new Set([...a.keys(), ...b.keys()])].map(id => {
