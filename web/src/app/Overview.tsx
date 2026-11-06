@@ -13,7 +13,7 @@ import { bindT, damageTypeLabel, slotLabel, statNameLabel, type Lang } from '../
 import { contributionLabel, removalChange } from '../lib/sourceContributions';
 import { activeSkillEffects } from '../lib/skillSelection';
 import { skillDisplayName } from '../lib/skillNames';
-import { formatNumber, formatStatValue, statFormat, statMap } from '../lib/statDisplay';
+import { formatNumber, formatStatValue, statMap, formatStat } from '../lib/statDisplay';
 import { UnincludedModifiers } from '../components/shared/UnincludedModifiers';
 import { deriveFindings, type Finding } from './findings';
 import { AnimatedNumber } from './motion/AnimatedNumber';
@@ -21,7 +21,7 @@ import { useCancellableJob } from './jobs/useCancellableJob';
 import { useUpgradeGoal } from '../hooks/useUpgradeGoal';
 import type { SettledCalc } from './motion/useSettledCalc';
 import type { Route } from './routes';
-import { words } from './text';
+import { words, colon } from './text';
 import { calculatedSkillKey } from './calculatedSkill';
 import { requestSkillMetrics } from './pages/skills/useSkillMetrics';
 
@@ -41,7 +41,7 @@ function describe(finding: Finding, lang: Lang): { title: string; detail: string
       : { title: w(`${name} resistance ${int(finding.value)}%`, `${name}抗性 ${int(finding.value)}%`, `${name}抗性 ${int(finding.value)}%`), detail: w(`${int(finding.missing)}% short of the cap.`, `距上限还差 ${int(finding.missing)}%。`, `距上限還差 ${int(finding.missing)}%。`) }; }
     case 'hit-chance': return { title: w(`Hit chance ${formatStatValue(finding.value, 'percent')}`, `命中率 ${formatStatValue(finding.value, 'percent')}`, `命中率 ${formatStatValue(finding.value, 'percent')}`), detail: w('Attacks miss; accuracy is costing damage.', '攻击会落空，命中不足在损失伤害。', '攻擊會落空，命中不足在損失傷害。') };
     case 'net-regen': return { title: w(`Net recovery is ${formatStatValue(finding.value, 'float2')}/s`, `净恢复为 ${formatStatValue(finding.value, 'float2')}/秒`, `淨恢復為 ${formatStatValue(finding.value, 'float2')}/秒`), detail: w('Your own costs and degeneration outpace recovery.', '自身消耗与持续损失超过恢复速度。', '自身消耗與持續損失超過恢復速度。') };
-    case 'unsupported': return { title: `${bindT(lang)('calcs.unsupported')}${lang === 'en-US' ? ': ' : '：'}${finding.count}`, detail: w('Their effect is missing from every number on this page.', '这些词缀的效果不在本页任何数值中。', '這些詞綴的效果不在本頁任何數值中。') };
+    case 'unsupported': return { title: `${bindT(lang)('calcs.unsupported')}${colon(lang)}${finding.count}`, detail: w('Their effect is missing from every number on this page.', '这些词缀的效果不在本页任何数值中。', '這些詞綴的效果不在本頁任何數值中。') };
   }
 }
 
@@ -223,7 +223,7 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit }:
               : <ol className="ov-rank ov-contrib">{entries.map(({ entry, delta }) => <li key={`${entry.kind}:${entry.id}`}><div>
                 <span className="ov-rank-name">{entry.kind === 'socket_group' ? groupName(Number(entry.id)) : contributionLabel(lang, entry.kind, entry.id)}</span>
                 <span className="ov-bar" data-sign={removalChange(delta) < 0 ? 'neg' : 'pos'}><span style={{ width: `${(Math.abs(delta) / biggest) * 100}%` }} /></span>
-                <span className="ov-rank-value">{tt(delta > 0 ? 'calcs.removalLoss' : 'calcs.removalGain').replace('{value}', formatStatValue(Math.abs(delta), statFormat(fieldStat), lang))}{baseline > 0 && <em>{lang === 'en-US' ? ' (' : '（'}{formatNumber((Math.abs(delta) / baseline) * 100, 1, 1)}%{lang === 'en-US' ? ')' : '）'}</em>}</span></div></li>)}</ol>}
+                <span className="ov-rank-value">{tt(delta > 0 ? 'calcs.removalLoss' : 'calcs.removalGain').replace('{value}', formatStat(fieldStat, Math.abs(delta), lang))}{baseline > 0 && <em>{lang === 'en-US' ? ' (' : '（'}{formatNumber((Math.abs(delta) / baseline) * 100, 1, 1)}%{lang === 'en-US' ? ')' : '）'}</em>}</span></div></li>)}</ol>}
         </section>
 
         <section className="ov-sec" aria-labelledby="ov-trust">
@@ -234,7 +234,7 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit }:
             <div><dt>{w('Game data', '游戏数据', '遊戲資料')}</dt><dd>{calc?.provenance?.data_version ?? session.dataVersion ?? '—'}</dd></div>
             {calc?.provenance?.engine_version && <div><dt>{w('Engine', '计算引擎', '計算引擎')}</dt><dd>{calc.provenance.engine_version}</dd></div>}
           </dl>
-          {calc && calc.unsupported_modifiers.length > 0 && <details ref={modifierDetails} className="ov-details"><summary className="disclosure" data-disclosure-level="inline">{w('Show the modifiers', '查看这些词缀', '查看這些詞綴')}</summary>
+          {calc && calc.unsupported_modifiers.length > 0 && <details ref={modifierDetails} className="ov-details"><summary className="disclosure">{w('Show the modifiers', '查看这些词缀', '查看這些詞綴')}</summary>
             <UnincludedModifiers lines={calc.unsupported_modifiers} lang={lang} items={session.items} /></details>}
           <p className="ov-hint">{w('Results reflect modeled effects. Review the uncalculated effects above.', '数值仅反映已支持的效果。未计算的内容见上方明细。', '數值僅反映已支援的效果。未計算的內容見上方明細。')}</p>
         </section>

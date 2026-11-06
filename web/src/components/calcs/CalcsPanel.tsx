@@ -22,7 +22,7 @@ import type {
   CalculateBuildResponse,
 } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { formatNumber, formatStatValue, statFormat, statMap, metricMeaning } from '../../lib/statDisplay';
+import { formatNumber, statFormat, statMap, metricMeaning, formatStat } from '../../lib/statDisplay';
 import { mainMinion } from '../../lib/mainMinion';
 import {
   bindT,
@@ -54,7 +54,7 @@ import { SkillFormControls } from '../skills/SkillFormControls';
 import { SkillMetricsTable } from './SkillMetricsTable';
 import { useNavigateToPage } from '../../app/pages/navigate';
 import { LedgerView } from '../../app/pages/calcs/LedgerView';
-import { words } from '../../app/text';
+import { words, colon } from '../../app/text';
 import { cleanLineText } from '../../lib/modifierText';
 import { passiveNameRequest, usePassiveNodesBySkill } from '../tree/passiveNodeNames';
 
@@ -74,11 +74,6 @@ function statNameLabel(lang: Lang, id: string): string {
   return id === 'TotalDPS' ? bindT(lang)('calcs.hitDps') : sharedStatNameLabel(lang, id);
 }
 
-/** 数字统一格式：千分位 + 最多 2 位小数（清掉浮点尾巴）。 */
-function fmtNum(value: number): string {
-  return formatNumber(value);
-}
-
 /** How a formula step changes the running value, e.g. `+120`, `×1.35 (+35%)`, `≤ 75`. */
 function formulaOperand(step: FormulaStep, stat?: string, lang: Lang = 'en-US', steps: readonly FormulaStep[] = []): string {
   const operandStat = step.op === 'cap' ? resistanceIds(stat ?? '')[1]
@@ -86,8 +81,8 @@ function formulaOperand(step: FormulaStep, stat?: string, lang: Lang = 'en-US', 
     : stat === 'TotalDPS' && step.op === 'uses_per_second' && actionRateIsFinal(steps) ? 'ActionRate'
     : stat === 'CombinedDPS' ? COMBINED_DPS_COMPONENTS[step.op]
     : undefined;
-  const n = operandStat ? formatStatValue(step.operand, statFormat(operandStat), lang).replace(/%$/, '') : fmtNum(step.operand);
-  const signed = step.operand < 0 ? `−${fmtNum(-step.operand)}` : `+${n}`;
+  const n = operandStat ? formatStat(operandStat, step.operand, lang).replace(/%$/, '') : formatNumber(step.operand);
+  const signed = step.operand < 0 ? `−${formatNumber(-step.operand)}` : `+${n}`;
   switch (step.op) {
     case 'base':
     case 'bonus_to_multiplier':
@@ -145,7 +140,7 @@ function formulaOperand(step: FormulaStep, stat?: string, lang: Lang = 'en-US', 
     case 'enemy_increased':
     case 'inevitable_penalty':
     case 'bifurcate_bonus':
-      return `×${fmtNum(1 + step.operand / 100)} (${signed}%)`;
+      return `×${formatNumber(1 + step.operand / 100)} (${signed}%)`;
     case 'hit_chance':
       return `×${n}%`;
     case 'lucky':
@@ -188,13 +183,13 @@ function formulaResult(steps: readonly FormulaStep[], index: number, stat: strin
       // The first Combined DPS step starts the sum, so its result is still that component.
       : stat === 'CombinedDPS' && index === 0 ? COMBINED_DPS_COMPONENTS[steps[0].op]
       : undefined;
-  return resultStat !== undefined ? formatStatValue(steps[index].result, statFormat(resultStat), lang) : fmtNum(steps[index].result);
+  return resultStat !== undefined ? formatStat(resultStat, steps[index].result, lang) : formatNumber(steps[index].result);
 }
 
 /** The per-type table behind the average hit: base range, scaling, and both averages. */
 function HitDamageView({ damage, lang }: { damage: HitDamageTable; lang: Lang }) {
   const tt = bindT(lang);
-  const range = (min: number, max: number) => `${fmtNum(min)} – ${fmtNum(max)}`;
+  const range = (min: number, max: number) => `${formatNumber(min)} – ${formatNumber(max)}`;
   const sum = (key: 'avg' | 'crit_avg') => damage.rows.reduce((total, row) => total + row[key], 0);
   // Without conversion or gain the base column already is the range before them.
   const moved = damage.sources.some((source) =>
@@ -220,28 +215,28 @@ function HitDamageView({ damage, lang }: { damage: HitDamageTable; lang: Lang })
             <tr key={row.damage_type} className={`damage-${row.damage_type.toLowerCase()}`}>
               <th scope="row">{damageTypeLabel(lang, row.damage_type)}</th>
               <td className="mod-value">{range(row.base_min, row.base_max)}</td>
-              <td className="mod-value">{fmtNum(row.increased)}%</td>
+              <td className="mod-value">{formatNumber(row.increased)}%</td>
               <td className="mod-value">
-                ×{fmtNum(row.more)}
-                {row.more_min !== 1 && ` · ${tt('calcs.damage.minOnly')} ×${fmtNum(row.more_min)}`}
-                {row.more_max !== 1 && ` · ${tt('calcs.damage.maxOnly')} ×${fmtNum(row.more_max)}`}
+                ×{formatNumber(row.more)}
+                {row.more_min !== 1 && ` · ${tt('calcs.damage.minOnly')} ×${formatNumber(row.more_min)}`}
+                {row.more_max !== 1 && ` · ${tt('calcs.damage.maxOnly')} ×${formatNumber(row.more_max)}`}
               </td>
               <td className="mod-value">{range(row.min, row.max)}</td>
-              <td className="mod-value">{fmtNum(row.avg)}</td>
-              <td className="mod-value">{fmtNum(row.crit_avg)}</td>
+              <td className="mod-value">{formatNumber(row.avg)}</td>
+              <td className="mod-value">{formatNumber(row.crit_avg)}</td>
             </tr>
           ))}
         </tbody>
         <tfoot>
           <tr>
             <th scope="row" colSpan={5}>{tt('calcs.damage.total')}</th>
-            <td className="mod-value">{fmtNum(sum('avg'))}</td>
-            <td className="mod-value">{fmtNum(sum('crit_avg'))}</td>
+            <td className="mod-value">{formatNumber(sum('avg'))}</td>
+            <td className="mod-value">{formatNumber(sum('crit_avg'))}</td>
           </tr>
         </tfoot>
       </table>
       {damage.damage_effect !== 1 && (
-        <p className="breakdown-note">{tt('calcs.damage.effect')}{lang === 'en-US' ? ': ' : '：'}×{fmtNum(damage.damage_effect)}</p>
+        <p className="breakdown-note">{tt('calcs.damage.effect')}{colon(lang)}×{formatNumber(damage.damage_effect)}</p>
       )}
       {moved && (
         <>
@@ -260,7 +255,7 @@ function HitDamageView({ damage, lang }: { damage: HitDamageTable; lang: Lang })
                 <tr key={source.damage_type} className={`damage-${source.damage_type.toLowerCase()}`}>
                   <th scope="row">{damageTypeLabel(lang, source.damage_type)}</th>
                   <td className="mod-value">{range(source.added_min, source.added_max)}</td>
-                  <td className="mod-value">×{fmtNum(source.added_effect)}</td>
+                  <td className="mod-value">×{formatNumber(source.added_effect)}</td>
                   <td className="mod-value">{range(source.min, source.max)}</td>
                 </tr>
               ))}
@@ -341,21 +336,21 @@ function MitigationView({ rows, lang }: { rows: HitMitigationRow[]; lang: Lang }
           {rows.map((row) => (
             <tr key={row.damage_type} className={`damage-${row.damage_type.toLowerCase()}`}>
               <th scope="row">{damageTypeLabel(lang, row.damage_type)}</th>
-              <td className="mod-value">{fmtNum(row.average)}</td>
-              <td className="mod-value">{row.resist === null ? tt('calcs.mitigation.armour') : `${fmtNum(row.resist)}%`}</td>
-              <td className="mod-value">{fmtNum(row.reduction)}%</td>
-              <td className="mod-value">×{fmtNum(row.taken)}</td>
-              <td className="mod-value">×{fmtNum(row.multiplier)}</td>
-              <td className="mod-value">{fmtNum(row.mitigated)}</td>
+              <td className="mod-value">{formatNumber(row.average)}</td>
+              <td className="mod-value">{row.resist === null ? tt('calcs.mitigation.armour') : `${formatNumber(row.resist)}%`}</td>
+              <td className="mod-value">{formatNumber(row.reduction)}%</td>
+              <td className="mod-value">×{formatNumber(row.taken)}</td>
+              <td className="mod-value">×{formatNumber(row.multiplier)}</td>
+              <td className="mod-value">{formatNumber(row.mitigated)}</td>
             </tr>
           ))}
         </tbody>
         <tfoot>
           <tr>
             <th scope="row">{tt('calcs.damage.total')}</th>
-            <td className="mod-value">{fmtNum(sum('average'))}</td>
+            <td className="mod-value">{formatNumber(sum('average'))}</td>
             <td colSpan={4} />
-            <td className="mod-value">{fmtNum(sum('mitigated'))}</td>
+            <td className="mod-value">{formatNumber(sum('mitigated'))}</td>
           </tr>
         </tfoot>
       </table>
@@ -365,7 +360,7 @@ function MitigationView({ rows, lang }: { rows: HitMitigationRow[]; lang: Lang }
         .map((row) => (
           <p key={row.damage_type} className="breakdown-note">
             {tt('calcs.mitigation.invertedNote')
-              .replace('{chance}', fmtNum(row.resist_inverted))
+              .replace('{chance}', formatNumber(row.resist_inverted))
               .replace('{type}', damageTypeLabel(lang, row.damage_type))}
           </p>
         ))}
@@ -430,13 +425,13 @@ function SkillDotView({ rows, lang }: { rows: SkillDotRow[]; lang: Lang }) {
             {rows.map((row) => (
               <tr key={row.damage_type} className={`damage-${row.damage_type.toLowerCase()}`}>
                 <th scope="row">{damageTypeLabel(lang, row.damage_type)}</th>
-                <td className="mod-value">{fmtNum(row.base)}</td>
-                <td className="mod-value">{fmtNum(row.increased)}%</td>
-                <td className="mod-value">×{fmtNum(row.more)}</td>
-                <td className="mod-value">{fmtNum(row.dot_multiplier)}%</td>
-                {showAura && <td className="mod-value">×{fmtNum(row.aura)}</td>}
-                <td className="mod-value">×{fmtNum(row.enemy)}</td>
-                <td className="mod-value">{fmtNum(row.total)}</td>
+                <td className="mod-value">{formatNumber(row.base)}</td>
+                <td className="mod-value">{formatNumber(row.increased)}%</td>
+                <td className="mod-value">×{formatNumber(row.more)}</td>
+                <td className="mod-value">{formatNumber(row.dot_multiplier)}%</td>
+                {showAura && <td className="mod-value">×{formatNumber(row.aura)}</td>}
+                <td className="mod-value">×{formatNumber(row.enemy)}</td>
+                <td className="mod-value">{formatNumber(row.total)}</td>
               </tr>
             ))}
           </tbody>
@@ -463,20 +458,20 @@ function SkillDotView({ rows, lang }: { rows: SkillDotRow[]; lang: Lang }) {
 function AilmentView({ ailment, lang }: { ailment: AilmentDetail; lang: Lang }) {
   const tt = bindT(lang);
   type Key = 'sourceHit' | 'sourceCrit' | 'critShare' | 'hitChance' | 'applyChance' | 'baseDuration' | 'enemyDuration' | 'rate' | 'duration' | 'hitsPerSecond' | 'stacks' | 'maxStacks';
-  const seconds = (value: number) => `${fmtNum(value)}${tt('calcs.ailment.seconds')}`;
+  const seconds = (value: number) => `${formatNumber(value)}${tt('calcs.ailment.seconds')}`;
   const rows: [Key, string][] = [
-    ['sourceHit', fmtNum(ailment.source_hit)],
-    ['sourceCrit', fmtNum(ailment.source_crit)],
-    ['critShare', `${fmtNum(ailment.crit_share)}%`],
-    ['hitChance', `${fmtNum(ailment.hit_chance)}%`],
-    ['applyChance', `${fmtNum(ailment.apply_chance)}%`],
+    ['sourceHit', formatNumber(ailment.source_hit)],
+    ['sourceCrit', formatNumber(ailment.source_crit)],
+    ['critShare', `${formatNumber(ailment.crit_share)}%`],
+    ['hitChance', `${formatNumber(ailment.hit_chance)}%`],
+    ['applyChance', `${formatNumber(ailment.apply_chance)}%`],
     ...(ailment.base_duration !== ailment.duration ? [['baseDuration', seconds(ailment.base_duration)] as [Key, string]] : []),
-    ...(ailment.enemy_duration !== 1 ? [['enemyDuration', `×${fmtNum(ailment.enemy_duration)}`] as [Key, string]] : []),
-    ...(ailment.rate !== 1 ? [['rate', `÷${fmtNum(ailment.rate)}`] as [Key, string]] : []),
+    ...(ailment.enemy_duration !== 1 ? [['enemyDuration', `×${formatNumber(ailment.enemy_duration)}`] as [Key, string]] : []),
+    ...(ailment.rate !== 1 ? [['rate', `÷${formatNumber(ailment.rate)}`] as [Key, string]] : []),
     ['duration', seconds(ailment.duration)],
-    ['hitsPerSecond', fmtNum(ailment.hits_per_second)],
-    ...(ailment.stacks > 0 ? [['stacks', fmtNum(ailment.stacks)] as [Key, string]] : []),
-    ['maxStacks', ailment.max_stacks === 0 ? '∞' : fmtNum(ailment.max_stacks)],
+    ['hitsPerSecond', formatNumber(ailment.hits_per_second)],
+    ...(ailment.stacks > 0 ? [['stacks', formatNumber(ailment.stacks)] as [Key, string]] : []),
+    ['maxStacks', ailment.max_stacks === 0 ? '∞' : formatNumber(ailment.max_stacks)],
   ];
   const lineGroups = (
     [
@@ -503,8 +498,8 @@ function AilmentView({ ailment, lang }: { ailment: AilmentDetail; lang: Lang }) 
               {ailment.source.map((row) => (
                 <tr key={row.damage_type} className={`damage-${row.damage_type.toLowerCase()}`}>
                   <th scope="row">{damageTypeLabel(lang, row.damage_type)}</th>
-                  <td className="mod-value">{fmtNum(row.hit)}</td>
-                  <td className="mod-value">{fmtNum(row.crit)}</td>
+                  <td className="mod-value">{formatNumber(row.hit)}</td>
+                  <td className="mod-value">{formatNumber(row.crit)}</td>
                 </tr>
               ))}
             </tbody>
@@ -523,7 +518,7 @@ function AilmentView({ ailment, lang }: { ailment: AilmentDetail; lang: Lang }) 
         </table>
         {ailment.damage_roll !== 50 && (
           <p className="breakdown-note">
-            {tt('calcs.ailment.rollNote').replace('{roll}', fmtNum(ailment.damage_roll))}
+            {tt('calcs.ailment.rollNote').replace('{roll}', formatNumber(ailment.damage_roll))}
           </p>
         )}
         {ailment.stacks === 0 && <p className="breakdown-note">{tt('calcs.ailment.noRateNote')}</p>}
@@ -568,17 +563,17 @@ function DefenceSlotsView({ slots, lang }: { slots: DefenceSlotRow[]; lang: Lang
           {slots.map((row, index) => (
             <tr key={`${row.slot}-${index}`}>
               <th scope="row">{slotLabel(lang, row.slot)}</th>
-              <td className="mod-value">{fmtNum(row.base)}</td>
-              <td className="mod-value">{fmtNum(row.increased)}%</td>
-              <td className="mod-value">×{fmtNum(row.more)}</td>
-              <td className="mod-value">{fmtNum(row.extra)}</td>
+              <td className="mod-value">{formatNumber(row.base)}</td>
+              <td className="mod-value">{formatNumber(row.increased)}%</td>
+              <td className="mod-value">×{formatNumber(row.more)}</td>
+              <td className="mod-value">{formatNumber(row.extra)}</td>
             </tr>
           ))}
         </tbody>
         <tfoot>
           <tr>
             <th scope="row" colSpan={4}>{tt('calcs.damage.total')}</th>
-            <td className="mod-value">{fmtNum(slots.reduce((total, row) => total + row.extra, 0))}</td>
+            <td className="mod-value">{formatNumber(slots.reduce((total, row) => total + row.extra, 0))}</td>
           </tr>
         </tfoot>
       </table>
@@ -588,14 +583,14 @@ function DefenceSlotsView({ slots, lang }: { slots: DefenceSlotRow[]; lang: Lang
 
 function ReloadView({ reload, lang }: { reload: ReloadDetail; lang: Lang }) {
   const tt = bindT(lang);
-  const seconds = (value: number) => `${fmtNum(value)}${tt('calcs.ailment.seconds')}`;
+  const seconds = (value: number) => `${formatNumber(value)}${tt('calcs.ailment.seconds')}`;
   type Key = 'firingRate' | 'bolts' | 'firingTime' | 'reloadTime' | 'rate';
   const rows: [Key, string][] = [
-    ['firingRate', fmtNum(reload.firing_rate)],
-    ['bolts', reload.bolts === null ? '∞' : fmtNum(reload.bolts)],
+    ['firingRate', formatNumber(reload.firing_rate)],
+    ['bolts', reload.bolts === null ? '∞' : formatNumber(reload.bolts)],
     ['firingTime', seconds(reload.firing_time)],
     ['reloadTime', seconds(reload.reload_time)],
-    ['rate', fmtNum(reload.rate)],
+    ['rate', formatNumber(reload.rate)],
   ];
   return (
     <div className="breakdown-scroll">
@@ -619,8 +614,8 @@ export function ModLines({ mods, lang, measure }: { mods: BreakdownMod[]; lang: 
   const tt = bindT(lang);
   return <div className="modifier-groups">{groupModifiers(mods, measure).map(group => <details className="modifier-source-group" key={group.source}>
     <summary className="disclosure" data-disclosure-level="group"><span className="modifier-source-heading"><strong>{sourceGroupLabel(lang, group.source)}</strong> <span>({group.mods.length})</span></span>
-      {group.subtotals.length > 0 && <span className="modifier-subtotals">{tt('calcs.sourceTotals')}{lang === 'en-US' ? ': ' : '：'}{group.subtotals.map(total => <span key={total.type}>
-        {modTypeLabel(lang, total.type)} {total.type === 'MORE' ? '×' : ''}{fmtNum(total.value)}{total.type === 'INC' || (total.type === 'BASE' && measure?.unit === 'percent') ? '%' : ''}
+      {group.subtotals.length > 0 && <span className="modifier-subtotals">{tt('calcs.sourceTotals')}{colon(lang)}{group.subtotals.map(total => <span key={total.type}>
+        {modTypeLabel(lang, total.type)} {total.type === 'MORE' ? '×' : ''}{formatNumber(total.value)}{total.type === 'INC' || (total.type === 'BASE' && measure?.unit === 'percent') ? '%' : ''}
       </span>)}</span>}
     </summary>
     <ModifierRows mods={group.mods} lang={lang} />
@@ -650,10 +645,10 @@ function ModifierRows({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
   return <ul className="modifier-rows">{mods.map((mod, index) => {
     if (isContinuation(raw[index], translated[index])) return null;
     return <li key={index} className={mod.active ? undefined : 'is-inactive'}>
-      <div className="modifier-row-head"><span className={`mod-type mod-type-${mod.mod_type.toLowerCase()}`}>{modTypeLabel(lang, mod.mod_type)}</span><strong className="mod-value">{mod.value === null ? '—' : fmtNum(mod.value)}</strong></div>
+      <div className="modifier-row-head"><span className={`mod-type mod-type-${mod.mod_type.toLowerCase()}`}>{modTypeLabel(lang, mod.mod_type)}</span><strong className="mod-value">{mod.value === null ? '—' : formatNumber(mod.value)}</strong></div>
       <div className="mod-text">{!mod.source_text || isNamelessItemMod(mod)
         ? <>{tt(mod.origin_kind === 'Item' ? 'calcs.missingModifier' : mod.origin_kind === 'CharacterBase' ? 'calcs.baseFrom.CharacterBase' : mod.origin_kind === 'GameConstant' ? 'calcs.baseFrom.GameConstant' : mod.origin_kind === 'SupportGem' ? 'calcs.baseFrom.SupportGem' : 'calcs.baseDerived')}
-          {mod.source_text && <details><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.details')}</summary><pre>{mod.source_text}</pre></details>}</>
+          {mod.source_text && <details><summary className="disclosure">{tt('calcs.details')}</summary><pre>{mod.source_text}</pre></details>}</>
         : <ModifierText raw={mod.source_text} translated={translated[index]} lang={lang} />}
         {!mod.active && <> <span className="mod-inactive-tag">{tt('calcs.inactive')}</span></>}</div>
       <p className="mod-origin">{source(mod, index)}{lang !== 'en-US' && /[A-Za-z]{3}/.test(names[index] ?? '') && <small className="modifier-fallback">{tt('calcs.untranslated')}</small>}</p>
@@ -671,12 +666,12 @@ function FormulaSummary({ breakdown, stat, lang }: { breakdown: Breakdown; stat?
     if (index === 0) return value;
     if (['flat', 'gained', 'flat_after', 'enemy_flat', 'off_hand_added', 'dot_dps', 'poison_dps', 'ignite_dps', 'bleed_dps'].includes(step.op)) return `(${expression} ${formulaOperand(step, stat, lang, formula.steps)})`;
     if (['increased', 'more', 'action_speed', 'uses_per_second', 'enemy_mitigation', 'chance_to_hit', 'dps_multiplier', 'energy_trigger', 'reload'].includes(step.op)) return `(${expression} ${formulaOperand(step, stat, lang, formula.steps).replace(/ \(.*\)$/, '')})`;
-    if (step.op === 'converted') return `(${expression} ×${fmtNum(1 - step.operand / 100)})`;
+    if (step.op === 'converted') return `(${expression} ×${formatNumber(1 - step.operand / 100)})`;
     return `${expression} → ${tt(`calcs.step.${step.op}`)} ${value}`;
   }, '');
   const converted = formula.steps.some(step => step.op === 'converted' && step.operand !== 0);
   const targets = breakdown.sources?.filter(group => group.base_total !== 0 && /ConvertTo/.test(group.name)).map(group => statNameLabel(lang, group.name));
-  return <div className="formula-conclusion"><p>{stat ? statNameLabel(lang, stat) + (lang === 'en-US' ? ': ' : '：') : ''}<span>{summary.split(/(\s+)/).map((part, index) => /\d/.test(part) ? <span className="formula-number" key={index}>{part}</span> : part)}</span> = <strong>{formatStatValue(formula.value, statFormat(stat ?? ''), lang)}{stat?.endsWith('DPS') ? ' DPS' : stat === 'Life' || stat === 'EnergyShield' ? words(lang, ' points', ' 点', ' 點') : ''}</strong></p>
+  return <div className="formula-conclusion"><p>{stat ? statNameLabel(lang, stat) + colon(lang) : ''}<span>{summary.split(/(\s+)/).map((part, index) => /\d/.test(part) ? <span className="formula-number" key={index}>{part}</span> : part)}</span> = <strong>{formatStat(stat ?? '', formula.value, lang)}{stat?.endsWith('DPS') ? ' DPS' : stat === 'Life' || stat === 'EnergyShield' ? words(lang, ' points', ' 点', ' 點') : ''}</strong></p>
     {converted && <p className="breakdown-note">{targets?.length ? targets.join('，') : tt('calcs.conversionUnknown')}</p>}
   </div>;
 }
@@ -686,7 +681,7 @@ function DamageChainView({ breakdown, lang }: { breakdown: Breakdown; lang: Lang
   const chain = damageChain(breakdown);
   const missing = chain.filter(link => link.value === undefined);
   return <section className="damage-chain"><h4>{tt('calcs.damageChain')}</h4><ol>{chain.filter(link => link.value !== undefined).map(link => <li key={link.key}>
-    <span>{tt(link.key)}</span><strong>{link.unit === 'multiplier' ? '×' : ''}{link.stat ? formatStatValue(link.value!, statFormat(link.stat), lang) : fmtNum(link.value!)}{link.unit === 'rate' ? words(lang, ' /s', ' 次/秒', ' 次/秒') : link.unit === 'percent' && !link.stat ? '%' : link.unit === 'dps' ? ' DPS' : ''}</strong>
+    <span>{tt(link.key)}</span><strong>{link.unit === 'multiplier' ? '×' : ''}{link.stat ? formatStat(link.stat, link.value!, lang) : formatNumber(link.value!)}{link.unit === 'rate' ? words(lang, ' /s', ' 次/秒', ' 次/秒') : link.unit === 'percent' && !link.stat ? '%' : link.unit === 'dps' ? ' DPS' : ''}</strong>
   </li>)}</ol>
     {missing.length > 0 && <p className="breakdown-note">{tt('calcs.chainMissing').replace('{links}', missing.map(link => tt(link.key)).join(lang === 'en-US' ? ', ' : '、'))}</p>}
   </section>;
@@ -705,7 +700,7 @@ function ResistanceView({ breakdown, stat, lang, values, related, onSelect }: { 
   const source = (id: string) => related?.[id] ?? (id === stat + 'Total' ? breakdown : undefined);
   return <section className="resistance-detail"><div className="resistance-summary">{ids.map((id, index) => {
     const value = values?.get(id) ?? related?.[id]?.formula?.value ?? fallback[index];
-    return <section key={id}><h4>{tt(labels[index])}</h4><strong className="mod-value">{value == null ? tt('calcs.missingValue') : formatStatValue(value, statFormat(id), lang)}</strong></section>;
+    return <section key={id}><h4>{tt(labels[index])}</h4><strong className="mod-value">{value == null ? tt('calcs.missingValue') : formatStat(id, value, lang)}</strong></section>;
   })}</div>
     {ids.map((id, index) => <details className="resistance-sources" key={id}><summary className="disclosure" data-disclosure-level="group">{tt(labels[index])}：{tt('calcs.source')}</summary>
       {onSelect && <AppButton onClick={() => onSelect(id)}>{statNameLabel(lang, id)}</AppButton>}
@@ -731,8 +726,8 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
       <h4 className="breakdown-heading">{calcsLabel(lang, 'derived')}</h4>
       <p className="breakdown-note">{tt('calcs.derivedHint')}</p>
       {sourceHints.map(hint => <p className="breakdown-note" key={hint.id}>{statNameLabel(lang, hint.id)}</p>)}
-      <p className="formula-conclusion">{detailFormula(derived.formula, derived.inputs, lang, true)}{stat && values?.has(stat) ? ` = ${formatStatValue(values.get(stat) ?? null, statFormat(stat), lang)}` : ''}</p>
-      <details className="formula-steps"><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.formula')}</summary><p className="derived-formula">{detailFormula(derived.formula, derived.inputs, lang)}</p></details>
+      <p className="formula-conclusion">{detailFormula(derived.formula, derived.inputs, lang, true)}{stat && values?.has(stat) ? ` = ${formatStat(stat, values.get(stat) ?? null, lang)}` : ''}</p>
+      <details className="formula-steps"><summary className="disclosure">{tt('calcs.formula')}</summary><p className="derived-formula">{detailFormula(derived.formula, derived.inputs, lang)}</p></details>
       <table className="breakdown-table"><caption>{tt('calcs.inputs')}</caption><tbody>
         {derived.inputs.map(input => <tr key={input.id}><th scope="row">{detailInputLabel(input.id, derived.inputs, lang)}</th><td>{inputValue(input)}</td></tr>)}
       </tbody></table>
@@ -768,7 +763,7 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
       <FormulaSummary breakdown={breakdown} stat={stat} lang={lang} />
       {stat === 'CombinedDPS' && onSelect && <div className="combined-components">{breakdown.formula?.steps.map((step, index) => {
         const component = COMBINED_DPS_COMPONENTS[step.op];
-        return component ? <AppButton key={index} onClick={() => onSelect(component)}>{statNameLabel(lang, component)} {formatStatValue(step.operand, statFormat(component), lang)} DPS</AppButton> : null;
+        return component ? <AppButton key={index} onClick={() => onSelect(component)}>{statNameLabel(lang, component)} {formatStat(component, step.operand, lang)} DPS</AppButton> : null;
       })}</div>}
       {stat === 'TotalDPS' && hands.length === 0 && <DamageChainView breakdown={breakdown} lang={lang} />}
       {breakdown.damage && <HitDamageView damage={breakdown.damage} lang={lang} />}
@@ -777,7 +772,7 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
         <>
           <h4 className="breakdown-heading">{calcsLabel(lang, 'steps')}</h4>
           <p className="breakdown-note">{tt('calcs.stepsHint')}</p>
-          <details className="formula-steps"><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.formula')}</summary>
+          <details className="formula-steps"><summary className="disclosure">{tt('calcs.formula')}</summary>
           <div className="breakdown-scroll"><table className="breakdown-formula" aria-label={tt('calcs.formula')}>
             <tbody>
               {breakdown.formula.steps.map((step, i) => (
@@ -790,7 +785,7 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
               <tr className="formula-final">
                 <th scope="row">{tt('calcs.formulaResult')}</th>
                 <td />
-                <td className="formula-result">{formatStatValue(breakdown.formula.value, statFormat(stat ?? ''), lang)}</td>
+                <td className="formula-result">{formatStat(stat ?? '', breakdown.formula.value, lang)}</td>
               </tr>
             </tbody>
           </table></div></details>
@@ -799,14 +794,14 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
         <>
           <div className="breakdown-summary">
             <span>
-              {tt('calcs.baseTotal')}{lang === 'en-US' ? ': ' : '：'}<strong>{fmtNum(breakdown.base_total)}</strong>
+              {tt('calcs.baseTotal')}{colon(lang)}<strong>{formatNumber(breakdown.base_total)}</strong>
             </span>
             <span>
-              {tt('calcs.incTotal')}{lang === 'en-US' ? ': ' : '：'}<strong>{fmtNum(breakdown.inc_total)}%</strong>
+              {tt('calcs.incTotal')}{colon(lang)}<strong>{formatNumber(breakdown.inc_total)}%</strong>
             </span>
             {breakdown.more_total !== 1 && (
               <span>
-                {tt('calcs.moreTotal')}{lang === 'en-US' ? ': ' : '：'}<strong>×{fmtNum(breakdown.more_total)}</strong>
+                {tt('calcs.moreTotal')}{colon(lang)}<strong>×{formatNumber(breakdown.more_total)}</strong>
               </span>
             )}
           </div>
@@ -818,11 +813,11 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
           <div className="mitigation-context"><MitigationView rows={breakdown.mitigation} lang={lang} />
             <aside><h4>{tt('calcs.enemyConditions')}</h4><ul>{breakdown.mitigation.map(row => <li key={row.damage_type}>
               <ConfigFieldLink field={row.resist === null ? 'enemyPhysicalReduction' : `enemy${row.damage_type}Resist`} lang={lang}>
-                {damageTypeLabel(lang, row.damage_type)}：{fmtNum(row.resist ?? row.reduction)}% {tt(row.resist === null ? 'calcs.mitigation.reduction' : 'calcs.mitigation.resist')}
+                {damageTypeLabel(lang, row.damage_type)}：{formatNumber(row.resist ?? row.reduction)}% {tt(row.resist === null ? 'calcs.mitigation.reduction' : 'calcs.mitigation.resist')}
               </ConfigFieldLink>
             </li>)}</ul></aside>
           </div>
-          <details className="enemy-modifiers"><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.modifier')} ({breakdown.mitigation.reduce((sum, row) => sum + row.defence_mods.length + row.taken_mods.length, 0)})</summary><EnemyLinesView rows={breakdown.mitigation} lang={lang} /></details>
+          <details className="enemy-modifiers"><summary className="disclosure">{tt('calcs.modifier')} ({breakdown.mitigation.reduce((sum, row) => sum + row.defence_mods.length + row.taken_mods.length, 0)})</summary><EnemyLinesView rows={breakdown.mitigation} lang={lang} /></details>
         </>
       )}
       {breakdown.ailment && <AilmentView ailment={breakdown.ailment} lang={lang} />}
@@ -854,15 +849,15 @@ export function FullDpsView({ calc, lang }: { calc: CalculateBuildResponse | nul
     {full && full.skills.length > 0 ? <>
       <p className="calcs-hint">{tt('skills.fullDpsHint')}</p>
       <div className="breakdown-summary">
-        <span>{statNameLabel(lang, 'FullDPS')}{lang === 'en-US' ? ': ' : '：'}<strong>{formatStatValue(full.dps, statFormat('FullDPS'), lang)}</strong></span>
-        <span>{statNameLabel(lang, 'FullDotDPS')}{lang === 'en-US' ? ': ' : '：'}<strong>{formatStatValue(full.dot_dps, statFormat('FullDotDPS'), lang)}</strong></span>
+        <span>{statNameLabel(lang, 'FullDPS')}{colon(lang)}<strong>{formatStat('FullDPS', full.dps, lang)}</strong></span>
+        <span>{statNameLabel(lang, 'FullDotDPS')}{colon(lang)}<strong>{formatStat('FullDotDPS', full.dot_dps, lang)}</strong></span>
       </div>
       <div className="breakdown-scroll"><table className="breakdown-table full-dps-table">
         <caption>{tt('calcs.fullDpsContribution')}</caption>
         <thead><tr><th>{tt('calcs.skill')}</th><th>{tt('skills.count')}</th><th>{tt('calcs.fullDpsContribution')}</th><th>{tt('calcs.diagnostics')}</th></tr></thead>
         <tbody>{full.skills.map(row => <tr key={`${row.group_index}-${row.active_skill_index}`}>
-          <th>{tt('calcs.group')} {row.group_index + 1} · {skillName(row.skill_id)}</th><td>{fmtNum(row.count)}</td>
-          <td>{row.error ? '—' : formatStatValue(row.dps, statFormat('FullDPS'), lang)}</td><td>{row.error}{row.unsupported_modifiers.length > 0 && <details><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.unsupported')} ({row.unsupported_modifiers.length})</summary>
+          <th>{tt('calcs.group')} {row.group_index + 1} · {skillName(row.skill_id)}</th><td>{formatNumber(row.count)}</td>
+          <td>{row.error ? '—' : formatStat('FullDPS', row.dps, lang)}</td><td>{row.error}{row.unsupported_modifiers.length > 0 && <details><summary className="disclosure">{tt('calcs.unsupported')} ({row.unsupported_modifiers.length})</summary>
             <UnincludedModifiers lines={row.unsupported_modifiers} lang={lang} /></details>}</td>
         </tr>)}</tbody>
       </table></div>
@@ -916,12 +911,12 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
       {running && <p className="calcs-hint" role="status">{tt('calcs.running')}</p>}
       {error && <div className="calc-error" role="alert">
         <p>{tt('calcs.overviewFailed')}</p>
-        <details><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.errorDetails')}</summary><p>{error}</p></details>
+        <details><summary className="disclosure">{tt('calcs.errorDetails')}</summary><p>{error}</p></details>
       </div>}
       {report?.item_errors.map((issue, index) => (
         <div className="calc-error" key={`${issue.slot}-${index}`}>
-          <p>{slotLabel(lang, issue.slot)}{lang === 'en-US' ? ': ' : '：'}{tt('calcs.itemExcluded')}</p>
-          <details><summary className="disclosure" data-disclosure-level="inline">{tt('calcs.errorDetails')}</summary><p>{issue.message}</p></details>
+          <p>{slotLabel(lang, issue.slot)}{colon(lang)}{tt('calcs.itemExcluded')}</p>
+          <details><summary className="disclosure">{tt('calcs.errorDetails')}</summary><p>{issue.message}</p></details>
         </div>
       ))}
       {displayed && (displayed.skills.length === 0 ? (
@@ -1003,7 +998,7 @@ export function AttributionView({ session, lang }: { session: BuildSession; lang
               <tr className="attribution-baseline">
                 <td>{tt('calcs.baseline')}</td>
                 {fields.map((f) => (
-                  <td key={f}>{formatStatValue(report.baseline[f] ?? null, statFormat(f), lang)}</td>
+                  <td key={f}>{formatStat(f, report.baseline[f] ?? null, lang)}</td>
                 ))}
               </tr>
               {[...report.entries]
@@ -1021,7 +1016,7 @@ export function AttributionView({ session, lang }: { session: BuildSession; lang
                       const pct = baseline !== 0 ? (delta / baseline) * 100 : 0;
                       return (
                         <td key={f} className={delta > 0 ? 'delta-pos' : delta < 0 ? 'delta-neg' : ''}>
-                          {delta === 0 ? '—' : `${delta > 0 ? '+' : '-'}${formatStatValue(Math.abs(delta), statFormat(f), lang)}`}
+                          {delta === 0 ? '—' : `${delta > 0 ? '+' : '-'}${formatStat(f, Math.abs(delta), lang)}`}
                           {Math.abs(pct) >= 0.05 && <span className="delta-pct">{lang === 'en-US' ? ' (' : '（'}{formatNumber(pct, 1, 1)}%{lang === 'en-US' ? ')' : '）'}</span>}
                         </td>
                       );
@@ -1199,7 +1194,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
   // A missing poison also has a zero cap; only a calculated poison uses it as no limit.
   const unboundedPoison = values.get('PoisonStacksMax') === 0 && (values.get('PoisonChance') ?? 0) > 0;
   const metricValue = (name: string) => name === 'PoisonStacksMax' && unboundedPoison
-    ? '∞' : formatStatValue(values.get(name) ?? null, statFormat(name), lang);
+    ? '∞' : formatStat(name, values.get(name) ?? null, lang);
   const actorName = selectedMinion ? `${tt('minion.title')} · ${minionName(selectedMinion) || tt('minion.unavailable')} #${selectedMinion.index + 1}` : tt('minion.player');
   const actorLabel = tt('calcs.actorEyebrow').replace('{actor}', actorName);
   const actorPicker = (calc?.minions?.length ?? 0) > 0 && <label className="calcs-actor-picker">
@@ -1208,7 +1203,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
       onChange={event => { actorChosen.current = true; setActor(event.target.value); setOpen(null); }}>
       <option value="player">{tt('minion.player')}</option>
       {(calc?.minions ?? []).map(minion => <option key={actorKey(minion)} value={actorKey(minion)}>
-        {tt('minion.title')}{lang === 'en-US' ? ': ' : '：'}{minionName(minion) || tt('minion.unavailable')} · {minion.index + 1}
+        {tt('minion.title')}{colon(lang)}{minionName(minion) || tt('minion.unavailable')} · {minion.index + 1}
       </option>)}
     </AppSelectControl>
   </label>;
@@ -1254,7 +1249,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
           <div className="calcs-metric-browser" id="calcs-metric-browser" tabIndex={-1}>
             <div className="calcs-context-bar" aria-label={calcsLabel(lang, 'context')}>
               {actorPicker || <strong>{actorLabel}</strong>}
-              {skillId && <span>{tt('calcs.skill')}{lang === 'en-US' ? ': ' : '：'}<strong>{skillName(skillId)}</strong></span>}
+              {skillId && <span>{tt('calcs.skill')}{colon(lang)}<strong>{skillName(skillId)}</strong></span>}
               {session.busy && <span role="status">{calcsLabel(lang, 'stale')}</span>}
             </div>
             <div className="calcs-filters">

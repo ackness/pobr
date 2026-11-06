@@ -1,8 +1,9 @@
-import { formatNumber } from '../../../lib/statDisplay';
 import type { StatComparison } from '../../../lib/compare';
 import type { Lang } from '../../../lib/i18n';
 import { words } from '../../text';
 import { statPolarity } from '../../motion/statPolarity';
+
+export { signedPercent } from '../../../lib/statDisplay';
 
 /** The five parts of a stage comparison, in the order a reader should visit them. */
 export const COMPARE_TABS = ['stats', 'items', 'skills', 'config', 'tree'] as const;
@@ -74,11 +75,6 @@ export function treeDifferenceCount(
   if (!sameVersion) return changedJewels === 0 && left.size === 0 && right.size === 0 ? 0 : null;
   const moved = [...left].filter(id => !right.has(id)).length + [...right].filter(id => !left.has(id)).length;
   return moved + changedJewels;
-}
-
-export function signedPercent(percent: number, digits = 1): string {
-  const text = formatNumber(Math.abs(percent), digits, digits);
-  return `${percent > 0 ? '+' : percent < 0 ? '−' : ''}${text}%`;
 }
 
 export interface DiffLine { text: string; changed: boolean }

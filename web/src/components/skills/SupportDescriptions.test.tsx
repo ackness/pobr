@@ -10,7 +10,7 @@ it('renders translated prose with its language, and labels English fallback sepa
     gem, { skill_id: 'unknown', name: 'Unknown support', description: 'Untranslated source.' },
     { skill_id: 'missing', name: 'Missing support' },
   ]} />);
-  expect(html).toContain('<summary class="disclosure" data-disclosure-level="inline">查看辅助效果说明</summary>');
+  expect(html).toContain('<summary class="disclosure">查看辅助效果说明</summary>');
   expect(html).toContain(`<p lang="zh-CN">${descriptions.entries.SupportRakiatasFlowPlayer.zh_cn}</p>`);
   expect(html).toContain('英文来源');
   expect(html).toContain('<p lang="en">Untranslated source.</p>');

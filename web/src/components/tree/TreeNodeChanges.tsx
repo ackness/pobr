@@ -32,7 +32,7 @@ export function TreeNodeChanges({ request, preview, baseline, busy, allocated, l
   }, [key, ready, open]);
   const result = ready && resolved?.key === key ? resolved : null;
   return <details className="tree-node-changes" onToggle={event => setOpen(event.currentTarget.open)}>
-    <summary className="disclosure" data-disclosure-level="inline">{tt(allocated ? 'diff.ifDealloc' : 'diff.ifAlloc')}</summary>
+    <summary className="disclosure">{tt(allocated ? 'diff.ifDealloc' : 'diff.ifAlloc')}</summary>
     {result?.diffs ? <TreeHoverBenefits diffs={result.diffs} lang={lang} refundCount={preview?.result?.removed.length} />
       : <p role="status">{busy || !preview || ready && !result ? tt('tree.deltaPending') : tt('tree.deltaUnavailable')}</p>}
   </details>;

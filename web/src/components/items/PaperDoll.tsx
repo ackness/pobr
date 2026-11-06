@@ -36,7 +36,7 @@ export function PaperDoll({ slot, utilitySlots, limbSlots, limbsInUse, labels }:
       <div className="utility-row doll-utility">{utilitySlots.map(id => slot(id))}</div>
     </div>
     <details className="doll-limbs" open={limbsInUse}>
-      <summary className="disclosure" data-disclosure-level="inline">{labels.limbs}</summary>
+      <summary className="disclosure">{labels.limbs}</summary>
       <p className="items-hint">{labels.limbsHint}</p>
       <div className="utility-row limb-row" role="group" aria-label={labels.limbs}>{limbSlots.map(id => slot(id))}</div>
     </details>

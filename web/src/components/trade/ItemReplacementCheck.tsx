@@ -5,7 +5,7 @@ import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
 import { usePreview } from '../shared/PreviewContext';
 import { changesFromRecords } from '../../app/preview/fromRecords';
-import { words } from '../../app/text';
+import { words, colon } from '../../app/text';
 import { itemNameLabel } from '../../lib/itemCrafting';
 import { craftT } from '../../lib/itemCraftingText';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -204,7 +204,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   return <section className="upgrade-item-check ui-card" aria-labelledby="replacement-heading">
     {candidate ? <header><h3 id="replacement-heading">{craftT(lang, 'preview')}</h3><p>{craftT(lang, 'previewHint')}</p></header> : <header className="replacement-heading"><div>
       <h3 id="replacement-heading">{words(lang, 'Paste an item to compare it', '粘贴物品来对比', '貼上物品來比較')}</h3><p>{ut('checkHint')}</p></div><div className="replacement-context">
-      <AppButton className="replacement-goal" onClick={onEditGoal}>{ut('comparisonGoal')}{lang === 'en-US' ? ': ' : '：'}{goalLabel}{lang === 'en-US' ? ` (${ut('changeGoal')})` : `（${ut('changeGoal')}）`}</AppButton></div></header>}
+      <AppButton className="replacement-goal" onClick={onEditGoal}>{ut('comparisonGoal')}{colon(lang)}{goalLabel}{lang === 'en-US' ? ` (${ut('changeGoal')})` : `（${ut('changeGoal')}）`}</AppButton></div></header>}
     <div className="replacement-input"><label htmlFor="replacement-text">{ut('itemText')}</label>
       <AppTextarea readOnly={!!candidate} ref={inputRef} id="replacement-text" rows={report ? 3 : 5} value={text} placeholder={ut('pastePlaceholder')}
         onChange={event => { if (candidate || !latest.current.active) return; stop(); setApplied(null); setSnapshot(null); setChosenSlot(null); setAffixDirty(false); setAugmentPlans({}); setText(event.target.value); }}
@@ -263,7 +263,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
         </div>
         <SwapGainCard before={Object.entries(report.baseline).map(([id, value]) => ({ id, value }))}
           after={Object.entries(selected.stats).map(([id, value]) => ({ id, value }))} lang={lang} damage={damage} />
-        {!!selected.unsupported.length && <details className="trade-notice replacement-unsupported"><summary className="disclosure" data-disclosure-level="inline">{ut('incomplete')} ({selected.unsupported.length})</summary><UnincludedModifiers lines={selected.unsupported} lang={lang} /></details>}
+        {!!selected.unsupported.length && <details className="trade-notice replacement-unsupported"><summary className="disclosure">{ut('incomplete')} ({selected.unsupported.length})</summary><UnincludedModifiers lines={selected.unsupported} lang={lang} /></details>}
         {!!report.rejected.length && <p className="trade-notice">{report.rejected.map(row => `${positionLabel(row.slot)}: ${errorText(row.reason)}`).join('\n')}</p>}
         <div className="replacement-apply"><AppButton className={actionClassName} disabled={!active || busy || affixDirty || session.busy} onClick={apply}>{busy ? ut('comparingPositions') : `${ut('apply')} · ${positionLabel(selected.slot)}`}</AppButton><span>{affixDirty ? affixT(lang, 'dirty') : ut('applyHint')}</span></div>
         {!candidate && selectedItem && <div className="replacement-actions"><AppButton disabled={!active || busy || affixDirty || session.busy || alreadyAdded || equipmentCandidates.length >= EQUIPMENT_CANDIDATE_LIMIT}

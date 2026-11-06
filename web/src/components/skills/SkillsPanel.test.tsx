@@ -75,7 +75,7 @@ it('shows support level and quality as inapplicable and keeps count/corruption i
   expect(harness.inputs.filter(input => input['aria-label'] === 'Level')).toHaveLength(1);
   expect(harness.inputs.filter(input => input['aria-label'] === 'Quality')).toHaveLength(1);
   expect(html).toContain('aria-label="Not applicable">—');
-  expect(html).toContain('<details class="gem-advanced"><summary class="disclosure" data-disclosure-level="inline">Gem options</summary>');
+  expect(html).toContain('<details class="gem-advanced"><summary class="disclosure">Gem options</summary>');
   expect(html.indexOf('placeholder="Add a support gem…"')).toBeLessThan(html.indexOf('class="gem-optimizer"'));
   const count = harness.inputs.find(input => input['aria-label'] === 'Gem count')!;
   count.onChange!({ target: { value: '1.5' } } as never);

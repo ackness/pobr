@@ -320,7 +320,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
                 ×
               </AppButton>
             </span>
-            <details className="gem-advanced"><summary className="disclosure" data-disclosure-level="inline">{tt('skills.gemAdvanced')}</summary>
+            <details className="gem-advanced"><summary className="disclosure">{tt('skills.gemAdvanced')}</summary>
               <div className="gem-advanced-controls">
               <label className="gem-count">{tt('skills.count')}<AppInput type="number" min={0} step="any" value={gem.count ?? 1}
                 aria-label={tt('skills.gemCount')} disabled={session.busy} onChange={event => {
@@ -462,7 +462,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
           {optimizer}
         </section>
         {active && <details className="skill-advanced">
-          <summary className="disclosure" data-disclosure-level="inline">{w('Advanced', '高级', '進階')}</summary>
+          <summary className="disclosure">{w('Advanced', '高级', '進階')}</summary>
           <div className="skill-advanced-body">
             {fullDps}
             {minionControls}

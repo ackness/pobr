@@ -42,7 +42,7 @@ function UnincludedGroup({ group, lang }: { group: ReturnType<typeof unincludedG
 export function UnincludedModifiers({ lines, lang, items }: { lines: readonly string[]; lang: Lang; items?: readonly SlotItemInput[] }) {
   const groups = useMemo(() => unincludedGroups(lines, lang, items), [lines, lang, items]);
   return <div className="unincluded-modifiers"><p>{bindT(lang)('calcs.unincludedReason')}</p><ul className="unincluded-sources">{groups.map(group => <UnincludedGroup key={group.identity} group={group} lang={lang} />)}</ul>
-    {lines.length > 0 && <details className="unincluded-raw"><summary className="disclosure" data-disclosure-level="inline">{bindT(lang)('calcs.originalModifiers')}</summary><pre>{lines.join('\n')}</pre></details>}
+    {lines.length > 0 && <details className="unincluded-raw"><summary className="disclosure">{bindT(lang)('calcs.originalModifiers')}</summary><pre>{lines.join('\n')}</pre></details>}
   </div>;
 }
 

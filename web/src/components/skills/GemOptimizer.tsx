@@ -14,14 +14,14 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
 import { changesFromRecords } from '../../app/preview/fromRecords';
-import { formatStatValue, formatNumber, statFormat, statMap } from '../../lib/statDisplay';
+import { formatNumber, statMap, formatStat } from '../../lib/statDisplay';
 import { supportText } from '../../lib/supportI18n';
 import { resolveDamageObjective } from '../../lib/mainMinion';
 import { useHeadlineDamage } from '../../hooks/useMainMinion';
 import type { Objective } from '../../lib/optimize';
 import { applySupportPlan, eligibleSupports, lineageAvailable, optimizeSupports, type SupportMetadata, type SupportOptimization } from '../../lib/supportOptimizer';
 import { ObjectiveEditor, OptimizerProgress, objectiveOf } from '../shared/OptimizerControls';
-import { words } from '../../app/text';
+import { words, colon } from '../../app/text';
 import { SupportDescriptions } from './SupportDescriptions';
 
 interface Props {
@@ -167,10 +167,9 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     invalidate();
     session.setSocketGroups(groups);
   };
-  const number = (value: number | undefined, stat: string) => value === undefined ? '—' : formatStatValue(value, statFormat(stat), lang);
   const metricLabel = (stat: string) => statNameLabel(lang, stat);
   const change = (before: number, after: number, stat: string) => before > 0
-    ? `${after >= before ? '+' : ''}${formatNumber((after / before - 1) * 100, 1, 1)}%` : `${after >= before ? '+' : ''}${number(after - before, stat)}`;
+    ? `${after >= before ? '+' : ''}${formatNumber((after / before - 1) * 100, 1, 1)}%` : `${after >= before ? '+' : ''}${formatStat(stat, after - before, lang)}`;
 
   if (!active) return null;
 
@@ -180,7 +179,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
       .replace('{unknown}', String(pool.unknown)).replace('{level}', String(pool.levelBlocked))
       .replace('{incompatible}', String(pool.incompatible))}</span>
   </div>;
-  const poolFilter = <details className="support-pool-details"><summary className="disclosure" data-disclosure-level="inline">{st('filterTitle')}</summary>
+  const poolFilter = <details className="support-pool-details"><summary className="disclosure">{st('filterTitle')}</summary>
     <p className="skills-hint">{st('filterHint')}</p>
     <label className="support-search">{st('search')}<AppInput type="search" value={search}
       placeholder={st('searchPlaceholder')} onChange={event => setSearch(event.target.value)} /></label>
@@ -225,31 +224,31 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const errorBlock = error && <p className="opt-error">{error}</p>;
   const resultsBlock = result && <div className="support-results">
     <div className="support-baseline"><strong>{st('baseline')}</strong>
-      <span>{damage.label} {number(result.baseline[damage.stat], damage.stat)}</span><span>{metricLabel('TotalEHP')} {number(result.baseline.TotalEHP, 'TotalEHP')}</span>
+      <span>{damage.label} {result.baseline[damage.stat] === undefined ? '—' : formatStat(damage.stat, result.baseline[damage.stat], lang)}</span><span>{metricLabel('TotalEHP')} {result.baseline.TotalEHP === undefined ? '—' : formatStat('TotalEHP', result.baseline.TotalEHP, lang)}</span>
     </div>
     {damage.note && <p className="skills-hint">{damage.note}</p>}
     <p className="skills-hint">{st('keepActive')}</p>
     <details className="support-calculation-details">
-    <summary className="disclosure" data-disclosure-level="inline">{st('calculationDetails')}</summary>
+    <summary className="disclosure">{st('calculationDetails')}</summary>
     <p className="skills-hint">{st('results')} {result.evaluated} · {st('unsupported')} {result.unmodeled}</p>
-    <p className="skills-hint">{st('data')}{lang === 'en-US' ? ': ' : '：'}{result.dataVersion ?? st('unknownVersion')} · {st('tree')}{lang === 'en-US' ? ': ' : '：'}{result.request.tree_version ?? st('defaultTree')}</p>
+    <p className="skills-hint">{st('data')}{colon(lang)}{result.dataVersion ?? st('unknownVersion')} · {st('tree')}{colon(lang)}{result.request.tree_version ?? st('defaultTree')}</p>
     {result.baselineUnsupported.length > 0 && <details className="support-diagnostics support-baseline-unsupported">
-      <summary className="disclosure" data-disclosure-level="group">{st('baselineLimits')}{lang === 'en-US' ? ': ' : '：'}{result.baselineUnsupported.length}</summary>
+      <summary className="disclosure" data-disclosure-level="group">{st('baselineLimits')}{colon(lang)}{result.baselineUnsupported.length}</summary>
       <p className="skills-hint">{st('baselineLimitsHint')}</p>
       <UnincludedModifiers lines={result.baselineUnsupported} lang={lang} items={result.request.items} />
     </details>}
     {result.excluded.length > 0 && <details className="support-diagnostics">
-      <summary className="disclosure" data-disclosure-level="group">{st('diagnosticExcluded')}{lang === 'en-US' ? ': ' : '：'}{result.excluded.length}</summary>
+      <summary className="disclosure" data-disclosure-level="group">{st('diagnosticExcluded')}{colon(lang)}{result.excluded.length}</summary>
       <p className="skills-hint">{st('diagnosticExcludedHint')}</p>
       <ol className="support-diagnostic-excluded">{result.excluded.map((edit, index) => <li key={index}>
         <details>
-          <summary className="disclosure" data-disclosure-level="inline">{st('completeSet')}{lang === 'en-US' ? ': ' : '：'}{edit.supports.map(gem => gemName(gem.skill_id)).join(' · ') || st('noSupports')}</summary>
+          <summary className="disclosure">{st('completeSet')}{colon(lang)}{edit.supports.map(gem => gemName(gem.skill_id)).join(' · ') || st('noSupports')}</summary>
           <ul className="support-diagnostic-gems">{edit.supports.map(gem => <li key={gem.skill_id} data-skill-id={gem.skill_id}>
             {gemName(gem.skill_id)} · {st('level')} {gem.level} · {st('quality')} {gem.quality} · {st('statSet')} {gem.stat_set_index ?? 1}
           </li>)}</ul>
           {edit.unsupported.length > 0 && <><p>{st('newLimits')}</p>
             <UnincludedModifiers lines={edit.unsupported} lang={lang} /></>}
-          {edit.error && <p className="opt-error">{st('engineError')}{lang === 'en-US' ? ': ' : '：'}{edit.error}</p>}
+          {edit.error && <p className="opt-error">{st('engineError')}{colon(lang)}{edit.error}</p>}
           {edit.invalidStats && <p className="opt-error">{st('invalidStats')}</p>}
         </details>
       </li>)}</ol>
@@ -272,8 +271,8 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
       const added = plan.supports.filter(gem => !equipped.some(old => old.skill_id === gem.skill_id));
       return <article className="support-plan" key={index} onMouseEnter={hover?.onEnter} onMouseLeave={hover?.onLeave} onFocus={hover?.onEnter} onBlur={hover?.onLeave}>
       <div className="support-plan-edits">
-        <p>{st('equip')}{lang === 'en-US' ? ': ' : '：'}{added.map(gem => gemName(gem.skill_id)).join(' · ') || st('none')}</p>
-        <p>{st('remove')}{lang === 'en-US' ? ': ' : '：'}{removed.map(gem => gemName(gem.skill_id)).join(' · ') || st('none')}</p>
+        <p>{st('equip')}{colon(lang)}{added.map(gem => gemName(gem.skill_id)).join(' · ') || st('none')}</p>
+        <p>{st('remove')}{colon(lang)}{removed.map(gem => gemName(gem.skill_id)).join(' · ') || st('none')}</p>
       </div>
       <div className="support-plan-gems">{plan.supports.map(gem => <span className="opt-chip" key={gem.skill_id} data-skill-id={gem.skill_id}
         data-level={gem.level} data-quality={gem.quality} data-stat-set-index={gem.stat_set_index ?? undefined}>
@@ -286,11 +285,11 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
         const before = result.baseline[stat];
         const after = plan.stats[stat];
         return <span key={stat} className={before === undefined || after === undefined || after === before ? undefined : after > before ? 'is-positive' : 'is-negative'}>
-          {stat === damage.stat ? damage.label : metricLabel(stat)} {number(after, stat)} <strong>{before === undefined || after === undefined ? '—' : change(before, after, stat)}</strong>
+          {stat === damage.stat ? damage.label : metricLabel(stat)} {after === undefined ? '—' : formatStat(stat, after, lang)} <strong>{before === undefined || after === undefined ? '—' : change(before, after, stat)}</strong>
         </span>;
       })}</div>
       {descriptions ? <details className="support-diagnostics support-descriptions">
-        <summary className="disclosure" data-disclosure-level="inline">{st('descriptions')}</summary>
+        <summary className="disclosure">{st('descriptions')}</summary>
         <p className="skills-hint">{tt('picker.descriptionHint')}</p>
         {plan.supports.map(gem => {
           const metadata = byId.get(gem.skill_id);

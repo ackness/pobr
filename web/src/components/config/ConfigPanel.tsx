@@ -25,7 +25,7 @@ import { ConfigScopeControl, matchesConfigScope, type ConfigScope } from './Conf
 import { RawConfigValue } from './RawConfigValue';
 import { ScenarioBar } from '../../app/pages/config/ScenarioBar';
 import { confirmedByBuild, partitionRelevant } from '../../app/pages/config/scenario';
-import { words } from '../../app/text';
+import { words, colon } from '../../app/text';
 import './config.css';
 import '../../app/config-workflow.css';
 
@@ -188,12 +188,12 @@ export function OptionRow({
       </div>
       {overridden && (
         <AppButton className="config-reset" disabled={busy} title={tt('config.reset')}
-          aria-label={`${tt('config.reset')}${lang === 'en-US' ? ': ' : '：'}${label}`} onClick={onReset}>
+          aria-label={`${tt('config.reset')}${colon(lang)}${label}`} onClick={onReset}>
           ↺
         </AppButton>
       )}
       <details className="config-option-help">
-        <summary className="disclosure" data-disclosure-level="inline">{workflowLabel(lang, 'help')}</summary>
+        <summary className="disclosure">{workflowLabel(lang, 'help')}</summary>
         {tooltip && <p className="config-help" id={`config-help-${option.var}`}>{stripColorCodes(tooltip)}</p>}
         {tooltip && lang !== 'en-US' && tooltip === option.tooltip && <p className="config-source">{workflowLabel(lang, 'sourceHelp')}</p>}
         <span className="config-source">{workflowLabel(lang, 'rawKey')}</span>
@@ -440,7 +440,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
         <p className="config-hint">{tt('config.quickHint')}</p>
         <p className="config-quick-context" role="status">
           {session.busy ? tt('config.quickUpdating')
-            : calculatedMain ? <>{tt(isMinion ? 'config.quickMinion' : 'config.quickSkill')}{lang === 'en-US' ? ': ' : '：'}<span className="config-quick-skill">{skillName(calculatedMain.skill_id)}</span></>
+            : calculatedMain ? <>{tt(isMinion ? 'config.quickMinion' : 'config.quickSkill')}{colon(lang)}<span className="config-quick-skill">{skillName(calculatedMain.skill_id)}</span></>
             : tt('config.quickUnavailable')}
         </p>
         <p className="config-hint">{tt(isMinion ? 'config.quickMinionScope' : 'config.quickScope')}</p>
@@ -457,19 +457,19 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
                 <div className="config-quick-description">
                   <strong>{label}</strong>
                   <p className="config-quick-value">
-                    {source}{lang === 'en-US' ? ': ' : '：'}<output className={typeof value === 'number' ? 'whitespace-nowrap' : undefined}
-                      aria-label={`${tt('config.valueLabel')}${lang === 'en-US' ? ': ' : '：'}${label}`}>
+                    {source}{colon(lang)}<output className={typeof value === 'number' ? 'whitespace-nowrap' : undefined}
+                      aria-label={`${tt('config.valueLabel')}${colon(lang)}${label}`}>
                       {encounterValueLabel(lang, option, value)}
                     </output>
                   </p>
                   <p className="config-hint">
                     {damageType
-                      ? `${isMinion ? '' : `${tt('config.quickHitReason')}${lang === 'en-US' ? ': ' : '：'}${damageTypeLabel(lang, damageType)}${lang === 'en-US' ? '. ' : '。'}`}${tt('config.quickMitigationReason')}`
+                      ? `${isMinion ? '' : `${tt('config.quickHitReason')}${colon(lang)}${damageTypeLabel(lang, damageType)}${lang === 'en-US' ? '. ' : '。'}`}${tt('config.quickMitigationReason')}`
                       : tt(option.var === 'conditionShockEffect' ? 'config.quickShockMagnitude' : 'config.quickShockState')}
                   </p>
                 </div>
                 <AppButton type="button" disabled={session.busy || loadState !== 'ready'}
-                  aria-label={`${tt('config.quickOpen')}${lang === 'en-US' ? ': ' : '：'}${label}`} onClick={() => openSetting(option)}>
+                  aria-label={`${tt('config.quickOpen')}${colon(lang)}${label}`} onClick={() => openSetting(option)}>
                   {tt('config.quickOpen')}
                 </AppButton>
               </li>
@@ -495,7 +495,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
 
   const catalog = (<>
       <div className="config-controls">{searchToolbar}{viewToggle}</div>
-      <div className="config-help-tools"><details className="config-guidance"><summary className="disclosure" data-disclosure-level="inline">{workflowLabel(lang, 'guidance')}</summary>
+      <div className="config-help-tools"><details className="config-guidance"><summary className="disclosure">{workflowLabel(lang, 'guidance')}</summary>
       <p className="config-hint">{tt('config.visibilityHint')}</p>
       <p className="config-hint">{tt('config.editHint')}</p>
       <p className="config-hint">{tt('config.defaultsHint')}</p>
@@ -504,7 +504,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
       {loadState === 'error' && <div className="calc-error" role="alert">
         {tt('config.loadFailed')} <AppButton onClick={() => setLoadAttempt(value => value + 1)}>{tt('common.retry')}</AppButton>
       </div>}
-    <details className="config-quick-disclosure"><summary className="disclosure" data-disclosure-level="inline">{tt('config.quickTitle')}</summary>{quickAccess}</details></div>
+    <details className="config-quick-disclosure"><summary className="disclosure">{tt('config.quickTitle')}</summary>{quickAccess}</details></div>
     {groups.length > 0 && <label className="config-mobile-category">
       <span>{words(lang, 'Category', '分类', '分類')}</span>
       <AppSelectControl aria-label={words(lang, 'Configuration category', '配置分类', '設定分類')} value={searching ? 'search' : activeSection}
@@ -612,7 +612,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
                   }} />
               </label>
               <AppButton type="button" disabled={session.busy}
-                aria-label={`${tt('config.groupRemove')}${lang === 'en-US' ? ': ' : '：'}${block.title || `${index + 1}`}`}
+                aria-label={`${tt('config.groupRemove')}${colon(lang)}${block.title || `${index + 1}`}`}
                 onClick={() => updateModifierBlocks(modifierBlocks.filter((_, currentIndex) => currentIndex !== index))}>
                 {tt('config.groupRemove')}
               </AppButton>
@@ -625,7 +625,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
               placeholder={tt('config.extraModsPlaceholder')}
               defaultValue={block.text}
               disabled={session.busy}
-              aria-label={`${tt('config.groupText')}${lang === 'en-US' ? ': ' : '：'}${block.title || index + 1}`}
+              aria-label={`${tt('config.groupText')}${colon(lang)}${block.title || index + 1}`}
               onBlur={event => {
                 if (event.target.value !== block.text) {
                   updateModifierBlock(index, { text: event.target.value });
@@ -662,7 +662,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
                 onChange={value => session.setConfigInput(key, value)} />
               {isOverridden(key) && (
                 <AppButton className="config-reset" disabled={session.busy} title={tt('config.reset')}
-                  aria-label={`${tt('config.reset')}${lang === 'en-US' ? ': ' : '：'}${key}`} onClick={() => resetInput(key)}>
+                  aria-label={`${tt('config.reset')}${colon(lang)}${key}`} onClick={() => resetInput(key)}>
                   ↺
                 </AppButton>
               )}

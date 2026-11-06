@@ -1,3 +1,4 @@
+import { colon } from '../../app/text';
 import { AppButton, AppTextarea } from './controls';
 import { useEffect, useRef, useState } from 'react';
 import { bindT, type Lang } from '../../lib/i18n';
@@ -60,7 +61,7 @@ export function NoteEditor({ value, onCommit, lang }: Props) {
       type="button"
       className="note-block"
       title={tt('note.editHint')}
-      aria-label={`${tt('note.editHint')}${lang === 'en-US' ? ': ' : '：'}${value}`}
+      aria-label={`${tt('note.editHint')}${colon(lang)}${value}`}
       onClick={() => {
         setDraft(value);
         setEditing(true);

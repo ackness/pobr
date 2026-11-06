@@ -1,6 +1,6 @@
 import type { CalculateBuildResponse } from '../api/types';
 import type { Lang } from '../lib/i18n';
-import { formatStatValue, STAT_SECTIONS, statFormat } from '../lib/statDisplay';
+import { STAT_SECTIONS, formatStat } from '../lib/statDisplay';
 import { statLabel } from './inspector/statId';
 import { HEADLINE_STATS } from './preview/changeSummary';
 
@@ -16,5 +16,5 @@ export function paletteStats(calc: CalculateBuildResponse | null, query: string,
     if (!CURATED.has(stat.id) && (stat.value === 0 || stat.value === null)) return false;
     return [stat.id, statLabel(lang, stat.id)].some(text => text.toLowerCase().includes(q));
   }).sort((a, b) => priority(a.id) - priority(b.id) || a.id.localeCompare(b.id))
-    .slice(0, limit).map(stat => ({ id: stat.id, label: statLabel(lang, stat.id), value: formatStatValue(stat.value, statFormat(stat.id), lang) }));
+    .slice(0, limit).map(stat => ({ id: stat.id, label: statLabel(lang, stat.id), value: formatStat(stat.id, stat.value, lang) }));
 }

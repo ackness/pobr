@@ -1,14 +1,9 @@
 import { usePreview } from '../../components/shared/PreviewContext';
-import { formatNumber, formatStatValue } from '../../lib/statDisplay';
+import { formatStat } from '../../lib/statDisplay';
 import type { Lang } from '../../lib/i18n';
-import { statFormat, statLabel } from '../inspector/statId';
-import type { StatChange } from '../motion/statChanges';
+import { statLabel } from '../inspector/statId';
+import { percentText } from '../motion/statChanges';
 import { words } from '../text';
-
-function percentText(change: StatChange) {
-  if (change.percent === null) return `${change.delta > 0 ? '+' : '−'}${formatStatValue(Math.abs(change.delta), 'float2')}`;
-  return `${change.percent > 0 ? '+' : '−'}${formatNumber(Math.abs(change.percent), 1, 1)}%`;
-}
 
 /** What the candidate under the pointer would do, as a bar along the bottom. Shown only while something is previewed. */
 export function ChangeBar({ lang }: { lang: Lang }) {
@@ -23,7 +18,7 @@ export function ChangeBar({ lang }: { lang: Lang }) {
         : state.changes.length === 0 ? <span className="cb-note">{w('No stat changes', '没有任何数值变化', '沒有任何數值變化')}</span>
           : <ul>{state.changes.map(change => <li key={change.id} data-tone={change.tone}>
             <span className="cb-stat">{statLabel(lang, change.id)}</span>
-            <span className="cb-values">{formatStatValue(change.before, statFormat(change.id), lang)} → {formatStatValue(change.after, statFormat(change.id), lang)}</span>
+            <span className="cb-values">{formatStat(change.id, change.before, lang)} → {formatStat(change.id, change.after, lang)}</span>
             <strong>{percentText(change)}</strong></li>)}</ul>}
     </div>
   </div>;

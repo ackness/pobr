@@ -300,11 +300,28 @@ export function statFormat(stat: string): StatFormat {
   return STAT_FORMATS.get(stat) ?? (/Resist(?:Total|Max|OverCap)?$/.test(stat) ? 'percent' : 'float2');
 }
 
+const NUMBER_FORMATTERS = new Map<string, Intl.NumberFormat>();
+
 /** Shared display rounding and grouping for numbers that are not tied to a stat. */
 export function formatNumber(value: number, digits = 2, minimumDigits = 0): string {
   // A tiny negative that rounds to zero would print as "-0", which reads like a loss.
   const shown = Math.round(value * 10 ** digits) === 0 ? 0 : value;
-  return shown.toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: minimumDigits });
+  const key = `${digits}:${minimumDigits}`;
+  let formatter = NUMBER_FORMATTERS.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: digits, minimumFractionDigits: minimumDigits });
+    NUMBER_FORMATTERS.set(key, formatter);
+  }
+  return formatter.format(shown);
+}
+
+export function signedPercent(percent: number, digits = 1): string {
+  const text = formatNumber(Math.abs(percent), digits, digits);
+  return `${percent > 0 ? '+' : percent < 0 ? '−' : ''}${text}%`;
+}
+
+export function formatStat(id: string, value: number | null, lang: Lang = 'en-US'): string {
+  return formatStatValue(value, statFormat(id), lang);
 }
 
 /** Format a result consistently in headlines, detail results and comparisons. */

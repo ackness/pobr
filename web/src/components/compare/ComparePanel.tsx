@@ -16,7 +16,7 @@ import { formatNumber, STAT_SECTIONS, formatStatValue } from '../../lib/statDisp
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { PageHeader } from '../shared/PageHeader';
 import { Button } from '../ui/button';
-import { words } from '../../app/text';
+import { words, colon } from '../../app/text';
 import { useNavigateToPage } from '../../app/pages/navigate';
 import { COMPARE_TABS, defaultCompareTab, deltaTone, headlineDeltas, signedPercent, summaryLine, treeDifferenceCount, type CompareTab, type DiffCounts } from '../../app/pages/compare/summary';
 import './compare.css';
@@ -99,7 +99,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
           {(gem.enable_global_1 === false || gem.enable_global_2 === false) && <span> · {tt('compare.disabled')}</span>}
         </li>;
       })}</ul>
-      <details><summary className="disclosure" data-disclosure-level="inline">{tt('compare.advanced')}</summary><pre>{JSON.stringify(group, null, 2)}</pre></details>
+      <details><summary className="disclosure">{tt('compare.advanced')}</summary><pre>{JSON.stringify(group, null, 2)}</pre></details>
     </>;
   };
   const textRow = (id: string, title: string, before: string | undefined, after: string | undefined, section: CopySection) => {
@@ -204,15 +204,15 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
               if (!rows.length) return null;
               return <tbody key={section.title[lang]}><tr className="cmp-section-row"><th scope="rowgroup" colSpan={5}>{section.title[lang]}</th></tr>{rows.map(({ def, row: maybe }) => { const row = maybe!; const tone = deltaTone(row.id, row.delta); return <tr key={row.id} data-stat={row.id}>
                   <th scope="row">{def.label[lang]}</th>{[row.before, row.after].map((number, i) => <td key={i} data-label={i === 0 ? 'A' : 'B'}>{typeof number === 'number' && Number.isFinite(number) ? formatStatValue(number, def.format, lang) : number === Infinity ? '∞' : number === -Infinity ? '−∞' : <span role="img" aria-label={tt('compare.unavailable')}>—</span>}</td>)}
-                  <td className="cmp-delta" data-tone={tone} data-label={tt(isPercentageStat(def.format) ? 'compare.points' : 'compare.delta')} aria-label={isPercentageStat(def.format) ? `${tt('compare.points')}${lang === 'en-US' ? ': ' : '：'}${formatComparisonDelta(row.delta, def.format, lang)}` : undefined}>{formatComparisonDelta(row.delta, def.format, lang)}</td>
+                  <td className="cmp-delta" data-tone={tone} data-label={tt(isPercentageStat(def.format) ? 'compare.points' : 'compare.delta')} aria-label={isPercentageStat(def.format) ? `${tt('compare.points')}${colon(lang)}${formatComparisonDelta(row.delta, def.format, lang)}` : undefined}>{formatComparisonDelta(row.delta, def.format, lang)}</td>
                   <td className="cmp-delta" data-tone={tone} data-label={tt('compare.percent')}>{row.percent === null ? '—' : `${row.percent > 0 ? '+' : ''}${formatNumber(row.percent, 1, 1)}%`}</td>
                 </tr>; })}</tbody>;
             })}</table></div>}
             {changedOnly && counts.stats === 0 && <p className="cmp-none">{tt('compare.none')}</p>}
             <p className="cmp-note">{session.dataVersion ? tt('compare.basisHint').replace('{value}', session.dataVersion) : tt('compare.basisHint').replace(/\s*[(（]\{value\}[)）]/, '')}</p>
             <details className="cmp-details" open={[value.before, value.after].some(output => output.unsupported_modifiers.length || output.item_errors.length)}><summary className="disclosure" data-disclosure-level="group">{tt('compare.diagnostics')}</summary>{[value.before, value.after].map((output, index) => <div key={index}>
-              <strong>{index === 0 ? 'A' : 'B'} · {tt('sidebar.mainSkill')}{lang === 'en-US' ? ': ' : '：'}{output.main_skill ? skillDisplayName(output.main_skill.skill_id, lang, catalog) : absent}</strong>
-              <UnincludedModifiers lines={output.unsupported_modifiers} lang={lang} /><ul>{output.item_errors.map((error, i) => <li key={i}>{slotLabel(lang, error.slot)}{lang === 'en-US' ? ': ' : '：'}{error.message}</li>)}</ul>
+              <strong>{index === 0 ? 'A' : 'B'} · {tt('sidebar.mainSkill')}{colon(lang)}{output.main_skill ? skillDisplayName(output.main_skill.skill_id, lang, catalog) : absent}</strong>
+              <UnincludedModifiers lines={output.unsupported_modifiers} lang={lang} /><ul>{output.item_errors.map((error, i) => <li key={i}>{slotLabel(lang, error.slot)}{colon(lang)}{error.message}</li>)}</ul>
             </div>)}</details>
           </article>}
         </TabsPrimitive.Content>

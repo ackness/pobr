@@ -74,7 +74,7 @@ it('a description translated as one line shows no row for the lines it covers', 
 
 it('comparison cards keep original text in collapsed advanced details', () => {
   const html = renderToStaticMarkup(<UiProvider lang="en-US"><ItemDisplayContent rawDetails text="Unique ID: saved-id" lang="en-US" lines={lines} translated={lines.map(line => line.text)} /></UiProvider>);
-  expect(html).toContain('<details><summary class="disclosure" data-disclosure-level="inline">Advanced details (original text)</summary>');
+  expect(html).toContain('<details><summary class="disclosure">Advanced details (original text)</summary>');
   expect(html).not.toContain('<details open');
   expect(html).toContain('Unique ID: saved-id');
   expect(html).not.toContain('value="raw"');

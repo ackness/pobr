@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { formatNumber, formatStatValue, statFormat, statMap, STAT_SECTIONS } from './statDisplay';
+import { formatNumber, formatStatValue, statFormat, statMap, STAT_SECTIONS, formatStat } from './statDisplay';
 import { statNameLabel } from './i18n';
 
 describe('copied flask recovery labels', () => {
@@ -47,17 +47,17 @@ describe('formatStatValue', () => {
   test('keeps total, maximum and internal resistance values in percent', () => {
     for (const id of ['FireResistTotal', 'ColdResistMax', 'LightningResistOverCap', 'TotemChaosResist']) {
       expect(statFormat(id), id).toBe('percent');
-      expect(formatStatValue(75, statFormat(id)), id).toBe('75%');
+      expect(formatStat(id, 75), id).toBe('75%');
     }
   });
 
   test('uses metric precision for both a headline and its result', () => {
-    expect(formatStatValue(1693.83, statFormat('Life'))).toBe('1,694');
-    expect(formatStatValue(5307.37, statFormat('TotalDPS'))).toBe('5,307');
-    expect(formatStatValue(5307.37, statFormat('CombinedDPS'))).toBe('5,307');
-    expect(formatStatValue(22.35, statFormat('CritChance'))).toBe('22.4%');
-    expect(formatStatValue(2.345, statFormat('ActionRate'))).toBe('2.35');
-    expect(formatStatValue(2, statFormat('ActionRate'))).toBe('2.00');
+    expect(formatStat('Life', 1693.83)).toBe('1,694');
+    expect(formatStat('TotalDPS', 5307.37)).toBe('5,307');
+    expect(formatStat('CombinedDPS', 5307.37)).toBe('5,307');
+    expect(formatStat('CritChance', 22.35)).toBe('22.4%');
+    expect(formatStat('ActionRate', 2.345)).toBe('2.35');
+    expect(formatStat('ActionRate', 2)).toBe('2.00');
     expect(formatNumber(-12345.678)).toBe('-12,345.68');
     expect(formatNumber(12, 1, 1)).toBe('12.0');
   });
@@ -206,7 +206,7 @@ describe('stat section labels', () => {
 test('player and main-minion DPS share precision above and below 1000', () => {
   for (const [value, expected] of [[5307.37, '5,307'], [999.37, '999.37'], [0.37, '0.37']] as const) {
     for (const id of ['MainMinionDPS', 'TotalDPS', 'CombinedDPS']) {
-      expect(formatStatValue(value, statFormat(id), 'zh-CN'), id).toBe(expected);
+      expect(formatStat(id, value, 'zh-CN'), id).toBe(expected);
     }
   }
 });

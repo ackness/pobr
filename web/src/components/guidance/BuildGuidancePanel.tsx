@@ -147,7 +147,7 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
     </article>
     </div>
     <div className="guidance-section-heading" ref={samplesRef} tabIndex={-1}><h3>{gt('samples')} <span>{ranked.length}</span></h3>
-      <details><summary className="disclosure" data-disclosure-level="inline">{gt('score')}</summary><p>{gt('formula')}</p></details></div>
+      <details><summary className="disclosure">{gt('score')}</summary><p>{gt('formula')}</p></details></div>
     <p className="guidance-notice">{gt('history')}</p>
     <div className="guidance-filters"><AppInput className="guidance-search" aria-label={gt('search')} placeholder={gt('search')} value={query} onChange={event => setQuery(event.target.value)} />
       <label className="guidance-checkbox"><AppInput type="checkbox" checked={exact} onChange={event => setExact(event.target.checked)} />{gt('exact')}</label></div>
@@ -216,7 +216,7 @@ function EquipmentComparison({ session, reference, lang, onCompareItem }: { sess
   const names = useItemDisplayNames(texts, lang);
   return <div className="guidance-equipment">{slots.map((slot, index) => <article className="guidance-card" key={slot}><h4>{slotLabel(lang, slot)}</h4>
     <div className="guidance-equipment-pair">{[0, 1].map(side => <div key={side}><span className="page-eyebrow">{gt(side ? 'reference' : 'current')}</span>
-      <p>{names[index * 2 + side] || gt('absent')}</p>{texts[index * 2 + side] && <><details><summary className="disclosure" data-disclosure-level="inline">{gt('text')}</summary><pre>{texts[index * 2 + side]}</pre></details>
+      <p>{names[index * 2 + side] || gt('absent')}</p>{texts[index * 2 + side] && <><details><summary className="disclosure">{gt('text')}</summary><pre>{texts[index * 2 + side]}</pre></details>
         {side === 1 && <AppButton disabled={session.busy} onClick={() => onCompareItem(texts[index * 2 + side]!)}>{gt('evaluateItem')}</AppButton>}</>}</div>)}</div></article>)}</div>;
 }
 

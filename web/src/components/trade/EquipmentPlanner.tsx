@@ -1,4 +1,4 @@
-import { formatStatValue, statFormat, formatNumber } from '../../lib/statDisplay';
+import { formatNumber, formatStat } from '../../lib/statDisplay';
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppSelectControl } from '../shared/controls';
@@ -114,7 +114,7 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
         <option key={count} value={count}>{count}</option>)}</AppSelectControl></label>
     {!candidates.length && <p className="trade-notice">{ut('jointEmpty')}</p>}
     <ul className="equipment-candidates">{candidates.map(candidate => <li key={candidate.id}>
-      <details><summary className="disclosure" data-disclosure-level="inline"><strong>{candidate.label}</strong> · {slotLabel(lang, candidate.slot)}</summary><pre>{candidate.text}</pre></details>
+      <details><summary className="disclosure"><strong>{candidate.label}</strong> · {slotLabel(lang, candidate.slot)}</summary><pre>{candidate.text}</pre></details>
       <AppButton aria-label={`${ut('jointRemove')} ${candidate.label} · ${slotLabel(lang, candidate.slot)}`} disabled={!active || busy} onClick={() => onRemove(candidate.id)}>{ut('jointRemove')}</AppButton>
     </li>)}</ul>
     {!!candidates.length && <div className="replacement-actions">
@@ -141,18 +141,18 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
             return <div className="replacement-metric" key={stat}><span>{stat === damage.stat ? damage.label : statNameLabel(lang, stat)}</span>
               {stat === damage.stat && damage.note && <small>{damage.note}</small>}
               <strong className={delta < 0 ? 'delta-neg' : delta > 0 ? 'delta-pos' : ''}>{delta > 0 ? '+' : ''}{format(before > 0 ? delta / before * 100 : delta)}{before > 0 ? '%' : ''}</strong>
-              <span>{formatStatValue(before, statFormat(stat), lang)} → <b data-plan-stat={stat}>{formatStatValue(after, statFormat(stat), lang)}</b></span></div>;
+              <span>{formatStat(stat, before, lang)} → <b data-plan-stat={stat}>{formatStat(stat, after, lang)}</b></span></div>;
           })}</div>}
           {!plan.error && <p className="equipment-plan-resists">{['FireResist', 'ColdResist', 'LightningResist', 'ChaosResist'].map(stat =>
-            <span key={stat}>{statNameLabel(lang, stat)} {formatStatValue(plan.stats[stat] ?? 0, statFormat(stat), lang)}</span>)}</p>}
+            <span key={stat}>{statNameLabel(lang, stat)} {formatStat(stat, plan.stats[stat] ?? 0, lang)}</span>)}</p>}
           {!feasibleOf(plan.stats, objective) && <p className="delta-neg">{ut('constraintFail')}</p>}
           {(plan.error || !!plan.warnings?.length) && <p className="trade-notice">{ut('jointInvalid')} {plan.error ? reasonText(plan.error) : plan.warnings?.map(reasonText).join(', ')}</p>}
-          {!!plan.unsupported.length && <details className="trade-notice"><summary className="disclosure" data-disclosure-level="inline">{ut('incomplete')} ({plan.unsupported.length})</summary>
+          {!!plan.unsupported.length && <details className="trade-notice"><summary className="disclosure">{ut('incomplete')} ({plan.unsupported.length})</summary>
             <UnincludedModifiers lines={plan.unsupported} lang={lang} /></details>}
           {!!chosen.length && <AppButton className={actionClassName} disabled={!active || busy || session.busy || !canApply} onClick={() => apply(plan)}>{ut('jointApply')}</AppButton>}
         </li>;
       })}</ol>
-      {!!rejected.length && <details className="trade-notice"><summary className="disclosure" data-disclosure-level="inline">{ut('jointRejected')} ({rejected.length})</summary>
+      {!!rejected.length && <details className="trade-notice"><summary className="disclosure">{ut('jointRejected')} ({rejected.length})</summary>
         <ul>{rejected.map(plan => <li key={plan.candidateIds.join('/')}>
           {plan.candidateIds.map(id => { const candidate = candidates.find(value => value.id === id)!;
             return `${candidate.label} · ${slotLabel(lang, candidate.slot)}`; }).join(' + ')} · {plan.error ? reasonText(plan.error) : plan.warnings?.map(reasonText).join(', ')}

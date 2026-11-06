@@ -47,10 +47,10 @@ test('selected-node details expose the same full refund changes through keyboard
   toggle(true);
   await flush();
   const html = render();
-  expect(html).toContain('<details class="tree-node-changes"><summary class="disclosure" data-disclosure-level="inline">');
+  expect(html).toContain('<details class="tree-node-changes"><summary class="disclosure">');
   expect(html).toContain('Combined DPS -20');
   expect(html).toContain('Also refunds 1 downstream nodes');
-  expect(html).toContain('<summary class="disclosure" data-disclosure-level="inline">1 more changes</summary>');
+  expect(html).toContain('<summary class="disclosure">1 more changes</summary>');
   expect(ui.calculate).toHaveBeenCalledWith(expect.objectContaining({ allocated_nodes: [1] }));
 });
 

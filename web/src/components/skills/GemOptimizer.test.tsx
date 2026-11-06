@@ -118,7 +118,7 @@ it('shows reason-labelled exclusion totals and keeps calculation diagnostics fol
   await button('Calculate support combinations').onClick!({} as never);
   const html = render();
   expect(harness.optimize).toHaveBeenCalledOnce();
-  expect(html).toContain('<details class="support-calculation-details"><summary class="disclosure" data-disclosure-level="inline">Calculation details</summary>');
+  expect(html).toContain('<details class="support-calculation-details"><summary class="disclosure">Calculation details</summary>');
   expect(html).not.toMatch(/class="support-calculation-details"[^>]*\bopen=/);
   expect(html).toContain('data-123');
   expect(html).toContain('Internal diagnostic retained');

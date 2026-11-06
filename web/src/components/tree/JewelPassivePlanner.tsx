@@ -1,5 +1,6 @@
+import { colon } from '../../app/text';
 import { DisclosureChevron } from '../shared/DisclosureChevron';
-import { formatStatValue, statFormat, formatNumber } from '../../lib/statDisplay';
+import { formatNumber, formatStat } from '../../lib/statDisplay';
 import { useHeadlineDamage } from '../../hooks/useMainMinion';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
@@ -180,7 +181,7 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
     candidates, remove, completed, result, progress, error, preview, exclusive, applied, add, run, apply, stop, show } = planner;
   const text = messages(lang, 'jewelPlanner');
   const damage = useHeadlineDamage(session.calc, lang);
-  const colon = lang === 'en-US' ? ': ' : '：';
+  const separator = colon(lang);
   const format = (value: number) => formatNumber(value);
   const delta = (value: number, baseline: number) => baseline === 0 ? `${value >= 0 ? '+' : ''}${format(value)}`
     : `${value >= baseline ? '+' : ''}${format((value / baseline - 1) * 100)}%`;
@@ -193,34 +194,34 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
       {applied.candidate
         ? `${applied.candidate.label} · ${nodeLabel(applied.candidate.jewel.socket_node)}`
         : text.current}<br />
-      {text.addNodes} {applied.plan.allocate.length}{colon}{applied.plan.allocate.map(nodeLabel).join(' · ') || '—'}<br />
-      {text.removeNodes} {applied.plan.deallocate.length}{colon}{applied.plan.deallocate.map(nodeLabel).join(' · ') || '—'}
+      {text.addNodes} {applied.plan.allocate.length}{separator}{applied.plan.allocate.map(nodeLabel).join(' · ') || '—'}<br />
+      {text.removeNodes} {applied.plan.deallocate.length}{separator}{applied.plan.deallocate.map(nodeLabel).join(' · ') || '—'}
     </p>}
     <label className="jewel-plan-input">{text.text}<AppTextarea aria-label={text.text} value={raw} onChange={event => setRaw(event.target.value)} rows={5} /></label>
     <div className="tree-planner-controls"><label>{text.socket}<AppSelect value={selectedSocket} ariaLabel={text.socket}
       onChange={setSocket} disabled={!sockets.length} placeholder={text.noSockets} options={sockets.map(({ node, cost }) => ({ value: String(node.skill),
-        label: nodeLabel(node.skill), hint: `${text.socketCost}${colon}${cost}` }))} /></label>
+        label: nodeLabel(node.skill), hint: `${text.socketCost}${separator}${cost}` }))} /></label>
       <AppButton disabled={!selectedSocket || !onLocate} onClick={() => onLocate?.(Number(selectedSocket))}>{text.locate}</AppButton>
       <AppButton disabled={!raw.trim() || !selectedSocket || Boolean(progress) || candidates.length >= JEWEL_PASSIVE_CANDIDATE_LIMIT} onClick={add}>{text.add}</AppButton>
       <span>{candidates.length} / {JEWEL_PASSIVE_CANDIDATE_LIMIT}</span></div>
     {candidates.length >= JEWEL_PASSIVE_CANDIDATE_LIMIT && <p className="tree-planner-hint">{text.full}</p>}
     {!candidates.length && <p className="tree-planner-hint">{text.empty}</p>}
     <ul className="jewel-plan-candidates">{candidates.map(candidate => <li key={candidate.id}>
-      <details><summary className="disclosure" data-disclosure-level="inline">{candidate.label} · {nodeLabel(candidate.jewel.socket_node)}</summary><pre>{candidate.jewel.text}</pre></details>
+      <details><summary className="disclosure">{candidate.label} · {nodeLabel(candidate.jewel.socket_node)}</summary><pre>{candidate.jewel.text}</pre></details>
       <AppButton disabled={!onLocate} onClick={() => onLocate?.(candidate.jewel.socket_node)}>{text.locate}</AppButton>
       <AppButton disabled={Boolean(progress)} onClick={() => remove(candidate.id)}>{text.remove}</AppButton>
     </li>)}</ul>
-    <details><summary className="disclosure" data-disclosure-level="inline">{messages(lang, 'nodePower').calculationDetails}</summary><p className="tree-planner-hint">{text.limit}</p></details>
+    <details><summary className="disclosure">{messages(lang, 'nodePower').calculationDetails}</summary><p className="tree-planner-hint">{text.limit}</p></details>
     {exclusive.length > 0 && <p className="tree-planner-hint">{text.exclusive}</p>}
     <AppButton className="tree-planner-run" disabled={!candidates.length || session.busy || Boolean(session.calcError) || !session.calc || Boolean(progress) || exclusive.length > 0}
       onClick={() => void run()}>{text.run}</AppButton>
     {progress && <OptimizerProgress {...progress} lang={lang} onCancel={stop} />}
     {error && <p className="opt-error" role="alert">{error}</p>}
     {result && <PlannerResultsNotice count={result.plans.length} lang={lang}><div className="jewel-plan-results">
-      <p className="tree-planner-hint">{text.evaluated}{colon}{result.evaluated}</p>
+      <p className="tree-planner-hint">{text.evaluated}{separator}{result.evaluated}</p>
       {damage.note && <p className="tree-planner-hint">{damage.note}</p>}
       {result.limited && <p className="tree-planner-hint">{text.bounded}</p>}
-      {result.unmodeled > 0 && <p className="tree-planner-hint">{text.skipped}{colon}{result.unmodeled}</p>}
+      {result.unmodeled > 0 && <p className="tree-planner-hint">{text.skipped}{separator}{result.unmodeled}</p>}
       {result.diagnostics.length > 0 && <details><summary className="disclosure" data-disclosure-level="group">{text.diagnostics}</summary><ul>{result.diagnostics.map((reason, index) => <li key={index}>{reason}</li>)}</ul></details>}
       {!result.plans.length && <p>{text.none}</p>}
       {preview !== null && <AppButton onClick={() => show(null)}>{text.clear}</AppButton>}
@@ -229,10 +230,10 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
           <span>{plan.candidateId !== null && <>{nodeLabel(completed!.candidates.find(candidate => candidate.id === plan.candidateId)!.jewel.socket_node)} · </>}{text.addNodes} {plan.allocate.length} · {text.removeNodes} {plan.deallocate.length}</span></div>
         <div className="tree-plan-metrics">{[damage.stat, 'TotalEHP', 'Life'].map(stat => <span key={stat}>
           {stat === damage.stat ? damage.label : statNameLabel(lang, stat)} <b>{delta(plan.stats[stat] ?? 0, result.baseline[stat] ?? 0)}</b>
-          <small>{formatStatValue(result.baseline[stat] ?? 0, statFormat(stat), lang)} → <output data-stat={stat}>{formatStatValue(plan.stats[stat] ?? 0, statFormat(stat), lang)}</output></small>
+          <small>{formatStat(stat, result.baseline[stat] ?? 0, lang)} → <output data-stat={stat}>{formatStat(stat, plan.stats[stat] ?? 0, lang)}</output></small>
         </span>)}</div>
-        <details><summary className="disclosure" data-disclosure-level="inline">{text.route}</summary><p>{text.addNodes}{colon}{plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>
-          <p>{text.removeNodes}{colon}{plan.deallocate.map(nodeLabel).join(' · ') || '—'}</p>
+        <details><summary className="disclosure">{text.route}</summary><p>{text.addNodes}{separator}{plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>
+          <p>{text.removeNodes}{separator}{plan.deallocate.map(nodeLabel).join(' · ') || '—'}</p>
           {plan.candidateId !== null && <pre>{completed!.candidates.find(candidate => candidate.id === plan.candidateId)?.jewel.text}</pre>}</details>
         <div className="tree-plan-actions"><AppButton onClick={() => show(index)}>{text.preview}</AppButton>
           <AppButton disabled={session.busy || !feasibleOf(plan.stats, completed!.objective)} onClick={() => apply(plan)}>{text.apply}</AppButton></div>
