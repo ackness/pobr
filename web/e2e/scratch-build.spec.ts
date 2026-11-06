@@ -6,20 +6,24 @@
 import { expect, test } from '@playwright/test';
 import { pageLink, statValue, playerHitDps } from './shell';
 import { choose, closeSettings, settled, stableText } from './buildLibrary';
+import { answerConfirm } from './confirmDialog';
 
 test('scratch build: class picker, level edit, tree allocation', async ({ page }) => {
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character' })).toBeVisible({ timeout: 90_000 });
 
-  // 默认空 build 已计算：结果栏 Life 有值且非 0/—。
-  const lifeValue = statValue(page, /^Life$/).first();
-  await expect(lifeValue).not.toHaveText('—');
-  await expect(lifeValue).not.toHaveText('0');
-
-  // 切职业 → 职业选择器跟随，Life 随之重算。
+  // 切职业 → 职业选择器跟随。
   const classPicker = page.getByRole('combobox', { name: 'Class', exact: true });
   await choose(page, classPicker, 'Witch');
+  // Changing class resets what the default build carries (its level and configuration), so it asks first.
+  await answerConfirm(page, true);
   await expect(classPicker).toContainText('Witch', { timeout: 30_000 });
+
+  // The results panel stays empty until the build has content; a level above 1 is content.
+  await page.getByLabel('Level').fill('80');
+  const lifeValue = statValue(page, /^Life$/).first();
+  await expect(lifeValue).not.toHaveText('—', { timeout: 30_000 });
+  await expect(lifeValue).not.toHaveText('0');
 
   // 改等级 → Life 变化（等级驱动基础生命）。
   await settled(page);

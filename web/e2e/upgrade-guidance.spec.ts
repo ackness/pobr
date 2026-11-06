@@ -276,8 +276,10 @@ test('support picker follows the selected group with shared engine compatibility
   await page.getByRole('option', { name: /Ice Shot/ }).first().click();
   const groups = page.locator('.skill-group');
   await expect(groups).toHaveCount(2);
+  // The list holds one row per group; the selected group's gems and its support picker sit in the panel beside it.
   const check = async (index: number, accepted: string, rejected: string) => {
-    const picker = groups.nth(index).locator('.skill-group-picker input');
+    await expect(groups.nth(index).locator('.skill-group-title')).toHaveAttribute('aria-expanded', 'true');
+    const picker = page.locator('.skill-group-picker input');
     await expect(picker).toBeEnabled();
     await picker.fill('Rapid');
     await expect(page.getByRole('option', { name: new RegExp(accepted) }).first()).toBeVisible();

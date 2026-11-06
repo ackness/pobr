@@ -10,7 +10,7 @@ import type { SavedSession } from '../src/hooks/useBuildSession';
 import type { BuildWorkspace } from '../src/lib/buildWorkspace';
 import { bindT, type Lang } from '../src/lib/i18n';
 import { buildPassiveGraph, shortestAllocationPath } from '../src/lib/passiveGraph';
-import { formatStatValue, STAT_SECTIONS } from '../src/lib/statDisplay';
+import { formatStatValue, STAT_SECTIONS, statFormat } from '../src/lib/statDisplay';
 import { workspaceText } from '../src/lib/workspaceText';
 import * as wasmReplay from '../src/wasm/pkg/pobr_wasm.js';
 import { matrixCell } from './tags';
@@ -261,8 +261,8 @@ async function exactApply(page: Page, card: Locator, planner: Planner, before: C
   for (const id of metrics) {
     const value = expectedResult.stats.find(stat => stat.id === id)!.value!;
     // A route card folds its before → after values into a closed details element: read the text, not the rendering.
-    expect(Math.abs(numeric((await card.locator(`output[data-stat="${id}"]`).textContent())!) - value),
-      `${id} must match the independently replayed route to its displayed precision`).toBeLessThanOrEqual(0.00501);
+    expect(await card.locator(`output[data-stat="${id}"]`).textContent(),
+      `${id} must match the independently replayed route to its displayed precision`).toBe(formatStatValue(value, statFormat(id), lang));
   }
   await card.getByRole('button', { name: planner === 'route' ? labels[lang].apply : 'Apply jewel and passive plan', exact: true }).click();
   // The receipt belongs to the allocation that was just replaced, so it goes with it. A planner that keeps
@@ -275,9 +275,12 @@ async function exactApply(page: Page, card: Locator, planner: Planner, before: C
     .toEqual({ ...expectedRequest, allocated_nodes: [...expectedRequest.allocated_nodes!].sort((a, b) => a - b) });
   expect(after.result).toEqual(expectedResult);
   for (const id of metrics) {
-    const row = STAT_SECTIONS.flatMap(section => section.rows).find(row => row.id === id)!;
+    const row = STAT_SECTIONS.flatMap(section => section.rows).find(row => row.id === id);
     const value = expectedResult.stats.find(stat => stat.id === id)!.value;
-    await expect(statValue(page, new RegExp(`^${row.label[lang]}$`)).first()).toHaveText(formatStatValue(value, row.format));
+    // Combined DPS is the headline figure above the rows, shown with two decimals.
+    const shown = row ? statValue(page, new RegExp(`^${row.label[lang]}$`)).first()
+      : page.locator(`.rail-headline [data-stat="${id}"] .rail-hero-value`).first();
+    await expect(shown).toHaveText(formatStatValue(value, row?.format ?? 'float2'));
   }
   return after;
 }

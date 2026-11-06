@@ -383,7 +383,18 @@ test('committed legacy .build keeps real character, passives, equipment and gems
   const fileContent = restoredSnapshot(after);
   expect(pastedContent.envelope.state).toEqual(fileContent.envelope.state);
   expect(pastedContent.envelope.workspace.builds.slice(0, -1)).toEqual(fileContent.envelope.workspace.builds);
-  expect(pastedContent.library).toBe(fileContent.library);
+  // A library entry records the BD it came from, so pasting the same build as a new BD keeps the entries already
+  // there and adds the file import's items once more under the new BD.
+  type Entry = { name: string; kind: string; text: string; slot?: string; sourceBuild?: { id: string } };
+  const fileLibrary = JSON.parse(fileContent.library!) as { items: Entry[]; skillSets: unknown };
+  const pastedLibrary = JSON.parse(pastedContent.library!) as { items: Entry[]; skillSets: unknown };
+  const content = ({ name, kind, text, slot }: Entry) => ({ name, kind, text, slot });
+  const added = pastedLibrary.items.slice(fileLibrary.items.length);
+  expect(pastedLibrary.items.slice(0, fileLibrary.items.length)).toEqual(fileLibrary.items);
+  expect(added.map(content)).toEqual(fileLibrary.items
+    .filter(entry => entry.sourceBuild?.id === after.envelope.workspace.activeBuild).map(content));
+  expect(added.every(entry => entry.sourceBuild?.id === pasted.envelope.workspace.activeBuild)).toBe(true);
+  expect(pastedLibrary.skillSets).toEqual(fileLibrary.skillSets);
   expect(pastedContent.request).toEqual(fileContent.request);
   expect(pastedContent.result).toEqual(fileContent.result);
   expect(pastedContent.displayed).toEqual(fileContent.displayed);
