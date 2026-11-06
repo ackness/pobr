@@ -10,11 +10,13 @@ import { useSkillMetrics as useSharedSkillMetrics } from '../../app/pages/skills
 import { Overview } from '../../app/Overview';
 import { ResultsRail } from '../../app/ResultsRail';
 import { bindT } from '../../lib/i18n';
+import { AppSelect, type AppSelectOption } from '../shared/AppSelect';
 
 const ui = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], inputs: [] as ComponentProps<'input'>[],
   gems: [] as GemCatalogEntry[], trade: [] as SupportMetadata[], optimize: vi.fn(), metrics: vi.fn(),
   pickers: [] as { placeholder: string; entries: GemCatalogEntry[] }[], ranks: [] as ComponentProps<'button'>[],
-  selects: [] as { value?: string; open?: boolean; onOpenChange?: (open: boolean) => void }[] }));
+  selects: [] as { value?: string; open?: boolean; onOpenChange?: (open: boolean) => void }[],
+  mainOptions: [] as AppSelectOption[] }));
 vi.mock('../../api/backend', () => ({ getBackend: async () => ({ gemCatalog: async () => ui.gems, gemDescriptions: async () => null,
   skillMetrics: ui.metrics, supportGroupsCompatible: async (groups: unknown[]) => groups.map(() => true) }) }));
 vi.mock('../../lib/tradeOptimizer', () => ({ loadTradeCatalog: async () => ({ gems: ui.trade }) }));
@@ -44,6 +46,9 @@ vi.mock('../ui/select', () => {
 vi.mock('react/jsx-dev-runtime', async original => {
   const runtime = await original<typeof import('react/jsx-dev-runtime')>();
   return { ...runtime, jsxDEV: (...args: Parameters<typeof runtime.jsxDEV>) => {
+    if (args[0] === AppSelect && (args[1] as ComponentProps<typeof AppSelect>).ariaLabel === bindT('en-US')('sidebar.mainSkill')) {
+      ui.mainOptions = (args[1] as ComponentProps<typeof AppSelect>).options;
+    }
     const props = args[1] as ComponentProps<'button'>;
     const first = Array.isArray(props?.children) ? props.children[0] : undefined;
     if (args[0] === 'button' && isValidElement<{ className?: string }>(first) && first.props.className === 'ov-rank-name') ui.ranks.push(props);
@@ -116,7 +121,7 @@ beforeEach(() => {
   vi.stubGlobal('window', document.defaultView);
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal('localStorage', { getItem: () => null });
-  ui.buttons = []; ui.inputs = []; ui.pickers = []; ui.selects = []; ui.ranks = []; ui.gems = []; ui.trade = [];
+  ui.buttons = []; ui.inputs = []; ui.pickers = []; ui.selects = []; ui.ranks = []; ui.gems = []; ui.trade = []; ui.mainOptions = [];
   ui.metrics.mockReset().mockResolvedValue({ skills: [] });
   ui.optimize.mockReset().mockResolvedValue({ baseline: { CombinedDPS: 100 }, baselineUnsupported: [], plans: [], excluded: [], candidates: 0, evaluated: 0, unmodeled: 0 });
   host = document.createElement('div');
@@ -177,32 +182,32 @@ function MetricsConsumer({ session, enabled = true, onSnapshot }: {
   onSnapshot(useSharedSkillMetrics(session, enabled));
   return null;
 }
-async function debounceMetrics() {
-  await act(async () => { await vi.advanceTimersByTimeAsync(250); });
+async function debounceMetrics(ms = 250) {
+  await act(async () => { await vi.advanceTimersByTimeAsync(ms); });
 }
 
-it('shares in-flight and resolved skill metrics, retaining a closed consumer snapshot on reopening', async () => {
+it('shares in-flight and resolved skill metrics, retaining an inactive page snapshot on return', async () => {
   vi.useFakeTimers();
   const session = metricsSession();
   let resolve!: (result: { skills: [] }) => void;
   ui.metrics.mockReturnValue(new Promise(done => { resolve = done; }));
-  let rail: Snapshot = null, skills: Snapshot = null;
-  const render = async (open: boolean, page = true) => {
+  let editor: Snapshot = null, overview: Snapshot = null;
+  const render = async (active: boolean, page = true) => {
     await act(async () => root.render(<>
-      <MetricsConsumer session={session} enabled={open} onSnapshot={snapshot => { rail = snapshot; }} />
-      {page && <MetricsConsumer session={session} onSnapshot={snapshot => { skills = snapshot; }} />}
+      <MetricsConsumer session={session} enabled={active} onSnapshot={snapshot => { editor = snapshot; }} />
+      {page && <MetricsConsumer session={session} onSnapshot={snapshot => { overview = snapshot; }} />}
     </>));
   };
   await render(true); await debounceMetrics();
   expect(ui.metrics).toHaveBeenCalledOnce();
   await act(async () => { resolve({ skills: [] }); });
-  expect(rail).toEqual({ revision: 1, skills: [] });
-  expect(rail).toBe(skills);
-  const previous = rail;
+  expect(editor).toEqual({ revision: 1, skills: [] });
+  expect(editor).toBe(overview);
+  const previous = editor;
   await render(false, false); await debounceMetrics();
-  expect(rail).toBe(previous);
+  expect(editor).toBe(previous);
   await render(true, false);
-  expect(rail).toBe(previous);
+  expect(editor).toBe(previous);
   await debounceMetrics();
   expect(ui.metrics).toHaveBeenCalledOnce();
 });
@@ -224,7 +229,7 @@ it('keeps only the latest metric request key and separates independent sessions 
   expect(ui.metrics).toHaveBeenCalledTimes(4);
 });
 
-it('retries failed metric batches and discards late results for a closed consumer', async () => {
+it('retries failed metric batches and discards late results for an inactive consumer', async () => {
   vi.useFakeTimers();
   const session = metricsSession();
   let snapshot: Snapshot = null;
@@ -247,7 +252,7 @@ it('retries failed metric batches and discards late results for a closed consume
   expect(ui.metrics).toHaveBeenCalledTimes(2);
 });
 
-it('does not request metric batches while closed, busy, failed or groupless and cancels pending debounce', async () => {
+it('does not request metric batches while inactive, busy, failed or groupless and cancels pending debounce', async () => {
   vi.useFakeTimers();
   const session = metricsSession();
   const render = async (current: BuildSession, enabled = true) => {
@@ -297,9 +302,9 @@ function consumerSession(): BuildSession {
     unsupported_modifiers: [], item_errors: [], minions: [], breakdowns: {}, breakdown_descriptors: {} },
   } as unknown as BuildSession;
 }
-function skillRows(damage: (number | null)[]): SkillMetricsEntry[] {
-  return damage.map((combined_dps, group_index) => ({ group_index, active_skill_index: 1,
-    skill_id: ui.gems[group_index].skill_id, status: combined_dps === null ? 'unavailable' : 'calculated',
+function skillRows(damage: (number | null)[], offset = 0): SkillMetricsEntry[] {
+  return damage.map((combined_dps, index) => ({ group_index: index + offset, active_skill_index: 1,
+    skill_id: ui.gems[index].skill_id, status: combined_dps === null ? 'unavailable' : 'calculated',
     metrics: combined_dps === null ? null : { combined_dps, hit_dps: combined_dps, dot_dps: 0, average_hit: 0,
       action_rate: 0, mana_cost: 0, life_cost: 0, cooldown: 0 }, error: null, unsupported_modifiers: [],
   }));
@@ -348,18 +353,55 @@ it('keeps the unavailable marking on the actual closed rail trigger and refreshe
   expect(ui.selects.every(select => select.open === false)).toBe(true);
 });
 
-it('skips closed rail batches when there is no selected effect whose availability needs measuring', async () => {
+it.each([undefined, 0])('prepares base dropdown metadata and hints before opening with main group %s', async selected => {
   vi.useFakeTimers();
   const session = consumerSession();
-  session.calcParams = { config_inputs: {} };
+  const fire = ui.gems[0];
+  ui.gems = [{ ...fire, skill_id: 'Buff', name: 'Buff', active_effect_ids: ['Buff'], tags: ['Buff'] }, fire];
+  session.socketGroups = [{ enabled: true, gems: [] }, ...ui.gems.map(gem => ({ enabled: true,
+    gems: [{ skill_id: gem.skill_id, level: 20, quality: 0 }] }))];
+  session.currentRequest = () => ({ socket_groups: session.socketGroups });
+  session.calcParams = { config_inputs: {}, main_socket_group: selected };
+  session.calc = { ...session.calc!, main_skill: null } as CalculateBuildResponse;
+  const tt = bindT('en-US');
+  const expected: AppSelectOption[] = [
+    { value: '0', label: `${tt('sidebar.skillUnsupported').replace('{name}', tt('skills.emptyGroup'))} · Group 1`,
+      group: tt('sidebar.calculationSkills'), hint: tt('sidebar.skillDpsPending') },
+    { value: '2', label: 'Fireball · Group 3', group: tt('sidebar.calculationSkills'), hint: '100 Combined DPS' },
+    { value: '1', label: 'Buff · Group 2', group: tt('sidebar.nonDamagingSkills'), hint: '0 Combined DPS' },
+  ];
+  ui.metrics.mockResolvedValueOnce({ skills: skillRows([0, 100], 1) });
   await act(async () => root.render(rail(session)));
-  await debounceMetrics();
-  session.calcParams = { ...session.calcParams, main_socket_group: 0 };
-  session.socketGroups = [{ enabled: true, gems: [] }];
-  session.stateVersion++;
-  await act(async () => root.render(rail(session)));
-  await debounceMetrics();
+  await debounceMetrics(249);
   expect(ui.metrics).not.toHaveBeenCalled();
+  await debounceMetrics(1);
+  expect(ui.metrics).toHaveBeenCalledOnce();
+  expect(ui.selects.every(select => select.open === false)).toBe(true);
+  expect(ui.mainOptions).toEqual(expected);
+  const mainSelect = ui.selects.filter(select => select.value === (selected === undefined ? '' : 'value:0')).at(-1)!;
+  await act(async () => mainSelect.onOpenChange!(true));
+  expect(ui.mainOptions).toEqual(expected);
+  await debounceMetrics();
+  expect(ui.mainOptions).toEqual(expected);
+  expect(ui.metrics).toHaveBeenCalledOnce();
+
+  await act(async () => mainSelect.onOpenChange!(false));
+  session.stateVersion++;
+  ui.metrics.mockResolvedValueOnce({ skills: skillRows([50, 200], 1) });
+  await act(async () => root.render(rail(session)));
+  await debounceMetrics(249);
+  expect(ui.mainOptions).toEqual(expected);
+  expect(ui.metrics).toHaveBeenCalledOnce();
+  await debounceMetrics(1);
+  const updated = [expected[0], { ...expected[2], group: tt('sidebar.calculationSkills'), hint: '50 Combined DPS' },
+    { ...expected[1], hint: '200 Combined DPS' }];
+  expect(ui.mainOptions).toEqual(updated);
+  expect(ui.metrics).toHaveBeenCalledTimes(2);
+  await act(async () => mainSelect.onOpenChange!(true));
+  expect(ui.mainOptions).toEqual(updated);
+  await debounceMetrics();
+  expect(ui.mainOptions).toEqual(updated);
+  expect(ui.metrics).toHaveBeenCalledTimes(2);
 });
 
 it('shares pending and completed batches across the real rail, Overview and Skills consumers with versioned selection', async () => {

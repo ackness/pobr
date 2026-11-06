@@ -9,7 +9,6 @@ import { useMainMinion } from '../hooks/useMainMinion';
 import { useSkillCatalog } from '../hooks/useSkillName';
 import { MAIN_MINION_DPS, minionDpsNote } from '../lib/mainMinion';
 import { skillDisplayName } from '../lib/skillNames';
-import { activeSkillEffects } from '../lib/skillSelection';
 import { formatNumber, STAT_SECTIONS, formatStatValue, statMap } from '../lib/statDisplay';
 import { detailKind } from '../lib/statDetails';
 import { bindT, damageTypeLabel, enemyTierLabel, statNameLabel, type Lang } from '../lib/i18n';
@@ -82,13 +81,9 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
   const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
   const catalog = useSkillCatalog();
   const calc = view.calc;
-  const [skillPickerOpen, setSkillPickerOpen] = useState(false);
+  const skillMetrics = useSkillMetrics(session, true);
   const groups = session.socketGroups;
   const selected = session.calcParams.main_socket_group;
-  const selectedGroup = selected === undefined ? undefined : groups[selected];
-  // Availability is part of the closed label and can only be confirmed by the backend.
-  const needsAvailability = !!selectedGroup && !!activeSkillEffects(selectedGroup, catalog)[(selectedGroup.main_active_skill ?? 1) - 1];
-  const skillMetrics = useSkillMetrics(session, skillPickerOpen || needsAvailability);
   const mainSkill: MainSkillInfo | null = calc && selected !== undefined ? calc.main_skill : null;
   const findings = useMemo(() => deriveFindings(calc, groups.length > 0), [calc, groups.length]);
   // A summoner build is judged by its minion: the player's own damage moves to a secondary row.
@@ -100,7 +95,7 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
   const numberOf = (value: number) => (shown: number | null) => formatStatValue(shown ?? value, 'float2');
   return <div className="rail-headline">
     {groups.length > 0 && <div className="rail-skill-picker"><span>{tt('sidebar.mainSkill')}</span><AppSelect ariaLabel={tt('sidebar.mainSkill')} value={selected === undefined ? '' : String(selected)} placeholder={tt('sidebar.unselected')}
-      disabled={session.busy} onOpenChange={setSkillPickerOpen} onChange={value => session.updateParams({ main_socket_group: Number(value) })}
+      disabled={session.busy} onChange={value => session.updateParams({ main_socket_group: Number(value) })}
       options={calculatedSkillOptions(groups, catalog, skillMetrics && skillMetrics.revision === session.socketGroupRevision ? skillMetrics.skills : [], calc, lang)} /></div>}
     <div className="rail-scenario"><span>{w('Enemy tier', '敌人档位', '敵人檔位')}</span>
       <AppSelect ariaLabel={w('Enemy tier', '敌人档位', '敵人檔位')} value={enemy === 'custom' ? '' : enemy} placeholder={w('Custom', '自定义', '自訂')} disabled={session.busy}
