@@ -4,6 +4,7 @@ import { EXPECTED_SCHEMA_VERSION } from './types';
 import { createWasmBackend } from './wasmBackend';
 import type { GemCatalogEntry } from './types';
 import { classDisplayName } from '../lib/nativeDisplayNames';
+import { chineseScript } from '../lib/chinese';
 import { gemDisplayName } from '../lib/skillNames';
 
 const state = vi.hoisted(() => ({ gems: [] as GemCatalogEntry[], crafting: { bases: [] as unknown[], mods: [] as unknown[] },
@@ -194,7 +195,7 @@ const activeCatalog = (() => {
   } catch { return null; }
 })();
 
-test.skipIf(!activeCatalog)('minion names through translateNamesDetailed: English on the active catalog, the variety record once listed', async () => {
+test.skipIf(!activeCatalog)('minion names through translateNamesDetailed: official variety names on the active catalog, a supplement origin once listed', async () => {
   const catalog = activeCatalog!;
   const serve = (display: unknown) => vi.stubGlobal('fetch', async (url: string) => {
     const files: Record<string, unknown> = { 'i18n/zh-CN/display_texts.json': display };
@@ -208,9 +209,14 @@ test.skipIf(!activeCatalog)('minion names through translateNamesDetailed: Englis
     { kind: 'monster', name: 'Raging Spirit' }, { kind: 'passive', id: passiveId, name: passiveName }] as const;
   serve(catalog);
   let backend = await createWasmBackend();
-  for (const lang of ['zh-CN', 'zh-TW'] as const) {
+  // The active catalog's own record for the wolf (official client text since locale/0.5.5.5-4); a
+  // name without a variety id stays English.
+  const official = catalog.scopes['MonsterVarieties.Name']?.[requests[0].id]?.[1] ?? requests[0].name;
+  // Only the zh-CN catalog is served here, so zh-TW shows it in Traditional script.
+  const traditional = chineseScript(official, 'zh-TW');
+  for (const [lang, wolf] of [['zh-CN', official], ['zh-TW', traditional]] as const) {
     const names = await backend.translateNamesDetailed(requests, lang);
-    expect(names.slice(0, 2)).toEqual([{ text: 'Wolf Companion', origin: null }, { text: 'Raging Spirit', origin: null }]);
+    expect(names.slice(0, 2)).toEqual([{ text: wolf, origin: null }, { text: 'Raging Spirit', origin: null }]);
     expect(names.every(name => name.origin === null)).toBe(true);
   }
   expect((await backend.translateNamesDetailed(requests, 'zh-CN'))[2]).toEqual({ text: passiveText, origin: null });

@@ -5,7 +5,8 @@ use serde_json::Value;
 
 const LINES: [&str; 4] = [
     "33% increased maximum Life",
-    "Gain 3% of damage as Fire damage per 2% Chance to Block",
+    // No official or supplement template knows this line (the Fire one is official since locale/0.5.5.5-4).
+    "Gain 3% of damage as Cold damage per 2% Chance to Block",
     "Not a line any template knows",
     "+12% increased maximum Life",
 ];
@@ -106,9 +107,10 @@ fn a_supplement_row_marks_the_lines_it_renders() {
         .unwrap();
     let mut rows: Vec<Value> = serde_json::from_slice(&base).unwrap();
     let before = plain_after_init(None);
+    assert_eq!(before[1], LINES[1], "today's data must not render the supplemented line");
     rows.push(serde_json::json!({
-        "src": "每 2% 格挡几率获得相当于伤害 {0}% 的火焰伤害",
-        "en": "Gain {0}% of damage as Fire damage per 2% Chance to Block",
+        "src": "每 2% 格挡几率获得相当于伤害 {0}% 的冰霜伤害",
+        "en": "Gain {0}% of damage as Cold damage per 2% Chance to Block",
         "origin": "agent"
     }));
     // Official text wins a line it also renders, even listed first: this row is never used.
@@ -125,7 +127,7 @@ fn a_supplement_row_marks_the_lines_it_renders() {
         [
             ("生命上限提高 33%".to_string(), Value::Null),
             (
-                "每 2% 格挡几率获得相当于伤害 3% 的火焰伤害".to_string(),
+                "每 2% 格挡几率获得相当于伤害 3% 的冰霜伤害".to_string(),
                 Value::from("agent")
             ),
             (LINES[2].to_string(), Value::Null),
