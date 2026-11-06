@@ -11,8 +11,8 @@ use std::collections::BTreeMap;
 use pobr_build::build::GemSkillRef;
 use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, WeaponSet,
-    calculate_with_data_session, decode_pob_code, import_build, import_build_with_allocated_nodes,
-    radius_jewel_from_text,
+    calculate_with_data_session_prepared, decode_pob_code, import_build,
+    import_build_with_allocated_nodes, radius_jewel_from_text,
 };
 use pobr_core::calc::{CompletedCalculationSession, MinimalInput};
 use pobr_core::item_text::parse_pob_xml_item;
@@ -742,13 +742,54 @@ pub(crate) fn import_build_from_request(
     Ok((imported.build, issues))
 }
 
+/// The display stat id for the hit DPS of one minion summoned by the calculated
+/// skill. The display catalog reads only the player's output, and which minion
+/// is the calculated skill's is known from the prepared build, so this API adds
+/// it: to `calculate_build_json`'s stats, and as a stat the what-if endpoints
+/// (node power, variants, attribution) can measure.
+pub(crate) const MAIN_MINION_DPS: &str = "MainMinionDPS";
+
+/// A finished calculation with the facts its stat reads need from the build view
+/// it used.
+pub(crate) struct CalculatedBuild {
+    pub(crate) session: CompletedCalculationSession,
+    /// [`MAIN_MINION_DPS`]; `None` when the calculated skill summons no minion.
+    pub(crate) main_minion_dps: Option<f64>,
+}
+
+impl CalculatedBuild {
+    /// One display stat, by display catalog id or [`MAIN_MINION_DPS`] (0 without
+    /// a main minion, as the catalog reads 0 for an absent output).
+    pub(crate) fn stat(&self, id: &str) -> f64 {
+        if id == MAIN_MINION_DPS {
+            return self.main_minion_dps.unwrap_or(0.0);
+        }
+        pobr_core::display_value(self.session.output(), id)
+    }
+}
+
+/// Calculates a build and keeps what [`CalculatedBuild::stat`] reads.
+pub(crate) fn calculate_build(
+    build: &Build,
+    data: &BuildData,
+    opts: &DataOrchestratorOptions,
+) -> Result<CalculatedBuild, pobr_build::BuildError> {
+    let (session, prepared) = calculate_with_data_session_prepared(build, data, opts)?;
+    let main_minion_dps = pobr_build::main_skill_minion_in_view(&prepared, data, session.output())
+        .map(|minion| minion.dps);
+    Ok(CalculatedBuild {
+        session,
+        main_minion_dps,
+    })
+}
+
 pub(crate) fn run_session_for_build(
     build: &Build,
     req: &CalculateBuildRequest,
-) -> Result<CompletedCalculationSession, ApiError> {
+) -> Result<CalculatedBuild, ApiError> {
     let data = state::build_data().map_err(ApiError::not_initialized)?;
     let opts = orchestrator_options(req)?;
-    Ok(calculate_with_data_session(build, &data, &opts).map_err(|e| format!("calculate: {e}"))?)
+    Ok(calculate_build(build, &data, &opts).map_err(|e| format!("calculate: {e}"))?)
 }
 
 pub(crate) fn full_dps_for_build(
