@@ -107,7 +107,10 @@ fn a_supplement_row_marks_the_lines_it_renders() {
         .unwrap();
     let mut rows: Vec<Value> = serde_json::from_slice(&base).unwrap();
     let before = plain_after_init(None);
-    assert_eq!(before[1], LINES[1], "today's data must not render the supplemented line");
+    assert_eq!(
+        before[1], LINES[1],
+        "today's data must not render the supplemented line"
+    );
     rows.push(serde_json::json!({
         "src": "每 2% 格挡几率获得相当于伤害 {0}% 的冰霜伤害",
         "en": "Gain {0}% of damage as Cold damage per 2% Chance to Block",
