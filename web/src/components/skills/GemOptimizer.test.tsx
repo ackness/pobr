@@ -169,7 +169,9 @@ it('card, baseline and hover reuse the evaluated Combined DPS with identical int
   expect(html).toContain('Combined DPS 4,461,801');
   expect(html).toContain('+218.7%');
   expect(html).not.toContain('777.7');
-  harness.articles[0].onMouseEnter!({} as never);
+  const target = {} as HTMLElement;
+  harness.articles[0].onMouseEnter!({ currentTarget: target } as never);
+  expect(harness.showChanges.mock.calls[0][2]).toBe(target);
   expect(harness.show).not.toHaveBeenCalled();
   expect(harness.showChanges.mock.calls[0][1][0]).toMatchObject({ id: 'CombinedDPS', before: 1400000.4, after: 4461800.6 });
   const hover = renderToStaticMarkup(<ChangeBar lang="en-US" />);
@@ -191,9 +193,10 @@ it('the minion-only support hover previews the same damage stat as its card', as
   const html = render();
   expect(html).toContain('Minion hit DPS 151');
   harness.articles[0].onMouseEnter!({} as never);
-  expect(harness.showChanges).toHaveBeenLastCalledWith(expect.any(String), expect.arrayContaining([
+  // The third argument is the hovered card, which this harness does not render.
+  expect(harness.showChanges.mock.lastCall?.slice(0, 2)).toEqual([expect.any(String), expect.arrayContaining([
     expect.objectContaining({ id: 'MainMinionDPS', before: 100.4, after: 150.6 }),
-  ]));
+  ])]);
   const hover = renderToStaticMarkup(<ChangeBar lang="en-US" />);
   expect(hover).toContain('100 → 151');
 });

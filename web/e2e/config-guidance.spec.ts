@@ -256,13 +256,13 @@ test('review, jump, edit/reset, share and reload preserve imported false/zero/nu
     await openSetting(page, key);
   }
   // Select the separately calculated fire skill to expose the imported string summary.
-  await choose(page, inspectedSkill(page), /2\. Fireball/);
+  await choose(page, inspectedSkill(page), /Fireball.*Group 2/);
   await idle(page);
   await expect(entry(page, 'enemyFireResist').locator('output')).toHaveText('Saved value needs review; open the setting to correct it.');
   await openSetting(page, 'enemyFireResist');
   await expect(control(page, 'enemyFireResist')).toHaveValue('23');
   expect(await configInputs(page)).toEqual(before.params.config_inputs);
-  await choose(page, inspectedSkill(page), /1\. Comet/);
+  await choose(page, inspectedSkill(page), /Comet.*Group 1/);
   await idle(page);
   expect(await savedState(page)).toEqual(before);
   const baseline = await hitDps(page).innerText();
@@ -308,7 +308,7 @@ test('main-skill, stage and independent-build changes refresh context without le
   await openConfig(page);
   await expect(card(page).locator('.config-quick-skill')).toHaveText('Fireball');
   await expect.poll(() => quickKeys(page)).toEqual([...common, 'enemyFireResist'].sort());
-  await choose(page, inspectedSkill(page), /2\. Spark/);
+  await choose(page, inspectedSkill(page), /Spark.*Group 2/);
   await idle(page);
   await expect(card(page).locator('.config-quick-skill')).toHaveText('Spark');
   await expect.poll(() => quickKeys(page)).toEqual([...common, 'enemyLightningResist'].sort());

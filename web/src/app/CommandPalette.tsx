@@ -7,16 +7,12 @@ import { useSkillCatalog } from '../hooks/useSkillName';
 import type { Lang } from '../lib/i18n';
 import { activeSkillEffects } from '../lib/skillSelection';
 import { skillDisplayName } from '../lib/skillNames';
-import { detailKind } from '../lib/statDetails';
-import { formatStatValue, statMap } from '../lib/statDisplay';
-import { statFormat, statLabel } from './inspector/statId';
+import { paletteStats } from './paletteStats';
 import type { SettledCalc } from './motion/useSettledCalc';
 import type { Route } from './routes';
 import { matchingTiers } from './paletteTiers';
 import { SHORTCUT_ROUTES } from './shortcuts';
 import { words } from './text';
-
-const MAX_STATS = 30;
 
 export interface PaletteProps {
   open: boolean; onOpenChange: (open: boolean) => void; session: BuildSession; view: SettledCalc; lang: Lang;
@@ -34,19 +30,14 @@ export function CommandPalette({ open, onOpenChange, session, view, lang, pageLa
   const match = (...texts: string[]) => !q || texts.some(text => text.toLowerCase().includes(q));
   const run = (action: () => void) => () => { onOpenChange(false); action(); };
 
-  const stats = useMemo(() => {
-    if (q.length < 2 || !view.calc) return [];
-    const values = statMap(view.calc.stats);
-    const calc = view.calc;
-    return calc.stats.filter(stat => detailKind(calc, stat.id) !== 'none' && match(statLabel(lang, stat.id), stat.id))
-      .slice(0, MAX_STATS).map(stat => ({ id: stat.id, label: statLabel(lang, stat.id), value: formatStatValue(values.get(stat.id) ?? null, statFormat(stat.id), lang) }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `match` is derived from `q`.
-  }, [q, view.calc, lang]);
+  const stats = useMemo(() => paletteStats(view.calc, q, lang), [q, view.calc, lang]);
 
+  const seenSkills = new Set<string>();
   const skills = session.socketGroups.map((group, index) => {
-    const effect = catalog.size ? activeSkillEffects(group, catalog)[(group.main_active_skill ?? 1) - 1] : undefined;
-    return { index, label: `${index + 1}. ${effect ? skillDisplayName(effect.skillId, lang, catalog) : '—'}` };
-  }).filter(skill => match(skill.label));
+    const effect = activeSkillEffects(group, catalog)[(group.main_active_skill ?? 1) - 1];
+    const identity = effect?.skillId ?? JSON.stringify(group.gems);
+    return { identity, index, enabled: group.enabled, label: `${index + 1}. ${effect ? skillDisplayName(effect.skillId, lang, catalog) : '—'}` };
+  }).sort((a, b) => Number(b.enabled) - Number(a.enabled)).filter(skill => { if (seenSkills.has(skill.identity)) return false; seenSkills.add(skill.identity); return match(skill.label); });
   const pages = [...SHORTCUT_ROUTES, 'build' as Route].map((route, index) => ({ route, label: pageLabel(route), key: index < SHORTCUT_ROUTES.length ? String(index + 1) : '' })).filter(page => match(page.label));
   const tiers = matchingTiers(query, lang);
   const actions = [
@@ -68,7 +59,7 @@ export function CommandPalette({ open, onOpenChange, session, view, lang, pageLa
         <Command.List>
           <Command.Empty>{w('Nothing matches.', '没有匹配项。', '沒有符合的項目。')}</Command.Empty>
           {pages.length > 0 && <Command.Group heading={w('Pages', '页面', '頁面')}>{pages.map(page => item(`page:${page.route}`, page.label, page.key, () => onNavigate(page.route)))}</Command.Group>}
-          {stats.length > 0 && <Command.Group heading={w('Why this number', '这个数从哪来', '這個數從哪來')}>{stats.map(stat => item(`stat:${stat.id}`, stat.label, stat.value, () => onInspect(stat.id)))}</Command.Group>}
+          {stats.length > 0 && <Command.Group heading={w('Values', '数值', '數值')}>{stats.map(stat => item(`stat:${stat.id}`, stat.label, stat.value, () => onInspect(stat.id)))}</Command.Group>}
           {skills.length > 0 && <Command.Group heading={w('Calculated skill', '计算技能', '計算技能')}>{skills.map(skill => item(`skill:${skill.index}`, skill.label, undefined, () => session.updateParams({ main_socket_group: skill.index })))}</Command.Group>}
           {tiers.length > 0 && <Command.Group heading={w('Enemy tier', '敌人档位', '敵人檔位')}>{tiers.map(entry => item(`tier:${entry.tier}`, entry.label, undefined, () => session.updateParams({ enemy_tier: entry.tier })))}</Command.Group>}
           {actions.length > 0 && <Command.Group heading={w('Actions', '操作', '操作')}>{actions.map(action => item(`action:${action.id}`, action.label, undefined, action.run))}</Command.Group>}

@@ -95,6 +95,9 @@ it('offers dismissal, configuration navigation and access to the actual missing 
   const expanded = renderToStaticMarkup(<ImportReviewNotice {...values} />);
   expect(expanded).toContain('10% increased Damage');
   expect(expanded).toContain('Gain an unknown buff');
+  expect(expanded.match(/class="unincluded-modifiers"/g)).toHaveLength(1);
+  expect(expanded.match(/class="unincluded-raw"/g)).toHaveLength(1);
+  expect(expanded).toContain('Go to Configuration');
   nodes.find(node => node.type === 'a' && node.props.href === '/config')!.props.onClick({ preventDefault() {} });
   expect(values.onReview).toHaveBeenCalledOnce();
   nodes.find(node => node.props.onClick === values.onDismiss)!.props.onClick();

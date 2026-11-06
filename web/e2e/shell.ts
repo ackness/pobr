@@ -11,11 +11,21 @@ export const busy = (page: Page) => page.locator('.shell-save-state[data-busy]')
 /** A result in the left-hand results panel, found by its label ("Life", "Hit DPS", …). */
 export const statRow = (page: Page, label: string | RegExp): Locator =>
   page.locator('#character-stats .rail-row').filter({ has: page.locator('.rail-label').filter({ hasText: label }) });
-export const statValue = (page: Page, label: string | RegExp): Locator => statRow(page, label).locator('.rail-value');
+export const statValue = (page: Page, label: string | RegExp): Locator => {
+  const row = statRow(page, label).locator('.rail-value');
+  if (label !== 'Hit DPS' && (!(label instanceof RegExp) || label.source !== '^Hit DPS$')) return row;
+  const equivalentHeadline = page.locator('#character-stats:not(:has(.rail-row .rail-label:text-is("Hit DPS"))) .rail-hero')
+    .filter({ has: page.locator('.rail-hero-label').filter({ hasText: /^Combined DPS$/ }) }).locator('.rail-hero-value');
+  return row.or(equivalentHeadline);
+};
 
-/** The calculated player's Hit DPS, independent of language and deliberately pinned copies. */
-export const playerHitDps = (page: Page): Locator =>
-  page.locator('#character-stats .rail-headline > .rail-row[data-stat="TotalDPS"] .rail-value');
+/** The player's Hit DPS detail, or its equal Combined DPS when the duplicate row is hidden.
+ * Keep pinned copies out of this lookup; folded detail values remain readable. */
+export const playerHitDps = (page: Page): Locator => {
+  const detail = '#character-stats > .rail-section:not(.rail-pinned) [data-stat="TotalDPS"]';
+  return page.locator(`${detail} .rail-value`).or(page.locator(`#character-stats:not(:has(> .rail-section:not(.rail-pinned) [data-stat="TotalDPS"]))`)
+    .locator('.rail-headline [data-stat="CombinedDPS"] .rail-hero-value, .rail-headline .rail-row[data-stat="CombinedDPS"] .rail-value'));
+};
 
 /** An import lands on the Overview. Most specs then work on the Items page, so follow the import there. */
 export async function openItemsAfterImport(page: Page) {

@@ -4,11 +4,18 @@
  */
 
 import { expect, test } from '@playwright/test';
+import { deflateSync } from 'node:zlib';
 import { pageLink, statValue } from './shell';
 import { openBuild, stableText } from './buildLibrary';
+import { importBuild } from './skillsAndCalcs';
+
+const code = deflateSync(`<PathOfBuilding2><Build level="20" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="5" quality="0" enabled="true"/></Skill></Skills>
+<Items/><Config/></PathOfBuilding2>`).toString('base64url');
 
 test('edits persist across reload; builtin config toggles recalc', async ({ page }) => {
-  await page.goto('/build');
+  await importBuild(page, code);
+  await openBuild(page);
   await expect(page.getByRole('heading', { name: 'Character' })).toBeVisible({ timeout: 90_000 });
 
   // 编辑等级 → 即改即存。

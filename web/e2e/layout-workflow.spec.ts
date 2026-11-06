@@ -138,7 +138,7 @@ test('a build without a main selection defaults to its highest-DPS skill and can
   await start(page, code);
   // The first group deals the most damage; it is bound to the second weapon set.
   // Doom Blast runs at the level of the curse it is granted on, here 1.
-  await expect(inspected(page)).toHaveText(/^1\. (Fireball|Spark)$/);
+  await expect(inspected(page)).toHaveText(/^(Fireball|Spark).*Group 1$/);
   expect((await saved(page)).params.main_socket_group).toBe(0);
   expect((await saved(page)).weaponSwap.active).toBe(2);
   await expect(page.locator('#character-stats').getByRole('heading', { name: 'Offence', exact: true })).toHaveCount(1);
@@ -174,13 +174,13 @@ test('a build without a main selection defaults to its highest-DPS skill and can
   // current: skill-specific values are hidden, character resources and defence stay.
   await unavailable.getByRole('button').click();
   const stats = page.locator('#character-stats');
-  await expect(stats).toContainText('No valid inspected skill');
+  await expect(stats).toContainText('No valid calculated skill');
   await expect(stats.getByRole('heading', { name: 'Offence', exact: true })).toHaveCount(0);
   await expect(statRow(page, 'Hit DPS')).toHaveCount(0);
   await expect(stats.getByRole('heading', { name: 'Resources', exact: true })).toHaveCount(1);
   await expect(statValue(page, /^Life$/).first()).not.toHaveText('—');
-  await choose(page, inspected(page), '1. Spark');
-  await expect(inspected(page)).toHaveText('1. Spark');
+  await choose(page, inspected(page), /Spark.*Group 1/);
+  await expect(inspected(page)).toHaveText(/Spark.*Group 1/);
   await goTo(page, 'Upgrades');
   await expect(page.getByRole('combobox', { name: 'Skill used for scoring', exact: true })).toContainText('1. Spark');
   await page.reload();
@@ -195,7 +195,7 @@ test('opening support planning explicitly selects an imported group without a pr
     <Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="15" quality="0" enabled="true"/></Skill></Skills>
     <Items/><Config/></PathOfBuilding2>`).toString('base64url');
   await start(page, code);
-  await expect(inspected(page)).toHaveText('1. Fireball');
+  await expect(inspected(page)).toHaveText(/Fireball.*Group 1/);
   expect((await saved(page)).params.main_socket_group).toBe(0);
   await goTo(page, 'Skills');
   await page.locator('.skill-group-title').first().click();

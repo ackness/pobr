@@ -133,7 +133,7 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
         const canApply = usable(plan) && feasibleOf(plan.stats, objective);
         const planLabel = chosen.length ? chosen.map(candidate => `${candidate.label} · ${slotLabel(lang, candidate.slot)}`).join(' + ') : ut('jointKeep');
         return <li key={plan.candidateIds.join('/') || 'current'} className="equipment-plan"
-          onMouseEnter={preview && !plan.error ? () => preview.showChanges(planLabel, changesFromRecords(result.baseline, plan.stats)) : undefined} onMouseLeave={preview?.clear}>
+          onMouseEnter={preview && !plan.error ? event => preview.showChanges(planLabel, changesFromRecords(result.baseline, plan.stats), event.currentTarget) : undefined} onMouseLeave={preview?.clear}>
           <h5>{chosen.length ? chosen.map(candidate => `${candidate.label} · ${slotLabel(lang, candidate.slot)}`).join(' + ') : ut('jointKeep')}</h5>
           {!plan.error && <div className="replacement-metrics">{[damage.stat, 'TotalEHP', 'Life'].map(stat => {
             const before = result.baseline[stat] ?? 0, after = plan.stats[stat] ?? 0;

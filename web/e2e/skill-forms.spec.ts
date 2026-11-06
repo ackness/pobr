@@ -30,6 +30,7 @@ test('forms, stages, disabled supports and Full DPS can be edited and shared', a
   await expect.poll(async () => (await state()).socketGroups[0].gems[0].stat_set_index).toBe(2);
   await expect.poll(async () => (await state()).socketGroups[0].gems[1].enabled).toBe(false);
   await expect.poll(async () => (await state()).socketGroups[0].group_count).toBe(2.5);
+  await page.locator('#character-stats').getByRole('button', { name: 'Included skills', exact: true }).click();
   const total = statRow(page, /^Full DPS$/);
   await expect(total).toBeVisible();
   await expect(statRow(page, /^Full DoT DPS$/)).toBeVisible();

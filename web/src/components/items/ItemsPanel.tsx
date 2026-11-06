@@ -63,7 +63,7 @@ function ItemRow({
   name: string;
   lang: Lang;
   /** Preview handlers; event props add no attributes to the markup. */
-  hover?: { onEnter: () => void; onLeave: () => void };
+  hover?: { onEnter: (event: { currentTarget: Element }) => void; onLeave: () => void };
   slotTag?: string;
   source?: string;
   open: boolean;
@@ -713,7 +713,7 @@ function LibrarySection({
           source={entry.sourceBuild ? tt('lib.sourceBuild').replace('{name}', session.workspace?.builds.find(build => build.id === entry.sourceBuild?.id)?.name || entry.sourceBuild.name || tt('lib.unnamedBuild')) : tt('lib.sourceUnknown')}
           slotTag={entry.slot ? slotLabel(lang, entry.slot) : undefined}
           hover={preview && selectedSlot && canUse(entry) ? {
-            onEnter: () => preview.show({ key: `${selectedSlot}:${entry.id}`, label: `${slotLabel(lang, selectedSlot)} ← ${names[all.indexOf(entry)] ?? entry.name}`, request: () => withEntry(entry) }),
+            onEnter: event => preview.show({ key: `${selectedSlot}:${entry.id}`, label: `${slotLabel(lang, selectedSlot)} ← ${names[all.indexOf(entry)] ?? entry.name}`, request: () => withEntry(entry) }, event.currentTarget),
             onLeave: preview.clear,
           } : undefined}
           open={expandedId === entry.id}

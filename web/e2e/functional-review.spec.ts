@@ -203,11 +203,11 @@ test('changing the selected skill hides stale attribution until a new calculatio
   await page.getByRole('tab', { name: 'Source contributions', exact: true }).click();
   await page.getByRole('button', { name: 'Source contributions', exact: true }).click();
   await expect(page.locator('.attribution-table')).toBeVisible();
-  await choose(page, inspected(page), '2. Fireball');
+  await choose(page, inspected(page), /Fireball.*Group 2/);
   await expect(page.locator('.attribution-table')).toHaveCount(0);
   // The skill overview recalculates at the same time and shows its own status.
   await expect(page.getByRole('region', { name: 'Source contributions', exact: true }).getByRole('status'))
-    .toContainText('Measure source contributions again');
+    .toContainText('Calculated skill changed; run the analysis again');
   await page.getByRole('button', { name: 'Source contributions', exact: true }).click();
   await expect(page.locator('.attribution-table')).toBeVisible();
   await expect(page.locator('.attribution-table')).toContainText('Skill group 2 · Fireball');

@@ -1,5 +1,5 @@
 import { EnergyTriggerNote } from '../components/config/EnergyTriggerNote';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, ArrowRight, CircleAlert, CircleCheck, Download } from 'lucide-react';
 import { getBackend } from '../api/backend';
 import type { AttributionResponse, SkillMetricsEntry } from '../api/types';
@@ -22,6 +22,7 @@ import { useUpgradeGoal } from '../hooks/useUpgradeGoal';
 import type { SettledCalc } from './motion/useSettledCalc';
 import type { Route } from './routes';
 import { words } from './text';
+import { calculatedSkillKey } from './calculatedSkill';
 
 const MAX_HIT = ['Physical', 'Fire', 'Cold', 'Lightning', 'Chaos'] as const;
 const ATTRIBUTION_FIELDS = ['CombinedDPS', 'TotalEHP', 'Life'] as const;
@@ -43,9 +44,11 @@ function describe(finding: Finding, lang: Lang): { title: string; detail: string
   }
 }
 
-export function Overview({ session, view, lang, navigate, focusStat }: { session: BuildSession; view: SettledCalc; lang: Lang; navigate: (route: Route) => void; focusStat: (id: string) => void }) {
+export function Overview({ session, view, lang, navigate, focusStat, onSpirit }: { session: BuildSession; view: SettledCalc; lang: Lang; navigate: (route: Route) => void; focusStat: (id: string) => void; onSpirit?: () => void }) {
   const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
   const tt = bindT(lang);
+  const modifierDetails = useRef<HTMLDetailsElement>(null);
+  const selection = calculatedSkillKey(session);
   const catalog = useSkillCatalog();
   const { goal, setGoal } = useUpgradeGoal();
   const build = session.workspace?.builds.find(entry => entry.id === session.workspace?.activeBuild);
@@ -85,14 +88,11 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
   const ranked = (skills ?? []).filter(entry => entry.status === 'calculated' && entry.metrics && damageOf(entry) > 0).sort((a, b) => damageOf(b) - damageOf(a)).slice(0, 8);
   const top = ranked[0] ? damageOf(ranked[0]) : 0;
   const chooseSkill = (entry: SkillMetricsEntry) => {
-    const group = session.socketGroups[entry.group_index];
-    if (group && (group.main_active_skill ?? 1) !== entry.active_skill_index)
-      session.setSocketGroups(session.socketGroups.map((item, index) => index === entry.group_index ? { ...item, main_active_skill: entry.active_skill_index } : item));
-    session.updateParams({ main_socket_group: entry.group_index });
+    if (!isCalculated(entry)) session.inspectSkill(entry.group_index, entry.active_skill_index, skillResult?.version ?? session.stateVersion);
   };
 
   // What each equipped piece or skill group adds, by removing it and recalculating. On demand: it costs a recalculation per source.
-  const job = useCancellableJob<{ version: number; data: AttributionResponse }>();
+  const job = useCancellableJob<{ version: number; selection: string; data: AttributionResponse }>();
   const contribution = job.result;
   const contributionBusy = job.running;
   const [field, setField] = useState<typeof ATTRIBUTION_FIELDS[number]>('CombinedDPS');
@@ -105,7 +105,7 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
     void job.start(async ({ signal }) => {
       const data = await (await getBackend()).attribution({ request, fields });
       if (signal.aborted) throw new DOMException('cancelled', 'AbortError');
-      return { version, data };
+      return { version, selection, data };
     });
   };
   const groupName = (index: number) => {
@@ -118,11 +118,27 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
   const biggest = Math.max(1, ...entries.map(row => Math.abs(row.delta)));
   const baseline = contribution?.data.baseline[fieldStat] ?? 0;
 
+  const openFinding = (finding: Finding) => {
+    if (finding.kind === 'resist' && finding.element !== 'Chaos') {
+      setGoal({ ...goal, resistanceFirst: true, resistanceTarget: goal.resistanceTarget ?? 75 });
+      navigate('trade');
+    } else if (finding.kind === 'net-regen') focusStat('TotalNetRegen');
+    else if (finding.kind === 'unsupported') {
+      const details = modifierDetails.current;
+      if (details) {
+        details.open = true;
+        details.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        details.querySelector('summary')?.focus();
+      }
+    } else if (finding.kind === 'spirit' && onSpirit) onSpirit();
+    else navigate(finding.route);
+  };
+
   if (session.socketGroups.length === 0 && !session.hasBuildContent) {
     return <section className="ov ov-empty" aria-labelledby="ov-title">
       <h1 id="ov-title">{w('Import a build to see what it can do', '导入一套 BD，看看它的真实表现', '匯入一套 BD，看看它的真實表現')}</h1>
       <p>{w('Paste a PoB2 code, open a game planner or China-server file, or start from a class. You will get damage, survivability, and what is holding the build back.', '粘贴 PoB2 代码或分享链接，或打开游戏规划器 / 国服文件，也可以从职业开始。你会看到伤害、生存，以及拖后腿的地方。', '貼上 PoB2 代碼或分享連結，或開啟遊戲規劃器 / 國服檔案，也可以從職業開始。你會看到傷害、生存，以及拖後腿的地方。')}</p>
-      <Button onClick={() => navigate('build')}><Download />{w('Import or create a build', '导入或创建 BD', '匯入或建立 BD')}</Button>
+      <Button autoFocus onClick={() => navigate('build')}><Download />{w('Import or create a build', '导入或创建 BD', '匯入或建立 BD')}</Button>
     </section>;
   }
 
@@ -157,6 +173,13 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
       </div>)}
     </dl>
 
+    <dl className="ov-resistances" aria-label={tt('overview.baseResistances')}>
+      {(['Fire', 'Cold', 'Lightning', 'Chaos'] as const).map(type => <div key={type}>
+        <dt>{statNameLabel(lang, `${type}Resist`)}</dt>
+        <dd><button type="button" onClick={() => focusStat(`${type}Resist`)}>{value(`${type}Resist`) === null ? '—' : formatStatValue(value(`${type}Resist`), 'percent', lang)}</button></dd>
+      </div>)}
+    </dl>
+
     <div className="ov-cols">
       <div className="ov-col">
         <section className="ov-sec" aria-labelledby="ov-findings">
@@ -168,21 +191,21 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
                   {(() => {
                   // A resistance shortfall is fixed in Upgrades with the goal already set to "resistances first".
                   const fixResist = finding.kind === 'resist' && finding.element !== 'Chaos';
-                  return <Button variant="ghost" size="sm" onClick={() => { if (fixResist) { setGoal({ ...goal, resistanceFirst: true, resistanceTarget: goal.resistanceTarget ?? 75 }); navigate('trade'); } else navigate(finding.route); }}>
+                  return <Button variant="ghost" size="sm" onClick={() => openFinding(finding)}>
                     {fixResist ? w('Fix in Upgrades', '到提升页补抗性', '到提升頁補抗性') : finding.kind === 'net-regen' ? w('View recovery', '查看恢复', '查看恢復') : finding.kind === 'unsupported' ? w('View modifiers', '查看词缀', '查看詞綴') : finding.route === 'items' ? w('View equipment', '查看装备', '查看裝備') : finding.route === 'skills' ? w('View skills', '查看技能', '查看技能') : w('View settings', '查看配置', '查看設定')}<ArrowRight /></Button>; })()}</li>; })}</ul>}
         </section>
 
         <section className="ov-sec" aria-labelledby="ov-skills" aria-busy={skillsPending}>
           <h2 id="ov-skills">{w('Skill damage', '技能伤害', '技能傷害')}</h2>
+          <p className="ov-hint ov-skill-instruction">{tt('overview.selectSkillHint')}</p>
           {ranked.length === 0 ? <p className="ov-muted" role="status">{skillsPending ? w('Calculating…', '计算中…', '計算中…')
             : session.calcError || (hasSkills && !skills) ? w('The calculation is unavailable.', '当前计算不可用。', '目前計算無法使用。')
               : w('No skill deals damage yet.', '暂时没有造成伤害的技能。', '暫時沒有造成傷害的技能。')}</p>
             : <ol className="ov-rank">{ranked.map(entry => { const current = isCalculated(entry); const damage = damageOf(entry);
-              return <li key={`${entry.group_index}:${entry.active_skill_index}`}><button type="button" aria-pressed={current} onClick={() => chooseSkill(entry)}>
-                <span className="ov-rank-name">{skillName(entry.skill_id)}<small>{w(`Group ${entry.group_index + 1} · Effect ${entry.active_skill_index}`, `技能组 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`, `技能組 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`)}{current && minion && ` · ${tt('skills.minionDps')}`}</small></span>
+              return <li key={`${entry.group_index}:${entry.active_skill_index}`}><button type="button" aria-pressed={current} disabled={skillsPending || !session.socketGroups[entry.group_index]?.enabled} onClick={() => chooseSkill(entry)}>
+                <span className="ov-rank-name">{skillName(entry.skill_id)}{current && <span className="ov-current"><CircleCheck aria-hidden="true" />{tt('overview.currentSkill')}</span>}<small>{w(`Group ${entry.group_index + 1} · Effect ${entry.active_skill_index}`, `技能组 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`, `技能組 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`)}{current && minion && ` · ${tt('skills.minionDps')}`}</small></span>
                 <span className="ov-bar"><span style={{ width: `${(damage / top) * 100}%` }} /></span>
                 <span className="ov-rank-value">{formatStatValue(damage, 'float2')}</span></button></li>; })}</ol>}
-          <p className="ov-hint">{w('Each effect is calculated separately. Select one to use it for the current calculation.', '各效果分别计算，选择后用于当前计算。', '各效果分別計算，選取後用於目前計算。')}</p>
         </section>
       </div>
 
@@ -192,7 +215,7 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
             <div className="ov-toggle" role="group" aria-label={w('Measure', '指标', '指標')}>{ATTRIBUTION_FIELDS.map(id => <button key={id} type="button" aria-pressed={field === id} onClick={() => setField(id)}>{statNameLabel(lang, statFor(id))}</button>)}</div></div>
           <p className="ov-hint">{tt('calcs.attributionHint')}</p>
           {!contribution || contribution.version !== session.stateVersion
-            ? <div className="ov-compute"><p className="ov-muted">{contribution ? w('The build changed since this was measured.', 'BD 已变化，结果已过期。', 'BD 已變化，結果已過期。') : w('See how removing each item or skill group changes the result.', '查看移除每件装备或技能组后，数值会如何变化。', '查看移除每件裝備或技能組後，數值會如何變化。')}</p>
+            ? <div className="ov-compute"><p className="ov-muted">{contribution ? contribution.selection !== selection ? tt('overview.skillAnalysisChanged') : w('The build changed since this was measured.', 'BD 已变化，结果已过期。', 'BD 已變化，結果已過期。') : w('See how removing each item or skill group changes the result.', '查看移除每件装备或技能组后，数值会如何变化。', '查看移除每件裝備或技能組後，數值會如何變化。')}</p>
               <div className="ov-compute-actions"><Button variant="outline" disabled={contributionBusy || !calc} onClick={computeContribution}>{contributionBusy ? w('Measuring…', '计算中…', '計算中…') : contribution ? w('Measure again', '重新计算', '重新計算') : tt('calcs.runAttribution')}</Button>
                 {contributionBusy && <Button variant="ghost" onClick={job.cancel}>{w('Cancel', '取消', '取消')}</Button>}</div>{job.error && <p className="ov-muted" role="alert">{job.error}</p>}</div>
             : entries.length === 0 ? <p className="ov-muted">{w('Nothing changes this number.', '没有任何来源影响该数值。', '沒有任何來源影響該數值。')}</p>
@@ -210,7 +233,7 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
             <div><dt>{w('Game data', '游戏数据', '遊戲資料')}</dt><dd>{calc?.provenance?.data_version ?? session.dataVersion ?? '—'}</dd></div>
             {calc?.provenance?.engine_version && <div><dt>{w('Engine', '计算引擎', '計算引擎')}</dt><dd>{calc.provenance.engine_version}</dd></div>}
           </dl>
-          {calc && calc.unsupported_modifiers.length > 0 && <details className="ov-details"><summary>{w('Show the modifiers', '查看这些词缀', '查看這些詞綴')}</summary>
+          {calc && calc.unsupported_modifiers.length > 0 && <details ref={modifierDetails} className="ov-details"><summary>{w('Show the modifiers', '查看这些词缀', '查看這些詞綴')}</summary>
             <UnincludedModifiers lines={calc.unsupported_modifiers} lang={lang} items={session.items} /></details>}
           <p className="ov-hint">{w('Results reflect modeled effects. Review the uncalculated effects above.', '数值仅反映已支持的效果。未计算的内容见上方明细。', '數值僅反映已支援的效果。未計算的內容見上方明細。')}</p>
         </section>

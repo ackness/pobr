@@ -476,7 +476,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
           {result.gems.length === 0 && <p className="trade-notice">{tt('trade.noGemUpgrade')}</p>}
           {result.gems.map(plan => {
             // Resting on a candidate shows what it would change, from the stats already calculated for it.
-            const showPlan = preview && plan.stats && plan.baseline ? () => preview.showChanges(skillName(plan.gem.skill_id), changesFromRecords(plan.baseline!, plan.stats!)) : undefined;
+            const showPlan = preview && plan.stats && plan.baseline ? (event: { currentTarget: Element }) => preview.showChanges(skillName(plan.gem.skill_id), changesFromRecords(plan.baseline!, plan.stats!), event.currentTarget) : undefined;
             return <article className="trade-gem-card" key={`${plan.gem.skill_id}:${plan.position}:${plan.level}:${plan.quality}`}
               onMouseEnter={showPlan} onMouseLeave={showPlan ? preview!.clear : undefined} onFocus={showPlan} onBlur={showPlan ? preview!.clear : undefined}>
             <span className="trade-position-symbol" aria-hidden><SlotSymbol slot="gems" /></span>

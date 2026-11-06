@@ -44,6 +44,13 @@ describe('formatStatValue', () => {
     expect(formatStatValue(1000, 'float2', lang)).toBe('1,000');
   });
 
+  test('keeps total, maximum and internal resistance values in percent', () => {
+    for (const id of ['FireResistTotal', 'ColdResistMax', 'LightningResistOverCap', 'TotemChaosResist']) {
+      expect(statFormat(id), id).toBe('percent');
+      expect(formatStatValue(75, statFormat(id)), id).toBe('75%');
+    }
+  });
+
   test('uses metric precision for both a headline and its result', () => {
     expect(formatStatValue(1693.83, statFormat('Life'))).toBe('1,694');
     expect(formatStatValue(5307.37, statFormat('TotalDPS'))).toBe('5,307');
@@ -185,6 +192,16 @@ test('double critical roll multiplier is displayed as a chance', () => {
   expect(formatStatValue(0, row.format)).toBe('0%');
 });
 
+describe('stat section labels', () => {
+  test('rows in one section never share a label, so a value and its percentage stay distinguishable', () => {
+    for (const section of STAT_SECTIONS) {
+      for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
+        const labels = section.rows.map(row => row.label[lang]);
+        expect(labels.filter((label, index) => labels.indexOf(label) !== index), `${section.title['en-US']} ${lang}`).toEqual([]);
+      }
+    }
+  });
+});
 
 test('main-minion headlines use the same integer precision as Combined DPS', () => {
   expect(statFormat('MainMinionDPS')).toBe('int');

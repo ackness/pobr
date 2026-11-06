@@ -19,7 +19,7 @@ async function caster(page: Page) {
   await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
   await page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true }).click();
-  await page.getByRole('option', { name: '1. Fireball', exact: true }).click();
+  await page.getByRole('option', { name: /Fireball.*Group 1/ }).click();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
 }
 const dps = headlineDpsValue;

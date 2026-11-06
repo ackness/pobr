@@ -248,7 +248,7 @@ test('Comet PoB share-code reimport retains the unresolved slot and source gem m
   }
   expect(new Set(after.state.allocatedNodes)).toEqual(new Set(before.state.allocatedNodes));
   // PoB export may add standard false config defaults; imported values stay exact.
-  expect(after.state.params).toMatchObject(before.state.params);
+  expect(after.state.params).toMatchObject({ ...before.state.params });
   expect(after.notes).toBe(before.notes);
   expect(after.state.pobCode).toBe(sharedCode);
   expect(after.workspace.builds.slice(0, -1)).toEqual(before.workspace.builds);

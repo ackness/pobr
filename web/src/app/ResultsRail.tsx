@@ -7,7 +7,6 @@ import type { BuildSession } from '../hooks/useBuildSession';
 import { useMainMinion } from '../hooks/useMainMinion';
 import { useSkillCatalog } from '../hooks/useSkillName';
 import { MAIN_MINION_DPS, minionDpsNote } from '../lib/mainMinion';
-import { activeSkillEffects } from '../lib/skillSelection';
 import { skillDisplayName } from '../lib/skillNames';
 import { formatNumber, STAT_SECTIONS, formatStatValue, statMap } from '../lib/statDisplay';
 import { detailKind } from '../lib/statDetails';
@@ -23,6 +22,9 @@ import type { Route } from './routes';
 import { uiStorageKey } from '../lib/sessionStorage';
 import { calculationVersion } from './calculationVersion';
 import { words } from './text';
+import { calculatedSkillOptions } from './calculatedSkillOptions';
+import { useSkillMetrics } from './pages/skills/useSkillMetrics';
+import { headlineRows, hideDuplicateRow } from './railStats';
 
 const COLLAPSED_KEY = uiStorageKey('pobr-rail-collapsed');
 const TIERS: EnemyTier[] = ['none', 'boss', 'pinnacle', 'uber'];
@@ -31,7 +33,7 @@ const DAMAGE_COLOR: Record<string, string> = {
   Lightning: 'var(--color-lightning)', Chaos: 'var(--color-chaos)',
 };
 /** Sections people open on purpose; the rest of the rail is what an edit usually moves. */
-const DEFAULT_COLLAPSED = ['Recovery', 'Skill mechanics', 'Attributes'];
+const DEFAULT_COLLAPSED = STAT_SECTIONS.map(section => section.title['en-US']);
 const CHIP_MS = 4000;
 
 function readCollapsed(): string[] {
@@ -78,6 +80,7 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
   const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
   const catalog = useSkillCatalog();
   const calc = view.calc;
+  const skillMetrics = useSkillMetrics(session, true);
   const groups = session.socketGroups;
   const selected = session.calcParams.main_socket_group;
   const mainSkill: MainSkillInfo | null = calc && selected !== undefined ? calc.main_skill : null;
@@ -87,17 +90,12 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
   const enemy = resolveEnemyTier(session.calcParams.enemy_tier, session.calcParams.config_inputs);
   const name = (skillId: string) => skillDisplayName(skillId, lang, catalog);
   const open = (id: string) => calc && detailKind(calc, id) !== 'none' ? () => onStatClick(id) : undefined;
-  const total = mainSkill?.hit_damage.reduce((sum, part) => sum + part.avg, 0) ?? 0;
-  const parts = mainSkill ? [...mainSkill.hit_damage].filter(part => part.avg > 0).sort((a, b) => b.avg - a.avg) : [];
   const toOverview = () => { onNavigate('overview'); requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById('ov-findings')?.scrollIntoView({ block: 'start', behavior: 'smooth' }))); };
   const numberOf = (value: number) => (shown: number | null) => formatStatValue(shown ?? value, 'float2');
   return <div className="rail-headline">
-    {groups.length > 0 && <AppSelect ariaLabel={tt('sidebar.mainSkill')} value={selected === undefined ? '' : String(selected)} placeholder={tt('sidebar.unselected')}
+    {groups.length > 0 && <div className="rail-skill-picker"><span>{tt('sidebar.mainSkill')}</span><AppSelect ariaLabel={tt('sidebar.mainSkill')} value={selected === undefined ? '' : String(selected)} placeholder={tt('sidebar.unselected')}
       disabled={session.busy} onChange={value => session.updateParams({ main_socket_group: Number(value) })}
-      options={groups.map((group, index) => {
-        const effect = catalog.size ? activeSkillEffects(group, catalog)[(group.main_active_skill ?? 1) - 1] : undefined;
-        return { value: String(index), label: `${index + 1}. ${effect ? name(effect.skillId) : tt('calcs.unavailable')}${group.enabled ? '' : ` ${tt('sidebar.disabledGroup')}`}` };
-      })} />}
+      options={calculatedSkillOptions(groups, catalog, skillMetrics && skillMetrics.revision === session.socketGroupRevision ? skillMetrics.skills : [], calc, lang)} /></div>}
     <div className="rail-scenario"><span>{w('Enemy tier', '敌人档位', '敵人檔位')}</span>
       <AppSelect ariaLabel={w('Enemy tier', '敌人档位', '敵人檔位')} value={enemy === 'custom' ? '' : enemy} placeholder={w('Custom', '自定义', '自訂')} disabled={session.busy}
         onChange={tier => session.updateParams({ enemy_tier: tier as EnemyTier })} options={TIERS.map(tier => ({ value: tier, label: enemyTierLabel(lang, tier) }))} /></div>
@@ -114,7 +112,7 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
       const value = <AnimatedNumber value={minion.minion.dps} format={numberOf(minion.minion.dps)} />;
       const limit = calc?.stats.find(stat => stat.id === 'ActiveMinionLimit')?.value;
       return <>
-        <div className="rail-hero">
+        <div className="rail-hero" data-stat="MainMinionDPS">
           <span className="rail-hero-label">{tt('sidebar.minionHitDps')}</span>
           <div className="rail-hero-line">
             {detailKind(minion.minion, 'TotalDPS') !== 'none'
@@ -124,12 +122,12 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
           </div>
           <span className="rail-hero-note">{minionDpsNote(lang, minion.name, limit)}</span>
         </div>
-        {mainSkill && mainSkill.combined_dps > 0 && <Row label={tt('sidebar.playerCombinedDps')} change={changes.get('CombinedDPS')}
+        {mainSkill && mainSkill.combined_dps > 0 && <Row stat="CombinedDPS" label={tt('sidebar.playerCombinedDps')} change={changes.get('CombinedDPS')}
           value={<AnimatedNumber value={mainSkill.combined_dps} format={numberOf(mainSkill.combined_dps)} />} onOpen={open('CombinedDPS')} />}
       </>;
     })()}
     {mainSkill && !minion && <>
-      <div className="rail-hero">
+      <div className="rail-hero" data-stat="CombinedDPS">
         <span className="rail-hero-label">{tt('sidebar.combinedDps')}</span>
         <div className="rail-hero-line">
           {open('CombinedDPS')
@@ -138,18 +136,22 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
           {chip && <span className="rail-chip" data-tone={chip.tone} role="status">{percentText(chip)}</span>}
         </div>
       </div>
-      <Row stat="TotalDPS" label={tt('sidebar.hitDps')} change={changes.get('TotalDPS')} value={<AnimatedNumber value={mainSkill.hit_dps} format={numberOf(mainSkill.hit_dps)} />} onOpen={open('TotalDPS')} />
-      {mainSkill.dot_dps > 0 && <Row label={tt('sidebar.dotDps')} change={changes.get('TotalDotDPS')} value={<AnimatedNumber value={mainSkill.dot_dps} format={numberOf(mainSkill.dot_dps)} />} onOpen={open('TotalDotDPS')} />}
-      {total > 0 && <div className="rail-share" role="list" aria-label={tt('sidebar.damageShare')}>
+    </>}
+  </div>;
+}
+
+function DamageShare({ mainSkill, lang }: { mainSkill: MainSkillInfo; lang: Lang }) {
+  const tt = bindT(lang);
+  const total = mainSkill.hit_damage.reduce((sum, part) => sum + part.avg, 0);
+  const parts = [...mainSkill.hit_damage].filter(part => part.avg > 0).sort((a, b) => b.avg - a.avg);
+  return <>{total > 0 && <div className="rail-share" role="list" aria-label={tt('sidebar.damageShare')}>
         <div className="rail-share-bar" aria-hidden="true">{parts.map(part => <span key={part.damage_type} style={{ flexGrow: part.avg, background: DAMAGE_COLOR[part.damage_type] ?? 'var(--primary)' }} />)}</div>
         {parts.map(part => <div className="rail-share-row" role="listitem" key={part.damage_type}>
           <span className="rail-share-dot" style={{ background: DAMAGE_COLOR[part.damage_type] ?? 'var(--primary)' }} />
           <span className="rail-label">{damageTypeLabel(lang, part.damage_type)}</span>
           <span className="rail-value">{formatNumber((part.avg / total) * 100, 1, 1)}%</span>
         </div>)}
-      </div>}
-    </>}
-  </div>;
+      </div>}</>;
 }
 
 /** The main minion's defences; its damage is the headline above. */
@@ -177,11 +179,21 @@ export function ResultsRail({ route, session, view, lang, onStatClick, onNavigat
     return next;
   });
   const pinFor = (id: string) => ({ on: pinned.includes(id), toggle: () => onTogglePin(id), label: `${words(lang, pinned.includes(id) ? 'Unpin' : 'Pin', pinned.includes(id) ? '取消固定' : '固定', pinned.includes(id) ? '取消固定' : '固定')}: ${statLabel(lang, id)}` });
+  const essentials = values ? headlineRows(values) : [];
   const pinnedRows = values ? pinned.filter(id => values.has(id)) : [];
   const version = calculationVersion(lang, calc?.provenance?.data_version ?? session.dataVersion, calc?.provenance?.engine_version, session.calcMs);
+  if (!session.hasBuildContent && session.socketGroups.length === 0) return <aside id="character-stats" className="shell-rail-content" aria-label={words(lang, 'Character stats', '角色属性', '角色屬性')}>
+    <p className="rail-empty">{bindT(lang)('sidebar.emptyBuildHint')}</p>
+    <button type="button" className="rail-link" onClick={() => onNavigate('build')}>{bindT(lang)('sidebar.importCreate')}<ChevronRight /></button>
+  </aside>;
   return <aside id="character-stats" className="shell-rail-content" data-stale={view.stale || undefined} aria-label={words(lang, 'Character stats', '角色属性', '角色屬性')}>
     <ComparisonBaseline session={session} lang={lang} onNavigate={onNavigate} />
     <Headline route={route} session={session} view={view} lang={lang} onStatClick={onStatClick} changes={changes} onNavigate={onNavigate} minion={minion} />
+    {essentials.length > 0 && <section className="rail-section rail-essentials">
+      {essentials.map(id => <Row key={id} label={statLabel(lang, id)} color={statColor(id)} change={changes.get(id)}
+        value={<AnimatedNumber value={values?.get(id)} format={shown => formatStatValue(shown, statFormat(id), lang)} />}
+        onOpen={calc && detailKind(calc, id) !== 'none' ? () => onStatClick(id) : undefined} />)}
+    </section>}
     <Minion lang={lang} onStatClick={onStatClick} main={minion} />
     {calc && <button type="button" className="rail-link" onClick={() => onStatClick('skill-metrics')}>{bindT(lang)('sidebar.skillValuesLink')}<ChevronRight /></button>}
     {pinnedRows.length > 0 && <section className="rail-section rail-pinned"><h3 className="rail-title"><span>{words(lang, 'Pinned', '已固定', '已固定')}</span></h3>
@@ -194,21 +206,21 @@ export function ResultsRail({ route, session, view, lang, onStatClick, onNavigat
       if (section.playerDamage && minion && !((calc?.main_skill?.combined_dps ?? 0) > 0)) return null;
       const rows = section.rows.filter(row => {
         if (!values) return false;
-        // TotalDPS is already shown under the calculated skill's headline.
-        if (row.id === 'TotalDPS' && !minion && session.calcParams.main_socket_group !== undefined && calc?.main_skill) return false;
         const value = values.get(row.id);
+        if (essentials.includes(row.id) || hideDuplicateRow(row.id, values)) return false;
         if (row.id === 'QuantityMultiplier' && value === 1) return false;
         if (['WithIgniteDPS', 'WithBleedDPS', 'WithPoisonDPS', 'WithDotDPS'].includes(row.id) && typeof value === 'number'
           && [calc?.main_skill?.combined_dps, calc?.main_skill?.hit_dps, values.get('CombinedDPS'), values.get('TotalDPS')].includes(value)) return false;
         return value !== undefined && !(row.hideZero && (value === 0 || value === null));
       });
-      if (rows.length === 0) return null;
+      if (rows.length === 0 && !(section.playerDamage && calc?.main_skill)) return null;
       const key = section.title['en-US'];
       const folded = collapsed.includes(key);
       return <section key={key} className="rail-section" data-folded={folded || undefined}>
         <h3 className="rail-title"><button type="button" aria-expanded={!folded} onClick={() => toggle(key)}><ChevronRight />{section.title[lang]}</button></h3>
         <div className="rail-fold" data-open={!folded || undefined} inert={folded || undefined}><div>
-          {rows.map(row => <Row key={row.id} label={row.label[lang]} color={row.colorVar ? `var(--${row.colorVar})` : undefined} change={changes.get(row.id)} pin={pinFor(row.id)}
+          {section.playerDamage && calc?.main_skill && !minion && <DamageShare mainSkill={calc.main_skill} lang={lang} />}
+          {rows.map(row => <Row key={row.id} stat={row.id} label={row.id === 'TotalDotDPS' ? bindT(lang)('sidebar.dotDps') : row.label[lang]} color={row.colorVar ? `var(--${row.colorVar})` : undefined} change={changes.get(row.id)} pin={pinFor(row.id)}
             value={<AnimatedNumber value={values?.get(row.id)} format={shown => formatStatValue(shown, row.format, lang)} />}
             onOpen={calc && detailKind(calc, row.id) !== 'none' ? () => onStatClick(row.id) : undefined} />)}
         </div></div>

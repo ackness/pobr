@@ -562,3 +562,8 @@
 .skill-gem .gem-corrupted { width: auto; gap: var(--space-1); font-size: var(--text-xs); }
 
 /* Each gem's controls stay together as the available panel width changes. */
+
+.skill-spirit-summary { margin-block: var(--space-3); scroll-margin-top: var(--space-4); }
+.skill-spirit-summary p { max-width: 60ch; font-size: var(--text-sm); color: var(--text-muted); }
+.skill-group[data-spirit-reserving] { border-color: var(--accent-gold); }
+.skill-spirit-cost { font-size: var(--text-sm); color: var(--accent-gold-bright); }

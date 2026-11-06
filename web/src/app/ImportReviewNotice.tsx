@@ -6,7 +6,7 @@ import { bindT, type Lang } from '../lib/i18n';
 import { classDisplayName } from '../lib/nativeDisplayNames';
 import { headlineDpsStat, minionDpsNote } from '../lib/mainMinion';
 import { formatStatValue } from '../lib/statDisplay';
-import { unsupportedLineLabel } from '../lib/diagnosticText';
+import { UnincludedModifiers } from '../components/shared/UnincludedModifiers';
 import type { Route } from './routes';
 import type { ImportSummary } from './importReview';
 
@@ -31,7 +31,7 @@ export function ImportReviewNotice({ route, lang, summary, onDismiss, onReview }
       {minion && <p>{minionDpsNote(lang, minion.name, calc?.stats.find(entry => entry.id === 'ActiveMinionLimit')?.value)}</p>}
       {calc && <p>{tt('build.summaryModifiers').replace('{count}', String(calc.unsupported_modifiers.length))}{' '}
         <a href="#import-summary-modifiers" aria-expanded={expanded} onClick={event => { event.preventDefault(); setExpanded(value => !value); }}>{tt('build.summaryView')}</a></p>}
-      {expanded && calc && <ul id="import-summary-modifiers">{calc.unsupported_modifiers.map((line, index) => <li key={index}>{unsupportedLineLabel(line, lang)}</li>)}</ul>}
+      {expanded && calc && <div id="import-summary-modifiers"><UnincludedModifiers lines={calc.unsupported_modifiers} lang={lang} /></div>}
       <p>{tt('config.importReview')}{' '}<a href="/config" onClick={event => { event.preventDefault(); onReview(); }}>{tt('config.review')}</a></p>
     </div>
     <Button variant="ghost" onClick={onDismiss}>{tt('config.reviewDismiss')}</Button>
