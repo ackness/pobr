@@ -5,7 +5,8 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { GemOptimizer } from './GemOptimizer';
 import { ChangeBar } from '../../app/preview/ChangeBar';
 
-const harness = vi.hoisted(() => ({ states: [] as unknown[], cursor: 0, buttons: [] as ComponentProps<'button'>[], optimize: vi.fn(), articles: [] as ComponentProps<'article'>[], show: vi.fn(), showChanges: vi.fn(), settings: null as { current: HTMLDetailsElement | null } | null, previewState: null as import('../shared/PreviewContext').PreviewState | null }));
+const harness = vi.hoisted(() => ({ states: [] as unknown[], cursor: 0, buttons: [] as ComponentProps<'button'>[], optimize: vi.fn(), articles: [] as ComponentProps<'article'>[], show: vi.fn(), showChanges: vi.fn(), settings: null as { current: HTMLDetailsElement | null } | null, previewState: null as import('../shared/PreviewContext').PreviewState | null,
+  preset: 'dps' }));
 vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
   useState: (initial: unknown) => {
     const index = harness.cursor++;
@@ -17,6 +18,8 @@ vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { harness.buttons.push(props); return <button {...props} />; },
   AppInput: (props: ComponentProps<'input'>) => <input {...props} />,
 }));
+vi.mock('../../hooks/useLocalizedLines', async original => ({ ...await original<typeof import('../../hooks/useLocalizedLines')>(),
+  useLocalizedNames: (names: { name: string }[]) => names.map(entry => entry.name) }));
 vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
 vi.mock('../shared/PreviewContext', () => ({ usePreview: () => ({ state: harness.previewState,
   show: harness.show, showChanges: harness.showChanges, clear: () => {} }) }));
@@ -28,7 +31,7 @@ vi.mock('react/jsx-dev-runtime', async original => {
     return runtime.jsxDEV(...args);
   } };
 });
-vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: { preset: 'dps' }, setGoal: () => {} }) }));
+vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: { preset: harness.preset, cStat: '', cMin: '', cMax: '' }, setGoal: () => {} }) }));
 vi.mock('../shared/OptimizerControls', async original => ({ ...await original<typeof import('../shared/OptimizerControls')>(),
   ObjectiveEditor: () => null, OptimizerProgress: () => null,
 }));
@@ -57,11 +60,42 @@ function button(label: string) {
 }
 beforeEach(() => {
   harness.states = [];
+  harness.preset = 'dps';
   harness.previewState = null;
   harness.show.mockClear();
   harness.showChanges.mockReset().mockImplementation((label, changes) => { harness.previewState = { label, changes, status: 'ready' }; });
   harness.optimize.mockReset().mockResolvedValue({ baseline: { CombinedDPS: 120, TotalDPS: 100, TotalEHP: 200 }, evaluated: 12, unmodeled: 2,
     baselineUnsupported: ['Internal diagnostic retained'], excluded: [], plans: [] });
+});
+
+it.each(['dps', 'balanced', 'dpsPerMana'])('passes the resolved %s objective into support optimization for normal and summoner builds', async preset => {
+  harness.preset = preset;
+  const { session, render } = setup();
+  render(); expand(); render(); await button('Calculate support combinations').onClick!({} as never);
+  expect(harness.optimize).toHaveBeenLastCalledWith(expect.objectContaining({ objective: expect.objectContaining({
+    stat: preset === 'dpsPerMana' ? 'TotalDPS' : 'CombinedDPS',
+  }) }));
+  session.calc = { ...session.calc!, main_minion_index: 2, minions: [{ index: 2, name: 'Wolf' }],
+    stats: [{ id: 'ActiveMinionLimit', value: 7 }] } as BuildSession['calc'];
+  render(); await button('Calculate support combinations').onClick!({} as never);
+  expect(harness.optimize).toHaveBeenLastCalledWith(expect.objectContaining({ objective: expect.objectContaining({
+    stat: preset === 'dpsPerMana' ? 'TotalDPS' : 'MainMinionDPS',
+    ...(preset === 'dpsPerMana' ? { per: 'ManaCost' } : {}),
+  }) }));
+});
+
+it('shows a minion-only support improvement in the headline and explains that it is per minion', async () => {
+  const { session, render } = setup();
+  session.calc = { ...session.calc!, main_minion_index: 2, minions: [{ index: 2, name: 'Wolf' }],
+    stats: [{ id: 'ActiveMinionLimit', value: 7 }] } as BuildSession['calc'];
+  harness.optimize.mockResolvedValue({ baseline: { TotalDPS: 0, CombinedDPS: 0, MainMinionDPS: 100, TotalEHP: 200 },
+    plans: [{ supports: [], variant: {}, stats: { TotalDPS: 0, CombinedDPS: 0, MainMinionDPS: 150, TotalEHP: 200 } }],
+    baselineUnsupported: [], excluded: [], evaluated: 1, unmodeled: 0 });
+  render(); expand(); render(); await button('Calculate support combinations').onClick!({} as never);
+  const html = render();
+  expect(html).toContain('Minion hit DPS 150');
+  expect(html).toContain('+50.0%');
+  expect(html).toContain('Wolf · per minion · limit 7');
 });
 
 it('selects a calculation skill without starting optimization', async () => {
@@ -147,4 +181,22 @@ it('card, baseline and hover reuse the evaluated Combined DPS with identical int
   expect(html).not.toContain('is-positive">Effective HP');
   expect(html).toContain('Equip');
   expect(html).toContain('New');
+});
+
+it('the minion-only support hover previews the same damage stat as its card', async () => {
+  const { session, render } = setup();
+  session.calc = { ...session.calc!, main_minion_index: 2, minions: [{ index: 2, name: 'Wolf' }] } as BuildSession['calc'];
+  harness.optimize.mockResolvedValueOnce({ baseline: { TotalDPS: 0, CombinedDPS: 0, MainMinionDPS: 100.4, TotalEHP: 200 },
+    plans: [{ supports: [], variant: {}, stats: { TotalDPS: 0, CombinedDPS: 0, MainMinionDPS: 150.6, TotalEHP: 200 } }],
+    baselineUnsupported: [], excluded: [], evaluated: 1, unmodeled: 0 });
+  render(); expand(); render(); await button('Calculate support combinations').onClick!({} as never);
+  const html = render();
+  expect(html).toContain('Minion hit DPS 151');
+  harness.articles[0].onMouseEnter!({} as never);
+  // The third argument is the hovered card, which this harness does not render.
+  expect(harness.showChanges.mock.lastCall?.slice(0, 2)).toEqual([expect.any(String), expect.arrayContaining([
+    expect.objectContaining({ id: 'MainMinionDPS', before: 100.4, after: 150.6 }),
+  ])]);
+  const hover = renderToStaticMarkup(<ChangeBar lang="en-US" />);
+  expect(hover).toContain('100 → 151');
 });

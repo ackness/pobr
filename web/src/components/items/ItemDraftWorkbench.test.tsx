@@ -48,4 +48,12 @@ it('opens modifier editing for a new draft and compares explicitly with current 
   render();
   await vi.waitFor(() => expect(render()).toContain('Swap preview'));
   expect(ui.compare).toHaveBeenLastCalledWith(expect.objectContaining({ initialItemText: expect.stringContaining('+50 to maximum Life') }));
+  expect(ui.compare).toHaveBeenLastCalledWith(expect.objectContaining({ objective: expect.objectContaining({ stat: 'CombinedDPS' }) }));
+});
+
+it('resolves a crafted-item preview to the main minion damage goal', async () => {
+  session.calc = { stats: [], main_minion_index: 2, minions: [{ index: 2 }] } as unknown as BuildSession['calc'];
+  render(); await vi.waitFor(() => expect(render()).toContain('Swap preview'));
+  expect(ui.compare).toHaveBeenLastCalledWith(expect.objectContaining({ objective: expect.objectContaining({ stat: 'MainMinionDPS' }) }));
+  session.calc = null;
 });

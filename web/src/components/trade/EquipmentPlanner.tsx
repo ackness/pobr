@@ -12,6 +12,7 @@ import { upgradeT } from '../../lib/upgradeText';
 import { usePreview } from '../shared/PreviewContext';
 import { changesFromRecords } from '../../app/preview/fromRecords';
 import type { TradeCatalog } from '../../lib/tradeOptimizer';
+import type { DamageHeadline } from '../../lib/mainMinion';
 
 interface EquipmentSnapshot {
   key: string;
@@ -26,9 +27,11 @@ interface EquipmentSnapshot {
 }
 
 /** Candidate texts are the exact prepared items; plans apply all replacements in one edit. */
-export function EquipmentPlanner({ session, lang, active, objective, catalog, candidates, onRemove }: {
+export function EquipmentPlanner({ session, lang, active, objective, catalog, candidates, onRemove, actionClassName = 'trade-primary', damage }: {
   session: BuildSession; lang: Lang; active: boolean; objective: Objective; catalog: TradeCatalog | null;
   candidates: EquipmentCandidate[]; onRemove: (id: string) => void;
+  actionClassName?: 'trade-primary' | 'trade-secondary';
+  damage: DamageHeadline;
 }) {
   const ut = (key: Parameters<typeof upgradeT>[1]) => upgradeT(lang, key);
   const preview = usePreview();
@@ -115,7 +118,7 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
       <AppButton aria-label={`${ut('jointRemove')} ${candidate.label} · ${slotLabel(lang, candidate.slot)}`} disabled={!active || busy} onClick={() => onRemove(candidate.id)}>{ut('jointRemove')}</AppButton>
     </li>)}</ul>
     {!!candidates.length && <div className="replacement-actions">
-      <AppButton className="trade-primary" disabled={!active || busy || session.busy || !catalog} onClick={() => void run()}>
+      <AppButton className={actionClassName} disabled={!active || busy || session.busy || !catalog} onClick={() => void run()}>
         {maxReplacements === 2 ? ut('jointCompare') : maxReplacements === 1 ? ut('jointCompareOne')
           : `${ut('jointCompareMany')} ${maxReplacements} ${ut('jointItems')}`}</AppButton>
       {busy && <><span role="status">{ut('comparingPositions')} {progress.done} / {progress.total}</span>
@@ -132,10 +135,11 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
         return <li key={plan.candidateIds.join('/') || 'current'} className="equipment-plan"
           onMouseEnter={preview && !plan.error ? event => preview.showChanges(planLabel, changesFromRecords(result.baseline, plan.stats), event.currentTarget) : undefined} onMouseLeave={preview?.clear}>
           <h5>{chosen.length ? chosen.map(candidate => `${candidate.label} · ${slotLabel(lang, candidate.slot)}`).join(' + ') : ut('jointKeep')}</h5>
-          {!plan.error && <div className="replacement-metrics">{['TotalDPS', 'TotalEHP', 'Life'].map(stat => {
+          {!plan.error && <div className="replacement-metrics">{[damage.stat, 'TotalEHP', 'Life'].map(stat => {
             const before = result.baseline[stat] ?? 0, after = plan.stats[stat] ?? 0;
             const delta = after - before;
-            return <div className="replacement-metric" key={stat}><span>{statNameLabel(lang, stat)}</span>
+            return <div className="replacement-metric" key={stat}><span>{stat === damage.stat ? damage.label : statNameLabel(lang, stat)}</span>
+              {stat === damage.stat && damage.note && <small>{damage.note}</small>}
               <strong className={delta < 0 ? 'delta-neg' : delta > 0 ? 'delta-pos' : ''}>{delta > 0 ? '+' : ''}{format(before > 0 ? delta / before * 100 : delta)}{before > 0 ? '%' : ''}</strong>
               <span>{formatStatValue(before, statFormat(stat), lang)} → <b data-plan-stat={stat}>{formatStatValue(after, statFormat(stat), lang)}</b></span></div>;
           })}</div>}
@@ -145,7 +149,7 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
           {(plan.error || !!plan.warnings?.length) && <p className="trade-notice">{ut('jointInvalid')} {plan.error ? reasonText(plan.error) : plan.warnings?.map(reasonText).join(', ')}</p>}
           {!!plan.unsupported.length && <details className="trade-notice"><summary>{ut('incomplete')} ({plan.unsupported.length})</summary>
             <UnincludedModifiers lines={plan.unsupported} lang={lang} /></details>}
-          {!!chosen.length && <AppButton className="trade-primary" disabled={!active || busy || session.busy || !canApply} onClick={() => apply(plan)}>{ut('jointApply')}</AppButton>}
+          {!!chosen.length && <AppButton className={actionClassName} disabled={!active || busy || session.busy || !canApply} onClick={() => apply(plan)}>{ut('jointApply')}</AppButton>}
         </li>;
       })}</ol>
       {!!rejected.length && <details className="trade-notice"><summary>{ut('jointRejected')} ({rejected.length})</summary>

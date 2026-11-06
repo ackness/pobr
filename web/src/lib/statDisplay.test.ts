@@ -202,3 +202,8 @@ describe('stat section labels', () => {
     }
   });
 });
+
+test('main-minion headlines use the same integer precision as Combined DPS', () => {
+  expect(statFormat('MainMinionDPS')).toBe('int');
+  expect(formatStatValue(12345.67, statFormat('MainMinionDPS'), 'zh-CN')).toBe('12,346');
+});

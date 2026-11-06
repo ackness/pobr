@@ -45,6 +45,7 @@ vi.mock('../shared/controls', () => ({
 vi.mock('../../hooks/useLocalizedLines', async original => ({ ...await original<typeof import('../../hooks/useLocalizedLines')>(),
   useItemDisplayNames: (texts: (string | undefined)[]) => texts.map(text => text?.split('\n')[1] ?? ''),
   useLocalizedLines: (lines: string[]) => lines,
+  useLocalizedNames: (names: { name: string }[]) => names.map(entry => entry.name),
 }));
 vi.mock('../../api/backend', () => ({ getBackend: async () => ({ reforgeRunes: harness.reforge, calculateBuild: harness.compare }) }));
 vi.mock('./ItemCrafter', () => ({ ItemCrafter: (props: unknown) => { harness.newCrafter(props); return null; },
@@ -70,12 +71,12 @@ function session() {
     currentRequest: () => ({}), setItems: vi.fn(), setEditorDraft: vi.fn(), removeLibraryItem: vi.fn(),
   } as unknown as BuildSession;
 }
-function render(current: BuildSession) {
+function render(current: BuildSession, onUpgrade?: (slot: string) => void) {
   harness.cursor = 0;
   harness.buttons.length = 0;
   harness.inputs.length = 0;
   harness.toolKeys.length = 0;
-  return renderToStaticMarkup(<ItemsPanel session={current} lang="en-US" />);
+  return renderToStaticMarkup(<ItemsPanel session={current} lang="en-US" onUpgrade={onUpgrade} />);
 }
 function button(label: string) {
   const found = harness.buttons.find(props => props['aria-label'] === label || props.title === label || props.children === label);
@@ -92,6 +93,17 @@ beforeEach(() => {
   vi.stubGlobal('requestAnimationFrame', (callback: () => void) => callback());
 });
 afterEach(() => vi.unstubAllGlobals());
+
+it('offers trade search in item details and hands off the inspected slot without editing equipment', () => {
+  const current = session(), onUpgrade = vi.fn();
+  expect(render(current, onUpgrade)).not.toContain('Find a better one on the trade site');
+  button('Ring 1').onClick!({} as never);
+  const html = render(current, onUpgrade);
+  expect(html.indexOf('Find a better one on the trade site')).toBeGreaterThan(html.indexOf('class="item-detail-header"'));
+  button('Find a better one on the trade site').onClick!({} as never);
+  expect(onUpgrade).toHaveBeenCalledWith('ring1');
+  expect(current.setItems).not.toHaveBeenCalled();
+});
 
 it('explains disabled library actions and enables matching items after choosing a slot', () => {
   const current = session();
@@ -200,6 +212,21 @@ it('renders library comparisons through the shared before/after card and invalid
   expect(html).toContain('100</span> → <b class="swap-after">150');
   current.currentRequest = () => ({ items: [] });
   expect(render(current)).not.toContain('class="swap-gain-card"');
+});
+
+it('passes the main minion headline and per-minion note to a saved-item comparison', async () => {
+  const current = session();
+  current.calc = { stats: [{ id: 'CombinedDPS', value: 0 }, { id: 'MainMinionDPS', value: 100 }],
+    main_minion_index: 2, minions: [{ index: 2, name: 'Wolf' }] } as BuildSession['calc'];
+  harness.compare.mockResolvedValue({ stats: [{ id: 'CombinedDPS', value: 0 }, { id: 'MainMinionDPS', value: 150 }] });
+  render(current); button('Ring 1').onClick!({} as never);
+  render(current); button('Compare').onClick!({} as never);
+  await vi.waitFor(() => expect(harness.compare).toHaveBeenCalledOnce());
+  await Promise.resolve();
+  const html = render(current);
+  expect(html).toContain('data-stat="MainMinionDPS"');
+  expect(html).toContain('+50.0%');
+  expect(html).toContain('Wolf · per minion');
 });
 
 

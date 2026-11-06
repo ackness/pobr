@@ -196,7 +196,7 @@ test('text copied from a market response reaches real WASM replacement compariso
   await expect(page.locator('.replacement-parsed')).toContainText('Required level 60');
   await expect(page.locator('.replacement-affix')).toHaveCount(3);
   await expect(page.locator('.replacement-unsupported')).toHaveCount(0);
-  await expect(page.locator('.upgrade-replacement-result')).toContainText('Hit DPS decreases after this replacement');
+  await expect(page.locator('.upgrade-replacement-result')).toContainText('Combined DPS decreases after this replacement');
   await expect(page.locator('.replacement-copy-links a').first()).toHaveAttribute('href', '/userscripts/pobr-market-copy.user.js');
   const popup = page.waitForEvent('popup');
   await page.locator('.replacement-copy-links a').last().click();

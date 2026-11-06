@@ -95,7 +95,7 @@ test('real baseline limits remain keyboard-readable across first page visits and
   const before = await groups(page);
   await capacity(page).fill('2');
   await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
-  await choose(page, page.getByRole('combobox', { name: 'Objective', exact: true }), 'Max Hit DPS');
+  await choose(page, page.getByRole('combobox', { name: 'Objective', exact: true }), 'Combined DPS');
   await completeSearch(page);
 
   const summary = baseline(page).locator(':scope > summary');

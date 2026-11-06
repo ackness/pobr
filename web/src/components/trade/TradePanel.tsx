@@ -9,6 +9,9 @@ import { uiStorageKey } from '../../lib/sessionStorage';
 import { AppButton, AppInput } from '../shared/controls';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import { upgradeT } from '../../lib/upgradeText';
+import { resolveDamageObjective } from '../../lib/mainMinion';
+import { useHeadlineDamage } from '../../hooks/useMainMinion';
+import { TradeAnalysisProgress, type SlotProgress } from './TradeAnalysisProgress';
 import { ItemReplacementCheck } from './ItemReplacementCheck';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { SlotSymbol } from '../shared/SlotSymbol';
@@ -29,8 +32,9 @@ import { affixPool, basesForSlot, categoryAffixPool, categorySearchMods, loadTra
 import { planGemUpgrades } from '../../lib/tradeMarket';
 import { AppSelect } from '../shared/AppSelect';
 import { CopyButton } from '../shared/CopyButton';
-import { objectiveOf, ObjectiveEditor, OptimizerProgress } from '../shared/OptimizerControls';
+import { objectiveOf, ObjectiveEditor } from '../shared/OptimizerControls';
 import { formatStatValue, statFormat, formatNumber, statMap } from '../../lib/statDisplay';
+import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { rankUpgradePositions, type PositionAnalysis } from '../../lib/tradePriority';
 import { hasReusableTradeAnalysis, hasUsableTradeWeights, reusableTradeCount, type CachedTradeAnalysis, type TradeAnalysisMode } from '../../lib/tradeAnalysis';
 import { tradeAnalysisText } from '../../lib/tradeAnalysisText';
@@ -52,8 +56,16 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
 }) {
   const preferenceKey = (key: string) => uiStorageKey(key);
   const tt = bindT(lang);
+  const flowT = (key: Parameters<typeof tradeAnalysisText>[1]) => tradeAnalysisText(lang, key);
   const ut = (key: Parameters<typeof upgradeT>[1]) => upgradeT(lang, key);
   const { goal, setGoal } = useUpgradeGoal();
+  const damage = useHeadlineDamage(session.calc, lang);
+  const { stat: damageStat, label: damageLabel } = damage;
+  const goalLabel = presetLabel(goal.preset);
+  function presetLabel(id: string) {
+    return id === 'dps' ? damageLabel : id === 'ehp' ? statNameLabel(lang, 'TotalEHP')
+      : id === 'balanced' ? flowT('balancedGoal') : tt(TRADE_OBJECTIVES.find(entry => entry.id === id)!.labelKey as UiKey);
+  }
   const skillCatalog = useSkillCatalog();
   const skillName = (skillId: string) => skillDisplayName(skillId, lang, skillCatalog);
   const cnSkillName = (skillId: string) => skillDisplayName(skillId, 'zh-CN', skillCatalog);
@@ -95,20 +107,33 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   const setResistanceFirst = (value:boolean) => setGoal({ ...goal, resistanceFirst:value });
   const setResistanceTarget = (value:number) => setGoal({ ...goal, resistanceTarget:value });
   const setKeepEhp = (value:boolean) => setGoal({ ...goal, keepEhp:value });
-  const [allProgress, setAllProgress] = useState<{ done: number; total: number } | null>(null);
-  useJobBeacon(progress !== null || allProgress !== null);
+  const [allProgress, setAllProgress] = useState<SlotProgress | null>(null);
+  useJobBeacon(running !== null);
   const preview = usePreview();
   const [overview, setOverview] = useState(false);
   const [interrupted, setInterrupted] = useState(false);
-  const analysisRef = useRef<HTMLDivElement>(null);
+  const analysisRef = useRef<HTMLElement>(null);
+  const marketRef = useRef<HTMLElement>(null);
+  const handledFocus = useRef<number | undefined>(undefined);
   const goalRef = useRef<HTMLDivElement>(null);
   const pasteRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const cacheRef = useRef<Record<string, CachedTradeAnalysis<SlotResult>>>({});
-  useEffect(() => { if (focus) {
+  useLayoutEffect(() => {
+    if (!focus || !active || handledFocus.current === focus.nonce) return;
     setSelected(focus.slot);
     if (focus.jewelType) setJewelTypes(prev => ({ ...prev, [focus.slot]: focus.jewelType! }));
-  } }, [focus]);
+  }, [focus, active]);
+  useEffect(() => {
+    if (!focus || !active || handledFocus.current === focus.nonce) return;
+    // The shell resets its scroll on navigation. Follow that reset on the next frame.
+    const frame = requestAnimationFrame(() => {
+      handledFocus.current = focus.nonce;
+      marketRef.current?.scrollIntoView({ block: 'start' });
+      marketRef.current?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focus, active]);
   const mainGroup = session.calcParams.main_socket_group;
   const selectedGroup = mainGroup === undefined ? undefined : session.socketGroups[mainGroup];
   const selectedEffect = selectedGroup && skillCatalog.size
@@ -141,7 +166,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     abortRef.current?.abort(); abortRef.current = null;
     cacheRef.current = {};
     setRunning(null); setProgress(null); setResults({}); setAllProgress(null); setInterrupted(false); setRequiredStats({});
-  }, [goal, session.currentRequest, categories, jewelTypes]);
+  }, [goal, session.currentRequest, categories, jewelTypes, damageStat]);
   useLayoutEffect(() => {
     if (active || !abortRef.current) return;
     abortRef.current.abort(); abortRef.current = null;
@@ -167,9 +192,12 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     const max = Number(budget);
     return Number.isFinite(max) && max > 0 ? { max, currency } : undefined;
   }, [budget, currency]);
-  const objective = useMemo<Objective>(() => objectiveOf(goal,
-    Object.fromEntries([...statMap(session.calc?.stats ?? [])].filter((entry): entry is [string, number] => entry[1] !== null))), [goal, session.calc]);
-  const needsSkill = objective.stat === 'TotalDPS' || !!objective.per
+  const objective = useMemo<Objective>(() => {
+    const next = objectiveOf(goal, Object.fromEntries([...statMap(session.calc?.stats ?? [])]
+      .filter((entry): entry is [string, number] => entry[1] !== null)));
+    return resolveDamageObjective(next, session.calc);
+  }, [goal, session.calc, damageStat]);
+  const needsSkill = ['TotalDPS', 'CombinedDPS', 'MainMinionDPS'].includes(objective.stat) || !!objective.per
     || objective.constraints.some(constraint => ['ActionRate', 'ManaCost', 'TotalDPS', 'CritChance'].includes(constraint.stat));
   const canAnalyze = !!session.calc && !session.calcError && (!needsSkill || hasSkillTarget);
   const result = results[selected];
@@ -186,13 +214,13 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     minimumWeight: broad ? 0 : weights.minimumWeight,
     requiredStats: requiredStats[selected],
   }) : null;
+  const searchReady = !!searchUrl && !!league.trim();
   const maxGain = Math.max(...(weights?.weighted.map(weight => weight.gain) ?? []), 1e-9);
   const disabled = !active || running !== null || session.busy || !catalog || !canAnalyze;
   const number = (value: number, digits = 2) => formatNumber(value, digits);
 
-  const priorities = rankUpgradePositions(results, objective);
-  const fullTargets = [...slots.filter(slot => (bySlot.has(slot) || slot.startsWith('Jewel@')) && baseOf(slot)),
-    ...(hasSkillTarget && !selectedGroup?.source ? ['gems'] : [])];
+  const priorities = rankUpgradePositions(results, objective, damageStat);
+  const fullTargets = slots.filter(slot => (bySlot.has(slot) || slot.startsWith('Jewel@')) && baseOf(slot));
   const reusableAllCount = reusableTradeCount(fullTargets, cacheRef.current, 'all');
   const allComplete = fullTargets.length > 0 && reusableAllCount === fullTargets.length;
   const cancelAnalysis = () => {
@@ -207,9 +235,12 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     const controller = new AbortController(); abortRef.current = controller;
     const mode: TradeAnalysisMode = all || overview ? 'all' : 'single';
     const completed = all && !force ? reusableTradeCount(targets, cacheRef.current, 'all') : 0;
-    if (all) { setOverview(true); setAllProgress({ done: completed, total: targets.length }); }
+    if (all) setOverview(true);
+    setAllProgress({ done: completed, total: targets.length, measuredMs: 0, measuredSlots: 0 });
     setInterrupted(false);
     let done = completed;
+    let measuredMs = 0;
+    let measuredSlots = 0;
     try {
       for (const slot of targets) {
         controller.signal.throwIfAborted();
@@ -218,6 +249,8 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
         const options = { signal: controller.signal, onProgress: (done: number, total: number) => {
           if (abortRef.current === controller && !controller.signal.aborted) setProgress({ done, total });
         } };
+        const startedAt = performance.now();
+        let succeeded = false;
         try {
           let next: SlotResult;
           if (slot === 'gems') {
@@ -239,12 +272,19 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
           if (abortRef.current !== controller) break;
           cacheRef.current[slot] = { result: next, mode };
           setResults(prev => ({ ...prev, [slot]: next }));
-          if (all) setAllProgress({ done: ++done, total: targets.length });
-          else if (overview) setAllProgress({ done: reusableTradeCount(fullTargets, cacheRef.current, 'all'), total: fullTargets.length });
+          succeeded = true;
         } catch (error) {
           if (controller.signal.aborted || abortRef.current !== controller) break;
           delete cacheRef.current[slot];
           setResults(prev => ({ ...prev, [slot]: { error: error instanceof Error ? error.message : String(error) } }));
+        } finally {
+          if (abortRef.current === controller && !controller.signal.aborted) {
+            if (succeeded) {
+              measuredMs += performance.now() - startedAt;
+              measuredSlots++;
+            }
+            setAllProgress({ done: ++done, total: targets.length, measuredMs, measuredSlots });
+          }
         }
       }
     } catch (error) {
@@ -256,15 +296,14 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
 
   const editGoal = () => { goalRef.current?.scrollIntoView({ block: 'start' }); goalRef.current?.focus({ preventScroll: true }); };
   const deltaClass = (value: number) => value < 0 ? 'delta-neg' : value > 0 ? 'delta-pos' : '';
-  const pasteTitle = words(lang, 'Compare an item', '对比装备', '比較裝備');
   const goalBlock = <>
     <div className="upgrade-evaluation">
       <div className="trade-objectives" role="group" aria-label={tt('opt.objective')} ref={goalRef} tabIndex={-1}>
-        <span className="trade-field-label">{tt('opt.objective')}</span>
-        <div>{TRADE_OBJECTIVES.map(entry => <AppButton key={entry.id} aria-pressed={preset === entry.id}
-          onClick={() => setPreset(entry.id)}>{tt(entry.labelKey as UiKey)}</AppButton>)}</div>
+        <div>{['dps', 'ehp', 'balanced'].map(id => TRADE_OBJECTIVES.find(entry => entry.id === id)!).map(entry => <AppButton key={entry.id} aria-pressed={preset === entry.id}
+          onClick={() => setPreset(entry.id)}>{presetLabel(entry.id)}</AppButton>)}</div>
       </div>
-        {session.socketGroups.length > 0 && <div className="trade-skill-context"><span>{tt('sidebar.mainSkill')}</span>
+      {damage.note && <p className="trade-priority-hint">{damage.note}</p>}
+        {session.socketGroups.length > 0 && <div className="trade-skill-context"><span>{words(lang, 'Calculated skill', '计算技能', '計算技能')}</span>
           <AppSelect value={mainGroup === undefined ? '' : String(mainGroup)} ariaLabel={tt('trade.analysisSkill')} disabled={session.busy}
             placeholder={tt('sidebar.unselected')}
             options={session.socketGroups.flatMap((group, index) => {
@@ -277,26 +316,27 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     {!session.busy && !hasSkillTarget && <p className="trade-notice" role="status">{tt('sidebar.noMainSkill')}</p>}
     <WeaponSetControl session={session} lang={lang} />
     <div className="trade-safety-settings">
-      {preset === 'balanced' && <label><AppInput type="checkbox" checked={keepEhp} onChange={event => setKeepEhp(event.target.checked)} />{tt('trade.keepEhp')}</label>}
+      {preset === 'balanced' && <label><AppInput type="checkbox" checked={keepEhp} onChange={event => setKeepEhp(event.target.checked)} />{flowT('keepEhp')}</label>}
       <label><AppInput type="checkbox" checked={resistanceFirst} onChange={event => setResistanceFirst(event.target.checked)} />{tt('trade.resistanceFirst')}</label>
       {resistanceFirst && <label>{tt('trade.resistanceTarget')}<AppInput type="number" min={0} max={90} value={resistanceTarget} aria-label={tt('trade.resistanceTarget')}
         onChange={event => { const value = Number(event.target.value); if (Number.isFinite(value) && value >= 0 && value <= 90) setResistanceTarget(value); }} />%</label>}
-      <details className="trade-goal-help"><summary>{tt('trade.goalHelp')}</summary><p>{tt(preset === 'balanced' ? 'trade.balancedHint' : 'trade.resistanceHint')}</p>{preset === 'balanced' && <p>{tt('trade.balancedAlgorithm')}</p>}</details>
+      <details className="trade-goal-help"><summary>{tt('trade.goalHelp')}</summary><p>{preset === 'balanced' ? flowT('balancedHint') : tt('trade.resistanceHint')}</p>{preset === 'balanced' && <p>{flowT('balancedAlgorithm')}</p>}</details>
     </div>
-    <details className="upgrade-goal-details" open={!!goal.cStat}><summary>{ut('advancedGoal')}{goal.cStat ? ` · ${statNameLabel(lang, goal.cStat)}` : ''}</summary><div className="opt-controls"><ObjectiveEditor value={goal} onChange={setGoal} lang={lang} constraintsOnly /></div></details>
+    <details className="upgrade-goal-details" open={!!goal.cStat || !['dps', 'ehp', 'balanced'].includes(preset)}><summary>{flowT('advancedGoal')}{goal.cStat ? ` · ${statNameLabel(lang, goal.cStat)}` : ''}</summary><div className="trade-objectives"><div>{TRADE_OBJECTIVES.filter(entry => !['dps', 'ehp', 'balanced'].includes(entry.id)).map(entry =>
+      <AppButton key={entry.id} aria-pressed={preset === entry.id} onClick={() => setPreset(entry.id)}>{presetLabel(entry.id)}</AppButton>)}</div></div><div className="opt-controls"><ObjectiveEditor value={goal} onChange={setGoal} lang={lang} constraintsOnly /></div></details>
     </div>
   </>;
   const pathsBlock = <>
     <div className="upgrade-paths">
-      <AppButton onClick={() => analysisRef.current?.scrollIntoView({block:'start'})}><SlotSymbol slot="helmet" /><strong>{ut('equipment')}</strong><span>{ut('equipmentHint')}</span></AppButton>
-      <AppButton disabled={!onSkills || !selectedGroup} onClick={() => { if (mainGroup !== undefined) onSkills?.(mainGroup); }}><SlotSymbol slot="gems" /><strong>{ut('supports')}</strong><span>{ut('supportsHint')}</span></AppButton>
-      <AppButton disabled={!onTree} onClick={() => onTree?.()}><SlotSymbol slot="Jewel@" /><strong>{ut('tree')}</strong><span>{ut('treeHint')}</span></AppButton>
+      <AppButton aria-pressed className="upgrade-equipment-path" onClick={() => { analysisRef.current?.scrollIntoView({ block: 'start' }); analysisRef.current?.focus({ preventScroll: true }); }}><SlotSymbol slot="helmet" /><strong>{flowT('equipmentHere')}</strong></AppButton>
+      <AppButton disabled={!onTree} onClick={() => onTree?.()}><SlotSymbol slot="Jewel@" /><strong>{flowT('passivesPage')}</strong></AppButton>
+      <AppButton disabled={!onSkills || !selectedGroup} onClick={() => { if (mainGroup !== undefined) onSkills?.(mainGroup); }}><SlotSymbol slot="gems" /><strong>{flowT('supportsPage')}</strong></AppButton>
     </div>
     <p className="upgrade-shared-goal">{ut('sharedGoal')}</p>
   </>;
   const replacementBlock = <>
     <ItemReplacementCheck session={session} lang={lang} active={active && canAnalyze} objective={objective} catalog={catalog} jewelSockets={jewelSockets} initialItemText={initialItemText} socketLabel={id => socketLabels.get(id) ?? tt('trade.jewelSocket')}
-      goalLabel={tt(TRADE_OBJECTIVES.find(entry => entry.id === preset)!.labelKey as UiKey)}
+      goalLabel={goalLabel} damage={damage} actionClassName="trade-secondary"
       onEditGoal={editGoal} />
   </>;
   const marketBlock = <>
@@ -323,37 +363,28 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   </>;
   const toolbarBlock = <>
     <div className="trade-overview-toolbar">
-      <div><h3>{tt('trade.overviewTitle')}</h3><p>{tt('trade.overviewHint')}</p></div>
-      <AppButton className="trade-primary trade-analyze-all" disabled={disabled || fullTargets.length === 0}
-        onClick={() => void analyze(fullTargets, true, allComplete)}>{allComplete ? tradeAnalysisText(lang, 'refresh') : reusableAllCount > 0 ? tradeAnalysisText(lang, 'resume') : tt('trade.analyzeAll')}</AppButton>
-      <AppButton className="trade-paste-jump" onClick={() => {
-        pasteRef.current?.scrollIntoView({ block: 'start' }); pasteRef.current?.querySelector('textarea')?.focus({ preventScroll: true });
-      }}>{pasteTitle}</AppButton>
-      <label className="trade-unique"><AppInput type="checkbox" checked={includeUnique} onChange={event => setIncludeUnique(event.target.checked)} />{tt('trade.includeUnique')}</label>
+      <div><p>{flowT('analysisScope')}</p></div>
+      {!running && <AppButton className="trade-primary trade-analyze-all" disabled={disabled || fullTargets.length === 0}
+        onClick={() => void analyze(fullTargets, true, allComplete)}>{allComplete ? tradeAnalysisText(lang, 'refresh') : reusableAllCount > 0 ? tradeAnalysisText(lang, 'resume') : tt('trade.analyzeAll')}</AppButton>}
+
     </div>
   </>;
   const prioritiesBlock = <>
     {overview && <section className="trade-priorities" aria-label={tt('trade.overviewTitle')}>
       <div className="trade-results-heading"><h4>{tt('trade.priorityOrder')}</h4>
-        {allProgress && <span className="ui-badge" role="status">{allProgress.done} / {allProgress.total} {tt('trade.positions')}</span>}</div>
-      <p className="trade-priority-hint">{tt('trade.priorityHint')}</p>
-      {interrupted && <p className="trade-notice" role="status">{tradeAnalysisText(lang, 'stopped')}</p>}
-      {running && <div className="trade-progress"><span>{tt('trade.analyzingSlot')}{lang === 'en-US' ? ': ' : '：'}{labelOf(running)}</span>
-        {progress && <OptimizerProgress {...progress} onCancel={cancelAnalysis} lang={lang} />}</div>}
-      <ol className="trade-priority-list">
-        {priorities.map((entry, index) => <li key={entry.slot}>
-          <AppButton className="trade-priority-position" onClick={() => {
-            setSelected(entry.slot); analysisRef.current?.scrollIntoView({ block: 'start' });
-          }}>
-            <span className="trade-rank">{String(index + 1).padStart(2, '0')}</span>
-            <span className="trade-position-symbol"><SlotSymbol slot={entry.slot} /></span>
-            <span className="trade-priority-name"><strong>{labelOf(entry.slot)}</strong><small>{entry.slot === 'gems' ? inspectedName : slotNames[slots.indexOf(entry.slot)]}</small></span>
-            <span className="trade-priority-delta"><strong className={entry.gain < 0 ? 'delta-neg' : 'trade-gain'}>{entry.gain >= 0 ? '+' : ''}{number(entry.gainPercent ?? entry.gain)}{entry.gainPercent === undefined ? '' : '%'}</strong><small>{tt('trade.referencePotential')}</small></span>
-            <span aria-hidden>→</span>
-          </AppButton>
-          <div className="trade-priority-defence"><span className={deltaClass(entry.dpsDelta)}>{statNameLabel(lang, 'TotalDPS')} {entry.dpsDelta > 0 ? '+' : ''}{number(entry.dpsDelta, 0)}</span><span className={deltaClass(entry.lifeDelta)}>{statNameLabel(lang, 'Life')} {entry.lifeDelta > 0 ? '+' : ''}{number(entry.lifeDelta, 0)}</span><span className={deltaClass(entry.ehpDelta)}>{statNameLabel(lang, 'TotalEHP')} {entry.ehpDelta > 0 ? '+' : ''}{number(entry.ehpDelta, 0)}</span>{resistanceFirst && <span>{tt('trade.resistanceGap')} {number(entry.deficit)}%</span>}</div>
-        </li>)}
-      </ol>
+        {allProgress && <span className="ui-badge" role="status">{reusableAllCount} / {fullTargets.length} {tt('trade.positions')}</span>}</div>
+      <p className="trade-priority-hint">{flowT('analysisHint')}</p>
+      <div className="trade-priority-table-wrap"><table className="trade-priority-table">
+        <thead><tr><th>{flowT('position')}</th><th>{flowT('balancedScore')}</th><th>{damageLabel}</th><th>{statNameLabel(lang, 'TotalEHP')}</th><th><span className="sr-only">{flowT('goMarket')}</span></th></tr></thead>
+        <tbody>{priorities.map(entry => <tr key={entry.slot}>
+          <th scope="row"><strong>{labelOf(entry.slot)}</strong><small>{slotNames[slots.indexOf(entry.slot)]}</small></th>
+          {[entry.balancedPercent, entry.dpsPercent, entry.ehpPercent].map((value, index) => <td key={index} className={value === undefined ? '' : deltaClass(value)}>
+            {value === undefined ? '—' : `${value >= 0 ? '+' : ''}${number(value, 1)}%`}</td>)}
+          <td><AppButton className="trade-priority-position" onClick={() => {
+            setSelected(entry.slot); marketRef.current?.scrollIntoView({ block: 'start' }); marketRef.current?.focus({ preventScroll: true });
+          }}>{flowT('goMarket')}<span className="sr-only"> · {labelOf(entry.slot)}</span></AppButton></td>
+        </tr>)}</tbody>
+      </table></div>
       {!running && priorities.length === 0 && <p className="trade-notice">{tt('trade.noPriority')}</p>}
       {Object.entries(results).some(([, entry]) => entry.error) && <p className="trade-notice">{tt('trade.partialAnalysis')}</p>}
     </section>}
@@ -377,15 +408,14 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
         </nav>
         {hasEquipment && <AppButton className="trade-text-button" onClick={() => setShowEmpty(!showEmpty)}>{tt(showEmpty ? 'trade.hideEmpty' : 'trade.showEmpty')}</AppButton>}
       </aside>
-      <div className="trade-analysis" ref={analysisRef}>
+      <div className="trade-analysis">
         <header className="trade-analysis-header">
           <div><span className="trade-section-label">{labelOf(selected)}</span><h3>{selectedName}</h3>
             <div className="trade-scope"><span>{selectedBase ? tt(`trade.category.${selectedBase.category}` as UiKey) : tt('trade.gems')}</span>
               {selected !== 'gems' && <><span>{tt('trade.allBases')}</span>{!includeUnique && <span>{tt('trade.nonUnique')}</span>}</>}<span>{tt('trade.levelLimit')} {session.character?.level ?? 1}</span></div>
           </div>
-          <div className="trade-header-actions"><AppButton className={weights || result?.gems ? 'trade-secondary' : 'trade-primary'} disabled={disabled || (selected !== 'gems' && !selectedBase) || (selected === 'gems' && (!hasSkillTarget || !!selectedGroup?.source))}
-            onClick={() => void analyze([selected])}>{tt(running === selected ? 'opt.running' : weights || result?.gems ? 'trade.recalculate' : 'trade.analyze')}</AppButton>
-          {searchUrl && league.trim() && <a className="trade-primary trade-market-link" href={searchUrl} target="_blank" rel="noreferrer">{tt('trade.browseMarket')}<span aria-hidden>↗</span></a>}</div>
+          <div className="trade-header-actions">{!running && <AppButton className="trade-secondary" disabled={disabled || (selected !== 'gems' && !selectedBase) || (selected === 'gems' && (!hasSkillTarget || !!selectedGroup?.source))}
+            onClick={() => void analyze([selected])}>{tt(weights || result?.gems ? 'trade.recalculate' : 'trade.analyze')}</AppButton>}</div>
         </header>
         {selected.startsWith('Jewel@') && <AppButton disabled={!onTree} onClick={() => onTree?.(Number(selected.slice(6)))}>{jewelText.locate}</AppButton>}
         {selected.startsWith('Jewel@') && selectedBase && <div className="trade-range">
@@ -399,20 +429,16 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
             options={choices.map(category => ({ value: category, label: tt(`trade.category.${category}` as UiKey) }))}
             onChange={category => setCategories(prev => ({ ...prev, [selected]: category }))} />
         </details>}
-        {!overview && interrupted && <p className="trade-notice" role="status">{tradeAnalysisText(lang, 'stopped')}</p>}
-        {!overview && running && progress && <div className="trade-progress"><span>{tt('trade.analyzingSlot')}{lang === 'en-US' ? ': ' : '：'}{labelOf(running)}</span>
-          <OptimizerProgress {...progress} onCancel={cancelAnalysis} lang={lang} /></div>}
         {result?.error && <div role="alert" className="trade-notice trade-error">{tt('trade.analysisFailed')}<details><summary>{tt('trade.errorDetails')}</summary>{result.error}</details></div>}
         {!weights && !result?.gems && running !== selected && <div className="trade-empty-state">
           <span className="trade-empty-symbol" aria-hidden><SlotSymbol slot={selected} /></span>
           <h4>{tt('trade.emptyTitle')}</h4><p>{tt(selected === 'gems' ? 'trade.gemHint' : 'trade.emptyDescription')}</p>
-          <ol><li>{tt('trade.stepScore')}</li><li>{tt('trade.stepSearch')}</li><li>{tt('trade.stepBuy')}</li></ol>
         </div>}
         {weights && <>
           <section className="upgrade-score-reference ui-card" aria-label={ut('currentScore')}>
             <div><span>{ut('currentScore')}</span><strong>{weights.currentItemScore ? number(weights.currentItemScore.score, 0) : '—'}</strong>
               <small>{ut(!weights.currentItemScore ? 'noScore' : weights.currentItemScore.complete ? 'complete' : 'partial')}</small></div>
-            <div className="upgrade-current-stats"><span>{statNameLabel(lang, 'TotalDPS')} <b>{formatStatValue(weights.baseline.TotalDPS ?? 0, statFormat('TotalDPS'), lang)}</b></span><span>{statNameLabel(lang, 'TotalEHP')} <b>{formatStatValue(weights.baseline.TotalEHP ?? 0, statFormat('TotalEHP'), lang)}</b></span></div>
+            <div className="upgrade-current-stats"><span>{damageLabel} <b>{weights.baseline[damageStat] === undefined ? '—' : formatStatValue(weights.baseline[damageStat], statFormat(damageStat), lang)}</b></span><span>{statNameLabel(lang, 'TotalEHP')} <b>{formatStatValue(weights.baseline.TotalEHP ?? 0, statFormat('TotalEHP'), lang)}</b></span></div>
             <p>{ut('scoreHint')}</p>
             {weights.scoreWarnings.includes('unmodeled-candidates') && <p>{ut('skippedUnmodeled')}</p>}
             {weights.scoreWarnings.includes('constraints-not-in-query') && <p className="upgrade-score-caution">{ut('marketConstraints')}</p>}
@@ -423,7 +449,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
           </section>
           <div className="trade-results-heading"><div><h4>{tt('trade.affixHeading')}</h4><p>{tt('trade.affixDescription')}</p></div>
             <span className="trade-count">{weights.weighted.length} {tt('trade.usefulAffixes')}</span></div>
-          {!hasScores ? <div className="trade-notice" role="status"><p>{tt('trade.noEquipmentScores')}</p><AppButton onClick={editGoal}>{tt('trade.adjustTarget')}</AppButton><AppButton disabled>{tt('trade.browseMarket')}</AppButton></div> : <div className="trade-score-table" role="table" aria-label={tt('trade.affixHeading')}>
+          {!hasScores ? <div className="trade-notice" role="status"><p>{tt('trade.noEquipmentScores')}</p><AppButton onClick={editGoal}>{tt('trade.adjustTarget')}</AppButton></div> : <div className="trade-score-table" role="table" aria-label={tt('trade.affixHeading')}>
             <div className="trade-score-row trade-score-labels" role="row"><span role="columnheader">{tt('trade.colLine')}</span><span role="columnheader">{tt('trade.priority')}</span><span role="columnheader">{ut('marginal')}</span></div>
             {weights.weighted.map((weight, index) => <div key={weight.id} className="trade-score-row" role="row">
               <span className="trade-affix" role="cell"><span className="trade-rank">{String(index + 1).padStart(2, '0')}</span>{lineText(weight.line, localized[index])}</span>
@@ -443,18 +469,8 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
           {weights.combinations[0] && <details className="trade-method"><summary>{tt('trade.referenceItem')}</summary><pre className="trade-reference">{weights.combinations[0].text}</pre></details>}
           <details className="trade-method"><summary>{ut('weightDetails')}</summary><p>{tt('trade.methodDescription')}</p>
             <ul>{weights.weighted.map((weight, index) => <li key={weight.id}>{lineText(weight.line, localized[index])} · {tt('trade.marketWeight')}{lang === 'en-US' ? ': ' : '：'}{number(weight.weight, 3)}</li>)}</ul>
-            <p>{tt('trade.currentGoal')}{lang === 'en-US' ? ': ' : '：'}{(preset === 'balanced' ? tt('trade.balanced') : statNameLabel(lang, objective.stat))} {number(scoreOf(weights.baseline, objective))} · {weights.evaluated} {tt('trade.evaluations')}</p></details>
-          {weights.unsupported.length > 0 && <details className="trade-notice trade-unsupported"><summary>{tt('trade.unsupportedHint')} ({weights.unsupported.length})</summary><pre>{weights.unsupported.join('\n')}</pre></details>}
-          {searchUrl && league.trim() && <div className="trade-search-card">
-            <div><span className="trade-section-label">{tt('trade.nextStep')}</span><h4>{tt('trade.searchReady')}</h4><p>{tt(realm === 'cn' ? 'trade.cnMarketHint' : 'trade.directMarketHint')}</p>
-              <p className="trade-login">{ut('searchLogin')}</p>
-              {!broad && <p className="trade-minimum" role="status">{weights.minimumWeight > 0
-                ? <>{ut('searchMinimum')}{lang === 'en-US' ? ': ' : '：'}<b>{number(weights.minimumWeight, 0)}</b> · {ut(weights.currentItemScore?.complete ? 'searchMinimumExact' : 'searchMinimumPartial')}</>
-                : ut('searchNoMinimum')}</p>}
-              <label className="trade-broad"><AppInput type="checkbox" checked={broad} onChange={event => setBroad(event.target.checked)} />{tt('trade.broaderSearch')}</label></div>
-            <div className="trade-search-actions"><a className="trade-primary trade-market-link" href={searchUrl} target="_blank" rel="noreferrer">{tt('trade.browseMarket')}<span aria-hidden>↗</span></a>
-              <CopyButton text={searchUrl} label={tt('trade.copySearch')} lang={lang} /></div>
-          </div>}
+            <p>{tt('trade.currentGoal')}{lang === 'en-US' ? ': ' : '：'}{goalLabel} {number(scoreOf(weights.baseline, objective))} · {weights.evaluated} {tt('trade.evaluations')}</p></details>
+          {weights.unsupported.length > 0 && <details className="trade-notice trade-unsupported"><summary>{tt('trade.unsupportedHint')} ({weights.unsupported.length})</summary><UnincludedModifiers lines={weights.unsupported} lang={lang} items={session.items} /></details>}
         </>}
         {result?.gems && <div className="trade-gems"><div className="trade-results-heading"><div><h4>{tt('trade.gemCandidates')}</h4>{onSkills && mainGroup !== undefined && <AppButton onClick={() => onSkills(mainGroup)}>{ut('autoSupports')} →</AppButton>}<p>{tt('trade.gemHint')}</p></div></div>
           {result.gems.length === 0 && <p className="trade-notice">{tt('trade.noGemUpgrade')}</p>}
@@ -469,7 +485,10 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
                 ? `${tt('trade.replacesGem')} ${skillName(session.socketGroups[plan.group].gems[plan.position].skill_id)}`
                 : tt('trade.addsGem')}</p>
               {plan.gainPercent !== undefined && <span className={plan.gainPercent < 0 ? 'delta-neg' : 'trade-gain'}>{tt('trade.referenceGain')} {plan.gainPercent >= 0 ? '+' : ''}{number(plan.gainPercent)}%</span>}</div>
-            <div className="upgrade-gem-stats">{['TotalDPS', 'TotalEHP'].map(stat => { const before = plan.baseline?.[stat] ?? 0, after = plan.stats?.[stat] ?? 0; return <span key={stat}>{statNameLabel(lang, stat)} <b className={after < before ? 'delta-neg' : 'delta-pos'}>{formatStatValue(before, statFormat(stat), lang)} → {formatStatValue(after, statFormat(stat), lang)}</b></span>; })}</div>
+            <div className="upgrade-gem-stats">{[damage.stat, 'TotalEHP'].map(stat => {
+              const before = plan.baseline?.[stat] ?? 0, after = plan.stats?.[stat] ?? 0;
+              return <span key={stat} data-stat={stat}>{stat === damage.stat ? damage.label : statNameLabel(lang, stat)} <b className={after < before ? 'delta-neg' : 'delta-pos'}>{formatStatValue(before, statFormat(stat), lang)} → {formatStatValue(after, statFormat(stat), lang)}</b></span>;
+            })}{damage.note && <small>{damage.note}</small>}</div>
             {plan.acquisition !== 'skill-adjustment' && league.trim() && <a className="trade-secondary" href={gemTradeUrl({ realm, league, category: 'gem', price: priceCap, maxLevel: session.character?.level,
               gem: { name: realm === 'cn' ? cnSkillName(plan.gem.skill_id) : plan.gem.name, level: plan.level, quality: plan.quality } })} target="_blank" rel="noreferrer">{tt('trade.browseMarket')}</a>}
             <AppButton disabled={session.busy} onClick={() => {
@@ -492,21 +511,42 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   return <section className="ui-page trade-page" aria-labelledby="trade-heading">
     {heading}
     <section className="up-step up-goal" aria-labelledby="up-goal">
-      {step('up-goal', 1, words(lang, 'Goal', '目标', '目標'))}
+      {step('up-goal', 1, flowT('goalTitle'))}
       {goalBlock}
     </section>
-    <section className="up-step up-gain" aria-labelledby="up-gain">
-      {step('up-gain', 2, words(lang, 'Where is the best gain?', '哪里提升最大？', '哪裡提升最大？'))}
+    <section className="up-step up-method" aria-labelledby="up-method">
+      {step('up-method', 2, flowT('methodTitle'))}
       {pathsBlock}
+    </section>
+    <section className="up-step up-gain" aria-labelledby="up-gain" ref={analysisRef} tabIndex={-1}>
+      {step('up-gain', 3, flowT('analysisTitle'))}
       {toolbarBlock}
+      {interrupted && <p className="trade-notice" role="status">{flowT('stopped')}</p>}
+      {running && allProgress && <TradeAnalysisProgress slots={allProgress} position={labelOf(running)} lang={lang}
+        fraction={progress && progress.total > 0 ? progress.done / progress.total : 0} onStop={cancelAnalysis} />}
       {prioritiesBlock}
     </section>
-    <section className="up-step up-candidates" aria-labelledby="up-candidates">
-      {step('up-candidates', 3, words(lang, 'Candidates', '候选方案', '候選方案'))}
-      <div className="up-paste" ref={pasteRef}>{replacementBlock}</div>
+    <section className="up-step up-market" aria-labelledby="up-market" ref={marketRef} tabIndex={-1}>
+      {step('up-market', 4, flowT('marketTitle'))}
+      <div className="trade-market-context"><strong>{labelOf(selected)}</strong><span>{flowT('comparisonGoal').replace('{goal}', goalLabel)}</span>
+        <p>{flowT('baselineItem').replace('{item}', selectedName)}</p></div>
       {fallbackBlock}
-      <details className="trade-market"><summary><span>{words(lang, 'Market', '市集', '市集')}</span><small>{marketSummary}</small></summary>{marketBlock}</details>
+      <details className="trade-market"><summary><span>{words(lang, 'Market', '市集', '市集')}</span><small>{marketSummary}</small></summary>{marketBlock}
+      <label className="trade-unique"><AppInput type="checkbox" checked={includeUnique} onChange={event => setIncludeUnique(event.target.checked)} />{tt('trade.includeUnique')}</label>
+      </details>
+      {searchReady && searchUrl && weights && <div className="trade-search-card">
+        <div><p>{flowT('searchPrepared')}</p><p>{tt(realm === 'cn' ? 'trade.cnMarketHint' : 'trade.directMarketHint')}</p>
+          <p className="trade-login">{ut('searchLogin')}</p>
+          {!broad && <p className="trade-minimum" role="status">{weights.minimumWeight > 0
+            ? <>{ut('searchMinimum')}{lang === 'en-US' ? ': ' : '：'}<b>{number(weights.minimumWeight, 0)}</b> · {ut(weights.currentItemScore?.complete ? 'searchMinimumExact' : 'searchMinimumPartial')}</>
+            : ut('searchNoMinimum')}</p>}
+          <label className="trade-broad"><AppInput type="checkbox" checked={broad} onChange={event => setBroad(event.target.checked)} />{tt('trade.broaderSearch')}</label></div>
+        <div className="trade-search-actions"><a className="trade-primary trade-market-link" href={searchUrl} target="_blank" rel="noreferrer">{flowT('openSearch')}<span aria-hidden>↗</span></a>
+          <CopyButton text={searchUrl} label={tt('trade.copySearch')} lang={lang} /></div>
+      </div>}
+      {!searchReady && selected !== 'gems' && <div className="trade-search-pending"><p>{flowT(!league.trim() ? 'chooseLeague' : 'searchPending')}</p><AppButton className="trade-primary" disabled>{flowT('openSearch')}</AppButton></div>}
       {workspaceBlock}
+      <div className="up-paste" ref={pasteRef}>{replacementBlock}</div>
     </section>
   </section>;
 }
