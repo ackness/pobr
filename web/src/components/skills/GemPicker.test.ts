@@ -1,6 +1,47 @@
 import { expect, test } from 'vitest';
 import type { GemCatalogEntry } from '../../api/types';
-import { rankGemResults } from './GemPicker';
+import { gemDisplayName, rankGemResults } from './GemPicker';
+
+// Production catalog shape: skill_id is a granted effect ID, not a gem base ID.
+const spark: GemCatalogEntry = {
+  skill_id: 'SparkPlayer', name: 'Spark', name_zh_cn: '电球', name_zh_tw: '電球',
+  colour: 'int', is_support: false, is_lineage: false,
+  active_effect_ids: ['SparkPlayer'], additional_skill_ids: ['SparkColdInfusedPlayer'],
+  effect_forms: [{ skill_id: 'SparkPlayer', stat_sets: [
+    { id: 'SparkPlayer', index: 1, label: 'Base', stage: null },
+    { id: 'SparkColdInfusedPlayer', index: 2, label: 'Cold-Infused', stage: null },
+  ] }],
+  tags: ['Damage', 'Duration', 'Invokable', 'Lightning', 'Mineable', 'Multicastable', 'Projectile',
+    'ProjectilesFromUser', 'Spell', 'Totemable', 'Trappable', 'Triggerable', 'Unleashable', 'UsableWhileMoving'],
+};
+const earthboundSpark: GemCatalogEntry = {
+  skill_id: 'UniqueEarthboundTriggeredSparkPlayer', name: 'Spark', name_zh_cn: '电球', name_zh_tw: '電球',
+  colour: 'int', is_support: false, is_lineage: false,
+  active_effect_ids: ['UniqueEarthboundTriggeredSparkPlayer'],
+  effect_forms: [{ skill_id: 'UniqueEarthboundTriggeredSparkPlayer', stat_sets: [] }],
+  tags: [...spark.tags, 'Cold', 'InbuiltTrigger', 'Triggered'].sort(),
+};
+
+for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
+  test(`only socketable Spark appears in picker options in ${lang}, retaining imported skill metadata`, () => {
+    const entries = [earthboundSpark, spark];
+    const snapshot = structuredClone(entries);
+    const name = gemDisplayName(spark, lang);
+    for (const query of ['', 'Spark', name]) {
+      expect(rankGemResults(entries, query, 'all', lang)).toEqual([spark]);
+    }
+    expect(rankGemResults(entries, name, 'int', lang).map(entry => gemDisplayName(entry, lang))).toEqual([name]);
+    expect(rankGemResults(entries, name, 'str', lang)).toEqual([]);
+    expect(entries).toEqual(snapshot);
+    expect(entries[0]).toBe(earthboundSpark);
+    expect(gemDisplayName(earthboundSpark, lang)).toBe(name);
+  });
+}
+
+test('trigger tags alone do not exclude a socketable gem', () => {
+  const trigger = { ...spark, skill_id: 'CastOnShockPlayer', name: 'Cast on Shock', tags: ['Meta', 'Trigger', 'Triggered'] };
+  expect(rankGemResults([trigger], '', 'all', 'en-US')).toEqual([trigger]);
+});
 
 const gem = (id: string, cn: string, en = id, tags: string[] = []): GemCatalogEntry => ({
   skill_id: id, name: en, name_zh_cn: cn, name_zh_tw: cn, tags, colour: 'int',
