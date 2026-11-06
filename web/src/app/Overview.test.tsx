@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { AttributionResponse, CalculateBuildResponse } from '../api/types';
+import type { AttributionResponse, CalculateBuildResponse, SocketGroupInput } from '../api/types';
 import type { BuildSession } from '../hooks/useBuildSession';
 import { UpgradeGoalProvider } from '../hooks/useUpgradeGoal';
 import { Overview } from './Overview';
@@ -47,10 +47,10 @@ describe('Overview skill damage', () => {
   });
 });
 
-function summary(stats: Record<string, number>, lang: 'en-US' | 'zh-CN' | 'zh-TW' = 'zh-CN', extra: Partial<CalculateBuildResponse> = {}) {
+function summary(stats: Record<string, number>, lang: 'en-US' | 'zh-CN' | 'zh-TW' = 'zh-CN', extra: Partial<CalculateBuildResponse> = {}, groups: SocketGroupInput[] = []) {
   const calc = { stats: Object.entries(stats).map(([id, value]) => ({ id, value })),
     item_errors: [], unsupported_modifiers: [], ...extra } as unknown as CalculateBuildResponse;
-  const session = { socketGroups: [], hasBuildContent: true, classNames: { classes: {}, ascendancies: {} },
+  const session = { socketGroups: groups, hasBuildContent: true, classNames: { classes: {}, ascendancies: {} },
     stateVersion: 1 } as unknown as BuildSession;
   return renderToStaticMarkup(<UpgradeGoalProvider><Overview session={session} view={{ calc, previous: null, stale: false }}
     lang={lang} navigate={() => {}} focusStat={() => {}} /></UpgradeGoalProvider>);
@@ -95,4 +95,12 @@ it('uses the main minion damage for the headline and source contributions with s
   expect(html).toContain('移除后损失 11,000');
   expect(html).toContain('单只');
   expect(html).toContain('上限 7 只');
+});
+
+it('explains mapping beside the DPS only when the result confirms an energy trigger', () => {
+  const energy_trigger = { maximum_energy: 100, source: 'SparkPlayer', at_own_rate: false, missing_source: null } as NonNullable<CalculateBuildResponse['energy_trigger']>;
+  const html = summary({}, 'zh-CN', { energy_trigger, main_skill: { group_index: 0, active_skill_index: 2, skill_id: 'CometPlayer', hit_damage: [], hit_dps: 10, dot_dps: 0, combined_dps: 10 } }, [{ enabled: true, gems: [{ skill_id: 'MetaCastOnCritPlayer', level: 16, quality: 0 }, { skill_id: 'CometPlayer', level: 16, quality: 0 }] }, { enabled: true, gems: [{ skill_id: 'SparkPlayer', level: 16, quality: 0 }] }]);
+  const damage = html.match(/<div[^>]+class="ov-figure is-dps"[\s\S]*?<\/div>/)![0];
+  expect(damage).toContain('刷图按单个普通怪（力量 1）计算，清群时实际更快充满');
+  expect(summary({})).not.toContain('刷图按单个普通怪');
 });

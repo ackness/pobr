@@ -1,3 +1,4 @@
+import { encounterTierLabel } from '../../lib/configEncounter';
 import { buildDisplayName, stageDisplayName } from '../../lib/workspaceNames';
 import { AppButton, AppInput, AppSelectControl } from '../shared/controls';
 import { Tabs as TabsPrimitive } from 'radix-ui';
@@ -8,7 +9,7 @@ import { useSkillCatalog } from '../../hooks/useSkillName';
 import { formatApiError } from '../../api/error';
 import type { SocketGroupInput } from '../../api/types';
 import { compareBuilds, comparisonGemForm, hasComparisonSource, isPercentageStat, defaultCompareSides, configDifferences, copySection, formatComparisonDelta, itemDifferences, resolvedTreeVersion, skillDifferences, weaponDifferences, type ConfigBasis, type CopySection } from '../../lib/compare';
-import { bindT, enemyTierLabel, slotLabel, statNameLabel, t, type Lang } from '../../lib/i18n';
+import { bindT, slotLabel, statNameLabel, t, type Lang } from '../../lib/i18n';
 import { activeSkillEffects } from '../../lib/skillSelection';
 import { skillDisplayName } from '../../lib/skillNames';
 import { formatNumber, STAT_SECTIONS, formatStatValue } from '../../lib/statDisplay';
@@ -123,12 +124,12 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
   const stagePickers = <div className="cmp-stages">
     {([['A', a], ['B', b]] as const).map(([side, entry]) => <div className="cmp-stage" key={side}>
       <span className="cmp-stage-name"><i className="cmp-mark" data-side={side.toLowerCase()} aria-hidden="true" />{side}</span>
-      <AppSelectControl title={entry?.label} aria-label={stageWord(side)} value={entry?.stageId ?? ''} onChange={event => pick(side, event.target.value)}>
+      <AppSelectControl aria-label={stageWord(side)} value={entry?.stageId ?? ''} onChange={event => pick(side, event.target.value)}>
         {side === 'B' && <option value="">{tt('compare.chooseB')}</option>}
         {options.map(option => <option key={option.stageId} value={option.stageId}>{option.label}{baseline && option.stageId === active ? ` · ${tt('compare.current')}` : ''}</option>)}
       </AppSelectControl>
     </div>)}
-    <Button variant="ghost" size="sm" aria-label={tt('compare.swap')} title={tt('compare.swap')} disabled={!a || !b} onClick={() => { setAId(b?.stageId); setBId(a?.stageId); setMessage(''); }}>⇄</Button>
+    <Button variant="ghost" size="sm" aria-label={tt('compare.swap')} disabled={!a || !b} onClick={() => { setAId(b?.stageId); setBId(a?.stageId); setMessage(''); }}>⇄</Button>
   </div>;
   const statDefs = new Map(sections.flatMap(section => section.rows.map(def => [def.id, def] as const)));
   const itemChanges = a && b ? itemDifferences(a.saved.state, b.saved.state) : [];
@@ -136,7 +137,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
   const skillChanges = a && b ? skillDifferences(a.saved.state, b.saved.state) : [];
   const configChanges = a && b ? [
     ...configDifferences(a.saved.state, b.saved.state).map(row => ({ ...row, action: { kind: 'config', key: row.key } as CopySection })),
-    { key: tt('compare.enemy'), before: a.saved.state.params.enemy_tier === undefined ? undefined : enemyTierLabel(lang, a.saved.state.params.enemy_tier), after: b.saved.state.params.enemy_tier === undefined ? undefined : enemyTierLabel(lang, b.saved.state.params.enemy_tier), action: { kind: 'enemy' } as CopySection },
+    { key: tt('compare.enemy'), before: encounterTierLabel(lang, a.saved.state.params.enemy_tier, a.saved.state.params.config_inputs), after: encounterTierLabel(lang, b.saved.state.params.enemy_tier, b.saved.state.params.config_inputs), action: { kind: 'enemy' } as CopySection },
     { key: tt('compare.mods'), before: a.saved.state.params.custom_modifier_blocks ?? a.saved.state.params.extra_modifiers,
       after: b.saved.state.params.custom_modifier_blocks ?? b.saved.state.params.extra_modifiers, action: { kind: 'modifiers' } as CopySection },
   ].filter(row => JSON.stringify(row.before) !== JSON.stringify(row.after)) : [];
@@ -200,8 +201,8 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
                 .filter(({ row }) => row && (!changedOnly || row.changed));
               if (!rows.length) return null;
               return <tbody key={section.title[lang]}><tr className="cmp-section-row"><th scope="rowgroup" colSpan={5}>{section.title[lang]}</th></tr>{rows.map(({ def, row: maybe }) => { const row = maybe!; const tone = deltaTone(row.id, row.delta); return <tr key={row.id} data-stat={row.id}>
-                  <th scope="row">{def.label[lang]}</th>{[row.before, row.after].map((number, i) => <td key={i} data-label={i === 0 ? 'A' : 'B'}>{typeof number === 'number' && Number.isFinite(number) ? formatStatValue(number, def.format, lang) : number === Infinity ? '∞' : number === -Infinity ? '−∞' : <span title={tt('compare.unavailable')}>—</span>}</td>)}
-                  <td className="cmp-delta" data-tone={tone} data-label={tt(isPercentageStat(def.format) ? 'compare.points' : 'compare.delta')} title={isPercentageStat(def.format) ? tt('compare.points') : undefined}>{formatComparisonDelta(row.delta, def.format, lang)}</td>
+                  <th scope="row">{def.label[lang]}</th>{[row.before, row.after].map((number, i) => <td key={i} data-label={i === 0 ? 'A' : 'B'}>{typeof number === 'number' && Number.isFinite(number) ? formatStatValue(number, def.format, lang) : number === Infinity ? '∞' : number === -Infinity ? '−∞' : <span role="img" aria-label={tt('compare.unavailable')}>—</span>}</td>)}
+                  <td className="cmp-delta" data-tone={tone} data-label={tt(isPercentageStat(def.format) ? 'compare.points' : 'compare.delta')} aria-label={isPercentageStat(def.format) ? `${tt('compare.points')}${lang === 'en-US' ? ': ' : '：'}${formatComparisonDelta(row.delta, def.format, lang)}` : undefined}>{formatComparisonDelta(row.delta, def.format, lang)}</td>
                   <td className="cmp-delta" data-tone={tone} data-label={tt('compare.percent')}>{row.percent === null ? '—' : `${row.percent > 0 ? '+' : ''}${formatNumber(row.percent, 1, 1)}%`}</td>
                 </tr>; })}</tbody>;
             })}</table></div>

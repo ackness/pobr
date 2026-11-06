@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { Check, FileUp, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Check, FileUp, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
 import { buildFileKind } from '../api/import';
 import { formatApiError } from '../api/error';
 import type { BuildPlannerExport } from '../api/types';
@@ -15,9 +15,11 @@ import { hasPobColorCodes, parsePobColorText } from '../lib/pobColors';
 import { buildDisplayName, stageDisplayName } from '../lib/workspaceNames';
 import { workspaceText } from '../lib/workspaceText';
 import { words } from './text';
+import { classChangeMessage } from './classChange';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem } from '../components/ui/dropdown-menu';
 
 type Destination = 'newBuild' | 'currentStage';
-type Naming = 'newBuild' | 'copyStage' | 'renameBuild' | 'renameStage';
+type Naming = 'newBuild' | 'copyStage' | 'renameBuild' | 'renameStage' | 'copyBuild';
 
 function download(content: string, filename: string) {
   const url = URL.createObjectURL(new Blob([content], { type: 'application/json' }));
@@ -26,9 +28,9 @@ function download(content: string, filename: string) {
 }
 
 /**
- * Build and stage management. Imports stay open for an empty workspace; established builds lead with their library.
+ * Build and stage management with an always available import form.
  */
-export function BuildPage({ session, lang, onImported }: { session: BuildSession; lang: Lang; onImported: () => void }) {
+export function BuildPage({ session, lang, onImported, claimImportFocus, importNotice }: { session: BuildSession; lang: Lang; onImported: () => void; claimImportFocus: () => boolean; importNotice?: React.ReactNode }) {
   const tt = bindT(lang);
   const text = workspaceText(lang);
   const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
@@ -47,7 +49,8 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
   // Import
   const [destination, setDestination] = useState<Destination>('newBuild');
   const [code, setCode] = useState('');
-  const [importOpen, setImportOpen] = useState(!session.hasBuildContent);
+  const codeRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => { if (claimImportFocus()) codeRef.current?.focus(); }, [claimImportFocus]);
   const [importing, setImporting] = useState(false);
   const [recovery, setRecovery] = useState<'file' | 'source' | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -83,17 +86,25 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
   // Naming a build or stage
   const [naming, setNaming] = useState<Naming | null>(null);
   const [name, setName] = useState('');
-  const beginNaming = (kind: Naming) => { setNaming(kind); setName(kind === 'renameBuild' ? build?.name ?? '' : kind === 'renameStage' ? stage?.name ?? '' : ''); };
+  const [targetBuildId, setTargetBuildId] = useState<string | undefined>();
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const menuTriggers = useRef(new Map<string, HTMLButtonElement>());
+  const beginNaming = (kind: Naming, buildId?: string) => {
+    const target = workspace?.builds.find(entry => entry.id === buildId);
+    setTargetBuildId(buildId); setNaming(kind);
+    setName(kind === 'copyBuild' ? tt('build.copyName').replace('{name}', buildDisplayName(target, workspace?.builds.indexOf(target!) ?? 0, lang)) : kind === 'renameBuild' ? target?.name ?? '' : kind === 'renameStage' ? stage?.name ?? '' : '');
+  };
   const submitName = (event: React.FormEvent) => {
     event.preventDefault();
     if (!naming || !name.trim() || session.busy) return;
     if (naming === 'newBuild') session.createLocalBuild(name);
     else if (naming === 'copyStage') session.duplicateStage(name);
-    else session.renameWorkspace(naming === 'renameBuild' ? 'build' : 'stage', name);
+    else if (naming === 'copyBuild' && targetBuildId) session.duplicateBuild(targetBuildId, name);
+    else session.renameWorkspace(naming === 'renameBuild' ? 'build' : 'stage', name, targetBuildId);
     setNaming(null);
   };
   const nameForm = (kinds: Naming[]) => naming && kinds.includes(naming) && <form className="bd-name-form" onSubmit={submitName}>
-    <label>{text[naming]}<AppInput autoFocus aria-label={text.name} value={name} maxLength={100} onChange={event => setName(event.target.value)}
+    <label>{naming === 'copyBuild' ? tt('build.copyBuild') : text[naming]}<AppInput ref={nameInputRef} autoFocus aria-label={text.name} value={name} maxLength={100} onChange={event => setName(event.target.value)}
       placeholder={naming === 'copyStage' ? `${text.start} / ${text.progress} / ${text.endgame}` : undefined} /></label>
     <Button type="submit" disabled={!name.trim() || session.busy}>{text.save}</Button>
     <Button type="button" variant="ghost" onClick={() => setNaming(null)}>{text.cancel}</Button>
@@ -104,13 +115,14 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
   // The button that was pressed goes away with what it deleted (and may be the last of its kind), so
   // focus moves to the heading of its section instead of falling to the page.
   const afterRemoving = (heading: string) => requestAnimationFrame(() => document.getElementById(heading)?.focus());
-  const removeBuild = async () => {
-    if (!build || (workspace?.builds.length ?? 0) < 2 || session.busy || importing) return;
+  const removeBuild = async (buildId: string) => {
+    const target = workspace?.builds.find(entry => entry.id === buildId);
+    if (!target || (workspace?.builds.length ?? 0) < 2 || session.busy || importing) return;
     const valid = captureAction();
     const message = text.deleteBuildConfirm
-      .replace('{name}', currentBuildName).replace('{count}', String(build.stages.length));
-    if (!await dialogs.confirm(message) || !valid()) return;
-    session.removeBuild();
+      .replace('{name}', buildDisplayName(target, workspace?.builds.indexOf(target) ?? 0, lang)).replace('{count}', String(target.stages.length));
+    if (!await dialogs.confirm(message, undefined, menuTriggers.current.get(buildId)) || !valid()) return;
+    session.removeBuild(buildId);
     afterRemoving('bd-library-title');
   };
   const removeStage = async () => {
@@ -157,29 +169,39 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
     <header className="bd-head"><h1 id="build-heading">{w('Build library', 'BD 库', 'BD 庫')}</h1><p>{tt('ui.buildHint')}</p></header>
 
 
-    <section className="bd-sec" aria-labelledby="bd-library-title">
+    <div className="bd-library-import">
+    <section className="bd-sec bd-library" aria-labelledby="bd-library-title">
       <div className="bd-sec-head"><h2 id="bd-library-title" tabIndex={-1}>{text.libraryTitle}</h2>
-        <div className="bd-actions"><Button variant="ghost" size="sm" disabled={session.busy} onClick={() => beginNaming('newBuild')}><Plus />{text.newBuild}</Button>
-          <Button variant="ghost" size="sm" disabled={session.busy} onClick={() => beginNaming('renameBuild')}>{text.renameBuild}</Button>
-          {(workspace?.builds.length ?? 0) > 1 && <Button className="bd-danger" variant="ghost" size="sm" disabled={session.busy || importing} onClick={() => void removeBuild()}><Trash2 />{text.deleteBuild}</Button>}</div></div>
-      {nameForm(['newBuild', 'renameBuild'])}
+        <div className="bd-actions"><Button variant="ghost" size="sm" disabled={session.busy} onClick={() => beginNaming('newBuild')}><Plus />{text.newBuild}</Button></div></div>
+      {nameForm(['newBuild', 'renameBuild', 'copyBuild'])}
       <ul className="bd-list" role="group" aria-label={text.libraryTitle}>
         {workspace?.builds.map((entry, index) => {
           const active = entry.stages.find(candidate => candidate.id === entry.activeStage)!;
           const state = active.saved.state.character;
           const current = entry.id === build?.id;
-          return <li key={entry.id}><button type="button" aria-pressed={current} disabled={session.busy} onClick={() => session.selectStage(entry.id)}>
+          return <li key={entry.id}><button className="bd-build-select" type="button" aria-pressed={current} disabled={session.busy} onClick={() => session.selectStage(entry.id)}>
             <span className="bd-row-mark">{current && <Check />}</span>
             <strong>{buildDisplayName(entry, index, lang)}</strong>
-            <span>Lv{state.level} {className(state.ascendancy_name || state.class_name)}</span>
-            <small>{entry.stages.length} {text.stages}</small></button></li>;
+            <span className="bd-row-meta">Lv{state.level} {className(state.ascendancy_name || state.class_name)} · {entry.stages.length} {text.stages}</span></button>
+            <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" disabled={session.busy || importing}
+              ref={element => { if (element) menuTriggers.current.set(entry.id, element); else menuTriggers.current.delete(entry.id); }}
+              aria-label={tt('build.actions').replace('{name}', buildDisplayName(entry, index, lang))}><MoreHorizontal /></Button></DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onCloseAutoFocus={event => {
+                // Keep the newly opened naming form focused when the menu closes.
+                if (nameInputRef.current) { event.preventDefault(); nameInputRef.current.focus(); }
+              }}><DropdownMenuGroup>
+                <DropdownMenuItem onSelect={() => beginNaming('renameBuild', entry.id)}>{text.renameBuild}</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => beginNaming('copyBuild', entry.id)}>{tt('build.copyBuild')}</DropdownMenuItem>
+                {(workspace?.builds.length ?? 0) > 1 && <DropdownMenuItem variant="destructive" onSelect={() => void removeBuild(entry.id)}>{text.deleteBuild}</DropdownMenuItem>}
+              </DropdownMenuGroup></DropdownMenuContent>
+            </DropdownMenu></li>;
         })}
       </ul>
     </section>
 
-    <details className="bd-sec bd-import" open={importOpen} onToggle={event => setImportOpen(event.currentTarget.open)}>
-      <summary><h2 id="bd-import-title">{w('Import a build', '导入 BD', '匯入 BD')}</h2></summary>
-      <AppTextarea className="import-code" rows={4} spellCheck={false} disabled={importing} value={code} placeholder={tt('build.importPlaceholder')} aria-label={tt('build.code')}
+    <section className="bd-sec bd-import" aria-labelledby="bd-import-title">
+      <h2 id="bd-import-title">{w('Import a build', '导入 BD', '匯入 BD')}</h2>
+      <AppTextarea ref={codeRef} className="import-code" rows={4} spellCheck={false} disabled={importing} value={code} placeholder={tt('build.importPlaceholder')} aria-label={tt('build.code')}
         aria-describedby={recovery ? 'bd-import-hint bd-import-recovery' : 'bd-import-hint'} onChange={event => { setCode(event.target.value); setRecovery(null); }} />
       <div className="bd-import-actions">
         <Button className="import-submit" onClick={doImport} disabled={session.busy || importing || !code.trim()}>
@@ -195,7 +217,9 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
       <p className="bd-hint" id="bd-import-hint">{text.importFileHint}</p>
       {recovery && <p className="bd-hint" id="bd-import-recovery" role="status">{tt(recovery === 'file' ? 'build.importRecoveryFile' : 'build.importRecoverySource')}</p>}
       {fileError && <p className="bd-error" role="alert">{fileError}</p>}
-    </details>
+      {importNotice}
+    </section>
+    </div>
 
     <section className="bd-sec" aria-labelledby="bd-stage-title">
       <div className="bd-sec-head"><div><h2 id="bd-stage-title" tabIndex={-1}>{text.stagesTitle}</h2><p className="bd-hint">{text.stageScope} <strong>{currentBuildName} / {currentStageName}</strong></p></div>
@@ -224,7 +248,8 @@ export function BuildPage({ session, lang, onImported }: { session: BuildSession
         <label>{tt('build.class')}<AppSelectControl value={character.class_name} disabled={session.busy} onChange={async event => {
           const next = event.target.value; const current = captureAction();
           if (!character.class_name) { session.setCharacter({ class_name: next, ascendancy_name: '' }); return; }
-          if (session.hasBuildContent && !await dialogs.confirm(tt('build.confirmClassChange'))) return;
+          if (next === character.class_name) return;
+          if (!await dialogs.confirm(classChangeMessage(session, lang, currentStageName, className(next, 'classes')), tt('build.changeAndClear'))) return;
           if (current()) session.newBuild(next, '');
         }}>{!character.class_name && <option value="">{tt('build.none')}</option>}{classes.map(entry => <option key={entry.name} value={entry.name}>{className(entry.name, 'classes')}</option>)}</AppSelectControl></label>
         <label>{tt('build.ascendancy')}<AppSelectControl value={character.ascendancy_name} disabled={session.busy || ascendancies.length === 0} onChange={event => session.setCharacter({ ascendancy_name: event.target.value })}>

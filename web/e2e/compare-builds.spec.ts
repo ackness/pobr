@@ -161,6 +161,7 @@ for (const width of [390, 1440, 2560]) {
     const bar = await page.locator('.cmp-bar').boundingBox();
     const header = await page.locator('.cmp-stats thead').boundingBox();
     expect(bar!.height).toBeLessThanOrEqual(60);
+    expect(header!.height).toBeGreaterThan(1);
     expect(Math.abs(header!.y - (bar!.y + bar!.height))).toBeLessThanOrEqual(2);
     expect(await page.locator('.shell-main').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

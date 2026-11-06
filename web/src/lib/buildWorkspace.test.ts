@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseSaved, type SavedSession } from '../hooks/useBuildSession';
-import { activeWorkspaceStage, addWorkspaceBuild, appendImportedBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope } from './buildWorkspace';
+import { activeWorkspaceStage, addWorkspaceBuild, appendImportedBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, duplicateWorkspaceBuild, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope } from './buildWorkspace';
 
 const saved: SavedSession = {
   version: 1, notes: 'Leveling route', state: {
@@ -274,4 +274,31 @@ describe('comparison baseline persistence', () => {
     bad.builds[0].baseline!.recordedAt = 1e20;
     expect(parseWorkspace(bad, parseSaved)).toBeNull();
   });
+});
+
+
+it('row operations target an inactive build and copied stages retain the legacy storage shape', () => {
+  const first = duplicateWorkspaceStage(createWorkspace(saved), 'Maps');
+  const workspace = addWorkspaceBuild(first, 'Active build', saved);
+  const id = first.activeBuild;
+  const renamed = renameWorkspaceEntry(workspace, 'build', 'Renamed inactive', id);
+  expect(renamed.activeBuild).toBe(workspace.activeBuild);
+  expect(renamed.builds[0].name).toBe('Renamed inactive');
+  expect(renamed.builds[1].name).toBe('Active build');
+  const copied = duplicateWorkspaceBuild(renamed, id, 'Copy inactive');
+  expect(copied.activeBuild).toBe(workspace.activeBuild);
+  const copy = copied.builds[2];
+  expect(copy.name).toBe('Copy inactive');
+  expect(copy.stages.map(stage => stage.saved)).toEqual(first.builds[0].stages.map(stage => stage.saved));
+  expect(copy.stages.every(stage => !first.builds[0].stages.some(original => original.id === stage.id))).toBe(true);
+  const copyStage = copy.stages.find(stage => stage.id === copy.activeStage)!;
+  const originalStage = first.builds[0].stages.find(stage => stage.id === first.builds[0].activeStage)!;
+  expect(copyStage.name).toBe(originalStage.name);
+  expect(parseWorkspace(JSON.parse(workspaceEnvelope(copied)).workspace, parseSaved)).toEqual(copied);
+  expect(parseSaved(workspaceEnvelope(copied))).toEqual(saved);
+  const removed = removeWorkspaceBuild(copied, id);
+  expect(removed.activeBuild).toBe(workspace.activeBuild);
+  expect(removed.builds.map(build => build.id)).toEqual([workspace.activeBuild, copy.id]);
+  expect(removeWorkspaceBuild(removed, 'missing')).toBe(removed);
+  expect(duplicateWorkspaceBuild(workspace, 'missing', 'Copy')).toBe(workspace);
 });

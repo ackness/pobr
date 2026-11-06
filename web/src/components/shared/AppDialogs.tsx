@@ -5,7 +5,7 @@ import { Dialog, DialogTitle, DialogDescription, DialogOverlay, DialogPortal } f
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { messages, type Lang } from '../../lib/i18n';
-import { DialogRequests, type DialogRequest } from './dialogRequests';
+import { DialogRequests, restoreDialogFocus, type DialogRequest } from './dialogRequests';
 import './appDialogs.css';
 
 const DialogContext = createContext<DialogRequests | null>(null);
@@ -21,12 +21,12 @@ export function AppDialogsProvider({ children, scope }: { children: ReactNode; s
 }
 
 export function useAppDialogs(lang: Lang): {
-  confirm: (message: string) => Promise<boolean>;
+  confirm: (message: string, acceptLabel?: string, returnFocus?: HTMLElement | null) => Promise<boolean>;
   prompt: (message: string, defaultValue?: string) => Promise<string | null>;
 } {
   const requests = useContext(DialogContext);
   return useMemo(() => ({
-    confirm: async (message: string) => await requests?.open('confirm', message, lang) === true,
+    confirm: async (message: string, acceptLabel?: string, returnFocus?: HTMLElement | null) => await requests?.open('confirm', message, lang, '', acceptLabel, returnFocus) === true,
     prompt: async (message: string, defaultValue = '') => {
       const value = await requests?.open('prompt', message, lang, defaultValue);
       return typeof value === 'string' ? value : null;
@@ -40,7 +40,7 @@ function RequestDialog({ request, requests }: { request: DialogRequest; requests
   const inputId = useId();
   const style = 'app-dialog shell-dialog';
   const cancel = () => requests.finish(request, request.kind === 'confirm' ? false : null);
-  const restoreFocus = (event: Event) => { event.preventDefault(); if (request.trigger?.isConnected) request.trigger.focus(); };
+  const restoreFocus = (event: Event) => restoreDialogFocus(request, event);
   if (request.kind === 'confirm') return <AlertDialog open onOpenChange={open => { if (!open) cancel(); }}>
     <AlertDialogPortal>
       <AlertDialogOverlay className="app-dialog-overlay" />
@@ -49,7 +49,7 @@ function RequestDialog({ request, requests }: { request: DialogRequest; requests
         <AlertDialogDescription>{request.message}</AlertDialogDescription>
         <div className="app-dialog-actions">
           <AlertDialogCancel onClick={cancel}>{text.cancel}</AlertDialogCancel>
-          <AlertDialogAction onClick={() => requests.finish(request, true)}>{text.accept}</AlertDialogAction>
+          <AlertDialogAction onClick={() => requests.finish(request, true)}>{request.acceptLabel ?? text.accept}</AlertDialogAction>
         </div>
       </AlertPrimitive.Content>
     </AlertDialogPortal>

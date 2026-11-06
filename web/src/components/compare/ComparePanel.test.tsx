@@ -46,11 +46,13 @@ test('an unrelated build leaves B unselected until the player chooses it', () =>
   expect(empty).toMatch(/class="cmp-root"[^>]*><div class="cmp-bar"><div class="cmp-stages"/);
   const b = ui.selects.find(select => select['aria-label'] === 'B: After')!;
   expect(b.value).toBe('');
+  expect(b.title).toBeUndefined();
   b.onChange!({ target: { value: workspace.builds[0].activeStage } } as never);
   const selected = render(session);
   expect(selected).not.toContain('There is no baseline or second stage yet.');
   expect(selected).toMatch(/class="cmp-root"[^>]*><div class="cmp-bar"><div class="cmp-stages"/);
   expect(ui.selects.find(select => select['aria-label'] === 'B: After')!.value).toBe(workspace.builds[0].activeStage);
+  expect(ui.selects.find(select => select['aria-label'] === 'B: After')!.title).toBeUndefined();
 });
 
 test('empty B cannot remove an A item even if its handler is called directly', () => {
@@ -165,6 +167,21 @@ test.each(['zh-CN', 'zh-TW'] as const)('items and character identities reuse loc
   expect(html).not.toContain('<details open');
 });
 
+test('an inherited enemy tier is named in the comparison instead of showing an absent setting', () => {
+  const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Target');
+  const [a, b] = workspace.builds[0].stages;
+  a.saved = { ...a.saved, state: { ...a.saved.state, params: { ...a.saved.state.params, enemy_tier: undefined } } };
+  b.saved = { ...b.saved, state: { ...b.saved.state, params: { ...b.saved.state.params, enemy_tier: 'none' } } };
+  ui.values = [a.id, b.id, 'own', true, '', 'config', {
+    key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
+    value: { stats: [], before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
+  }];
+  const html = render({ workspace, dataVersion: '0.5', applyComparedStage: vi.fn() } as unknown as BuildSession);
+  expect(html).toContain('Pinnacle Boss');
+  expect(html).toContain('Mapping');
+  expect(a.saved.state.params.enemy_tier).toBeUndefined();
+});
+
 test('skill comparison preserves the imported name of an unresolved gem', () => {
   const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Target');
   const [a, b] = workspace.builds[0].stages;
@@ -192,4 +209,21 @@ test('comparison diagnostics use the shared excluded-modifier list and localize 
   expect(html).toContain('Config: First unknown effect\nConfig: Second unknown effect');
   expect(html).toContain('戒指 1：Invalid item');
   expect(html).not.toContain('class="modifier-raw"');
+});
+
+test('comparison controls and unavailable or percentage values keep explanations without native tooltips', () => {
+  const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Later');
+  const [a, b] = workspace.builds[0].stages;
+  ui.values = [a.id, b.id, 'own', true, '', 'stats', {
+    key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
+    value: { stats: [
+      { id: 'Life', before: null, after: 100, delta: null, percent: null, changed: true },
+      { id: 'FireResist', before: 20, after: 30, delta: 10, percent: null, changed: true },
+    ], before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
+  }];
+  const html = render({ workspace, dataVersion: '0.5' } as unknown as BuildSession);
+  expect(html).not.toMatch(/\stitle=/);
+  expect(html).toContain('aria-label="Swap sides"');
+  expect(html).toContain('aria-label="Unavailable or unbounded"');
+  expect(html).toContain('aria-label="Difference (percentage points): +10 pp"');
 });

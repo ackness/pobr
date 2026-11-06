@@ -9,7 +9,7 @@ import type { TreeEditResult } from '../api/types';
  * 防止乱序返回覆盖新状态。所有后端交互经 `api/backend`。
  */
 
-import { recordWorkspaceBaseline, activeWorkspaceStage, addWorkspaceBuild, appendImportedBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
+import { recordWorkspaceBaseline, activeWorkspaceStage, addWorkspaceBuild, appendImportedBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, duplicateWorkspaceBuild, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
 import { mergeLibraries, mergeWorkspaces } from '../lib/workspaceMerge';
 import { formatApiError } from '../api/error';
 import { resolveBuildInput } from '../api/import';
@@ -161,10 +161,11 @@ export interface BuildSession {
   selectStage: (buildId: string, stageId?: string) => void;
   createLocalBuild: (name: string) => void;
   duplicateStage: (name: string) => void;
-  /** Removes the current build (the one that follows it opens) / the current stage; the last of either stays. */
-  removeBuild: () => void;
+  /** Remove a build by ID (defaults to the active one); the library always keeps one build. */
+  removeBuild: (buildId?: string) => void;
+  duplicateBuild: (buildId: string, name: string) => void;
   removeStage: () => void;
-  renameWorkspace: (kind: 'build' | 'stage', name: string) => void;
+  renameWorkspace: (kind: 'build' | 'stage', name: string, buildId?: string) => void;
   applyComparedStage: (a: StageSnapshot, b: StageSnapshot, state: SavedSession['state']) => boolean;
   exportWorkspace: () => string;
   exportLocalBuild: () => string;
@@ -720,7 +721,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const redoHistory = useRef<{ state: BuildState; build: BuildJson | null }[]>([]);
   const [calculated, setCalculated] = useState<{ version: number; result: CalculateBuildResponse; ms: number } | null>(null);
   const [calculating, setCalculating] = useState(false);
-  // Source operations can overlap a recalc or nest (manageLoadout imports its result).
+  // Source operations and automatic skill selection can overlap a recalc or nest.
   const [pendingOperations, setPendingOperations] = useState(0);
   const busy = calculating || pendingOperations > 0;
   const [calcError, setCalcError] = useState<string | null>(null);
@@ -911,6 +912,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       if (next.params.main_socket_group === undefined && next.socketGroups.some(group => group.enabled)) {
         const pending = next;
         const wasClean = cleanVersionRef.current === versionRef.current;
+        setPendingOperations(count => count + 1);
         skillMetricsForState(pending).then((report) => {
           const best = highestDpsSkill(report.skills, pending.socketGroups);
           if (!best || stateRef.current !== pending) return;
@@ -922,7 +924,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
           }, { auto: true });
           // A default is not an edit: an untouched import stays clean.
           if (wasClean) cleanVersionRef.current = versionRef.current;
-        }).catch(() => {});
+        }).catch(() => {}).finally(() => setPendingOperations(count => count - 1));
       }
     },
     [recalc, saveToStorage],
@@ -1670,13 +1672,20 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     restoreSession(stage.saved, stage.drafts);
   }, [busy, restoreSession]);
 
-  const removeBuild = useCallback(() => {
+  const duplicateBuild = useCallback((buildId: string, name: string) => {
+    if (workspaceRef.current && !busy) persistWorkspace(duplicateWorkspaceBuild(workspaceRef.current, buildId, name));
+  }, [busy, persistWorkspace]);
+
+  const removeBuild = useCallback((buildId?: string) => {
     if (!workspaceRef.current || busy) return;
-    const next = removeWorkspaceBuild(workspaceRef.current);
+    const next = removeWorkspaceBuild(workspaceRef.current, buildId);
     if (next === workspaceRef.current) return;
+    const changedActive = next.activeBuild !== workspaceRef.current.activeBuild;
     persistWorkspace(next);
-    const stage = activeWorkspaceStage(workspaceRef.current ?? next);
-    restoreSession(stage.saved, stage.drafts);
+    if (changedActive) {
+      const stage = activeWorkspaceStage(workspaceRef.current ?? next);
+      restoreSession(stage.saved, stage.drafts);
+    }
   }, [busy, persistWorkspace, restoreSession]);
 
   const removeStage = useCallback(() => {
@@ -1688,8 +1697,8 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     restoreSession(stage.saved, stage.drafts);
   }, [busy, persistWorkspace, restoreSession]);
 
-  const renameWorkspace = useCallback((kind: 'build' | 'stage', name: string) => {
-    if (workspaceRef.current) persistWorkspace(renameWorkspaceEntry(workspaceRef.current, kind, name));
+  const renameWorkspace = useCallback((kind: 'build' | 'stage', name: string, buildId?: string) => {
+    if (workspaceRef.current) persistWorkspace(renameWorkspaceEntry(workspaceRef.current, kind, name, buildId));
   }, [persistWorkspace]);
 
   const saveComparisonBaseline = useCallback(() => {
@@ -1818,7 +1827,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   return {
     saveComparisonBaseline, comparisonRevision, startBaselineComparison,
     treeVersion: state?.treeVersion,
-    dataVersion, workspace, storageFailed, syncNotice, dismissSyncNotice, applyComparedStage, selectStage, createLocalBuild, duplicateStage, removeBuild, removeStage, renameWorkspace, exportWorkspace, exportLocalBuild,
+    dataVersion, workspace, storageFailed, syncNotice, dismissSyncNotice, applyComparedStage, selectStage, createLocalBuild, duplicateStage, duplicateBuild, removeBuild, removeStage, renameWorkspace, exportWorkspace, exportLocalBuild,
     activeWeaponSet: state?.weaponSwap?.active ?? 1,
     weaponSwap: state?.weaponSwap,
     setWeaponSet,

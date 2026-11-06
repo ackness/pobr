@@ -139,7 +139,7 @@
   @container shell-container (max-width: 40rem) {
     .shell-root .cmp-panel .compare-pair { grid-template-columns: minmax(0, 1fr); }
     .shell-root .cmp-summary { gap: .2rem .9rem; }
-    .shell-root .cmp-stats table { table-layout: fixed; font-size: .7rem; }
+    .shell-root .cmp-stats table { display: block; table-layout: fixed; font-size: .7rem; }
     .shell-root .cmp-stats :is(thead, tbody) { display: block; }
     .shell-root .cmp-stats tr { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .shell-root .cmp-stats :is(th, td) { min-width: 0; padding-inline: .15rem; }

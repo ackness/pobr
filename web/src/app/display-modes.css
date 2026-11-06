@@ -195,17 +195,5 @@
     .shell-root [data-display-mode] .config-option-groups .config-reset { grid-column: 3; grid-row: 1; }
     .shell-root [data-display-mode] .config-page .config-toolbar { margin-block: .75rem; }
     .shell-root [data-display-mode] .compare-table-wrap { overflow: visible; padding-inline: 0; border-inline: 0; }
-    .shell-root [data-display-mode] .cmp-stats table { display: block; min-width: 0; }
-    .shell-root [data-display-mode] .cmp-stats caption { display: block; }
-    .shell-root [data-display-mode] .cmp-stats thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-    .shell-root [data-display-mode] .cmp-stats tbody { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; }
-    .shell-root [data-display-mode] .cmp-stats tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem 1rem; padding: .75rem 0; border-bottom: 1px solid var(--border); }
-    .shell-root [data-display-mode] .cmp-stats tr > th { grid-column: 1 / -1; padding: 0 0 .25rem; }
-    .shell-root [data-display-mode] .cmp-stats tr > td { display: flex; justify-content: space-between; gap: .4rem; padding: 0; border: 0; min-width: 0; }
-    .shell-root [data-display-mode] .cmp-stats td::before { content: attr(data-label); font-size: var(--text-xs); color: var(--muted-foreground); }
-  }
-  @container shell-container (max-width: 18rem) {
-    .shell-root [data-display-mode] .cmp-stats tr { grid-template-columns: minmax(0, 1fr); }
-    .shell-root [data-display-mode] .cmp-stats tr > td { white-space: normal; overflow-wrap: anywhere; }
   }
 }

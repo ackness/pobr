@@ -30,6 +30,29 @@ vi.mock('/src/wasm/pkg/pobr_wasm.js', () => ({
 
 afterEach(() => { vi.unstubAllGlobals(); state.gems = []; state.crafting = { bases: [], mods: [] }; state.detailed = false; });
 
+test('enemy presets use the pinned snapshot inventory and the shared file cache', async () => {
+  const path = 'base/enemy_presets.json';
+  const table = { max_enemy_level: 85, tiers: [] };
+  const fetch = vi.fn(async (url: string) => {
+    if (url === '/data/manifest.json') return new Response(JSON.stringify({ version: 'snapshot', files: [path], digests: { [path]: 'a'.repeat(64) } }));
+    if (url === `/data/h/${'a'.repeat(16)}/${path}`) return new Response(JSON.stringify(table));
+    throw new Error(`Unexpected fetch: ${url}`);
+  });
+  vi.stubGlobal('fetch', fetch);
+  const backend = await createWasmBackend();
+  const [first, second] = await Promise.all([backend.loadEnemyPresets(), backend.loadEnemyPresets()]);
+  expect(first).toEqual(table);
+  expect(second).toEqual(table);
+  expect(fetch.mock.calls.filter(([url]) => url.endsWith(path))).toHaveLength(1);
+});
+
+test('an unlisted enemy preset file stays unavailable instead of fetching outside the snapshot', async () => {
+  const fetch = vi.fn(async () => new Response(JSON.stringify({ version: 'snapshot', files: [] })));
+  vi.stubGlobal('fetch', fetch);
+  expect(await (await createWasmBackend()).loadEnemyPresets()).toBeNull();
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
 test('detailed lines and names carry supplement origins, with the same texts as the plain calls', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(JSON.stringify(url === '/data/manifest.json'
     ? { version: 'test', files: [] } : null)));
