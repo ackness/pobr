@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import type { GemCatalogEntry } from '../api/types';
-import { gemDisplayName, skillDisplayName } from './skillNames';
+import { gemDisplayName, skillDisplayName, skillFormName } from './skillNames';
 
 const wind: GemCatalogEntry = { skill_id: 'WindDancerPlayer', name: 'Wind Dancer', name_zh_cn: '风舞者',
   name_zh_tw: '風魔舞者', additional_skill_ids: ['TriggeredWindDancerPlayer'], colour: 'dex',
@@ -18,8 +18,8 @@ test('secondary trigger names reuse localized gem names without rewriting IDs', 
 test('exact skill names win over aliases and unknown IDs remain identifiable', () => {
   const exact = { ...wind, skill_id: 'TriggeredWindDancerPlayer', name_zh_cn: '独立技能' };
   expect(skillDisplayName(exact.skill_id, 'zh-CN', new Map([...catalog, [exact.skill_id, exact]]))).toBe('独立技能');
-  expect(skillDisplayName('UnknownSkillPlayer', 'zh-CN', catalog)).toBe('Unknown Skill');
-  expect(skillDisplayName('TriggeredWindDancerPlayer', 'zh-CN', new Map([[wind.skill_id, { ...wind, additional_skill_ids: undefined }]]))).toBe('Triggered Wind Dancer');
+  expect(skillDisplayName('UnknownSkillPlayer', 'zh-CN', catalog)).toBe('Unknown Skill（未翻译）');
+  expect(skillDisplayName('TriggeredWindDancerPlayer', 'zh-CN', new Map([[wind.skill_id, { ...wind, additional_skill_ids: undefined }]]))).toBe('Triggered Wind Dancer（未翻译）');
 });
 
 test('summoner gem names omit the unresolved monster template in each language', () => {
@@ -38,7 +38,27 @@ test('synthetic Thorns and Explode groups get interface labels, only for those i
   expect(skillDisplayName('EnemyExplode', 'en-US', catalog)).toBe('Explode');
   expect(skillDisplayName('EnemyExplode', 'zh-CN', catalog)).toBe('爆炸');
   expect(skillDisplayName('EnemyExplode', 'zh-TW', catalog)).toBe('爆炸');
-  expect(skillDisplayName('OtherEnemyThing', 'zh-CN', catalog)).toBe('Other Enemy Thing');
+  expect(skillDisplayName('OtherEnemyThing', 'zh-CN', catalog)).toBe('Other Enemy Thing（未翻译）');
   const gem = { ...wind, skill_id: 'ThornsPlayer', name: 'Real Thorns', name_zh_cn: '真荆棘' };
   expect(skillDisplayName('ThornsPlayer', 'zh-CN', new Map([[gem.skill_id, gem]]))).toBe('真荆棘');
+});
+
+
+test('gem tiers have one space and missing translations retain their original name with a marker', () => {
+  expect(gemDisplayName({ ...wind, name: 'Rapid Bloom II', name_zh_cn: '迅猛绽放II' }, 'zh-CN')).toBe('迅猛绽放 II');
+  expect(gemDisplayName({ ...wind, name: 'Rapid Bloom   II' }, 'en-US')).toBe('Rapid Bloom II');
+  expect(gemDisplayName({ ...wind, name: 'New Gem', name_zh_cn: 'New Gem' }, 'zh-CN')).toBe('New Gem（未翻译）');
+  expect(gemDisplayName({ ...wind, name: 'New Gem', name_zh_tw: 'New Gem' }, 'zh-TW')).toBe('New Gem（尚未翻譯）');
+});
+
+test('form labels use known forms and shared gem names, preserving unknown labels', () => {
+  expect(skillFormName('Projectile', 'form', 'zh-CN', catalog)).toBe('投射物');
+  expect(skillFormName('Explosion', 'form', 'zh-TW', catalog)).toBe('爆炸');
+  expect(skillFormName('Wind Dancer', wind.skill_id, 'zh-CN', catalog)).toBe('风舞者');
+  expect(skillFormName('Unknown Form', 'unknown', 'zh-CN', catalog)).toBe('Unknown Form（未翻译）');
+});
+
+test('untranslated form labels keep their distinct form instead of being renamed to their parent gem', () => {
+  expect(skillFormName('Untranslated Form', wind.skill_id, 'zh-CN', catalog)).toBe('Untranslated Form（未翻译）');
+  expect(skillDisplayName('ImportedUnknownId', 'zh-CN', catalog, 'Original gem name')).toBe('Original gem name（未翻译）');
 });

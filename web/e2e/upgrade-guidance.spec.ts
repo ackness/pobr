@@ -64,7 +64,7 @@ test('shared goals link automatic supports and connected passive plans with real
   await page.getByRole('button', { name: 'Calculate support combinations', exact: true }).click();
   const support = page.locator('.support-plan').first();
   await expect(support).toBeVisible({ timeout: 30_000 });
-  await expect(support.locator('.support-plan-metrics')).toContainText('EHP');
+  await expect(support.locator('.support-plan-metrics')).toContainText('Effective HP');
   const before = await settledText(dps(page));
   await support.getByRole('button', { name: 'Apply', exact: true }).click();
   await expect(dps(page)).not.toHaveText(before);

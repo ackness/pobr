@@ -1,0 +1,52 @@
+import { expect, test } from 'vitest';
+import type { GemCatalogEntry } from '../../api/types';
+import { rankGemResults } from './GemPicker';
+
+const gem = (id: string, cn: string, en = id, tags: string[] = []): GemCatalogEntry => ({
+  skill_id: id, name: en, name_zh_cn: cn, name_zh_tw: cn, tags, colour: 'int',
+  active_effect_ids: [id], is_support: false, is_lineage: false,
+});
+
+test('Chinese name prefixes and substrings outrank English names and tags, with duplicates removed', () => {
+  const tag = gem('aaa', '灼烧', 'A tag match', ['Fire']);
+  const english = gem('bbb', '其他', '火 English match');
+  const substring = gem('ccc', '烈火', 'Z substring');
+  const prefix = gem('ddd', '火球', 'Z prefix');
+  const entries = [tag, english, substring, prefix, prefix, gem('none', '冰球')];
+  expect(rankGemResults(entries, '火', 'all', 'zh-CN').map(gem => gem.skill_id)).toEqual(['ddd', 'ccc', 'bbb', 'aaa']);
+  expect(rankGemResults(entries, '火', 'dex', 'zh-CN')).toEqual([]);
+  expect(entries).toHaveLength(6);
+});
+
+test('empty searches keep the full distinct result count, including more than 200 gems', () => {
+  const entries = Array.from({ length: 205 }, (_, index) => gem(`gem-${index}`, `宝石 ${index}`));
+  expect(rankGemResults([...entries, entries[0]], '', 'all', 'zh-CN')).toHaveLength(205);
+});
+
+test('tier searches match names both with and without the displayed Roman numeral spacing', () => {
+  const entries = [gem('bloom', '迅猛绽放II', 'Rapid Bloom II')];
+  for (const query of ['绽放II', '绽放 II', 'BloomII', 'Bloom II']) {
+    expect(rankGemResults(entries, query, 'all', 'zh-CN')).toHaveLength(1);
+  }
+});
+
+for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
+  test(`both distinct Chinese names remain searchable with name matches before English and tags in ${lang}`, () => {
+    const fireball = { ...gem('fireball', '火球', 'Fireball'), name_zh_tw: '熾焰球' };
+    for (const query of ['火球', '熾焰球']) {
+      const substring = { ...gem('substring', `大${query}`, 'Other'), name_zh_tw: `大${query}` };
+      const english = gem('english', '其他', `${query} English`);
+      const results = rankGemResults([english, substring, fireball], query, 'all', lang);
+      expect(results.map(entry => entry.skill_id)).toEqual(['fireball', 'substring', 'english']);
+    }
+    expect(rankGemResults([fireball], '焰球', 'all', lang)).toEqual([fireball]);
+  });
+}
+
+for (const [lang, first] of [['en-US', 'fire'], ['zh-CN', 'ice'], ['zh-TW', 'fire']] as const) {
+  test(`an empty search starts with the first localized name in ${lang}`, () => {
+    const entries = [gem('fire', '火球', 'Fireball'), gem('ice', '冰霜新星', 'Ice Nova'),
+      { ...gem('lightning', '电球', 'Spark'), name_zh_tw: '電球' }];
+    expect(rankGemResults(entries, '', 'all', lang)[0].skill_id).toBe(first);
+  });
+}
