@@ -5,13 +5,16 @@ const BOLT = 'M 8,68 L 36,51 L 33,62 H 52 L 17,85 L 23,70 Z';
 const GLYPHS: readonly (readonly [number, number, number, number])[] = [
   [49.5, 38.5, 7, 2.6], [51.7, 36.3, 2.6, 7], [60.5, 38.5, 6, 2.6], [47.8, 46, 6, 2.6], [58.5, 46, 6, 2.6],
 ];
+// The letter and bolt span x 8–90, y 11–89 (centre 49, 50); this puts that centre on the tile's (50, 50).
+// favicon.svg and apple-touch-icon.png use the same placement.
+const PLACEMENT = 'translate(9.82 9) scale(.82)';
 const GOLD = '#d8b66f';
 const INK = '#141516';
 
 export function BrandMark({ className, detailed = false }: { className?: string; detailed?: boolean }) {
   return <svg className={className} viewBox="0 0 100 100" aria-hidden="true" focusable="false">
     <rect x="2" y="2" width="96" height="96" rx="23" fill={GOLD} />
-    <g transform="translate(9 9) scale(.82)">
+    <g transform={PLACEMENT}>
       <path d={LETTER} fill={INK} fillRule="evenodd" />
       {detailed && <g fill={INK}>{GLYPHS.map(([x, y, width, height]) =>
         <rect key={`${x},${y}`} x={x} y={y} width={width} height={height} rx="1.3" />)}</g>}
