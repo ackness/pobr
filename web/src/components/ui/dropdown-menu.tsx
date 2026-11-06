@@ -3,6 +3,7 @@
 import * as React from "react"
 import { cn } from "cn"
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
+import { canRestoreDialogFocus } from '../shared/dialogFocus'
 import { CheckIcon, ChevronRightIcon } from "lucide-react"
 
 function DropdownMenu({
@@ -34,6 +35,8 @@ function DropdownMenuContent({
   className,
   align = "start",
   sideOffset = 4,
+  onCloseAutoFocus,
+  onPointerDownOutside,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
   return (
@@ -44,6 +47,19 @@ function DropdownMenuContent({
         align={align}
         className={cn("z-50 max-h-(--radix-dropdown-menu-content-available-height) w-(--radix-dropdown-menu-trigger-width) min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-2xl bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/5 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:overflow-hidden dark:ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", className )}
         {...props}
+        onCloseAutoFocus={event => {
+          onCloseAutoFocus?.(event)
+          if (!canRestoreDialogFocus(event)) event.preventDefault()
+        }}
+        onPointerDownOutside={event => {
+          onPointerDownOutside?.(event)
+          // A trigger cancels the pointerdown that opens its menu; an exiting menu must not treat
+          // that press as an outside click and dismiss the menu it is reopening.
+          const { originalEvent } = event.detail
+          const target = originalEvent.target
+          if (originalEvent.defaultPrevented && target instanceof Element
+            && target.closest('[data-slot="dropdown-menu-trigger"]')) event.preventDefault()
+        }}
       />
     </DropdownMenuPrimitive.Portal>
   )
