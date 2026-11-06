@@ -73,11 +73,7 @@ class LocalPlannerTests(unittest.TestCase):
         self.assertIn("HEAD", calls[1])
         self.assertIn("--cached", calls[2])
         self.assertEqual(calls[-1], ["git", "ls-files", "--others", "--exclude-standard", "-z"])
-        with patch.object(check.planner, "local_changed_files", return_value=files), \
-                patch.object(sys, "argv", ["ci-plan.py", "--local"]), \
-                patch.dict(os.environ, {}, clear=True), contextlib.redirect_stdout(io.StringIO()) as out:
-            check.planner.main()
-        self.assertIn("full=true", out.getvalue())  # Unknown removed input is conservative.
+        self.assertTrue(check.planner.classify(files)["full"])  # Unknown removed input is conservative.
 
     def test_missing_master_fails_instead_of_passing_an_empty_plan(self):
         failed = subprocess.CompletedProcess([], 1, b"", b"unknown revision origin/master")
@@ -96,8 +92,9 @@ class LocalPlannerTests(unittest.TestCase):
     @patch.object(check.subprocess, "run", return_value=metadata_result())
     def test_touched_crate_features_and_reverse_dependents(self, metadata):
         files = ["crates/pobr-core/src/lib.rs", "crates/pobr-build/README.md"]
-        steps = check.steps_for(files, check.planner.classify(files))
-        self.assertEqual(check.touched_packages(files),
+        packages = check.touched_packages(files)
+        steps = check.steps_for(check.planner.classify(files), packages)
+        self.assertEqual(packages,
                          ["pobr-build", "pobr-cli", "pobr-core", "pobr-wasm"])
         metadata.assert_called_with(
             ["cargo", "metadata", "--offline", "--no-deps", "--format-version", "1"],
@@ -137,11 +134,13 @@ class LocalPlannerTests(unittest.TestCase):
     @patch.object(check.subprocess, "run", return_value=metadata_result())
     def test_full_runs_every_area_and_workspace_tests_including_doctests(self, _metadata):
         files = ["pipeline/data.lock.json"]
-        steps = check.steps_for(files, check.planner.classify(files))
+        plan = check.planner.classify(files)
+        packages = check.touched_packages(files, full=plan["full"])
+        steps = check.steps_for(plan, packages)
         commands = [command for _, _, command in steps]
         tests = next(command for label, _, command in steps if label == "Rust tests")
         self.assertNotIn("--all-targets", tests)  # Preserve doctests.
-        for name in check.touched_packages([], full=True):
+        for name in packages:
             self.assertIn(name, tests)
         for task in ("i18n:check", "typecheck", "test:worker"):
             self.assertIn(["pnpm", task], commands)

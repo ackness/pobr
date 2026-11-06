@@ -7,6 +7,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shlex
 import shutil
 import subprocess
 import sys
@@ -280,12 +281,20 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
                     self.assertFalse((self.root / "calls.jsonl").exists())
 
     def test_full_uses_cargo_workspace_tests_including_doctests(self):
+        ci_command = next(shlex.split(line.split("run:", 1)[1])
+                          for line in (REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8").splitlines()
+                          if line.strip().startswith("run: cargo clippy "))
+        features = ci_command[ci_command.index("--features") + 1]
+        spec = importlib.util.spec_from_file_location("check_pr", REPO / "devs/scripts/check-pr.py")
+        check = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(check)
+        self.assertEqual(",".join(f"{name}/{feature}" for name, feature in check.CLIPPY_FEATURES.items()), features)
         result = self.run_script("devs/scripts/driver.sh", "full")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [
             ["fmt", "--all", "--check"],
             ["clippy", "--workspace", "--all-targets", "--features",
-             "pobr-core/benchmarks,pobr-build/benchmarks,pobr-wasm/diagnostics", "--", "-D", "warnings"],
+             features, "--", "-D", "warnings"],
             ["test", "--workspace"],
         ])
 
