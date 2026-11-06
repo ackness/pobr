@@ -29,7 +29,7 @@ test('missing language data converts the alternate script without claiming a nat
   const gem = { ...(gems[0] as GemCatalogEntry), name: 'Example', name_zh_cn: '能量护盾', name_zh_tw: '' };
   expect(gemDisplayName(gem, 'zh-TW')).toBe('能量護盾');
   expect(gemDisplayName({ ...gem, name_zh_cn: '', name_zh_tw: '圖騰護甲' }, 'zh-CN')).toBe('图腾护甲');
-  expect(gemDisplayName({ ...gem, name_zh_cn: '', name_zh_tw: '' }, 'zh-CN')).toBe('Example');
+  expect(gemDisplayName({ ...gem, name_zh_cn: '', name_zh_tw: '' }, 'zh-CN')).toBe('Example（未翻译）');
   expect(new GameTextLocalizer([]).localize('Untranslated', '伤害提高 20%', 'zh-TW')).toBe('傷害提高 20%');
 });
 

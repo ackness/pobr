@@ -33,7 +33,8 @@ test('a gem can be marked corrupted on Skills, which decides modifiers to corrup
   await pageLink(page, 'Skills').click();
   const group = page.locator('.skill-group').first();
   await group.locator('.skill-group-title').click();
-  const corrupted = group.locator('.skill-gem').first().getByRole('checkbox', { name: 'Corrupted', exact: true });
+  await page.locator('.skill-gem').first().locator('.gem-advanced > summary').click();
+  const corrupted = page.locator('.skill-detail').locator('.skill-gem').first().getByRole('checkbox', { name: 'Corrupted', exact: true });
   await expect(corrupted).not.toBeChecked();
 
   await corrupted.check();
@@ -50,6 +51,7 @@ test('a gem can be marked corrupted on Skills, which decides modifiers to corrup
 
   await pageLink(page, 'Skills').click();
   await group.locator('.skill-group-title').click();
+  await page.locator('.skill-gem').first().locator('.gem-advanced > summary').click();
   await expect(corrupted).toBeChecked();
   await corrupted.uncheck();
   await expect.poll(number).toBe(plain);

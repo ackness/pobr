@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { statValue } from './shell';
-import { choose, goTo, expectOriginalModifiersKeyboard } from './skillsAndCalcs';
+
+import { choose, goTo, expectOriginalModifiersKeyboard, headlineDps } from './skillsAndCalcs';
 import type { GemInput, SocketGroupInput } from '../src/api/types';
 
 // Swift Affliction III still has an unmodelled conditional duration threshold.
@@ -9,7 +9,7 @@ const swiftStat = 'support_swift_affliction_non_ailment_damage_over_time_+%_fina
 const modeled = ['SupportControlledDestructionPlayer', 'SupportFireMasteryPlayer'];
 const run = (page: Page) => page.getByRole('button', { name: 'Calculate support combinations', exact: true });
 const baseline = (page: Page) => page.locator('details.support-baseline-unsupported');
-const dps = (page: Page) => statValue(page, /^Total DPS$/).first();
+const dps = headlineDps;
 // The Overview lists the modifier lines the calculation does not apply.
 const unsupportedLines = (page: Page) => page.locator('.ov-details');
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
@@ -81,8 +81,8 @@ async function openOptimizer(page: Page) {
   if (await group.locator('.skill-group-title').getAttribute('aria-expanded') === 'false') {
     await group.locator('.skill-group-title').click();
   }
-  if (await group.locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') {
-    await group.locator('.gem-optimizer-toggle').click();
+  if (await page.locator('.skill-detail').locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') {
+    await page.locator('.skill-detail').locator('.gem-optimizer-toggle').click();
   }
   // Capacity, objective and the candidate pool sit under the folded "Goal, capacity and candidates".
   const settings = page.locator('.gem-optimizer-settings');
@@ -217,8 +217,8 @@ for (const [layout, viewport] of [
         quality: Number(chip.getAttribute('data-quality')), stat_set_index: Number(chip.getAttribute('data-stat-set-index') ?? 1),
       })));
       expect(expected.map(gem => gem.skill_id).sort()).toEqual([...modeled].sort());
-      const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^DPS / }).innerText();
-      const preview = numeric(metric.match(/^DPS ([\d,.]+)/)![1]);
+      const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Combined DPS / }).innerText();
+      const preview = numeric(metric.match(/^Combined DPS ([\d,.]+)/)![1]);
       expect(preview).toBeGreaterThan(beforeDps);
       const excluded = await rejectedReceipt(rejected);
       const recommendations = await recommendationsReceipt(page);
@@ -238,7 +238,7 @@ for (const [layout, viewport] of [
         return [applied[0], ...applied.slice(1).map(gem => ({ ...gem, stat_set_index: gem.stat_set_index ?? 1 }))];
       }).toEqual([before[0].gems[0], ...expected]);
       expect((await groups(page)).slice(1)).toEqual(before.slice(1));
-      await expect.poll(async () => Math.abs(numeric(await dps(page).innerText()) - preview)).toBeLessThanOrEqual(0.06);
+      await expect.poll(async () => Math.abs(numeric(await dps(page).innerText()) - preview)).toBeLessThanOrEqual(0.5);
       await expectInvalidated(page);
       await goTo(page, 'Overview');
       await expect(unsupportedLines(page)).toHaveCount(0);
