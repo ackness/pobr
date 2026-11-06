@@ -12,8 +12,9 @@ import { AppRange } from '../shared/AppRange';
 import './replacementAffixEditor.css';
 
 /** Draft edits are local to the candidate; only the caller can run or apply a comparison. */
-export function ReplacementAffixEditor({ report, catalog, characterLevel, lang, disabled, onCompare, onDirtyChange }: {
+export function ReplacementAffixEditor({ report, catalog, characterLevel, lang, disabled, onCompare, onDirtyChange, initiallyOpen = false, compareLabel }: {
   report: Pick<ReplacementReport, 'text' | 'base' | 'lines'>; catalog: TradeCatalog; characterLevel: number; lang: Lang; disabled: boolean;
+  initiallyOpen?: boolean; compareLabel?: string;
   onCompare: (text: string) => void; onDirtyChange: (dirty: boolean) => void;
 }) {
   const t = (key: Parameters<typeof affixT>[1]) => affixT(lang, key);
@@ -53,7 +54,7 @@ export function ReplacementAffixEditor({ report, catalog, characterLevel, lang, 
     update({ ...current, rows: replacing ? current.rows.map(existing => existing.key === replacing ? row : existing) : [...current.rows, row] });
     setReplacing(undefined); setPicked('');
   };
-  return <details className="replacement-affix-editor">
+  return <details className="replacement-affix-editor" open={initiallyOpen || undefined}>
     <summary>{t('title')}</summary>
     <p className="affix-editor-hint">{t('hint')}</p>
     {current.locked ? <p className="affix-editor-warning">{t(current.locked)}</p> : !pool.length ? <p>{t('dataMissing')}</p> : <>
@@ -98,7 +99,7 @@ export function ReplacementAffixEditor({ report, catalog, characterLevel, lang, 
       {error && <p role="alert" className="affix-editor-warning">{error}</p>}
       <div className="affix-editor-actions"><AppButton className="trade-primary" disabled={disabled || !draft || !!issue} onClick={() => {
         try { onCompare(buildAffixItem(current, pool, characterLevel)); } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
-      }}>{t('compare')}</AppButton><AppButton disabled={!draft || disabled} onClick={() => { setDraft(null); setReplacing(undefined); setPicked(''); setError(''); onDirtyChange(false); }}>{t('reset')}</AppButton></div>
+      }}>{compareLabel ?? t('compare')}</AppButton><AppButton disabled={!draft || disabled} onClick={() => { setDraft(null); setReplacing(undefined); setPicked(''); setError(''); onDirtyChange(false); }}>{t('reset')}</AppButton></div>
     </>}
   </details>;
 }

@@ -99,8 +99,7 @@ test('changing life preserves local armour and evasion, quality and the socketed
   await expect(stat(page, 'Armour')).toHaveText(armour);
   await expect(stat(page, 'Evasion')).toHaveText(evasion);
   await expect(stat(page, 'Life')).toHaveText(life);
-  const expectedLife = numeric(await page.locator('.upgrade-replacement-result tbody tr')
-    .filter({ hasText: /^Life(?=[0-9\s])/ }).locator('td').nth(1).innerText());
+  const expectedLife = numeric(await page.locator('.swap-gain-card [data-stat="Life"] .swap-after').innerText());
   expect(expectedLife).toBeGreaterThan(numeric(life));
 
   await page.getByRole('button', { name: /Apply to build/ }).click();
@@ -130,7 +129,7 @@ test('changing life gained on kill preserves local physical damage, quality and 
   expect(edited).not.toContain('Gain 5 Life per enemy killed');
   expect((await savedState(page)).items).toEqual(original.items);
   await expect(stat(page, 'Total DPS')).toHaveText(dps);
-  const expectedDps = numeric(await page.locator('.upgrade-replacement-result tbody tr').first().locator('td').nth(1).innerText());
+  const expectedDps = numeric(await page.locator('.swap-gain-card [data-stat="CombinedDPS"] .swap-after').innerText());
   expect(expectedDps).toBeCloseTo(numeric(dps), 0);
 
   await page.getByRole('button', { name: /Apply to build/ }).click();

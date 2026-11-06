@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../api/backend';
 import type { Lang } from '../lib/i18n';
-import { lineText } from '../lib/continuedLines';
+import { lineText, mergeModifierContinuations } from '../lib/continuedLines';
 import type { GameNameRequest } from '../lib/nativeDisplayNames';
 
 /** PoB 结构标注行的键 → 本地化（词条模板翻译层不认识这些行）。 */
@@ -117,8 +117,8 @@ export function localizeStructLine(line: string, lang: Lang): string | null {
   return entry ? `${entry[lang]}: ${value}` : null;
 }
 
-/** A rune's `Bonded: <effect>` line. The language pack owns its whole translation (official
- * whole-line rows, or a `Bonded: {0}` template whose value is the effect's own translation). */
+/** A rune's `Bonded: <effect>` line. Whole effects come from the language pack;
+ * CN uses the official prefix, while TW keeps its pack's wording. */
 const BONDED = /^Bonded:\s*/;
 /** Sent once with a batch that has a `Bonded:` line: the pack's own rendering of the prefix. */
 const BONDED_PREFIX_PROBE = 'Bonded: {0}';
@@ -130,6 +130,7 @@ const BONDED_PREFIX_PROBE = 'Bonded: {0}';
  * each one's effect and {@link BONDED_PREFIX_PROBE} follow (each after a blank), for a line the
  * pack has no whole-line translation of. */
 export function linesToTranslate(lines: readonly string[], lang: Lang): string[] {
+  lines = mergeModifierContinuations(lines);
   const sent = lines.map((l) => (!l || localizeStructLine(l, lang) ? '' : runeLineParts(l)?.name ?? l));
   const bonded = lines.filter((l, index) => sent[index] && BONDED.test(l));
   if (!bonded.length) return sent;
@@ -147,12 +148,15 @@ function composedBonded(line: string, effect: string | undefined, prefix: string
 /** The display of `lines` given `translated`, the backend's answer to {@link linesToTranslate}
  * matched by position (not by text: one line can be covered by a multi-line description in one
  * place and stand alone in another). A covered line stays `""` (see `lib/continuedLines`). In
- * en-US the result is `lines` itself, so it stays the same array while `lines` does. */
+ * en-US keeps the same array unless wrapped modifier lines need joining. */
 export function localizedLines(lines: string[], lang: Lang, translated: readonly (string | undefined)[]): string[] {
+  const merged = mergeModifierContinuations(lines);
+  if (merged.some((line, index) => line !== lines[index])) lines = merged;
   if (lang === 'en-US') return lines;
   let extra = lines.length;
   const prefix = translated.at(-1);
   return lines.map((l, index) => {
+    if (!l) return '';
     const struct = localizeStructLine(l, lang);
     if (struct) return struct;
     const out = translated[index];
@@ -162,10 +166,12 @@ export function localizedLines(lines: string[], lang: Lang, translated: readonly
     }
     if (BONDED.test(l)) {
       extra += 2;
-      if (out !== undefined && out !== l && !BONDED.test(out)) return out;
-      // No whole-line row, or one that kept the English prefix: compose from the pack's own prefix.
-      const composed = composedBonded(l, translated[extra - 1], prefix);
-      return composed === l && out !== undefined ? out : composed;
+      const official = (text: string) => lang === 'zh-CN' ? text.replace(/^(?:Bonded|羁绊|纽带)\s*[:：]\s*/, '纽带：') : text;
+      if (out !== undefined && out !== l && !BONDED.test(out)) return official(out);
+      // Without a whole-line row, compose the effect with the official CN or pack-owned TW prefix.
+      const composed = composedBonded(l, translated[extra - 1], lang === 'zh-CN' ? '纽带：{0}' : prefix);
+      const value = composed === l && out !== undefined ? out : composed;
+      return value === l ? l : official(value);
     }
     return out ?? l;
   });

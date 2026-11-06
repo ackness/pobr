@@ -44,7 +44,7 @@ test('manual affix tiers respect item level and recalculate a whole item before 
   await expect(input).toHaveValue(/\+92 to maximum Life/);
   await expect(page.getByRole('button', { name: 'Apply to build · Ring 1', exact: true })).toBeEnabled();
   await expect(life).toHaveText(before);
-  const expectedLife = await page.locator('.upgrade-replacement-result tbody tr').filter({ hasText: /^Life(?=[0-9\s])/ }).locator('td').nth(1).innerText();
+  const expectedLife = await page.locator('.swap-gain-card [data-stat="Life"] .swap-after').innerText();
   await editor.locator('summary').click();
   await page.setViewportSize({ width: 320, height: 900 });
   await page.addStyleTag({ content: 'html { scrollbar-gutter: stable; }' });

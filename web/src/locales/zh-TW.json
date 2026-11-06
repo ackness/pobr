@@ -865,7 +865,18 @@
     "calcs.goToSkills": "前往技能 ›",
     "calcs.overviewFailed": "暫時無法計算技能總覽。",
     "calcs.itemExcluded": "此裝備未計入計算。",
-    "calcs.skillInstance": "{skill}（技能組 {group}，效果 {effect}）"
+    "calcs.skillInstance": "{skill}（技能組 {group}，效果 {effect}）",
+    "items.allChanges": "全部變化（{count}）",
+    "items.changedStat": "屬性",
+    "items.originalName": "原名，尚無譯名",
+    "items.contribution": "來源貢獻",
+    "items.removalLoss": "移除此裝備後的損失：綜合 DPS {dps} · 有效生命 {ehp}",
+    "items.contributionHint": "來源貢獻衡量移除此裝備後的損失，不等於換裝增益。負數表示移除後該屬性反而提高。",
+    "items.contributionMissing": "尚無此裝備的貢獻結果。計算來源貢獻，查看移除此裝備後的損失。",
+    "lib.thisBuild": "僅此 BD",
+    "lib.sourceUnknown": "來源不明",
+    "lib.sourceBuild": "來源 BD：{name}",
+    "lib.unnamedBuild": "未命名 BD"
   },
   "bootMessage": {
     "初始化…": "初始化中…",
@@ -2513,7 +2524,10 @@
     "error": "無法準備此傳奇物品，請檢查選擇後重試。",
     "baseUnavailable": "目錄中此變體沒有對應基底，請選擇其他變體。",
     "jewel": "天賦珠寶插槽",
-    "unavailable": "此基底無法在裝備部位中比較。"
+    "unavailable": "此基底無法在裝備部位中比較。",
+    "resolvingRoll": "正在解析詞綴數值…",
+    "rollUnavailable": "無法解析詞綴數值。請預覽物品重試。",
+    "slotUnknown": "欄位待確認"
   },
   "itemCrafting": {
     "unknownRequirement": "此傳奇基底缺少已確認的需求等級。可存入物品庫，暫不提供裝備預覽。",
@@ -2538,7 +2552,8 @@
     "error": "無法建立此草稿，請檢查物品資料後重試。",
     "missing": "部分遊戲詞綴缺少顯示範本，暫時無法加入：",
     "normalHint": "普通物品沒有隨機詞綴，選擇魔法或稀有即可加入。",
-    "editUnavailable": "打造器目前不支援此物品的基底，可使用進階文字編輯修改。"
+    "editUnavailable": "打造器目前不支援此物品的基底，可使用進階文字編輯修改。",
+    "compareEquipped": "比較目前裝備"
   },
   "tradeAnalysis": {
     "resume": "繼續分析剩餘位置",
