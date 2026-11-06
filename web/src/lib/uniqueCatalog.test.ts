@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { UniqueEntry } from '../api/uniques';
 import type { TradeCatalog } from './tradeOptimizer';
-import { defaultUniqueSelection, filterUniques, uniqueGroups, uniqueOptions, uniquePreviewCatalog, uniqueRolls } from './uniqueCatalog';
+import { resolvedUniqueRolls, defaultUniqueSelection, filterUniques, uniqueGroups, uniqueOptions, uniquePreviewCatalog, uniqueRolls } from './uniqueCatalog';
 
 const ring: UniqueEntry = { id: 0, name: 'Example Ring', item_type: 'ring', bases: [{ name: 'Iron Ring', item_class: 'Ring' }], raw:
   'Example Ring\nIron Ring\nVariant: Old\nVariant: Current\nImplicits: 0\n{variant:1}+(10-20) to maximum Life\n{variant:2}+(30-40) to maximum Life\n+(5-10)% to Cold Resistance' };
@@ -52,4 +52,18 @@ describe('unique catalogue', () => {
     expect(filterUniques([unique], '', '', 'ring1', expanded)).toEqual([unique]);
     expect(catalog.bases).toHaveLength(2);
   });
+});
+
+
+it('shows backend-resolved unique values for multiple and negative ranges without interpolating them in the UI', () => {
+  const ranges = [{ text: 'Adds (1-5) to (10-20) Physical Damage' }, { text: '(-20--10)% to Fire Resistance' }, { text: '+(1-10) to Dexterity' }];
+  expect(resolvedUniqueRolls(ranges, 'Rarity: UNIQUE\nName\nIron Ring\nAdds 3 to 15 Physical Damage\n{variant:1}-15% to Fire Resistance'))
+    .toEqual(['Adds 3 to 15 Physical Damage', '-15% to Fire Resistance', undefined]);
+});
+
+
+it('matches an externally signed negative range to its resolved negative value', () => {
+  expect(resolvedUniqueRolls([{ text: '-(10-20)% to Fire Resistance' }, { text: '+(10-20) to maximum Life' }],
+    'Rarity: UNIQUE\nName\nIron Ring\n-15% to Fire Resistance\n+15 to maximum Life'))
+    .toEqual(['-15% to Fire Resistance', '+15 to maximum Life']);
 });

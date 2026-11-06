@@ -1,4 +1,6 @@
 import { configListLabel } from '../../lib/configDisplay';
+import { CONFIG_FIELD_EVENT, takeConfigField } from '../../lib/configNavigation';
+import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { AppButton, AppInput, AppSelectControl, AppTextarea } from '../shared/controls';
 import { PartyEditor } from './PartyEditor';
 import { NamedSets } from '../shared/NamedSets';
@@ -358,14 +360,35 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
     ? words(lang, 'Relevant to this build', '与此 BD 相关', '與此 BD 相關') : configSectionLabel(lang, name);
 
   useEffect(() => {
+    const receive = () => {
+      if (!active || loadState !== 'ready') return;
+      const field = takeConfigField();
+      if (!field) return;
+      const option = options.find(option => option.var === field);
+      if (option) { setView('options'); openSetting(option); }
+    };
+    receive();
+    window.addEventListener(CONFIG_FIELD_EVENT, receive);
+    return () => window.removeEventListener(CONFIG_FIELD_EVENT, receive);
+    // The pending field is consumed only once the destination and catalog are ready.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, options, loadState]);
+
+  useEffect(() => {
     if (!focusTarget || session.busy) return;
+    const group = groups.find(group => group.options.some(option => option.var === focusTarget));
+    if (group && selectedSection !== group.name) {
+      setSelectedSection(group.name);
+      setOpenSections(previous => new Set([...previous, group.name]));
+      return;
+    }
     const control = document.getElementById(`config-${focusTarget}`);
     if (control instanceof HTMLElement) {
       control.focus({ preventScroll: true });
       control.scrollIntoView({ block: 'center' });
     }
     setFocusTarget(null);
-  }, [focusTarget, groups, session.busy]);
+  }, [focusTarget, groups, session.busy, selectedSection]);
 
   const searching = query.trim() !== '';
   const activeSection = groups.find(group => group.name === selectedSection)?.name ?? groups[0]?.name;
@@ -390,8 +413,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
     text: (session.calcParams.extra_modifiers ?? []).join('\n'),
   }];
   const unappliedLines = (calc?.unsupported_modifiers ?? [])
-    .filter(line => line.startsWith(UNAPPLIED_PREFIX))
-    .map(line => line.slice(UNAPPLIED_PREFIX.length));
+    .filter(line => line.startsWith(UNAPPLIED_PREFIX));
   const updateModifierBlocks = (blocks: CustomModifierBlock[]) => {
     session.updateParams({ custom_modifier_blocks: blocks, extra_modifiers: undefined });
   };
@@ -604,7 +626,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
         <div className="config-unapplied" role="status">
           <p><strong>{tt('calcs.unsupported')}</strong></p>
           <p>{tt('config.unappliedLines')}</p>
-          <ul>{unappliedLines.map((line, index) => <li key={index}>{line}</li>)}</ul>
+          <UnincludedModifiers lines={unappliedLines} lang={lang} />
         </div>
       )}
       <AppButton type="button" className="config-modifier-add" disabled={session.busy}

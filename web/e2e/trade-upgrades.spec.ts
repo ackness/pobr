@@ -1,3 +1,4 @@
+import { t } from '../src/lib/i18n';
 import { expect, test } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { dpsValue, goTo, inspectedSkill, openLibrary, openMarketSettings } from './upgradesPage';
@@ -287,7 +288,7 @@ for (const [characterLevel, gemLevel] of [[71, 16], [90, 21]]) test(`gem plans a
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
-  await page.getByRole('combobox', { name: 'Inspected skill', exact: true }).click();
+  await page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true }).click();
   await page.getByRole('option', { name: '1. Fireball', exact: true }).click();
   await goTo(page, 'Upgrades');
   await page.locator('.trade-position').filter({ hasText: 'Skill and support gems' }).click();

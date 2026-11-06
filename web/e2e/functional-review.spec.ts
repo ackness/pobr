@@ -1,3 +1,4 @@
+import { t } from '../src/lib/i18n';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { answerConfirm } from './confirmDialog';
@@ -6,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
 // The skill picker at the top of the results panel. `goTo` opens the menu sheet where the page links are folded away.
-const inspected = (page: Page) => page.getByRole('combobox', { name: 'Inspected skill', exact: true });
+const inspected = (page: Page) => page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 const ring = 'Rarity: RARE\nDraft Ring\nSapphire Ring\n+100 to maximum Life';
 const monk = readFileSync('../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', 'utf8');

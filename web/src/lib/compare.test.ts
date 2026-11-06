@@ -289,3 +289,13 @@ describe('before/after default selection', () => {
     expect(defaultCompareSides(stages, 'other')).toEqual({ a: stages[2], b: undefined });
   });
 });
+
+test('comparison form names use the same localized labels as the skill editor', () => {
+  const gem = { skill_id: 'BonestormPlayer', level: 20, quality: 0, stat_set_index: 2 };
+  const catalog = new Map([[gem.skill_id, { name: 'Bonestorm', effect_forms: [{ skill_id: gem.skill_id, stat_sets: [
+    { id: gem.skill_id, index: 1, label: 'Projectile', stage: null },
+    { id: 'BonestormExplosionPlayer', index: 2, label: 'Explosion', stage: null },
+  ] }] } as GemCatalogEntry]]);
+  expect(comparisonGemForm(gem, undefined, catalog, 'zh-CN')).toBe('爆炸');
+  expect(comparisonGemForm(gem, undefined, catalog, 'zh-TW')).toBe('爆炸');
+});

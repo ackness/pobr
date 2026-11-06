@@ -164,3 +164,32 @@ test.each(['zh-CN', 'zh-TW'] as const)('items and character identities reuse loc
   expect(visible).not.toContain('Unique ID');
   expect(html).not.toContain('<details open');
 });
+
+test('skill comparison preserves the imported name of an unresolved gem', () => {
+  const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Target');
+  const [a, b] = workspace.builds[0].stages;
+  b.saved = structuredClone(b.saved);
+  b.saved.state.socketGroups[0].gems.push({ skill_id: '', name_spec: 'Imported original gem', level: 0, quality: 0 });
+  ui.values = [a.id, b.id, 'own', true, '', 'skills', {
+    key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
+    value: { stats: [], before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
+  }];
+  const html = render({ workspace, dataVersion: '0.5' } as unknown as BuildSession);
+  expect(html).toContain('Imported original gem · Unresolved gem');
+});
+
+test('comparison diagnostics use the shared excluded-modifier list and localize item error slots', () => {
+  const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Later');
+  const [a, b] = workspace.builds[0].stages;
+  ui.values = [a.id, b.id, 'own', true, '', 'stats', {
+    key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
+    value: { stats: [], before: { unsupported_modifiers: ['Config: First unknown effect', 'Config: Second unknown effect'], item_errors: [{ slot: 'ring1', message: 'Invalid item' }] },
+      after: { unsupported_modifiers: ['Config: Another unknown effect'], item_errors: [] } },
+  }];
+  const html = render({ workspace, dataVersion: '0.5' } as unknown as BuildSession, 'zh-CN');
+  expect(html.match(/class="unincluded-modifiers"/g)).toHaveLength(2);
+  expect(html.match(/<summary>词缀原文<\/summary>/g)).toHaveLength(2);
+  expect(html).toContain('Config: First unknown effect\nConfig: Second unknown effect');
+  expect(html).toContain('戒指 1：Invalid item');
+  expect(html).not.toContain('class="modifier-raw"');
+});

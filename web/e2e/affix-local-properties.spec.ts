@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openItemsAfterImport, statValue } from './shell';
+import { openItemsAfterImport, statValue, playerHitDps } from './shell';
 import { settledText } from './upgradesPage';
 
 const chest = [
@@ -65,7 +65,8 @@ async function equipFixture(page: Page, text: string, slot: string) {
 
 async function maximizeCopiedAffix(page: Page, id: string, expectedLine: string) {
   const editor = page.locator('.replacement-affix-editor');
-  await editor.locator('summary').click();
+  if (!(await editor.evaluate(element => (element as HTMLDetailsElement).open))) await editor.locator(':scope > summary').click();
+  await expect(editor).toHaveAttribute('open', '');
   const row = editor.locator(`[data-affix-id="${id}"]`);
   await expect(row).toBeVisible();
   await row.getByRole('button', { name: 'Maximum', exact: true }).click();
@@ -99,8 +100,7 @@ test('changing life preserves local armour and evasion, quality and the socketed
   await expect(stat(page, 'Armour')).toHaveText(armour);
   await expect(stat(page, 'Evasion')).toHaveText(evasion);
   await expect(stat(page, 'Life')).toHaveText(life);
-  const expectedLife = numeric(await page.locator('.upgrade-replacement-result tbody tr')
-    .filter({ hasText: /^Life(?=[0-9\s])/ }).locator('td').nth(1).innerText());
+  const expectedLife = numeric(await page.locator('.swap-gain-card [data-stat="Life"] .swap-after').innerText());
   expect(expectedLife).toBeGreaterThan(numeric(life));
 
   await page.getByRole('button', { name: /Apply to build/ }).click();
@@ -117,7 +117,7 @@ test('changing life preserves local armour and evasion, quality and the socketed
 test('changing life gained on kill preserves local physical damage, quality and Iron Rune DPS', async ({ page }) => {
   await equipFixture(page, bow, 'weapon1');
   const original = await savedState(page);
-  const dps = await settledText(stat(page, 'Hit DPS'));
+  const dps = await settledText(playerHitDps(page));
   expect(numeric(dps)).toBeGreaterThan(0);
 
   await maximizeCopiedAffix(page, 'equipment:LifeGainedFromEnemyDeath1', 'Gain 6 Life per enemy killed');
@@ -129,14 +129,14 @@ test('changing life gained on kill preserves local physical damage, quality and 
   expect(edited.match(/^\{rune\}16% increased Physical Damage$/gm)).toHaveLength(1);
   expect(edited).not.toContain('Gain 5 Life per enemy killed');
   expect((await savedState(page)).items).toEqual(original.items);
-  await expect(stat(page, 'Hit DPS')).toHaveText(dps);
-  const expectedDps = numeric(await page.locator('.upgrade-replacement-result tbody tr').first().locator('td').nth(1).innerText());
+  await expect(playerHitDps(page)).toHaveText(dps);
+  const expectedDps = numeric(await page.locator('.swap-gain-card [data-stat="CombinedDPS"] .swap-after').innerText());
   expect(expectedDps).toBeCloseTo(numeric(dps), 0);
 
   await page.getByRole('button', { name: /Apply to build/ }).click();
   await expect(page.locator('.replacement-content')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Calculate replacement', exact: true })).toBeEnabled();
-  await expect(stat(page, 'Hit DPS')).toHaveText(dps);
+  await expect(playerHitDps(page)).toHaveText(dps);
   const applied = await savedState(page);
   expect(applied.items.find((item: { slot: string }) => item.slot === 'weapon1').text).toBe(edited);
   expect(applied.items.filter((item: { slot: string }) => item.slot !== 'weapon1'))

@@ -1,3 +1,4 @@
+import { waitForPageTransition } from './navigation';
 import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
 
 /**
@@ -18,6 +19,7 @@ export const compareTab = (page: Page, name: string) => page.getByRole('tab', { 
 /** The BD library page: open its Export section (collapsed by default), generate the share code and return it. */
 export async function generateShareCode(page: Page): Promise<string> {
   await page.locator('.shell-builds-button').click();
+  await waitForPageTransition(page);
   const exportSection = page.locator('details.bd-export');
   if (!await exportSection.evaluate(element => (element as HTMLDetailsElement).open)) await exportSection.locator(':scope > summary').click();
   await page.getByRole('button', { name: 'Generate share code', exact: true }).click();

@@ -69,7 +69,7 @@ describe('lineText', () => {
     expect(ledgerDisplayText(config, 'en-US', { GamblesprintMovementSpeed: 'Gamblesprint Movement Speed' }))
       .toBe('Configuration: Gamblesprint Movement Speed');
     expect(ledgerDisplayText({ ...config, text: '10% increased Damage' }, 'zh-CN')).toBe('10% increased Damage');
-    expect(ledgerDisplayText({ ...config, source_id: 'config.future' }, 'zh-CN')).toBe('配置：config.future');
+    expect(ledgerDisplayText({ ...config, source_id: 'config.future' }, 'zh-CN')).toBe('配置：缺少配置名称');
     const generated = { ...config, source_id: 'config.raiseSpectreEnableCurses', text: 'SpectreCursesEnabled',
       modifiers: [{ name: 'SpectreCursesEnabled', mod_type: 'FLAG', value: true, applied: null,
         status: 'unread' as const, reason: null, used_in: [] }] };

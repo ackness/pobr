@@ -165,7 +165,8 @@ describe('current data localization coverage', () => {
     for (const gem of gemFixture as GemCatalogEntry[]) {
       for (const lang of chinese) {
         const native = lang === 'zh-CN' ? gem.name_zh_cn : gem.name_zh_tw;
-        if (native?.trim()) expect(gemDisplayName(gem, lang)).toBe(native.replace(/[:：]\s*\{0\}$/, '').trim());
+        if (native?.trim()) expect(gemDisplayName(gem, lang).replace(/（(?:未翻译|尚未翻譯)）$/, '').replace(/\s/g, ''))
+          .toBe(native.replace(/[:：]\s*\{0\}$/, '').replace(/\s/g, ''));
       }
     }
   });

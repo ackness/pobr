@@ -1,3 +1,4 @@
+import { expectOriginalModifiersKeyboard } from './skillsAndCalcs';
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { augmentOption, choose, dpsValue, ehpValue, lifeValue, settledText } from './upgradesPage';
@@ -159,7 +160,8 @@ test('joint equipment candidates retain unmodeled effects and cannot apply an un
   await expect(planner.locator('.equipment-plan')).toHaveCount(6);
   await expect(candidate).toHaveCount(0);
   const diagnostics = planner.locator('.equipment-plan-results > details');
-  await diagnostics.locator('summary').click();
+  await diagnostics.locator(':scope > summary').click();
+  await expectOriginalModifiersKeyboard(diagnostics);
   await expect(diagnostics).toContainText('Market Candidate');
   await expect(diagnostics).toContainText('Unmodeled synthetic effect');
   await planner.getByRole('button', { name: /Remove candidate Market Candidate/ }).click();
@@ -185,7 +187,7 @@ test('pasting detects both rings, recommends the actual better destination, and 
   await destinations.filter({ hasText: /^Ring 1/ }).click();
   await expect(page.locator('.upgrade-replacement-result')).toContainText('Hit DPS decreases after this replacement');
   await best.click();
-  const expectedDps = numeric(await page.locator('.upgrade-replacement-result tbody tr').first().locator('td').nth(1).innerText());
+  const expectedDps = numeric(await page.locator('.swap-gain-card [data-stat="CombinedDPS"] .swap-after').innerText());
   await page.getByRole('button', { name: 'Apply to build · Ring 2', exact: true }).click();
   await expect(page.locator('.upgrade-replacement-result')).toHaveCount(0);
   await expect.poll(async () => numeric(await dps(page).innerText())).toBeCloseTo(expectedDps, 0);
@@ -199,12 +201,12 @@ test('a complete Chinese market copy matches the English calculation and weapon 
   await loadRings(page);
   await paste(page, copied);
   await expect(page.locator('.replacement-position')).toHaveCount(2);
-  const englishDps = await page.locator('.upgrade-replacement-result tbody tr').first().locator('td').nth(1).innerText();
+  const englishDps = await page.locator('.swap-gain-card [data-stat="CombinedDPS"] .swap-after').innerText();
   const cn = '物品种类: 戒指\n稀有度：稀有\n市集候选\n蓝玉戒指\n--------\n需求：等级60，90敏捷\n--------\n物品等级: 100\nImplicits: 1\n冰霜抗性 +30%\n--------\n火焰伤害提高 20%\n+100 生命上限';
   await paste(page, cn);
   await expect(page.locator('.replacement-parsed')).toContainText('市集候选');
   await expect(page.locator('.replacement-position')).toHaveCount(2);
-  await expect(page.locator('.upgrade-replacement-result tbody tr').first().locator('td').nth(1)).toHaveText(englishDps);
+  await expect(page.locator('.swap-gain-card [data-stat="CombinedDPS"] .swap-after')).toHaveText(englishDps);
   await expect(page.locator('.replacement-unsupported')).toHaveCount(0);
   const original = await savedState(page);
   await page.getByRole('group', { name: 'Active weapon set' }).getByRole('button', { name: 'Set 2', exact: true }).click();
@@ -279,7 +281,7 @@ test('shared augment limits include other equipment and anonymous effects never 
   expect((await savedState(page)).items).toEqual(original.items);
 });
 const ehp = ehpValue;
-const afterStat = async (page: Page, row: number) => numeric(await page.locator('.upgrade-replacement-result tbody tr').nth(row).locator('td').nth(1).innerText());
+const afterStat = async (page: Page, row: number) => numeric(await page.locator(`.swap-gain-card [data-stat="${['CombinedDPS', 'TotalEHP', 'Life'][row]}"] .swap-after`).innerText());
 
 async function settledComparison(page: Page) {
   await expect(page.locator('.replacement-content')).toHaveAttribute('aria-busy', 'false');

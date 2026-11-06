@@ -2,6 +2,7 @@ import { AppButton, AppInput } from '../shared/controls';
 import type { GemCatalogEntry } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
+import { skillFormName } from '../../lib/skillNames';
 import { activeSkillEffects } from '../../lib/skillSelection';
 import { AppSelect } from '../shared/AppSelect';
 import './skills.css';
@@ -22,7 +23,7 @@ export function SkillFormControls({ session, lang, groupIndex, catalog }: {
   return <div className="skill-form-controls" onClick={event => event.stopPropagation()}>
     {forms.length > 1 && <label>{tt('skills.form')}
       <AppSelect ariaLabel={tt('skills.form')} value={String(gem.stat_set_index ?? forms[0].index)}
-        options={forms.map(row => ({ value: String(row.index), label: row.label || `${tt('skills.defaultForm')} ${row.index}` }))}
+        options={forms.map(row => ({ value: String(row.index), label: row.label ? skillFormName(row.label, row.id, lang, catalog) : `${tt('skills.defaultForm')} ${row.index}` }))}
         disabled={session.busy} onChange={value => session.setSocketGroups(session.socketGroups.map((item, index) => index === groupIndex
           ? { ...item, gems: item.gems.map((valueGem, indexGem) => indexGem === effect.gemIndex ? { ...valueGem, stat_set_index: Number(value) } : valueGem) } : item))} />
     </label>}

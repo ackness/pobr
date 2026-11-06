@@ -3,6 +3,7 @@
  * PoB2 的装备对比 / 天赋点收益提示都用这一个原语。
  */
 
+import { skillFormName } from './skillNames';
 import { hasPosition, isAttributeNode } from './treeGeometry';
 import { classStartSkill } from './passiveGraph';
 import { STAT_SECTIONS, formatStatValue, type StatFormat, type Lang } from './statDisplay';
@@ -51,7 +52,7 @@ export function isPercentageStat(format: StatFormat | undefined): boolean {
 }
 
 /** Unknown, explicit null and unbounded results remain unavailable. */
-export function compareStats(before: DisplayStatValue[], after: DisplayStatValue[]): StatComparison[] {
+export function compareStats(before: readonly Pick<DisplayStatValue, 'id' | 'value'>[], after: readonly Pick<DisplayStatValue, 'id' | 'value'>[]): StatComparison[] {
   const a = new Map(before.map(stat => [stat.id, stat.value]));
   const b = new Map(after.map(stat => [stat.id, stat.value]));
   return [...new Set([...a.keys(), ...b.keys()])].map(id => {
@@ -306,5 +307,6 @@ export function comparisonGemForm(gem: SocketGroupInput['gems'][number], other: 
   const index = gem.stat_set_index ?? 1;
   if (index === 1 && (!other || other.skill_id !== gem.skill_id || (other.stat_set_index ?? 1) === 1)) return null;
   const forms = catalog.get(gem.skill_id)?.effect_forms?.find(effect => effect.skill_id === effectId)?.stat_sets;
-  return forms?.find(form => form.index === index)?.label || `${t(lang, 'compare.form')} ${index}`;
+  const form = forms?.find(form => form.index === index);
+  return form?.label ? skillFormName(form.label, form.id, lang, catalog) : `${t(lang, 'compare.form')} ${index}`;
 }

@@ -1,3 +1,4 @@
+import { waitForPageTransition } from './navigation';
 import { deflateSync } from 'node:zlib';
 import { expect, test } from '@playwright/test';
 import { comparisonWorkspace } from './fixtures/compare-workspace';
@@ -13,6 +14,7 @@ test('compare stages without mutation, share A config, and apply one item to ina
   const snapshot = () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).workspace);
   const original = await snapshot();
   await pageLink(page, 'Compare').click();
+  await waitForPageTransition(page);
   await choose(page, compareStageA(page), 'Spark / Starter');
   await choose(page, compareStageB(page), 'Spark / Target');
   const life = page.locator('.compare-summary [data-stat="Life"]');
@@ -76,6 +78,7 @@ for (const activeStage of ['stage-a', 'stage-b']) {
     const snapshot = () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).workspace);
     const original = await snapshot();
     await pageLink(page, 'Compare').click();
+    await waitForPageTransition(page);
     await choose(page, compareStageA(page), 'Spark / Starter');
     await choose(page, compareStageB(page), 'Spark / Target');
     await compareTab(page, 'Configuration').click();
@@ -137,6 +140,7 @@ test('record a persistent baseline, edit, and compare baseline A with current B 
   await page.reload();
   await expect(page.getByLabel('Level', { exact: true })).toHaveValue('30', { timeout: 90_000 });
   await page.locator('.shell-rail .rail-baseline').getByRole('button', { name: 'Compare', exact: true }).click();
+  await waitForPageTransition(page);
   await expect(compareStageA(page)).toContainText('Baseline (');
   await expect(compareStageB(page)).toContainText('Current');
   const saved = await snapshot();

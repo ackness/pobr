@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import type { AttributeChoice, JewelInput, PassiveNode, SlotItemInput, SocketGroupInput } from '../src/api/types';
 import { buildPassiveGraph, shortestAllocationPath } from '../src/lib/passiveGraph';
-import { busy, pageLink, statValue } from './shell';
+import { busy, pageLink, statValue, playerHitDps } from './shell';
 import { choose } from './treePage';
 
 const version = readFileSync('../data/CURRENT', 'utf8').trim();
@@ -37,7 +37,7 @@ interface FixtureState {
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state as FixtureState);
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
 const life = (page: Page) => statValue(page, /^Life$/);
-const totalDps = (page: Page) => statValue(page, /^Hit DPS$/);
+const totalDps = (page: Page) => playerHitDps(page);
 const effectiveHp = (page: Page) => statValue(page, /^Effective HP$/);
 
 type Planner = 'route' | 'joint';

@@ -72,7 +72,7 @@
   .shell-root .cmp-details { margin-top: 1.5rem; font-size: var(--text-sm); }
   .shell-root .cmp-details summary { cursor: pointer; color: var(--primary); }
   .shell-root .cmp-details strong { display: block; margin-top: .75rem; font-weight: 550; }
-  .shell-root .cmp-details ul { margin: .4rem 0 0; padding-left: 1.1rem; color: var(--muted-foreground); }
+  .shell-root .cmp-details > div > ul { margin: .4rem 0 0; padding-left: 1.1rem; color: var(--muted-foreground); }
 
   /* ── Items, skills, config: one difference per row, A beside B ──────────── */
   .shell-root .cmp-panel .compare-difference { padding: 1rem 0 1.25rem; border-top: 1px solid var(--border); }

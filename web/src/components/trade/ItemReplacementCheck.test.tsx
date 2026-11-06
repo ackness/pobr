@@ -47,7 +47,7 @@ vi.mock('react', async original => {
 });
 vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
 vi.mock('../shared/PreviewContext', () => ({ usePreview: () => null }));
-vi.mock('../../hooks/useLocalizedLines', () => ({ useLocalizedLines: (lines: string[]) => lines }));
+vi.mock('../../hooks/useLocalizedLines', () => ({ useLocalizedLines: (lines: string[]) => lines, useLocalizedNames: (names: { name: string }[]) => names.map(name => name.name) }));
 vi.mock('../../lib/itemReplacement', async original => ({ ...await original<typeof import('../../lib/itemReplacement')>(),
   compareReplacementPositions: (...args: unknown[]) => ui.compare(...args),
 }));
@@ -114,16 +114,24 @@ test('discovering an allocated jewel destination still invalidates the previous 
 });
 
 test.each([
-  ['en-US', 'Life', 'Fire Resistance', ' pp'],
-  ['zh-CN', '生命', '火焰抗性', ' 个百分点'],
-  ['zh-TW', '生命', '火焰抗性', ' 個百分點'],
-] as const)('replacement changes preserve metric precision and resistance units in %s', async (lang, life, resistance, unit) => {
+  ['en-US', 'Life', 'Effective HP', 'Combined DPS', 'Hit DPS', 'Fire Resistance', ' pp'],
+  ['zh-CN', '生命', '有效生命', '综合 DPS', '击中 DPS', '火焰抗性', ' 个百分点'],
+  ['zh-TW', '生命', '有效生命', '綜合 DPS', '擊中 DPS', '火焰抗性', ' 個百分點'],
+] as const)('replacement changes preserve metric precision and resistance units in %s', async (lang, life, ehp, combined, hit, resistance, unit) => {
   const comparison = setup([], lang);
-  comparison.resolve({ ...report, baseline: { Life: 100, FireResist: 70 },
-    positions: report.positions.map(position => ({ ...position, stats: { Life: 101.83, FireResist: 72.36 } })),
+  comparison.resolve({ ...report, baseline: { Life: 100, TotalEHP: 1999.2, CombinedDPS: 12345.2, TotalDPS: 100, FireResist: 70 },
+    positions: report.positions.map(position => ({ ...position, stats: { Life: 101.83, TotalEHP: 2001.03, CombinedDPS: 12347.03, TotalDPS: 101.83, FireResist: 72.36 } })),
   });
   await Promise.resolve();
   const html = comparison.render([]);
-  expect(html).toContain(`<tr><th>${life}</th><td>100</td><td>102</td><td class="delta-pos">+2</td></tr>`);
-  expect(html).toContain(`<tr><th>${resistance}</th><td>70%</td><td>72.4%</td><td class="delta-pos">+2.4${unit}</td></tr>`);
+  expect(html).toContain('class="swap-gain-card"');
+  const metric = (id: string) => html.match(new RegExp(`data-stat="${id}"[\\s\\S]*?</div>`))![0];
+  expect(metric('Life')).toContain(`<span>${life}</span><strong class="delta-pos">+1.8%</strong>`);
+  expect(metric('Life')).toContain('<span><span>100</span> → <b class="swap-after">102</b></span>');
+  expect(metric('TotalEHP')).toContain(`<span>${ehp}</span>`);
+  expect(metric('TotalEHP')).toContain('<span><span>1,999</span> → <b class="swap-after">2,001</b></span>');
+  expect(metric('CombinedDPS')).toContain(`<span>${combined}</span>`);
+  expect(metric('CombinedDPS')).toContain('<span><span>12,345</span> → <b class="swap-after">12,347</b></span>');
+  expect(html).toContain(`<tr><th>${hit}</th><td>100</td><td>101.83</td><td>+1.83</td></tr>`);
+  expect(html).toContain(`<tr><th>${resistance}</th><td>70%</td><td>72.4%</td><td>+2.4${unit}</td></tr>`);
 });

@@ -31,10 +31,13 @@
   .insp table { width: 100%; min-width: 0; table-layout: fixed; font-size: var(--text-sm); border-collapse: collapse; }
   .insp td, .insp th { padding: .3rem .5rem; text-align: left; vertical-align: top; overflow-wrap: anywhere; word-break: normal; white-space: normal; }
   .insp td:first-child:not(:last-child), .insp th:first-child:not(:last-child) { width: 48%; }
-  .insp .formula-operand, .insp .formula-result, .insp .mod-origin, .insp .mod-inactive-tag { white-space: normal; }
-  /* The inspector is a popover outside .shell-root, or docked inside it, so these rules don't depend on .shell-root.
-     .insp-body lifts them above the shared Calcs rules, which keep numeric cells narrow and unwrapped. */
-  .insp .insp-body .breakdown-detail table.breakdown-formula td:is(.formula-operand, .formula-result) { width: 26%; padding-inline: .375rem; white-space: normal; overflow-wrap: anywhere; }
+  .insp .mod-origin, .insp .mod-inactive-tag { white-space: normal; }
+  /* Portalled and docked inspectors share the app layer. Keep numbers intact and scroll only
+     the formula when large operands exceed the available width. Labels retain room to wrap. */
+  .insp .breakdown-scroll { min-width: 0; max-width: 100%; overflow-x: auto; }
+  .insp .insp-body .breakdown-detail table.breakdown-formula { table-layout: auto; min-width: 100%; max-width: none; }
+  .insp .insp-body .breakdown-detail table.breakdown-formula th { min-width: 8rem; white-space: normal; }
+  .insp .insp-body .breakdown-detail table.breakdown-formula td:is(.formula-operand, .formula-result) { width: auto; padding-inline: .375rem; white-space: nowrap; overflow-wrap: normal; }
   /* Type and value take only their content width (type may wrap between words, values never wrap);
      the modifier text gets the space left after the source and breaks only between words. */
   .insp .insp-body .breakdown-detail table.modifier-table { table-layout: auto; }
