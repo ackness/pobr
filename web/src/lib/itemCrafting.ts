@@ -1,11 +1,44 @@
 import type { CraftingMetadata } from '../api/itemCrafting';
-import type { TradeBase, TradeCatalog } from './tradeOptimizer';
-import type { Lang } from './i18n';
+import { basesForSlot, type TradeBase, type TradeCatalog } from './tradeOptimizer';
+import { bindT, slotLabel, type Lang } from './i18n';
 
 export interface CraftBase extends TradeBase { id: string; itemClass: string; displayNames?: CraftingMetadata['bases'][number]['display_names'] }
 export interface CraftCatalog extends TradeCatalog { bases: CraftBase[]; missingMods: number }
 export function craftBaseDisplayName(base: CraftBase, lang: Lang, fallback: string): string {
   return (lang === 'en-US' ? undefined : base.displayNames?.[lang]) ?? fallback;
+}
+
+/** Whole-name aliases select existing language-pack rows, never translated fragments. */
+export const itemClassName = (name: string) => ({
+  Amulet: 'Amulets', Belt: 'Belts', BodyArmour: 'Body Armours',
+  Boots: 'Boots', Gloves: 'Gloves', Helmet: 'Helmets', Ring: 'Rings',
+  LifeFlask: 'Life Flasks', ManaFlask: 'Mana Flasks', Charm: 'Charms',
+  OneHandSword: 'One Hand Swords', TwoHandSword: 'Two Hand Swords', OneHandAxe: 'One Hand Axes',
+  TwoHandAxe: 'Two Hand Axes', OneHandMace: 'One Hand Maces', TwoHandMace: 'Two Hand Maces',
+  Bow: 'Bows', Crossbow: 'Crossbows', Staff: 'Staves', Wand: 'Wands', Sceptre: 'Sceptres',
+  Shield: 'Shields', Quiver: 'Quivers', Spear: 'Spears', Quarterstaff: 'Quarterstaves',
+} as Record<string, string>)[name.replace(/\s/g, '')] ?? name;
+
+export function itemNameLabel(original: string, translated: string | undefined, lang: Lang): string {
+  if (lang === 'en-US' || (translated === original && /\p{Script=Han}/u.test(original) && !/[A-Za-z]/.test(original))) return original;
+  return translated && translated !== original && !/[A-Za-z]{2,}/.test(translated)
+    ? translated : `${original}（${bindT(lang)('items.originalName')}）`;
+}
+
+export function itemClassLabel(original: string, translated: string | undefined, lang: Lang): string {
+  if (original.replace(/\s/g, '') === 'BodyArmour') return slotLabel(lang, 'bodyarmour');
+  return lang === 'en-US' ? original.replace(/([a-z])([A-Z])/g, '$1 $2') : itemNameLabel(original, translated, lang);
+}
+
+export function defaultCraftClass(catalog: CraftCatalog, slot: string | null | undefined, text?: string): string {
+  const header = text?.split('\n').map(line => line.trim()).filter(Boolean);
+  const name = header?.[/^Rarity: (NORMAL|MAGIC)$/i.test(header[0]) ? 1 : 2];
+  const equipped = name && [...catalog.bases].sort((a, b) => b.name.length - a.name.length).find(base =>
+    name === base.name || (/^Rarity: MAGIC$/i.test(header![0]) && (name.endsWith(` ${base.name}`) || name.startsWith(`${base.name} of `) || name.includes(` ${base.name} of `))));
+  if (equipped) return equipped.itemClass;
+  const allowed = slot ? basesForSlot(catalog, slot) : [];
+  return catalog.bases.find(base => allowed.some(candidate => candidate.name === base.name))?.itemClass
+    ?? (catalog.bases.some(base => base.itemClass === 'Ring') ? 'Ring' : catalog.bases[0]?.itemClass ?? '');
 }
 
 /** Game IDs/tags/weights determine eligibility; the shared display catalogue supplies text. */

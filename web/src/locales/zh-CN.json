@@ -892,7 +892,18 @@
     "tree.unitValue": "点",
     "tree.unitRate": "每秒",
     "tree.unitPercent": "%",
-    "tree.disconnectedImport": "这棵天赋树的一套或两套武器组中有断线节点，请重新连接路径或退掉这些节点。切换武器组可分别检查。"
+    "tree.disconnectedImport": "这棵天赋树的一套或两套武器组中有断线节点，请重新连接路径或退掉这些节点。切换武器组可分别检查。",
+    "items.allChanges": "全部变化（{count}）",
+    "items.changedStat": "属性",
+    "items.originalName": "原名，暂无译名",
+    "items.contribution": "来源贡献（移除后的损失）",
+    "items.removalLoss": "移除此装备后的损失：综合 DPS {dps} · 有效生命 {ehp}",
+    "items.contributionHint": "来源贡献衡量移除此装备后的损失，不等于换装增益。负数表示移除后该属性反而提高。",
+    "items.contributionMissing": "暂无此装备的贡献结果。计算来源贡献，查看移除此装备后的损失。",
+    "lib.thisBuild": "仅此 BD",
+    "lib.sourceUnknown": "来源未知",
+    "lib.sourceBuild": "来源 BD：{name}",
+    "lib.unnamedBuild": "未命名 BD"
   },
   "bootMessage": {
     "初始化…": "初始化…",
@@ -2541,7 +2552,10 @@
     "error": "无法准备此传奇物品，请检查选择后重试。",
     "baseUnavailable": "目录中此变体没有对应基底，请选择其他变体。",
     "jewel": "天赋珠宝插槽",
-    "unavailable": "此基底无法在装备部位中比较。"
+    "unavailable": "此基底无法在装备部位中比较。",
+    "resolvingRoll": "正在解析词缀数值…",
+    "rollUnavailable": "未能解析词缀数值。请预览物品重试。",
+    "slotUnknown": "槽位待确认"
   },
   "itemCrafting": {
     "unknownRequirement": "此传奇基底缺少已确认的需求等级。可存入物品库，暂不提供装备预览。",
@@ -2566,7 +2580,8 @@
     "error": "无法创建此草稿，请检查物品数据后重试。",
     "missing": "部分游戏词缀缺少显示模板，暂时无法添加：",
     "normalHint": "普通物品没有随机词缀，选择魔法或稀有即可添加。",
-    "editUnavailable": "打造器暂不支持此物品的基底，可使用高级文本编辑修改。"
+    "editUnavailable": "打造器暂不支持此物品的基底，可使用高级文本编辑修改。",
+    "compareEquipped": "对比当前装备"
   },
   "tradeAnalysis": {
     "resume": "继续分析剩余位置",

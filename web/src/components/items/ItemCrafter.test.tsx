@@ -1,10 +1,10 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { EquippedItemCrafter, useEquippedItemDraft } from './ItemCrafter';
+import { ItemCrafter, EquippedItemCrafter, useEquippedItemDraft } from './ItemCrafter';
 
 const harness = vi.hoisted(() => ({ states: [] as unknown[], cursor: 0, effect: undefined as (() => (() => void)) | undefined,
-  normalize: vi.fn(), workbench: vi.fn(),
+  normalize: vi.fn(), workbench: vi.fn(), buttons: [] as import('react').ComponentProps<'button'>[], selects: [] as { ariaLabel: string; value: string; onChange: (value: string) => void }[],
 }));
 vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
   useState: (initial: unknown) => {
@@ -19,10 +19,16 @@ vi.mock('../../api/backend', () => ({ getBackend: async () => ({
   itemCraftingCatalog: async () => ({ bases: [
     { id: 'short', name: 'Ring', item_class: 'Ring', tags: ['ring'], mod_domain: 1 },
     { id: 'ring', name: 'Sapphire Ring', item_class: 'Ring', tags: ['ring'], mod_domain: 1 },
+    { id: 'bow', name: 'Simple Bow', item_class: 'Bow', tags: ['bow'], mod_domain: 1 },
   ], mods: [] }),
 }) }));
-vi.mock('../../lib/tradeOptimizer', () => ({ loadTradeCatalog: async () => ({ bases: [{ name: 'Ring' }, { name: 'Sapphire Ring' }], mods: [] }) }));
+vi.mock('../../lib/tradeOptimizer', async original => ({ ...await original<typeof import('../../lib/tradeOptimizer')>(), loadTradeCatalog: async () => ({ bases: [{ name: 'Ring', category: 'accessory.ring', implicits: [], level: 1 }, { name: 'Sapphire Ring', category: 'accessory.ring', implicits: [], level: 1 }, { name: 'Simple Bow', category: 'weapon.bow', implicits: [], level: 1 }], mods: [] }) }));
 vi.mock('./ItemDraftWorkbench', () => ({ ItemDraftWorkbench: (props: unknown) => { harness.workbench(props); return <div>Draft preview</div>; } }));
+
+vi.mock('../../hooks/useLocalizedLines', () => ({ useLocalizedLines: (lines: string[]) => lines,
+  useLocalizedNames: (names: { name: string }[]) => names.map(name => name.name) }));
+vi.mock('../shared/AppSelect', () => ({ AppSelect: (props: typeof harness.selects[number]) => { harness.selects.push(props); return <span>{props.value}</span>; } }));
+vi.mock('../shared/controls', () => ({ AppButton: (props: import('react').ComponentProps<'button'>) => { harness.buttons.push(props); return <button {...props} />; }, AppInput: () => null }));
 
 const original = 'Rarity: RARE\nVictory Ring\nSapphire Ring\nImplicits: 1\n+50 to maximum Life';
 const session = {} as BuildSession;
@@ -123,4 +129,58 @@ it('reports a failed item load', async () => {
   render(); harness.effect!();
   await vi.waitFor(() => expect(harness.states[1]).toBe(original));
   expect(render()).toContain('role="alert"');
+});
+
+it('starts the crafter in the selected equipped class and creates that class draft', async () => {
+  const current = { items: [{ slot: 'weapon1', text: 'Rarity: RARE\nMy Bow\nSimple Bow' }], flasks: [], limbs: [], busy: false } as unknown as BuildSession;
+  const renderCrafter = () => {
+    harness.cursor = 0; harness.selects = []; harness.buttons = [];
+    return renderToStaticMarkup(<ItemCrafter session={current} selectedSlot="weapon1" lang="en-US" />);
+  };
+  renderCrafter(); harness.effect!();
+  await vi.waitFor(() => expect(harness.states[0]).not.toBeNull());
+  renderCrafter();
+  expect(harness.selects.find(select => select.ariaLabel === 'Item class')?.value).toBe('Bow');
+  harness.buttons.find(button => button.children === 'Create draft')!.onClick!({} as never);
+  renderCrafter();
+  expect(harness.workbench).toHaveBeenLastCalledWith(expect.objectContaining({
+    base: expect.objectContaining({ itemClass: 'Bow' }), initialText: expect.stringContaining('Simple Bow'),
+  }));
+});
+
+
+it('follows slot defaults until a draft is created, then preserves its class and draft during slot inspection', async () => {
+  const current = { items: [{ slot: 'weapon1', text: 'Rarity: RARE\nMy Bow\nSimple Bow' }], flasks: [], limbs: [], busy: false } as unknown as BuildSession;
+  const renderCrafter = (selectedSlot: string) => {
+    harness.cursor = 0; harness.selects = []; harness.buttons = [];
+    return renderToStaticMarkup(<ItemCrafter session={current} selectedSlot={selectedSlot} lang="en-US" />);
+  };
+  renderCrafter('weapon1'); harness.effect!();
+  await vi.waitFor(() => expect(harness.states[0]).not.toBeNull());
+  renderCrafter('weapon1');
+  expect(harness.selects.find(select => select.ariaLabel === 'Item class')?.value).toBe('Bow');
+  renderCrafter('ring1');
+  expect(harness.selects.find(select => select.ariaLabel === 'Item class')?.value).toBe('Ring');
+  renderCrafter('weapon1');
+  harness.buttons.find(button => button.children === 'Create draft')!.onClick!({} as never);
+  renderCrafter('weapon1');
+  const draft = harness.workbench.mock.lastCall![0];
+  renderCrafter('ring1');
+  expect(harness.selects.find(select => select.ariaLabel === 'Item class')?.value).toBe('Bow');
+  expect(harness.workbench).toHaveBeenLastCalledWith(draft);
+});
+
+it('preserves a user-selected base when inspecting another slot before draft creation', async () => {
+  const current = { items: [], flasks: [], limbs: [], busy: false } as unknown as BuildSession;
+  const renderCrafter = (selectedSlot: string) => {
+    harness.cursor = 0; harness.selects = []; harness.buttons = [];
+    return renderToStaticMarkup(<ItemCrafter session={current} selectedSlot={selectedSlot} lang="en-US" />);
+  };
+  renderCrafter('ring1'); harness.effect!();
+  await vi.waitFor(() => expect(harness.states[0]).not.toBeNull());
+  renderCrafter('ring1');
+  harness.selects.find(select => select.ariaLabel === 'Item base')!.onChange('ring');
+  renderCrafter('weapon1');
+  expect(harness.selects.find(select => select.ariaLabel === 'Item class')?.value).toBe('Ring');
+  expect(harness.selects.find(select => select.ariaLabel === 'Item base')?.value).toBe('ring');
 });
