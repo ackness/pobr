@@ -14,6 +14,7 @@ import { busy, pageLink } from './shell';
 import { answerConfirm } from './confirmDialog';
 import { choose, newControlContext, setLanguage } from './treePage';
 import { openImport } from './buildLibrary';
+import { matrixCell } from './tags';
 
 const fixture = readFileSync(new URL('../../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', import.meta.url), 'utf8').trim();
 const version = readFileSync(new URL('../../data/CURRENT', import.meta.url), 'utf8').trim();
@@ -187,7 +188,7 @@ async function funded(page: Page) {
 
 for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
   for (const width of [1440, 390]) {
-    test(`${lang} ${width}px: keyboard allocation refund and explicit attribute choice equal independent pointer state request and real result`, async ({ page, browser }) => {
+    test(`${lang} ${width}px: keyboard allocation refund and explicit attribute choice equal independent pointer state request and real result`, matrixCell(lang, width), async ({ page, browser }) => {
       test.setTimeout(300_000);
       await page.setViewportSize({ width, height: 780 });
       await funded(page);

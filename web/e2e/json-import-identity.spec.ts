@@ -9,6 +9,7 @@ import type { BuildWorkspace } from '../src/lib/buildWorkspace';
 import { bindT, type Lang } from '../src/lib/i18n';
 import { workspaceText } from '../src/lib/workspaceText';
 import * as wasmReplay from '../src/wasm/pkg/pobr_wasm.js';
+import { matrixCell } from './tags';
 
 const frostBomb = readFileSync(new URL('../../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', import.meta.url), 'utf8').trim();
 const legacyBuild = readFileSync(new URL('../../examples/build-file/召唤奥黛丽黑本.build', import.meta.url), 'utf8');
@@ -163,7 +164,7 @@ async function rejectPaste(page: Page, value: string, destination: Destination, 
 
 for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
   for (const width of [390, 1440]) {
-    test(`${lang} ${width}px: unsupported pasted session rejects New build and confirmed Current stage with visible feedback and exact state`, async ({ page }, testInfo) => {
+    test(`${lang} ${width}px: unsupported pasted session rejects New build and confirmed Current stage with visible feedback and exact state`, matrixCell(lang, width), async ({ page }, testInfo) => {
       test.setTimeout(300_000);
       await page.setViewportSize({ width, height: 780 });
       await frostWorkspace(page, lang);

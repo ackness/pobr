@@ -4,6 +4,7 @@ import { deflateSync, inflateSync } from 'node:zlib';
 import type { ConfigInputValue, PassiveNode } from '../src/api/types';
 import type { SavedSession } from '../src/hooks/useBuildSession';
 import { booted, openBuilds, control, copyCurrentStage, currentStageName, go, hitDps, idle, importCode, noMotion, openSetting, openStage, row, savedState, setLanguage, shareCode } from './configPage';
+import { EXTENDED, matrixCell } from './tags';
 
 test.use(noMotion);
 
@@ -112,7 +113,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 for (const charge of charges) {
-  test(`${charge}: imported 1 and edited 2 reach the consumer through reload/export/reimport`, async ({ page }) => {
+  // Frenzy and Endurance repeat the Power path with another config key.
+  const cell = charge === 'Power' ? {} : EXTENDED;
+  test(`${charge}: imported 1 and edited 2 reach the consumer through reload/export/reimport`, cell, async ({ page }) => {
     const expected = await flatControls(page, [1, 2]);
     expect(numeric(expected.get(2)!)).toBeGreaterThan(numeric(expected.get(1)!));
     await importCode(page, syntheticCode({ [useKey(charge)]: true, [countKey(charge)]: 1 }, [charge]), 'currentStage');
@@ -147,7 +150,7 @@ for (const charge of charges) {
     await expect(hitDps(page)).toHaveText(expected.get(2)!);
   });
 
-  test(`${charge}: absent/reset uses max3 while use-off defeats both explicit counts`, async ({ page }) => {
+  test(`${charge}: absent/reset uses max3 while use-off defeats both explicit counts`, cell, async ({ page }) => {
     const expected = await flatControls(page, [0, 1, 2, 3]);
     await importCode(page, syntheticCode({ [useKey(charge)]: true }, [charge]), 'currentStage');
     const original = await saved(page);
@@ -180,7 +183,7 @@ for (const charge of charges) {
   // current count is retained but ordinary per-charge item tags floor stacks;
   // an explicit 5 remains above the default maximum rather than being clamped.
   for (const [importedCount, consumedStacks] of [[0, 3], [1.75, 1], [5, 5]] as const) {
-    test(`${charge}: raw numeric ${importedCount} survives reset/reload/export and consumes ${consumedStacks} item stacks`, async ({ page }) => {
+    test(`${charge}: raw numeric ${importedCount} survives reset/reload/export and consumes ${consumedStacks} item stacks`, cell, async ({ page }) => {
       const expected = await flatControls(page, [0, 2, consumedStacks]);
       await importCode(page, syntheticCode({
         [useKey(charge)]: true, [countKey(charge)]: importedCount,
@@ -338,7 +341,7 @@ for (const planner of ['support', 'passive', 'replacement'] as const) {
 
 for (const width of [390, 1440]) {
   for (const [lang, configName] of [['en-US', 'Config'], ['zh-TW', '配置'], ['zh-CN', '配置']] as const) {
-    test(`${lang} ${width}px: keyboard count edit/reset preserves raw imported types`, async ({ page }) => {
+    test(`${lang} ${width}px: keyboard count edit/reset preserves raw imported types`, matrixCell(lang, width), async ({ page }) => {
       await page.setViewportSize({ width, height: 780 });
       const expected = await flatControls(page, [2]);
       await importCode(page, syntheticCode({ usePowerCharges: true, overridePowerCharges: '1' }, ['Power']), 'currentStage');

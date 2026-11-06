@@ -12,6 +12,7 @@ import { buildPassiveGraph, shortestAllocationPath } from '../src/lib/passiveGra
 import { formatStatValue, STAT_SECTIONS } from '../src/lib/statDisplay';
 import { workspaceText } from '../src/lib/workspaceText';
 import * as wasmReplay from '../src/wasm/pkg/pobr_wasm.js';
+import { matrixCell } from './tags';
 
 const frostBomb = readFileSync(new URL('../../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', import.meta.url), 'utf8').trim();
 const version = readFileSync(new URL('../../data/CURRENT', import.meta.url), 'utf8').trim();
@@ -284,7 +285,7 @@ async function exactApply(page: Page, card: Locator, planner: Planner, before: C
 
 for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
   for (const width of [390, 1440]) {
-    test(`${lang} ${width}px: rejected imports preserve Frost Bomb and fresh route evaluation completes`, async ({ page }, testInfo) => {
+    test(`${lang} ${width}px: rejected imports preserve Frost Bomb and fresh route evaluation completes`, matrixCell(lang, width), async ({ page }, testInfo) => {
       test.setTimeout(300_000);
       await page.setViewportSize({ width, height: 780 });
       await frostWorkspace(page, lang);
@@ -471,7 +472,7 @@ test('strict saved-file rejection stays local and external decoder rejection als
 
 for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
   for (const width of [390, 1440]) {
-    test(`${lang} ${width}px: real failed calculation remains blocked across a later rejected import and recovers only after a valid edit`, async ({ page }, testInfo) => {
+    test(`${lang} ${width}px: real failed calculation remains blocked across a later rejected import and recovers only after a valid edit`, matrixCell(lang, width), async ({ page }, testInfo) => {
       test.setTimeout(300_000);
       await page.setViewportSize({ width, height: 780 });
       await syntheticWitch(page, lang);

@@ -4,6 +4,7 @@ import { deflateSync, inflateSync } from 'node:zlib';
 import type { ConfigInputValue, PassiveNode } from '../src/api/types';
 import type { SavedSession } from '../src/hooks/useBuildSession';
 import { booted, copyCurrentStage, currentStageName, go, hitDps, idle, importCode as importInto, noMotion, openStage, savedState, setLanguage, shareCode as exportCode } from './configPage';
+import { matrixCell } from './tags';
 
 test.use(noMotion);
 
@@ -171,7 +172,7 @@ test.beforeEach(async ({ page }) => {
 
 for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
   for (const width of [1440, 390]) {
-    test(`${lang} ${width}px: semantic actor keyboard edits/reset preserve opposite raw counts and typed roundtrip`, async ({ page }) => {
+    test(`${lang} ${width}px: semantic actor keyboard edits/reset preserve opposite raw counts and typed roundtrip`, matrixCell(lang, width), async ({ page }) => {
       test.setTimeout(300_000);
       await page.setViewportSize({ width, height: 780 });
       const expected = await flatControls(page, [6, 7, 8]);

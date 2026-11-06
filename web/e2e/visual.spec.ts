@@ -6,12 +6,16 @@
 import { expect, test } from '@playwright/test';
 import { bdLibraryButton } from './shell';
 import { goTo, importAndOpen } from './skillsAndCalcs';
+import { EXTENDED } from './tags';
 import { openImport } from './buildLibrary';
 
 const BREAKPOINTS = [320, 768, 1024, 1440, 1920, 2560, 3440] as const;
+// 2560 and 3440 are also covered by the populated workflow and `functional pages fit 3440px`; 1024 sits between
+// the 768 and 1440 layouts.
+const DEFAULT_BREAKPOINTS: readonly number[] = [320, 768, 1440, 1920];
 
 for (const width of BREAKPOINTS) {
-  test(`no horizontal overflow at ${width}px`, async ({ page }) => {
+  test(`no horizontal overflow at ${width}px`, DEFAULT_BREAKPOINTS.includes(width) ? {} : EXTENDED, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/build');
     await openImport(page);
