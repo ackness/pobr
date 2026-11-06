@@ -20,7 +20,8 @@ for (const width of [390, 1440, 2560]) {
     const other = skills.locator('button[aria-pressed="false"]').first();
     await expect(other).toBeEnabled();
     await page.locator('[aria-labelledby="ov-contribution"]').getByRole('button', { name: 'Source contributions', exact: true }).click();
-    await expect(page.locator('.ov-contrib')).toBeVisible();
+    // These bare spell groups have no removable equipment or buffs affecting Combined DPS.
+    await expect(page.locator('[aria-labelledby="ov-contribution"]')).toContainText('Nothing changes this number.');
     await other.click();
     await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
     await expect(page.locator('.rail-chip')).toHaveCount(0);

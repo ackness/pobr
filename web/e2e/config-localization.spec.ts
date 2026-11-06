@@ -22,8 +22,8 @@ async function ready(page: Page) {
   await expect(page.getByLabel('等级', { exact: true })).toBeEnabled({ timeout: 90_000 });
 }
 
-async function importBuild(page: Page) {
-  await page.locator('.import-code').first().fill(code);
+async function importBuild(page: Page, source = code) {
+  await page.locator('.import-code').first().fill(source);
   await page.locator('.import-submit').click();
   // An import lands on the Overview, with the reminder to review the configuration above the page.
   await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
@@ -39,6 +39,10 @@ async function find(page: Page, key: string) {
 
 test('catalog defaults are checked, translated, recalculable and resettable', async ({ page }) => {
   await ready(page);
+  // Keep catalog defaults inherited, with a real skill so the rail shows results.
+  await importBuild(page, deflateSync(`<PathOfBuilding2><Build level="90" className="Witch" mainSocketGroup="1"/>
+    <Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" quality="0" enabled="true"/></Skill></Skills>
+    <Items/><Config/></PathOfBuilding2>`).toString('base64url'));
   await go(page, '配置');
   const life = statValue(page, /^生命$/);
   await find(page, reward);

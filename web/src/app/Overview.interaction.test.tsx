@@ -52,6 +52,17 @@ it('explains that source analysis needs recalculating after a skill switch', () 
   expect(html).not.toContain('The build changed since this was measured.');
 });
 
+it('shows the completed empty analysis when every source has zero removal loss', () => {
+  h.contribution = { version: 2, selection: '1:1', data: {
+    baseline: { CombinedDPS: 200 },
+    entries: [0, 1].map(index => ({ kind: 'socket_group', id: String(index), deltas: { CombinedDPS: 0 } })),
+  } };
+  const html = render();
+  expect(html).toContain('Nothing changes this number.');
+  expect(html).not.toContain('class="ov-contrib"');
+  expect(html).not.toContain('run the analysis again');
+});
+
 it('selects the exact active effect atomically and leaves the current row alone', () => {
   h.skills = [0, 1].map(group_index => ({ group_index, active_skill_index: group_index === 0 ? 2 : 1, skill_id: 'Fireball', status: 'calculated', metrics: { combined_dps: 200 } })) as SkillMetricsEntry[];
   const tree = Overview({ session: baseSession, view: { calc, previous: null, stale: false }, lang: 'en-US', focusStat, navigate });
