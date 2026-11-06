@@ -169,7 +169,7 @@ it('does not refocus import when a stage switch remounts the page', () => {
   expect(harness.focus).toHaveBeenCalledOnce();
 });
 
-it('cancelling keyboard deletion restores focus to that row menu trigger after its menu item unmounts', async () => {
+it.each(['dialog', 'body', 'reopened menu', 'another editor'])('cancelling deletion preserves focus ownership: %s', async destination => {
   const { session, render } = fixture();
   const nodes = render();
   const focus = vi.fn();
@@ -183,10 +183,13 @@ it('cancelling keyboard deletion restores focus to that row menu trigger after i
     expect(request.trigger).toBe(trigger);
     requests.finish(request, false);
     // The dialog uses this close handler after the keyboard-selected menu item has disappeared.
-    restoreDialogFocus(request, { preventDefault() {} });
+    const body = {}, dialogButton = {}, menuItem = {}, editor = {};
+    const activeElement = { dialog: dialogButton, body, 'reopened menu': menuItem, 'another editor': editor }[destination];
+    const content = { ownerDocument: { activeElement, body }, contains: (node: unknown) => node === dialogButton } as unknown as HTMLElement;
+    restoreDialogFocus(request, { target: content, preventDefault() {} });
     return await answer === true;
   });
   await clickMenu(nodes, 'Delete build', 0);
   expect(session.removeBuild).not.toHaveBeenCalled();
-  expect(focus).toHaveBeenCalledOnce();
+  expect(focus).toHaveBeenCalledTimes(destination === 'dialog' || destination === 'body' ? 1 : 0);
 });
