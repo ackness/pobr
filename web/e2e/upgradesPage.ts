@@ -1,9 +1,10 @@
+import { t } from '../src/lib/i18n';
 import { expect, type Locator, type Page } from '@playwright/test';
-import { bdLibraryButton, pageLink, statValue } from './shell';
+import { bdLibraryButton, pageLink, statValue, playerHitDps } from './shell';
 
 /** The results panel rows the Items / Upgrades specs read. Labels are anchored: "Life" must not match "Unreserved Life". */
 export const lifeValue = (page: Page): Locator => statValue(page, /^Life$/);
-export const dpsValue = (page: Page): Locator => statValue(page, /^Hit DPS$/);
+export const dpsValue = (page: Page): Locator => playerHitDps(page);
 export const ehpValue = (page: Page): Locator => statValue(page, /^Effective HP$/);
 
 /** The stage that is open, as the top bar's "Current stage" control shows it. */
@@ -36,8 +37,8 @@ export async function goTo(page: Page, name: string, options?: { force?: boolean
   await expect(pageLink(page, name)).toHaveAttribute('aria-current', 'page');
 }
 
-/** The "Calculated skill" selector at the head of the results panel. */
-export const inspectedSkill = (page: Page): Locator => page.locator('#character-stats').getByRole('combobox', { name: 'Calculated skill', exact: true });
+/** The calculated skill selector at the head of the results panel. */
+export const inspectedSkill = (page: Page): Locator => page.locator('#character-stats').getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
 
 /**
  * The results panel eases a number to its new value over a fraction of a second, so a single read right after an

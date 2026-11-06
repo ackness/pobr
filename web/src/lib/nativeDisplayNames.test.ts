@@ -30,7 +30,7 @@ test('gem names follow stable links, overlay membership and current English, inc
 test('source English changes and explicit rejections block old and alternate-script names', () => {
   for (const pair of [['Other', '其他'], ['Fire', null], [null, null]] as Array<[string | null, string | null]>) {
     const result = nativeGemNames([gem], [link], [], [catalog({ 'BaseItemTypes.Name': { [link.id]: pair } })])[0];
-    expect(gemDisplayName(result, 'zh-CN')).toBe('Fire');
+    expect(gemDisplayName(result, 'zh-CN')).toBe('Fire（未翻译）');
     expect(result.name_zh_tw).toBe(gem.name_zh_tw);
   }
 });
@@ -250,4 +250,20 @@ test('a supplement scope record yields to an official text-path translation, nev
   const split = minions.split([monster('m', 'Wolf')], 'zh-CN');
   expect(split.pending).toEqual([]);
   expect(split.mergeDetailed([])).toEqual([{ text: '狼', origin: 'agent' }]);
+});
+
+
+test('item class names use a unique current whole name, then the language-pack text path when unowned', () => {
+  const source = catalog({ 'ItemClasses.Name': { LifeFlask: ['Life Flasks', '生命药剂'],
+    Helmets: ['Helmets', null], BodyArmours: ['Different name', '旧译文'] } });
+  const index = new NativeNameIndex([source]);
+  expect(index.resolve({ kind: 'itemClass', name: 'Life Flasks' }, 'zh-CN')).toBe('生命药剂');
+  expect(index.resolve({ kind: 'itemClass', name: 'Helmets' }, 'zh-CN')).toBeNull();
+  expect(index.resolve({ kind: 'itemClass', name: 'BodyArmours' }, 'zh-CN')).toBeUndefined();
+  const { pending, merge } = index.split([{ kind: 'itemClass', name: 'Amulets' }], 'zh-CN');
+  expect(pending).toEqual(['Amulets']);
+  expect(merge(['项链'])).toEqual(['项链']);
+  expect(index.resolve({ kind: 'itemClass', name: 'Life Flasks' }, 'zh-TW')).toBeUndefined();
+  source.scopes['ItemClasses.Name'].OtherFlask = ['Life Flasks', '冲突名称'];
+  expect(index.resolve({ kind: 'itemClass', name: 'Life Flasks' }, 'zh-CN')).toBeNull();
 });

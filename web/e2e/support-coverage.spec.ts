@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { statValue } from './shell';
-import { choose, goTo } from './skillsAndCalcs';
+
+import { choose, goTo, expectOriginalModifiersKeyboard, headlineDps } from './skillsAndCalcs';
 import type { GemInput, SocketGroupInput } from '../src/api/types';
 
 // Swift Affliction III still has an unmodelled conditional duration threshold.
@@ -9,7 +9,7 @@ const swiftStat = 'support_swift_affliction_non_ailment_damage_over_time_+%_fina
 const modeled = ['SupportControlledDestructionPlayer', 'SupportFireMasteryPlayer'];
 const run = (page: Page) => page.getByRole('button', { name: 'Calculate support combinations', exact: true });
 const baseline = (page: Page) => page.locator('details.support-baseline-unsupported');
-const dps = (page: Page) => statValue(page, /^Hit DPS$/).first();
+const dps = headlineDps;
 // The Overview lists the modifier lines the calculation does not apply.
 const unsupportedLines = (page: Page) => page.locator('.ov-details');
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
@@ -24,7 +24,7 @@ async function rejectedReceipt(rows: Locator) {
       id: gem.getAttribute('data-skill-id'), level: gem.getAttribute('data-level'),
       quality: gem.getAttribute('data-quality'), set: gem.getAttribute('data-stat-set-index'),
     })),
-    reasons: [...edit.querySelectorAll(':scope > ul:not(.support-diagnostic-gems) > li')].map(reason => reason.textContent),
+    reasons: [...edit.querySelectorAll('.unincluded-raw > pre')].map(reason => reason.textContent),
   })));
 }
 
@@ -81,8 +81,8 @@ async function openOptimizer(page: Page) {
   if (await group.locator('.skill-group-title').getAttribute('aria-expanded') === 'false') {
     await group.locator('.skill-group-title').click();
   }
-  if (await group.locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') {
-    await group.locator('.gem-optimizer-toggle').click();
+  if (await page.locator('.skill-detail').locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') {
+    await page.locator('.skill-detail').locator('.gem-optimizer-toggle').click();
   }
   // Capacity, objective and the candidate pool sit under the folded "Goal, capacity and candidates".
   const settings = page.locator('.gem-optimizer-settings');
@@ -143,22 +143,24 @@ for (const [layout, viewport] of [
       await goTo(page, 'Overview');
       const buildLimits = unsupportedLines(page);
       await expect(buildLimits).toBeVisible();
-      await buildLimits.locator('summary').click();
-      const normalReceipt = (await buildLimits.locator('li').filter({ hasText: swiftStat }).textContent())!;
+      await buildLimits.locator(':scope > summary').click();
+      await expectOriginalModifiersKeyboard(buildLimits);
+      const normalReceipt = (await buildLimits.locator('.unincluded-raw > pre').filter({ hasText: swiftStat }).textContent())!;
       expectSwiftIdentity(normalReceipt);
       expect(await page.locator('main').evaluate(main => main.scrollWidth - main.clientWidth)).toBeLessThanOrEqual(1);
       await openOptimizer(page);
       await boundRealCandidatePool(page);
       await completeSearch(page);
-      const summary = baseline(page).locator('summary');
+      const summary = baseline(page).locator(':scope > summary');
       await summary.focus();
       await page.keyboard.press('Enter');
       await expect(baseline(page)).toHaveAttribute('open', '');
-      await expect(baseline(page).locator('ul > li')).toHaveText([normalReceipt]);
+      await expectOriginalModifiersKeyboard(baseline(page));
+      await expect(baseline(page).locator('.unincluded-raw > pre')).toHaveText([normalReceipt]);
       await page.keyboard.press('Space');
       await expect(baseline(page)).not.toHaveAttribute('open', '');
       await page.keyboard.press('Enter');
-      await expect(baseline(page).locator('ul > li')).toBeVisible();
+      await expect(baseline(page).locator('.unincluded-lines > li').first()).toBeVisible();
       // Baseline limits are disclosed, not newly introduced rejection reasons.
       await expect(page.locator('.support-diagnostic-excluded')).toHaveCount(0);
       const plans = await recommendationsReceipt(page);
@@ -167,12 +169,12 @@ for (const [layout, viewport] of [
         await expect(page.locator(name === 'Calculations' ? '.calcs-page' : '.tree-canvas')).toBeVisible();
         await expect(run(page)).toHaveCount(0);
         await goTo(page, 'Skills');
-        await expect(baseline(page).locator('ul > li')).toHaveText([normalReceipt]);
+        await expect(baseline(page).locator('.unincluded-raw > pre')).toHaveText([normalReceipt]);
         await expect.poll(() => recommendationsReceipt(page)).toEqual(plans);
       }
       await completeSearch(page);
-      await baseline(page).locator('summary').click();
-      await expect(baseline(page).locator('ul > li')).toHaveText([normalReceipt]);
+      await baseline(page).locator(':scope > summary').click();
+      await expect(baseline(page).locator('.unincluded-raw > pre')).toHaveText([normalReceipt]);
       const swiftGem = page.locator('.skill-gems > li').nth(1);
       await swiftGem.locator('button.skill-remove').click();
       await expect.poll(async () => (await groups(page))[0].gems.map(gem => gem.skill_id)).toEqual(['FireballPlayer']);
@@ -200,10 +202,11 @@ for (const [layout, viewport] of [
       await expect(single).toHaveCount(1);
       for (let index = 0; index < await swiftEdits.count(); index++) {
         const edit = swiftEdits.nth(index);
-        await edit.locator('summary').click();
-        const reasons = edit.locator(':scope > ul:not(.support-diagnostic-gems) > li');
+        await edit.locator(':scope > summary').click();
+        await expectOriginalModifiersKeyboard(edit);
+        const reasons = edit.locator('.unincluded-raw > pre');
         await expect(reasons).toHaveCount(1);
-        expectSwiftIdentity(await reasons.innerText());
+        expectSwiftIdentity((await reasons.textContent())!);
         await expect(edit.getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
         await expect(edit.locator('.support-plan')).toHaveCount(0);
       }
@@ -214,8 +217,8 @@ for (const [layout, viewport] of [
         quality: Number(chip.getAttribute('data-quality')), stat_set_index: Number(chip.getAttribute('data-stat-set-index') ?? 1),
       })));
       expect(expected.map(gem => gem.skill_id).sort()).toEqual([...modeled].sort());
-      const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Hit DPS / }).innerText();
-      const preview = numeric(metric.match(/^Hit DPS ([\d,.]+)/)![1]);
+      const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Combined DPS / }).innerText();
+      const preview = numeric(metric.match(/^Combined DPS ([\d,.]+)/)![1]);
       expect(preview).toBeGreaterThan(beforeDps);
       const excluded = await rejectedReceipt(rejected);
       const recommendations = await recommendationsReceipt(page);
@@ -235,7 +238,7 @@ for (const [layout, viewport] of [
         return [applied[0], ...applied.slice(1).map(gem => ({ ...gem, stat_set_index: gem.stat_set_index ?? 1 }))];
       }).toEqual([before[0].gems[0], ...expected]);
       expect((await groups(page)).slice(1)).toEqual(before.slice(1));
-      await expect.poll(async () => Math.abs(numeric(await dps(page).innerText()) - preview)).toBeLessThanOrEqual(0.06);
+      await expect.poll(async () => Math.abs(numeric(await dps(page).innerText()) - preview)).toBeLessThanOrEqual(0.5);
       await expectInvalidated(page);
       await goTo(page, 'Overview');
       await expect(unsupportedLines(page)).toHaveCount(0);

@@ -119,7 +119,7 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
           </div>
           <span className="rail-hero-note">{minionDpsNote(lang, minion.name, limit)}</span>
         </div>
-        {mainSkill && mainSkill.combined_dps > 0 && <Row label={tt('sidebar.playerCombinedDps')} change={changes.get('CombinedDPS')}
+        {mainSkill && mainSkill.combined_dps > 0 && <Row stat="CombinedDPS" label={tt('sidebar.playerCombinedDps')} change={changes.get('CombinedDPS')}
           value={<AnimatedNumber value={mainSkill.combined_dps} format={numberOf(mainSkill.combined_dps)} />} onOpen={open('CombinedDPS')} />}
       </>;
     })()}

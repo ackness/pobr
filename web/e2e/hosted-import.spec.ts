@@ -1,10 +1,11 @@
+import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { loadoutSelect, openBuild, openExport, openLoadouts } from './buildLibrary';
 import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 
-const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Calculated skill', exact: true });
+const mainSkill = (page: Page) => page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
 const code = readFileSync(new URL('../worker-tests/fixtures/build-code.txt', import.meta.url), 'utf8').trim();
 
 test('hosted import keeps selection and loadouts through editing and export; failures preserve the build', async ({ page }, testInfo) => {

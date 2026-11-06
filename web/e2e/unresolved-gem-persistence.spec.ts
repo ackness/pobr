@@ -1,5 +1,6 @@
+import { t } from '../src/lib/i18n';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { openItemsAfterImport, pageLink, statValue } from './shell';
+import { openItemsAfterImport, pageLink, playerHitDps } from './shell';
 import { importInto, openBuild, openExport, selectStage as chooseStage, settled, stableText } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
@@ -9,8 +10,8 @@ import type { BuildWorkspace } from '../src/lib/buildWorkspace';
 
 type Envelope = SavedSession & { workspace: BuildWorkspace };
 const cometCode = readFileSync(new URL('../../examples/demo-bd-test/builds/sorceress-stormweaver-comet/code.txt', import.meta.url), 'utf8').trim();
-const hitDps = (page: Page) => statValue(page, /^Hit DPS$/).first();
-const mainSkill = (page: Page) => page.getByRole('combobox', { name: 'Calculated skill', exact: true });
+const hitDps = (page: Page) => playerHitDps(page);
+const mainSkill = (page: Page) => page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
 
 async function snapshot(page: Page): Promise<Envelope> {
   return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));
@@ -137,7 +138,7 @@ test('inactive Comet stages survive multibuild reload, switching and deliberate 
   await pageLink(page, 'Skills').click();
   const firestorm = page.locator('.skill-group').nth(8);
   await expandGroup(firestorm);
-  const activeGem = firestorm.locator('.skill-gem').nth(0);
+  const activeGem = page.locator('.skill-detail').locator('.skill-gem').nth(0);
   await activeGem.getByRole('spinbutton', { name: 'Level', exact: true }).fill('20');
   await idle(page);
   await activeGem.getByRole('spinbutton', { name: 'Quality', exact: true }).fill('21');
@@ -247,7 +248,7 @@ test('Comet PoB share-code reimport retains the unresolved slot and source gem m
   }
   expect(new Set(after.state.allocatedNodes)).toEqual(new Set(before.state.allocatedNodes));
   // PoB export may add standard false config defaults; imported values stay exact.
-  expect(after.state.params).toMatchObject(before.state.params);
+  expect(after.state.params).toMatchObject({ ...before.state.params });
   expect(after.notes).toBe(before.notes);
   expect(after.state.pobCode).toBe(sharedCode);
   expect(after.workspace.builds.slice(0, -1)).toEqual(before.workspace.builds);
@@ -340,7 +341,7 @@ test('removing an unresolved slot does not change the selected second active ski
   await pageLink(page, 'Skills').click();
   const group = page.locator('.skill-group').first();
   await expandGroup(group);
-  await group.locator('.skill-gem').nth(1).getByRole('button', { name: 'Remove gem', exact: true }).click();
+  await page.locator('.skill-detail').locator('.skill-gem').nth(1).getByRole('button', { name: 'Remove gem', exact: true }).click();
   await idle(page);
   await expect(mainSkill(page)).toContainText('Spark');
   await expect(hitDps(page)).toHaveText(beforeDps);
@@ -368,7 +369,7 @@ for (const count of [1, 2]) {
     await pageLink(page, 'Skills').click();
     const group = page.locator('.skill-group').first();
     await expandGroup(group);
-    await group.locator('.skill-gem').first().getByRole('button', { name: 'Remove gem', exact: true }).click();
+    await page.locator('.skill-detail').locator('.skill-gem').first().getByRole('button', { name: 'Remove gem', exact: true }).click();
     await idle(page);
     const after = await snapshot(page);
     expect(after.state.socketGroups[0].gems).toEqual(before.state.socketGroups[0].gems.slice(1));

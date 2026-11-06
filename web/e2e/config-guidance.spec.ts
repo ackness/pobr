@@ -1,3 +1,4 @@
+import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
@@ -13,7 +14,7 @@ const numeric = (text: string) => Number(text.replaceAll(',', ''));
 const controlIds = (page: Page) => page.locator('.config-section .config-item :is(input, button)[id^="config-"]')
   .evaluateAll(elements => elements.map(element => element.id).sort());
 /** The skill whose numbers the results panel shows. */
-const inspectedSkill = (page: Page) => page.locator('.shell-rail').getByRole('combobox', { name: 'Calculated skill', exact: true });
+const inspectedSkill = (page: Page) => page.locator('.shell-rail').getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
 const common = ['conditionEnemyShocked', 'conditionShockEffect'];
 const hitSettings: Record<string, string> = {
   Physical: 'enemyPhysicalReduction', Fire: 'enemyFireResist', Cold: 'enemyColdResist',
@@ -392,10 +393,10 @@ for (const planner of ['support', 'replacement'] as const) {
       const group = page.locator('.skill-group').first();
       const title = group.locator('.skill-group-title');
       if (await title.getAttribute('aria-expanded') === 'false') await title.click();
-      const toggle = group.locator('.gem-optimizer-toggle');
+      const toggle = page.locator('.skill-detail').locator('.gem-optimizer-toggle');
       if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
       // Goal, capacity and candidate settings are folded away until asked for.
-      const settings = group.locator('.gem-optimizer-settings');
+      const settings = page.locator('.skill-detail').locator('.gem-optimizer-settings');
       if (!(await settings.evaluate(element => (element as HTMLDetailsElement).open))) await settings.locator(':scope > summary').click();
       await page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true }).fill('2');
       await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
@@ -417,7 +418,7 @@ for (const planner of ['support', 'replacement'] as const) {
       });
       await expect(page.locator('.replacement-content')).toHaveAttribute('aria-busy', 'false');
       await expect(page.getByRole('button', { name: /^Apply to build/ })).toBeEnabled();
-      receipt = await receiptNumbers(page, '.upgrade-replacement-result tbody td');
+      receipt = await receiptNumbers(page, '.swap-gain-card .replacement-metric');
     }
     const before = await savedState(page);
     const baseline = await hitDps(page).innerText();
@@ -438,7 +439,7 @@ for (const planner of ['support', 'replacement'] as const) {
         elements.map(element => element.getAttribute('data-skill-id')))).toEqual(supportIds);
       await expect(page.locator('.support-plan').first().getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
     } else {
-      await expect.poll(() => receiptNumbers(page, '.upgrade-replacement-result tbody td')).toEqual(receipt);
+      await expect.poll(() => receiptNumbers(page, '.swap-gain-card .replacement-metric')).toEqual(receipt);
       await expect(page.getByRole('button', { name: /^Apply to build/ })).toBeEnabled();
     }
     await openConfig(page);

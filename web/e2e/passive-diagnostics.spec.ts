@@ -1,3 +1,4 @@
+import { expectOriginalModifiersKeyboard } from './skillsAndCalcs';
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import type { PassiveNode } from '../src/api/types';
@@ -70,8 +71,10 @@ async function complete(page: Page) {
 
 async function assertPairedDiagnostics(page: Page) {
   await expect(baseline(page)).toHaveCount(1);
-  await baseline(page).locator('summary').click();
-  await expect(baseline(page).locator('li').filter({ hasText: baselineReason })).toHaveText(baselineReason);
+  await baseline(page).locator(':scope > summary').click();
+  await expect(baseline(page).locator('.unincluded-lines > li')).toHaveText(['missing timeless jewel seed data']);
+  await expectOriginalModifiersKeyboard(baseline(page));
+  await expect(baseline(page).locator('.unincluded-raw > pre')).toHaveText(baselineReason);
   for (const reason of newReasons) await expect(baseline(page)).not.toContainText(reason);
   const outer = exclusions(page).locator('..');
   await outer.locator(':scope > summary').click();
@@ -80,16 +83,19 @@ async function assertPairedDiagnostics(page: Page) {
     hasText: /^Allocate: Attribute #49512 · Elemental Damage #5936$/,
   }) });
   await expect(route).toHaveCount(1);
-  await route.locator('summary').click();
-  await expect(route.locator('ul > li')).toHaveText(newReasons);
+  const routeDetails = route.locator(':scope > details');
+  await routeDetails.locator(':scope > summary').click();
+  await expect(route.locator('.unincluded-lines > li')).toHaveCount(newReasons.length);
+  await expectOriginalModifiersKeyboard(routeDetails);
+  await expect(route.locator('.unincluded-raw > pre')).toHaveText(newReasons.join('\n'));
   await expect(route).not.toContainText(baselineReason);
   await expect(route.getByRole('button', { name: 'Apply plan', exact: true })).toHaveCount(0);
   // Capture consumer-visible route/reason associations, not labels or incidental copy.
   return {
-    baseline: await baseline(page).locator('li').allTextContents(),
+    baseline: await baseline(page).locator('.unincluded-raw > pre').allTextContents(),
     routes: await exclusions(page).locator(':scope > li').evaluateAll(cards => cards.map(card => ({
       allocate: card.querySelector('details > p')?.textContent,
-      reasons: Array.from(card.querySelectorAll('ul > li')).map(reason => reason.textContent),
+      reasons: Array.from(card.querySelectorAll('.unincluded-raw > pre')).map(reason => reason.textContent),
     }))),
   };
 }
@@ -153,7 +159,7 @@ for (const edit of ['copied stage', 'jewel input'] as const) {
       await expect(baseline(page)).toHaveCount(0);
       // A plain jewel leaves no radius node unresolved. A route through a node
       // with a line the engine does not parse stays excluded, for that line.
-      const reasons = await exclusions(page).locator(':scope > li ul > li').allTextContents();
+      const reasons = await exclusions(page).locator(':scope > li .unincluded-raw > pre').allTextContents();
       for (const reason of reasons) expect(reason).toMatch(/^Tree:\d+: (?!missing timeless jewel seed data)/);
       await expect(page.locator('.tree-planner-body')).not.toContainText('missing timeless jewel seed data');
       await expect(page.locator('.shell-alert')).toHaveCount(0);

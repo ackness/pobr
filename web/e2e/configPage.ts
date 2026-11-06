@@ -1,7 +1,8 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { workspaceText } from '../src/lib/workspaceText';
 import { answerConfirm } from './confirmDialog';
-import { bdLibraryButton } from './shell';
+import { bdLibraryButton, playerHitDps } from './shell';
+import { waitForPageTransition } from './navigation';
 
 export type Lang = 'en-US' | 'zh-CN' | 'zh-TW';
 
@@ -25,16 +26,15 @@ export async function go(page: Page, name: string) {
   // Right after a reload the shell is still booting: wait for whichever of the two shows up.
   await expect(async () => { expect(await link.isVisible() || await menu.isVisible()).toBe(true); }).toPass({ timeout: 90_000 });
   if (!(await link.isVisible())) await menu.click();
-  // The shell commits a page change a frame after the click, so wait for the address to change before the next step.
+  // The shell commits a page change before its transition finishes. Wait for both before measuring or editing controls.
   const path = (await link.getAttribute('href'))!;
   await link.click();
   await expect(page).toHaveURL(new RegExp(`${path === '/' ? '/' : path}$`));
+  await waitForPageTransition(page);
 }
 
-/** Hit DPS, or the Combined DPS headline when the two values are equal. */
-export const hitDps = (page: Page): Locator =>
-  page.locator('.shell-rail #character-stats [data-stat="TotalDPS"] .rail-value')
-    .or(page.locator('.shell-rail #character-stats:not(:has([data-stat="TotalDPS"])) [data-stat="CombinedDPS"] .rail-hero-value')).first();
+/** The calculated player's Hit DPS row, whatever the interface language. */
+export const hitDps = playerHitDps;
 
 /** Numbers settle at once with reduced motion, so a read right after a calculation never catches a tween. */
 export const noMotion = { reducedMotion: 'reduce' } as const;

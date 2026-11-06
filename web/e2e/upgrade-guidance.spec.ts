@@ -1,3 +1,4 @@
+import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { dpsValue, goTo, openOptimizerSettings, settledNumber, settledText } from './upgradesPage';
@@ -17,7 +18,7 @@ async function caster(page: Page) {
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('combobox', { name: 'Calculated skill', exact: true }).click();
+  await page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true }).click();
   await page.getByRole('option', { name: /Fireball.*Group 1/ }).click();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
 }
@@ -41,7 +42,7 @@ test('current market Sum is a reference; complete replacement detects a downgrad
   await page.getByRole('button', { name: 'Calculate replacement' }).click();
   await expect(page.locator('.upgrade-replacement-result')).toContainText('Hit DPS decreases after this replacement');
   await expect(dps(page)).toHaveText(before);
-  const preview = await page.locator('.upgrade-replacement-result tbody tr').first().locator('td').nth(1).innerText();
+  const preview = await page.locator('.swap-gain-card [data-stat="CombinedDPS"] .swap-after').innerText();
   await page.getByRole('button', { name: 'Apply to build · Ring 1', exact: true }).click();
   await expect(dps(page)).not.toHaveText(before);
   await expect.poll(async () => Number((await dps(page).innerText()).replaceAll(',', ''))).toBeCloseTo(Number(preview.replaceAll(',', '')), 0);

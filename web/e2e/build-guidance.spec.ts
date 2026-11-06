@@ -1,3 +1,4 @@
+import { t } from '../src/lib/i18n';
 import { expect, test } from '@playwright/test';
 import { nav, openItemsAfterImport, pageLink } from './shell';
 import { readFileSync } from 'node:fs';
@@ -89,8 +90,8 @@ test.describe.skip('reference panel temporarily hidden pending current shared bu
       await page.setViewportSize({ width, height: 900 });
       await page.addInitScript(() => localStorage.setItem('pobr-lang', 'zh-CN'));
       await page.goto('/build');
-      await expect(page.getByRole('textbox', { name: '构筑代码' })).toBeVisible({ timeout: 90_000 });
-      await page.getByRole('textbox', { name: '构筑代码' }).fill(code);
+      await expect(page.getByRole('textbox', { name: t('zh-CN', 'build.code') })).toBeVisible({ timeout: 90_000 });
+      await page.getByRole('textbox', { name: t('zh-CN', 'build.code') }).fill(code);
       await page.locator('.import-submit').click();
       await openItemsAfterImport(page);
       await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 60_000 });

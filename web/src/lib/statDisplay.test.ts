@@ -44,6 +44,13 @@ describe('formatStatValue', () => {
     expect(formatStatValue(1000, 'float2', lang)).toBe('1,000');
   });
 
+  test('keeps total, maximum and internal resistance values in percent', () => {
+    for (const id of ['FireResistTotal', 'ColdResistMax', 'LightningResistOverCap', 'TotemChaosResist']) {
+      expect(statFormat(id), id).toBe('percent');
+      expect(formatStatValue(75, statFormat(id)), id).toBe('75%');
+    }
+  });
+
   test('uses metric precision for both a headline and its result', () => {
     expect(formatStatValue(1693.83, statFormat('Life'))).toBe('1,694');
     expect(formatStatValue(5307.37, statFormat('TotalDPS'))).toBe('5,307');

@@ -19,6 +19,14 @@ export const statValue = (page: Page, label: string | RegExp): Locator => {
   return row.or(equivalentHeadline);
 };
 
+/** The player's Hit DPS detail, or its equal Combined DPS when the duplicate row is hidden.
+ * Keep pinned copies out of this lookup; folded detail values remain readable. */
+export const playerHitDps = (page: Page): Locator => {
+  const detail = '#character-stats > .rail-section:not(.rail-pinned) [data-stat="TotalDPS"]';
+  return page.locator(`${detail} .rail-value`).or(page.locator(`#character-stats:not(:has(> .rail-section:not(.rail-pinned) [data-stat="TotalDPS"]))`)
+    .locator('.rail-headline [data-stat="CombinedDPS"] .rail-hero-value, .rail-headline .rail-row[data-stat="CombinedDPS"] .rail-value'));
+};
+
 /** An import lands on the Overview. Most specs then work on the Items page, so follow the import there. */
 export async function openItemsAfterImport(page: Page) {
   await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });

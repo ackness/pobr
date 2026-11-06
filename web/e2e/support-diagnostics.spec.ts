@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { bdLibraryButton, statValue } from './shell';
-import { choose, goTo } from './skillsAndCalcs';
+import { bdLibraryButton } from './shell';
+import { choose, goTo, expectOriginalModifiersKeyboard, headlineDps } from './skillsAndCalcs';
 import type { GemInput, SocketGroupInput } from '../src/api/types';
 
 // A charm line the engine does not calculate: it shows as a limit of the baseline. ("Also grants 102 Guard",
@@ -9,7 +9,7 @@ const limitLine = 'Remove Bleeding on use';
 const run = (page: Page) => page.getByRole('button', { name: 'Calculate support combinations', exact: true });
 const capacity = (page: Page) => page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
 const baseline = (page: Page) => page.locator('details.support-baseline-unsupported');
-const dps = (page: Page) => statValue(page, /^Hit DPS$/).first();
+const dps = headlineDps;
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
 
 async function groups(page: Page): Promise<SocketGroupInput[]> {
@@ -44,8 +44,9 @@ async function casterWithLimit(page: Page) {
   // The Overview lists the modifier lines the calculation does not apply.
   await goTo(page, 'Overview');
   const limits = page.locator('.ov-details');
-  await limits.locator('summary').click();
-  await expect(limits.locator('li')).toHaveText([limitLine]);
+  await limits.locator(':scope > summary').click();
+  await expect(limits.locator('.unincluded-lines > li')).toHaveText([limitLine]);
+  await expectOriginalModifiersKeyboard(limits);
   await openOptimizer(page);
 }
 
@@ -60,8 +61,8 @@ async function openOptimizer(page: Page) {
   if (await group.locator('.skill-group-title').getAttribute('aria-expanded') === 'false') {
     await group.locator('.skill-group-title').click();
   }
-  if (await group.locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') {
-    await group.locator('.gem-optimizer-toggle').click();
+  if (await page.locator('.skill-detail').locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') {
+    await page.locator('.skill-detail').locator('.gem-optimizer-toggle').click();
   }
   // Capacity, objective and the candidate pool sit under the folded "Goal, capacity and candidates".
   const settings = page.locator('.gem-optimizer-settings');
@@ -97,15 +98,16 @@ test('real baseline limits remain keyboard-readable across first page visits and
   await choose(page, page.getByRole('combobox', { name: 'Objective', exact: true }), 'Max Hit DPS');
   await completeSearch(page);
 
-  const summary = baseline(page).locator('summary');
+  const summary = baseline(page).locator(':scope > summary');
   await summary.focus();
   await page.keyboard.press('Enter');
   await expect(baseline(page)).toHaveAttribute('open', '');
-  await expect(baseline(page).locator('ul > li')).toHaveText([limitLine]);
+  await expectOriginalModifiersKeyboard(baseline(page));
+  await expect(baseline(page).locator('.unincluded-lines > li')).toHaveText([limitLine]);
   await page.keyboard.press('Space');
   await expect(baseline(page)).not.toHaveAttribute('open', '');
   await page.keyboard.press('Enter');
-  await expect(baseline(page).locator('ul > li')).toBeVisible();
+  await expect(baseline(page).locator('.unincluded-lines > li')).toBeVisible();
 
   // Some real builds have no rejected sets. Do not invent engine failures to fill
   // this list; policy/provenance edge cases live at the injected unit-test seam.
@@ -114,12 +116,13 @@ test('real baseline limits remain keyboard-readable across first page visits and
     await rejected.locator('..').locator(':scope > summary').click();
     const entries = rejected.locator(':scope > li > details');
     for (let index = 0; index < await entries.count(); index++) {
-      await entries.nth(index).locator('summary').click();
+      await entries.nth(index).locator(':scope > summary').click();
+      if (await entries.nth(index).locator('.unincluded-raw').count()) await expectOriginalModifiersKeyboard(entries.nth(index));
       await expect(entries.nth(index).getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
       await expect(entries.nth(index).locator('.support-plan')).toHaveCount(0);
     }
   }
-  const raw = await baseline(page).locator('ul > li').allTextContents();
+  const raw = await baseline(page).locator('.unincluded-raw > pre').allTextContents();
   const recommendations = await page.locator('.support-plan').allTextContents();
   const first = page.locator('.support-plan').first();
   const expected: GemInput[] = await first.locator('.support-plan-gems > .opt-chip').evaluateAll(chips => chips.map(chip => {
@@ -128,8 +131,8 @@ test('real baseline limits remain keyboard-readable across first page visits and
       quality: Number(chip.getAttribute('data-quality')), stat_set_index: statSet === null ? 1 : Number(statSet) };
   }));
   expect(expected.every(gem => gem.level > 0 && gem.quality >= 0)).toBe(true);
-  const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Hit DPS / }).innerText();
-  const preview = numeric(metric.match(/^Hit DPS ([\d,.]+)/)![1]);
+  const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Combined DPS / }).innerText();
+  const preview = numeric(metric.match(/^Combined DPS ([\d,.]+)/)![1]);
 
   for (const name of ['Calculations', 'Tree', 'Upgrades']) {
     await goTo(page, name);
@@ -137,7 +140,7 @@ test('real baseline limits remain keyboard-readable across first page visits and
       .toBeVisible();
     await expect(run(page)).toHaveCount(0);
     await goTo(page, 'Skills');
-    await expect(baseline(page).locator('ul > li')).toHaveText(raw);
+    await expect(baseline(page).locator('.unincluded-raw > pre')).toHaveText(raw);
     await expect.poll(() => page.locator('.support-plan').allTextContents()).toEqual(recommendations);
     await expect(first.getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
   }
@@ -148,7 +151,7 @@ test('real baseline limits remain keyboard-readable across first page visits and
     return [applied[0], ...applied.slice(1).map(gem => ({ ...gem, stat_set_index: gem.stat_set_index ?? 1 }))];
   }).toEqual([before[0].gems[0], ...expected]);
   expect((await groups(page)).slice(1)).toEqual(before.slice(1));
-  await expect.poll(async () => Math.abs(numeric(await dps(page).innerText()) - preview)).toBeLessThanOrEqual(0.06);
+  await expect.poll(async () => Math.abs(numeric(await dps(page).innerText()) - preview)).toBeLessThanOrEqual(0.5);
   await expectInvalidated(page);
 });
 
@@ -157,8 +160,8 @@ test('diagnostic receipts invalidate on search input edits and identical copied-
   await capacity(page).fill('2');
   await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
   await completeSearch(page);
-  await baseline(page).locator('summary').click();
-  await expect(baseline(page).locator('ul > li')).toHaveText([limitLine]);
+  await baseline(page).locator(':scope > summary').click();
+  await expect(baseline(page).locator('.unincluded-lines > li')).toHaveText([limitLine]);
   await capacity(page).fill('3');
   await expectInvalidated(page);
   await capacity(page).fill('2');

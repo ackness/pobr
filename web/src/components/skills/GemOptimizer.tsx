@@ -1,3 +1,4 @@
+import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { usePreview } from '../shared/PreviewContext';
 import { uiStorageKey } from '../../lib/sessionStorage';
@@ -8,7 +9,8 @@ import type { CalculateBuildRequest } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
-import { formatStatValue, statFormat, formatNumber, statMap } from '../../lib/statDisplay';
+import { changesFromRecords } from '../../app/preview/fromRecords';
+import { formatStatValue, formatNumber, statMap } from '../../lib/statDisplay';
 import { supportText } from '../../lib/supportI18n';
 import type { Objective } from '../../lib/optimize';
 import { applySupportPlan, eligibleSupports, lineageAvailable, optimizeSupports, type SupportMetadata, type SupportOptimization } from '../../lib/supportOptimizer';
@@ -52,7 +54,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const group = session.socketGroups[groupIndex];
   const byId = useMemo(() => new Map(catalog.map(gem => [gem.skill_id, gem])), [catalog]);
   const occupied = group?.gems.filter(gem => byId.get(gem.skill_id)?.is_support).length ?? 0;
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [capacity, setCapacity] = useState(Math.max(2, Math.min(5, occupied)));
   const [includeLineage, setIncludeLineage] = useState(true);
   const preferenceKey = uiStorageKey(`pobr-support-exclusions:${skillKey}`);
@@ -65,6 +67,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const [error, setError] = useState<string | null>(null);
   const [evaluated, setEvaluated] = useState<SupportEvaluation | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const settingsRef = useRef<HTMLDetailsElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const consumedFocus = useRef<number | undefined>(undefined);
   const pool = useMemo(() => {
@@ -155,7 +158,8 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     invalidate();
     session.setSocketGroups(groups);
   };
-  const number = (value: number) => formatNumber(value);
+  const number = (value: number | undefined) => value === undefined ? '—' : formatStatValue(value, 'int', lang);
+  const metricLabel = (stat: string) => statNameLabel(lang, stat);
   const change = (before: number, after: number) => before > 0
     ? `${after >= before ? '+' : ''}${formatNumber((after / before - 1) * 100, 1, 1)}%` : `${after >= before ? '+' : ''}${number(after - before)}`;
 
@@ -212,8 +216,9 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const errorBlock = error && <p className="opt-error">{error}</p>;
   const resultsBlock = result && <div className="support-results">
     <div className="support-baseline"><strong>{st('baseline')}</strong>
-      <span>{statNameLabel(lang, 'TotalDPS')} {formatStatValue(result.baseline.TotalDPS ?? 0, statFormat('TotalDPS'), lang)}</span><span>{statNameLabel(lang, 'TotalEHP')} {formatStatValue(result.baseline.TotalEHP ?? 0, statFormat('TotalEHP'), lang)}</span>
+      <span>{metricLabel('CombinedDPS')} {number(result.baseline.CombinedDPS)}</span><span>{metricLabel('TotalEHP')} {number(result.baseline.TotalEHP)}</span>
     </div>
+    <p className="skills-hint">{st('keepActive')}</p>
     <details className="support-calculation-details">
     <summary>{st('calculationDetails')}</summary>
     <p className="skills-hint">{st('results')} {result.evaluated} · {st('unsupported')} {result.unmodeled}</p>
@@ -221,7 +226,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     {result.baselineUnsupported.length > 0 && <details className="support-diagnostics support-baseline-unsupported">
       <summary>{st('baselineLimits')}{lang === 'en-US' ? ': ' : '：'}{result.baselineUnsupported.length}</summary>
       <p className="skills-hint">{st('baselineLimitsHint')}</p>
-      <ul>{result.baselineUnsupported.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
+      <UnincludedModifiers lines={result.baselineUnsupported} lang={lang} items={result.request.items} />
     </details>}
     {result.excluded.length > 0 && <details className="support-diagnostics">
       <summary>{st('diagnosticExcluded')}{lang === 'en-US' ? ': ' : '：'}{result.excluded.length}</summary>
@@ -233,21 +238,33 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
             {gemName(gem.skill_id)} · {st('level')} {gem.level} · {st('quality')} {gem.quality} · {st('statSet')} {gem.stat_set_index ?? 1}
           </li>)}</ul>
           {edit.unsupported.length > 0 && <><p>{st('newLimits')}</p>
-            <ul>{edit.unsupported.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul></>}
+            <UnincludedModifiers lines={edit.unsupported} lang={lang} /></>}
           {edit.error && <p className="opt-error">{st('engineError')}{lang === 'en-US' ? ': ' : '：'}{edit.error}</p>}
           {edit.invalidStats && <p className="opt-error">{st('invalidStats')}</p>}
         </details>
       </li>)}</ol>
     </details>}
     </details>
-    {!result.plans.length && <p className="skills-hint">{st('noGain')}</p>}
+    {result.evaluated === 0 ? <div role="status">
+      <p className="skills-hint">{st('notEvaluated')} {st(capacity < occupied ? 'blockedCapacity'
+        : !candidateCount ? pool.unknown ? 'blockedUnknown' : 'blockedCandidates' : 'blockedCompatibility')}</p>
+      <AppButton onClick={() => { if (settingsRef.current) { settingsRef.current.open = true; settingsRef.current.querySelector('input')?.focus(); } }}>{st('adjustSearch')}</AppButton>
+    </div> : !result.plans.length && <p className="skills-hint">{st('noGain')}</p>}
     {result.plans.map((plan, index) => {
-      // Resting on a recommendation shows what it would do, without applying it (only where a preview provider is mounted; handlers add no attributes).
+      const changes = changesFromRecords(
+        Object.fromEntries(['CombinedDPS', 'TotalEHP'].flatMap(id => result.baseline[id] === undefined ? [] : [[id, result.baseline[id]]])),
+        Object.fromEntries(['CombinedDPS', 'TotalEHP'].flatMap(id => plan.stats[id] === undefined ? [] : [[id, plan.stats[id]]])));
       const hover = preview ? {
-        onEnter: (event: { currentTarget: Element }) => preview.show({ key: `support:${groupIndex}:${index}`, label: `${words(lang, 'Supports', '辅助', '輔助')}: ${plan.supports.map(gem => gemName(gem.skill_id)).join(' + ')}`,
-          request: () => { const request = session.currentRequest(); return request ? { ...request, socket_groups: applySupportPlan(request.socket_groups ?? session.socketGroups, groupIndex, plan) } : null; } }, event.currentTarget),
+        onEnter: (event: { currentTarget: Element }) => preview.showChanges(`${words(lang, 'Supports: ', '辅助：', '輔助：')}${plan.supports.map(gem => gemName(gem.skill_id)).join(' + ')}`, changes, event.currentTarget),
         onLeave: preview.clear } : undefined;
+      const equipped = group.gems.filter(gem => byId.get(gem.skill_id)?.is_support);
+      const removed = equipped.filter(gem => !plan.supports.some(next => next.skill_id === gem.skill_id));
+      const added = plan.supports.filter(gem => !equipped.some(old => old.skill_id === gem.skill_id));
       return <article className="support-plan" key={index} onMouseEnter={hover?.onEnter} onMouseLeave={hover?.onLeave} onFocus={hover?.onEnter} onBlur={hover?.onLeave}>
+      <div className="support-plan-edits">
+        <p>{st('equip')}{lang === 'en-US' ? ': ' : '：'}{added.map(gem => gemName(gem.skill_id)).join(' · ') || st('none')}</p>
+        <p>{st('remove')}{lang === 'en-US' ? ': ' : '：'}{removed.map(gem => gemName(gem.skill_id)).join(' · ') || st('none')}</p>
+      </div>
       <div className="support-plan-gems">{plan.supports.map(gem => <span className="opt-chip" key={gem.skill_id} data-skill-id={gem.skill_id}
         data-level={gem.level} data-quality={gem.quality} data-stat-set-index={gem.stat_set_index ?? undefined}>
         {gemName(gem.skill_id)}{byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
@@ -255,11 +272,11 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
         <AppButton className="support-exclude-button" aria-label={`${st('exclude')} ${gemName(gem.skill_id)}`}
           title={`${st('exclude')} ${gemName(gem.skill_id)}`} onClick={() => exclude(gem.skill_id)}><span aria-hidden>×</span></AppButton>
       </span>)}</div>
-      <div className="support-plan-metrics">{['TotalDPS', 'TotalEHP'].map(stat => {
-        const before = result.baseline[stat] ?? 0;
-        const after = plan.stats[stat] ?? 0;
-        return <span key={stat} className={after >= before ? 'is-positive' : 'is-negative'}>
-          {statNameLabel(lang, stat)} {formatStatValue(after, statFormat(stat), lang)} <strong>{change(before, after)}</strong>
+      <div className="support-plan-metrics">{['CombinedDPS', 'TotalEHP'].map(stat => {
+        const before = result.baseline[stat];
+        const after = plan.stats[stat];
+        return <span key={stat} className={before === undefined || after === undefined || after === before ? undefined : after > before ? 'is-positive' : 'is-negative'}>
+          {metricLabel(stat)} {number(after)} <strong>{before === undefined || after === undefined ? '—' : change(before, after)}</strong>
         </span>;
       })}</div>
       <SupportDescriptions lang={lang} gems={plan.supports.map(gem => ({
@@ -268,7 +285,6 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
       <AppButton disabled={session.busy} onClick={() => apply(index)}>{tt('opt.apply')}</AppButton>
     </article>;
     })}
-    <p className="skills-hint">{st('keepActive')}</p>
   </div>;
   const toggleButton = <AppButton className="gem-optimizer-toggle" aria-expanded={expanded} onClick={() => {
     setExpanded(!expanded);
@@ -277,12 +293,12 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     <span className="row-caret" aria-hidden>▸</span>{st('title')}
   </AppButton>;
 
-  // The recommendations lead: the action sits in the header, results come before any setting.
+  // Manual picking is outside this optional section; calculated results precede settings.
   return (
     <div className="gem-optimizer" ref={rootRef}>
       <div className="gem-optimizer-head">
         {toggleButton}
-        {runButton}
+        {expanded && runButton}
       </div>
       {expanded && <div className="gem-optimizer-body">
         {lineageOption}
@@ -291,7 +307,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
         {poolNotes}
         {errorBlock}
         {resultsBlock}
-        <details className="gem-optimizer-settings">
+        <details className="gem-optimizer-settings" ref={settingsRef}>
           <summary>{words(lang, 'Goal, capacity and candidates', '目标、容量与候选宝石', '目標、容量與候選寶石')}</summary>
           <div className="gem-optimizer-settings-body">
             {hint}
