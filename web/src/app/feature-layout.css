@@ -12,6 +12,22 @@
 .gem-picker-popover .gem-picker-item { border-radius: .65rem; min-height: 2.5rem; flex-wrap: wrap; }
 .gem-picker-popover .gem-picker-item.is-highlight { background: var(--accent); color: var(--accent-foreground); }
 .gem-picker-popover .gem-picker-chips { flex-wrap: wrap; }
+.gem-description-panel { min-width: 0; padding: var(--space-3); overflow-wrap: anywhere; font-size: var(--text-sm); }
+.gem-description-name { display: block; line-height: 1.5; }
+.gem-description-panel .gem-description-text { white-space: pre-line; margin-block: var(--space-2); line-height: 1.6; }
+.gem-description-panel .gem-description-tags, .gem-description-original { color: var(--text-secondary); font-size: var(--text-xs); }
+.gem-description-panel .gem-description-tags { margin-block: var(--space-2); }
+.gem-picker-popover.has-descriptions { width: min(54rem, calc(100vw - 1.5rem)); max-height: min(34rem, var(--radix-popover-content-available-height)); }
+.gem-picker-body { display: flex; min-height: 0; overflow: hidden; }
+.gem-picker-options { flex: 1 1 55%; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.gem-picker-body > .gem-description-panel { flex: 1 1 45%; min-height: 0; overflow-y: auto; border-left: 1px solid var(--border-subtle); }
+.gem-picker-body .gem-picker-list { max-height: 28rem; }
+.gem-picker-body .gem-picker-item { overflow-wrap: anywhere; }
+@media (max-width: 719px) {
+  .gem-picker-body { flex-direction: column; }
+  .gem-picker-body .gem-picker-list { max-height: min(12rem, 28dvh); }
+  .gem-picker-body > .gem-description-panel { max-height: min(16rem, 32dvh); border-left: 0; border-top: 1px solid var(--border-subtle); }
+}
 @media (min-width: 1900px) {
   .shell-root .skill-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 }

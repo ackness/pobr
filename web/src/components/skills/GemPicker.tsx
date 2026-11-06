@@ -1,3 +1,5 @@
+import { useGemDescriptions } from '../../hooks/useGemDescriptions';
+import { GemDescriptionPanel } from './GemDescriptionPanel';
 import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover';
 import { usePanelActive } from '../shared/UiContext';
 import { AppButton, AppInput } from '../shared/controls';
@@ -49,6 +51,7 @@ export function rankGemResults(entries: GemCatalogEntry[], query: string, colour
 
 export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Props) {
   const tt = bindT(lang);
+  const descriptions = useGemDescriptions();
   const active = usePanelActive();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -216,12 +219,16 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
       />
       <Popover open={open && !disabled && active} onOpenChange={setOpen}>
         <PopoverAnchor virtualRef={inputRef} />
-        <PopoverContent ref={panelRef} className="gem-picker-popover" align="start"
+        <PopoverContent ref={panelRef} className={`gem-picker-popover${descriptions ? ' has-descriptions' : ''}`} align="start"
           onKeyDown={onPanelKeyDown}
           onOpenAutoFocus={event => event.preventDefault()}
           onCloseAutoFocus={event => event.preventDefault()}
           onInteractOutside={event => { if (rootRef.current?.contains(event.target as Node)) event.preventDefault(); }}>
-          {panelContents}
+          {descriptions ? <div className="gem-picker-body">
+            <div className="gem-picker-options">{panelContents}</div>
+            {filtered[highlight] && <GemDescriptionPanel gem={filtered[highlight]} index={descriptions} lang={lang}
+              onAdd={() => pick(filtered[highlight])} />}
+          </div> : panelContents}
         </PopoverContent>
       </Popover>
     </div>

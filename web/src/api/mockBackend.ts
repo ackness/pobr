@@ -105,6 +105,7 @@ export function createMockBackend(): PobrBackend {
       return { classes: {}, ascendancies: {} };
     },
     async minionCatalog() { return minionCatalogFixture as unknown as import('./types').MinionCatalog; },
+    async gemDescriptions() { return null; },
     async gemCatalog() {
       return gemCatalogFixture as unknown as GemCatalogEntry[];
     },

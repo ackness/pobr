@@ -197,6 +197,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
         active={active}
         groupIndex={idx}
         catalog={tradeGems}
+        gemCatalog={byId}
         gemName={gemName}
         focusNonce={openGroup?.index === idx ? openGroup.focusNonce : undefined}
       />

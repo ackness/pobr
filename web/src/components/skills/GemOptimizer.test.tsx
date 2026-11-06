@@ -1,3 +1,4 @@
+import { buildGemDescriptionIndex, type GemDescriptionIndex } from '../../lib/gemDescriptions';
 import type { ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, expect, it, vi } from 'vitest';
@@ -6,7 +7,8 @@ import { GemOptimizer } from './GemOptimizer';
 import { ChangeBar } from '../../app/preview/ChangeBar';
 
 const harness = vi.hoisted(() => ({ states: [] as unknown[], cursor: 0, buttons: [] as ComponentProps<'button'>[], optimize: vi.fn(), articles: [] as ComponentProps<'article'>[], show: vi.fn(), showChanges: vi.fn(), settings: null as { current: HTMLDetailsElement | null } | null, previewState: null as import('../shared/PreviewContext').PreviewState | null,
-  preset: 'dps' }));
+  preset: 'dps', descriptions: null as GemDescriptionIndex | null }));
+vi.mock('../../hooks/useGemDescriptions', () => ({ useGemDescriptions: () => harness.descriptions }));
 vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
   useState: (initial: unknown) => {
     const index = harness.cursor++;
@@ -60,6 +62,7 @@ function button(label: string) {
 }
 beforeEach(() => {
   harness.states = [];
+  harness.descriptions = null;
   harness.preset = 'dps';
   harness.previewState = null;
   harness.show.mockClear();
@@ -199,4 +202,27 @@ it('the minion-only support hover previews the same damage stat as its card', as
   ])]);
   const hover = renderToStaticMarkup(<ChangeBar lang="en-US" />);
   expect(hover).toContain('100 → 151');
+});
+
+
+it.each([true, false])('recommendations use official gem panels when the index exists (%s), retaining legacy descriptions otherwise', async available => {
+  harness.descriptions = available ? buildGemDescriptionIndex({ scopes: {
+    'GemEffects.SupportText': { variant: 'Official [Area] description.' }, 'ActiveSkills.Description': {},
+  } }, [{ gem_id: 'Gem', granted_effect_id: 'support', variant_id: 'variant' }], {}, [], []) : null;
+  const { render } = setup();
+  harness.optimize.mockResolvedValue({ baseline: { CombinedDPS: 100, TotalEHP: 100 }, evaluated: 1, unmodeled: 0,
+    baselineUnsupported: [], excluded: [], plans: [{ supports: [{ skill_id: 'support', level: 1, quality: 0 }],
+      variant: {}, stats: { CombinedDPS: 120, TotalEHP: 100 } }] });
+  render(); expand(); render(); await button('Calculate support combinations').onClick!({} as never);
+  const html = render();
+  expect(html).toContain('support-descriptions');
+  if (available) {
+    expect(html).toContain('gem-description-panel');
+    expect(html).toContain('Official Area description.');
+    expect(html).not.toContain('Descriptions from the pinned PoB2 source.');
+    expect(harness.buttons.some(button => button.children === 'Add')).toBe(false);
+  } else {
+    expect(html).not.toContain('gem-description-panel');
+    expect(html).toContain('Descriptions from the pinned PoB2 source.');
+  }
 });

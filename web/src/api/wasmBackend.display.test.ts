@@ -234,3 +234,43 @@ test('unlisted class compatibility data is absent while listed invalid data is r
     ? new Response(JSON.stringify({ version: 'test', files: ['i18n/zh-CN/classes.json'] })) : new Response('invalid JSON'));
   await expect((await createWasmBackend()).loadClassNames()).rejects.toThrow();
 });
+
+test('unlisted gem descriptions return null without reading their dependencies', async () => {
+  const fetch = vi.fn(async () => new Response(JSON.stringify({ version: 'test', files: ['base/granted_effects.json'] })));
+  vi.stubGlobal('fetch', fetch);
+  const backend = await createWasmBackend();
+  expect(fetch).not.toHaveBeenCalled();
+  expect(await backend.gemDescriptions()).toBeNull();
+  expect(await backend.gemDescriptions()).toBeNull();
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+test('gem descriptions load lazily, share in-flight work, project effects, and retry after a load error', async () => {
+  const files: Record<string, unknown> = {
+    'overlay/gem_descriptions.json': { scopes: { 'GemEffects.SupportText': { variant: 'Supports [Spell] Skills.' },
+      'ActiveSkills.Description': { active: 'Cast a [Spell].' } } },
+    'overlay/gem_effects.json': { gems: [{ gem_id: 'Gem', granted_effect_id: 'Support', variant_id: 'variant' }] },
+    'base/granted_effects.json': [{ id: 'Effect', active_skill: 'active', large: 'discard me' }],
+    'base/skill_gems.json': [{ id: 'Gem', granted_effect_id: 'OldEffect', int_pct: 100 }],
+  };
+  let fail = true;
+  const fetch = vi.fn(async (url: string) => {
+    if (url === '/data/manifest.json') return new Response(JSON.stringify({ version: 'test', files: Object.keys(files) }));
+    const file = url.replace('/data/test/', '');
+    if (file === 'overlay/gem_descriptions.json' && fail) return new Response('', { status: 503 });
+    if (!Object.hasOwn(files, file)) throw new Error(`Unexpected fetch: ${url}`);
+    return new Response(JSON.stringify(files[file]));
+  });
+  vi.stubGlobal('fetch', fetch);
+  const backend = await createWasmBackend();
+  expect(fetch).not.toHaveBeenCalled();
+  await expect(backend.gemDescriptions()).rejects.toThrow(/503/);
+  fail = false;
+  const [first, second] = await Promise.all([backend.gemDescriptions(), backend.gemDescriptions()]);
+  expect(first).toBe(second);
+  expect(first?.activeSkills).toEqual({ Effect: 'active' });
+  expect(first?.requirements.Support).toEqual(['int']);
+  expect(JSON.stringify(first)).not.toContain('discard me');
+  expect(fetch.mock.calls.filter(([url]) => url.endsWith('gem_descriptions.json'))).toHaveLength(2);
+  expect(await backend.gemDescriptions()).toBe(first);
+});
