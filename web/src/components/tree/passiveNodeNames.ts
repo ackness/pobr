@@ -71,8 +71,10 @@ export function usePassiveNodeNames(nodes: readonly PassiveNode[], lang: Lang, a
     return { keys: [...byKey.keys()], requests: [...byKey.values()] };
   }, [nodes, active]);
   const translated = useLocalizedNames(unique.requests, lang);
-  const cache = useMemo(() => new Map<Lang, Promise<PassiveNodeNames>>(), [nodes]);
-  const [stats, setStats] = useState<{ nodes: readonly PassiveNode[]; values: ReadonlyMap<Lang, PassiveNodeNames> } | null>(null);
+  // Callers may recreate display arrays without changing the stats or their skill identities.
+  const statsKey = useMemo(() => JSON.stringify(nodes.map(node => [node.skill, node.stats ?? []])), [nodes]);
+  const cache = useMemo(() => new Map<Lang, Promise<PassiveNodeNames>>(), [statsKey]);
+  const [stats, setStats] = useState<{ key: string; values: ReadonlyMap<Lang, PassiveNodeNames> } | null>(null);
   const searching = Boolean(search.trim());
   useEffect(() => {
     if (!active || !searching || lang === 'en-US' || !nodes.length) return;
@@ -84,16 +86,16 @@ export function usePassiveNodeNames(nodes: readonly PassiveNode[], lang: Lang, a
     }
     let cancelled = false;
     pending.then(values => {
-      if (!cancelled) setStats(current => current?.nodes === nodes && current.values.get(lang) === values ? current
-        : { nodes, values: new Map([...(current?.nodes === nodes ? current.values : []), [lang, values]]) });
+      if (!cancelled) setStats(current => current?.key === statsKey && current.values.get(lang) === values ? current
+        : { key: statsKey, values: new Map([...(current?.key === statsKey ? current.values : []), [lang, values]]) });
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [nodes, lang, active, searching, cache]);
+  }, [nodes, statsKey, lang, active, searching, cache]);
   return useMemo(() => {
     const result = new Map(unique.keys.map((key, index) => [key, translated[index] ?? unique.requests[index].name]));
-    if (stats?.nodes === nodes) for (const [key, value] of stats.values.get(lang) ?? []) result.set(key, value);
+    if (stats?.key === statsKey) for (const [key, value] of stats.values.get(lang) ?? []) result.set(key, value);
     return result;
-  }, [unique, translated, nodes, lang, stats]);
+  }, [unique, translated, statsKey, lang, stats]);
 }
 
 /** One node's heading (`node.name`, or its id when unnamed) and modifier lines for a tooltip or

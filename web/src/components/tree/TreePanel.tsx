@@ -84,11 +84,13 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
   };
   const [rawNodes, setNodes] = useState<PassiveNode[] | null>(null);
   const treeEffects = session.calc?.tree_effects;
+  // Recalculation clears the result before replacing it, often with identical node changes.
+  const displayChangesKey = useMemo(() => JSON.stringify(treeEffects?.nodes ?? {}), [treeEffects?.nodes]);
   const nodes = useMemo(() => rawNodes?.map(node => {
     const change = treeEffects?.nodes[String(node.skill)];
     return change ? { ...node, name: change.name,
       stats: change.replace ? change.stats : [...(node.stats ?? []), ...change.stats] } : node;
-  }) ?? [], [rawNodes, treeEffects]);
+  }) ?? [], [rawNodes, displayChangesKey]);
   const [error, setError] = useState<string | null>(null);
   const [plannedNodes, setPlannedNodes] = useState<PassivePlan | null>(null);
   const byId = useMemo(() => new Map(nodes.map(node => [node.skill, node])), [nodes]);
