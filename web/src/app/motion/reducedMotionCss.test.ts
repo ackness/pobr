@@ -48,6 +48,9 @@ describe('reduced motion CSS', () => {
       .map(rule => ({ path, ...rule })));
     expect(universal.length).toBeGreaterThan(0);
     for (const rule of universal) {
+      // Stylesheets outside src/app are put in the earlier `panels` layer, where an `!important` rule
+      // would override the app layer's exceptions (the progress line's 200ms wait).
+      expect(rule.path, 'universal reduced-motion rule outside the app layer').toContain('/src/app/');
       expect(rule.body, rule.path).toMatch(/transition:\s*none\s*!important/);
       expect(rule.body, rule.path).not.toMatch(/transition-duration/);
     }
