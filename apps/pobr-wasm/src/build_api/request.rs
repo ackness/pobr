@@ -6,6 +6,7 @@
 //! `pub(crate)` (before the split, this all lived in one module, where
 //! private fields would have sufficed).
 
+use std::cell::OnceCell;
 use std::collections::BTreeMap;
 
 use pobr_build::build::GemSkillRef;
@@ -755,7 +756,7 @@ pub(crate) const MAIN_MINION_DPS: &str = "MainMinionDPS";
 pub(crate) struct CalculatedBuild {
     pub(crate) session: CompletedCalculationSession,
     pub(crate) main_minion_index: Option<usize>,
-    display_values: Vec<DisplayStatValue>,
+    display_values: OnceCell<Vec<DisplayStatValue>>,
 }
 
 impl CalculatedBuild {
@@ -772,32 +773,42 @@ impl CalculatedBuild {
                 .iter()
                 .position(|minion| std::ptr::eq(main, minion))
         });
-        let mut display_values = pobr_core::extract_display_values(output);
-        if let Some(main) = main_minion {
-            display_values.push(DisplayStatValue {
-                id: DisplayStatId::new(MAIN_MINION_DPS),
-                value: main.dps,
-                category: DisplayStatCategory::Offence,
-            });
-        }
         Self {
             session,
             main_minion_index,
-            display_values,
+            display_values: OnceCell::new(),
         }
     }
 
     pub(crate) fn display_values(&self) -> &[DisplayStatValue] {
-        &self.display_values
+        self.display_values.get_or_init(|| {
+            let mut values = pobr_core::extract_display_values(self.session.output());
+            if let Some(value) = self.stat_value(MAIN_MINION_DPS) {
+                values.push(DisplayStatValue {
+                    id: DisplayStatId::new(MAIN_MINION_DPS),
+                    value,
+                    category: DisplayStatCategory::Offence,
+                });
+            }
+            values
+        })
     }
 
     /// One display stat, by display catalog id or [`MAIN_MINION_DPS`] (0 without
     /// a main minion, as the catalog reads 0 for an absent output).
+    /// Does not build the full display list.
     pub(crate) fn stat(&self, id: &str) -> f64 {
-        self.display_values()
-            .iter()
-            .find(|value| value.id.as_str() == id)
-            .map_or(0.0, |value| value.value)
+        self.stat_value(id).unwrap_or(0.0)
+    }
+
+    fn stat_value(&self, id: &str) -> Option<f64> {
+        let output = self.session.output();
+        if id == MAIN_MINION_DPS {
+            return self
+                .main_minion_index
+                .map(|index| output.minions[index].dps);
+        }
+        Some(pobr_core::display_value(output, id))
     }
 }
 
@@ -839,4 +850,44 @@ pub(crate) fn full_dps_for_build(
         &orchestrator_options(req)?,
     )
     .map_err(|e| format!("Full DPS: {e}"))?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stat_reads_do_not_build_the_display_list() {
+        let game = pobr_gamedata::GameData::new(pobr_gamedata::current_data_dir());
+        let data = BuildData::load(&game).unwrap();
+        let build = Build::new().with_character(CharacterIdentity {
+            level: 80,
+            class_name: "Witch".into(),
+            ascendancy_name: String::new(),
+        });
+        let calculated = calculate_build(&build, &data, &Default::default()).unwrap();
+        assert!(calculated.display_values.get().is_none());
+        assert!(calculated.stat("Life") > 0.0);
+        assert_eq!(calculated.stat("Life"), calculated.session.output().life);
+        assert_eq!(calculated.stat(MAIN_MINION_DPS), 0.0);
+        assert_eq!(calculated.stat("UnknownStat"), 0.0);
+        assert!(calculated.display_values.get().is_none());
+
+        let values = calculated.display_values();
+        assert!(calculated.display_values.get().is_some());
+        assert!(std::ptr::eq(values, calculated.display_values()));
+        assert_eq!(
+            serde_json::to_string(values).unwrap(),
+            serde_json::to_string(&pobr_core::extract_display_values(
+                calculated.session.output()
+            ))
+            .unwrap()
+        );
+        for value in values {
+            assert_eq!(
+                calculated.stat(value.id.as_str()).to_bits(),
+                value.value.to_bits()
+            );
+        }
+    }
 }
