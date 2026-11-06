@@ -1,3 +1,4 @@
+import { waitForPageTransition } from './navigation';
 import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
 
 /**
@@ -11,13 +12,14 @@ export async function choose(page: Page, trigger: Locator, option: string | RegE
 }
 
 /** The comparison pickers label stages "<BD name> / <stage name>". */
-export const compareStageA = (page: Page) => page.getByRole('combobox', { name: 'Build / stage A', exact: true });
-export const compareStageB = (page: Page) => page.getByRole('combobox', { name: 'Build / stage B', exact: true });
+export const compareStageA = (page: Page) => page.getByRole('combobox', { name: 'A: Before', exact: true });
+export const compareStageB = (page: Page) => page.getByRole('combobox', { name: 'B: After', exact: true });
 export const compareTab = (page: Page, name: string) => page.getByRole('tab', { name: new RegExp(`^${name}`) });
 
 /** The BD library page: open its Export section (collapsed by default), generate the share code and return it. */
 export async function generateShareCode(page: Page): Promise<string> {
   await page.locator('.shell-builds-button').click();
+  await waitForPageTransition(page);
   const exportSection = page.locator('details.bd-export');
   if (!await exportSection.evaluate(element => (element as HTMLDetailsElement).open)) await exportSection.locator(':scope > summary').click();
   await page.getByRole('button', { name: 'Generate share code', exact: true }).click();

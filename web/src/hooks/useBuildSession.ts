@@ -9,7 +9,7 @@ import type { TreeEditResult } from '../api/types';
  * 防止乱序返回覆盖新状态。所有后端交互经 `api/backend`。
  */
 
-import { activeWorkspaceStage, addWorkspaceBuild, appendImportedBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, duplicateWorkspaceBuild, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
+import { recordWorkspaceBaseline, activeWorkspaceStage, addWorkspaceBuild, appendImportedBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, duplicateWorkspaceBuild, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
 import { mergeLibraries, mergeWorkspaces } from '../lib/workspaceMerge';
 import { formatApiError } from '../api/error';
 import { resolveBuildInput } from '../api/import';
@@ -133,7 +133,7 @@ const sameValue = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringi
 
 /** The library without which build and stage each tab has open: what another tab can have changed. */
 const libraryContent = (library: BuildWorkspace) =>
-  library.builds.map(({ id, name, stages }) => ({ id, name, stages }));
+  library.builds.map(({ id, name, stages, baseline }) => ({ id, name, stages, baseline }));
 
 /** What a merge did to the stage a tab shows, and which message goes with the change. */
 function mergeEffect(before: BuildWorkspace, after: BuildWorkspace, conflicts: string[]) {
@@ -148,6 +148,9 @@ export type ImportDestination = 'newBuild' | 'currentStage';
 export interface ImportOptions { destination: ImportDestination; name?: string }
 
 export interface BuildSession {
+  saveComparisonBaseline: () => void;
+  comparisonRevision: number;
+  startBaselineComparison: () => void;
   treeVersion?: string | null;
   dataVersion: string | null;
   workspace: BuildWorkspace | null;
@@ -695,6 +698,8 @@ export async function skillMetricsForState(state: BuildState): Promise<SkillMetr
 }
 
 export function useBuildSession(configContextActive = false, lang: Lang = 'en-US'): BuildSession {
+  const [comparisonRevision, setComparisonRevision] = useState(0);
+  const startBaselineComparison = useCallback(() => setComparisonRevision(value => value + 1), []);
   const configContextActiveRef = useRef(configContextActive);
   configContextActiveRef.current = configContextActive;
   const [dataVersion, setDataVersion] = useState<string | null>(null);
@@ -1696,6 +1701,14 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     if (workspaceRef.current) persistWorkspace(renameWorkspaceEntry(workspaceRef.current, kind, name, buildId));
   }, [persistWorkspace]);
 
+  const saveComparisonBaseline = useCallback(() => {
+    if (!workspaceRef.current || !stateRef.current || busy) return;
+    const current = updateWorkspaceStage(workspaceRef.current,
+      { version: 1, state: stateRef.current, notes: notesRef.current }, draftsRef.current);
+    persistWorkspace(recordWorkspaceBaseline(current));
+    startBaselineComparison();
+  }, [busy, persistWorkspace, startBaselineComparison]);
+
   const applyComparedStage = useCallback((a: StageSnapshot, b: StageSnapshot, nextState: BuildState) => {
     if (!workspaceRef.current || busy) return false;
     nextState = { ...switchWeapons(nextState, skillWeaponSet(nextState, nextState.params.main_socket_group)), sourceBackfillComplete: true };
@@ -1812,6 +1825,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   }, [state]);
 
   return {
+    saveComparisonBaseline, comparisonRevision, startBaselineComparison,
     treeVersion: state?.treeVersion,
     dataVersion, workspace, storageFailed, syncNotice, dismissSyncNotice, applyComparedStage, selectStage, createLocalBuild, duplicateStage, duplicateBuild, removeBuild, removeStage, renameWorkspace, exportWorkspace, exportLocalBuild,
     activeWeaponSet: state?.weaponSwap?.active ?? 1,

@@ -3,7 +3,7 @@ import type { ItemLineJson } from '../../api/types';
 import { getBackend } from '../../api/backend';
 import { itemLines, rarityOf, useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
 import { isContinuation } from '../../lib/continuedLines';
-import type { Lang } from '../../lib/i18n';
+import { t, type Lang } from '../../lib/i18n';
 import { itemDamageType, itemDisplaySections, itemValueParts, type DisplayItemLine } from '../../lib/itemDisplay';
 import { useUi } from '../shared/UiContext';
 import { AppTooltip } from '../shared/controls';
@@ -32,14 +32,14 @@ export function useItemLineTexts(lines: readonly ItemLineJson[], lang: Lang): st
   return lines.map((line, index) => line.kind === 'base' ? bases[base++] ?? line.text : translated[index] ?? line.text);
 }
 
-export function ItemDisplay({ text, lang }: { text: string; lang: Lang }) {
+export function ItemDisplay({ text, lang, rawDetails = false }: { text: string; lang: Lang; rawDetails?: boolean }) {
   const classified = useClassifiedLines(text);
   const fallback = useMemo<ItemLineJson[]>(() => itemLines(text).map((line, index) => ({
     text: line, kind: index === 0 ? 'name' : 'struct',
   })), [text]);
   const lines = classified ?? fallback;
   const translated = useItemLineTexts(lines, lang);
-  return <ItemDisplayContent text={text} lang={lang} lines={lines} translated={translated} />;
+  return <ItemDisplayContent text={text} lang={lang} lines={lines} translated={translated} rawDetails={rawDetails} />;
 }
 
 export function ItemValues({ text }: { text: string }) {
@@ -48,8 +48,8 @@ export function ItemValues({ text }: { text: string }) {
 }
 
 /** All three layouts share one projection; no layout edits the imported item or invents missing data. */
-export function ItemDisplayContent({ text, lang, lines, translated }: {
-  text: string; lang: Lang; lines: readonly ItemLineJson[]; translated: readonly string[];
+export function ItemDisplayContent({ text, lang, lines, translated, rawDetails = false }: {
+  text: string; lang: Lang; lines: readonly ItemLineJson[]; translated: readonly string[]; rawDetails?: boolean;
 }) {
   const { displayMode: style } = useUi();
   // A line a multi-line description translated into the line above shows no row.
@@ -115,7 +115,7 @@ export function ItemDisplayContent({ text, lang, lines, translated }: {
     <Tabs defaultValue="details" className="item-display-tabs">
       <div className="item-display-tabbar"><TabsList variant="line" aria-label={w('Equipment view', '装备查看方式', '裝備檢視方式')}>
         <TabsTrigger value="details">{w('Details', '装备详情', '裝備詳情')}</TabsTrigger>
-        <TabsTrigger value="raw">{w('Original text', '原始文本', '原始文字')}</TabsTrigger>
+        {!rawDetails && <TabsTrigger value="raw">{w('Original text', '原始文本', '原始文字')}</TabsTrigger>}
       </TabsList>{hasTiers && <span className="item-tier-hint">{w('T1 is the highest tier', 'T1 为最高档', 'T1 為最高階')}</span>}</div>
       <TabsContent value="details" className="item-display-body">
         {style === 'game' && extras}
@@ -136,7 +136,8 @@ export function ItemDisplayContent({ text, lang, lines, translated }: {
         {style !== 'game' && extras}
         {hasUnknownTiers && <p className="item-display-hint">{w('— means the tier was not identified.', '— 表示档位未识别。', '— 表示階級未識別。')}</p>}
       </TabsContent>
-      <TabsContent value="raw"><pre className="item-original-text">{text}</pre></TabsContent>
+      {!rawDetails && <TabsContent value="raw"><pre className="item-original-text">{text}</pre></TabsContent>}
     </Tabs>
+    {rawDetails && <details><summary>{t(lang, 'compare.advanced')}</summary><pre className="item-original-text">{text}</pre></details>}
   </article>;
 }

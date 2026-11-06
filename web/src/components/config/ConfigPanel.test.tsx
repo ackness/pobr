@@ -86,7 +86,8 @@ test('configuration exclusions use the shared modifier list with one original-te
   expect(html).toContain('Modifiers not included');
   expect(html).toContain('class="unincluded-modifiers"');
   expect(html.match(/class="unincluded-raw"/g)).toHaveLength(1);
-  expect(html).toContain(`<pre>${lines.join('\n')}</pre>`);
+  expect(html).toContain('<pre>First unknown effect\nSecond unknown effect</pre>');
+  expect(html).not.toContain('Config: ');
   expect(html).not.toContain('class="modifier-raw"');
   expect(html).not.toContain('Unrelated effect');
 });
@@ -166,4 +167,17 @@ test.each(['relevant', 'modified', 'all'] as ConfigScope[])('configuration scope
   expect(html).toContain('role="radiogroup"');
   expect(html).toContain('Relevant to this build');
   expect(html).toContain('Modified (2)');
+});
+
+test('configuration exclusions retain player text in one shared original-text disclosure', () => {
+  const session = { calcParams: { config_inputs: {} }, calc: {
+    unsupported_modifiers: ['Config: First unknown effect', 'Config: Second unknown effect', 'Tree:12: Other effect'],
+  }, busy: false, stateVersion: 1 } as unknown as BuildSession;
+  const html = renderToStaticMarkup(<ConfigPanel session={session} lang="zh-CN" />);
+  expect(html).toContain('class="unincluded-modifiers"');
+  expect(html.match(/<summary>词缀原文<\/summary>/g)).toHaveLength(1);
+  expect(html).toContain('<pre>First unknown effect\nSecond unknown effect</pre>');
+  expect(html).not.toContain('Config: ');
+  expect(html).not.toContain('Other effect');
+  expect(html).not.toContain('class="modifier-raw"');
 });

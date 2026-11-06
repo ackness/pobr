@@ -120,15 +120,6 @@
   color: var(--accent-gold-bright);
 }
 
-.config-unapplied ul {
-  margin: var(--space-2) 0 0;
-  padding-left: var(--space-4);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-  overflow-wrap: anywhere;
-}
-
 .config-reset {
   padding: 0 var(--space-1);
 }

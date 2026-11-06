@@ -57,6 +57,7 @@ function mergeBuild(base: LocalBuild | undefined, mine: LocalBuild, theirs: Loca
   const has = (id: string) => kept.some(stage => stage.id === id);
   return {
     id: mine.id,
+    baseline: !same(mine.baseline, base?.baseline) ? mine.baseline : theirs.baseline,
     name: !base || mine.name !== base.name ? mine.name : theirs.name,
     activeStage: has(mine.activeStage) ? mine.activeStage : has(theirs.activeStage) ? theirs.activeStage : kept[0].id,
     stages: kept,
