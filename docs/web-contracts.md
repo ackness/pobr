@@ -158,10 +158,12 @@ PoBR构建时按`pipeline/data.lock.json`的`support_display`（旧`handoff/*`�
 PoBR更新锁后运行`mise run data:prepare`；目录摘要不符时拒绝导入，不使用旧说明作隐式回退。
 这条辅助说明路径将由下面的宝石说明取代，退役步骤见[数据架构](data-architecture.md#3-发布与导入契约)。
 
-宝石说明（数据契约 1.3；界面接入另行设计）：主动、精魂、元技能与辅助宝石都有一段游戏自带的说明。英文来自游戏包可选文件
+宝石说明（数据契约 1.3）：主动、精魂、元技能与辅助宝石都有一段游戏自带的说明。英文来自游戏包可选文件
 `overlay/gem_descriptions.json`，译文来自 `display_texts.json` 的作用域 `GemEffects.SupportText` 与
 `ActiveSkills.Description`，形状与 id 规则见[数据架构](data-architecture.md#3-发布与导入契约)。按 manifest `files`
-判断英文文件是否存在，像其他可选文件一样读取；没有这个文件就不显示说明。
+判断英文文件是否存在，像其他可选文件一样读取。共用说明面板依次显示当前语言名称及不同时的英文名、说明、
+宝石种类／标签／属性需求。新增技能组与新增辅助宝石的选择器随高亮行切换说明，面板的“添加”按钮选择该宝石；
+辅助推荐结果也使用此面板，不带“添加”按钮。没有英文文件的数据包保留原选择器，推荐结果保留原 `support_display` 说明路径。
 - 查找：辅助宝石用所选宝石在 `gem_effects.json` 里那一条的 `variant_id`（GemEffects.Id）查 `GemEffects.SupportText`；
   其他宝石用 `granted_effects[granted_effect_id].active_skill`（ActiveSkills.Id）查 `ActiveSkills.Description`。
 - 语言：en-US 直接用英文。其他语言沿游戏文本回退链（`gameTextChain(lang)`）逐个目录查找：

@@ -151,3 +151,19 @@ it('does not read any dependent files or catalogs when the description file is u
   expect(read).not.toHaveBeenCalled();
   expect(catalogs).not.toHaveBeenCalled();
 });
+
+
+it.each([
+  ['zh-CN', '輔助[Area|範圍]技能。', '輔助範圍技能。'],
+  ['zh-TW', '辅助[Area|范围]技能。', '辅助范围技能。'],
+] as const)('does not script-convert an own-locale %s record', (lang, raw, rendered) => {
+  const data = index([catalog(lang, pair(raw))]);
+  expect(gemDescription(data, support, lang)).toEqual({ text: rendered, lang, english: false });
+});
+
+it('retains only granted effect links with an English active description, without mutating the input', () => {
+  const activeSkills = { ActiveEffect: 'active_id', UnusedEffect: 'absent', SupportEffect: null };
+  const data = buildGemDescriptionIndex(file(), links, activeSkills, [], []);
+  expect(data.activeSkills).toEqual({ ActiveEffect: 'active_id' });
+  expect(activeSkills).toEqual({ ActiveEffect: 'active_id', UnusedEffect: 'absent', SupportEffect: null });
+});

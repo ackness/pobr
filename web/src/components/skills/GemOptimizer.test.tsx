@@ -219,10 +219,27 @@ it.each([true, false])('recommendations use official gem panels when the index e
   if (available) {
     expect(html).toContain('gem-description-panel');
     expect(html).toContain('Official Area description.');
+    expect(html).toContain('These describe the gem’s effects, not current-level values.');
     expect(html).not.toContain('Descriptions from the pinned PoB2 source.');
     expect(harness.buttons.some(button => button.children === 'Add')).toBe(false);
   } else {
     expect(html).not.toContain('gem-description-panel');
     expect(html).toContain('Descriptions from the pinned PoB2 source.');
   }
+});
+
+
+it('keeps the unavailable-description message for a plan gem without official text', async () => {
+  harness.descriptions = buildGemDescriptionIndex({ scopes: {
+    'GemEffects.SupportText': {}, 'ActiveSkills.Description': {},
+  } }, [], {}, [], []);
+  const { render } = setup();
+  harness.optimize.mockResolvedValue({ baseline: { CombinedDPS: 100, TotalEHP: 100 }, evaluated: 1, unmodeled: 0,
+    baselineUnsupported: [], excluded: [], plans: [{ supports: [{ skill_id: 'support', level: 1, quality: 0 }],
+      variant: {}, stats: { CombinedDPS: 120, TotalEHP: 100 } }] });
+  render(); expand(); render(); await button('Calculate support combinations').onClick!({} as never);
+  const html = render();
+  expect(html).toContain('gem-description-panel');
+  expect(html).toContain('No source description is available in this data snapshot.');
+  expect(html).toContain('These describe the gem’s effects, not current-level values.');
 });

@@ -314,6 +314,7 @@
     "picker.lineage": "Lineage",
     "picker.description": "Gem description",
     "picker.originalText": "Original text",
+    "picker.descriptionHint": "These describe the gem’s effects, not current-level values.",
     "picker.requires": "Requires: {attributes}",
     "opt.open": "Support optimizer",
     "opt.hint": "Pick candidate supports; every combination is fully recalculated and ranked.",

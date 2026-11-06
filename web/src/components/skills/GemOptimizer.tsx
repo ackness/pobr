@@ -290,6 +290,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
       })}</div>
       {descriptions ? <details className="support-diagnostics support-descriptions">
         <summary className="disclosure" data-disclosure-level="inline">{st('descriptions')}</summary>
+        <p className="skills-hint">{tt('picker.descriptionHint')}</p>
         {plan.supports.map(gem => {
           const metadata = byId.get(gem.skill_id);
           const entry = gemCatalog?.get(gem.skill_id) ?? {

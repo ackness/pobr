@@ -18,7 +18,7 @@ export interface GemRequirementLink extends GemNameLink { str_pct?: number; dex_
 export interface GemDescriptionIndex {
   scopes: DescriptionScopes;
   variants: Record<string, string[]>;
-  activeSkills: Record<string, string | null>;
+  activeSkills: Record<string, string>;
   requirements: Record<string, GemAttribute[] | null>;
   catalogs: Array<Pick<NativeDisplayTexts, 'locale' | 'scopes'>>;
 }
@@ -46,9 +46,12 @@ export function gemDescriptionScopes(value: unknown): DescriptionScopes {
 }
 
 export function buildGemDescriptionIndex(
-  descriptions: unknown, links: readonly GemDescriptionLink[], activeSkills: GemDescriptionIndex['activeSkills'],
+  descriptions: unknown, links: readonly GemDescriptionLink[], activeSkills: Readonly<Record<string, string | null>>,
   catalogs: readonly NativeDisplayTexts[], gems: readonly GemRequirementLink[],
 ): GemDescriptionIndex {
+  const scopes = gemDescriptionScopes(descriptions);
+  const describedActiveSkills = Object.fromEntries(Object.entries(activeSkills)
+    .filter((entry): entry is [string, string] => entry[1] !== null && Object.hasOwn(scopes[ACTIVE], entry[1])));
   const variants: GemDescriptionIndex['variants'] = Object.create(null);
   for (const link of links) {
     const ids = variants[link.granted_effect_id] ??= [];
@@ -63,7 +66,7 @@ export function buildGemDescriptionIndex(
     if (!Object.hasOwn(requirements, effect)) requirements[effect] = attrs;
     else if (JSON.stringify(requirements[effect]) !== JSON.stringify(attrs)) requirements[effect] = null;
   }
-  return { scopes: gemDescriptionScopes(descriptions), variants, activeSkills, requirements,
+  return { scopes, variants, activeSkills: describedActiveSkills, requirements,
     catalogs: catalogs.map(({ locale, scopes }) => ({ locale, scopes: {
       [ACTIVE]: scopes[ACTIVE] ?? {}, [SUPPORT]: scopes[SUPPORT] ?? {},
     } })) };
@@ -83,7 +86,7 @@ export async function loadGemDescriptionIndex(
     optional('base/skill_gems.json', []), catalogs(),
   ]);
   return buildGemDescriptionIndex(descriptions, (effects as { gems: GemDescriptionLink[] }).gems,
-    activeSkills as GemDescriptionIndex['activeSkills'], display, gems as GemRequirementLink[]);
+    activeSkills, display, gems as GemRequirementLink[]);
 }
 
 function resolveMember(index: GemDescriptionIndex, scope: Scope, id: string, raw: string, lang: Lang): GemDescription | null {

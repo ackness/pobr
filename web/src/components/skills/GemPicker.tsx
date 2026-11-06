@@ -1,3 +1,4 @@
+import { gemDescription } from '../../lib/gemDescriptions';
 import { useGemDescriptions } from '../../hooks/useGemDescriptions';
 import { GemDescriptionPanel } from './GemDescriptionPanel';
 import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover';
@@ -75,6 +76,9 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
 
   const filtered = useMemo(() => rankGemResults(entries, query, colour, lang), [entries, query, colour, lang]);
 
+  const descriptionId = open && !disabled && active && descriptions && filtered[highlight]
+    && gemDescription(descriptions, filtered[highlight], lang) ? `${listId}-description` : undefined;
+
   useEffect(() => setHighlight(0), [query, colour, open, entries]);
   useEffect(() => { if (disabled || !active) setOpen(false); }, [disabled, active]);
 
@@ -140,6 +144,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
                 aria-pressed={colour === chip.id}
                 className={`gem-chip${colour === chip.id ? ' is-active' : ''}`}
                 style={chip.colorVar ? { color: `var(--${chip.colorVar})` } : undefined}
+                onMouseDown={event => event.preventDefault()}
                 onClick={() => setColour(chip.id)}
               >
                 {chip.label}
@@ -162,7 +167,10 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
                   role="option"
                   aria-selected={idx === highlight}
                   className={`gem-picker-item${idx === highlight ? ' is-highlight' : ''}`}
-                  onPointerEnter={() => setHighlight(idx)}
+                  onPointerEnter={() => {
+                    // In the stacked layout, reaching Add crosses other rows. Preserve the chosen gem.
+                    if (!descriptions || !window.matchMedia('(max-width: 719px)').matches) setHighlight(idx);
+                  }}
                   onMouseDown={event => event.preventDefault()}
                   onClick={() => pick(entry)}
                 >
@@ -208,6 +216,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
         aria-expanded={open && !disabled}
         aria-controls={open && !disabled ? listId : undefined}
         aria-activedescendant={open && !disabled && filtered[highlight] ? `${listId}-${highlight}` : undefined}
+        aria-describedby={descriptionId}
         aria-autocomplete="list"
         role="combobox"
         onKeyDown={onKeyDown}
@@ -226,7 +235,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
           onInteractOutside={event => { if (rootRef.current?.contains(event.target as Node)) event.preventDefault(); }}>
           {descriptions ? <div className="gem-picker-body">
             <div className="gem-picker-options">{panelContents}</div>
-            {filtered[highlight] && <GemDescriptionPanel gem={filtered[highlight]} index={descriptions} lang={lang}
+            {filtered[highlight] && <GemDescriptionPanel gem={filtered[highlight]} index={descriptions} lang={lang} descriptionId={descriptionId}
               onAdd={() => pick(filtered[highlight])} />}
           </div> : panelContents}
         </PopoverContent>

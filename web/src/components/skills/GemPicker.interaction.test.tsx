@@ -1,13 +1,15 @@
 import type { ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { GemCatalogEntry } from '../../api/types';
 import { buildGemDescriptionIndex, type GemDescriptionIndex } from '../../lib/gemDescriptions';
+import { GemDescriptionPanel } from './GemDescriptionPanel';
 import { GemPicker } from './GemPicker';
 
 const ui = vi.hoisted(() => ({ states: [] as unknown[], cursor: 0,
   descriptions: undefined as GemDescriptionIndex | null | undefined,
   input: {} as ComponentProps<'input'>, buttons: [] as ComponentProps<'button'>[],
+  root: {} as ComponentProps<'div'>,
   options: [] as ComponentProps<'li'>[], panel: {} as ComponentProps<'div'>,
 }));
 vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
@@ -30,6 +32,7 @@ vi.mock('../ui/popover', () => ({
 vi.mock('react/jsx-dev-runtime', async original => {
   const runtime = await original<typeof import('react/jsx-dev-runtime')>();
   return { ...runtime, jsxDEV: (...args: Parameters<typeof runtime.jsxDEV>) => {
+    if (args[0] === 'div' && (args[1] as ComponentProps<'div'>).className === 'gem-picker') ui.root = args[1] as ComponentProps<'div'>;
     if (args[0] === 'li') ui.options.push(args[1] as ComponentProps<'li'>);
     return runtime.jsxDEV(...args);
   } };
@@ -61,7 +64,13 @@ function key(key: string, extra = {}) {
   ui.input.onKeyDown!(event as never);
   return event;
 }
-beforeEach(() => { ui.states = []; ui.descriptions = data; pick.mockClear(); });
+const matchMedia = vi.fn(() => ({ matches: false }));
+beforeEach(() => {
+  ui.states = []; ui.descriptions = data; pick.mockClear();
+  matchMedia.mockReset().mockReturnValue({ matches: false });
+  vi.stubGlobal('window', { matchMedia });
+});
+afterEach(() => vi.unstubAllGlobals());
 
 it('shows the highlighted gem, follows arrows/Home/End and pointer hover, and keeps aria-activedescendant', () => {
   let html = open();
@@ -95,11 +104,11 @@ it('Add, Enter and the list row use the same pick path and close the picker', ()
   }
 });
 
-it('marks English fallback as 原文 with lang=en in zh-CN and keeps bilingual gem names', () => {
+it('marks English fallback as 英文原文 with lang=en in zh-CN and keeps bilingual gem names', () => {
   const html = open('zh-CN');
   expect(html).toContain('范围辅助 / <span lang="en">Area Support</span>');
-  expect(html).toContain('>原文</small>');
-  expect(html).toContain('<p class="gem-description-text" lang="en">Supports Area Skills.');
+  expect(html).toContain('>英文原文</small>');
+  expect(html).toContain('class="gem-description-text" lang="en">Supports Area Skills.');
   expect(ui.buttons.some(button => button.children === '添加')).toBe(true);
 });
 
@@ -132,4 +141,73 @@ it('includes Add in the existing Tab loop, with the last button returning focus 
   tab(buttons.at(-1)); expect(focus).toHaveBeenCalledOnce();
   expect(tab(buttons[0], true).preventDefault).toHaveBeenCalledOnce();
   expect(focus).toHaveBeenCalledTimes(2);
+});
+
+
+it('preserves the highlighted gem while crossing rows to Add in the stacked layout, with keyboard selection still working', () => {
+  matchMedia.mockReturnValue({ matches: true });
+  open();
+  ui.options[1].onPointerEnter!({} as never);
+  expect(render()).toContain('Supports Area Skills.');
+  expect(ui.input['aria-activedescendant']).toMatch(/-0$/);
+  expect(matchMedia).toHaveBeenCalledWith('(max-width: 719px)');
+  key('ArrowDown');
+  expect(render()).toContain('Fires a bolt.');
+  ui.options[0].onPointerEnter!({} as never);
+  expect(render()).toContain('Fires a bolt.');
+  ui.buttons.find(button => button.children === 'Add')!.onClick!({} as never);
+  expect(pick).toHaveBeenCalledExactlyOnceWith('Bolt');
+});
+
+it('Add prevents mousedown blur, leaves the popover open until click, and picks the shown gem', () => {
+  open(); key('ArrowDown'); render();
+  const add = ui.buttons.find(button => button.children === 'Add')!;
+  const event = { defaultPrevented: false, preventDefault: vi.fn(() => { event.defaultPrevented = true; }) };
+  add.onMouseDown!(event as never);
+  // Safari/macOS Firefox keep button focus on the field only when mousedown's default is cancelled.
+  if (!event.defaultPrevented) ui.root.onBlur!({ relatedTarget: null, currentTarget: { contains: () => false } } as never);
+  expect(event.preventDefault).toHaveBeenCalledOnce();
+  expect(render()).toContain('Fires a bolt.');
+  expect(ui.input['aria-expanded']).toBe(true);
+  add.onClick!({} as never);
+  expect(pick).toHaveBeenCalledExactlyOnceWith('Bolt');
+  render(); expect(ui.input['aria-expanded']).toBe(false);
+});
+
+it('every colour chip prevents mousedown blur', () => {
+  open();
+  for (const chip of ui.buttons.slice(0, 4)) {
+    const event = { preventDefault: vi.fn() };
+    chip.onMouseDown!(event as never);
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+  }
+});
+
+it.each([
+  ['en-US', 'Add Area Support', 'Add'],
+  ['zh-CN', '添加 范围辅助', '添加'],
+  ['zh-TW', '新增 範圍輔助', '新增'],
+] as const)('Add names its gem for assistive technology in %s', (lang, label, visible) => {
+  ui.buttons = [];
+  renderToStaticMarkup(<GemDescriptionPanel gem={gems[0]} index={data} lang={lang} onAdd={() => {}} />);
+  const add = ui.buttons.find(button => button.children === visible)!;
+  expect(add['aria-label']).toBe(label);
+  expect(add.children).toBe(visible);
+});
+
+it('aria-describedby links only to the currently shown description text', () => {
+  let html = open();
+  const id = ui.input['aria-describedby'];
+  expect(id).toBeTruthy();
+  expect(html).toContain(`<p id="${id}" class="gem-description-text" lang="en">Supports Area Skills.`);
+  key('ArrowDown');
+  html = render();
+  expect(html).toContain(`<p id="${ui.input['aria-describedby']}" class="gem-description-text" lang="en">Fires a bolt.`);
+  key('Escape'); render();
+  expect(ui.input['aria-describedby']).toBeUndefined();
+  ui.descriptions = { ...data, scopes: { 'ActiveSkills.Description': {}, 'GemEffects.SupportText': {} } };
+  open();
+  expect(ui.input['aria-describedby']).toBeUndefined();
+  ui.descriptions = null; render();
+  expect(ui.input['aria-describedby']).toBeUndefined();
 });
