@@ -141,7 +141,7 @@ test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('a summoner build opens on the m
   } as unknown as CalculateBuildResponse;
   const html = panel(calc, lang);
   const tt = bindT(lang);
-  const message = tt('calcs.minionDamage').replace('{skill}', 'Wolf Pack');
+  const message = tt('calcs.minionDamage').replace('{skill}', lang === 'en-US' ? 'Wolf Pack' : tt('skills.untranslated').replace('{name}', 'Wolf Pack'));
   expect(html).toContain(tt('calcs.actorEyebrow').replace('{actor}', `${tt('minion.title')} · Wolf Companion #8`));
   expect(html).toContain('<div class="calcs-detail-value"><strong>5,307</strong></div>');
   // The player's zero is no longer what the page opens on, so the pointer to the minion isn't needed.

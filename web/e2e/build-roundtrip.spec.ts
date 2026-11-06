@@ -93,7 +93,7 @@ test('gem quality edits recalculate real WASM results and restore the baseline',
   const main = page.locator('.skill-group.is-main');
   await expect(main.locator('.skill-group-name')).toHaveText('Explosive Grenade');
   await main.locator('.skill-group-title').click();
-  const quality = main.getByRole('spinbutton', { name: 'Quality', exact: true }).first();
+  const quality = page.locator('.skill-detail').getByRole('spinbutton', { name: 'Quality', exact: true }).first();
   await expect(quality).toHaveValue('0');
   await quality.fill('20');
   await expect(dps).not.toHaveText(baseline!, { timeout: 30_000 });

@@ -226,9 +226,9 @@ for (const [edit, maximum] of [['build', 2], ['goal', 1], ['goal', 2], ['goal', 
       await goTo(page, 'Skills');
       const group = page.locator('.skill-group').first();
       await group.locator('.skill-group-title').click();
-      const toggle = group.locator('.gem-optimizer-toggle');
+      const toggle = page.locator('.skill-detail').locator('.gem-optimizer-toggle');
       if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
-      await openOptimizerSettings(group);
+      await openOptimizerSettings(page.locator('.skill-detail'));
       await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
       await page.getByRole('option', { name: 'Max Life', exact: true }).click();
     }

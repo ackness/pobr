@@ -325,7 +325,7 @@ test('a retained skill optimizer keeps its results through the first visit to a 
   await nav(page, 'Skills').click();
   const group = page.locator('.skill-group').first();
   if (await group.locator('.skill-group-title').getAttribute('aria-expanded') === 'false') await group.locator('.skill-group-title').click();
-  if (await group.locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') await group.locator('.gem-optimizer-toggle').click();
+  if (await page.locator('.skill-detail').locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') await page.locator('.skill-detail').locator('.gem-optimizer-toggle').click();
   await page.getByRole('button', { name: 'Calculate support combinations', exact: true }).click();
   await expect(page.locator('.support-plan').first()).toBeVisible({ timeout: 90_000 });
   const receipt = (await page.locator('.support-results').textContent())!; // textContent: toHaveText compares it, innerText applies CSS text-transform

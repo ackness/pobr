@@ -80,7 +80,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
         const otherGem = other?.gems[index]?.skill_id === gem.skill_id ? other.gems[index] : other?.gems.find(value => value.skill_id === gem.skill_id);
         const form = comparisonGemForm(gem, otherGem, catalog, lang, effect?.gemIndex === index ? effect.skillId : gem.skill_id);
         return <li key={index}>
-          <strong>{skillDisplayName(gem.skill_id, lang, catalog)}</strong> · {tt(catalog.get(gem.skill_id)?.is_support ? 'compare.support' : 'compare.active')}
+          <strong>{gem.skill_id ? skillDisplayName(gem.skill_id, lang, catalog, gem.name_spec ?? undefined) : gem.name_spec ? `${gem.name_spec} · ${tt('skills.unresolved')}` : tt('skills.unresolved')}</strong> · {tt(catalog.get(gem.skill_id)?.is_support ? 'compare.support' : 'compare.active')}
           <span> · {tt('compare.level')} {gem.level} · {tt('compare.quality')} {gem.quality}%</span>
           {form && <span> · {form}</span>}
           {(gem.enable_global_1 === false || gem.enable_global_2 === false) && <span> · {tt('compare.disabled')}</span>}

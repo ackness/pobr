@@ -393,10 +393,10 @@ for (const planner of ['support', 'replacement'] as const) {
       const group = page.locator('.skill-group').first();
       const title = group.locator('.skill-group-title');
       if (await title.getAttribute('aria-expanded') === 'false') await title.click();
-      const toggle = group.locator('.gem-optimizer-toggle');
+      const toggle = page.locator('.skill-detail').locator('.gem-optimizer-toggle');
       if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
       // Goal, capacity and candidate settings are folded away until asked for.
-      const settings = group.locator('.gem-optimizer-settings');
+      const settings = page.locator('.skill-detail').locator('.gem-optimizer-settings');
       if (!(await settings.evaluate(element => (element as HTMLDetailsElement).open))) await settings.locator(':scope > summary').click();
       await page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true }).fill('2');
       await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();

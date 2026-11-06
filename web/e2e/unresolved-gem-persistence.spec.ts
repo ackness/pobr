@@ -138,7 +138,7 @@ test('inactive Comet stages survive multibuild reload, switching and deliberate 
   await pageLink(page, 'Skills').click();
   const firestorm = page.locator('.skill-group').nth(8);
   await expandGroup(firestorm);
-  const activeGem = firestorm.locator('.skill-gem').nth(0);
+  const activeGem = page.locator('.skill-detail').locator('.skill-gem').nth(0);
   await activeGem.getByRole('spinbutton', { name: 'Level', exact: true }).fill('20');
   await idle(page);
   await activeGem.getByRole('spinbutton', { name: 'Quality', exact: true }).fill('21');
@@ -341,7 +341,7 @@ test('removing an unresolved slot does not change the selected second active ski
   await pageLink(page, 'Skills').click();
   const group = page.locator('.skill-group').first();
   await expandGroup(group);
-  await group.locator('.skill-gem').nth(1).getByRole('button', { name: 'Remove gem', exact: true }).click();
+  await page.locator('.skill-detail').locator('.skill-gem').nth(1).getByRole('button', { name: 'Remove gem', exact: true }).click();
   await idle(page);
   await expect(mainSkill(page)).toContainText('Spark');
   await expect(hitDps(page)).toHaveText(beforeDps);
@@ -369,7 +369,7 @@ for (const count of [1, 2]) {
     await pageLink(page, 'Skills').click();
     const group = page.locator('.skill-group').first();
     await expandGroup(group);
-    await group.locator('.skill-gem').first().getByRole('button', { name: 'Remove gem', exact: true }).click();
+    await page.locator('.skill-detail').locator('.skill-gem').first().getByRole('button', { name: 'Remove gem', exact: true }).click();
     await idle(page);
     const after = await snapshot(page);
     expect(after.state.socketGroups[0].gems).toEqual(before.state.socketGroups[0].gems.slice(1));
