@@ -201,6 +201,13 @@ test('gem filters activate by keyboard without adding a gem; Escape can be reope
     await page.keyboard.press('Tab');
     await expect(page.getByRole('button', { name, exact: true })).toBeFocused();
   }
+  // A pack with gem descriptions puts the panel's Add button after the filters; Tab reaches it without adding.
+  const add = page.locator('.gem-picker-popover .gem-description-panel button');
+  if (await add.count()) {
+    await page.keyboard.press('Tab');
+    await expect(add).toBeFocused();
+    await expect(page.locator('.skill-group')).toHaveCount(0);
+  }
   await page.keyboard.press('Tab');
   await expect(picker).not.toBeFocused();
   await expect(picker).toHaveAttribute('aria-expanded', 'false');

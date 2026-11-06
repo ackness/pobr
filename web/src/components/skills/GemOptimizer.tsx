@@ -1,3 +1,5 @@
+import { useGemDescriptions } from '../../hooks/useGemDescriptions';
+import { GemDescriptionPanel } from './GemDescriptionPanel';
 import { DisclosureChevron } from '../shared/DisclosureChevron';
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
@@ -6,7 +8,7 @@ import { uiStorageKey } from '../../lib/sessionStorage';
 import { AppButton, AppInput } from '../shared/controls';
 import { formatApiError } from '../../api/error';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { CalculateBuildRequest } from '../../api/types';
+import type { CalculateBuildRequest, GemCatalogEntry } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
@@ -28,6 +30,7 @@ interface Props {
   groupIndex: number;
   catalog: SupportMetadata[];
   gemName: (skillId: string) => string;
+  gemCatalog?: ReadonlyMap<string, GemCatalogEntry>;
   skillKey: string;
   focusNonce?: number;
 }
@@ -49,7 +52,8 @@ function savedExclusions(key: string): string[] {
   return [];
 }
 
-export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemName, skillKey, focusNonce }: Props) {
+export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemName, gemCatalog, skillKey, focusNonce }: Props) {
+  const descriptions = useGemDescriptions();
   const preview = usePreview();
   const tt = bindT(lang);
   const st = (key: Parameters<typeof supportText>[1]) => supportText(lang, key);
@@ -284,9 +288,21 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
           {stat === damage.stat ? damage.label : metricLabel(stat)} {number(after)} <strong>{before === undefined || after === undefined ? '—' : change(before, after)}</strong>
         </span>;
       })}</div>
-      <SupportDescriptions lang={lang} gems={plan.supports.map(gem => ({
+      {descriptions ? <details className="support-diagnostics support-descriptions">
+        <summary className="disclosure" data-disclosure-level="inline">{st('descriptions')}</summary>
+        <p className="skills-hint">{tt('picker.descriptionHint')}</p>
+        {plan.supports.map(gem => {
+          const metadata = byId.get(gem.skill_id);
+          const entry = gemCatalog?.get(gem.skill_id) ?? {
+            skill_id: gem.skill_id, name: metadata?.name ?? gemName(gem.skill_id),
+            name_zh_cn: null, name_zh_tw: null, is_support: true, is_lineage: metadata?.is_lineage ?? false,
+            active_effect_ids: [], colour: null, tags: metadata?.require_skill_types ?? [],
+          };
+          return <GemDescriptionPanel key={gem.skill_id} gem={entry} index={descriptions} lang={lang} />;
+        })}
+      </details> : <SupportDescriptions lang={lang} gems={plan.supports.map(gem => ({
         skill_id: gem.skill_id, name: gemName(gem.skill_id), description: byId.get(gem.skill_id)?.description,
-      }))} />
+      }))} />}
       <AppButton disabled={session.busy} onClick={() => apply(index)}>{tt('opt.apply')}</AppButton>
     </article>;
     })}

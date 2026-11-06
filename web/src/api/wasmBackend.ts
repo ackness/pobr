@@ -1,3 +1,4 @@
+import { loadGemDescriptionIndex, type GemDescriptionIndex } from '../lib/gemDescriptions';
 import { GameTextLocalizer, type GameDisplayName } from '../lib/localizedGameText';
 import { nativeDisplayTexts, type DisplayText } from '../lib/nativeDisplayTexts';
 import { NativeNameIndex, nativeClassNames, nativeCraftBaseNames, nativeGemNames, type GemNameLink, type GemNameOverride } from '../lib/nativeDisplayNames';
@@ -229,6 +230,22 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     throw error;
   });
 
+  let descriptionIndex: Promise<GemDescriptionIndex | null> | undefined;
+  const descriptions = () => descriptionIndex ??= (async () => {
+    if (!manifest) manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
+    return loadGemDescriptionIndex(manifest.files, async path => {
+      const url = `/data/${manifest!.version}/${path}`;
+      try { return JSON.parse(await fetchVersionFile(manifest!.version, path)) as unknown; }
+      finally {
+        // Keep only id -> active_skill in the index, not this large raw array/string.
+        if (path === 'base/granted_effects.json') fetchedFiles.delete(url);
+      }
+    }, displayCatalogs);
+  })().catch((error: unknown) => {
+    descriptionIndex = undefined;
+    throw error;
+  });
+
   let displayLocalizer: Promise<{ localizer: GameTextLocalizer; names: NativeNameIndex }> | undefined;
   const loadDisplayLocalizer = async () => {
     if (!manifest) manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
@@ -326,6 +343,7 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     async minionCatalog() {
       return JSON.parse(wasm.minionCatalogJson()) as MinionCatalog;
     },
+    gemDescriptions: descriptions,
     async gemCatalog() {
       const entries = JSON.parse(wasm.gemCatalogJson()) as GemCatalogEntry[];
       const catalogs = await displayCatalogs();

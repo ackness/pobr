@@ -1,3 +1,6 @@
+import { gemDescription } from '../../lib/gemDescriptions';
+import { useGemDescriptions } from '../../hooks/useGemDescriptions';
+import { GemDescriptionPanel } from './GemDescriptionPanel';
 import { Popover, PopoverAnchor, PopoverContent } from '../ui/popover';
 import { usePanelActive } from '../shared/UiContext';
 import { AppButton, AppInput } from '../shared/controls';
@@ -49,6 +52,7 @@ export function rankGemResults(entries: GemCatalogEntry[], query: string, colour
 
 export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Props) {
   const tt = bindT(lang);
+  const descriptions = useGemDescriptions();
   const active = usePanelActive();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -71,6 +75,9 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
   }, [open]);
 
   const filtered = useMemo(() => rankGemResults(entries, query, colour, lang), [entries, query, colour, lang]);
+
+  const descriptionId = open && !disabled && active && descriptions && filtered[highlight]
+    && gemDescription(descriptions, filtered[highlight], lang) ? `${listId}-description` : undefined;
 
   useEffect(() => setHighlight(0), [query, colour, open, entries]);
   useEffect(() => { if (disabled || !active) setOpen(false); }, [disabled, active]);
@@ -137,6 +144,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
                 aria-pressed={colour === chip.id}
                 className={`gem-chip${colour === chip.id ? ' is-active' : ''}`}
                 style={chip.colorVar ? { color: `var(--${chip.colorVar})` } : undefined}
+                onMouseDown={event => event.preventDefault()}
                 onClick={() => setColour(chip.id)}
               >
                 {chip.label}
@@ -159,7 +167,10 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
                   role="option"
                   aria-selected={idx === highlight}
                   className={`gem-picker-item${idx === highlight ? ' is-highlight' : ''}`}
-                  onPointerEnter={() => setHighlight(idx)}
+                  onPointerEnter={() => {
+                    // In the stacked layout, reaching Add crosses other rows. Preserve the chosen gem.
+                    if (!descriptions || !window.matchMedia('(max-width: 719px)').matches) setHighlight(idx);
+                  }}
                   onMouseDown={event => event.preventDefault()}
                   onClick={() => pick(entry)}
                 >
@@ -205,6 +216,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
         aria-expanded={open && !disabled}
         aria-controls={open && !disabled ? listId : undefined}
         aria-activedescendant={open && !disabled && filtered[highlight] ? `${listId}-${highlight}` : undefined}
+        aria-describedby={descriptionId}
         aria-autocomplete="list"
         role="combobox"
         onKeyDown={onKeyDown}
@@ -216,12 +228,16 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
       />
       <Popover open={open && !disabled && active} onOpenChange={setOpen}>
         <PopoverAnchor virtualRef={inputRef} />
-        <PopoverContent ref={panelRef} className="gem-picker-popover" align="start"
+        <PopoverContent ref={panelRef} className={`gem-picker-popover${descriptions ? ' has-descriptions' : ''}`} align="start" collisionPadding={12}
           onKeyDown={onPanelKeyDown}
           onOpenAutoFocus={event => event.preventDefault()}
           onCloseAutoFocus={event => event.preventDefault()}
           onInteractOutside={event => { if (rootRef.current?.contains(event.target as Node)) event.preventDefault(); }}>
-          {panelContents}
+          {descriptions ? <div className="gem-picker-body">
+            <div className="gem-picker-options">{panelContents}</div>
+            {filtered[highlight] && <GemDescriptionPanel gem={filtered[highlight]} index={descriptions} lang={lang} descriptionId={descriptionId}
+              onAdd={() => pick(filtered[highlight])} />}
+          </div> : panelContents}
         </PopoverContent>
       </Popover>
     </div>

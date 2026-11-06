@@ -1,3 +1,4 @@
+import { buildGemDescriptionIndex, gemDescription } from '../lib/gemDescriptions';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { PobrBackend } from './backend';
 import { parseApiError } from './error';
@@ -104,4 +105,16 @@ describe('engine RPC', () => {
     client.fail(new Error('Engine worker failed'));
     await expect(stuck).rejects.toThrow('Engine worker failed');
   });
+});
+
+
+it('gem description indexes retain lookup behavior across the real Worker message boundary', async () => {
+  const index = buildGemDescriptionIndex({ scopes: {
+    'GemEffects.SupportText': { variant: 'Supports [Spell] Skills.' }, 'ActiveSkills.Description': {},
+  } }, [{ gem_id: 'Gem', granted_effect_id: 'Support', variant_id: 'variant' }], {}, [], []);
+  const client = connect({ async gemDescriptions() { return index; } });
+  const received = await client.backend.gemDescriptions();
+  expect(received).not.toBe(index);
+  expect(gemDescription(received!, { skill_id: 'Support', is_support: true }, 'en-US'))
+    .toEqual({ text: 'Supports Spell Skills.', lang: 'en', english: true });
 });
