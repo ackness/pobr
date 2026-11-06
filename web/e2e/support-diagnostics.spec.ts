@@ -9,7 +9,7 @@ const limitLine = 'Remove Bleeding on use';
 const run = (page: Page) => page.getByRole('button', { name: 'Calculate support combinations', exact: true });
 const capacity = (page: Page) => page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
 const baseline = (page: Page) => page.locator('details.support-baseline-unsupported');
-const dps = (page: Page) => statValue(page, /^Total DPS$/).first();
+const dps = (page: Page) => statValue(page, /^Combined DPS$/).first();
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
 
 async function groups(page: Page): Promise<SocketGroupInput[]> {
@@ -60,8 +60,8 @@ async function openOptimizer(page: Page) {
   if (await group.locator('.skill-group-title').getAttribute('aria-expanded') === 'false') {
     await group.locator('.skill-group-title').click();
   }
-  if (await group.locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') {
-    await group.locator('.gem-optimizer-toggle').click();
+  if (await page.locator('.skill-detail').locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') {
+    await page.locator('.skill-detail').locator('.gem-optimizer-toggle').click();
   }
   // Capacity, objective and the candidate pool sit under the folded "Goal, capacity and candidates".
   const settings = page.locator('.gem-optimizer-settings');
@@ -128,8 +128,8 @@ test('real baseline limits remain keyboard-readable across first page visits and
       quality: Number(chip.getAttribute('data-quality')), stat_set_index: statSet === null ? 1 : Number(statSet) };
   }));
   expect(expected.every(gem => gem.level > 0 && gem.quality >= 0)).toBe(true);
-  const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^DPS / }).innerText();
-  const preview = numeric(metric.match(/^DPS ([\d,.]+)/)![1]);
+  const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Combined DPS / }).innerText();
+  const preview = numeric(metric.match(/^Combined DPS ([\d,.]+)/)![1]);
 
   for (const name of ['Calcs', 'Tree', 'Upgrades']) {
     await goTo(page, name);
@@ -148,7 +148,7 @@ test('real baseline limits remain keyboard-readable across first page visits and
     return [applied[0], ...applied.slice(1).map(gem => ({ ...gem, stat_set_index: gem.stat_set_index ?? 1 }))];
   }).toEqual([before[0].gems[0], ...expected]);
   expect((await groups(page)).slice(1)).toEqual(before.slice(1));
-  await expect.poll(async () => Math.abs(numeric(await dps(page).innerText()) - preview)).toBeLessThanOrEqual(0.06);
+  await expect.poll(async () => Math.abs(numeric(await dps(page).innerText()) - preview)).toBeLessThanOrEqual(0.5);
   await expectInvalidated(page);
 });
 

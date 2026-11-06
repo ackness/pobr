@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openItemsAfterImport } from './shell';
-import { copyCurrentStage, currentStage, dpsValue, ehpValue, goTo, openCustomModifiers, openOptimizerSettings, openStage, reduceMotion, settledNumber, settledText } from './upgradesPage';
+import { statValue, openItemsAfterImport } from './shell';
+import { copyCurrentStage, currentStage, ehpValue, goTo, openCustomModifiers, openOptimizerSettings, openStage, reduceMotion, settledNumber, settledText } from './upgradesPage';
 import type { SocketGroupInput } from '../src/api/types';
 
-const dps = dpsValue;
+const dps = (page: Page) => statValue(page, /^Combined DPS$/).first();
 const capacity = (page: Page) => page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
 const lineage = (page: Page) => page.getByRole('checkbox', { name: 'Include lineage supports', exact: true });
 const run = (page: Page) => page.getByRole('button', { name: 'Calculate support combinations', exact: true });
@@ -31,11 +31,11 @@ async function syntheticCaster(page: Page) {
 
 /**
  * A stage or skill-set change gives the Skills page a new planner. The page opens on the main group with its
- * optimizer drawn, but nothing of the earlier planner is carried over: no plans, and the settings are folded again.
+ * optimizer collapsed, and nothing of the earlier planner is carried over: no plans, and the settings are folded again.
  */
 async function expectFreshOptimizer(page: Page) {
-  await expect(page.locator('.gem-optimizer-body')).toBeVisible();
-  await expect(page.locator('.gem-optimizer-settings')).toHaveJSProperty('open', false);
+  await expect(page.locator('.gem-optimizer-toggle')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('.gem-optimizer-body')).toHaveCount(0);
   await expect(page.locator('.support-results')).toHaveCount(0);
   await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
   await expect(page.locator('.opt-progress')).toHaveCount(0);
@@ -52,10 +52,10 @@ async function openOptimizer(page: Page, index = 0) {
   }
   const title = group.locator('.skill-group-title');
   if (await title.getAttribute('aria-expanded') === 'false') await title.click();
-  const toggle = group.locator('.gem-optimizer-toggle');
+  const toggle = page.locator('.skill-detail').locator('.gem-optimizer-toggle');
   if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
-  await expect(group.locator('.gem-optimizer-body')).toBeVisible();
-  await openOptimizerSettings(group);
+  await expect(page.locator('.skill-detail').locator('.gem-optimizer-body')).toBeVisible();
+  await openOptimizerSettings(page.locator('.skill-detail'));
   await expect(run(page)).toBeEnabled();
 }
 
@@ -91,7 +91,7 @@ async function expectNoPlans(page: Page) {
   await expect(run(page)).toBeEnabled();
 }
 
-async function previewMetric(page: Page, label: 'DPS' | 'EHP', index = 0) {
+async function previewMetric(page: Page, label: 'Combined DPS' | 'Effective HP', index = 0) {
   const text = await page.locator('.support-plan').nth(index).locator('.support-plan-metrics > span')
     .filter({ hasText: new RegExp(`^${label} `) }).innerText();
   const value = text.match(new RegExp(`^${label} ([\\d,.]+)`));
@@ -166,7 +166,7 @@ test('same-stage Apply after returning to Skills equips the displayed complete s
     elements.map(element => element.getAttribute('data-skill-id')!));
   expect(ids.length, 'The recommendation must fit the explicitly unlocked capacity').toBeLessThanOrEqual(3);
   await expect(first.locator('.gem-lineage-badge')).toHaveCount(0);
-  const previewDps = await previewMetric(page, 'DPS');
+  const previewDps = await previewMetric(page, 'Combined DPS');
   expect(previewDps).toBeGreaterThan(beforeDps);
 
   await goTo(page, 'Calcs');
@@ -180,7 +180,7 @@ test('same-stage Apply after returning to Skills equips the displayed complete s
   expect(applied[0].gems[0]).toEqual(groupsBefore[0].gems[0]);
   expect(applied[0].gems.slice(1).map(gem => gem.skill_id)).toEqual(ids);
   expect(Math.abs(await settledNumber(dps(page)) - previewDps),
-    'Equipped DPS must match the real-WASM preview to its displayed one-decimal precision').toBeLessThanOrEqual(0.06);
+    'Equipped DPS must match the real-WASM preview to its displayed integer precision').toBeLessThanOrEqual(0.5);
   await expectNoPlans(page);
   await expect(capacity(page)).toHaveValue('3');
   await expect(lineage(page)).not.toBeChecked();
@@ -223,16 +223,16 @@ for (const edit of ['build', 'goal'] as const) {
     const currentDps = await settledNumber(dps(page));
     await completePlan(page);
     const baselineText = await page.locator('.support-baseline').innerText();
-    const baselineDps = numeric(baselineText.match(/DPS ([\d,.]+)/)![1]);
+    const baselineDps = numeric(baselineText.match(/Combined DPS ([\d,.]+)/)![1]);
     expect(Math.abs(baselineDps - currentDps), 'New results must use the current equipped build, not the hidden old request')
-      .toBeLessThanOrEqual(0.06);
+      .toBeLessThanOrEqual(0.5);
     if (edit === 'goal') {
       await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Max total DPS');
       await expect(page.getByRole('spinbutton', { name: 'min', exact: true })).toHaveValue(String(floor));
       const planCount = await page.locator('.support-plan').count();
       for (let index = 0; index < planCount; index++) {
-        expect(await previewMetric(page, 'EHP', index), 'Every refreshed recommendation must satisfy the new shared constraint')
-          .toBeGreaterThanOrEqual(floor - 0.05);
+        expect(await previewMetric(page, 'Effective HP', index), 'Every refreshed recommendation must satisfy the new shared constraint')
+          .toBeGreaterThanOrEqual(floor - 0.5);
       }
     }
     expect(await socketGroups(page)).toEqual(groupsBefore);
@@ -292,7 +292,7 @@ test('retargeting keeps only the selected workspace and never borrows another gr
   await expectNoPlans(page);
   await capacity(page).fill('4');
   await completePlan(page);
-  const sparkPreview = await page.locator('.skill-group').nth(1).locator('.support-results').innerText();
+  const sparkPreview = await page.locator('.skill-detail .support-results').innerText();
   await expect(page.locator('.skill-group').nth(1).locator('.skill-main-toggle')).toHaveAttribute('aria-pressed', 'true');
 
   await openOptimizer(page, 0);
@@ -301,7 +301,7 @@ test('retargeting keeps only the selected workspace and never borrows another gr
   await expect(page.locator('.skill-group').first().locator('.skill-main-toggle')).toHaveAttribute('aria-pressed', 'true');
   await expectNoPlans(page);
   await completePlan(page);
-  expect(await page.locator('.skill-group').first().locator('.support-results').innerText()).not.toBe(sparkPreview);
+  expect(await page.locator('.skill-detail .support-results').innerText()).not.toBe(sparkPreview);
   expect((await socketGroups(page))[0]).toEqual(originalGroups[0]);
 
   await openOptimizer(page, 1);
@@ -357,7 +357,7 @@ test('Cancel discards evaluated partial support plans and an explicit fresh run 
   await expect(lineage(page)).not.toBeChecked();
   await page.clock.resume();
   await completePlan(page);
-  expect(await previewMetric(page, 'DPS')).toBeGreaterThan(numeric(beforeDps));
+  expect(await previewMetric(page, 'Combined DPS')).toBeGreaterThan(numeric(beforeDps));
   expect(await socketGroups(page)).toEqual(equipped);
 });
 
@@ -387,7 +387,7 @@ test('leaving Skills cancels an active real-WASM batch and its late continuation
   await expect(lineage(page)).not.toBeChecked();
   await page.clock.resume();
   await completePlan(page);
-  expect(await previewMetric(page, 'DPS')).toBeGreaterThan(numeric(beforeDps));
+  expect(await previewMetric(page, 'Combined DPS')).toBeGreaterThan(numeric(beforeDps));
   expect(await socketGroups(page)).toEqual(equipped);
 });
 
@@ -425,13 +425,14 @@ test('replacing a skill set with identical groups resets selected support worksp
   const initialCapacity = await capacity(page).inputValue();
   const initialLineage = await lineage(page).isChecked();
   const groups = await socketGroups(page);
-  await page.getByRole('textbox', { name: 'Set name…', exact: true }).fill('Identical support set');
-  await page.getByRole('button', { name: 'Save current as set', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Template name…', exact: true }).fill('Identical support set');
+  await page.getByRole('button', { name: 'Save as template', exact: true }).click();
   await capacity(page).fill('3');
   await lineage(page).uncheck();
   await completePlan(page);
   await page.locator('.skill-set-chip').filter({ hasText: 'Identical support set' })
-    .getByRole('button', { name: 'Apply', exact: true }).click();
+    .getByRole('button', { name: 'Apply (replace current skill groups)', exact: true }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   await expectFreshOptimizer(page);
   expect(await socketGroups(page)).toEqual(groups);

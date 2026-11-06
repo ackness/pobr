@@ -55,7 +55,11 @@ export async function supportSetsCompatible(group: SocketGroupInput, sets: GemIn
   const eligible = sets.flatMap((gems, index) => {
     if (!supportSetAllowed(gems, catalog)) return [];
     const candidate = groupWithSupports(group, gems, byId);
-    return candidate ? [{ candidate, index }] : [];
+    // Imported unresolved gems have no effect ID. They cannot participate in a
+    // compatibility judgement, but must remain in the build and its diagnostics.
+    // Otherwise one unresolved gem (e.g. Atziri's Communion in a trigger group)
+    // makes the endpoint reject every otherwise legal support.
+    return candidate ? [{ candidate: { ...candidate, gems: candidate.gems.filter(gem => gem.skill_id) }, index }] : [];
   });
   if (!eligible.length) return result;
   const backend = await getBackend();
@@ -68,6 +72,21 @@ export async function supportSetsCompatible(group: SocketGroupInput, sets: GemIn
     batch.forEach(({ index }, i) => { result[index] = compatible[i]; });
   }
   return result;
+}
+
+export type SupportPickerStatus = 'loading' | 'error' | 'full' | 'unknown' | 'empty' | 'ready';
+
+/** A full slot count takes precedence over the candidate list's loading state. */
+export function supportPickerStatus(group: SocketGroupInput, catalog: SupportMetadata[],
+  candidates: number | undefined, failed = false): { status: SupportPickerStatus; remaining: number; partial: boolean } {
+  const byId = new Map(catalog.map(gem => [gem.skill_id, gem]));
+  const occupied = group.gems.filter(gem => byId.get(gem.skill_id)?.is_support).length;
+  const remaining = Math.max(0, 5 - occupied);
+  const partial = group.gems.some(gem => gem.enabled !== false && !known(byId.get(gem.skill_id)));
+  const active = group.gems.some(gem => gem.enabled !== false && known(byId.get(gem.skill_id)) && !byId.get(gem.skill_id)!.is_support);
+  const status = !remaining ? 'full' : failed ? 'error' : candidates === undefined ? 'loading'
+    : !active ? 'unknown' : candidates ? 'ready' : partial ? 'unknown' : 'empty';
+  return { status, remaining, partial };
 }
 
 export async function supportSetCompatible(group: SocketGroupInput, gems: GemInput[],

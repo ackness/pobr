@@ -30,7 +30,7 @@ test('gem names follow stable links, overlay membership and current English, inc
 test('source English changes and explicit rejections block old and alternate-script names', () => {
   for (const pair of [['Other', '其他'], ['Fire', null], [null, null]] as Array<[string | null, string | null]>) {
     const result = nativeGemNames([gem], [link], [], [catalog({ 'BaseItemTypes.Name': { [link.id]: pair } })])[0];
-    expect(gemDisplayName(result, 'zh-CN')).toBe('Fire');
+    expect(gemDisplayName(result, 'zh-CN')).toBe('Fire（未翻译）');
     expect(result.name_zh_tw).toBe(gem.name_zh_tw);
   }
 });

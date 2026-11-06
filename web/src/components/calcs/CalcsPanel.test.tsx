@@ -141,7 +141,7 @@ test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('zero character DPS points to th
   } as unknown as CalculateBuildResponse;
   const html = panel(calc, lang);
   const tt = bindT(lang);
-  const message = tt('calcs.minionDamage').replace('{skill}', 'Wolf Pack');
+  const message = tt('calcs.minionDamage').replace('{skill}', lang === 'en-US' ? 'Wolf Pack' : tt('skills.untranslated').replace('{name}', 'Wolf Pack'));
   expect(html).toContain(renderToStaticMarkup(<p className="breakdown-note">{message}</p>));
   expect(html).toContain(tt('calcs.viewMinion').replace('{minion}', 'Wolf Companion'));
   expect(html).toContain(tt('calcs.actorEyebrow').replace('{actor}', tt('minion.player')));

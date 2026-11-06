@@ -390,7 +390,7 @@ test('support receipts and settings survive rejected imports without losing the 
   await pageLink(page, 'Skills').click();
   const group = page.locator('.skill-group').first();
   if (await group.locator('.skill-group-title').getAttribute('aria-expanded') === 'false') await group.locator('.skill-group-title').click();
-  if (await group.locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') await group.locator('.gem-optimizer-toggle').click();
+  if (await page.locator('.skill-detail').locator('.gem-optimizer-toggle').getAttribute('aria-expanded') === 'false') await page.locator('.skill-detail').locator('.gem-optimizer-toggle').click();
   await openSupportSettings(page);
   const capacity = page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
   const lineage = page.getByRole('checkbox', { name: 'Include lineage supports', exact: true });
@@ -420,8 +420,8 @@ test('support receipts and settings survive rejected imports without losing the 
       level: Number(element.getAttribute('data-level')), quality: Number(element.getAttribute('data-quality')),
       ...(statSet !== null ? { stat_set_index: Number(statSet) } : {}) };
   }));
-  const previewText = await first.locator('.support-plan-metrics > span').filter({ hasText: /^DPS / }).innerText();
-  const predictedDps = numeric(previewText.match(/^DPS ([\d,.]+)/)![1]);
+  const previewText = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Combined DPS / }).innerText();
+  const predictedDps = numeric(previewText.match(/^Combined DPS ([\d,.]+)/)![1]);
   await first.getByRole('button', { name: 'Apply', exact: true }).click();
   await expect.poll(async () => (await saved(page)).state.socketGroups[0].gems.slice(1)).toEqual(supports);
   const after = await capture(page);
@@ -432,10 +432,10 @@ test('support receipts and settings survive rejected imports without losing the 
   expect(after.envelope).toEqual(expected);
   expect(after.envelope.state.socketGroups[0].gems[0]).toEqual(before.envelope.state.socketGroups[0].gems[0]);
   expect(after.bytes.library).toBe(before.bytes.library);
-  const actualDps = after.result.stats.find(stat => stat.id === 'TotalDPS')!.value!;
-  expect(actualDps).toBeGreaterThan(before.result.stats.find(stat => stat.id === 'TotalDPS')!.value!);
-  expect(Math.abs(actualDps - predictedDps)).toBeLessThanOrEqual(0.06);
-  await expect(statValue(page, /^Total DPS$/).first()).toHaveText(formatStatValue(actualDps, 'float2'));
+  const actualDps = after.result.stats.find(stat => stat.id === 'CombinedDPS')!.value!;
+  expect(actualDps).toBeGreaterThan(before.result.stats.find(stat => stat.id === 'CombinedDPS')!.value!);
+  expect(Math.abs(actualDps - predictedDps)).toBeLessThanOrEqual(0.5);
+  await expect(statValue(page, /^Combined DPS$/).first()).toHaveText(formatStatValue(actualDps, 'int'));
   await expect(page.locator('.support-results')).toHaveCount(0);
 });
 
@@ -481,7 +481,7 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
       await goTo(page, bindT(lang)('tab.skills'), lang);
       const group = page.locator('.skill-group').first();
       if (await group.locator('.skill-group-title').getAttribute('aria-expanded') === 'false') await group.locator('.skill-group-title').click();
-      const level = group.locator('.skill-gem').first().getByRole('spinbutton', { name: bindT(lang)('skills.level'), exact: true });
+      const level = page.locator('.skill-detail').locator('.skill-gem').first().getByRole('spinbutton', { name: bindT(lang)('skills.level'), exact: true });
       await level.fill('4294967296');
       const calcAlert = page.getByRole('alert').filter({ hasText: '4294967296' });
       await expect(calcAlert).toContainText('u32');

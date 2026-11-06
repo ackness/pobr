@@ -69,3 +69,16 @@ test('empty B cannot remove an A item even if its handler is called directly', (
   expect(applyComparedStage).not.toHaveBeenCalled();
   expect(a.saved.state.items).toEqual([{ slot: 'ring1', text: 'A ring' }]);
 });
+
+test('skill comparison preserves the imported name of an unresolved gem', () => {
+  const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Target');
+  const [a, b] = workspace.builds[0].stages;
+  b.saved = structuredClone(b.saved);
+  b.saved.state.socketGroups[0].gems.push({ skill_id: '', name_spec: 'Imported original gem', level: 0, quality: 0 });
+  ui.values = [a.id, b.id, 'own', true, '', 'skills', {}, {
+    key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
+    value: { stats: [], before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
+  }];
+  const html = render({ workspace, dataVersion: '0.5' } as unknown as BuildSession);
+  expect(html).toContain('Imported original gem · Unresolved gem');
+});

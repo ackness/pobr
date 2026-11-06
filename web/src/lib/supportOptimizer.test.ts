@@ -1,7 +1,7 @@
 import { expect, test, vi } from 'vitest';
 import type { CalculateBuildRequest, GemInput, SocketGroupInput } from '../api/types';
 import type { EvaluateOptions } from './optimize';
-import { applySupportPlan, eligibleSupports, lineageAvailable, optimizeSupports, sameSupportFamily, supportSetCompatible, supportSetsCompatible, supportVariant,
+import { applySupportPlan, eligibleSupports, lineageAvailable, optimizeSupports, sameSupportFamily, supportPickerStatus, supportSetCompatible, supportSetsCompatible, supportVariant,
   type SupportMetadata } from './supportOptimizer';
 
 // Canned engine decisions for the synthetic search fixtures. Rule semantics and
@@ -368,4 +368,30 @@ test('rejected removals and replacements record full evaluated sets with equippe
   expect(replacement.unsupported).toEqual(['Synthetic set limit: Old+New']);
   expect(result.plans).toEqual([]);
   expect(request).toEqual(original);
+});
+
+test('an unresolved imported gem does not poison the compatibility check for the recognised trigger group', async () => {
+  const unresolved = { skill_id: '', name_spec: "Atziri's Communion", level: 0, quality: 0 };
+  const trigger = gem('Trigger', { is_support: false, skill_types: ['Meta'] });
+  const original: SocketGroupInput = { ...group(), main_active_skill: 2, gems: [input('Trigger'), unresolved, input('Fireball')] };
+  const catalog = [active, trigger, gem('New')];
+  expect(await supportSetCompatible(original, [input('New')], catalog)).toBe(true);
+  expect(engine.judge).toHaveBeenLastCalledWith([{ ...original, gems: [input('Trigger'), input('Fireball'), input('New')] }]);
+  const variant = supportVariant({ socket_groups: [original] }, 0, [input('New')], catalog);
+  expect(variant.socket_groups![0].gems).toEqual([...original.gems, input('New')]);
+  expect(variant.socket_groups![0].main_active_skill).toBe(2);
+  expect(original.gems[1]).toBe(unresolved);
+});
+
+
+test('manual picker distinguishes unknown compatibility, no candidates, loading and full sockets', () => {
+  const catalog = [active, gem('New')];
+  expect(supportPickerStatus(group(), catalog, undefined)).toMatchObject({ status: 'loading', remaining: 5 });
+  expect(supportPickerStatus(group(), catalog, 0)).toMatchObject({ status: 'empty', remaining: 5 });
+  expect(supportPickerStatus(group(), catalog, 2)).toMatchObject({ status: 'ready', remaining: 5 });
+  expect(supportPickerStatus(group(), catalog, 0, true)).toMatchObject({ status: 'error' });
+  expect(supportPickerStatus({ enabled: true, gems: [input('Unknown')] }, catalog, 0)).toMatchObject({ status: 'unknown', partial: true });
+  expect(supportPickerStatus(group(Array(5).fill('New')), catalog, undefined)).toMatchObject({ status: 'full', remaining: 0 });
+  const partial = { ...group(), gems: [...group().gems, input('')] };
+  expect(supportPickerStatus(partial, catalog, 2)).toMatchObject({ status: 'ready', partial: true, remaining: 5 });
 });
