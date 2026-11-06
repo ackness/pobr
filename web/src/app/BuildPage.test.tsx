@@ -7,26 +7,15 @@ import { DropdownMenuContent, DropdownMenuItem } from '../components/ui/dropdown
 import { BuildPage } from './BuildPage';
 import { DialogRequests, restoreDialogFocus } from '../components/shared/dialogRequests';
 
-const harness = vi.hoisted(() => ({ values: [] as unknown[], refs: [] as { current: unknown }[], deps: [] as unknown[][],
-  stateIndex: 0, refIndex: 0, effectIndex: 0, effects: [] as (() => void)[], focus: vi.fn(),
+const harness = vi.hoisted(() => ({ focus: vi.fn(),
   confirm: vi.fn<(...args: unknown[]) => Promise<boolean>>(), valid: true }));
-vi.mock('react', async original => ({
-  ...await original<typeof import('react')>(),
-  useState: (initial: unknown) => {
-    const index = harness.stateIndex++;
-    if (!(index in harness.values)) harness.values[index] = initial;
-    return [harness.values[index], (value: unknown) => { harness.values[index] = value; }];
-  },
-  useRef: (initial: unknown) => {
-    const index = harness.refIndex++;
-    return harness.refs[index] ??= { current: index === 0 ? { focus: harness.focus } : initial };
-  },
-  useEffect: (effect: () => void, deps: unknown[]) => {
-    const index = harness.effectIndex++, previous = harness.deps[index];
-    if (!previous || deps.some((dep, at) => dep !== previous[at])) harness.effects.push(effect);
-    harness.deps[index] = deps;
-  },
-}));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../testing/hookHarness');
+  return createHookHarness({ lazyState: false, functionalUpdates: false, separateCursors: true,
+    refs: { reuse: 'nullish', initialize: (initial, index) => index === 0 ? { focus: harness.focus } : initial },
+    effects: { comparison: 'strict' } });
+});
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../components/shared/AppDialogs', () => ({ useAppDialogs: () => ({ confirm: harness.confirm }) }));
 vi.mock('../components/shared/useSessionAction', () => ({ useSessionAction: () => () => () => harness.valid }));
 // The controls' behavior belongs to their own tests; this suite drives the page's actual handlers.
@@ -61,7 +50,7 @@ function fixture() {
       lastRequest = focusRequest; claimed = false;
       claimImportFocus = () => { if (claimed) return false; claimed = true; return true; };
     }
-    harness.stateIndex = 0; harness.refIndex = 0; harness.effectIndex = 0;
+    hooks.beginRender();
     const tree = BuildPage({ session, lang: 'en-US', onImported: vi.fn(), claimImportFocus: claimImportFocus! });
     return elements(tree);
   };
@@ -73,21 +62,21 @@ const clickMenu = (nodes: ReturnType<typeof elements>, label: string, row: numbe
   nodes.filter(node => node.type === DropdownMenuItem && node.props.children === label)[row].props.onSelect();
 
 beforeEach(() => {
-  harness.values = []; harness.refs = []; harness.deps = []; harness.effects = [];
+  hooks.reset();
   harness.focus.mockClear(); harness.confirm.mockReset(); harness.valid = true;
 });
 
 it('focuses the always-visible import textarea on open and explicit reopen, without refocusing on renders', () => {
   const { render } = fixture();
   const nodes = render();
-  expect(control(nodes, AppTextarea, props => props.className === 'import-code').ref).toBe(harness.refs[0]);
+  expect(control(nodes, AppTextarea, props => props.className === 'import-code').ref).toBe(hooks.refs[0]);
   expect(nodes.some(node => node.type === 'details' && node.props.className.includes('bd-import'))).toBe(false);
-  harness.effects.splice(0).forEach(effect => effect());
+  hooks.runEffects();
   expect(harness.focus).toHaveBeenCalledTimes(1);
   control(nodes, AppTextarea, props => props.className === 'import-code').onChange({ target: { value: 'Code' } });
-  render(); harness.effects.splice(0).forEach(effect => effect());
+  render(); hooks.runEffects();
   expect(harness.focus).toHaveBeenCalledTimes(1);
-  render(1); harness.effects.splice(0).forEach(effect => effect());
+  render(1); hooks.runEffects();
   expect(harness.focus).toHaveBeenCalledTimes(2);
 });
 
@@ -158,14 +147,14 @@ it('only lists the active stage in the class confirmation', async () => {
 
 it('does not refocus import when a stage switch remounts the page', () => {
   const { session, render } = fixture();
-  render(); harness.effects.splice(0).forEach(effect => effect());
+  render(); hooks.runEffects();
   expect(harness.focus).toHaveBeenCalledOnce();
   const build = session.workspace!.builds[1];
   build.stages.push({ ...build.stages[0], id: 'another-stage' });
   build.activeStage = 'another-stage';
   // Discard only child hook state, as React does for the stage-keyed main element.
-  harness.values = []; harness.refs = []; harness.deps = []; harness.effects = [];
-  render(); harness.effects.splice(0).forEach(effect => effect());
+  hooks.reset();
+  render(); hooks.runEffects();
   expect(harness.focus).toHaveBeenCalledOnce();
 });
 

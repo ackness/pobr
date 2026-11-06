@@ -7,44 +7,16 @@ import type { TradeOptimization, TradeCatalog } from '../../lib/tradeOptimizer';
 import type { ObjectiveState } from '../shared/OptimizerControls';
 import type { GemPlan } from '../../lib/tradeMarket';
 
-const ui = vi.hoisted(() => ({ cursor: 0, refIndex: 0, dirty: false, hooks: [] as unknown[], effects: [] as (() => void)[],
-  buttons: [] as (ComponentProps<'button'> & { 'data-slot-id'?: string })[], scroll: vi.fn(), focus: vi.fn(), optimize: vi.fn(), replacement: vi.fn(), gems: vi.fn(),
+const ui = vi.hoisted(() => ({ buttons: [] as (ComponentProps<'button'> & { 'data-slot-id'?: string })[], scroll: vi.fn(), focus: vi.fn(), optimize: vi.fn(), replacement: vi.fn(), gems: vi.fn(),
   selects: [] as { ariaLabel: string; onChange: (value: string) => void }[],
   frames: [] as (() => void)[], goal: { preset: 'life', cStat: '', cMin: '', cMax: '' } as ObjectiveState }));
-vi.mock('react', async original => {
-  const memo = (factory: () => unknown, deps?: unknown[]) => {
-    const index = ui.cursor++;
-    const previous = ui.hooks[index] as { deps?: unknown[]; value: unknown } | undefined;
-    if (!previous || !deps || deps.some((value, i) => !Object.is(value, previous.deps?.[i]))) {
-      ui.hooks[index] = { deps, value: factory() };
-    }
-    return (ui.hooks[index] as { value: unknown }).value;
-  };
-  const effect = (callback: () => void | (() => void), deps?: unknown[]) => {
-    const index = ui.cursor++;
-    const previous = ui.hooks[index] as { deps?: unknown[]; cleanup?: () => void } | undefined;
-    if (!previous || !deps || deps.some((value, i) => !Object.is(value, previous.deps?.[i]))) {
-      const entry = { deps, cleanup: undefined as (() => void) | undefined };
-      ui.hooks[index] = entry;
-      ui.effects.push(() => { previous?.cleanup?.(); entry.cleanup = callback() || undefined; });
-    }
-  };
-  return { ...await original<typeof import('react')>(),
-    useState: (initial: unknown) => {
-      const index = ui.cursor++;
-      if (!(index in ui.hooks)) ui.hooks[index] = typeof initial === 'function' ? initial() : initial;
-      return [ui.hooks[index], (value: unknown) => { ui.hooks[index] = typeof value === 'function' ? value(ui.hooks[index]) : value; ui.dirty = true; }];
-    },
-    useRef: (initial: unknown) => {
-      const index = ui.cursor++;
-      const refIndex = ui.refIndex++;
-      if (!(index in ui.hooks)) ui.hooks[index] = { current: [0, 1, 3].includes(refIndex) ? { scrollIntoView: ui.scroll, focus: ui.focus } : initial };
-      return ui.hooks[index];
-    },
-    useMemo: memo, useCallback: (callback: unknown, deps?: unknown[]) => memo(() => callback, deps),
-    useEffect: effect, useLayoutEffect: effect,
-  };
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness({ refs: { initialize: (initial, index) => [0, 1, 3].includes(index)
+    ? { scrollIntoView: ui.scroll, focus: ui.focus } : initial }, memo: 'deps', callback: 'deps',
+    effects: { comparison: 'objectIs', cleanup: 'previous' }, layoutEffect: 'effect' });
 });
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 
 vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: ui.goal, setGoal: (goal: ObjectiveState) => { ui.goal = goal; } }) }));
 vi.mock('../../hooks/useSkillName', () => ({ useSkillCatalog: () => new Map() }));
@@ -78,10 +50,10 @@ let active: boolean;
 function render(lang: ComponentProps<typeof TradePanel>['lang'] = 'en-US') {
   let html = '';
   for (let count = 0; count < 10; count++) {
-    ui.cursor = 0; ui.refIndex = 0; ui.buttons = []; ui.selects = []; ui.dirty = false;
+    hooks.beginRender(); ui.buttons = []; ui.selects = [];
     html = renderToStaticMarkup(<TradePanel active={active} focus={focus} lang={lang} session={session} />);
-    ui.effects.splice(0).forEach(effect => effect());
-    if (!ui.dirty) return html;
+    hooks.runEffects();
+    if (!hooks.dirty) return html;
   }
   throw new Error('Render did not settle');
 }
@@ -102,7 +74,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 beforeEach(() => {
-  ui.hooks = []; ui.effects = []; ui.scroll.mockClear(); ui.focus.mockClear(); ui.optimize.mockReset(); ui.replacement.mockClear(); ui.gems.mockReset();
+  hooks.reset(); ui.scroll.mockClear(); ui.focus.mockClear(); ui.optimize.mockReset(); ui.replacement.mockClear(); ui.gems.mockReset();
   ui.goal = { preset: 'life', cStat: '', cMin: '', cMax: '' }; focus = undefined; active = true;
   vi.stubGlobal('localStorage', { getItem: () => null, setItem: vi.fn() });
   ui.frames = [];

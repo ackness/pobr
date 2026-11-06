@@ -3,25 +3,16 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { useTreeHover } from './useTreeHover';
 import type { PassiveNode } from '../../api/types';
 
-const ui = vi.hoisted(() => ({ cursor: 0, slots: [] as unknown[], cleanup: undefined as (() => void) | undefined }));
-vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
-  useState: (initial: unknown) => {
-    const index = ui.cursor++;
-    if (!(index in ui.slots)) ui.slots[index] = initial;
-    return [ui.slots[index], (next: unknown) => { ui.slots[index] = next; }];
-  },
-  useRef: (initial: unknown) => {
-    const index = ui.cursor++;
-    if (!(index in ui.slots)) ui.slots[index] = { current: initial };
-    return ui.slots[index];
-  },
-  useEffect: (effect: () => (() => void)) => { ui.cleanup ??= effect(); },
-}));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness({ lazyState: false, functionalUpdates: false, refs: true, effects: 'once' });
+});
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 const node = { id: 'power', skill: 2, kind: 'notable' } as PassiveNode;
-const read = () => { ui.cursor = 0; return useTreeHover(); };
+const read = () => { hooks.beginRender(); return useTreeHover(); };
 const blur = (inside: boolean) => ({ currentTarget: { contains: () => inside }, relatedTarget: {} }) as unknown as FocusEvent<HTMLDivElement>;
-beforeEach(() => { ui.slots = []; ui.cleanup = undefined; vi.useFakeTimers(); });
-afterEach(() => { ui.cleanup?.(); vi.useRealTimers(); });
+beforeEach(() => { hooks.reset(); vi.useFakeTimers(); });
+afterEach(() => { hooks.cleanup?.(); vi.useRealTimers(); });
 
 test('focused change summary survives pointer leave and pending dismissal timers', () => {
   const card = read();

@@ -7,15 +7,12 @@ import type { Lang } from '../../lib/i18n';
 import { addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage } from '../../lib/buildWorkspace';
 
 // Replay the real picker and apply handlers without requiring a browser environment.
-const ui = vi.hoisted(() => ({ index: 0, values: [] as unknown[],
-  buttons: [] as ComponentProps<'button'>[], selects: [] as ComponentProps<'select'>[] }));
-vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
-  useState: (initial: unknown) => {
-    const index = ui.index++;
-    if (!(index in ui.values)) ui.values[index] = typeof initial === 'function' ? initial() : initial;
-    return [ui.values[index], (value: unknown) => { ui.values[index] = value; }];
-  },
-}));
+const ui = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], selects: [] as ComponentProps<'select'>[] }));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness({ functionalUpdates: false });
+});
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../../app/pages/navigate', () => ({ useNavigateToPage: () => vi.fn() }));
 vi.mock('../../hooks/useSkillName', () => ({ useSkillCatalog: () => new Map() }));
 vi.mock('../ui/button', () => ({ Button: (props: ComponentProps<'button'>) => { ui.buttons.push(props); return <button {...props} />; } }));
@@ -33,10 +30,10 @@ const saved = (): SavedSession => ({ version: 1, notes: '', state: {
   socketGroups: [{ enabled: true, gems: [{ skill_id: 'SparkPlayer', level: 5, quality: 0 }] }],
 } });
 const render = (session: BuildSession, lang: Lang = 'en-US') => {
-  ui.index = 0; ui.buttons = []; ui.selects = [];
+  hooks.beginRender(); ui.buttons = []; ui.selects = [];
   return renderToStaticMarkup(<ComparePanel session={session} lang={lang} />);
 };
-beforeEach(() => { ui.values = []; });
+beforeEach(() => { hooks.reset(); });
 
 test('an unrelated build leaves B unselected until the player chooses it', () => {
   const workspace = addWorkspaceBuild(createWorkspace(saved()), 'Imported', saved());
@@ -59,7 +56,7 @@ test('empty B cannot remove an A item even if its handler is called directly', (
   const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Target');
   workspace.builds[0].stages[1].saved = { ...saved(), state: { ...saved().state, items: [] } };
   const [a, b] = workspace.builds[0].stages;
-  ui.values = [a.id, b.id, 'own', true, '', 'items', {
+  hooks.slots = [a.id, b.id, 'own', true, '', 'items', {
     key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
     value: { stats: [], before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
   }];
@@ -83,7 +80,7 @@ test.each([
   const [a, b] = workspace.builds[0].stages;
   a.saved = { ...a.saved, state: { ...a.saved.state, params: { ...a.saved.state.params, enemy_tier: 'pinnacle' } } };
   b.saved = { ...b.saved, state: { ...b.saved.state, params: { ...b.saved.state.params, enemy_tier: 'none' } } };
-  ui.values = [a.id, b.id, 'own', true, '', 'config', {
+  hooks.slots = [a.id, b.id, 'own', true, '', 'config', {
     key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
     value: { stats: [], before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
   }];
@@ -132,7 +129,7 @@ test('table changes are after minus before and lower costs are coloured as impro
     { id: 'ManaCost', before: 20, after: 10, delta: -10, percent: -50, changed: true },
     { id: 'ReqStr', before: 50, after: 80, delta: 30, percent: 60, changed: true },
   ];
-  ui.values = [a.id, b.id, 'own', true, '', 'stats', {
+  hooks.slots = [a.id, b.id, 'own', true, '', 'stats', {
     key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
     value: { stats, before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
   }];
@@ -149,7 +146,7 @@ test('table changes are after minus before and lower costs are coloured as impro
 test('identical sides show one no-differences line instead of an empty table', () => {
   const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Later');
   const [a, b] = workspace.builds[0].stages;
-  ui.values = [a.id, b.id, 'own', true, '', 'stats', {
+  hooks.slots = [a.id, b.id, 'own', true, '', 'stats', {
     key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
     value: { stats: [{ id: 'Life', before: 100, after: 100, delta: 0, percent: 0, changed: false }],
       before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
@@ -164,7 +161,7 @@ test.each(['zh-CN', 'zh-TW'] as const)('items and character identities reuse loc
   const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Later');
   const [a, b] = workspace.builds[0].stages;
   b.saved = { ...b.saved, state: { ...b.saved.state, items: [{ slot: 'ring1', text: 'Rarity: RARE\nNew Ring\nCoral Ring\nUnique ID: kept-id\n+10 to maximum Life' }] } };
-  ui.values = [a.id, b.id, 'own', true, '', 'items', {
+  hooks.slots = [a.id, b.id, 'own', true, '', 'items', {
     key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
     value: { stats: [], before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
   }];
@@ -186,7 +183,7 @@ test('an inherited enemy tier is named in the comparison instead of showing an a
   const [a, b] = workspace.builds[0].stages;
   a.saved = { ...a.saved, state: { ...a.saved.state, params: { ...a.saved.state.params, enemy_tier: undefined } } };
   b.saved = { ...b.saved, state: { ...b.saved.state, params: { ...b.saved.state.params, enemy_tier: 'none' } } };
-  ui.values = [a.id, b.id, 'own', true, '', 'config', {
+  hooks.slots = [a.id, b.id, 'own', true, '', 'config', {
     key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
     value: { stats: [], before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
   }];
@@ -201,7 +198,7 @@ test('skill comparison preserves the imported name of an unresolved gem', () => 
   const [a, b] = workspace.builds[0].stages;
   b.saved = structuredClone(b.saved);
   b.saved.state.socketGroups[0].gems.push({ skill_id: '', name_spec: 'Imported original gem', level: 0, quality: 0 });
-  ui.values = [a.id, b.id, 'own', true, '', 'skills', {
+  hooks.slots = [a.id, b.id, 'own', true, '', 'skills', {
     key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
     value: { stats: [], before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
   }];
@@ -212,7 +209,7 @@ test('skill comparison preserves the imported name of an unresolved gem', () => 
 test('comparison diagnostics use the shared excluded-modifier list and localize item error slots', () => {
   const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Later');
   const [a, b] = workspace.builds[0].stages;
-  ui.values = [a.id, b.id, 'own', true, '', 'stats', {
+  hooks.slots = [a.id, b.id, 'own', true, '', 'stats', {
     key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
     value: { stats: [], before: { unsupported_modifiers: ['Config: First unknown effect', 'Config: Second unknown effect'], item_errors: [{ slot: 'ring1', message: 'Invalid item' }] },
       after: { unsupported_modifiers: ['Config: Another unknown effect'], item_errors: [] } },
@@ -228,7 +225,7 @@ test('comparison diagnostics use the shared excluded-modifier list and localize 
 test('comparison controls and unavailable or percentage values keep explanations without native tooltips', () => {
   const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Later');
   const [a, b] = workspace.builds[0].stages;
-  ui.values = [a.id, b.id, 'own', true, '', 'stats', {
+  hooks.slots = [a.id, b.id, 'own', true, '', 'stats', {
     key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
     value: { stats: [
       { id: 'Life', before: null, after: 100, delta: null, percent: null, changed: true },

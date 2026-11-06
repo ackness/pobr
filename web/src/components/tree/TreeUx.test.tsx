@@ -14,24 +14,16 @@ import { JewelPassivePlanner, type JewelPassivePlannerState } from './JewelPassi
 import { usePassiveNodeNames } from './passiveNodeNames';
 
 // Replay the real event handlers in the repository's node-only test environment.
-const ui = vi.hoisted(() => ({ cursor: 0, slots: [] as unknown[], buttons: [] as ComponentProps<'button'>[],
+const ui = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[],
   inputs: [] as ComponentProps<'input'>[], refs: [] as { current: unknown }[],
-  effects: [] as (() => void | (() => void))[], captureEffects: false,
+  captureEffects: false,
   evaluate: vi.fn(), convert: vi.fn(), decode: vi.fn(), translate: vi.fn() }));
-vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
-  useState: (initial: unknown) => {
-    const index = ui.cursor++;
-    if (!(index in ui.slots)) ui.slots[index] = typeof initial === 'function' ? initial() : initial;
-    return [ui.slots[index], (value: unknown) => { ui.slots[index] = typeof value === 'function' ? value(ui.slots[index]) : value; }];
-  },
-  useRef: (initial: unknown) => {
-    const index = ui.cursor++;
-    if (!(index in ui.slots)) ui.slots[index] = { current: initial };
-    const ref = ui.slots[index] as { current: unknown }; ui.refs.push(ref); return ref;
-  },
-  useMemo: (fn: () => unknown) => fn(), useLayoutEffect: () => {},
-  useEffect: (effect: () => void | (() => void)) => { if (ui.captureEffects) ui.effects.push(effect); },
-}));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness({ refs: { onRead: ref => { ui.refs.push(ref); } }, memo: 'eager',
+    effects: 'collect', captureEffects: () => ui.captureEffects, layoutEffect: 'ignore' });
+});
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: { preset: 'life', cStat: '', cMin: '', cMax: '' }, setGoal: vi.fn() }) }));
 vi.mock('../../hooks/useLocalizedLines', async original => ({ ...await original<typeof import('../../hooks/useLocalizedLines')>(),
   useLocalizedNames: (names: { name: string }[]) => names.map(entry => entry.name),
@@ -50,20 +42,20 @@ vi.mock('../shared/controls', () => ({
 vi.mock('../shared/AppSelect', () => ({ AppSelect: ({ ariaLabel }: { ariaLabel: string }) => <select aria-label={ariaLabel} /> }));
 
 const render = (make: () => ReactElement) => {
-  ui.cursor = 0; ui.buttons = []; ui.inputs = []; ui.refs = [];
+  hooks.beginRender(); ui.buttons = []; ui.inputs = []; ui.refs = [];
   const element = make();
   return { element, html: renderToStaticMarkup(element) };
 };
 const button = (text: string) => ui.buttons.find(props => props.children === text)!;
 const click = (text: string) => button(text).onClick?.({} as never);
 const searchTable = (value: string) => ui.inputs.find(input => input.type === 'search')!.onChange?.({ target: { value } } as never);
-const flushEffects = () => ui.effects.splice(0).map(effect => effect());
+const flushEffects = () => hooks.runEffects();
 const node = (skill: number, name: string, connections: number[], kind: PassiveNode['kind']): PassiveNode => ({ skill, id: String(skill), name, connections, kind, x: skill * 100, y: 0 });
 const nodes = [node(1, 'WITCH', [2], 'normal'), node(2, 'Power', [1], 'notable')];
 const session = { currentRequest: () => ({ allocated_nodes: [1] }), allocatedNodes: [1], stateVersion: 0,
   character: { class_name: 'Witch' }, jewels: [], calc: {}, busy: false } as unknown as BuildSession;
 
-beforeEach(() => { ui.slots = []; ui.effects = []; ui.captureEffects = false; vi.clearAllMocks(); });
+beforeEach(() => { hooks.reset(); ui.captureEffects = false; vi.clearAllMocks(); });
 
 test('report opens with an entry empty state, evaluates, locates a result and resets back to the entry', async () => {
   const focus = vi.fn();
@@ -208,7 +200,7 @@ test('the passive planner starts collapsed and its main disclosure updates the e
   expect(render(make).html).not.toContain('Point budget');
   const toggle = ui.buttons.find(props => props['aria-expanded'] === false)!;
   toggle.onClick?.({} as never);
-  expect(ui.slots[0]).toBe(true);
+  expect(hooks.slots[0]).toBe(true);
 });
 
 

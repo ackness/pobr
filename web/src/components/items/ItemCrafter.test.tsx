@@ -3,17 +3,13 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { ItemCrafter, EquippedItemCrafter, useEquippedItemDraft } from './ItemCrafter';
 
-const harness = vi.hoisted(() => ({ states: [] as unknown[], cursor: 0, effect: undefined as (() => (() => void)) | undefined,
-  normalize: vi.fn(), workbench: vi.fn(), buttons: [] as import('react').ComponentProps<'button'>[], selects: [] as { ariaLabel: string; value: string; onChange: (value: string) => void }[],
+const harness = vi.hoisted(() => ({ normalize: vi.fn(), workbench: vi.fn(), buttons: [] as import('react').ComponentProps<'button'>[], selects: [] as { ariaLabel: string; value: string; onChange: (value: string) => void }[],
 }));
-vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
-  useState: (initial: unknown) => {
-    const index = harness.cursor++;
-    if (!(index in harness.states)) harness.states[index] = initial;
-    return [harness.states[index], (next: unknown) => { harness.states[index] = next; }];
-  },
-  useEffect: (effect: () => (() => void)) => { harness.effect = effect; },
-}));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness({ lazyState: false, functionalUpdates: false, effects: 'latest' });
+});
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../../api/backend', () => ({ getBackend: async () => ({
   normalizeItemDraft: harness.normalize,
   itemCraftingCatalog: async () => ({ bases: [
@@ -38,9 +34,9 @@ function Probe({ text }: { text: string }) {
   if (!draft) return <p role="status">Loading</p>;
   return <EquippedItemCrafter draft={draft} session={session} lang="en-US" />;
 }
-const render = (text = original) => { harness.cursor = 0; return renderToStaticMarkup(<Probe text={text} />); };
+const render = (text = original) => { hooks.beginRender(); return renderToStaticMarkup(<Probe text={text} />); };
 beforeEach(() => {
-  harness.states = [];
+  hooks.reset();
   harness.workbench.mockClear();
   // Match normalize_item_draft_json's contract: the parsed header must be an exact base.
   harness.normalize.mockReset().mockImplementation(async (text: string) => {
@@ -54,8 +50,8 @@ beforeEach(() => {
 
 it('loads the rare base and preserves the equipped item in the draft preview', async () => {
   expect(render()).toContain('role="status"');
-  harness.effect!();
-  await vi.waitFor(() => expect(harness.states[0]).not.toBeNull());
+  hooks.effect!();
+  await vi.waitFor(() => expect(hooks.slots[0]).not.toBeNull());
   expect(render()).toContain('Draft preview');
   expect(harness.normalize).toHaveBeenCalledWith(original);
   expect(harness.workbench).toHaveBeenLastCalledWith(expect.objectContaining({ initialText: original,
@@ -74,8 +70,8 @@ it.each([
   const canonical = `Rarity: ${rarity}\nSapphire Ring${tail}`;
   if (name !== 'Sapphire Ring') await expect(harness.normalize(text)).rejects.toThrow('invalid_item');
   harness.normalize.mockClear();
-  render(text); harness.effect!();
-  await vi.waitFor(() => expect(harness.states[0]).not.toBeNull());
+  render(text); hooks.effect!();
+  await vi.waitFor(() => expect(hooks.slots[0]).not.toBeNull());
   expect(render(text)).toContain('Draft preview');
   expect(harness.normalize).toHaveBeenCalledExactlyOnceWith(canonical);
   expect(harness.workbench).toHaveBeenLastCalledWith(expect.objectContaining({ initialText: canonical,
@@ -84,8 +80,8 @@ it.each([
 
 it('uses the unique base header rather than a title matching another base', async () => {
   const text = 'Rarity: UNIQUE\nRing\nSapphire Ring\nImplicits: 0';
-  render(text); harness.effect!();
-  await vi.waitFor(() => expect(harness.states[0]).not.toBeNull());
+  render(text); hooks.effect!();
+  await vi.waitFor(() => expect(hooks.slots[0]).not.toBeNull());
   render(text);
   expect(harness.normalize).toHaveBeenCalledExactlyOnceWith(text);
   expect(harness.workbench).toHaveBeenLastCalledWith(expect.objectContaining({ initialText: text,
@@ -95,8 +91,8 @@ it('uses the unique base header rather than a title matching another base', asyn
 it.each(['NORMAL', 'MAGIC', 'RARE'])('does not infer a %s base from modifier text or partial words', async rarity => {
   const name = rarity === 'RARE' ? 'Sapphire Ring' : 'Healthy Sapphire Ringlet';
   const text = `Rarity: ${rarity}\n${name}\nImplicits: 0\nSapphire Ring`;
-  render(text); harness.effect!();
-  await vi.waitFor(() => expect(harness.states[0]).not.toBeNull());
+  render(text); hooks.effect!();
+  await vi.waitFor(() => expect(hooks.slots[0]).not.toBeNull());
   expect(render(text)).toContain('Use advanced text editing to modify it.');
   expect(harness.normalize).not.toHaveBeenCalled();
   expect(harness.workbench).not.toHaveBeenCalled();
@@ -104,8 +100,8 @@ it.each(['NORMAL', 'MAGIC', 'RARE'])('does not infer a %s base from modifier tex
 
 it('explains an unavailable base without calling normalization', async () => {
   const text = 'Rarity: RARE\nVictory Ring\nUnknown Ring\nImplicits: 0';
-  render(text); harness.effect!();
-  await vi.waitFor(() => expect(harness.states[0]).not.toBeNull());
+  render(text); hooks.effect!();
+  await vi.waitFor(() => expect(hooks.slots[0]).not.toBeNull());
   expect(render(text)).toContain('Use advanced text editing to modify it.');
   expect(harness.normalize).not.toHaveBeenCalled();
   expect(harness.workbench).not.toHaveBeenCalled();
@@ -115,30 +111,30 @@ it('discards a late normalization result after closing the crafter', async () =>
   let resolve!: (text: string) => void;
   const pending = new Promise<string>(done => { resolve = done; });
   harness.normalize.mockReturnValue(pending);
-  render(); const cleanup = harness.effect!();
+  render(); const cleanup = hooks.effect!() as () => void;
   await vi.waitFor(() => expect(harness.normalize).toHaveBeenCalled());
   cleanup(); resolve(original);
   await pending;
   await new Promise(done => setTimeout(done, 0));
-  expect(harness.states[0]).toBeNull();
+  expect(hooks.slots[0]).toBeNull();
   expect(harness.workbench).not.toHaveBeenCalled();
 });
 
 it('reports a failed item load', async () => {
   harness.normalize.mockRejectedValue(new Error('invalid item'));
-  render(); harness.effect!();
-  await vi.waitFor(() => expect(harness.states[1]).toBe(original));
+  render(); hooks.effect!();
+  await vi.waitFor(() => expect(hooks.slots[1]).toBe(original));
   expect(render()).toContain('role="alert"');
 });
 
 it('starts the crafter in the selected equipped class and creates that class draft', async () => {
   const current = { items: [{ slot: 'weapon1', text: 'Rarity: RARE\nMy Bow\nSimple Bow' }], flasks: [], limbs: [], busy: false } as unknown as BuildSession;
   const renderCrafter = () => {
-    harness.cursor = 0; harness.selects = []; harness.buttons = [];
+    hooks.beginRender(); harness.selects = []; harness.buttons = [];
     return renderToStaticMarkup(<ItemCrafter session={current} selectedSlot="weapon1" lang="en-US" />);
   };
-  renderCrafter(); harness.effect!();
-  await vi.waitFor(() => expect(harness.states[0]).not.toBeNull());
+  renderCrafter(); hooks.effect!();
+  await vi.waitFor(() => expect(hooks.slots[0]).not.toBeNull());
   renderCrafter();
   expect(harness.selects.find(select => select.ariaLabel === 'Item class')?.value).toBe('Bow');
   harness.buttons.find(button => button.children === 'Create draft')!.onClick!({} as never);
@@ -152,11 +148,11 @@ it('starts the crafter in the selected equipped class and creates that class dra
 it('follows slot defaults until a draft is created, then preserves its class and draft during slot inspection', async () => {
   const current = { items: [{ slot: 'weapon1', text: 'Rarity: RARE\nMy Bow\nSimple Bow' }], flasks: [], limbs: [], busy: false } as unknown as BuildSession;
   const renderCrafter = (selectedSlot: string) => {
-    harness.cursor = 0; harness.selects = []; harness.buttons = [];
+    hooks.beginRender(); harness.selects = []; harness.buttons = [];
     return renderToStaticMarkup(<ItemCrafter session={current} selectedSlot={selectedSlot} lang="en-US" />);
   };
-  renderCrafter('weapon1'); harness.effect!();
-  await vi.waitFor(() => expect(harness.states[0]).not.toBeNull());
+  renderCrafter('weapon1'); hooks.effect!();
+  await vi.waitFor(() => expect(hooks.slots[0]).not.toBeNull());
   renderCrafter('weapon1');
   expect(harness.selects.find(select => select.ariaLabel === 'Item class')?.value).toBe('Bow');
   renderCrafter('ring1');
@@ -173,11 +169,11 @@ it('follows slot defaults until a draft is created, then preserves its class and
 it('preserves a user-selected base when inspecting another slot before draft creation', async () => {
   const current = { items: [], flasks: [], limbs: [], busy: false } as unknown as BuildSession;
   const renderCrafter = (selectedSlot: string) => {
-    harness.cursor = 0; harness.selects = []; harness.buttons = [];
+    hooks.beginRender(); harness.selects = []; harness.buttons = [];
     return renderToStaticMarkup(<ItemCrafter session={current} selectedSlot={selectedSlot} lang="en-US" />);
   };
-  renderCrafter('ring1'); harness.effect!();
-  await vi.waitFor(() => expect(harness.states[0]).not.toBeNull());
+  renderCrafter('ring1'); hooks.effect!();
+  await vi.waitFor(() => expect(hooks.slots[0]).not.toBeNull());
   renderCrafter('ring1');
   harness.selects.find(select => select.ariaLabel === 'Item base')!.onChange('ring');
   renderCrafter('weapon1');

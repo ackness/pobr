@@ -6,19 +6,16 @@ import { buildGemDescriptionIndex, type GemDescriptionIndex } from '../../lib/ge
 import { GemDescriptionPanel } from './GemDescriptionPanel';
 import { GemPicker } from './GemPicker';
 
-const ui = vi.hoisted(() => ({ states: [] as unknown[], cursor: 0,
-  descriptions: undefined as GemDescriptionIndex | null | undefined, descriptionsEnabled: false,
+const ui = vi.hoisted(() => ({ descriptions: undefined as GemDescriptionIndex | null | undefined, descriptionsEnabled: false,
   input: {} as ComponentProps<'input'>, buttons: [] as ComponentProps<'button'>[],
   root: {} as ComponentProps<'div'>,
   options: [] as ComponentProps<'li'>[], panel: {} as ComponentProps<'div'>,
 }));
-vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
-  useState: (initial: unknown) => {
-    const index = ui.cursor++;
-    if (!(index in ui.states)) ui.states[index] = typeof initial === 'function' ? initial() : initial;
-    return [ui.states[index], (next: unknown) => { ui.states[index] = typeof next === 'function' ? next(ui.states[index]) : next; }];
-  },
-}));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness();
+});
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../../hooks/useGemDescriptions', () => ({ useGemDescriptions: (enabled: boolean) => { ui.descriptionsEnabled = enabled; return ui.descriptions; } }));
 vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { ui.buttons.push(props); return <button {...props} />; },
@@ -51,7 +48,7 @@ const data = buildGemDescriptionIndex({ scopes: {
 [{ id: 'gem', granted_effect_id: 'ignored', str_pct: 50, int_pct: 50 }]);
 const pick = vi.fn();
 function render(lang: 'en-US' | 'zh-CN' | 'zh-TW' = 'en-US') {
-  ui.cursor = 0; ui.buttons = []; ui.options = [];
+  hooks.beginRender(); ui.buttons = []; ui.options = [];
   return renderToStaticMarkup(<GemPicker entries={gems} placeholder="Pick a gem" disabled={false} lang={lang} onPick={pick} />);
 }
 function open(lang: 'en-US' | 'zh-CN' | 'zh-TW' = 'en-US') {
@@ -66,7 +63,7 @@ function key(key: string, extra = {}) {
 }
 const matchMedia = vi.fn(() => ({ matches: false }));
 beforeEach(() => {
-  ui.states = []; ui.descriptions = data; pick.mockClear();
+  hooks.reset(); ui.descriptions = data; pick.mockClear();
   matchMedia.mockReset().mockReturnValue({ matches: false });
   vi.stubGlobal('window', { matchMedia });
 });
@@ -99,7 +96,7 @@ it('enables descriptions only while the picker is open', () => {
 
 it('Add, Enter and the list row use the same pick path and close the picker', () => {
   for (const path of ['add', 'enter', 'row']) {
-    ui.states = []; pick.mockClear();
+    hooks.reset(); pick.mockClear();
     open(); key('ArrowDown'); render();
     if (path === 'add') ui.buttons.find(button => button.children === 'Add')!.onClick!({} as never);
     else if (path === 'enter') key('Enter');

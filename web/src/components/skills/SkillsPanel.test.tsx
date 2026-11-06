@@ -8,15 +8,13 @@ import type { SkillMetricsSnapshot } from '../../app/pages/skills/useSkillMetric
 import { SkillsPanel, SkillSets } from './SkillsPanel';
 import { NamedSets } from '../shared/NamedSets';
 
-const harness = vi.hoisted(() => ({ states: [] as unknown[], cursor: 0, buttons: [] as ComponentProps<'button'>[],
+const harness = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[],
   inputs: [] as ComponentProps<'input'>[], metrics: null as SkillMetricsSnapshot | null, localized: {} as Record<string, string>, confirm: vi.fn(), valid: true, pickers: [] as { placeholder: string; disabled: boolean }[] }));
-vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
-  useState: (initial: unknown) => {
-    const index = harness.cursor++;
-    if (!(index in harness.states)) harness.states[index] = typeof initial === 'function' ? initial() : initial;
-    return [harness.states[index], (next: unknown) => { harness.states[index] = typeof next === 'function' ? next(harness.states[index]) : next; }];
-  },
-}));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness();
+});
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { harness.buttons.push(props); return <button {...props} />; },
   AppInput: (props: ComponentProps<'input'>) => { harness.inputs.push(props); return <input {...props} />; },
@@ -47,10 +45,10 @@ function session() {
   } as unknown as BuildSession;
 }
 function render(current: BuildSession, templates = false, lang: Lang = 'en-US') {
-  harness.cursor = 0; harness.buttons = []; harness.inputs = []; harness.pickers = [];
+  hooks.beginRender(); harness.buttons = []; harness.inputs = []; harness.pickers = [];
   return renderToStaticMarkup(templates ? <SkillSets session={current} lang="en-US" catalog={catalog} /> : <SkillsPanel session={current} lang={lang} active />);
 }
-beforeEach(() => { harness.states = []; harness.metrics = null; harness.localized = {}; harness.valid = true; harness.confirm.mockReset().mockResolvedValue(false); });
+beforeEach(() => { hooks.reset(); harness.metrics = null; harness.localized = {}; harness.valid = true; harness.confirm.mockReset().mockResolvedValue(false); });
 
 it('lists every replaced group and gems, cancelling or approving the template without bypassing stale-state guards', async () => {
   const current = session();
@@ -71,7 +69,7 @@ it('lists every replaced group and gems, cancelling or approving the template wi
 
 it('shows support level and quality as inapplicable and keeps count/corruption in gem options', () => {
   const current = session();
-  harness.states = [[fire, support], [], false, false];
+  hooks.slots = [[fire, support], [], false, false];
   const html = render(current);
   // The active gem has editable level/quality; the support does not.
   expect(harness.inputs.filter(input => input['aria-label'] === 'Level')).toHaveLength(1);
@@ -93,7 +91,7 @@ it('shows support level and quality as inapplicable and keeps count/corruption i
 it('labels a nonempty unrecognised group and preserves the raw gem name', () => {
   const current = session();
   current.socketGroups[0].gems = [{ skill_id: '', name_spec: 'Imported Gem', level: 1, quality: 0 }];
-  harness.states = [[fire, support], [], false, false];
+  hooks.slots = [[fire, support], [], false, false];
   const html = render(current);
   expect(html).toContain('(Unrecognised active skill)');
   expect(html).toContain('The active gem in this group is unrecognised and is not calculated.');
@@ -109,7 +107,7 @@ for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
       tags: ['InbuiltTrigger', 'Lightning', 'Spell', 'Triggered'] };
     current.socketGroups[0].gems = [{ skill_id: spark.skill_id, name_spec: 'Spark', level: 17, quality: 12 }];
     const original = structuredClone(current.socketGroups);
-    harness.states = [[fire, support, spark], [], false, false];
+    hooks.slots = [[fire, support, spark], [], false, false];
     const html = render(current, false, lang);
     expect(html).toContain(lang === 'en-US' ? 'Spark' : lang === 'zh-CN' ? '电球' : '電球');
     expect(html).not.toContain(bindT(lang)('skills.unrecognisedActive'));
@@ -135,7 +133,7 @@ it('labels triggered skills and resolves unique item source names through the ex
     gems: [{ skill_id: 'Trigger', level: 20, quality: 0 }, ...current.socketGroups[0].gems] };
   current.items = [{ slot: 'ring1', text: 'Rarity: UNIQUE\nKnown Unique\nSapphire Ring' }];
   harness.localized['Known Unique'] = '语言包中的暗金名';
-  harness.states = [[fire, support, trigger], [], false, false];
+  hooks.slots = [[fire, support, trigger], [], false, false];
   const html = render(current);
   expect(html).toContain('Triggered by Trigger');
   expect(html).toContain('from item · 语言包中的暗金名');
@@ -144,7 +142,7 @@ it('labels triggered skills and resolves unique item source names through the ex
 it('keeps supported synthetic skills named even though they have no gem-catalog entry', () => {
   const current = session();
   current.socketGroups[0].gems = [{ skill_id: 'ThornsPlayer', level: 1, quality: 0 }];
-  harness.states = [[fire, support], [], false, false];
+  hooks.slots = [[fire, support], [], false, false];
   const html = render(current);
   expect(html).toContain('Thorns');
   expect(html).not.toContain('Unrecognised active skill');
@@ -159,7 +157,7 @@ for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
         ? [{ skill_id: 'Fireball', level: 20, quality: 0, enabled: false }]
         : state === 'missingActive' ? [{ skill_id: 'Support', level: 1, quality: 0 }]
         : [{ skill_id: '', name_spec: 'Imported Gem', level: 1, quality: 0 }];
-      harness.states = [[fire, support], [], false, false];
+      hooks.slots = [[fire, support], [], false, false];
       const html = render(current, false, lang);
       const tt = bindT(lang);
       expect(html).toContain(tt(`skills.${state}`));
@@ -192,7 +190,7 @@ for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
         average_hit: 0, action_rate: 0, mana_cost: 0, life_cost: 0, cooldown: 0 },
     }));
     harness.metrics = { revision: current.socketGroupRevision, skills };
-    harness.states = [gems, [], false, false];
+    hooks.slots = [gems, [], false, false];
     const html = render(current, false, lang);
     const tt = bindT(lang);
     expect(html).toContain(`data-kind="minion" title="${tt('skills.minionDps')}">5,307<span class="sr-only"> ${tt('skills.minionDps')}</span>`);

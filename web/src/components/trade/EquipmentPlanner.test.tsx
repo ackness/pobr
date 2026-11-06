@@ -5,41 +5,13 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { EquipmentPlanner } from './EquipmentPlanner';
 import { minionDpsNote } from '../../lib/mainMinion';
 
-const ui = vi.hoisted(() => ({ cursor: 0, dirty: false, slots: [] as unknown[], effects: [] as (() => void)[],
-  buttons: [] as ComponentProps<'button'>[], plan: vi.fn() }));
-vi.mock('react', async original => {
-  const memo = (factory: () => unknown, deps?: unknown[]) => {
-    const index = ui.cursor++;
-    const previous = ui.slots[index] as { deps?: unknown[]; value: unknown } | undefined;
-    if (!previous || !deps || deps.some((value, i) => !Object.is(value, previous.deps?.[i]))) {
-      ui.slots[index] = { deps, value: factory() };
-    }
-    return (ui.slots[index] as { value: unknown }).value;
-  };
-  const effect = (callback: () => void | (() => void), deps?: unknown[]) => {
-    const index = ui.cursor++;
-    const previous = ui.slots[index] as { deps?: unknown[]; cleanup?: () => void } | undefined;
-    if (!previous || !deps || deps.some((value, i) => !Object.is(value, previous.deps?.[i]))) {
-      const entry = { deps, cleanup: undefined as (() => void) | undefined };
-      ui.slots[index] = entry;
-      ui.effects.push(() => { previous?.cleanup?.(); entry.cleanup = callback() || undefined; });
-    }
-  };
-  return { ...await original<typeof import('react')>(),
-    useState: (initial: unknown) => {
-      const index = ui.cursor++;
-      if (!(index in ui.slots)) ui.slots[index] = typeof initial === 'function' ? initial() : initial;
-      return [ui.slots[index], (value: unknown) => { ui.slots[index] = typeof value === 'function' ? value(ui.slots[index]) : value; ui.dirty = true; }];
-    },
-    useRef: (initial: unknown) => {
-      const index = ui.cursor++;
-      if (!(index in ui.slots)) ui.slots[index] = { current: initial };
-      return ui.slots[index];
-    },
-    useMemo: memo, useCallback: (callback: unknown, deps?: unknown[]) => memo(() => callback, deps),
-    useEffect: effect, useLayoutEffect: effect,
-  };
+const ui = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], plan: vi.fn() }));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness({ refs: true, memo: 'deps', callback: 'deps',
+    effects: { comparison: 'objectIs', cleanup: 'previous' }, layoutEffect: 'effect' });
 });
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 
 vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
 vi.mock('../shared/PreviewContext', () => ({ usePreview: () => null }));
@@ -48,7 +20,7 @@ vi.mock('../shared/controls', () => ({ AppButton: (props: ComponentProps<'button
 vi.mock('../../lib/equipmentPlanner', async original => ({ ...await original<typeof import('../../lib/equipmentPlanner')>(),
   planEquipmentUpgrades: (...args: unknown[]) => ui.plan(...args),
 }));
-beforeEach(() => { ui.slots = []; ui.effects = []; ui.plan.mockReset(); });
+beforeEach(() => { hooks.reset(); ui.plan.mockReset(); });
 
 test('recommends a minion-only equipment gain and displays its headline, percentage and per-minion note', async () => {
   const session = { currentRequest: () => ({}), activeWeaponSet: 1, items: [], setItems: vi.fn() } as unknown as BuildSession;
@@ -58,11 +30,11 @@ test('recommends a minion-only equipment gain and displays its headline, percent
   const onRemove = vi.fn();
   const render = () => {
     for (let count = 0; count < 10; count++) {
-      ui.cursor = 0; ui.buttons = []; ui.dirty = false;
+      hooks.beginRender(); ui.buttons = [];
       const html = renderToStaticMarkup(<EquipmentPlanner session={session} lang="en-US" active objective={objective}
         catalog={catalog} candidates={candidates} onRemove={onRemove} damage={damage} />);
-      ui.effects.splice(0).forEach(effect => effect());
-      if (!ui.dirty) return html;
+      hooks.runEffects();
+      if (!hooks.dirty) return html;
     }
     throw new Error('Render did not settle');
   };
@@ -91,11 +63,11 @@ test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('planned resistance values have 
   }] });
   const render = () => {
     for (let count = 0; count < 10; count++) {
-      ui.cursor = 0; ui.buttons = []; ui.dirty = false;
+      hooks.beginRender(); ui.buttons = [];
       const html = renderToStaticMarkup(<EquipmentPlanner session={session} lang={lang} active objective={objective}
         catalog={catalog} candidates={candidates} onRemove={() => {}} damage={damage} />);
-      ui.effects.splice(0).forEach(effect => effect());
-      if (!ui.dirty) return html;
+      hooks.runEffects();
+      if (!hooks.dirty) return html;
     }
     throw new Error('Render did not settle');
   };

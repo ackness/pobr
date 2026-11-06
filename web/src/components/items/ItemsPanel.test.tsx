@@ -5,7 +5,7 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { ItemsPanel } from './ItemsPanel';
 
 // Replay native handlers with state retained across SSR renders, without a browser dependency.
-const harness = vi.hoisted(() => ({ states: [] as unknown[], cursor: 0, buttons: [] as ComponentProps<'button'>[],
+const harness = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[],
   toolKeys: [] as { name: string; key: string | null }[], inputs: [] as ComponentProps<'input'>[], compare: vi.fn(), newCrafter: vi.fn(), crafter: vi.fn(), reforge: vi.fn(), craftUnavailable: false, craftLoading: false }));
 // Observe React's reconciliation identity at the real parent boundary; child
 // state tests alone cannot catch a parent resetting the entire tool via its key.
@@ -30,13 +30,11 @@ vi.mock('react/jsx-dev-runtime', async original => {
     return element;
   } };
 });
-vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
-  useState: (initial: unknown) => {
-    const index = harness.cursor++;
-    if (!(index in harness.states)) harness.states[index] = typeof initial === 'function' ? initial() : initial;
-    return [harness.states[index], (next: unknown) => { harness.states[index] = typeof next === 'function' ? next(harness.states[index]) : next; }];
-  },
-}));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness();
+});
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { harness.buttons.push(props); return <button {...props} />; },
   AppInput: (props: ComponentProps<'input'>) => { harness.inputs.push(props); return <input {...props} />; },
@@ -72,7 +70,7 @@ function session() {
   } as unknown as BuildSession;
 }
 function render(current: BuildSession, onUpgrade?: (slot: string) => void) {
-  harness.cursor = 0;
+  hooks.beginRender();
   harness.buttons.length = 0;
   harness.inputs.length = 0;
   harness.toolKeys.length = 0;
@@ -84,7 +82,7 @@ function button(label: string) {
   return found!;
 }
 beforeEach(() => {
-  harness.states = [];
+  hooks.reset();
   harness.craftUnavailable = false;
   harness.craftLoading = false;
   harness.crafter.mockClear();
@@ -140,7 +138,7 @@ it('labels socket controls and retains the grafted-limb explanation', () => {
   render(current);
   button('Ring 1').onClick!({} as never);
   // Metadata for this exact selected item, as supplied by the backend.
-  harness.states[5] = { slot: 'ring1', text, catalog: [], info: { editable: true, sockets: 1, max_sockets: 1, runes: [], options: [] } };
+  hooks.slots[5] = { slot: 'ring1', text, catalog: [], info: { editable: true, sockets: 1, max_sockets: 1, runes: [], options: [] } };
   const html = render(current);
   expect(html).toContain('− Socket');
   expect(html).toContain('+ Socket');

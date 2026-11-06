@@ -5,29 +5,14 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import type { UniqueSelection } from '../../api/uniques';
 import { UniqueCatalog } from './UniqueCatalog';
 
-const ui = vi.hoisted(() => ({ values: [] as unknown[], cursor: 0, effects: [] as (() => void)[],
-  buttons: [] as ComponentProps<'button'>[], ranges: [] as { onValueChange: (value: number) => void }[],
+const ui = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], ranges: [] as { onValueChange: (value: number) => void }[],
   selects: [] as { ariaLabel: string; onChange: (value: string) => void; value: string }[],
-  draft: vi.fn(), workbench: vi.fn(), cleanups: [] as (() => void)[] }));
-vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
-  useState: (initial: unknown) => {
-    const index = ui.cursor++;
-    if (!(index in ui.values)) ui.values[index] = typeof initial === 'function' ? initial() : initial;
-    return [ui.values[index], (value: unknown) => { ui.values[index] = typeof value === 'function' ? value(ui.values[index]) : value; }];
-  },
-  useRef: (initial: unknown) => {
-    const index = ui.cursor++;
-    return ui.values[index] ??= { current: initial };
-  },
-  useEffect: (callback: () => void | (() => void), deps: unknown[]) => {
-    const index = ui.cursor++;
-    const previous = ui.values[index] as unknown[] | undefined;
-    if (!previous || deps.some((value, i) => value !== previous[i])) {
-      ui.values[index] = deps;
-      ui.effects.push(() => { ui.cleanups[index]?.(); ui.cleanups[index] = callback() || (() => {}); });
-    }
-  },
-}));
+  draft: vi.fn(), workbench: vi.fn() }));
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../../testing/hookHarness');
+  return createHookHarness({ refs: { reuse: 'nullish' }, effects: { comparison: 'strict', cleanup: 'latest' } });
+});
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../../hooks/useLocalizedLines', () => ({ useLocalizedLines: (lines: string[]) => lines,
   useLocalizedNames: (names: { name: string }[]) => names.map(name => name.name) }));
 vi.mock('../shared/controls', () => ({
@@ -48,13 +33,13 @@ vi.mock('../../api/backend', () => ({ getBackend: async () => ({ uniqueCatalog: 
 vi.mock('../../lib/tradeOptimizer', async original => ({ ...await original<typeof import('../../lib/tradeOptimizer')>(), loadTradeCatalog: async () => catalog }));
 const session = { items: [], treeVersion: null, busy: false } as unknown as BuildSession;
 function render(selectedSlot = 'weapon1') {
-  ui.cursor = 0; ui.buttons = []; ui.selects = []; ui.ranges = [];
+  hooks.beginRender(); ui.buttons = []; ui.selects = []; ui.ranges = [];
   const html = renderToStaticMarkup(<UniqueCatalog selectedSlot={selectedSlot} session={session} lang="en-US" />);
-  ui.effects.splice(0).forEach(effect => effect());
+  hooks.runEffects();
   return html;
 }
 beforeEach(() => {
-  ui.values = []; ui.effects = []; ui.cleanups = []; ui.workbench.mockClear();
+  hooks.reset(); ui.workbench.mockClear();
   ui.draft.mockReset().mockImplementation(async (selection: UniqueSelection) => ({ base: 'Simple Bow', required_level: 1,
     text: `Rarity: UNIQUE\nExample Bow\nSimple Bow\n+${10 + (selection.rolls[3] ?? .5) * 10} to maximum Life` }));
 });
