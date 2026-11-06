@@ -420,21 +420,23 @@ Dependabot 每日分组检查 Actions 更新；Cargo、Rust toolchain、Web 与�
 
 ## 发布与部署
 
-发版是单独的升版 PR，只改 workspace 版本，不与功能或数据 bump 混在一起；从开 PR 到推 tag、核对部署和回退的步骤见
+发版是单独的升版 PR，只改 workspace 版本并在 CHANGELOG.md 写本版一节，不与功能或数据 bump 混在一起；从开 PR 到推 tag、核对部署和回退的步骤见
 [RELEASING.md](../RELEASING.md)。本节说明这些步骤背后的检查与 workflow。
 
 应用版本由 `[workspace.package].version` 管理；七个基础库与 `data/CURRENT` 独立版本。
 更新应用版本后用 `mise exec -- cargo metadata --format-version 1 > /dev/null` 刷新锁文件。
 [release-policy.py](../devs/scripts/release-policy.py) 按 SemVer 判断升级，检查所有继承 workspace
-版本的应用/工具锁版本；远端 tag 查询失败会报错，不能当作“tag 不存在”。
+版本的应用/工具锁版本，并要求 CHANGELOG.md 有该版本一节（带日期的标题、`### Breaking changes` 小节和对比链接）；
+远端 tag 查询失败会报错，不能当作“tag 不存在”。
 PR 升版要求 tag 未使用；master 的合并后验证可接受指向同一提交的现有 tag。
 升版、依赖、工具链 PR 默认运行全部轻量检查。
 涉及 Rust、data 或 pipeline 的改动合并前须有绿色的 `mise run ci <branch>`，其他改动按风险选择。
 master 合并后和发布 tag 各自执行完整验证。
 
 推送 `v*` tag 后先验证 tag/version/commit/lock 身份，再完整验证该提交；通过后
-从同一 run 下载 WASM 资产并校验 SHA256SUMS；上传前再次核对远端 tag 的 peeled SHA，随后附加到 GitHub Release。
-已有 Release 重跑会覆盖同名资产，适用于同一不可变 tag 的修复性重试，禁止移动已发布 tag。
+从同一 run 下载 WASM 资产并校验 SHA256SUMS；上传前再次核对远端 tag 的 peeled SHA，随后创建 GitHub Release，
+说明取自 tag 提交上 CHANGELOG.md 的该版本一节，后接 WASM 体积报告。
+已有 Release 重跑只覆盖同名资产、不改说明，适用于同一不可变 tag 的修复性重试，禁止移动已发布 tag。
 带 prerelease 后缀的版本发布为 prerelease。手动 CI 只保存 artifact，不会发布或部署。
 
 生产只接受稳定的 `v0.x.y`。部署等待完整门禁及资产发布成功，直接使用同次 `web-dist`，不重建。

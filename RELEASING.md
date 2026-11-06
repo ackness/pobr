@@ -114,18 +114,33 @@ mise run data:bump ackness/repoe game/<patch>-<n+1>
 
 ## 4. 发版上线
 
-发版是一个单独的小 PR，只升 `[workspace.package].version`：
+发版是一个单独的小 PR：升 `[workspace.package].version`，并在 [CHANGELOG.md](CHANGELOG.md) 顶部写本版一节。
 
 ```sh
 git fetch origin
 git switch -c release/v0.x.y origin/master
-# 编辑 Cargo.toml 的 [workspace.package] version = "0.x.y"
+git log --first-parent --format='%s%n    %b' v<上一版>..origin/master   # 本版包含的 PR：合并提交标题有 PR 号，正文是 PR 标题；squash 合并的标题末尾带 PR 号
+# 编辑 Cargo.toml 的 [workspace.package] version = "0.x.y"，在 CHANGELOG.md 写本版一节（写法见下）
 mise exec -- cargo metadata --format-version 1 > /dev/null   # 刷新 Cargo.lock 中继承 workspace 版本的包
-mise exec -- bash devs/scripts/release-check.sh origin/master  # 应输出 release=true：SemVer 递增、锁版本一致、tag 未被占用
+mise exec -- bash devs/scripts/release-check.sh origin/master  # 应输出 release=true：SemVer 递增、锁版本一致、CHANGELOG 有本版一节、tag 未被占用
+python3 devs/scripts/release-policy.py notes v0.x.y .cache/release-notes.md   # 取出本版一节，作为 PR 说明
 git commit -am "chore: release v0.x.y"
 git push -u origin HEAD
-gh pr create --fill
+gh pr create --title "chore: release v0.x.y" --body-file .cache/release-notes.md
 ```
+
+CHANGELOG 的一节用英文写，读者依次是 pobr.win 的玩家、使用 WASM 包／CLI／数据包的开发者；写读者看到的变化，不写实现过程：
+
+- 标题 `## [0.x.y] - YYYY-MM-DD`（发版日期），下面两三句概述本版最重要的变化。
+- 小节按此顺序，没有内容的省略：`### Breaking changes`、`### Added`、`### Changed`、`### Fixed`、`### Data`、
+  `### For developers`、`### Internal`。`### Breaking changes` 必须保留，核对后没有就写 `- None.`。
+- 破坏性变更：WASM 导出或 JSON 字段被删除、改名或改类型，`SCHEMA_VERSION` 或数据契约 `CONTRACT_VERSION` 改变，
+  CLI 子命令或参数改变，旧版保存的构筑或本地设置读不出来。只新增可选字段不算。
+- 每条末尾标出 PR，如 `(#322)`；范围内每个 PR 至少出现一次，发版 PR 本身不列。
+- 每段、每条写成一行，不手动折行：GitHub 的 Release 和 PR 说明会把换行原样显示。
+- 文件底部加本版的对比链接 `[0.x.y]: https://github.com/ackness/pobr/compare/v<上一版>...v0.x.y`。
+
+`release-policy.py` 检查标题与日期格式、`### Breaking changes` 小节和对比链接，不检查内容；内容由 review 核对。
 
 - PR 的 `plan checks` 作业运行同一项版本检查（“Validate version bump”）；`Cargo.toml`／`Cargo.lock` 的改动会选中全部轻量检查。
 - 用 merge commit 合并。确认 master 上的合并提交后，在它上面打 annotated tag 并推送：
@@ -138,8 +153,9 @@ gh pr create --fill
   ```
 
 - tag 触发 [release.yml](.github/workflows/release.yml)：`release identity` 核对 tag 等于 workspace 版本、
-  `Cargo.lock` 一致且 tag 指向该提交；`release validation` 对该提交运行完整 CI；`publish standalone WASM`
-  把同次构建的 WASM 包、体积报告和 `SHA256SUMS` 附到 GitHub Release `v0.x.y`；
+  `Cargo.lock` 一致、CHANGELOG 有本版一节且 tag 指向该提交；`release validation` 对该提交运行完整 CI；
+  `publish standalone WASM` 创建 GitHub Release `v0.x.y`，附上同次构建的 WASM 包、体积报告和 `SHA256SUMS`，
+  说明是 CHANGELOG 本版一节、对比链接和体积报告；
   `deploy stable v0 to Cloudflare Pages` 把同次的 `web-dist` 部署到 Pages 项目 `pobr-web` 的 `master`
   分支，即 [pobr.win](https://pobr.win) 与 [pobr-web.pages.dev](https://pobr-web.pages.dev)。
 - 只有稳定的 `v0.x.y`、且是 origin 上最高的稳定 v0 tag 才部署；带 prerelease 后缀的版本只发布为 prerelease。
@@ -154,7 +170,7 @@ gh pr create --fill
   想在打 tag 前先看，对本地 `mise run web build` 的结果运行同一命令，去掉 `--release`。
   报告各节的含义见 [diagnostics.md](docs/diagnostics.md#前端显示审计)。
 
-tag 不可移动、不可删除。同一 tag 的失败作业可以重跑（重跑会覆盖同名 Release 附件），但只在同次 run 的产物仍保留时有效
+tag 不可移动、不可删除。同一 tag 的失败作业可以重跑（重跑会覆盖同名 Release 附件，不改 Release 说明），但只在同次 run 的产物仍保留时有效
 （`web-dist` 3 天，`wasm-release` 14 天）；过期后重跑整个 run。需要改代码时发下一个版本。
 
 ## 5. 回退

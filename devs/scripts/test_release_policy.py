@@ -127,9 +127,21 @@ name = "fixture-root"
 version.workspace = true
 ''')
         self.write_lock(version)
-        self.git("add", "Cargo.toml", "Cargo.lock", "apps", "tools", "crates")
+        self.write_changelog(version)
+        self.git("add", "Cargo.toml", "Cargo.lock", "CHANGELOG.md", "apps", "tools", "crates")
         self.git("commit", "-qm", "fixture version " + version)
         return self.git("rev-parse", "HEAD")
+
+    def write_changelog(self, version, heading=None, body="### Breaking changes\n\n- None.\n",
+                        link=True, extra=""):
+        # The older section and its link follow, so a section must stop at the next heading.
+        heading = f"## [{version}] - 2026-11-06" if heading is None else heading
+        links = f"[{version}]: https://example.invalid/compare/v0.0.1...v{version}\n" if link else ""
+        self.write("CHANGELOG.md", (
+            f"# Changelog\n\nIntro.\n\n{heading}\n\nSummary.\n\n{body}{extra}\n"
+            "## [0.0.1] - 2026-01-01\n\n### Breaking changes\n\n- Old.\n\n"
+            f"{links}[0.0.1]: https://example.invalid/releases/v0.0.1\n"
+        ))
 
     def write_lock(self, version, overrides=None, omitted=()):
         versions = {name: version for name in self.inherited}
@@ -170,6 +182,7 @@ version.workspace = true
 
     def test_unchanged_skips_lock_and_remote(self):
         (self.root / "Cargo.lock").unlink()
+        (self.root / "CHANGELOG.md").unlink()
         self.env["REMOTE_EXIT"] = "128"
         self.assert_output(self.run_policy("bump", self.base), "release=false")
         self.assertFalse((self.root / "remote-calls.jsonl").exists())
@@ -247,6 +260,50 @@ version.workspace = true
                 self.remote("v0.0.10", self.base, annotated)
                 self.assert_error(self.run_policy("bump", self.base, "--allow-existing-tag"),
                                   "already exists")
+
+    def test_version_change_requires_a_changelog_section(self):
+        head = self.set_version("0.0.10")
+        self.git("tag", "v0.0.10")
+        cases = (
+            ({"heading": "## [0.0.11] - 2026-11-06"}, "found 0"),
+            ({"extra": "\n## [0.0.10] - 2026-11-07\n\n### Breaking changes\n"}, "found 2"),
+            ({"heading": "## [0.0.10]"}, "heading must read"),
+            ({"heading": "## [0.0.10] 2026-11-06"}, "heading must read"),
+            ({"heading": "## [0.0.10] - 2026-13-01"}, "heading must read"),
+            ({"body": "### Added\n\n- A feature.\n"}, "Breaking changes"),
+            ({"link": False}, "link definition"),
+            (None, "CHANGELOG.md is missing"),
+        )
+        for case, message in cases:
+            with self.subTest(case=case):
+                if case is None:
+                    (self.root / "CHANGELOG.md").unlink()
+                else:
+                    self.write_changelog("0.0.10", **case)
+                self.assert_error(self.run_policy("bump", self.base), message)
+                self.assert_error(self.run_policy("tag", "v0.0.10", head), message)
+        # The section is checked before the remote tag lookup.
+        self.assertFalse((self.root / "remote-calls.jsonl").exists())
+
+    def test_notes_write_the_section_body_and_compare_link(self):
+        self.set_version("0.0.10")
+        output = self.root / "notes.md"
+        self.assert_output(self.run_policy("notes", "v0.0.10", str(output)), "notes=true")
+        self.assertEqual(output.read_text(), (
+            "Summary.\n\n### Breaking changes\n\n- None.\n\n"
+            "**Full diff**: https://example.invalid/compare/v0.0.1...v0.0.10\n"
+        ))
+        # The last section stops at the link definitions.
+        self.assert_output(self.run_policy("notes", "v0.0.1", str(output)), "notes=true")
+        self.assertEqual(output.read_text(), (
+            "### Breaking changes\n\n- Old.\n\n"
+            "**Full diff**: https://example.invalid/releases/v0.0.1\n"
+        ))
+        output.unlink()
+        self.assert_error(self.run_policy("notes", "v0.0.12", str(output)), "found 0")
+        self.assert_error(self.run_policy("notes", "0.0.10", str(output)), "canonical")
+        self.assertFalse(output.exists())
+        self.assertFalse((self.root / "remote-calls.jsonl").exists())
 
     def test_tag_peels_lightweight_and_annotated_tags(self):
         head = self.set_version("0.0.10")
@@ -347,6 +404,7 @@ version.workspace = true
         self.assert_output(self.run_policy("--detect-only", self.base, wrapper=True), "release=false")
         self.set_version("0.0.8")
         (self.root / "Cargo.lock").unlink()
+        (self.root / "CHANGELOG.md").unlink()
         self.assert_output(self.run_policy("--detect-only", self.base, wrapper=True), "release=true")
         self.assertFalse((self.root / "remote-calls.jsonl").exists())
 

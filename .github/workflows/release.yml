@@ -67,13 +67,18 @@ jobs:
         run: |
           sha256sum --check SHA256SUMS
           python3 ../policy/devs/scripts/release-policy.py publication "$RELEASE_TAG" "$RELEASE_SHA"
+          # A retry only replaces assets; the notes written at creation stay as they are.
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" pobr-wasm-*-web.tar.gz wasm-size.json wasm-size.md SHA256SUMS --clobber
           else
+            # Notes: the tag's CHANGELOG.md section, then the WASM size report.
+            python3 ../policy/devs/scripts/release-policy.py notes "$RELEASE_TAG" "$RUNNER_TEMP/notes.md"
+            printf '\n---\n\n' >> "$RUNNER_TEMP/notes.md"
+            cat wasm-size.md >> "$RUNNER_TEMP/notes.md"
             flags=()
             if [[ "$RELEASE_TAG" == *-* ]]; then flags+=(--prerelease); fi
             gh release create "$RELEASE_TAG" pobr-wasm-*-web.tar.gz wasm-size.json wasm-size.md SHA256SUMS \
-              --verify-tag --generate-notes --notes-file wasm-size.md "${flags[@]}"
+              --verify-tag --title "$RELEASE_TAG" --notes-file "$RUNNER_TEMP/notes.md" "${flags[@]}"
           fi
 
   deploy:
