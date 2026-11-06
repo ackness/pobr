@@ -17,6 +17,14 @@ const CLASS_START: Record<string, string> = {
   Witch: 'WITCH',
 };
 
+/** Class starts are implicit regardless of the node kind in the current data pack. */
+export function implicitClassStarts(nodes: PassiveNode[], effects?: PassiveJewelState): Set<number> {
+  const names = new Set(Object.values(CLASS_START));
+  return new Set([...Object.values(effects?.class_starts ?? {}),
+    ...(effects?.allocation_grants ?? []).flatMap(grant => grant.roots),
+    ...nodes.filter(node => names.has(node.name ?? '')).map(node => node.skill)]);
+}
+
 /** GGG connections are one-way records; the passive tree is traversed as an undirected graph. */
 export function buildPassiveGraph(nodes: PassiveNode[]): PassiveGraph {
   const byId = new Map(nodes.map((node) => [node.skill, node]));

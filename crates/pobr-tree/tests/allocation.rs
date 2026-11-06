@@ -283,3 +283,39 @@ fn granted_passive_points_extend_the_budget_and_refunds_cannot_remove_spent_gran
         1
     );
 }
+#[test]
+fn a_jewel_granted_start_is_implicit_and_never_stored() {
+    // Split Personality style: a socketed jewel lets the build allocate from another
+    // class's start (node 7 here, a class start whose data kind is "normal").
+    let n: Vec<PassiveNodeDef> = serde_json::from_value(serde_json::json!([
+     {"skill":1,"id":"root","kind":"normal","connections":[2]},
+     {"skill":2,"id":"socket","kind":"jewel_socket"},
+     {"skill":7,"id":"ranger596","kind":"normal","connections":[8]},
+     {"skill":8,"id":"evasion","kind":"normal"}
+    ]))
+    .unwrap();
+    let mut t = tree(&n);
+    t.class_starts.insert(7);
+    t.grants.push(Grant {
+        source: 2,
+        nodes: vec![],
+        roots: vec![7],
+    });
+    let a = Allocation {
+        shared: set(&[2]),
+        exclusive: [set(&[]), set(&[])],
+    };
+    for mode in 0..=2 {
+        let result = t.edit(&a, 8, mode, EditAction::Allocate).unwrap();
+        assert_eq!(result.added, vec![8], "mode {mode}");
+        assert_eq!(result.path, vec![7, 8], "mode {mode}");
+        assert!(!result.allocation.all().contains(&7), "mode {mode}");
+    }
+    // An import that already carried the granted start keeps it.
+    let carried = Allocation {
+        shared: set(&[2, 7]),
+        exclusive: [set(&[]), set(&[])],
+    };
+    let result = t.edit(&carried, 8, 0, EditAction::Allocate).unwrap();
+    assert_eq!(result.allocation.shared, set(&[2, 7, 8]));
+}
