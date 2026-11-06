@@ -242,8 +242,10 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
             dataVersion={session.dataVersion} meta={session.treeMeta} lang={lang} />
         </TabsPrimitive.Content>
       </> : <div className="cmp-empty"><p>{tt(defaults.b ? 'compare.chooseB' : 'compare.noBaseline')}</p><p>{tt('compare.needStages')}</p>
-        <Button onClick={session.saveComparisonBaseline} disabled={session.busy}>{tt('compare.saveBaseline')}</Button>
-        <Button onClick={() => goTo('build')}>{words(lang, 'Open Build library', '前往 BD 库', '前往 BD 庫')}</Button></div>}
+        <div className="cmp-empty-actions">
+          <Button onClick={session.saveComparisonBaseline} disabled={session.busy}>{tt('compare.saveBaseline')}</Button>
+          <Button variant="outline" onClick={() => goTo('build')}>{words(lang, 'Open Build library', '前往 BD 库', '前往 BD 庫')}</Button>
+        </div></div>}
     </TabsPrimitive.Root>
   </section>;
 }

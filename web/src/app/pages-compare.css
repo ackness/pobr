@@ -47,6 +47,7 @@
   .shell-root .cmp-none { padding: 1.5rem 0; font-size: var(--text-sm); color: var(--muted-foreground); }
   .shell-root .cmp-empty { display: grid; justify-items: start; gap: 1rem; max-width: 36rem; margin-top: 3rem; }
   .shell-root .cmp-empty p { font-size: var(--text-base); line-height: 1.7; color: var(--muted-foreground); }
+  .shell-root .cmp-empty-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
 
   /* ── Stats: one hairline table per group, columns aligned across groups ─── */
   .shell-root .cmp-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1.5rem; margin-bottom: 1.25rem; }
