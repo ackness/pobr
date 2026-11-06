@@ -65,7 +65,8 @@ async function equipFixture(page: Page, text: string, slot: string) {
 
 async function maximizeCopiedAffix(page: Page, id: string, expectedLine: string) {
   const editor = page.locator('.replacement-affix-editor');
-  await editor.locator('summary').click();
+  if (!(await editor.evaluate(element => (element as HTMLDetailsElement).open))) await editor.locator(':scope > summary').click();
+  await expect(editor).toHaveAttribute('open', '');
   const row = editor.locator(`[data-affix-id="${id}"]`);
   await expect(row).toBeVisible();
   await row.getByRole('button', { name: 'Maximum', exact: true }).click();

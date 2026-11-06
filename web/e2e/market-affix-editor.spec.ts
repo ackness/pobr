@@ -28,7 +28,8 @@ test('manual affix tiers respect item level and recalculate a whole item before 
   // Ring 2 ranks higher; an explicit Ring 1 choice must survive editing and recalculation.
   await page.locator('.replacement-position').filter({ hasText: /^Ring 1/ }).click();
   const editor = page.locator('.replacement-affix-editor');
-  await editor.locator('summary').click();
+  if (!(await editor.evaluate(element => (element as HTMLDetailsElement).open))) await editor.locator(':scope > summary').click();
+  await expect(editor).toHaveAttribute('open', '');
   await expect(editor.locator('[data-affix-id="equipment:IncreasedLife6"]')).toBeVisible();
   await expect(editor.locator('.affix-editor-meta')).toContainText('Prefixes 1 / 3');
   await editor.locator('.affix-editor-row').getByRole('button', { name: 'Replace affix', exact: true }).click();
@@ -45,7 +46,8 @@ test('manual affix tiers respect item level and recalculate a whole item before 
   await expect(page.getByRole('button', { name: 'Apply to build · Ring 1', exact: true })).toBeEnabled();
   await expect(life).toHaveText(before);
   const expectedLife = await page.locator('.swap-gain-card [data-stat="Life"] .swap-after').innerText();
-  await editor.locator('summary').click();
+  if (!(await editor.evaluate(element => (element as HTMLDetailsElement).open))) await editor.locator(':scope > summary').click();
+  await expect(editor).toHaveAttribute('open', '');
   await page.setViewportSize({ width: 320, height: 900 });
   await page.addStyleTag({ content: 'html { scrollbar-gutter: stable; }' });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
