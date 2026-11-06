@@ -9,10 +9,15 @@ Deployment assumes immutable tags and permits only the highest stable v0.x.y
 tag currently on origin. A newer stable tag with failing CI intentionally blocks
 older deployments; callers must serialize deployments separately. Build metadata
 does not affect SemVer precedence and is excluded from production tags.
+
+Every version change needs a CHANGELOG.md section: a "## [<version>] - <date>"
+heading, a "### Breaking changes" subsection and a "[<version>]: <url>" link
+definition. The notes command writes that section as the GitHub Release notes.
 """
 
 import argparse
 from dataclasses import dataclass
+import datetime
 import os
 from pathlib import Path
 import re
@@ -28,6 +33,10 @@ SEMVER = re.compile(
     r"(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?"
 )
 OBJECT_ID = re.compile(r"(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})")
+CHANGELOG = "CHANGELOG.md"
+SECTION = re.compile(r"## \[([^\]]+)\](.*)")
+DATED = re.compile(r" - ([0-9]{4}-[0-9]{2}-[0-9]{2})")
+LINK = re.compile(r"\[([^\]]+)\]: (\S+)")
 
 
 class PolicyError(Exception):
@@ -130,6 +139,48 @@ def check_lock(manifest, version):
             )
 
 
+def changelog_section(version):
+    """Return the body and compare link of the CHANGELOG.md section for version."""
+    path = ROOT / CHANGELOG
+    if not path.is_file():
+        raise PolicyError(f"{CHANGELOG} is missing; add a section for {version}")
+    lines = path.read_text(encoding="utf-8").splitlines()
+    # "## " headings outside code fences delimit the sections.
+    headings, fenced = [], False
+    for index, line in enumerate(lines):
+        if line.startswith("```"):
+            fenced = not fenced
+        elif not fenced and line.startswith("## "):
+            headings.append(index)
+    starts = [index for index in headings
+              if (match := SECTION.fullmatch(lines[index])) and match[1] == version]
+    if len(starts) != 1:
+        raise PolicyError(f"{CHANGELOG} needs exactly one '## [{version}] - YYYY-MM-DD' "
+                          f"section, found {len(starts)}")
+    start = starts[0]
+    date = DATED.fullmatch(SECTION.fullmatch(lines[start])[2])
+    try:
+        datetime.date.fromisoformat(date[1] if date else "")
+    except ValueError:
+        raise PolicyError(f"{CHANGELOG} heading must read '## [{version}] - YYYY-MM-DD': "
+                          f"{lines[start]!r}") from None
+    # The section ends at the next heading; trailing link definitions (the
+    # file's compare links) are not part of it.
+    end = next((index for index in headings if index > start), len(lines))
+    while end > start + 1 and (not lines[end - 1].strip() or LINK.fullmatch(lines[end - 1])):
+        end -= 1
+    body = "\n".join(lines[start + 1:end]).strip()
+    if "### Breaking changes" not in (line.rstrip() for line in body.splitlines()):
+        raise PolicyError(f"{CHANGELOG} section {version} needs a '### Breaking changes' "
+                          "subsection (write '- None.' when there are none)")
+    links = [match[2] for line in lines
+             if (match := LINK.fullmatch(line)) and match[1] == version]
+    if len(links) != 1:
+        raise PolicyError(f"{CHANGELOG} needs exactly one '[{version}]: <compare URL>' "
+                          f"link definition, found {len(links)}")
+    return body, links[0]
+
+
 def remote_tags(*patterns):
     # No --exit-code: an empty successful lookup means absent, not a failure.
     output = git("ls-remote", "--tags", "origin", *patterns)
@@ -162,6 +213,7 @@ def bump(base, allow_existing_tag=False, detect_only=False):
     if current.precedence() <= previous.precedence():
         raise PolicyError(f"workspace version must increase in SemVer precedence: {old} -> {new}")
     check_lock(manifest, new)
+    changelog_section(new)
     tag = f"v{new}"
     tags = remote_tags(f"refs/tags/{tag}", f"refs/tags/{tag}^{{}}")
     if tag in tags and not (allow_existing_tag and tags[tag] == commit("HEAD")):
@@ -177,11 +229,20 @@ def check_tag(tag, sha):
     if tag != f"v{current}":
         raise PolicyError(f"tag {tag} does not match workspace version {current}")
     check_lock(manifest, current)
+    changelog_section(current)
     if commit(f"refs/tags/{tag}") != sha:
         raise PolicyError(f"tag {tag} does not point to expected commit {sha}")
     if commit("HEAD") != sha:
         raise PolicyError(f"checkout HEAD does not match expected commit {sha}")
     return "production", version.is_production()
+
+
+def notes(tag, output):
+    tag_version(tag)
+    body, link = changelog_section(tag[1:])
+    Path(output).parent.mkdir(parents=True, exist_ok=True)
+    Path(output).write_text(f"{body}\n\n**Full diff**: {link}\n", encoding="utf-8")
+    return "notes", True
 
 
 def publication(tag, sha):
@@ -227,6 +288,9 @@ def main(argv=None):
     bump_parser.add_argument("--allow-existing-tag", action="store_true")
     detect_parser = commands.add_parser("detect", help="detect a version change without validation or network")
     detect_parser.add_argument("base")
+    notes_parser = commands.add_parser("notes", help="write the tag's CHANGELOG section as release notes")
+    notes_parser.add_argument("tag")
+    notes_parser.add_argument("output", help="file to write the notes to")
     for command in ("tag", "publication", "deployment"):
         subparser = commands.add_parser(command)
         subparser.add_argument("tag")
@@ -239,6 +303,8 @@ def main(argv=None):
             result = bump(args.base, detect_only=True)
         elif args.command == "tag":
             result = check_tag(args.tag, args.sha)
+        elif args.command == "notes":
+            result = notes(args.tag, args.output)
         elif args.command == "publication":
             result = publication(args.tag, args.sha)
         else:

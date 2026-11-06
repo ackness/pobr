@@ -57,7 +57,7 @@ class TimingTests(unittest.TestCase):
 
 
 class SparsePlannerTests(unittest.TestCase):
-    def test_release_lock_policy_has_all_manifests_after_sparse_checkout(self):
+    def test_release_policy_has_its_inputs_after_sparse_checkout(self):
         root = HERE.parents[1]
         workflow = (root / ".github/workflows/pr.yml").read_text()
         block = workflow.split("sparse-checkout: |\n", 1)[1]
@@ -68,7 +68,8 @@ class SparsePlannerTests(unittest.TestCase):
             patterns.append(line.strip())
         with tempfile.TemporaryDirectory() as directory:
             checkout = Path(directory)
-            files = ["Cargo.toml", "Cargo.lock", *[
+            # The version-bump check reads the manifests, the lock and CHANGELOG.md.
+            files = ["Cargo.toml", "Cargo.lock", "CHANGELOG.md", *[
                 f"{member}/Cargo.toml" for member in tomllib.loads(
                     (root / "Cargo.toml").read_text())["workspace"]["members"]]]
             for name in files:
