@@ -334,3 +334,6 @@
   .utility-row { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .limb-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+.library-source { margin: 0 .75rem .5rem; overflow-wrap: anywhere; color: var(--muted-foreground); font-size: var(--text-sm); }
+.item-contribution { margin-block: .75rem; min-width: 0; }
+.item-contribution h4 { margin-block: .5rem; }

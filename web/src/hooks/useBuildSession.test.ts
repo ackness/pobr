@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { applyNamedSkills, applyNamedConfig, toRequest, backfillFromDecoded, materialize, paramsFromDecoded, parseSaved, prepareTreePlan, skillMetricsForState, type SavedSession } from './useBuildSession';
+import { createLibraryItem, librarySourceBuild, parseLibrary, applyNamedSkills, applyNamedConfig, toRequest, backfillFromDecoded, materialize, paramsFromDecoded, parseSaved, prepareTreePlan, skillMetricsForState, type SavedSession } from './useBuildSession';
 import type { BuildJson, CalculateBuildRequest, SkillMetricsResponse } from '../api/types';
 import { parseWorkspace, createWorkspace } from '../lib/buildWorkspace';
 
@@ -594,4 +594,23 @@ test('party members survive saved sessions and are passed to the calculation req
   const restored = parseSaved(JSON.stringify(session));
   expect(restored?.state.params.party).toEqual(party);
   expect(toRequest(session.state).party).toEqual(party);
+});
+
+
+test('new shared-library items persist their source build while legacy saved items stay readable with unknown source', () => {
+  const workspace = createWorkspace(saved);
+  workspace.builds[0].name = 'First build';
+  const item = createLibraryItem('item', 'Rarity: RARE\nMy Ring\nSapphire Ring', 'ring1', workspace);
+  const jewel = createLibraryItem('jewel', 'Rarity: NORMAL\nRuby', undefined, workspace);
+  expect(item.sourceBuild).toEqual({ id: workspace.activeBuild, name: 'First build' });
+  expect(jewel.sourceBuild).toEqual(item.sourceBuild);
+  expect(parseLibrary(JSON.stringify({ items: [item, jewel], skillSets: [] })).items).toEqual([item, jewel]);
+  workspace.builds[0].name = 'Renamed build';
+  expect(item.sourceBuild?.name).toBe('First build');
+  expect(librarySourceBuild(workspace)?.name).toBe('Renamed build');
+  const legacy = { id: 'old', kind: 'item', text: item.text, name: item.name, slot: 'ring1' };
+  expect(parseLibrary(JSON.stringify({ items: [legacy] }))).toEqual({ items: [legacy], skillSets: [] });
+  expect(parseLibrary(JSON.stringify({ items: [legacy] })).items[0].sourceBuild).toBeUndefined();
+  expect(parseLibrary('broken')).toEqual({ items: [], skillSets: [] });
+  expect(librarySourceBuild(null)).toBeUndefined();
 });

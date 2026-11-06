@@ -78,3 +78,17 @@ export function uniquePreviewCatalog(entries: UniqueEntry[], catalog: TradeCatal
   }
   return { ...catalog, bases: [...known.values()] };
 }
+
+/** Match resolved modifier prose to its ranged source; only the backend resolves roll values. */
+export function resolvedUniqueRolls(ranges: readonly { text: string }[], text: string): (string | undefined)[] {
+  const signature = (line: string) => line.replace(/\{[^}]*\}/g, '')
+    .replace(/[+-]?\((-?\d+(?:\.\d+)?)-(-?\d+(?:\.\d+)?)\)/g, '#')
+    .replace(/[+-]?\d+(?:\.\d+)?/g, '#').replace(/\s+/g, ' ').trim();
+  const lines = text.split('\n').map(line => line.replace(/\{[^}]*\}/g, '').trim());
+  const used = new Set<number>();
+  return ranges.map(range => {
+    const index = lines.findIndex((line, index) => !used.has(index) && signature(line) === signature(range.text));
+    if (index < 0) return undefined;
+    used.add(index); return lines[index];
+  });
+}

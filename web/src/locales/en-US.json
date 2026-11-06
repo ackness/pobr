@@ -891,6 +891,17 @@
     "tree.unitRate": "per second",
     "tree.unitPercent": "%",
     "tree.disconnectedImport": "This passive tree has disconnected nodes in one or both weapon sets. Reconnect their paths or refund those nodes. Switch weapon sets to review both.",
+    "items.allChanges": "All changes ({count})",
+    "items.changedStat": "Stat",
+    "items.originalName": "Original name",
+    "items.contribution": "Source contributions",
+    "items.removalLoss": "Loss if removed: Combined DPS {dps} · Effective HP {ehp}",
+    "items.contributionHint": "Contributions measure the loss when this item is removed. They are not the gain from swapping to another item. Negative loss means removal improves that stat.",
+    "items.contributionMissing": "No contribution result for this item yet. Calculate source contributions to see the loss if it is removed.",
+    "lib.thisBuild": "This build only",
+    "lib.sourceUnknown": "Source unknown",
+    "lib.sourceBuild": "Source build: {name}",
+    "lib.unnamedBuild": "Unnamed build",
     "calcs.untranslated": "Translation unavailable; original shown",
     "calcs.missingModifier": "Modifier text unavailable",
     "calcs.details": "Details",
@@ -2562,7 +2573,10 @@
     "error": "Could not prepare this unique. Check the selection and try again.",
     "baseUnavailable": "This catalogue variant has no matching base. Choose another variant.",
     "jewel": "Passive jewel socket",
-    "unavailable": "This base cannot be compared in an equipment slot."
+    "unavailable": "This base cannot be compared in an equipment slot.",
+    "resolvingRoll": "Resolving modifier values…",
+    "rollUnavailable": "Modifier value unavailable. Preview the item to retry.",
+    "slotUnknown": "Slot unknown"
   },
   "itemCrafting": {
     "unknownRequirement": "This unique base has no verified level requirement. You can save it to the item library; equipment preview is unavailable.",
@@ -2587,7 +2601,8 @@
     "error": "Could not create this draft. Check the item data and try again.",
     "missing": "Some game affixes have no display template and cannot be added:",
     "normalHint": "Normal items have no explicit affixes. Choose Magic or Rare to add them.",
-    "editUnavailable": "This item’s base is unavailable in the crafter. Use advanced text editing to modify it."
+    "editUnavailable": "This item’s base is unavailable in the crafter. Use advanced text editing to modify it.",
+    "compareEquipped": "Compare with current equipment"
   },
   "tradeAnalysis": {
     "resume": "Resume remaining positions",

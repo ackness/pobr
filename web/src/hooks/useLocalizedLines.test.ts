@@ -51,10 +51,10 @@ it('takes a Bonded line from the language pack, whole first, else around the pac
   const out = ['羁绊： +40 生命上限', undefined, lines[2], lines[3],
     undefined, '+40 生命上限', undefined, '获得技能：20 级 Foo', undefined, 'Unknown words', undefined, '羁绊： {0}'];
   expect(localizedLines(lines, 'zh-CN', out))
-    .toEqual(['羁绊： +40 生命上限', '物品等级: 83', '羁绊： 获得技能：20 级 Foo', 'Bonded: Unknown words']);
-  // A pack without a prefix rendering leaves an untranslated whole line in English, never a local prefix.
+    .toEqual(['纽带：+40 生命上限', '物品等级: 83', '纽带：获得技能：20 级 Foo', 'Bonded: Unknown words']);
+  // CN uses the official prefix even when a pack has no prefix template.
   expect(localizedLines([lines[2]], 'zh-CN', [lines[2], undefined, '获得技能：20 级 Foo', undefined, 'Bonded: {0}']))
-    .toEqual([lines[2]]);
+    .toEqual(['纽带：获得技能：20 级 Foo']);
   // A whole-line row that kept the English prefix gives way to the pack's own prefix around the effect…
   expect(localizedLines([lines[0]], 'zh-CN', ['Bonded: +40 生命上限', undefined, '+40 生命上限', undefined, '纽带：{0}']))
     .toEqual(['纽带：+40 生命上限']);
@@ -62,4 +62,21 @@ it('takes a Bonded line from the language pack, whole first, else around the pac
   expect(localizedLines([lines[0]], 'zh-TW', ['Bonded: 生命上限 +40'])).toEqual(['Bonded: 生命上限 +40']);
   expect(localizedLines([lines[0]], 'zh-CN', [])).toEqual([lines[0]]);
   expect(linesToTranslate(['+5 to Strength'], 'zh-CN')).toEqual(['+5 to Strength']);
+});
+
+it('merges a wrapped Bonded effect before whole-line and fallback translation, preserving row positions', () => {
+  const head = 'Bonded: 12% chance when collecting an Elemental Infusion to gain an';
+  const tail = 'additional Elemental Infusion of the same type';
+  const lines = [head, tail, 'Bonded: Archon recovery period expires 30% faster', '+40 to maximum Life'];
+  const sent = linesToTranslate(lines, 'zh-CN');
+  expect(sent[0]).toBe(`${head} ${tail}`);
+  expect(sent[1]).toBe('');
+  expect(sent[5]).toBe(`${head.replace('Bonded: ', '')} ${tail}`);
+  const cn = localizedLines(lines, 'zh-CN', ['羁绊：收集元素灌注时有 12% 的几率额外获得一个同类元素灌注', undefined, '纽带：执政官恢复期的结束速度加快 30%', '+40 生命上限']);
+  expect(cn).toEqual(['纽带：收集元素灌注时有 12% 的几率额外获得一个同类元素灌注', '', '纽带：执政官恢复期的结束速度加快 30%', '+40 生命上限']);
+  expect(localizedLines(lines, 'en-US', [])[0]).toBe(`${head} ${tail}`);
+  expect(localizedLines([lines[2]], 'zh-TW', ['連結：恢復期加快 30%'])).toEqual(['連結：恢復期加快 30%']);
+  expect(lines).toEqual([head, tail, lines[2], '+40 to maximum Life']);
+  expect(linesToTranslate(['Bonded: +40 to maximum Life', '+50 to maximum Mana'], 'zh-CN').slice(0, 2))
+    .toEqual(['Bonded: +40 to maximum Life', '+50 to maximum Mana']);
 });
