@@ -637,6 +637,7 @@ ConfigSet 可选择、新建、复制、重命名、删除，至少留一组；�
 `minions` 列实际创建的每个召唤物：index、minion_id、可选 monster_variety_id、name、summoned_by、skill_id、level、dps、
 life、armour、evasion、energy_shield、stats、breakdowns、breakdown_descriptors。
 `main_minion_index` 按准确宝石和召唤来源定位，同名宝石各保留结果，禁用主组则无主召唤物。
+stats 的 `MainMinionDPS` 是主召唤物单只击中 DPS，无主召唤物时缺省；召唤流派的侧栏、总览、技能、Calcs、比较和热力图以它为主数字。
 每项是一个实例，不乘数量，不模拟怪物技能轮转。火冰电混沌抗性、上限、超上限用角色同名 id；
 四种最终抗性有 steps，上限／超上限为 none。未建模值缺省，不补 0。
 侧栏主召唤物和 Calcs 切换各用对应 actor，角色值不混入。

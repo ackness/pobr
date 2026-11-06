@@ -25,6 +25,7 @@ import { words } from '../../app/text';
 import { barShare, groupDps, topDps, type GroupDps } from '../../app/pages/skills/dps';
 import { useSkillMetrics } from '../../app/pages/skills/useSkillMetrics';
 import { formatStatValue } from '../../lib/statDisplay';
+import { mainMinion } from '../../lib/mainMinion';
 import './skills.css';
 
 interface Props {
@@ -110,8 +111,13 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
 
   // What each group's selected skill deals on its own, for the bars beside the list.
   const dpsSnapshot = useSkillMetrics(session, active);
+  // The calculated summoning skill's damage is its main minion's.
+  const mainSkill = session.calc?.main_skill, minion = mainMinion(session.calc);
+  const calculatedMinion = mainSkill && minion ? { group_index: mainSkill.group_index, active_skill_index: mainSkill.active_skill_index, dps: minion.dps } : null;
   const dpsRows = useMemo(() => dpsSnapshot?.revision === session.socketGroupRevision
-    ? groupDps(dpsSnapshot.skills, groups) : new Map<number, GroupDps>(), [dpsSnapshot, session.socketGroupRevision, groups]);
+    ? groupDps(dpsSnapshot.skills, groups, calculatedMinion, id => !!byId.get(id)?.tags.includes('CreatesMinion')) : new Map<number, GroupDps>(),
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the minion is compared by value.
+  [dpsSnapshot, session.socketGroupRevision, groups, byId, calculatedMinion?.group_index, calculatedMinion?.active_skill_index, calculatedMinion?.dps]);
   const dpsTop = topDps(dpsRows);
 
   const toolbar = active && <div className="skills-toolbar">
@@ -348,12 +354,14 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                     </span>
                   )}
                 </AppButton>
-                <span className="skill-dps-value" data-kind={dps?.kind ?? 'unavailable'}>
+                <span className="skill-dps-value" data-kind={dps?.kind ?? 'unavailable'} title={dps?.kind === 'minion' ? tt('skills.minionDps') : dps?.kind === 'summoner' ? tt('skills.summonerPending') : undefined}>
                   {dps?.kind === 'damage' ? <>{formatStatValue(dps.dps, 'int')}<span className="sr-only"> DPS</span></>
+                    : dps?.kind === 'minion' ? <>{formatStatValue(dps.dps, 'int')}<span className="sr-only"> {tt('skills.minionDps')}</span></>
+                    : dps?.kind === 'summoner' ? <span className="sr-only">{tt('skills.summonerPending')}</span>
                     : dps?.kind === 'none' ? <span className="sr-only">{w('deals no damage', '不造成伤害', '不造成傷害')}</span> : null}
                 </span>
                 <span className="skill-dps-bar" aria-hidden="true">
-                  {dps?.kind === 'damage' && <span style={{ width: `${barShare(dps.dps, dpsTop) * 100}%` }} />}
+                  {(dps?.kind === 'damage' || dps?.kind === 'minion') && <span style={{ width: `${barShare(dps.dps, dpsTop) * 100}%` }} />}
                 </span>
                 <label className="skill-group-toggle">
                   <AppInput
@@ -386,6 +394,8 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                       {grantedSourceLabel(lang, group.source) && <span className="skill-detail-tag">{grantedSourceLabel(lang, group.source)}</span>}
                     </div>
                     {dps?.kind === 'damage' && <div className="skill-detail-dps"><span>{tt('sidebar.combinedDps')}</span><strong>{formatStatValue(dps.dps, 'int')}</strong></div>}
+                    {dps?.kind === 'minion' && <div className="skill-detail-dps"><span>{tt('skills.minionDps')}</span><strong>{formatStatValue(dps.dps, 'int')}</strong></div>}
+                    {dps?.kind === 'summoner' && <p className="skill-detail-dps">{tt('skills.summonerPending')}</p>}
                     {active && <div className="skill-detail-controls">
                       {weaponBinding}
                       {effectControl}

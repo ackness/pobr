@@ -38,3 +38,26 @@ it('hides neutral quantity and duplicate ailment totals while preserving distinc
   expect(render('overview', 2, 150)).toContain('Quantity Multiplier');
   expect(render('overview', 2, 150)).toContain('DPS including Ignite');
 });
+
+it('leads a summoner build with one minion\'s hit DPS and keeps the player\'s own damage secondary', () => {
+  const stats = Object.entries({ CombinedDPS: 0, TotalDPS: 0, ActiveMinionLimit: 7, MainMinionDPS: 5307.37 }).map(([id, value]) => ({ id, value, category: 'Offence' }));
+  const minion = { index: 0, name: 'Wolf Companion', minion_id: 'wolf', summoned_by: 'WolfPackPlayer', skill_id: 'Bite', dps: 5307.37,
+    life: 2261.7, armour: 974, evasion: 209, energy_shield: 0, stats: {}, breakdowns: {}, breakdown_descriptors: { TotalDPS: 'steps', Life: 'steps' } };
+  const calc = { stats, main_skill: { skill_id: 'WolfPackPlayer', group_index: 0, active_skill_index: 1, hit_damage: [], combined_dps: 0, hit_dps: 0, dot_dps: 0 },
+    item_errors: [], unsupported_modifiers: [], minions: [minion], main_minion_index: 0, breakdowns: {}, breakdown_descriptors: {},
+  } as unknown as CalculateBuildResponse;
+  const session = { calcParams: { main_socket_group: 0 }, socketGroups: [{ gems: [] }], calcMs: 77, dataVersion: '0.5.5.5' } as unknown as BuildSession;
+  const html = renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider><ResultsRail route="skills" session={session}
+    view={{ calc, previous: null, stale: false }} lang="en-US" onStatClick={() => {}} onNavigate={() => {}} pinned={[]} onTogglePin={() => {}} /></TooltipProvider></UiProvider>);
+  expect(html).toContain('<span class="rail-hero-label">Minion hit DPS</span>');
+  expect(html).toMatch(/class="rail-hero-value is-link"[^>]*>[^<]*5,307/);
+  expect(html).toContain('<span class="rail-hero-note">Wolf Companion · per minion · limit 7</span>');
+  // The player's zero is not shown as the build's damage, and the minion's DPS isn't repeated below.
+  expect(html).not.toContain('Combined DPS');
+  expect(html).not.toContain('Your own combined DPS');
+  expect(html.match(/5,307/g)).toHaveLength(1);
+  expect(html).toContain('Minion · Wolf Companion');
+  // The summoning skill's own offence group would read as the minion's.
+  expect(html).not.toContain('Offence</button>');
+  expect(html).toContain('Skill mechanics</button>');
+});
