@@ -213,6 +213,68 @@ test('source groups share one totals note and show origin-specific fallback text
   expect(html).not.toContain('Campaign resistance penalty');
 });
 
+test('modifiers fold by source with a count and separate stacking subtotals', () => {
+  const mods: BreakdownMod[] = [
+    { mod_type: 'BASE', value: 20, active: true, source_text: '20 to Life', origin_kind: 'PassiveNode', origin_id: 'node.1', slot: null },
+    { mod_type: 'INC', value: 10, active: true, source_text: '10% increased Life', origin_kind: 'PassiveNode', origin_id: 'node.2', slot: null },
+  ];
+  const html = renderToStaticMarkup(<BreakdownTable breakdown={{ ...empty, mods }} modifierMeasure={{ stat: 'Life', unit: 'points' }} lang="en-US" />);
+  expect(html).toContain('<details class="modifier-source-group"><summary><strong>Passive tree</strong> <span>(2)</span>');
+  expect(html).toContain('Base 20');
+  expect(html).toContain('Increased / Reduced 10%');
+  expect(html).not.toContain('Base 30');
+});
+
+test('resource formula summary preserves operation order and reports missing conversion destination', () => {
+  const breakdown: Breakdown = { ...empty, formula: { value: 78, steps: [
+    { op: 'flat', operand: 100, result: 100 }, { op: 'converted', operand: 50, result: 50 },
+    { op: 'gained', operand: 10, result: 60 }, { op: 'increased', operand: 30, result: 78 },
+  ] } };
+  const html = renderToStaticMarkup(<BreakdownTable breakdown={breakdown} stat="Life" lang="en-US" />);
+  expect(html.replace(/<[^>]*>/g, '')).toContain('(((100 ×0.5) +10) ×1.3)');
+  expect(html).toContain('78 points');
+  expect(html).toContain('Conversion destination is not returned');
+  expect(html).toContain('<details class="formula-steps"><summary>How it&#x27;s calculated</summary>');
+});
+
+test('resistance figures use returned total, cap and over-cap and show missing sources honestly', () => {
+  const html = renderToStaticMarkup(<BreakdownTable breakdown={empty} stat="FireResist" lang="en-US"
+    values={new Map([['FireResistTotal', 113], ['FireResistMax', 75], ['FireResistOverCap', 38]])} />);
+  expect(html).toContain('<h4>Total</h4><strong class="mod-value">113%</strong>');
+  expect(html).toContain('<h4>Cap</h4><strong class="mod-value">75%</strong>');
+  expect(html).toContain('<h4>Over cap</h4><strong class="mod-value">38%</strong>');
+  expect(html).toContain('does not provide the source');
+  const missing = renderToStaticMarkup(<BreakdownTable breakdown={empty} stat="FireResist" lang="en-US" />);
+  expect(missing).toContain('Not returned by this calculation');
+  expect(missing).not.toContain('38%');
+});
+
+test('item names are shown as sources instead of being passed off as modifier text', () => {
+  const html = renderToStaticMarkup(<BreakdownTable breakdown={{ ...empty, mods: [{ mod_type: 'BASE', value: 20, active: true,
+    source_text: 'Mageblood', origin_kind: 'Item', origin_id: 'item.belt', slot: 'belt' }] }} lang="en-US" />);
+  expect(html).toContain('Modifier text unavailable');
+  expect(html).toContain('Item base · Mageblood');
+  expect(html).not.toContain('<span>Mageblood</span>');
+});
+
+test('damage chain lists missing links and shows available final DPS', () => {
+  const html = renderToStaticMarkup(<BreakdownTable breakdown={{ ...empty, formula: { value: 100, steps: [{ op: 'average_hit', operand: 100, result: 100 }] } }} stat="TotalDPS" lang="en-US" />);
+  expect(html).toContain('From hit to DPS');
+  expect(html).toContain('Unavailable links: After enemy mitigation, Uses per second, Trigger multiplier.');
+  expect(html).toContain('100 DPS');
+});
+
+
+test('mixed enemy defence lines keep their values without displaying an invented subtotal', () => {
+  const mods: BreakdownMod[] = [2000, 10].map(value => ({ mod_type: 'BASE', value, active: true,
+    source_text: value === 2000 ? '2000 Armour' : '10% Physical Damage Reduction', origin_kind: 'EnemyConfig', origin_id: null, slot: null }));
+  const html = renderToStaticMarkup(<BreakdownTable breakdown={{ ...empty, mods }} lang="en-US" />);
+  expect(html).toContain('2,000');
+  expect(html).toContain('10');
+  expect(html).not.toContain('modifier-subtotals');
+  expect(html).not.toContain('2,010');
+});
+
 test('the followed actor key changes across a failed calculation, so a later player skill leaves the minion', () => {
   const minion = { index: 8, minion_id: 'wolf', summoned_by: 'WolfPack', skill_id: 'Bite', dps: 5307 };
   const withMinion = { main_minion_index: 8, minions: [minion] } as unknown as CalculateBuildResponse;

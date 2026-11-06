@@ -7,7 +7,7 @@ export function detailKind(calc: Pick<CalculateBuildResponse, 'breakdowns' | 'br
 }
 
 /** Formula ids are replaced at the display boundary, without evaluating formulas in JS. */
-export function detailFormula(formula: string, inputs: DetailInput[], lang: Lang): string {
+export function detailFormula(formula: string, inputs: DetailInput[], lang: Lang, numeric = false): string {
   const ids = new Set(inputs.map(input => input.id));
   // Hide only the outer float-noise rounding; integer and inner rounding are meaningful.
   let display = formula.trim();
@@ -26,7 +26,7 @@ export function detailFormula(formula: string, inputs: DetailInput[], lang: Lang
     }
   }
   return display.replaceAll('*', '×').replaceAll('/', '÷')
-    .replace(/[A-Za-z][A-Za-z0-9]*/g, id => ids.has(id) ? detailInputLabel(id, inputs, lang) : id);
+    .replace(/[A-Za-z][A-Za-z0-9]*/g, id => ids.has(id) ? numeric ? String(inputs.find(input => input.id === id)!.value ?? '∞') : detailInputLabel(id, inputs, lang) : id);
 }
 
 export function detailInputLabel(id: string, inputs: DetailInput[], lang: Lang): string {

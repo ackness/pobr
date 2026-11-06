@@ -8,11 +8,11 @@ import { useSkillCatalog } from '../../hooks/useSkillName';
 import { formatApiError } from '../../api/error';
 import type { SocketGroupInput } from '../../api/types';
 import { compareBuilds, comparisonGemForm, hasComparisonSource, isPercentageStat, nearestCompareStage, configDifferences, copySection, diffText, formatComparisonDelta, itemDifferences, resolvedTreeVersion, skillDifferences, weaponDifferences, type ConfigBasis, type CopySection } from '../../lib/compare';
-import { bindT, enemyTierLabel, statNameLabel, t, type Lang } from '../../lib/i18n';
+import { bindT, enemyTierLabel, statNameLabel, t, type Lang, slotLabel } from '../../lib/i18n';
 import { activeSkillEffects } from '../../lib/skillSelection';
 import { skillDisplayName } from '../../lib/skillNames';
-import { unsupportedLineLabel } from '../../lib/diagnosticText';
 import { formatNumber, STAT_SECTIONS, formatStatValue } from '../../lib/statDisplay';
+import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { PageHeader } from '../shared/PageHeader';
 import { Button } from '../ui/button';
 import { words } from '../../app/text';
@@ -195,7 +195,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
             <p className="cmp-note">{tt('compare.basisHint')} · {session.dataVersion}</p>
             <details className="cmp-details" open={[value.before, value.after].some(output => output.unsupported_modifiers.length || output.item_errors.length)}><summary>{tt('compare.diagnostics')}</summary>{[value.before, value.after].map((output, index) => <div key={index}>
               <strong>{index === 0 ? 'A' : 'B'} · {tt('sidebar.mainSkill')}{lang === 'en-US' ? ': ' : '：'}{output.main_skill ? skillDisplayName(output.main_skill.skill_id, lang, catalog) : absent}</strong>
-              <ul>{[...output.unsupported_modifiers.map(raw => ({ raw, text: unsupportedLineLabel(raw, lang) })), ...output.item_errors.map(error => { const text = `${error.slot}: ${error.message}`; return { raw: text, text }; })].map(({ raw, text }, i) => <li key={i} title={raw}>{text}</li>)}</ul>
+              <UnincludedModifiers lines={output.unsupported_modifiers} lang={lang} /><ul>{output.item_errors.map((error, i) => <li key={i}>{slotLabel(lang, error.slot)}{lang === 'en-US' ? ': ' : '：'}{error.message}</li>)}</ul>
             </div>)}</details>
           </article>}
         </TabsPrimitive.Content>
