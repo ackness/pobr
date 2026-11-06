@@ -6,20 +6,29 @@
 import { expect, test } from '@playwright/test';
 import { pageLink, statValue, playerHitDps } from './shell';
 import { choose, closeSettings, settled, stableText } from './buildLibrary';
+import { answerConfirm } from './confirmDialog';
 
 test('scratch build: class picker, level edit, tree allocation', async ({ page }) => {
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character' })).toBeVisible({ timeout: 90_000 });
 
-  // 默认空 build 已计算：结果栏 Life 有值且非 0/—。
-  const lifeValue = statValue(page, /^Life$/).first();
-  await expect(lifeValue).not.toHaveText('—');
-  await expect(lifeValue).not.toHaveText('0');
-
-  // 切职业 → 职业选择器跟随，Life 随之重算。
+  // 切职业 → 职业选择器跟随。
   const classPicker = page.getByRole('combobox', { name: 'Class', exact: true });
   await choose(page, classPicker, 'Witch');
+  // Changing class resets what the default build carries (its level and configuration), so it asks first.
+  await answerConfirm(page, true);
   await expect(classPicker).toContainText('Witch', { timeout: 30_000 });
+
+  // The results panel stays empty until the build has content; a level above 1 is content.
+  const empty = page.locator('#character-stats').getByText('Import or create a build to see its results.', { exact: true });
+  await expect(empty).toBeVisible();
+  await page.getByLabel('Level').fill('80');
+  await expect(empty).toHaveCount(0, { timeout: 30_000 });
+  const lifeValue = statValue(page, /^Life$/).first();
+  // A missing row would pass the checks below, so require it first.
+  await expect(lifeValue).toBeVisible();
+  await expect(lifeValue).not.toHaveText('—', { timeout: 30_000 });
+  await expect(lifeValue).not.toHaveText('0');
 
   // 改等级 → Life 变化（等级驱动基础生命）。
   await settled(page);
@@ -32,7 +41,8 @@ test('scratch build: class picker, level edit, tree allocation', async ({ page }
   // 让树数据一升级就挂。
   await pageLink(page, 'Tree').click();
   await expect(page.locator('.tree-canvas svg')).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('.tree-count')).toContainText('Used 0 / 24 points', { timeout: 30_000 });
+  // Level 90 gives 89 level points plus the 24 quest points.
+  await expect(page.locator('.tree-count')).toContainText('Used 0 / 113 points', { timeout: 30_000 });
   // Search and center a reachable notable so the click uses a visible target.
   await page.getByRole('searchbox', { name: 'Search nodes…' }).fill('Practiced Signs');
   const target = page.locator('.node-search-hit');
@@ -44,7 +54,7 @@ test('scratch build: class picker, level edit, tree allocation', async ({ page }
 
   // 手动添加技能：自定义选择器搜 Comet → 回车选中首项 → 新组出现 → Hit DPS 出数。
   await pageLink(page, 'Skills').click();
-  const picker = page.getByRole('combobox', { name: /Search an active gem/ });
+  const picker = page.getByPlaceholder('Add a skill group…');
   await picker.fill('Comet');
   await expect(page.locator('.gem-picker-item').first()).toBeVisible();
   await picker.press('Enter');

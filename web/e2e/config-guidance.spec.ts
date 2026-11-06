@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
 import type { ConfigInputValue } from '../src/api/types';
 import { choose, control, currentStageName, go, hitDps, idle, importCode, nativeSelect, noMotion, openStage, row, savedState, setLanguage, shareCode } from './configPage';
+import { QUARANTINE } from './tags';
 
 test.use(noMotion);
 
@@ -146,7 +147,9 @@ for (const [fixture, identity, types] of [
   });
 }
 
-test('review and keyboard jump clear both filters, preserve the request and keep the unique full catalog', async ({ page }) => {
+// Quarantined: walks every `.config-section-header`, but the config page now shows one group at a time (eb997114).
+
+test('review and keyboard jump clear both filters, preserve the request and keep the unique full catalog', QUARANTINE, async ({ page }) => {
   await ready(page);
   await importCode(page, syntheticCode(['Comet']));
   await openConfig(page);

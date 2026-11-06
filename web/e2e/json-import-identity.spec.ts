@@ -10,6 +10,7 @@ import type { BuildWorkspace } from '../src/lib/buildWorkspace';
 import { bindT, type Lang } from '../src/lib/i18n';
 import { workspaceText } from '../src/lib/workspaceText';
 import * as wasmReplay from '../src/wasm/pkg/pobr_wasm.js';
+import { matrixCell } from './tags';
 
 const frostBomb = readFileSync(new URL('../../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', import.meta.url), 'utf8').trim();
 const legacyBuild = readFileSync(new URL('../../examples/build-file/召唤奥黛丽黑本.build', import.meta.url), 'utf8');
@@ -162,7 +163,7 @@ async function rejectPaste(page: Page, value: string, destination: Destination, 
 
 for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
   for (const width of [390, 1440]) {
-    test(`${lang} ${width}px: unsupported pasted session rejects New build and confirmed Current stage with visible feedback and exact state`, async ({ page }, testInfo) => {
+    test(`${lang} ${width}px: unsupported pasted session rejects New build and confirmed Current stage with visible feedback and exact state`, matrixCell(lang, width), async ({ page }, testInfo) => {
       test.setTimeout(300_000);
       await page.setViewportSize({ width, height: 780 });
       await frostWorkspace(page, lang);
@@ -382,7 +383,18 @@ test('committed legacy .build keeps real character, passives, equipment and gems
   const fileContent = restoredSnapshot(after);
   expect(pastedContent.envelope.state).toEqual(fileContent.envelope.state);
   expect(pastedContent.envelope.workspace.builds.slice(0, -1)).toEqual(fileContent.envelope.workspace.builds);
-  expect(pastedContent.library).toBe(fileContent.library);
+  // A library entry records the BD it came from, so pasting the same build as a new BD keeps the entries already
+  // there and adds the file import's items once more under the new BD.
+  type Entry = { name: string; kind: string; text: string; slot?: string; sourceBuild?: { id: string } };
+  const fileLibrary = JSON.parse(fileContent.library!) as { items: Entry[]; skillSets: unknown };
+  const pastedLibrary = JSON.parse(pastedContent.library!) as { items: Entry[]; skillSets: unknown };
+  const content = ({ name, kind, text, slot }: Entry) => ({ name, kind, text, slot });
+  const added = pastedLibrary.items.slice(fileLibrary.items.length);
+  expect(pastedLibrary.items.slice(0, fileLibrary.items.length)).toEqual(fileLibrary.items);
+  expect(added.map(content)).toEqual(fileLibrary.items
+    .filter(entry => entry.sourceBuild?.id === after.envelope.workspace.activeBuild).map(content));
+  expect(added.every(entry => entry.sourceBuild?.id === pasted.envelope.workspace.activeBuild)).toBe(true);
+  expect(pastedLibrary.skillSets).toEqual(fileLibrary.skillSets);
   expect(pastedContent.request).toEqual(fileContent.request);
   expect(pastedContent.result).toEqual(fileContent.result);
   expect(pastedContent.displayed).toEqual(fileContent.displayed);

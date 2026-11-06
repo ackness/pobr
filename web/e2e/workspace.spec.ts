@@ -367,11 +367,13 @@ test('real WASM details stay lazy and configuration tracking follows the active 
   await importBuild(page);
   await nav(page, 'Calculations').click();
   await expect(page.locator('#breakdown-Life')).toBeVisible();
-  expect((await requests()).filter(request => request.breakdowns?.length)).toHaveLength(0);
+  // Calcs starts on an available damage metric and asks for that one explanation only (docs/web-contracts.md).
+  const combined = expect.objectContaining({ breakdowns: ['CombinedDPS'], breakdown_actor: { kind: 'player' } });
+  await expect.poll(async () => (await requests()).filter(request => request.breakdowns?.length)).toEqual([combined]);
   await page.locator('#breakdown-Life').click();
   await expect(page.locator('#calcs-detail .formula-conclusion')).toBeVisible();
   expect((await requests()).filter(request => request.breakdowns?.length)).toEqual([
-    expect.objectContaining({ breakdowns: ['Life'], breakdown_actor: { kind: 'player' } }),
+    combined, expect.objectContaining({ breakdowns: ['Life'], breakdown_actor: { kind: 'player' } }),
   ]);
   await nav(page, 'Configuration').click();
   await expect.poll(async () => (await requests()).at(-1)?.config_context).toBe(true);

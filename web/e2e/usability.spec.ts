@@ -3,6 +3,7 @@ import { bdLibraryButton, openItemsAfterImport } from './shell';
 import { answerConfirm } from './confirmDialog';
 import { choose, goTo } from './skillsAndCalcs';
 import { deflateSync } from 'node:zlib';
+import { animationsSettled } from './buildLibrary';
 
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));
 
@@ -183,7 +184,7 @@ test('selects support keyboard selection, Escape and leaving the control', async
 
 test('gem filters activate by keyboard without adding a gem; Escape can be reopened', async ({ page }) => {
   await goTo(page, 'Skills');
-  const picker = page.getByRole('combobox', { name: /Search an active gem/ });
+  const picker = page.getByPlaceholder('Add a skill group…');
   await picker.fill('Spark');
   await expect(page.locator('.gem-picker-item').first()).toBeVisible();
   await picker.press('Tab');
@@ -226,6 +227,7 @@ test('open dropdowns stay within the content area on narrow and wide screens', a
     const list = page.getByRole('listbox');
     await expect(list).toBeVisible();
     // The list is drawn outside the page's own container, so compare it with the content area's bounds.
+    await animationsSettled(page);
     const bounds = await list.evaluate(element => {
       const rect = element.getBoundingClientRect();
       const main = document.querySelector('main')!;

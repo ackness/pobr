@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
 import type { ConfigInputValue, PassiveNode } from '../src/api/types';
 import { booted, control, copyCurrentStage, currentStageName, go, hitDps, idle, importCode, noMotion, openSetting, openStage, row, savedState, setLanguage, shareCode } from './configPage';
+import { EXTENDED, matrixCell } from './tags';
 
 test.use(noMotion);
 
@@ -94,8 +95,10 @@ test.beforeEach(async ({ page }) => {
 });
 
 for (const [key, skill, charge] of cases) {
+  // The other charges and exposures repeat the Power charge and Fire exposure paths with another key.
+  const cell = key === 'usePowerCharges' || key === 'conditionEnemyFireExposure' ? {} : EXTENDED;
   for (const imported of [false, true]) {
-    test(`${key} imported ${imported}: edit/reset/export matches independently imported final state`, async ({ page }) => {
+    test(`${key} imported ${imported}: edit/reset/export matches independently imported final state`, cell, async ({ page }) => {
       await ready(page);
       await importCode(page, syntheticCode(key, imported, skill, charge));
       const before = await saved(page);
@@ -122,7 +125,7 @@ for (const [key, skill, charge] of cases) {
       expect((await saved(page)).params.enemy_tier).toBe(before.params.enemy_tier);
     });
   }
-  test(`${key} absent: reset restores absence and the real disabled consumer`, async ({ page }) => {
+  test(`${key} absent: reset restores absence and the real disabled consumer`, cell, async ({ page }) => {
     await ready(page);
     await importCode(page, syntheticCode(key, undefined, skill, charge));
     const before = await saved(page);
@@ -272,7 +275,7 @@ for (const planner of ['support', 'passive', 'replacement'] as const) {
 
 for (const width of [390, 1440]) {
   for (const [lang, configName] of [['en-US', 'Configuration'], ['zh-TW', '設定'], ['zh-CN', '配置']] as const) {
-    test(`${lang} ${width}px: keyboard exposure edit/reset preserves typed raw import`, async ({ page }) => {
+    test(`${lang} ${width}px: keyboard exposure edit/reset preserves typed raw import`, matrixCell(lang, width), async ({ page }) => {
       await page.setViewportSize({ width, height: 780 });
       await ready(page);
       await importCode(page, syntheticCode('conditionEnemyFireExposure', true));

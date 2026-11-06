@@ -23,6 +23,8 @@ export const pickerValue = (trigger: Locator): Promise<string> => nativeSelect(t
 export async function go(page: Page, name: string) {
   const link = page.locator('nav.shell-tabs').getByRole('link', { name, exact: true });
   const menu = page.locator('.shell-menu-button');
+  // The menu drawer stays in place while it slides away after the previous page change; its links are not the ones to use.
+  await expect(page.locator('.shell-mobile-navigation')).toHaveCount(0);
   // Right after a reload the shell is still booting: wait for whichever of the two shows up.
   await expect(async () => { expect(await link.isVisible() || await menu.isVisible()).toBe(true); }).toPass({ timeout: 90_000 });
   if (!(await link.isVisible())) await menu.click();

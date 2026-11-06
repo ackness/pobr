@@ -225,7 +225,11 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: E2E smoke
         if: inputs.e2e
-        run: pnpm exec playwright test
+        # Every matrix cell, including the @extended ones a local default run leaves out;
+        # quarantined tests stay out (web/e2e/tags.ts).
+        env:
+          POBR_E2E_ALL: '1'
+        run: pnpm exec playwright test --grep-invert @quarantine
       - name: Data-bump smoke
         if: ${{ !inputs.e2e && steps.data-smoke.outputs.run == 'true' }}
         run: pnpm exec playwright test data-bump-smoke.spec.ts
