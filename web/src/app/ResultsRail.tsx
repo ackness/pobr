@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ChevronRight, CircleAlert, CircleCheck, Pin } from 'lucide-react';
 import type { EnemyTier, MainSkillInfo } from '../api/types';
 import type { BuildSession } from '../hooks/useBuildSession';
+import { useMainMinion } from '../hooks/useMainMinion';
 import { useSkillCatalog } from '../hooks/useSkillName';
+import { MAIN_MINION_DPS, minionDpsNote } from '../lib/mainMinion';
 import { activeSkillEffects } from '../lib/skillSelection';
 import { skillDisplayName } from '../lib/skillNames';
 import { formatNumber, STAT_SECTIONS, formatStatValue, statMap } from '../lib/statDisplay';
@@ -67,8 +69,9 @@ function Row({ label, value, color, change, onOpen, pin }: RowProps) {
 }
 
 interface Shared { route?: Route; session: BuildSession; view: SettledCalc; lang: Lang; onStatClick: (id: string) => void }
+type MainMinion = ReturnType<typeof useMainMinion>;
 
-function Headline({ route, session, view, lang, onStatClick, changes, onNavigate }: Shared & { changes: Map<string, StatChange>; onNavigate: (route: Route) => void }) {
+function Headline({ route, session, view, lang, onStatClick, changes, onNavigate, minion }: Shared & { changes: Map<string, StatChange>; onNavigate: (route: Route) => void; minion: MainMinion }) {
   const tt = bindT(lang);
   const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
   const catalog = useSkillCatalog();
@@ -77,7 +80,8 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
   const selected = session.calcParams.main_socket_group;
   const mainSkill: MainSkillInfo | null = calc && selected !== undefined ? calc.main_skill : null;
   const findings = useMemo(() => deriveFindings(calc, groups.length > 0), [calc, groups.length]);
-  const chip = useRecent(changes.get('CombinedDPS'), CHIP_MS);
+  // A summoner build is judged by its minion: the player's own damage moves to a secondary row.
+  const chip = useRecent(changes.get(minion ? MAIN_MINION_DPS : 'CombinedDPS'), CHIP_MS);
   const enemy = resolveEnemyTier(session.calcParams.enemy_tier, session.calcParams.config_inputs);
   const name = (skillId: string) => skillDisplayName(skillId, lang, catalog);
   const open = (id: string) => calc && detailKind(calc, id) !== 'none' ? () => onStatClick(id) : undefined;
@@ -100,9 +104,28 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
       <span>{findings.length === 0 ? w('No obvious problems', '没有明显问题', '沒有明顯問題') : w(`${findings.length} to look at`, `${findings.length} 项需要关注`, `${findings.length} 項需要關注`)}<small>{tt('sidebar.viewOverview')}</small></span>
       <ChevronRight /></button>}
     {groups.length === 0 && <p className="rail-empty">{w('Add a skill to see damage.', '添加技能后即可查看伤害。', '新增技能後即可查看傷害。')}</p>}
-    {groups.length > 0 && !mainSkill && <p className="rail-empty">{view.stale && !calc ? w('Calculating…', '计算中…', '計算中…') : tt('sidebar.noMainSkill')}</p>}
+    {groups.length > 0 && !mainSkill && !minion && <p className="rail-empty">{view.stale && !calc ? w('Calculating…', '计算中…', '計算中…') : tt('sidebar.noMainSkill')}</p>}
     {mainSkill && mainSkill.group_index !== selected && <p className="rail-empty">{tt('sidebar.computedSkill')}{lang === 'en-US' ? ': ' : '：'}{name(mainSkill.skill_id)}</p>}
-    {mainSkill && <>
+    {minion && (() => {
+      const id = `Minion:${minion.minion.index}:TotalDPS`;
+      const value = <AnimatedNumber value={minion.minion.dps} format={numberOf(minion.minion.dps)} />;
+      const limit = calc?.stats.find(stat => stat.id === 'ActiveMinionLimit')?.value;
+      return <>
+        <div className="rail-hero">
+          <span className="rail-hero-label">{tt('sidebar.minionHitDps')}</span>
+          <div className="rail-hero-line">
+            {detailKind(minion.minion, 'TotalDPS') !== 'none'
+              ? <button type="button" className="rail-hero-value is-link" onClick={() => onStatClick(id)}>{value}</button>
+              : <strong className="rail-hero-value">{value}</strong>}
+            {chip && <span className="rail-chip" data-tone={chip.tone} role="status">{percentText(chip)}</span>}
+          </div>
+          <span className="rail-hero-note">{minionDpsNote(lang, minion.name, limit)}</span>
+        </div>
+        {mainSkill && mainSkill.combined_dps > 0 && <Row label={tt('sidebar.playerCombinedDps')} change={changes.get('CombinedDPS')}
+          value={<AnimatedNumber value={mainSkill.combined_dps} format={numberOf(mainSkill.combined_dps)} />} onOpen={open('CombinedDPS')} />}
+      </>;
+    })()}
+    {mainSkill && !minion && <>
       <div className="rail-hero">
         <span className="rail-hero-label">{tt('sidebar.combinedDps')}</span>
         <div className="rail-hero-line">
@@ -126,14 +149,15 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
   </div>;
 }
 
-function Minion({ view, lang, onStatClick }: Pick<Shared, 'view' | 'lang' | 'onStatClick'>) {
+/** The main minion's defences; its damage is the headline above. */
+function Minion({ lang, onStatClick, main }: Pick<Shared, 'lang' | 'onStatClick'> & { main: MainMinion }) {
   const tt = bindT(lang);
-  const minion = view.calc?.minions?.find(row => row.index === view.calc?.main_minion_index);
-  if (!minion) return null;
-  const values: Array<[string, number]> = [['TotalDPS', minion.dps], ['Life', minion.life], ['EnergyShield', minion.energy_shield], ['Armour', minion.armour], ['Evasion', minion.evasion]];
-  return <section className="rail-section"><h3 className="rail-title">{tt('minion.title')} · {minion.name || tt('minion.unavailable')}</h3>
-    {values.map(([name, value]) => <Row key={name} label={name === 'TotalDPS' ? tt('sidebar.hitDps') : statNameLabel(lang, name)} value={formatStatValue(value, 'float2')}
-      onOpen={detailKind(minion, name) !== 'none' ? () => onStatClick(`Minion:${minion.index}:${name}`) : undefined} />)}
+  if (!main) return null;
+  const { minion, name } = main;
+  const values: Array<[string, number]> = [['Life', minion.life], ['EnergyShield', minion.energy_shield], ['Armour', minion.armour], ['Evasion', minion.evasion]];
+  return <section className="rail-section"><h3 className="rail-title">{tt('minion.title')} · {name}</h3>
+    {values.map(([stat, value]) => <Row key={stat} label={statNameLabel(lang, stat)} value={formatStatValue(value, 'float2')}
+      onOpen={detailKind(minion, stat) !== 'none' ? () => onStatClick(`Minion:${minion.index}:${stat}`) : undefined} />)}
   </section>;
 }
 
@@ -142,6 +166,7 @@ export function ResultsRail({ route, session, view, lang, onStatClick, onNavigat
   const calc = view.calc;
   const values = useMemo(() => calc ? statMap(calc.stats) : null, [calc]);
   const changes = useMemo(() => computeStatChanges(view.previous?.stats ?? null, calc?.stats ?? []), [view.previous, calc]);
+  const minion = useMainMinion(calc, lang);
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const toggle = (key: string) => setCollapsed(previous => {
     const next = previous.includes(key) ? previous.filter(item => item !== key) : [...previous, key];
@@ -152,8 +177,8 @@ export function ResultsRail({ route, session, view, lang, onStatClick, onNavigat
   const pinnedRows = values ? pinned.filter(id => values.has(id)) : [];
   const version = calculationVersion(lang, calc?.provenance?.data_version ?? session.dataVersion, calc?.provenance?.engine_version, session.calcMs);
   return <aside id="character-stats" className="shell-rail-content" data-stale={view.stale || undefined} aria-label={words(lang, 'Character stats', '角色属性', '角色屬性')}>
-    <Headline route={route} session={session} view={view} lang={lang} onStatClick={onStatClick} changes={changes} onNavigate={onNavigate} />
-    <Minion view={view} lang={lang} onStatClick={onStatClick} />
+    <Headline route={route} session={session} view={view} lang={lang} onStatClick={onStatClick} changes={changes} onNavigate={onNavigate} minion={minion} />
+    <Minion lang={lang} onStatClick={onStatClick} main={minion} />
     {calc && <button type="button" className="rail-link" onClick={() => onStatClick('skill-metrics')}>{bindT(lang)('sidebar.skillValuesLink')}<ChevronRight /></button>}
     {pinnedRows.length > 0 && <section className="rail-section rail-pinned"><h3 className="rail-title"><span>{words(lang, 'Pinned', '已固定', '已固定')}</span></h3>
       {pinnedRows.map(id => <Row key={id} label={statLabel(lang, id)} color={statColor(id)} change={changes.get(id)} pin={pinFor(id)}
@@ -161,6 +186,8 @@ export function ResultsRail({ route, session, view, lang, onStatClick, onNavigat
         onOpen={calc && detailKind(calc, id) !== 'none' ? () => onStatClick(id) : undefined} />)}</section>}
     {STAT_SECTIONS.map(section => {
       if (section.requiresSkill && (session.calcParams.main_socket_group === undefined || !calc?.main_skill)) return null;
+      // A summoning skill's own offence rows (zero damage, its cast rate) would read as the minion's.
+      if (section.playerDamage && minion && !((calc?.main_skill?.combined_dps ?? 0) > 0)) return null;
       const rows = section.rows.filter(row => {
         if (!values) return false;
         const value = values.get(row.id);

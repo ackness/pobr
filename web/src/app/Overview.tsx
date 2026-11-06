@@ -4,7 +4,9 @@ import { getBackend } from '../api/backend';
 import type { AttributionResponse, SkillMetricsEntry } from '../api/types';
 import { Button } from '../components/ui/button';
 import type { BuildSession } from '../hooks/useBuildSession';
+import { useMainMinion } from '../hooks/useMainMinion';
 import { useSkillCatalog } from '../hooks/useSkillName';
+import { headlineDpsStat, minionDpsNote } from '../lib/mainMinion';
 import { classDisplayName } from '../lib/nativeDisplayNames';
 import { bindT, damageTypeLabel, slotLabel, statNameLabel, type Lang } from '../lib/i18n';
 import { contributionLabel, removalChange } from '../lib/sourceContributions';
@@ -52,6 +54,7 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
   const value = (id: string) => { const item = stats.get(id); return typeof item === 'number' ? item : null; };
   const skillName = (id: string) => skillDisplayName(id, lang, catalog);
   const main = calc?.main_skill ?? null;
+  const minion = useMainMinion(calc, lang);
   const findings = deriveFindings(calc, session.socketGroups.length > 0);
   const className = session.character?.ascendancy_name || session.character?.class_name || '';
   const classLabel = classDisplayName(session.classNames, className, lang);
@@ -75,8 +78,11 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
     return () => { stale = true; clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the version number is the change signal.
   }, [session.stateVersion, session.busy, session.calcError, hasSkills]);
-  const ranked = (skills ?? []).filter(entry => entry.status === 'calculated' && entry.metrics && entry.metrics.combined_dps > 0).sort((a, b) => b.metrics!.combined_dps - a.metrics!.combined_dps).slice(0, 8);
-  const top = ranked[0]?.metrics?.combined_dps ?? 0;
+  // Each effect's own damage; the calculated summoning skill counts its minion's, which the per-effect metrics don't carry.
+  const isCalculated = (entry: SkillMetricsEntry) => main?.group_index === entry.group_index && main.active_skill_index === entry.active_skill_index;
+  const damageOf = (entry: SkillMetricsEntry) => minion && isCalculated(entry) ? minion.minion.dps : entry.metrics?.combined_dps ?? 0;
+  const ranked = (skills ?? []).filter(entry => entry.status === 'calculated' && entry.metrics && damageOf(entry) > 0).sort((a, b) => damageOf(b) - damageOf(a)).slice(0, 8);
+  const top = ranked[0] ? damageOf(ranked[0]) : 0;
   const chooseSkill = (entry: SkillMetricsEntry) => {
     const group = session.socketGroups[entry.group_index];
     if (group && (group.main_active_skill ?? 1) !== entry.active_skill_index)
@@ -89,11 +95,14 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
   const contribution = job.result;
   const contributionBusy = job.running;
   const [field, setField] = useState<typeof ATTRIBUTION_FIELDS[number]>('CombinedDPS');
+  // A summoner build measures its damage by the main minion.
+  const statFor = (id: typeof ATTRIBUTION_FIELDS[number]) => id === 'CombinedDPS' ? headlineDpsStat(calc) : id;
   const computeContribution = () => {
     const request = session.currentRequest(); if (!request) return;
     const version = session.stateVersion;
+    const fields = ATTRIBUTION_FIELDS.map(statFor);
     void job.start(async ({ signal }) => {
-      const data = await (await getBackend()).attribution({ request, fields: [...ATTRIBUTION_FIELDS] });
+      const data = await (await getBackend()).attribution({ request, fields });
       if (signal.aborted) throw new DOMException('cancelled', 'AbortError');
       return { version, data };
     });
@@ -103,9 +112,10 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
     const effect = group && catalog.size ? activeSkillEffects(group, catalog)[(group.main_active_skill ?? 1) - 1] : undefined;
     return [contributionLabel(lang, 'socket_group', String(index)), effect && skillName(effect.skillId)].filter(Boolean).join(' · ');
   };
-  const entries = contribution ? contribution.data.entries.map(entry => ({ entry, delta: entry.deltas[field] ?? 0 })).filter(row => row.delta !== 0).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 10) : [];
+  const fieldStat = statFor(field);
+  const entries = contribution ? contribution.data.entries.map(entry => ({ entry, delta: entry.deltas[fieldStat] ?? 0 })).filter(row => row.delta !== 0).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 10) : [];
   const biggest = Math.max(1, ...entries.map(row => Math.abs(row.delta)));
-  const baseline = contribution?.data.baseline[field] ?? 0;
+  const baseline = contribution?.data.baseline[fieldStat] ?? 0;
 
   if (session.socketGroups.length === 0 && !session.hasBuildContent) {
     return <section className="ov ov-empty" aria-labelledby="ov-title">
@@ -123,7 +133,9 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
     ? `${tt('overview.lifeAndShield')} ${int(life + shield)} · ` : '';
   const spiritOver = spiritFree !== null && spiritFree < 0;
   const figures = [
-    { id: 'CombinedDPS', label: tt('sidebar.combinedDps'), value: main?.combined_dps ?? null, format: dash(n => formatStatValue(n, 'float2')), sub: main ? skillName(main.skill_id) : w('No calculated skill', '未选择计算技能', '未選擇計算技能'), tone: 'dps' },
+    minion
+      ? { id: `Minion:${minion.minion.index}:TotalDPS`, label: tt('sidebar.minionHitDps'), value: minion.minion.dps, format: dash(n => formatStatValue(n, 'float2')), sub: minionDpsNote(lang, minion.name, value('ActiveMinionLimit')), tone: 'dps' }
+      : { id: 'CombinedDPS', label: tt('sidebar.combinedDps'), value: main?.combined_dps ?? null, format: dash(n => formatStatValue(n, 'float2')), sub: main ? skillName(main.skill_id) : w('No calculated skill', '未选择计算技能', '未選擇計算技能'), tone: 'dps' },
     { id: 'TotalEHP', label: w('Effective HP', '有效生命', '有效生命'), value: value('TotalEHP'), format: dash(int), sub: weakest ? tt('overview.weakestHit').replace('{type}', damageTypeLabel(lang, weakest[0])).replace('{value}', int(weakest[1])) : '', tone: 'ehp' },
     { id: 'Life', label: w('Life', '生命', '生命'), value: value('Life'), format: dash(int), sub: `${lifeAndShield}${w('ES', '护盾', '護盾')} ${int(value('EnergyShield') ?? 0)} · ${w('Mana', '魔力', '魔力')} ${int(value('Mana') ?? 0)}`, tone: 'life' },
     { id: 'SpiritUnreserved', label: spiritOver ? tt('overview.spiritOver') : statNameLabel(lang, 'SpiritUnreserved'), value: spiritOver ? -spiritFree : spiritFree, format: dash(int), sub: spirit === null ? '' : tt('overview.spiritLimit').replace('{value}', int(spirit)), tone: spiritOver ? 'bad' : 'plain' },
@@ -163,11 +175,11 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
           {ranked.length === 0 ? <p className="ov-muted" role="status">{skillsPending ? w('Calculating…', '计算中…', '計算中…')
             : session.calcError || (hasSkills && !skills) ? w('The calculation is unavailable.', '当前计算不可用。', '目前計算無法使用。')
               : w('No skill deals damage yet.', '暂时没有造成伤害的技能。', '暫時沒有造成傷害的技能。')}</p>
-            : <ol className="ov-rank">{ranked.map(entry => { const metrics = entry.metrics!; const current = main?.group_index === entry.group_index && main.active_skill_index === entry.active_skill_index;
+            : <ol className="ov-rank">{ranked.map(entry => { const current = isCalculated(entry); const damage = damageOf(entry);
               return <li key={`${entry.group_index}:${entry.active_skill_index}`}><button type="button" aria-pressed={current} onClick={() => chooseSkill(entry)}>
-                <span className="ov-rank-name">{skillName(entry.skill_id)}<small>{w(`Group ${entry.group_index + 1} · Effect ${entry.active_skill_index}`, `技能组 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`, `技能組 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`)}</small></span>
-                <span className="ov-bar"><span style={{ width: `${(metrics.combined_dps / top) * 100}%` }} /></span>
-                <span className="ov-rank-value">{formatStatValue(metrics.combined_dps, 'float2')}</span></button></li>; })}</ol>}
+                <span className="ov-rank-name">{skillName(entry.skill_id)}<small>{w(`Group ${entry.group_index + 1} · Effect ${entry.active_skill_index}`, `技能组 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`, `技能組 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`)}{current && minion && ` · ${tt('skills.minionDps')}`}</small></span>
+                <span className="ov-bar"><span style={{ width: `${(damage / top) * 100}%` }} /></span>
+                <span className="ov-rank-value">{formatStatValue(damage, 'float2')}</span></button></li>; })}</ol>}
           <p className="ov-hint">{w('Each effect is calculated separately. Select one to use it for the current calculation.', '各效果分别计算，选择后用于当前计算。', '各效果分別計算，選取後用於目前計算。')}</p>
         </section>
       </div>
@@ -175,7 +187,7 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
       <div className="ov-col">
         <section className="ov-sec" aria-labelledby="ov-contribution">
           <div className="ov-sec-head"><h2 id="ov-contribution">{tt('calcs.attribution')}</h2>
-            <div className="ov-toggle" role="group" aria-label={w('Measure', '指标', '指標')}>{ATTRIBUTION_FIELDS.map(id => <button key={id} type="button" aria-pressed={field === id} onClick={() => setField(id)}>{statNameLabel(lang, id)}</button>)}</div></div>
+            <div className="ov-toggle" role="group" aria-label={w('Measure', '指标', '指標')}>{ATTRIBUTION_FIELDS.map(id => <button key={id} type="button" aria-pressed={field === id} onClick={() => setField(id)}>{statNameLabel(lang, statFor(id))}</button>)}</div></div>
           <p className="ov-hint">{tt('calcs.attributionHint')}</p>
           {!contribution || contribution.version !== session.stateVersion
             ? <div className="ov-compute"><p className="ov-muted">{contribution ? w('The build changed since this was measured.', 'BD 已变化，结果已过期。', 'BD 已變化，結果已過期。') : w('See how removing each item or skill group changes the result.', '查看移除每件装备或技能组后，数值会如何变化。', '查看移除每件裝備或技能組後，數值會如何變化。')}</p>
@@ -185,7 +197,7 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
               : <ol className="ov-rank ov-contrib">{entries.map(({ entry, delta }) => <li key={`${entry.kind}:${entry.id}`}><div>
                 <span className="ov-rank-name">{entry.kind === 'socket_group' ? groupName(Number(entry.id)) : contributionLabel(lang, entry.kind, entry.id)}</span>
                 <span className="ov-bar" data-sign={removalChange(delta) < 0 ? 'neg' : 'pos'}><span style={{ width: `${(Math.abs(delta) / biggest) * 100}%` }} /></span>
-                <span className="ov-rank-value">{tt(delta > 0 ? 'calcs.removalLoss' : 'calcs.removalGain').replace('{value}', formatStatValue(Math.abs(delta), statFormat(field), lang))}{baseline > 0 && <em>{lang === 'en-US' ? ' (' : '（'}{formatNumber((Math.abs(delta) / baseline) * 100, 1, 1)}%{lang === 'en-US' ? ')' : '）'}</em>}</span></div></li>)}</ol>}
+                <span className="ov-rank-value">{tt(delta > 0 ? 'calcs.removalLoss' : 'calcs.removalGain').replace('{value}', formatStatValue(Math.abs(delta), statFormat(fieldStat), lang))}{baseline > 0 && <em>{lang === 'en-US' ? ' (' : '（'}{formatNumber((Math.abs(delta) / baseline) * 100, 1, 1)}%{lang === 'en-US' ? ')' : '）'}</em>}</span></div></li>)}</ol>}
         </section>
 
         <section className="ov-sec" aria-labelledby="ov-trust">

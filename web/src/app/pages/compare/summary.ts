@@ -11,7 +11,7 @@ export type DiffCounts = Record<CompareTab, number>;
 export type DeltaTone = 'better' | 'worse' | 'neutral';
 
 /** Stats that already carry the answer the reader came for; shown beside the summary. */
-export const HEADLINE_STATS = ['CombinedDPS', 'TotalDPS', 'TotalEHP', 'Life'] as const;
+export const HEADLINE_STATS = ['MainMinionDPS', 'CombinedDPS', 'TotalDPS', 'TotalEHP', 'Life'] as const;
 
 export function totalChanges(counts: DiffCounts): number {
   return COMPARE_TABS.reduce((sum, tab) => sum + counts[tab], 0);
@@ -57,7 +57,7 @@ export interface Headline { id: string; percent: number; tone: DeltaTone }
 export function headlineDeltas(rows: StatComparison[]): Headline[] {
   const find = (ids: readonly string[]) => ids.map(id => rows.find(row => row.id === id))
     .find(row => row && row.changed && row.delta !== null && row.percent !== null);
-  return [find(['CombinedDPS', 'TotalDPS']), find(['TotalEHP']), find(['Life'])]
+  return [find(['MainMinionDPS', 'CombinedDPS', 'TotalDPS']), find(['TotalEHP']), find(['Life'])]
     .flatMap(row => row ? [{ id: row.id, percent: row.percent!, tone: deltaTone(row.id, row.delta) }] : []).slice(0, 2);
 }
 

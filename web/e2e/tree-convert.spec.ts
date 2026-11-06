@@ -43,11 +43,12 @@ test('synthetic historical conversion previews, confirms, undoes and exports eac
   await expect(preview).toContainText('Kept 18 · Dropped 1 · Disconnected 1');
   await expect(preview).toContainText('Stun Threshold if no recent Stun');
   await expect(preview).toContainText("25% increased Stun Threshold if you haven't been Stunned Recently");
-  await expect(preview).toContainText('Damage against Enemies on Low Life · #56118');
+  await expect(preview).toContainText('Damage against Enemies on Low Life');
+  await expect(preview.locator('details').filter({ hasText: '#56118' })).toHaveCount(1);
   await expect(preview).toContainText('Weapon set 2');
   expect(await saved(page)).toEqual(before);
   await page.screenshot({ path: test.info().outputPath('tree-conversion-preview.png') });
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await preview.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(preview).toHaveCount(0);
   expect(await saved(page)).toEqual(before);
   await convert.click();
@@ -103,7 +104,7 @@ test('synthetic historical conversion previews, confirms, undoes and exports eac
   expect((await saved(page)).weaponSwap?.active).toBe(2);
   expect((await saved(page)).allocatedNodes).toContain(56118);
   expect((await saved(page)).treeVersion).toBe('0_5');
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await preview.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(preview).toHaveCount(0);
   // Explicitly refund the disconnected leaf through the normal tree editor; it stays allocated
   // until this action, and ordinary tree Undo restores it.

@@ -42,18 +42,23 @@ test('choose a companion and its skill, inspect minion breakdowns, and preserve 
   await page.setViewportSize(desktopSize);
 
   await goTo(page, 'Calculations');
-  // The metric list shows the values of the chosen actor: the player first, then the minion.
+  // The metric list shows the values of the chosen actor. The summoner is the calculated skill, so
+  // Calcs opens on its minion; the player is one choice away.
   const life = page.locator('#breakdown-Life strong');
-  await expect(life).toBeVisible();
+  const actor = page.getByRole('combobox', { name: 'Actor', exact: true });
+  await expect(actor).toHaveText(/^Minion: Quadrilla/);
+  await expect(life).toHaveText(await minionLife.innerText());
+  await choose(page, actor, 'Player');
+  await expect(life).not.toHaveText(await minionLife.innerText());
   const playerLife = await life.innerText();
-  await choose(page, page.getByRole('combobox', { name: 'Actor', exact: true }), /^Minion: Quadrilla/);
+  await choose(page, actor, /^Minion: Quadrilla/);
   await expect(life).toHaveText(await minionLife.innerText());
   await page.locator('#breakdown-Life').click();
   await expect(page.locator('#calcs-detail .calcs-eyebrow')).toContainText('Minion · Quadrilla');
   await expect(page.locator('#calcs-detail-heading')).toHaveText('Life');
   await expect(page.locator('#calcs-detail div.breakdown-detail').first()).toBeVisible({ timeout: 90_000 });
   await page.screenshot({ path: '../.cache/minion-selection-calcs.png', fullPage: true });
-  await choose(page, page.getByRole('combobox', { name: 'Actor', exact: true }), 'Player');
+  await choose(page, actor, 'Player');
   await expect(life).toHaveText(playerLife);
   // Switching the actor opens that actor's default metric rather than an empty pane.
   await expect(page.locator('#calcs-detail-heading')).toHaveText('Combined DPS');

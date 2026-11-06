@@ -1,7 +1,7 @@
 import type { StatChange } from '../motion/statChanges';
 
 /** Stats a player decides by, shown first when they move. */
-export const HEADLINE_STATS = ['CombinedDPS', 'TotalEHP', 'Life', 'EnergyShield', 'Mana', 'FireResist', 'ColdResist', 'LightningResist', 'ChaosResist', 'SpiritUnreserved'] as const;
+export const HEADLINE_STATS = ['MainMinionDPS', 'CombinedDPS', 'TotalEHP', 'Life', 'EnergyShield', 'Mana', 'FireResist', 'ColdResist', 'LightningResist', 'ChaosResist', 'SpiritUnreserved'] as const;
 
 /** The few changes worth showing in the bar: headline stats first, then the largest relative moves. */
 export function summarizeChanges(changes: Map<string, StatChange>, max = 6): StatChange[] {

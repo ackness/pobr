@@ -22,6 +22,7 @@ import type {
 } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { formatNumber, formatStatValue, statFormat, statMap } from '../../lib/statDisplay';
+import { mainMinion } from '../../lib/mainMinion';
 import {
   bindT,
   damageTypeLabel,
@@ -980,6 +981,27 @@ export function AttributionView({ session, lang }: { session: BuildSession; lang
 }
 
 /** Calcs 页：字段点击展开 breakdown（消费 0.3）+ 归因视图（消费 0.4）。 */
+/** One actor in the picker: a minion's index alone can repeat across recalculations of a changed build. */
+function actorKey(minion: MinionOutput) {
+  return `${minion.index}:${minion.minion_id}:${minion.summoned_by}`;
+}
+
+/** A summoner build opens on the minion its calculated skill summons; arriving from one of the player's stats opens on the player. */
+/**
+ * The actor Calcs follows: the calculated skill's minion, else the player. Null without a result, so
+ * minion → failed calculation → player skill still changes the key and moves the view to the player.
+ */
+export function followedActorKey(calc: CalculateBuildResponse | null): string | null {
+  if (!calc) return null;
+  const main = mainMinion(calc);
+  return main ? actorKey(main) : 'player';
+}
+
+function openingMinion(calc: CalculateBuildResponse | null, focus: Props['focus']): MinionOutput | undefined {
+  if (focus && focus.id !== 'skill-metrics' && !/^Minion:/.test(focus.id)) return undefined;
+  return mainMinion(calc);
+}
+
 export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed }: Props) {
   const tt = bindT(lang);
   const skillName = useSkillName(lang);
@@ -987,12 +1009,13 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
   const [category, setCategory] = useState('all');
   const [commonOnly, setCommonOnly] = useState(true);
   const calc = session.calcError ? null : session.calc ?? settledCalc ?? null;
-  const [open, setOpen] = useState<string | null>(() => defaultMetric(calc?.stats ?? [], !!calc?.main_skill));
-  const [actor, setActor] = useState('player');
+  const [opening] = useState(() => openingMinion(calc, focus));
+  const [open, setOpen] = useState<string | null>(() => opening
+    ? defaultMetric(Object.entries(opening.stats).map(([id, value]) => ({ id, value })), true)
+    : defaultMetric(calc?.stats ?? [], !!calc?.main_skill));
+  const [actor, setActor] = useState(() => opening ? actorKey(opening) : 'player');
   const detailHeading = useRef<HTMLHeadingElement>(null);
   const focusMinionDetail = useRef(false);
-  const actorKey = (minion: MinionOutput) =>
-    `${minion.index}:${minion.minion_id}:${minion.summoned_by}`;
   const selectedMinion = calc?.minions?.find(minion => actorKey(minion) === actor);
   // Minion names by game variety id; English without a MonsterVarieties.Name record.
   const minionNames = useLocalizedNames(useMemo(() => (calc?.minions ?? []).map(minion =>
@@ -1010,6 +1033,16 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
       setOpen(null);
     }
   }, [calc, actor, selectedMinion]);
+  // Later results keep following the calculated skill's minion until the player picks an actor or
+  // arrives from a specific stat. Declared before the focus effect, which wins on mount.
+  const actorChosen = useRef(false);
+  const mainMinionKey = followedActorKey(calc);
+  useEffect(() => {
+    if (actorChosen.current || mainMinionKey === null || actor === mainMinionKey) return;
+    setActor(mainMinionKey);
+    setOpen(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- follows the calculated skill's minion only.
+  }, [mainMinionKey]);
   useEffect(() => {
     if (!focusMinionDetail.current || !selectedMinion || !open) return;
     focusMinionDetail.current = false;
@@ -1048,6 +1081,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
     setQuery('');
     if (!overview) {
       const minion = minionFocus && calc?.minions?.find(row => row.index === Number(minionFocus[1]));
+      actorChosen.current = true;
       setActor(minion ? actorKey(minion) : 'player');
       setOpen(stat);
     }
@@ -1110,7 +1144,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
   const actorPicker = (calc?.minions?.length ?? 0) > 0 && <label className="calcs-actor-picker">
     <span>{tt('minion.actor')}</span>
     <AppSelectControl aria-label={tt('minion.actor')} value={selectedMinion ? actorKey(selectedMinion) : 'player'}
-      onChange={event => { setActor(event.target.value); setOpen(null); }}>
+      onChange={event => { actorChosen.current = true; setActor(event.target.value); setOpen(null); }}>
       <option value="player">{tt('minion.player')}</option>
       {(calc?.minions ?? []).map(minion => <option key={actorKey(minion)} value={actorKey(minion)}>
         {tt('minion.title')}{lang === 'en-US' ? ': ' : '：'}{minionName(minion) || tt('minion.unavailable')} · {minion.index + 1}
@@ -1130,10 +1164,10 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
       : <p className="breakdown-detail" role="status">{tt(current ? emptyKey! : 'calcs.loadingDetail')}</p>;
   };
 
-  const mainMinion = calc?.main_minion_index == null ? undefined : calc.minions?.find(minion => minion.index === calc.main_minion_index);
+  const calculatedMinion = mainMinion(calc);
   const playerDps = calc?.stats.filter(stat => stat.id === 'CombinedDPS' || stat.id === 'TotalDPS') ?? [];
   const noPlayerDamage = playerDps.length > 0 && playerDps.every(stat => stat.value === 0);
-  const minionDamage = !selectedMinion && mainMinion && noPlayerDamage && open && values.get(open) === 0
+  const minionDamage = !selectedMinion && calculatedMinion && noPlayerDamage && open && values.get(open) === 0
     && (open.endsWith('DPS') || open === 'AverageDamage');
   const scope = selectedMinion ?? calc;
   const skillId = selectedMinion?.skill_id ?? calc?.main_skill?.skill_id;
@@ -1205,12 +1239,13 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
               {open && <div className="calcs-detail-value"><strong>{metricValue(open)}</strong></div>}
             </div>
             {minionDamage && <div className="calcs-minion-damage">
-              <p className="breakdown-note">{tt('calcs.minionDamage').replace('{skill}', skillName(calc!.main_skill?.skill_id ?? mainMinion.summoned_by))}</p>
+              <p className="breakdown-note">{tt('calcs.minionDamage').replace('{skill}', skillName(calc!.main_skill?.skill_id ?? calculatedMinion.summoned_by))}</p>
               <AppButton onClick={() => {
                 focusMinionDetail.current = true;
-                setActor(actorKey(mainMinion));
-                setOpen(defaultMetric(Object.entries(mainMinion.stats).map(([id, value]) => ({ id, value })), !!(mainMinion.skill_id ?? calc?.main_skill)));
-              }}>{tt('calcs.viewMinion').replace('{minion}', minionName(mainMinion) || tt('minion.unavailable'))}</AppButton>
+                actorChosen.current = true;
+                setActor(actorKey(calculatedMinion));
+                setOpen(defaultMetric(Object.entries(calculatedMinion.stats).map(([id, value]) => ({ id, value })), !!(calculatedMinion.skill_id ?? calc?.main_skill)));
+              }}>{tt('calcs.viewMinion').replace('{minion}', minionName(calculatedMinion) || tt('minion.unavailable'))}</AppButton>
             </div>}
             {open && detail(open)}
           </section>

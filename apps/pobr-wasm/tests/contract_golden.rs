@@ -4538,14 +4538,93 @@ fn minion_selection_catalog_output_and_actor_breakdowns_round_trip() {
         serde_json::from_str(&pobr_wasm::calculate_build_json(&req.to_string()).unwrap()).unwrap()
     };
     let direct = calc(request.clone());
-    let mut disabled_main = request;
+    let mut disabled_main = request.clone();
     disabled_main["main_socket_group"] = serde_json::json!(1);
     disabled_main["socket_groups"][1]["enabled"] = serde_json::json!(false);
-    assert!(calc(disabled_main)["main_minion_index"].is_null());
+    let main_minion_dps = |response: &Value| {
+        response["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["id"] == "MainMinionDPS")
+            .map(|row| row["value"].clone())
+    };
+    let without_main = calc(disabled_main);
+    assert!(without_main["main_minion_index"].is_null());
+    assert_eq!(main_minion_dps(&without_main), None);
     assert_eq!(direct["main_minion_index"], 1);
     let minions = direct["minions"].as_array().unwrap();
     assert_eq!(minions.len(), 2);
     let main = &minions[1];
+    // The calculated skill's minion is a stat too, so the what-if endpoints can measure it.
+    assert_eq!(main_minion_dps(&direct), Some(main["dps"].clone()));
+    let variants: Value = serde_json::from_str(
+        &pobr_wasm::optimize_variants_json(
+            &serde_json::json!({ "request": request, "stats": ["MainMinionDPS"], "variants": [] })
+                .to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(variants["baseline"]["MainMinionDPS"], main["dps"]);
+    let attribution: Value = serde_json::from_str(
+        &pobr_wasm::attribution_json(
+            &serde_json::json!({ "request": request, "fields": ["MainMinionDPS"] }).to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(attribution["baseline"]["MainMinionDPS"], main["dps"]);
+    let summoner = attribution["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|entry| entry["kind"] == "socket_group" && entry["id"] == "2")
+        .unwrap();
+    // Without its summoner there is no main minion: the loss is all of it.
+    assert_eq!(summoner["deltas"]["MainMinionDPS"], main["dps"]);
+    // A variant and a passive probe that change the minion measure what a direct calculation gives.
+    let dps_of = |response: &Value| main_minion_dps(response).unwrap().as_f64().unwrap();
+    let base_dps = main["dps"].as_f64().unwrap();
+    let mut weaker = request.clone();
+    weaker["socket_groups"][2]["gems"][1]["level"] = serde_json::json!(10);
+    let weaker_dps = dps_of(&calc(weaker.clone()));
+    assert!(weaker_dps < base_dps);
+    let variants: Value = serde_json::from_str(
+        &pobr_wasm::optimize_variants_json(
+            &serde_json::json!({ "request": request, "stats": ["MainMinionDPS"],
+                "variants": [{ "socket_groups": weaker["socket_groups"] }] })
+            .to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(variants["variants"][0]["error"], Value::Null);
+    assert_eq!(
+        variants["variants"][0]["stats"]["MainMinionDPS"].as_f64(),
+        Some(weaker_dps)
+    );
+    // Node 95: "Minions deal 10% increased Damage".
+    let mut boosted = request.clone();
+    boosted["allocated_nodes"] = serde_json::json!([95]);
+    let boosted_dps = dps_of(&calc(boosted));
+    assert!(boosted_dps > base_dps);
+    let power: Value = serde_json::from_str(
+        &pobr_wasm::node_power_json(
+            &serde_json::json!({ "request": request, "power_stat": "MainMinionDPS", "nodes": [95] })
+                .to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(power["base"].as_f64(), Some(base_dps));
+    let probe = power["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|entry| entry["skill"] == 95)
+        .unwrap();
+    assert!((probe["delta"].as_f64().unwrap() - (boosted_dps - base_dps)).abs() < 1e-9);
     assert_eq!(main["minion_id"], monster);
     assert_eq!(main["monster_variety_id"], monster);
     assert_eq!(main["name"], "Quadrilla");

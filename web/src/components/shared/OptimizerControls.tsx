@@ -14,7 +14,7 @@ import {
   scoreOf,
   type Objective,
 } from '../../lib/optimize';
-import { formatNumber, STAT_SECTIONS, formatStatValue } from '../../lib/statDisplay';
+import { formatNumber, formatStatValue, statFormat, STAT_SECTIONS } from '../../lib/statDisplay';
 import { AppSelect } from './AppSelect';
 
 /** 目标编辑器的受控状态（字符串态便于输入框直绑；objectiveOf 再解析）。 */
@@ -74,6 +74,8 @@ function fmtNum(value: number, lang: Lang): string {
 
 interface EditorProps {
   constraintsOnly?: boolean;
+  baseline?: Record<string, number>;
+  statName?: (id: string) => string;
   value: ObjectiveState;
   onChange: (next: ObjectiveState) => void;
   lang: Lang;
@@ -81,8 +83,11 @@ interface EditorProps {
 }
 
 /** 目标预设 + 单条约束（属性 / 下限 / 上限）。 */
-export function ObjectiveEditor({ value, onChange, lang, disabled, constraintsOnly }: EditorProps) {
+export function ObjectiveEditor({ value, onChange, lang, disabled, constraintsOnly, baseline, statName }: EditorProps) {
   const tt = bindT(lang);
+  const nameOf = statName ?? ((id: string) => statLabel(id, lang));
+  const unit = statFormat(value.cStat) === 'percent' ? tt('tree.unitPercent') : statFormat(value.cStat) === 'rate' || /DPS$/.test(value.cStat) ? tt('tree.unitRate') : tt('tree.unitValue');
+  const current = baseline?.[value.cStat];
   return (
     <>
       {!constraintsOnly && <>
@@ -113,9 +118,9 @@ export function ObjectiveEditor({ value, onChange, lang, disabled, constraintsOn
           value={value.cStat}
           options={[
             { value: '', label: tt('opt.constraintNone') },
-            ...CONSTRAINT_STATS.map((id) => ({ value: id, label: statLabel(id, lang) })),
+            ...CONSTRAINT_STATS.map((id) => ({ value: id, label: nameOf(id) })),
           ]}
-          onChange={(cStat) => onChange({ ...value, cStat })}
+          onChange={(cStat) => onChange(baseline ? { ...value, cStat, cMin: baseline[cStat] === undefined ? '' : String(baseline[cStat]), cMax: '' } : { ...value, cStat })}
           disabled={disabled}
           ariaLabel={tt('opt.constraint')}
         />
@@ -123,18 +128,23 @@ export function ObjectiveEditor({ value, onChange, lang, disabled, constraintsOn
       {value.cStat && (
         <>
           <label>
-            {tt('opt.min')}
+            {baseline ? tt('tree.minimum').replace('{stat}', nameOf(value.cStat)).replace('{unit}', unit) : tt('opt.min')}
             <AppInput
+              step="any"
               type="number"
+              aria-label={baseline ? tt('tree.minimum').replace('{stat}', nameOf(value.cStat)).replace('{unit}', unit) : undefined}
               value={value.cMin}
               disabled={disabled}
               onChange={(e) => onChange({ ...value, cMin: e.target.value })}
             />
           </label>
+          {baseline && <p className="opt-hint">{tt('tree.constraintBaseline').replace('{stat}', nameOf(value.cStat)).replace('{value}', current === undefined ? '—' : `${formatStatValue(current, statFormat(value.cStat), lang)}${statFormat(value.cStat) === 'percent' ? '' : ` ${unit}`}`)}</p>}
+          {baseline && value.cMin !== '' && <p className="opt-hint">{tt('tree.constraintActive').replace('{stat}', nameOf(value.cStat)).replace('{value}', `${value.cMin} ${unit}`)}</p>}
           <label>
-            {tt('opt.max')}
+            {tt('opt.max')}{baseline ? lang === 'en-US' ? ` (${unit})` : `（${unit}）` : ''}
             <AppInput
               type="number"
+              step="any"
               value={value.cMax}
               disabled={disabled}
               onChange={(e) => onChange({ ...value, cMax: e.target.value })}

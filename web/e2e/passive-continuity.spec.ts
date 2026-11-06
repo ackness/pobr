@@ -135,6 +135,7 @@ async function assertExactApply(page: Page, planner: Planner, card: Locator, bef
   const choices: Record<string, AttributeChoice> = Object.fromEntries(Object.entries(before.attributeChoices)
     .filter(([id]) => expectedNodes.includes(Number(id))));
   for (const id of preview.add) if (nodes.find(node => node.skill === id)?.name === 'Attribute') choices[String(id)] = 'str';
+  if (planner === 'route') await card.locator('details').last().locator('summary').click();
   const predictedLife = numeric(await card.locator('output[data-stat="Life"]').innerText());
   const predictedDps = numeric(await card.locator('output[data-stat="TotalDPS"]').innerText());
   const predictedEhp = numeric(await card.locator('output[data-stat="TotalEHP"]').innerText());
@@ -335,7 +336,7 @@ for (const edit of ['equipment', 'goal'] as const) {
     expect(after.jewels).toEqual(before.jewels);
     if (edit === 'goal') {
       await expect(page.getByRole('combobox', { name: 'Objective', exact: true })).toContainText('Max Hit DPS');
-      await expect(page.getByRole('spinbutton', { name: 'min', exact: true })).toHaveValue(String(floor));
+      await expect(page.getByRole('spinbutton', { name: 'Minimum Effective HP (points)', exact: true })).toHaveValue(String(floor));
       await expect(page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances', exact: true })).toBeChecked();
     }
     await page.clock.resume();

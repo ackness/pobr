@@ -118,7 +118,7 @@
   .rail-headline [data-slot='select-trigger'] { width: 100%; min-height: 0; height: 2.1rem; background: var(--muted); border-color: transparent; font-weight: 500; }
   .rail-empty { margin-block: .5rem; font-size: var(--text-sm); color: var(--muted-foreground); line-height: 1.55; }
   .rail-hero { display: flex; flex-direction: column; align-items: flex-start; padding-block: .9rem .4rem; }
-  .rail-hero-label { font-size: var(--text-xs); color: var(--muted-foreground); }
+  .rail-hero-label, .rail-hero-note { font-size: var(--text-xs); color: var(--muted-foreground); }
   .rail-hero-value { font-size: 1.65rem; font-weight: 600; line-height: 1.15; letter-spacing: -.02em; color: var(--primary); }
   button.rail-hero-value:hover { text-decoration: underline; text-underline-offset: .2em; }
   .rail-row { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; width: 100%; padding: .27rem 1rem; font-size: var(--text-sm); }

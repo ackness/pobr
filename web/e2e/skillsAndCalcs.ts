@@ -18,7 +18,14 @@ export async function importBuild(page: Page, code: string) {
  */
 export async function openStat(page: Page, id: string): Promise<Locator> {
   const detail = page.locator('#calcs-detail');
-  if (!(await detail.count())) await pageLink(page, 'Calculations').click();
+  if (!(await detail.count())) {
+    await pageLink(page, 'Calculations').click();
+    await detail.waitFor();
+    // A summoner build opens Calcs on its minion; callers read the player's values. Only on arrival:
+    // a caller already on Calcs keeps the actor it chose.
+    const actor = page.getByRole('combobox', { name: 'Actor', exact: true });
+    if (await actor.count() && (await actor.innerText()).trim() !== 'Player') await choose(page, actor, 'Player');
+  }
   const row = page.locator(`#breakdown-${id}`);
   if (!await row.isVisible()) await page.getByRole('searchbox').fill(id);
   await row.click();

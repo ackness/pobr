@@ -24,6 +24,8 @@ export interface StatSectionDef {
   title: Record<Lang, string>;
   rows: StatRowDef[];
   requiresSkill?: boolean;
+  /** The player's own damage: hidden when a minion carries the build and the player deals none. */
+  playerDamage?: boolean;
 }
 
 export const STAT_SECTIONS: StatSectionDef[] = [
@@ -37,6 +39,7 @@ export const STAT_SECTIONS: StatSectionDef[] = [
   {
     title: { 'en-US': 'Offence', 'zh-TW': '攻擊', 'zh-CN': '攻击' },
     requiresSkill: true,
+    playerDamage: true,
     rows: [
       { id: 'DecayDPS', label: { 'en-US': 'Profane Decay DPS', 'zh-TW': '褻瀆腐朽每秒傷害', 'zh-CN': '亵渎腐朽每秒伤害' }, format: 'float2', hideZero: true },
       { id: 'MirageBurningGroundDPS', label: { 'en-US': 'Mirage Ignited Ground DPS', 'zh-TW': '幻影燃燒地面每秒傷害', 'zh-CN': '幻影燃烧地面每秒伤害' }, format: 'float2', hideZero: true },
