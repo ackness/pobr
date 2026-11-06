@@ -103,9 +103,8 @@
 
   /* Foldable report and planner headings share the same hierarchy. */
   .shell-root .tree-panel .node-power { padding: 1rem 0 0; margin: 0; border: 0; border-radius: 0; background: none; font-size: var(--text-sm); }
-  .shell-root .tree-panel .node-power > summary, .shell-root .tree-panel .tree-planner-toggle { display: flex; align-items: center; gap: .4rem; width: 100%; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; font-size: var(--text-sm); font-weight: 600; letter-spacing: normal; text-transform: none; text-align: left; justify-content: flex-start; white-space: normal; color: var(--foreground); cursor: pointer; }
+  .shell-root .tree-panel .node-power > summary, .shell-root .tree-panel .tree-planner-toggle { display: flex; align-items: center; width: 100%; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; text-align: left; justify-content: flex-start; white-space: normal; color: var(--foreground); }
   .shell-root .tree-panel .node-power > summary:hover, .shell-root .tree-panel .tree-planner-toggle:hover:not(:disabled) { background: none; color: var(--foreground); }
-  .shell-root .tree-panel .node-power > summary { list-style: none; }
   .shell-root .tree-panel .tree-planner { margin: 0; padding: 1rem 0 0; border: 0; border-radius: 0; background: none; scroll-margin: 0; }
   .shell-root .tree-panel .tree-planner-body { padding: .6rem 0 0; }
   .shell-root .tree-panel .tree-planner-hint, .shell-root .tree-panel .node-power p { margin: .5rem 0; font-size: var(--text-xs); line-height: 1.6; color: var(--muted-foreground); }

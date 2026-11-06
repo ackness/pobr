@@ -58,6 +58,7 @@
   .shell-root .skills-page .skill-group-title::after { content: ''; position: absolute; inset: 0; }
   .shell-root .skills-page .skill-group-title:focus-visible { outline: none; }
   .shell-root .skills-page .skill-group-title:focus-visible::after { outline: 2px solid var(--primary); outline-offset: -2px; border-radius: .3rem; }
+  .shell-root .skills-page .skill-group-title .row-caret { display: none; }
   .shell-root .skills-page .skill-group-title .skill-group-main { display: none; }
   .shell-root .skills-page .skill-group-name { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; min-height: var(--group-line); text-spacing-trim: trim-start; font-size: var(--text-base); font-weight: 560; line-height: 1.4; color: var(--foreground); white-space: normal; overflow-wrap: anywhere; }
   .shell-root .skills-page .skill-group.is-selected .skill-group-name { color: var(--foreground); }
@@ -131,7 +132,7 @@
   .shell-root .skills-page .skill-detail .gem-optimizer { margin: 0; padding: 0; border: 0; }
   .shell-root .skills-page .gem-optimizer-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; }
   .shell-root .skills-page .gem-optimizer-toggle,
-  .shell-root .skills-page .gem-optimizer-settings > summary { display: flex; align-items: center; cursor: pointer; list-style: none; justify-content: flex-start; gap: .4rem; width: auto; min-height: 0; padding: .25rem .25rem .25rem 0; border-color: transparent; background: transparent; color: var(--foreground); font-size: var(--text-base); font-weight: 560; line-height: 1.5; text-align: left; }
+  .shell-root .skills-page .gem-optimizer-settings > summary { display: flex; align-items: center; justify-content: flex-start; width: auto; min-height: 0; padding: .25rem .25rem .25rem 0; border-color: transparent; background: transparent; color: var(--foreground); text-align: left; }
   .shell-root .skills-page .gem-optimizer-toggle:hover { background: transparent; }
   .shell-root .skills-page .opt-run { border-color: var(--primary); background: transparent; color: var(--foreground); font-weight: 560; }
   .shell-root .skills-page .opt-run:hover:not(:disabled) { background: var(--muted); color: var(--foreground); }

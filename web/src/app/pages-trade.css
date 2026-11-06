@@ -113,9 +113,9 @@
 
   /* ── 4 · Trade verification ─────────────────────────────────────────────────────── */
   .shell-root .trade-page .trade-market { margin: 1.5rem 0; border-block: 1px solid var(--border); }
-  .shell-root .trade-page .trade-market > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem 1rem; padding: .75rem 0; list-style: none; font-size: var(--text-sm); }
+  .shell-root .trade-page .trade-market > summary { display: flex; flex-wrap: wrap; align-items: baseline; padding: .75rem 0; }
   .shell-root .trade-page .trade-market > summary span { font-weight: 600; }
-  .shell-root .trade-page .trade-market > summary small { font-size: var(--text-xs); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .shell-root .trade-page .trade-market > summary small { flex-basis: 100%; font-size: var(--text-xs); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
   .shell-root .trade-page .trade-setup { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem 2rem; margin: 0; padding: .25rem 0 1.25rem; border: 0; border-radius: 0; background: none; }
   .shell-root .trade-page .trade-setup > * { min-width: 0; }
   .shell-root .trade-page .trade-price-field { flex: 0 1 22rem; }
@@ -274,9 +274,9 @@
 
   /* Combinations: collapsed until a candidate is added. */
   .shell-root .trade-page .equipment-fold { margin-top: 1.5rem; border-top: 1px solid var(--border); }
-  .shell-root .trade-page .equipment-fold > summary { display: flex; align-items: baseline; gap: 1rem; padding: .75rem 0; list-style: none; font-size: var(--text-sm); }
+  .shell-root .trade-page .equipment-fold > summary { display: flex; align-items: baseline; padding: .75rem 0; }
   .shell-root .trade-page .equipment-fold > summary span { font-weight: 600; }
-  .shell-root .trade-page .equipment-fold > summary small { font-size: var(--text-xs); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .shell-root .trade-page .equipment-fold > summary small { flex-basis: 100%; font-size: var(--text-xs); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
   .shell-root .trade-page .equipment-planner { margin: 0; padding: 0 0 .5rem; border: 0; }
   .shell-root .trade-page .equipment-planner-heading { display: none; }
   .shell-root .trade-page .equipment-planner > p, .shell-root .trade-page .equipment-plan-results > p { margin-bottom: .75rem; font-size: var(--text-xs); line-height: 1.7; color: var(--muted-foreground); }

@@ -605,7 +605,7 @@ function ReloadView({ reload, lang }: { reload: ReloadDetail; lang: Lang }) {
 export function ModLines({ mods, lang, measure }: { mods: BreakdownMod[]; lang: Lang; measure?: ModifierMeasure }) {
   const tt = bindT(lang);
   return <div className="modifier-groups">{groupModifiers(mods, measure).map(group => <details className="modifier-source-group" key={group.source}>
-    <summary className="disclosure" data-disclosure-level="group"><strong>{sourceGroupLabel(lang, group.source)}</strong> <span>({group.mods.length})</span>
+    <summary className="disclosure" data-disclosure-level="group"><span className="modifier-source-heading"><strong>{sourceGroupLabel(lang, group.source)}</strong> <span>({group.mods.length})</span></span>
       {group.subtotals.length > 0 && <span className="modifier-subtotals">{tt('calcs.sourceTotals')}{lang === 'en-US' ? ': ' : '：'}{group.subtotals.map(total => <span key={total.type}>
         {modTypeLabel(lang, total.type)} {total.type === 'MORE' ? '×' : ''}{fmtNum(total.value)}{total.type === 'INC' || (total.type === 'BASE' && measure?.unit === 'percent') ? '%' : ''}
       </span>)}</span>}

@@ -39,7 +39,7 @@
   .shell-root .config-page .config-filter { display: flex; align-items: center; gap: .5rem; font-size: var(--text-sm); color: var(--muted-foreground); }
 
   .shell-root .config-page :is(.config-guidance, .config-quick-disclosure) { margin: 0; padding: .6rem 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: none; }
-  .shell-root .config-page :is(.config-guidance, .config-quick-disclosure) > summary { cursor: pointer; font-size: var(--text-sm); font-weight: 450; color: var(--muted-foreground); }
+  .shell-root .config-page :is(.config-guidance, .config-quick-disclosure) > summary { color: var(--muted-foreground); }
   .shell-root .config-page :is(.config-guidance, .config-quick-disclosure) > summary:hover { color: var(--foreground); }
   .shell-root .config-page .config-hint { margin: .5rem 0 0; font-size: var(--text-xs); line-height: 1.65; color: var(--muted-foreground); }
   .shell-root .config-page .config-quick-access .section-heading { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -60,7 +60,7 @@
   /* At least a screen tall, so a short group never pulls the page back up when it replaces a long one. */
   .shell-root .config-page .config-option-groups { min-width: 0; max-width: 60rem; min-height: calc(100dvh - var(--topbar-height) - 5rem); }
   .shell-root .config-page .config-section { margin: 0 0 2.25rem; border: 0; border-radius: 0; background: none; scroll-margin-top: 1rem; }
-  .shell-root .config-page .config-section-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; height: auto; min-height: 0; padding: .45rem 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; text-align: left; color: var(--muted-foreground); }
+  .shell-root .config-page .config-section-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; height: auto; min-height: 0; padding: .45rem 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; text-align: left; color: var(--muted-foreground); }
   .shell-root .config-page .config-section-header:hover:not(:disabled) { background: none; color: var(--foreground); }
   .shell-root .config-page .config-section-header[aria-expanded='false'] { border-radius: 0; }
   .shell-root .config-page .config-section-count { padding: 0; border-radius: 0; background: none; font-size: var(--text-xs); font-weight: 400; letter-spacing: 0; font-variant-numeric: tabular-nums; }
@@ -88,7 +88,8 @@
   .shell-root .config-page .search-empty p { margin: 0; }
 
   /* ── Custom modifiers, party and raw values: the same flat language ─────── */
-  .shell-root .config-page .config-custom .section-heading, .shell-root .config-page .config-advanced > summary, .shell-root .config-page .party-editor > summary { margin: 0; font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-foreground); cursor: default; }
+  .shell-root .config-page .config-custom .section-heading { margin: 0; font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-foreground); cursor: default; }
+  .shell-root .config-page :is(.config-advanced, .party-editor) > summary { margin: 0; color: var(--muted-foreground); }
   .shell-root .config-page :is(.config-custom, .config-advanced) { margin: 0; }
   .shell-root .config-page .config-modifier-blocks { display: grid; gap: 0; margin: .5rem 0 1rem; }
   .shell-root .config-page .config-modifier-block { padding: 1rem 0 1.25rem; border: 0; border-top: 1px solid var(--border); border-radius: 0; }

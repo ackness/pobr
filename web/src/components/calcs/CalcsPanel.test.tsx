@@ -219,7 +219,8 @@ test('modifiers fold by source with a count and separate stacking subtotals', ()
     { mod_type: 'INC', value: 10, active: true, source_text: '10% increased Life', origin_kind: 'PassiveNode', origin_id: 'node.2', slot: null },
   ];
   const html = renderToStaticMarkup(<BreakdownTable breakdown={{ ...empty, mods }} modifierMeasure={{ stat: 'Life', unit: 'points' }} lang="en-US" />);
-  expect(html).toContain('<details class="modifier-source-group"><summary class="disclosure" data-disclosure-level="group"><strong>Passive tree</strong> <span>(2)</span>');
+  expect(html).toContain('<details class="modifier-source-group"><summary class="disclosure" data-disclosure-level="group"><span class="modifier-source-heading"><strong>Passive tree</strong> <span>(2)</span></span>');
+  expect(html).toMatch(/<\/span><span class="modifier-subtotals">.*?<\/span><\/summary>/);
   expect(html).toContain('Base 20');
   expect(html).toContain('Increased / Reduced 10%');
   expect(html).not.toContain('Base 30');

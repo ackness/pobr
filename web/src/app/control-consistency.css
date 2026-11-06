@@ -5,47 +5,40 @@
     --segmented-padding: .1875rem;
   }
 
-  /* The repeated shared classes outrank legacy page rules without !important. The unscoped
-     versions also cover settings, pickers and the inspector in Radix portals. */
+  /* Defaults stay below page and display-mode rules. Unscoped selectors also
+     reach settings, pickers and the inspector in Radix portals. */
   .disclosure {
     --disclosure-font-size: var(--text-sm);
     --disclosure-font-weight: 450;
     --disclosure-color: var(--muted-foreground);
   }
-  .disclosure[data-disclosure-level],
-  .shell-root .disclosure.disclosure[data-disclosure-level]:is(summary, button) {
-    align-items: center;
-    justify-content: flex-start;
+  .disclosure:where([data-disclosure-level]) {
     gap: var(--disclosure-gap);
-    min-width: 0;
     font-size: var(--disclosure-font-size);
     font-weight: var(--disclosure-font-weight);
     line-height: 1.5;
-    letter-spacing: normal;
-    text-transform: none;
-    text-align: start;
-    white-space: normal;
-    overflow-wrap: anywhere;
     color: var(--disclosure-color);
     cursor: pointer;
   }
   .disclosure[data-disclosure-level='section'] { --disclosure-font-size: var(--text-lg); --disclosure-font-weight: 600; --disclosure-color: var(--foreground); }
   .disclosure[data-disclosure-level='group'] { --disclosure-font-size: var(--text-base); --disclosure-font-weight: 560; --disclosure-color: var(--foreground); }
-  summary.disclosure { display: flex; list-style: none; }
+  .disclosure[data-disclosure-level='small'] { --disclosure-font-size: .6875rem; --disclosure-font-weight: 600; }
+  summary.disclosure { display: flex; flex-wrap: wrap; list-style: none; }
   summary.disclosure::marker { content: ''; }
   summary.disclosure::-webkit-details-marker { display: none; }
   .disclosure > :is(h2, h3, h4) { min-width: 0; margin: 0; font: inherit; color: inherit; }
-  .disclosure-label { display: inline-flex; align-items: center; gap: var(--disclosure-gap); min-width: 0; }
+  .disclosure-label { display: inline-flex; align-items: flex-start; gap: var(--disclosure-gap); min-width: 0; }
 
   summary.disclosure::before,
-  .disclosure-caret,
-  .shell-root .disclosure .disclosure-caret {
+  .disclosure-caret {
     content: '';
     display: inline-block;
     flex: 0 0 var(--disclosure-icon-size);
     width: var(--disclosure-icon-size);
     height: var(--disclosure-icon-size);
+    align-self: flex-start;
     margin: 0;
+    margin-block-start: max(0px, calc((1lh - var(--disclosure-icon-size)) / 2));
     background: var(--muted-foreground);
     mask: url('../components/shared/disclosure-chevron.svg') center / contain no-repeat;
     transform: rotate(0deg);
@@ -54,8 +47,7 @@
   }
   details[open] > summary.disclosure::before,
   .disclosure[aria-expanded='true'] > .disclosure-caret,
-  .disclosure[aria-expanded='true'] > .disclosure-label > .disclosure-caret,
-  .shell-root .disclosure[aria-expanded='true'] .disclosure-caret { transform: rotate(90deg); }
+  .disclosure[aria-expanded='true'] > .disclosure-label > .disclosure-caret { transform: rotate(90deg); }
 
   /* A common presentation for native pressed buttons and Radix radio/tab
      primitives. Semantics and keyboard handling belong to their callers. */
@@ -122,7 +114,12 @@
 
   @media (prefers-reduced-motion: reduce) {
     summary.disclosure::before, .disclosure-caret,
-    .shell-root .disclosure .disclosure-caret,
     .segmented > button, .shell-root .segmented.segmented > button { transition: none; }
+  }
+  @media (forced-colors: active) {
+    .disclosure-caret, summary.disclosure::before {
+      forced-color-adjust: none;
+      background: CanvasText;
+    }
   }
 }
