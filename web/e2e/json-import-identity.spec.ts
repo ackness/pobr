@@ -295,15 +295,15 @@ for (const destination of ['newBuild', 'currentStage'] as const) {
         level: Number(element.getAttribute('data-level')), quality: Number(element.getAttribute('data-quality')),
         ...(statSet !== null ? { stat_set_index: Number(statSet) } : {}) };
     }));
-    const dpsText = await first.locator('.support-plan-metrics > span').filter({ hasText: /^DPS / }).innerText();
-    const preview = numeric(dpsText.match(/^DPS ([\d,.]+)/)![1]);
-    const totalDps = statValue(page, /^Total DPS$/).first();
+    const dpsText = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Hit DPS / }).innerText();
+    const preview = numeric(dpsText.match(/^Hit DPS ([\d,.]+)/)![1]);
+    const totalDps = statValue(page, /^Hit DPS$/).first();
     expect(preview).toBeGreaterThan(numeric(await totalDps.innerText()));
     await openBuild(page);
     await submitPaste(page, '{}', 'currentStage', 'en-US', true);
     expect(await capture(page)).toEqual(before);
     await rejectPaste(page, JSON.stringify(before.envelope), destination, before);
-    await pageLink(page, 'Calcs').click();
+    await pageLink(page, 'Calculations').click();
     await pageLink(page, 'Skills').click();
     await expect.poll(() => page.locator('.support-results').innerText()).toBe(receipt);
     // The settings section folds up when the page is left; the values in it are what must have been kept.

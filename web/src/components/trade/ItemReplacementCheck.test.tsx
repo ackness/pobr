@@ -5,6 +5,8 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import type { CalculateBuildRequest } from '../../api/types';
 import type { ReplacementReport } from '../../lib/itemReplacement';
 import { ItemReplacementCheck } from './ItemReplacementCheck';
+import type { Lang } from '../../lib/i18n';
+import { upgradeT } from '../../lib/upgradeText';
 
 // Replay state and committed effects without a browser; retain real dependency comparisons.
 const ui = vi.hoisted(() => ({ cursor: 0, slots: [] as unknown[], effects: [] as (() => void)[],
@@ -71,7 +73,7 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllGlobals(); });
 
-function setup(allocatedNodes: number[] = []) {
+function setup(allocatedNodes: number[] = [], lang: Lang = 'en-US') {
   const request: CalculateBuildRequest = { allocated_nodes: allocatedNodes };
   const session = { currentRequest: () => request, allocatedNodes, activeWeaponSet: 1, items: [], flasks: [], jewels: [],
     setItems: vi.fn(), busy: false } as unknown as BuildSession;
@@ -79,7 +81,7 @@ function setup(allocatedNodes: number[] = []) {
   ui.compare.mockImplementation(() => new Promise<ReplacementReport>(done => { resolve = done; }));
   const render = (sockets: number[], socketLabel = () => 'Jewel socket') => {
     ui.cursor = 0; ui.buttons = [];
-    const html = renderToStaticMarkup(<ItemReplacementCheck session={session} lang="en-US" active objective={objective}
+    const html = renderToStaticMarkup(<ItemReplacementCheck session={session} lang={lang} active objective={objective}
       catalog={catalog} jewelSockets={sockets} socketLabel={socketLabel} goalLabel="Life" onEditGoal={() => {}} />);
     ui.effects.splice(0).forEach(effect => effect());
     return html;
@@ -87,9 +89,9 @@ function setup(allocatedNodes: number[] = []) {
   render([]);
   ui.input!.onChange?.({ target: { value: text } } as never);
   render([]);
-  ui.buttons.find(button => button.children === 'Calculate replacement')!.onClick?.({} as never);
+  ui.buttons.find(button => button.children === upgradeT(lang, 'compare'))!.onClick?.({} as never);
   render([]);
-  return { render, resolve: () => resolve(report), signal: ui.compare.mock.calls[0][2] as AbortSignal };
+  return { render, resolve: (value = report) => resolve(value), signal: ui.compare.mock.calls[0][2] as AbortSignal };
 }
 
 test('late tree socket metadata and display-name rerenders preserve an in-flight equipment comparison and its visible result', async () => {
@@ -109,4 +111,19 @@ test('discovering an allocated jewel destination still invalidates the previous 
   const comparison = setup([7960]);
   comparison.render([7960]);
   expect(comparison.signal.aborted).toBe(true);
+});
+
+test.each([
+  ['en-US', 'Life', 'Fire Resistance', ' pp'],
+  ['zh-CN', '生命', '火焰抗性', ' 个百分点'],
+  ['zh-TW', '生命', '火焰抗性', ' 個百分點'],
+] as const)('replacement changes preserve metric precision and resistance units in %s', async (lang, life, resistance, unit) => {
+  const comparison = setup([], lang);
+  comparison.resolve({ ...report, baseline: { Life: 100, FireResist: 70 },
+    positions: report.positions.map(position => ({ ...position, stats: { Life: 101.83, FireResist: 72.36 } })),
+  });
+  await Promise.resolve();
+  const html = comparison.render([]);
+  expect(html).toContain(`<tr><th>${life}</th><td>100</td><td>102</td><td class="delta-pos">+2</td></tr>`);
+  expect(html).toContain(`<tr><th>${resistance}</th><td>70%</td><td>72.4%</td><td class="delta-pos">+2.4${unit}</td></tr>`);
 });

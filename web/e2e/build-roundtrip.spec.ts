@@ -30,7 +30,7 @@ async function importCode(page: Page, code: string) {
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
-  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
 }
 
@@ -155,7 +155,7 @@ test('switch, reload, edit and share preserve the selected loadout and global fi
   await expect(page.getByRole('combobox', { name: 'PoB loadout', exact: true })).toBeEnabled();
   await page.getByLabel('Level', { exact: true }).fill('90');
   await page.getByRole('textbox', { name: 'Notes', exact: true }).fill('Edited <notes> & 中文');
-  await pageLink(page, 'Config').click();
+  await pageLink(page, 'Configuration').click();
   await page.getByLabel('Search config options…').fill('Onslaught');
   await page.locator('.config-item input[type="checkbox"]').first().check();
   // The enemy is chosen with the fight presets above the options ("Mapping" is the tier without a boss).

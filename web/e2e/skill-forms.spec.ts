@@ -44,7 +44,7 @@ test('forms, stages, disabled supports and Full DPS can be edited and shared', a
   await flame.locator('.skill-group-title').click();
   await flame.getByRole('spinbutton', { name: 'Stages', exact: true }).fill('4');
   await expect.poll(async () => (await state()).params.config_inputs.skillFlameblastStages).toBe(4);
-  await goTo(page, 'Calcs');
+  await goTo(page, 'Calculations');
   await page.getByRole('tab', { name: 'Full DPS', exact: true }).click();
   await expect(page.locator('.full-dps-table tbody tr')).toHaveCount(1);
   await expect(page.locator('.full-dps-table')).toContainText('2.5');

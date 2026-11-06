@@ -20,7 +20,7 @@ it('labels mixed scores and distinguishes gains, losses and unchanged results', 
     ]} />);
   expect(html).toContain('Balanced score');
   expect(html).toContain('Change from current');
-  expect(html).toContain('Current equipment</td><td class="opt-score">100</td>');
+  expect(html).toContain('Current equipment</td><td class="opt-score">100.4</td>');
   expect(html).toContain('class="opt-delta is-negative">-61.4%');
   expect(html).toContain('class="opt-delta">+0.0%');
   expect(html).toContain('class="opt-delta is-positive">+100.0%');

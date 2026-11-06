@@ -356,7 +356,7 @@ for (const planner of ['route', 'joint'] as const) {
     await expect(page.getByRole('alert')).toHaveCount(0);
     for (const destination of ['newBuild', 'currentStage'] as const) {
       await reject(page, before, destination);
-      await pageLink(page, 'Calcs').click();
+      await pageLink(page, 'Calculations').click();
       await openTree(page);
       await expect.poll(() => routeResults(page).innerText()).toBe(routeReceipt);
       await expect.poll(() => results(page, 'joint').innerText()).toBe(jointReceipt);
@@ -420,8 +420,8 @@ test('support receipts and settings survive rejected imports without losing the 
       level: Number(element.getAttribute('data-level')), quality: Number(element.getAttribute('data-quality')),
       ...(statSet !== null ? { stat_set_index: Number(statSet) } : {}) };
   }));
-  const previewText = await first.locator('.support-plan-metrics > span').filter({ hasText: /^DPS / }).innerText();
-  const predictedDps = numeric(previewText.match(/^DPS ([\d,.]+)/)![1]);
+  const previewText = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Hit DPS / }).innerText();
+  const predictedDps = previewText.match(/^Hit DPS ([\d,.]+)/)![1];
   await first.getByRole('button', { name: 'Apply', exact: true }).click();
   await expect.poll(async () => (await saved(page)).state.socketGroups[0].gems.slice(1)).toEqual(supports);
   const after = await capture(page);
@@ -434,8 +434,8 @@ test('support receipts and settings survive rejected imports without losing the 
   expect(after.bytes.library).toBe(before.bytes.library);
   const actualDps = after.result.stats.find(stat => stat.id === 'TotalDPS')!.value!;
   expect(actualDps).toBeGreaterThan(before.result.stats.find(stat => stat.id === 'TotalDPS')!.value!);
-  expect(Math.abs(actualDps - predictedDps)).toBeLessThanOrEqual(0.06);
-  await expect(statValue(page, /^Total DPS$/).first()).toHaveText(formatStatValue(actualDps, 'float2'));
+  expect(predictedDps).toBe(formatStatValue(actualDps, 'float2'));
+  await expect(statValue(page, /^Hit DPS$/).first()).toHaveText(formatStatValue(actualDps, 'float2'));
   await expect(page.locator('.support-results')).toHaveCount(0);
 });
 

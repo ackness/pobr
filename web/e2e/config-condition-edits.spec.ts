@@ -196,7 +196,7 @@ async function complete(page: Page, planner: Planner, first: boolean) {
       await page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true }).fill('2');
       await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
       await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
-      await page.getByRole('option', { name: 'Max total DPS', exact: true }).click();
+      await page.getByRole('option', { name: 'Max Hit DPS', exact: true }).click();
     }
     await page.getByRole('button', { name: 'Calculate support combinations', exact: true }).click();
     await expect(page.locator('.support-plan').first()).toBeVisible({ timeout: 90_000 });
@@ -215,7 +215,7 @@ async function complete(page: Page, planner: Planner, first: boolean) {
     await expect(results(page, planner).locator(':scope > li').first()).toBeVisible({ timeout: 90_000 });
     await expect(page.getByRole('button', { name: 'Find upgrade routes', exact: true })).toBeEnabled();
   } else {
-    if (first) await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
+    if (first) await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
     await page.getByRole('textbox', { name: 'Complete item text', exact: true })
       .fill('Rarity: RARE\nSynthetic Condition Replacement\nSapphire Ring\nImplicits: 0\n100% increased Fire Damage\n+100 to maximum Life\n8% increased Damage per Power Charge');
     await page.getByRole('button', { name: 'Calculate replacement', exact: true }).click();
@@ -271,7 +271,7 @@ for (const planner of ['support', 'passive', 'replacement'] as const) {
 }
 
 for (const width of [390, 1440]) {
-  for (const [lang, configName] of [['en-US', 'Config'], ['zh-TW', '配置'], ['zh-CN', '配置']] as const) {
+  for (const [lang, configName] of [['en-US', 'Configuration'], ['zh-TW', '設定'], ['zh-CN', '配置']] as const) {
     test(`${lang} ${width}px: keyboard exposure edit/reset preserves typed raw import`, async ({ page }) => {
       await page.setViewportSize({ width, height: 780 });
       await ready(page);

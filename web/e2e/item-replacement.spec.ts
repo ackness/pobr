@@ -53,7 +53,7 @@ test('three-item search applies the complete result and changing its goal invali
   await expect(best.locator('h5')).toContainText('Third Item');
   await expect(best.locator('h5')).toContainText('First Ring');
   await expect(best.locator('h5')).toContainText('Second Ring');
-  await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
+  await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
   await expect(planner.locator('.equipment-plan-results')).toHaveCount(0);
   await page.getByRole('button', { name: 'Max Life', exact: true }).click();
   await run.click();
@@ -77,7 +77,7 @@ test('joint equipment plans compare both ring placements, keep item identity, an
   await loadRings(page);
   const original = await savedState(page);
   const before = await settledText(dps(page));
-  await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
+  await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
   const planner = page.locator('.equipment-planner');
   const addBothPositions = async (text: string) => {
     await paste(page, text);
@@ -103,7 +103,7 @@ test('joint equipment plans compare both ring placements, keep item identity, an
   await expect(planner.locator('.equipment-plan-results')).toHaveCount(0);
   await planner.getByRole('button', { name: 'Compare one- and two-item plans', exact: true }).click();
   await expect(planner.locator('.equipment-plan-results')).toBeVisible();
-  await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
+  await page.getByRole('button', { name: 'Max Hit DPS', exact: true }).click();
   await expect(planner.locator('.equipment-plan-results')).toHaveCount(0);
   await planner.getByRole('button', { name: 'Compare one- and two-item plans', exact: true }).click();
   await expect(planner.locator('.equipment-plan-results')).toBeVisible();
@@ -183,7 +183,7 @@ test('pasting detects both rings, recommends the actual better destination, and 
   await expect(dps(page)).toHaveText(before);
   expect((await savedState(page)).items).toEqual(original.items);
   await destinations.filter({ hasText: /^Ring 1/ }).click();
-  await expect(page.locator('.upgrade-replacement-result')).toContainText('DPS decreases after this replacement');
+  await expect(page.locator('.upgrade-replacement-result')).toContainText('Hit DPS decreases after this replacement');
   await best.click();
   const expectedDps = numeric(await page.locator('.upgrade-replacement-result tbody tr').first().locator('td').nth(1).innerText());
   await page.getByRole('button', { name: 'Apply to build · Ring 2', exact: true }).click();

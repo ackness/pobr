@@ -111,7 +111,7 @@ for (const edit of ['copied stage', 'jewel input'] as const) {
     const before = await saved(page);
     const receipt = await assertPairedDiagnostics(page);
     // First visits exercise the shared lazy boundary, not only warmed page navigation.
-    await nav(page, 'Calcs').click();
+    await nav(page, 'Calculations').click();
     await expect(page.locator('.tree-canvas, .tree-planner-body')).toHaveCount(0);
     await nav(page, 'Skills').click();
     await expect(page.locator('.skills-toolbar input')).toBeEnabled();

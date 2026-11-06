@@ -9,7 +9,7 @@ const swiftStat = 'support_swift_affliction_non_ailment_damage_over_time_+%_fina
 const modeled = ['SupportControlledDestructionPlayer', 'SupportFireMasteryPlayer'];
 const run = (page: Page) => page.getByRole('button', { name: 'Calculate support combinations', exact: true });
 const baseline = (page: Page) => page.locator('details.support-baseline-unsupported');
-const dps = (page: Page) => statValue(page, /^Total DPS$/).first();
+const dps = (page: Page) => statValue(page, /^Hit DPS$/).first();
 // The Overview lists the modifier lines the calculation does not apply.
 const unsupportedLines = (page: Page) => page.locator('.ov-details');
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
@@ -94,7 +94,7 @@ async function openOptimizer(page: Page) {
 async function boundRealCandidatePool(page: Page) {
   await page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true }).fill('2');
   await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
-  await choose(page, page.getByRole('combobox', { name: 'Objective', exact: true }), 'Max total DPS');
+  await choose(page, page.getByRole('combobox', { name: 'Objective', exact: true }), 'Max Hit DPS');
   const pool = page.locator('.support-pool-details');
   await pool.locator('summary').click();
   for (const id of [swift, ...modeled]) {
@@ -162,9 +162,9 @@ for (const [layout, viewport] of [
       // Baseline limits are disclosed, not newly introduced rejection reasons.
       await expect(page.locator('.support-diagnostic-excluded')).toHaveCount(0);
       const plans = await recommendationsReceipt(page);
-      for (const name of ['Calcs', 'Tree']) {
+      for (const name of ['Calculations', 'Tree']) {
         await goTo(page, name);
-        await expect(page.locator(name === 'Calcs' ? '.calcs-page' : '.tree-canvas')).toBeVisible();
+        await expect(page.locator(name === 'Calculations' ? '.calcs-page' : '.tree-canvas')).toBeVisible();
         await expect(run(page)).toHaveCount(0);
         await goTo(page, 'Skills');
         await expect(baseline(page).locator('ul > li')).toHaveText([normalReceipt]);
@@ -214,14 +214,14 @@ for (const [layout, viewport] of [
         quality: Number(chip.getAttribute('data-quality')), stat_set_index: Number(chip.getAttribute('data-stat-set-index') ?? 1),
       })));
       expect(expected.map(gem => gem.skill_id).sort()).toEqual([...modeled].sort());
-      const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^DPS / }).innerText();
-      const preview = numeric(metric.match(/^DPS ([\d,.]+)/)![1]);
+      const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Hit DPS / }).innerText();
+      const preview = numeric(metric.match(/^Hit DPS ([\d,.]+)/)![1]);
       expect(preview).toBeGreaterThan(beforeDps);
       const excluded = await rejectedReceipt(rejected);
       const recommendations = await recommendationsReceipt(page);
-      for (const name of ['Calcs', 'Tree', 'Upgrades']) {
+      for (const name of ['Calculations', 'Tree', 'Upgrades']) {
         await goTo(page, name);
-        await expect(page.locator(name === 'Calcs' ? '.calcs-page' : name === 'Tree' ? '.tree-canvas' : '.upgrade-paths')).toBeVisible();
+        await expect(page.locator(name === 'Calculations' ? '.calcs-page' : name === 'Tree' ? '.tree-canvas' : '.upgrade-paths')).toBeVisible();
         await expect(run(page)).toHaveCount(0);
         await goTo(page, 'Skills');
         await expect.poll(() => rejectedReceipt(rejected)).toEqual(excluded);

@@ -1,3 +1,4 @@
+import { formatNumber } from '../../lib/statDisplay';
 import { AppButton, AppInput, AppTextarea, AppSelectControl } from '../shared/controls';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
@@ -192,7 +193,7 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
       <article className="guidance-card"><span className="guidance-step">01</span><h4>{gt('skills')}</h4><p>{gt('skillHint')}</p>
         <AppButton disabled={groupIndex === undefined || session.busy} onClick={() => groupIndex !== undefined && onSkills(groupIndex)}>{gt('planSkills')} →</AppButton></article>
       <article className="guidance-card"><span className="guidance-step">02</span><h4>{gaps.length ? gt('gaps') : gt('gear')}</h4>
-        {gaps.length > 0 && <ul className="guidance-gap-list">{gaps.map(gap => <li key={gap.stat}>{statNameLabel(lang, gap.stat)} <strong>{gap.value.toFixed(0)}% → {gap.target}%</strong></li>)}</ul>}
+        {gaps.length > 0 && <ul className="guidance-gap-list">{gaps.map(gap => <li key={gap.stat}>{statNameLabel(lang, gap.stat)} <strong>{formatNumber(gap.value, 0)}% → {gap.target}%</strong></li>)}</ul>}
         <p>{gaps.length ? gt('gapHint') : gt('gearHint')}</p><AppButton onClick={onEquipment}>{gt('planGear')} →</AppButton></article>
       <article className="guidance-card"><span className="guidance-step">03</span><h4>{gt('tree')}</h4><p>{gt('treeHint')}</p>
         <AppButton onClick={onTree}>{gt('planTree')} →</AppButton></article>

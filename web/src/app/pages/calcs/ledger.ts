@@ -52,11 +52,11 @@ export function statusHint(lang: Lang, status: LineUsageStatus): string {
     case 'partial': return w('Some parts of the line are counted and others are not.', '这一行的部分内容已计入，其余没有。', '這一行的部分內容已計入，其餘沒有。');
     case 'inactive': return w('The calculation looks for it, but a condition or skill requirement is not met right now.', '计算会读取它，但当前条件或技能要求不满足。', '計算會讀取它，但目前條件或技能要求不滿足。');
     case 'unread': return w('Understood correctly, but nothing in the calculation asks for it.', '已正确解析，但计算中没有任何地方读取它。', '已正確解析，但計算中沒有任何地方讀取它。');
-    case 'outside': return w('Used by a step outside the modifier store: item defences, gem levels, jewel radius.', '由词条库之外的环节使用：装备自身防御、宝石等级、珠宝范围等。', '由詞綴庫之外的環節使用：裝備自身防禦、寶石等級、珠寶範圍等。');
+    case 'outside': return w('Used by a step outside the modifier store: item defences, gem levels, jewel radius.', '由词缀库之外的环节使用：装备自身防御、宝石等级、珠宝范围等。', '由詞綴庫之外的環節使用：裝備自身防禦、寶石等級、珠寶範圍等。');
     case 'no_effect': return w('Recognised and known not to change any output.', '已识别，且确认不影响任何输出。', '已識別，且確認不影響任何輸出。');
     case 'unmodelled': return w('Recognised, but the mechanic is not implemented yet.', '已识别，但该机制尚未实现。', '已識別，但該機制尚未實現。');
     case 'unparsed': return w('No rule could read this line, so this calculation does not include its effect.', '没有规则能解析这一行，本次计算未计入其效果。', '沒有規則能解析這一行，本次計算未計入其效果。');
-    case 'no_modifier': return w('Read into a modifier, but it was not stored for the calculation.', '已解析出词条，但没有存入计算。', '已解析出詞綴，但沒有存入計算。');
+    case 'no_modifier': return w('Read into a modifier, but it was not stored for the calculation.', '已解析出词缀，但没有存入计算。', '已解析出詞綴，但沒有存入計算。');
   }
 }
 
@@ -131,20 +131,20 @@ export function ledgerReason(line: LineUsageLine, lang: Lang): string | null {
         return words(lang, reason, '数值为 0。', '數值為 0。');
       }
       if (/^SkillType \w+(?: · SkillType \w+)*$/.test(reason)) {
-        return words(lang, reason, '当前技能类型不满足词条要求。', '目前技能類型不滿足詞綴要求。');
+        return words(lang, reason, '当前技能类型不满足词缀要求。', '目前技能類型不滿足詞綴要求。');
       }
       if (line.status === 'unmodelled' && /^rule \S+ recognises it and stores nothing$/.test(reason)) {
         return statusHint(lang, 'unmodelled');
       }
       if (reason === 'a config option nothing in this build asks for') {
-        return words(lang, reason, '当前构筑没有使用此配置项。', '目前構築沒有使用此配置項。');
+        return words(lang, reason, '当前 BD 没有使用此配置项。', '目前 BD 沒有使用此配置項。');
       }
       const condition = /^Condition (Combat|Buffs|Effective|AncestralBoost|EnemyPoisoned) not met$/.exec(reason);
       if (condition) {
         const labels: Record<string, string> = {
           Combat: words(lang, 'Combat', '战斗状态', '戰鬥狀態'),
           Buffs: words(lang, 'Buffs', '增益效果', '增益效果'),
-          Effective: words(lang, 'Effective', '有效战斗配置', '有效戰鬥配置'),
+          Effective: words(lang, 'Effective', '有效配置', '有效設定'),
           AncestralBoost: words(lang, 'Ancestral Boost', '先祖增幅', '先祖增幅'),
           EnemyPoisoned: words(lang, 'Enemy poisoned', '敌人中毒', '敵人中毒'),
         };

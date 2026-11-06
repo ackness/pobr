@@ -41,7 +41,7 @@ for (const width of [390, 1440]) {
 test('modified filtering excludes defaults, composes with search and follows reset', async ({ page }) => {
   const code = deflateSync('<PathOfBuilding2><Build level="40" className="Witch"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree><Skills/><Items/><Config><Input name="buffOnslaught" boolean="false"/><Input name="conditionEnemyShocked" boolean="true"/></Config></PathOfBuilding2>').toString('base64url');
   await start(page, code);
-  await goTo(page, 'Config');
+  await goTo(page, 'Configuration');
   await page.getByRole('radio', { name: /^Modified/ }).click();
   await expect(page.locator('#config-buffOnslaught')).toHaveCount(0);
   const search = page.getByRole('searchbox', { name: 'Search config options…' });
@@ -121,7 +121,7 @@ test('a build without a main selection defaults to its highest-DPS skill and can
   await expect(unavailable.locator('.mod-value').first()).toHaveText('—');
   await expect(unavailable.locator('details')).not.toHaveAttribute('open');
   await expect(unavailable.locator('summary')).toHaveText('Details');
-  await expect(rows.filter({ hasText: 'Highest DPS' })).toHaveCount(1);
+  await expect(rows.filter({ hasText: 'Highest Combined DPS' })).toHaveCount(1);
   expect((await saved(page)).params.main_socket_group).toBe(0);
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   await spark.getByRole('button').focus();
@@ -138,7 +138,7 @@ test('a build without a main selection defaults to its highest-DPS skill and can
   const stats = page.locator('#character-stats');
   await expect(stats).toContainText('No valid inspected skill');
   await expect(stats.getByRole('heading', { name: 'Offence', exact: true })).toHaveCount(0);
-  await expect(statRow(page, 'Total DPS')).toHaveCount(0);
+  await expect(statRow(page, 'Hit DPS')).toHaveCount(0);
   await expect(stats.getByRole('heading', { name: 'Resources', exact: true })).toHaveCount(1);
   await expect(statValue(page, /^Life$/).first()).not.toHaveText('—');
   await choose(page, inspected(page), '1. Spark');

@@ -22,7 +22,7 @@ export function useTreeConversion(session: BuildSession, lang: Lang, active: boo
   const generation = useRef(0);
   const latest = useRef(session);
   latest.current = session;
-  const staleText = label('The build changed. Create a new preview.', '构筑已变更，请重新预览。', '構築已變更，請重新預覽。');
+  const staleText = label('The build changed. Create a new preview.', 'BD 已变更，请重新预览。', 'BD 已變更，請重新預覽。');
   const stale = preview && preview.version !== session.stateVersion;
   const cancel = () => { generation.current++; setPending(false); setPreview(null); setError(null); };
   useEffect(() => { if (!active) { cancel(); setAll(false); } }, [active]);

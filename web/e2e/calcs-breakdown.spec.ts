@@ -24,7 +24,7 @@ async function inspectFromRail(page: Page, label: string | RegExp, heading: stri
 
 test('View minion selects its actor and default metric and focuses the detail heading', async ({ page }) => {
   await importBuild(page, code);
-  await pageLink(page, 'Calcs').click();
+  await pageLink(page, 'Calculations').click();
   const actor = page.getByRole('combobox', { name: 'Actor', exact: true });
   await expect(actor).toHaveText('Player');
 
@@ -42,7 +42,7 @@ test('View minion selects its actor and default metric and focuses the detail he
 
   await expect(actor).toHaveText(/^Minion: Wolf Companion · \d+$/);
   await expect(detail.locator('.calcs-eyebrow')).toHaveText(/^Showing: Minion · Wolf Companion #\d+$/);
-  const minionHeading = detail.getByRole('heading', { name: 'Total DPS', exact: true });
+  const minionHeading = detail.getByRole('heading', { name: 'Hit DPS', exact: true });
   await expect(minionHeading).toBeVisible();
   const minionDps = page.locator('#breakdown-TotalDPS');
   await expect(minionDps).toHaveAttribute('aria-pressed', 'true');
@@ -64,7 +64,7 @@ test('a stat breakdown counts only the lines the calculation applies', async ({ 
   // The steps count the equipped items' armour, the increases and the more multiplier, and
   // end at the value shown.
   const steps = armour.locator('.breakdown-formula');
-  await expect(steps.locator('tr.formula-flat th')).toHaveText('Flat modifiers (BASE)');
+  await expect(steps.locator('tr.formula-flat th')).toHaveText('Flat modifiers');
   await expect(steps.locator('tr.formula-increased')).toHaveCount(1);
   await expect(steps.locator('tr.formula-more')).toHaveCount(1);
   const shown = num(await detailValue(armour).textContent());
@@ -193,7 +193,7 @@ test('average hit and total DPS show how they are built', async ({ page }) => {
   await expect(sources.locator('tbody tr.damage-physical')).toHaveCount(1);
   await expect(average.locator('.damage-lines-physical-gain tbody tr:not(.is-inactive)')).not.toHaveCount(0);
 
-  // Total DPS: starts from that average hit and multiplies in rate and chance to hit.
+  // Hit DPS: starts from that average hit and multiplies in rate and chance to hit.
   const dps = await openStat(page, 'TotalDPS');
   expect(Math.abs(num(await dps.locator('tr.formula-average_hit .formula-result').textContent()) - shownAverage)).toBeLessThanOrEqual(0.5);
   await expect(dps.locator('tr.formula-uses_per_second')).toHaveCount(1);
@@ -272,7 +272,7 @@ test('an ailment shows the hit it comes from and how many are active', async ({ 
   // Ignite on a hit build: the steps run from the hit to the shown DPS, and the table below
   // gives the numbers behind the hit and the active instance count.
   await loadBuild(page, 'warrior-titan-shield-wall');
-  await pageLink(page, 'Calcs').click();
+  await pageLink(page, 'Calculations').click();
   const ignite = await openStat(page, 'IgniteDPS');
   const source = await stepResult(ignite.locator('tr.formula-ailment_source'));
   expect(source).toBeGreaterThan(0);
@@ -292,7 +292,7 @@ test('an ailment shows the hit it comes from and how many are active', async ({ 
 test('a defence lists what each item slot adds on its own', async ({ page }) => {
   // Lines scoped to one item slot: the per-slot rows add up to the step of the formula.
   await loadBuild(page, 'warrior-titan-shield-wall');
-  await pageLink(page, 'Calcs').click();
+  await pageLink(page, 'Calculations').click();
   const armour = await openStat(page, 'Armour');
   const slots = armour.locator('.defence-slots-table');
   await expect(slots.locator('tbody tr')).not.toHaveCount(0);
@@ -311,7 +311,7 @@ test('on-demand details cover steps, sources, derived inputs and an explicit emp
   await expect(life.locator('.breakdown-formula')).toBeVisible();
   await closeInspector(page);
 
-  await pageLink(page, 'Calcs').click();
+  await pageLink(page, 'Calculations').click();
   const lifeRow = page.locator('#breakdown-Life');
   await expect(lifeRow).toHaveAttribute('data-detail-kind', 'steps');
   await openStat(page, 'Life');
@@ -360,7 +360,7 @@ test('on-demand details cover steps, sources, derived inputs and an explicit emp
   // Reopening a detail after an edit must describe the new calculation.
   await page.locator('.shell-builds-button').click();
   await page.getByLabel('Level', { exact: true }).fill('75');
-  await pageLink(page, 'Calcs').click();
+  await pageLink(page, 'Calculations').click();
   const reopened = await openStat(page, 'Life');
   await expect(reopened.locator('.breakdown-formula')).toBeVisible();
   await expect.poll(async () => Math.round(num(await reopened.locator('.formula-final .formula-result').textContent())))

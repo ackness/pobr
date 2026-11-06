@@ -11,7 +11,7 @@ import { contributionLabel, removalChange } from '../lib/sourceContributions';
 import { activeSkillEffects } from '../lib/skillSelection';
 import { skillDisplayName } from '../lib/skillNames';
 import { unsupportedLineLabel } from '../lib/diagnosticText';
-import { formatStatValue, statMap } from '../lib/statDisplay';
+import { formatNumber, formatStatValue, statFormat, statMap } from '../lib/statDisplay';
 import { deriveFindings, type Finding } from './findings';
 import { AnimatedNumber } from './motion/AnimatedNumber';
 import { useCancellableJob } from './jobs/useCancellableJob';
@@ -21,13 +21,13 @@ import type { Route } from './routes';
 import { words } from './text';
 
 const MAX_HIT = ['Physical', 'Fire', 'Cold', 'Lightning', 'Chaos'] as const;
-const ATTRIBUTION_FIELDS = [['CombinedDPS', 'DPS'], ['TotalEHP', 'EHP'], ['Life', 'Life']] as const;
+const ATTRIBUTION_FIELDS = ['CombinedDPS', 'TotalEHP', 'Life'] as const;
 const int = (value: number) => formatStatValue(value, 'int');
 
 function describe(finding: Finding, lang: Lang): { title: string; detail: string } {
   const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
   switch (finding.kind) {
-    case 'no-main-skill': return { title: w('No main skill is being calculated', '没有可计算的主技能', '沒有可計算的主技能'), detail: w('Choose a damaging skill in the side panel or on Skills.', '在侧栏或技能页选择一个造成伤害的技能。', '在側欄或技能頁選擇一個造成傷害的技能。') };
+    case 'no-main-skill': return { title: w('No calculated skill selected', '尚未选择计算技能', '尚未選擇計算技能'), detail: w('Choose a damaging skill in the side panel or on Skills.', '在侧栏或技能页选择一个造成伤害的技能。', '在側欄或技能頁選擇一個造成傷害的技能。') };
     case 'item-errors': return { title: w(`${finding.slots.length} item(s) could not be read`, `${finding.slots.length} 件装备无法解析`, `${finding.slots.length} 件裝備無法解析`), detail: finding.slots.map(slot => slotLabel(lang, slot)).join(' · ') };
     case 'spirit': return { title: w(`Spirit is over-committed by ${int(-finding.value)}`, `精魂超额保留 ${int(-finding.value)}`, `精魂超額保留 ${int(-finding.value)}`), detail: w('Reservations exceed your Spirit; the calculation does not switch skills off for you.', '技能保留总量超过精魂上限；计算不会替你关闭技能。', '技能保留總量超過精魂上限；計算不會替你關閉技能。') };
     case 'attribute': { const name = statNameLabel(lang, finding.attribute); return { title: w(`${name} ${int(finding.have)} of ${int(finding.need)} required`, `${name}不足：${int(finding.have)} / 需要 ${int(finding.need)}`, `${name}不足：${int(finding.have)} / 需要 ${int(finding.need)}`), detail: w('Some gear or a gem cannot be used at this attribute level.', '有装备或宝石的属性需求未满足。', '有裝備或寶石的屬性需求未滿足。') }; }
@@ -36,7 +36,7 @@ function describe(finding: Finding, lang: Lang): { title: string; detail: string
       : { title: w(`${name} resistance ${int(finding.value)}%`, `${name}抗性 ${int(finding.value)}%`, `${name}抗性 ${int(finding.value)}%`), detail: w(`${int(finding.missing)}% short of the cap.`, `距上限还差 ${int(finding.missing)}%。`, `距上限還差 ${int(finding.missing)}%。`) }; }
     case 'hit-chance': return { title: w(`Hit chance ${formatStatValue(finding.value, 'percent')}`, `命中率 ${formatStatValue(finding.value, 'percent')}`, `命中率 ${formatStatValue(finding.value, 'percent')}`), detail: w('Attacks miss; accuracy is costing damage.', '攻击会落空，命中不足在损失伤害。', '攻擊會落空，命中不足在損失傷害。') };
     case 'net-regen': return { title: w(`Net recovery is ${formatStatValue(finding.value, 'float2')}/s`, `净恢复为 ${formatStatValue(finding.value, 'float2')}/秒`, `淨恢復為 ${formatStatValue(finding.value, 'float2')}/秒`), detail: w('Your own costs and degeneration outpace recovery.', '自身消耗与持续损失超过恢复速度。', '自身消耗與持續損失超過恢復速度。') };
-    case 'unsupported': return { title: w(`${finding.count} modifier line(s) are not calculated`, `${finding.count} 条词条未参与计算`, `${finding.count} 條詞綴未參與計算`), detail: w('Their effect is missing from every number on this page.', '这些词条的效果不在本页任何数值中。', '這些詞綴的效果不在本頁任何數值中。') };
+    case 'unsupported': return { title: `${bindT(lang)('calcs.unsupported')}${lang === 'en-US' ? ': ' : '：'}${finding.count}`, detail: w('Their effect is missing from every number on this page.', '这些词缀的效果不在本页任何数值中。', '這些詞綴的效果不在本頁任何數值中。') };
   }
 }
 
@@ -88,12 +88,12 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
   const job = useCancellableJob<{ version: number; data: AttributionResponse }>();
   const contribution = job.result;
   const contributionBusy = job.running;
-  const [field, setField] = useState<typeof ATTRIBUTION_FIELDS[number][0]>('CombinedDPS');
+  const [field, setField] = useState<typeof ATTRIBUTION_FIELDS[number]>('CombinedDPS');
   const computeContribution = () => {
     const request = session.currentRequest(); if (!request) return;
     const version = session.stateVersion;
     void job.start(async ({ signal }) => {
-      const data = await (await getBackend()).attribution({ request, fields: ATTRIBUTION_FIELDS.map(([id]) => id) });
+      const data = await (await getBackend()).attribution({ request, fields: [...ATTRIBUTION_FIELDS] });
       if (signal.aborted) throw new DOMException('cancelled', 'AbortError');
       return { version, data };
     });
@@ -123,10 +123,10 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
     ? `${tt('overview.lifeAndShield')} ${int(life + shield)} · ` : '';
   const spiritOver = spiritFree !== null && spiritFree < 0;
   const figures = [
-    { id: 'CombinedDPS', label: w('Damage per second', '每秒伤害', '每秒傷害'), value: main?.combined_dps ?? null, format: dash(n => formatStatValue(n, 'float2')), sub: main ? skillName(main.skill_id) : w('No main skill', '未选择主技能', '未選擇主技能'), tone: 'dps' },
+    { id: 'CombinedDPS', label: tt('sidebar.combinedDps'), value: main?.combined_dps ?? null, format: dash(n => formatStatValue(n, 'float2')), sub: main ? skillName(main.skill_id) : w('No calculated skill', '未选择计算技能', '未選擇計算技能'), tone: 'dps' },
     { id: 'TotalEHP', label: w('Effective HP', '有效生命', '有效生命'), value: value('TotalEHP'), format: dash(int), sub: weakest ? tt('overview.weakestHit').replace('{type}', damageTypeLabel(lang, weakest[0])).replace('{value}', int(weakest[1])) : '', tone: 'ehp' },
     { id: 'Life', label: w('Life', '生命', '生命'), value: value('Life'), format: dash(int), sub: `${lifeAndShield}${w('ES', '护盾', '護盾')} ${int(value('EnergyShield') ?? 0)} · ${w('Mana', '魔力', '魔力')} ${int(value('Mana') ?? 0)}`, tone: 'life' },
-    { id: 'SpiritUnreserved', label: spiritOver ? tt('overview.spiritOver') : w('Spirit left', '剩余精魂', '剩餘精魂'), value: spiritOver ? -spiritFree : spiritFree, format: dash(int), sub: spirit === null ? '' : tt('overview.spiritLimit').replace('{value}', int(spirit)), tone: spiritOver ? 'bad' : 'plain' },
+    { id: 'SpiritUnreserved', label: spiritOver ? tt('overview.spiritOver') : statNameLabel(lang, 'SpiritUnreserved'), value: spiritOver ? -spiritFree : spiritFree, format: dash(int), sub: spirit === null ? '' : tt('overview.spiritLimit').replace('{value}', int(spirit)), tone: spiritOver ? 'bad' : 'plain' },
   ];
 
   return <section className="ov" data-stale={view.stale || undefined} aria-labelledby="ov-title">
@@ -155,7 +155,7 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
                   // A resistance shortfall is fixed in Upgrades with the goal already set to "resistances first".
                   const fixResist = finding.kind === 'resist' && finding.element !== 'Chaos';
                   return <Button variant="ghost" size="sm" onClick={() => { if (fixResist) { setGoal({ ...goal, resistanceFirst: true, resistanceTarget: goal.resistanceTarget ?? 75 }); navigate('trade'); } else navigate(finding.route); }}>
-                    {fixResist ? w('Fix in Upgrades', '到提升页补抗性', '到提升頁補抗性') : finding.kind === 'net-regen' ? w('View recovery', '查看恢复', '查看恢復') : finding.kind === 'unsupported' ? w('View modifiers', '查看词条', '查看詞綴') : finding.route === 'items' ? w('View equipment', '查看装备', '查看裝備') : finding.route === 'skills' ? w('View skills', '查看技能', '查看技能') : w('View settings', '查看配置', '查看設定')}<ArrowRight /></Button>; })()}</li>; })}</ul>}
+                    {fixResist ? w('Fix in Upgrades', '到提升页补抗性', '到提升頁補抗性') : finding.kind === 'net-regen' ? w('View recovery', '查看恢复', '查看恢復') : finding.kind === 'unsupported' ? w('View modifiers', '查看词缀', '查看詞綴') : finding.route === 'items' ? w('View equipment', '查看装备', '查看裝備') : finding.route === 'skills' ? w('View skills', '查看技能', '查看技能') : w('View settings', '查看配置', '查看設定')}<ArrowRight /></Button>; })()}</li>; })}</ul>}
         </section>
 
         <section className="ov-sec" aria-labelledby="ov-skills" aria-busy={skillsPending}>
@@ -175,7 +175,7 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
       <div className="ov-col">
         <section className="ov-sec" aria-labelledby="ov-contribution">
           <div className="ov-sec-head"><h2 id="ov-contribution">{tt('calcs.attribution')}</h2>
-            <div className="ov-toggle" role="group" aria-label={w('Measure', '指标', '指標')}>{ATTRIBUTION_FIELDS.map(([id, label]) => <button key={id} type="button" aria-pressed={field === id} onClick={() => setField(id)}>{label === 'DPS' ? w('DPS', '伤害', '傷害') : label === 'EHP' ? w('EHP', '有效生命', '有效生命') : w('Life', '生命', '生命')}</button>)}</div></div>
+            <div className="ov-toggle" role="group" aria-label={w('Measure', '指标', '指標')}>{ATTRIBUTION_FIELDS.map(id => <button key={id} type="button" aria-pressed={field === id} onClick={() => setField(id)}>{statNameLabel(lang, id)}</button>)}</div></div>
           <p className="ov-hint">{tt('calcs.attributionHint')}</p>
           {!contribution || contribution.version !== session.stateVersion
             ? <div className="ov-compute"><p className="ov-muted">{contribution ? w('The build changed since this was measured.', 'BD 已变化，结果已过期。', 'BD 已變化，結果已過期。') : w('See how removing each item or skill group changes the result.', '查看移除每件装备或技能组后，数值会如何变化。', '查看移除每件裝備或技能組後，數值會如何變化。')}</p>
@@ -185,18 +185,18 @@ export function Overview({ session, view, lang, navigate, focusStat }: { session
               : <ol className="ov-rank ov-contrib">{entries.map(({ entry, delta }) => <li key={`${entry.kind}:${entry.id}`}><div>
                 <span className="ov-rank-name">{entry.kind === 'socket_group' ? groupName(Number(entry.id)) : contributionLabel(lang, entry.kind, entry.id)}</span>
                 <span className="ov-bar" data-sign={removalChange(delta) < 0 ? 'neg' : 'pos'}><span style={{ width: `${(Math.abs(delta) / biggest) * 100}%` }} /></span>
-                <span className="ov-rank-value">{tt(delta > 0 ? 'calcs.removalLoss' : 'calcs.removalGain').replace('{value}', formatStatValue(Math.abs(delta), 'float2'))}{baseline > 0 && <em>{lang === 'en-US' ? ' (' : '（'}{((Math.abs(delta) / baseline) * 100).toFixed(1)}%{lang === 'en-US' ? ')' : '）'}</em>}</span></div></li>)}</ol>}
+                <span className="ov-rank-value">{tt(delta > 0 ? 'calcs.removalLoss' : 'calcs.removalGain').replace('{value}', formatStatValue(Math.abs(delta), statFormat(field), lang))}{baseline > 0 && <em>{lang === 'en-US' ? ' (' : '（'}{formatNumber((Math.abs(delta) / baseline) * 100, 1, 1)}%{lang === 'en-US' ? ')' : '）'}</em>}</span></div></li>)}</ol>}
         </section>
 
         <section className="ov-sec" aria-labelledby="ov-trust">
           <h2 id="ov-trust">{w('Calculation coverage', '计算覆盖', '計算涵蓋範圍')}</h2>
           <dl className="ov-facts">
-            <div><dt>{w('Lines not calculated', '未参与计算的词条', '未參與計算的詞綴')}</dt><dd className={calc?.unsupported_modifiers.length ? 'is-warn' : undefined}>{calc ? calc.unsupported_modifiers.length : '—'}</dd></div>
+            <div><dt>{tt('calcs.unsupported')}</dt><dd className={calc?.unsupported_modifiers.length ? 'is-warn' : undefined}>{calc ? calc.unsupported_modifiers.length : '—'}</dd></div>
             <div><dt>{w('Items that failed to parse', '无法解析的装备', '無法解析的裝備')}</dt><dd className={calc?.item_errors.length ? 'is-bad' : undefined}>{calc ? calc.item_errors.length : '—'}</dd></div>
             <div><dt>{w('Game data', '游戏数据', '遊戲資料')}</dt><dd>{calc?.provenance?.data_version ?? session.dataVersion ?? '—'}</dd></div>
             {calc?.provenance?.engine_version && <div><dt>{w('Engine', '计算引擎', '計算引擎')}</dt><dd>{calc.provenance.engine_version}</dd></div>}
           </dl>
-          {calc && calc.unsupported_modifiers.length > 0 && <details className="ov-details"><summary>{w('Show the lines', '查看这些词条', '查看這些詞綴')}</summary>
+          {calc && calc.unsupported_modifiers.length > 0 && <details className="ov-details"><summary>{w('Show the lines', '查看这些词缀', '查看這些詞綴')}</summary>
             <ul>{calc.unsupported_modifiers.map((line, index) => <li key={index} title={line}>{unsupportedLineLabel(line, lang)}</li>)}</ul></details>}
           <p className="ov-hint">{w('Results reflect modeled effects. Review the uncalculated effects above.', '数值仅反映已支持的效果。未计算的内容见上方明细。', '數值僅反映已支援的效果。未計算的內容見上方明細。')}</p>
         </section>

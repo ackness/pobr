@@ -14,7 +14,7 @@ import {
   scoreOf,
   type Objective,
 } from '../../lib/optimize';
-import { STAT_SECTIONS } from '../../lib/statDisplay';
+import { formatNumber, STAT_SECTIONS, formatStatValue } from '../../lib/statDisplay';
 import { AppSelect } from './AppSelect';
 
 /** 目标编辑器的受控状态（字符串态便于输入框直绑；objectiveOf 再解析）。 */
@@ -69,7 +69,7 @@ export function statLabel(id: string, lang: Lang): string {
 }
 
 function fmtNum(value: number, lang: Lang): string {
-  return value.toLocaleString(lang, { maximumFractionDigits: 0 });
+  return formatStatValue(value, 'float2', lang);
 }
 
 interface EditorProps {
@@ -190,7 +190,7 @@ export function OptimizerResults({
   const baseScore = scoreOf(baseline, objective);
   const deltaPct = (score: number): string =>
     baseScore > 0
-      ? `${score >= baseScore ? '+' : ''}${(((score - baseScore) / baseScore) * 100).toFixed(1)}%`
+      ? `${score >= baseScore ? '+' : ''}${formatNumber(((score - baseScore) / baseScore) * 100, 1, 1)}%`
       : '—';
   return (
     <table className="opt-table">

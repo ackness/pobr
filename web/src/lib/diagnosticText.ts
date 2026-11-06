@@ -32,9 +32,9 @@ export function unsupportedLineLabel(raw: string, lang: Lang): string {
 const REASONS: Record<string, readonly [string, string, string]> = {
   unextractable: ['Could not be read from the skill data', '无法从技能数据读取', '無法從技能資料讀取'],
   scalar: ['Scalar multiplier is not modelled', '标量倍率未建模', '純量倍率未建模'],
-  unknown_mod_name: ['Unknown modifier name', '未知的词条名称', '未知的詞綴名稱'],
-  missing_mod_type: ['Modifier type is missing', '缺少词条类型', '缺少詞綴類型'],
-  mod_type: ['Modifier type is not supported', '不支持的词条类型', '不支援的詞綴類型'],
+  unknown_mod_name: ['Unknown modifier name', '未知的词缀名称', '未知的詞綴名稱'],
+  missing_mod_type: ['Modifier type is missing', '缺少词缀类型', '缺少詞綴類型'],
+  mod_type: ['Modifier type is not supported', '不支持的词缀类型', '不支援的詞綴類型'],
   tag: ['Condition tag is not supported', '不支持的条件标签', '不支援的條件標籤'],
   flags: ['Flags are not supported', '不支持的标记', '不支援的標記'],
   keyword_flags: ['Keywords are not supported', '不支持的关键字', '不支援的關鍵字'],

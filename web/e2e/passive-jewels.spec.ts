@@ -206,7 +206,7 @@ test('Upgrades drops a retained jewel position when its socket is unallocated on
   await nav('Upgrades').click();
   await position.click();
   await expect(position).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('button', { name: 'Calculate affix scores', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Calculate modifier scores', exact: true })).toBeEnabled();
 
   await nav('Tree').click();
   await circle(page, socket.skill).dispatchEvent('click');

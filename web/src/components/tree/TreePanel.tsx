@@ -1219,7 +1219,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
             </label>
           ))}
           <span className="attr-distribute-rest">
-            {tt('tree.attrUnassigned')}: {allocatedAttrNodes.length - attrCounts.str - attrCounts.dex - attrCounts.int}
+            {tt('tree.attrUnassigned')}{lang === 'en-US' ? ': ' : '：'}{allocatedAttrNodes.length - attrCounts.str - attrCounts.dex - attrCounts.int}
           </span>
           <details className="tree-shortcuts"><summary>{words(lang, 'Keyboard shortcuts', '快捷键', '快捷鍵')}</summary><p className="tree-hint">{tt('tree.attrHotkeys')}</p></details>
         </>

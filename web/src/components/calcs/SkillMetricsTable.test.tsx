@@ -19,6 +19,20 @@ const row = (skill_id: string, index = 0): SkillMetricsEntry => ({ group_index: 
 const gem = (skill_id: string, tags: string[]): GemCatalogEntry => ({ skill_id, tags, name: skill_id,
   active_effect_ids: [skill_id], is_support: false, is_lineage: false, colour: null, name_zh_cn: null, name_zh_tw: null });
 
+test('skill metrics use the same damage, rate and cost precision as the results panel', () => {
+  harness.catalog = new Map();
+  const report: SkillMetricsResponse = { item_errors: [], skills: [{ ...row('Fireball'), metrics: {
+    ...metrics, combined_dps: 12345.678, average_hit: -12345.678, action_rate: 2, mana_cost: 20.83, life_cost: 1.83,
+  } }] };
+  const session = { socketGroups: [{ enabled: true, gems: [] }], calcParams: {} } as unknown as BuildSession;
+  const html = renderToStaticMarkup(<SkillMetricsTable session={session} lang="zh-CN" report={report} displayed={report} />);
+  expect(html).toContain('<td class="mod-value">12,346</td>');
+  expect(html).toContain('<td class="mod-value">-12,346</td>');
+  expect(html).toContain('<td class="mod-value">2.00</td>');
+  expect(html).toContain('<td class="mod-value">21</td>');
+  expect(html).toContain('<td class="mod-value">2</td>');
+});
+
 test('zero damage is not enough to label a skill non-damaging, and secondary effects do not borrow the host tags', () => {
   const catalog = new Map([['Curse', gem('Curse', ['Spell', 'AppliesCurse'])],
     ['Fireball', gem('Fireball', ['Spell', 'Damage', 'Projectile'])],

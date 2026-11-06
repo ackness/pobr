@@ -32,12 +32,12 @@ export function SkillMetricsTable({ session, lang, report, displayed }: {
     nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
   }
   const columns = [
-    ['combined_dps', 'sidebar.combinedDps'],
-    ['average_hit', 'calcs.averageHit'],
-    ['action_rate', 'calcs.actionRate'],
-    ['mana_cost', 'calcs.manaCost'],
-    ['life_cost', 'calcs.lifeCost'],
-    ['cooldown', 'calcs.cooldown'],
+    ['combined_dps', 'sidebar.combinedDps', 'float2'],
+    ['average_hit', 'calcs.averageHit', 'float2'],
+    ['action_rate', 'calcs.actionRate', 'rate'],
+    ['mana_cost', 'calcs.manaCost', 'int'],
+    ['life_cost', 'calcs.lifeCost', 'int'],
+    ['cooldown', 'calcs.cooldown', 'float2'],
   ] as const;
   return <>
     {unsupported.length > 0 && <details className="skill-metrics-limits">
@@ -77,9 +77,9 @@ export function SkillMetricsTable({ session, lang, report, displayed }: {
               {nonDamaging && <span className="granted-badge">{tt('calcs.nonDamaging')}</span>}
               {entry === highest && entry.metrics!.combined_dps > 0 && <span className="granted-badge">{tt('calcs.highestDps')}</span>}
             </td>
-            {columns.map(([key]) => <td className="mod-value" key={key}>
+            {columns.map(([key, , format]) => <td className="mod-value" key={key}>
               {available && !(nonDamaging && (key === 'combined_dps' || key === 'average_hit'))
-                ? formatStatValue(entry.metrics![key], 'float2') : '—'}
+                ? formatStatValue(entry.metrics![key], format, lang) : '—'}
             </td>)}
             <td className="skill-metrics-diagnostics">
               {report && !available && <p>{tt('calcs.unavailable')}</p>}

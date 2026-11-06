@@ -30,11 +30,11 @@ test('WeGame import preserves gem levels and ranks quiver upgrades', async ({ pa
   await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
   // Guard from a charm is modelled, so nothing in this import is left unsupported: the Overview reports
   // no line as not calculated and offers no list of them.
-  await expect(page.locator('.ov-facts > div').filter({ has: page.locator('dt', { hasText: 'Lines not calculated' }) }).locator('dd'))
+  await expect(page.locator('.ov-facts > div').filter({ has: page.locator('dt', { hasText: 'Modifiers not included' }) }).locator('dd'))
     .toHaveText('0', { timeout: 60_000 });
   await expect(page.locator('.ov-details')).toHaveCount(0);
   await pageLink(page, 'Items').click();
-  await expect(page.getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
   await pageLink(page, 'Skills').click();
   await expect(page.locator('.skill-group').first()).toContainText('Ice Shot');
   // The persisted editing state is what the optimizer and the next reload consume.

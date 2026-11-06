@@ -294,7 +294,7 @@
   .ov-bar { height: .4rem; border-radius: 999px; background: var(--muted); overflow: hidden; }
   .ov-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--primary); opacity: .85; }
   .ov-bar[data-sign='neg'] > span { background: var(--destructive); }
-  .ov-toggle { display: inline-flex; padding: .15rem; border-radius: .45rem; background: var(--muted); }
+  .ov-toggle { display: inline-flex; flex-wrap: wrap; max-width: 100%; padding: .15rem; border-radius: .45rem; background: var(--muted); }
   .ov-toggle button { min-height: 0; padding: .2rem .65rem; border: 0; border-radius: .3rem; background: none; font: inherit; font-size: var(--text-xs); color: var(--muted-foreground); }
   .ov-toggle button[aria-pressed='true'] { background: var(--card); color: var(--foreground); box-shadow: 0 0 0 1px var(--border); }
   .ov-compute { display: grid; gap: .8rem; justify-items: start; }

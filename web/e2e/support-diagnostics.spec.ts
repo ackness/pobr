@@ -9,7 +9,7 @@ const limitLine = 'Remove Bleeding on use';
 const run = (page: Page) => page.getByRole('button', { name: 'Calculate support combinations', exact: true });
 const capacity = (page: Page) => page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
 const baseline = (page: Page) => page.locator('details.support-baseline-unsupported');
-const dps = (page: Page) => statValue(page, /^Total DPS$/).first();
+const dps = (page: Page) => statValue(page, /^Hit DPS$/).first();
 const numeric = (text: string) => Number(text.replaceAll(',', ''));
 
 async function groups(page: Page): Promise<SocketGroupInput[]> {
@@ -94,7 +94,7 @@ test('real baseline limits remain keyboard-readable across first page visits and
   const before = await groups(page);
   await capacity(page).fill('2');
   await page.getByRole('checkbox', { name: 'Include lineage supports', exact: true }).uncheck();
-  await choose(page, page.getByRole('combobox', { name: 'Objective', exact: true }), 'Max total DPS');
+  await choose(page, page.getByRole('combobox', { name: 'Objective', exact: true }), 'Max Hit DPS');
   await completeSearch(page);
 
   const summary = baseline(page).locator('summary');
@@ -128,12 +128,12 @@ test('real baseline limits remain keyboard-readable across first page visits and
       quality: Number(chip.getAttribute('data-quality')), stat_set_index: statSet === null ? 1 : Number(statSet) };
   }));
   expect(expected.every(gem => gem.level > 0 && gem.quality >= 0)).toBe(true);
-  const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^DPS / }).innerText();
-  const preview = numeric(metric.match(/^DPS ([\d,.]+)/)![1]);
+  const metric = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Hit DPS / }).innerText();
+  const preview = numeric(metric.match(/^Hit DPS ([\d,.]+)/)![1]);
 
-  for (const name of ['Calcs', 'Tree', 'Upgrades']) {
+  for (const name of ['Calculations', 'Tree', 'Upgrades']) {
     await goTo(page, name);
-    await expect(page.locator(name === 'Calcs' ? '.calcs-page' : name === 'Tree' ? '.tree-canvas' : '.upgrade-paths'))
+    await expect(page.locator(name === 'Calculations' ? '.calcs-page' : name === 'Tree' ? '.tree-canvas' : '.upgrade-paths'))
       .toBeVisible();
     await expect(run(page)).toHaveCount(0);
     await goTo(page, 'Skills');

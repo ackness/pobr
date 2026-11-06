@@ -1,10 +1,11 @@
+import { formatStatValue, statFormat, formatNumber } from '../../lib/statDisplay';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppInput } from '../shared/controls';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { formatApiError } from '../../api/error';
 import type { AttributeChoice, CalculateBuildRequest, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { bindT, messages, type Lang } from '../../lib/i18n';
+import { bindT, statNameLabel, messages, type Lang } from '../../lib/i18n';
 import { scoreOf, type Objective } from '../../lib/optimize';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import {
@@ -252,9 +253,9 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
   const text = messages(lang, 'treeOptimizer');
   const colon = lang === 'en-US' ? ': ' : '：';
   const tt = bindT(lang);
-  const number = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  const number = (value: number) => formatNumber(value);
   const delta = (value: number, baseline: number) => baseline > 0
-    ? `${value >= baseline ? '+' : ''}${((value / baseline - 1) * 100).toFixed(1)}%`
+    ? `${value >= baseline ? '+' : ''}${formatNumber((value / baseline - 1) * 100, 1, 1)}%`
     : `${value >= baseline ? '+' : ''}${number(value - baseline)}`;
   const currentStats = evaluated?.baseline ?? {};
 
@@ -295,7 +296,7 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
         {error && <p className="opt-error">{error}</p>}
         {evaluated && <PlannerResultsNotice count={evaluated.plans.length} lang={lang}>
           <div className="tree-planner-summary">
-            {evaluated.evaluated > 0 && <span>{text.baseline}{colon}DPS {number(currentStats.TotalDPS ?? 0)} · EHP {number(currentStats.TotalEHP ?? 0)}</span>}
+            {evaluated.evaluated > 0 && <span>{text.baseline}{colon}{statNameLabel(lang, 'TotalDPS')} {formatStatValue(currentStats.TotalDPS ?? 0, statFormat('TotalDPS'), lang)} · {statNameLabel(lang, 'TotalEHP')} {formatStatValue(currentStats.TotalEHP ?? 0, statFormat('TotalEHP'), lang)}</span>}
             <details><summary>{messages(lang, 'nodePower').calculationDetails}</summary><span>{text.evaluated}{colon}{evaluated.evaluated}</span><p>{text.data}{colon}{completed!.dataVersion ?? text.unknownVersion} · {text.tree}{colon}{completed!.treeVersion ?? text.defaultTree}</p></details>
             {preview !== null && <AppButton onClick={() => show(null)}>{text.clear}</AppButton>}
           </div>
@@ -330,8 +331,8 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
               <div className="tree-plan-metrics">
                 <span>{text.score} <b>{delta(scoreOf(plan.stats, completed!.objective), scoreOf(currentStats, completed!.objective))}</b></span>
                 {(['TotalDPS', 'TotalEHP', 'Life'] as const).map(stat => <span key={stat}>
-                  {stat === 'TotalDPS' ? 'DPS' : stat === 'TotalEHP' ? 'EHP' : tt('opt.objLife')} <b className={(plan.stats[stat] ?? 0) >= (currentStats[stat] ?? 0) ? 'is-positive' : 'is-negative'}>{delta(plan.stats[stat] ?? 0, currentStats[stat] ?? 0)}</b>
-                  <small>{number(currentStats[stat] ?? 0)} → <output data-stat={stat}>{number(plan.stats[stat] ?? 0)}</output></small>
+                  {statNameLabel(lang, stat)} <b className={(plan.stats[stat] ?? 0) >= (currentStats[stat] ?? 0) ? 'is-positive' : 'is-negative'}>{delta(plan.stats[stat] ?? 0, currentStats[stat] ?? 0)}</b>
+                  <small>{formatStatValue(currentStats[stat] ?? 0, statFormat(stat), lang)} → <output data-stat={stat}>{formatStatValue(plan.stats[stat] ?? 0, statFormat(stat), lang)}</output></small>
                 </span>)}
               </div>
               {plan.deallocate.length > 0 && <div className="tree-plan-swap">

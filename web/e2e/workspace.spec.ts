@@ -145,8 +145,8 @@ test('tabs of one browser share the saved skill sets', async ({ page, context })
   const stored = async (tab: Page): Promise<string[]> => (await state(tab, 'pobr-v2-library')).skillSets.map((set: { name: string }) => set.name);
   const save = async (tab: Page, name: string) => {
     await tab.locator('details.skills-advanced').evaluate(details => { (details as HTMLDetailsElement).open = true; });
-    await tab.getByRole('textbox', { name: 'Set name…', exact: true }).fill(name);
-    await tab.getByRole('button', { name: 'Save current as set', exact: true }).click();
+    await tab.getByRole('textbox', { name: 'Skill template name…', exact: true }).fill(name);
+    await tab.getByRole('button', { name: 'Save as skill template', exact: true }).click();
   };
 
   // An import already leaves a set named after the class; the others are counted on top of it.
@@ -190,7 +190,7 @@ test('navigation, settings and confirmations retain the current editor', async (
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(notes).toHaveValue('Persistent stage note');
   expect((await state(page)).state).toEqual(before);
-  await nav(page, 'Calcs').click(); await expect(page).toHaveURL(/\/calcs$/);
+  await nav(page, 'Calculations').click(); await expect(page).toHaveURL(/\/calcs$/);
   await page.goBack(); await expect(page.locator('#build-heading')).toBeVisible();
   await expect(notes).toHaveValue('Persistent stage note');
   await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
@@ -329,7 +329,7 @@ test('a retained skill optimizer keeps its results through the first visit to a 
   await page.getByRole('button', { name: 'Calculate support combinations', exact: true }).click();
   await expect(page.locator('.support-plan').first()).toBeVisible({ timeout: 90_000 });
   const receipt = (await page.locator('.support-results').textContent())!; // textContent: toHaveText compares it, innerText applies CSS text-transform
-  await nav(page, 'Calcs').click();
+  await nav(page, 'Calculations').click();
   await expect(page.locator('.shell-panel-loading')).toHaveCount(0, { timeout: 60_000 });
   await expect(page.locator('#breakdown-Life')).toBeVisible();
   await nav(page, 'Skills').click();
@@ -360,7 +360,7 @@ test('real WASM details stay lazy and configuration tracking follows the active 
   });
   const requests = () => page.evaluate(() => (window as typeof window & { calcRequests: Array<{ breakdowns?: string[]; config_context?: boolean; breakdown_actor?: unknown }> }).calcRequests);
   await importBuild(page);
-  await nav(page, 'Calcs').click();
+  await nav(page, 'Calculations').click();
   await expect(page.locator('#breakdown-Life')).toBeVisible();
   expect((await requests()).filter(request => request.breakdowns?.length)).toHaveLength(0);
   await page.locator('#breakdown-Life').click();
@@ -368,7 +368,7 @@ test('real WASM details stay lazy and configuration tracking follows the active 
   expect((await requests()).filter(request => request.breakdowns?.length)).toEqual([
     expect.objectContaining({ breakdowns: ['Life'], breakdown_actor: { kind: 'player' } }),
   ]);
-  await nav(page, 'Config').click();
+  await nav(page, 'Configuration').click();
   await expect.poll(async () => (await requests()).at(-1)?.config_context).toBe(true);
   await openBuilds(page);
   await page.getByLabel('Level', { exact: true }).fill('61');

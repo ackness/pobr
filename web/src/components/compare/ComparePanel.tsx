@@ -8,11 +8,11 @@ import { useSkillCatalog } from '../../hooks/useSkillName';
 import { formatApiError } from '../../api/error';
 import type { SocketGroupInput } from '../../api/types';
 import { compareBuilds, comparisonGemForm, hasComparisonSource, isPercentageStat, nearestCompareStage, configDifferences, copySection, diffText, formatComparisonDelta, itemDifferences, resolvedTreeVersion, skillDifferences, weaponDifferences, type ConfigBasis, type CopySection } from '../../lib/compare';
-import { bindT, statNameLabel, t, type Lang } from '../../lib/i18n';
+import { bindT, enemyTierLabel, statNameLabel, t, type Lang } from '../../lib/i18n';
 import { activeSkillEffects } from '../../lib/skillSelection';
 import { skillDisplayName } from '../../lib/skillNames';
 import { unsupportedLineLabel } from '../../lib/diagnosticText';
-import { STAT_SECTIONS, formatStatValue } from '../../lib/statDisplay';
+import { formatNumber, STAT_SECTIONS, formatStatValue } from '../../lib/statDisplay';
 import { PageHeader } from '../shared/PageHeader';
 import { Button } from '../ui/button';
 import { words } from '../../app/text';
@@ -135,7 +135,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
   const skillChanges = a && b ? skillDifferences(a.saved.state, b.saved.state) : [];
   const configChanges = a && b ? [
     ...configDifferences(a.saved.state, b.saved.state).map(row => ({ ...row, action: { kind: 'config', key: row.key } as CopySection })),
-    { key: tt('compare.enemy'), before: a.saved.state.params.enemy_tier, after: b.saved.state.params.enemy_tier, action: { kind: 'enemy' } as CopySection },
+    { key: tt('compare.enemy'), before: a.saved.state.params.enemy_tier === undefined ? undefined : enemyTierLabel(lang, a.saved.state.params.enemy_tier), after: b.saved.state.params.enemy_tier === undefined ? undefined : enemyTierLabel(lang, b.saved.state.params.enemy_tier), action: { kind: 'enemy' } as CopySection },
     { key: tt('compare.mods'), before: a.saved.state.params.custom_modifier_blocks ?? a.saved.state.params.extra_modifiers,
       after: b.saved.state.params.custom_modifier_blocks ?? b.saved.state.params.extra_modifiers, action: { kind: 'modifiers' } as CopySection },
   ].filter(row => JSON.stringify(row.before) !== JSON.stringify(row.after)) : [];
@@ -188,13 +188,13 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
                 <tbody>{rows.map(({ def, row: maybe }) => { const row = maybe!; const tone = deltaTone(row.id, row.delta); return <tr key={row.id} data-stat={row.id}>
                   <th scope="row">{def.label[lang]}</th>{[row.before, row.after].map((number, i) => <td key={i} data-label={i === 0 ? 'A' : 'B'}>{typeof number === 'number' && Number.isFinite(number) ? formatStatValue(number, def.format, lang) : number === Infinity ? '∞' : number === -Infinity ? '−∞' : <span title={tt('compare.unavailable')}>—</span>}</td>)}
                   <td className="cmp-delta" data-tone={tone} data-label={tt(isPercentageStat(def.format) ? 'compare.points' : 'compare.delta')} title={isPercentageStat(def.format) ? tt('compare.points') : undefined}>{formatComparisonDelta(row.delta, def.format, lang)}</td>
-                  <td className="cmp-delta" data-tone={tone} data-label={tt('compare.percent')}>{row.percent === null ? '—' : `${row.percent > 0 ? '+' : ''}${row.percent.toFixed(1)}%`}</td>
+                  <td className="cmp-delta" data-tone={tone} data-label={tt('compare.percent')}>{row.percent === null ? '—' : `${row.percent > 0 ? '+' : ''}${formatNumber(row.percent, 1, 1)}%`}</td>
                 </tr>; })}</tbody></table></div>;
             })}
             {changedOnly && counts.stats === 0 && <p className="cmp-none">{tt('compare.none')}</p>}
             <p className="cmp-note">{tt('compare.basisHint')} · {session.dataVersion}</p>
             <details className="cmp-details" open={[value.before, value.after].some(output => output.unsupported_modifiers.length || output.item_errors.length)}><summary>{tt('compare.diagnostics')}</summary>{[value.before, value.after].map((output, index) => <div key={index}>
-              <strong>{index === 0 ? 'A' : 'B'} · {tt('sidebar.mainSkill')}: {output.main_skill ? skillDisplayName(output.main_skill.skill_id, lang, catalog) : absent}</strong>
+              <strong>{index === 0 ? 'A' : 'B'} · {tt('sidebar.mainSkill')}{lang === 'en-US' ? ': ' : '：'}{output.main_skill ? skillDisplayName(output.main_skill.skill_id, lang, catalog) : absent}</strong>
               <ul>{[...output.unsupported_modifiers.map(raw => ({ raw, text: unsupportedLineLabel(raw, lang) })), ...output.item_errors.map(error => { const text = `${error.slot}: ${error.message}`; return { raw: text, text }; })].map(({ raw, text }, i) => <li key={i} title={raw}>{text}</li>)}</ul>
             </div>)}</details>
           </article>}
@@ -229,7 +229,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
             dataVersion={session.dataVersion} meta={session.treeMeta} lang={lang} />
         </TabsPrimitive.Content>
       </> : <div className="cmp-empty"><p>{tt('compare.noBaseline')}</p><p>{tt('compare.needStages')}</p>
-        <Button onClick={() => goTo('build')}>{words(lang, 'Open the BD library', '前往 BD 库', '前往 BD 庫')}</Button></div>}
+        <Button onClick={() => goTo('build')}>{words(lang, 'Open Build library', '前往 BD 库', '前往 BD 庫')}</Button></div>}
     </TabsPrimitive.Root>
   </section>;
 }

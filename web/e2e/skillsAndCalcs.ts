@@ -18,7 +18,7 @@ export async function importBuild(page: Page, code: string) {
  */
 export async function openStat(page: Page, id: string): Promise<Locator> {
   const detail = page.locator('#calcs-detail');
-  if (!(await detail.count())) await pageLink(page, 'Calcs').click();
+  if (!(await detail.count())) await pageLink(page, 'Calculations').click();
   const row = page.locator(`#breakdown-${id}`);
   if (!await row.isVisible()) await page.getByRole('searchbox').fill(id);
   await row.click();

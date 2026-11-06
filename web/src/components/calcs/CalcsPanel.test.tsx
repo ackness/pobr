@@ -179,13 +179,14 @@ test.each([[5000, 5000], [0, 5000], [5000, 0]])('zero DPS components with positi
   expect(html).not.toContain('class="calcs-minion-damage"');
 });
 
-test.each([['Life', 1693.83, '1,694'], ['TotalDPS', 5307.37, '5,307'], ['CritChance', 22.35, '22.4%'], ['FireResist', 20, '20%']] as const)(
+test.each([['Life', 1693.83, '1,694'], ['Life', -12345.67, '-12,346'], ['TotalDPS', 5307.37, '5,307'], ['TotalDPS', -12345.67, '-12,346'], ['CritChance', 22.35, '22.4%'], ['FireResist', 20, '20%']] as const)(
   'final %s result uses the header format', (stat, value, expected) => {
     const breakdown: Breakdown = { ...empty, actor: { kind: 'minion', index: 0 }, formula: {
       steps: [{ op: 'base', operand: value, result: value }], value,
     } };
     const html = renderToStaticMarkup(<BreakdownTable breakdown={breakdown} stat={stat} lang="en-US" />);
     expect(html).toContain(`<tr class="formula-final"><th scope="row">Result</th><td></td><td class="formula-result">${expected}</td></tr>`);
+    expect(html).toContain(`<td class="formula-operand"></td><td class="formula-result">${expected}</td></tr>`);
     expect(html).toContain('<h4 class="breakdown-heading">How it&#x27;s calculated</h4>');
   },
 );

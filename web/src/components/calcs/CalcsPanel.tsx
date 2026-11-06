@@ -21,7 +21,7 @@ import type {
   CalculateBuildResponse,
 } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { formatStatValue, statFormat, statMap } from '../../lib/statDisplay';
+import { formatNumber, formatStatValue, statFormat, statMap } from '../../lib/statDisplay';
 import {
   bindT,
   damageTypeLabel,
@@ -63,7 +63,7 @@ const MOD_TYPE_ORDER = ['BASE', 'INC', 'MORE', 'OVERRIDE', 'FLAG', 'LIST'];
 
 /** 数字统一格式：千分位 + 最多 2 位小数（清掉浮点尾巴）。 */
 function fmtNum(value: number): string {
-  return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  return formatNumber(value);
 }
 
 /** 词条展示清洗：剥 `[A|B]` 内部标注。 */
@@ -217,7 +217,7 @@ function HitDamageView({ damage, lang }: { damage: HitDamageTable; lang: Lang })
         </tfoot>
       </table>
       {damage.damage_effect !== 1 && (
-        <p className="breakdown-note">{tt('calcs.damage.effect')}: ×{fmtNum(damage.damage_effect)}</p>
+        <p className="breakdown-note">{tt('calcs.damage.effect')}{lang === 'en-US' ? ': ' : '：'}×{fmtNum(damage.damage_effect)}</p>
       )}
       {moved && (
         <>
@@ -734,7 +734,7 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
                 <tr key={i} className={`formula-step formula-${step.op}`}>
                   <th scope="row">{tt(`calcs.step.${step.op}`)}</th>
                   <td className="formula-operand">{formulaOperand(step)}</td>
-                  <td className="formula-result">{fmtNum(step.result)}</td>
+                  <td className="formula-result">{i === breakdown.formula!.steps.length - 1 ? formatStatValue(step.result, statFormat(stat ?? ''), lang) : fmtNum(step.result)}</td>
                 </tr>
               ))}
               <tr className="formula-final">
@@ -749,14 +749,14 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
         <>
           <div className="breakdown-summary">
             <span>
-              {tt('calcs.baseTotal')}: <strong>{fmtNum(breakdown.base_total)}</strong>
+              {tt('calcs.baseTotal')}{lang === 'en-US' ? ': ' : '：'}<strong>{fmtNum(breakdown.base_total)}</strong>
             </span>
             <span>
-              {tt('calcs.incTotal')}: <strong>{fmtNum(breakdown.inc_total)}%</strong>
+              {tt('calcs.incTotal')}{lang === 'en-US' ? ': ' : '：'}<strong>{fmtNum(breakdown.inc_total)}%</strong>
             </span>
             {breakdown.more_total !== 1 && (
               <span>
-                {tt('calcs.moreTotal')}: <strong>×{fmtNum(breakdown.more_total)}</strong>
+                {tt('calcs.moreTotal')}{lang === 'en-US' ? ': ' : '：'}<strong>×{fmtNum(breakdown.more_total)}</strong>
               </span>
             )}
           </div>
@@ -798,15 +798,15 @@ export function FullDpsView({ calc, lang }: { calc: CalculateBuildResponse | nul
     {full && full.skills.length > 0 ? <>
       <p className="calcs-hint">{tt('skills.fullDpsHint')}</p>
       <div className="breakdown-summary">
-        <span>{statNameLabel(lang, 'FullDPS')}: <strong>{fmtNum(full.dps)}</strong></span>
-        <span>{statNameLabel(lang, 'FullDotDPS')}: <strong>{fmtNum(full.dot_dps)}</strong></span>
+        <span>{statNameLabel(lang, 'FullDPS')}{lang === 'en-US' ? ': ' : '：'}<strong>{formatStatValue(full.dps, statFormat('FullDPS'), lang)}</strong></span>
+        <span>{statNameLabel(lang, 'FullDotDPS')}{lang === 'en-US' ? ': ' : '：'}<strong>{formatStatValue(full.dot_dps, statFormat('FullDotDPS'), lang)}</strong></span>
       </div>
       <div className="breakdown-scroll"><table className="breakdown-table full-dps-table">
         <caption>{tt('calcs.fullDpsContribution')}</caption>
         <thead><tr><th>{tt('calcs.skill')}</th><th>{tt('skills.count')}</th><th>{tt('calcs.fullDpsContribution')}</th><th>{tt('calcs.diagnostics')}</th></tr></thead>
         <tbody>{full.skills.map(row => <tr key={`${row.group_index}-${row.active_skill_index}`}>
           <th>{tt('calcs.group')} {row.group_index + 1} · {skillName(row.skill_id)}</th><td>{fmtNum(row.count)}</td>
-          <td>{row.error ? '—' : fmtNum(row.dps)}</td><td>{row.error}{row.unsupported_modifiers.length > 0 && <details><summary>{tt('calcs.unsupported')} ({row.unsupported_modifiers.length})</summary>
+          <td>{row.error ? '—' : formatStatValue(row.dps, statFormat('FullDPS'), lang)}</td><td>{row.error}{row.unsupported_modifiers.length > 0 && <details><summary>{tt('calcs.unsupported')} ({row.unsupported_modifiers.length})</summary>
             <ul>{row.unsupported_modifiers.map((issue, index) => <li key={index}>{issue}</li>)}</ul></details>}</td>
         </tr>)}</tbody>
       </table></div>
@@ -946,7 +946,7 @@ export function AttributionView({ session, lang }: { session: BuildSession; lang
               <tr className="attribution-baseline">
                 <td>{tt('calcs.baseline')}</td>
                 {fields.map((f) => (
-                  <td key={f}>{formatStatValue(report.baseline[f] ?? null, 'float2')}</td>
+                  <td key={f}>{formatStatValue(report.baseline[f] ?? null, statFormat(f), lang)}</td>
                 ))}
               </tr>
               {[...report.entries]
@@ -964,8 +964,8 @@ export function AttributionView({ session, lang }: { session: BuildSession; lang
                       const pct = baseline !== 0 ? (delta / baseline) * 100 : 0;
                       return (
                         <td key={f} className={delta > 0 ? 'delta-pos' : delta < 0 ? 'delta-neg' : ''}>
-                          {delta === 0 ? '—' : `${delta > 0 ? '+' : '-'}${formatStatValue(Math.abs(delta), 'float2')}`}
-                          {Math.abs(pct) >= 0.05 && <span className="delta-pct">{lang === 'en-US' ? ' (' : '（'}{pct.toFixed(1)}%{lang === 'en-US' ? ')' : '）'}</span>}
+                          {delta === 0 ? '—' : `${delta > 0 ? '+' : '-'}${formatStatValue(Math.abs(delta), statFormat(f), lang)}`}
+                          {Math.abs(pct) >= 0.05 && <span className="delta-pct">{lang === 'en-US' ? ' (' : '（'}{formatNumber(pct, 1, 1)}%{lang === 'en-US' ? ')' : '）'}</span>}
                         </td>
                       );
                     })}
@@ -1113,7 +1113,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
       onChange={event => { setActor(event.target.value); setOpen(null); }}>
       <option value="player">{tt('minion.player')}</option>
       {(calc?.minions ?? []).map(minion => <option key={actorKey(minion)} value={actorKey(minion)}>
-        {tt('minion.title')}: {minionName(minion) || tt('minion.unavailable')} · {minion.index + 1}
+        {tt('minion.title')}{lang === 'en-US' ? ': ' : '：'}{minionName(minion) || tt('minion.unavailable')} · {minion.index + 1}
       </option>)}
     </AppSelectControl>
   </label>;
@@ -1142,7 +1142,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
     ['skills', tt('calcs.skillMetrics')],
     ['full-dps', calcsLabel(lang, 'fullDps')],
     ['attribution', tt('calcs.attribution')],
-    ['ledger', words(lang, 'Ledger', '词条账本', '詞綴帳本')],
+    ['ledger', words(lang, 'Modifier ledger', '词缀账本', '詞綴帳本')],
   ] as const;
   const visibleSections = sections.filter(section => category === 'all' || category === section.category)
     .map(section => ({ ...section, names: commonOnly && !query.trim() && category === 'all'
@@ -1159,7 +1159,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
           <div className="calcs-metric-browser" id="calcs-metric-browser" tabIndex={-1}>
             <div className="calcs-context-bar" aria-label={calcsLabel(lang, 'context')}>
               {actorPicker || <strong>{actorLabel}</strong>}
-              {skillId && <span>{tt('calcs.skill')}: <strong>{skillName(skillId)}</strong></span>}
+              {skillId && <span>{tt('calcs.skill')}{lang === 'en-US' ? ': ' : '：'}<strong>{skillName(skillId)}</strong></span>}
               {session.busy && <span role="status">{calcsLabel(lang, 'stale')}</span>}
             </div>
             <div className="calcs-filters">

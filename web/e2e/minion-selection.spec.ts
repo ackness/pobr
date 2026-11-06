@@ -41,7 +41,7 @@ test('choose a companion and its skill, inspect minion breakdowns, and preserve 
   }
   await page.setViewportSize(desktopSize);
 
-  await goTo(page, 'Calcs');
+  await goTo(page, 'Calculations');
   // The metric list shows the values of the chosen actor: the player first, then the minion.
   const life = page.locator('#breakdown-Life strong');
   await expect(life).toBeVisible();

@@ -216,7 +216,7 @@ test('planning catalogs stay on the initialized snapshot after a deployment', as
     return route.abort();
   });
   await pageLink(page, 'Skills').click();
-  await expect(page.getByRole('heading', { name: 'Skill groups', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Skills', exact: true })).toBeVisible();
   await expect(page.getByPlaceholder('Add a skill group…')).toBeEnabled();
   await pageLink(page, 'Upgrades').click();
   await expect(page.getByRole('heading', { name: 'Upgrades', exact: true })).toBeVisible();

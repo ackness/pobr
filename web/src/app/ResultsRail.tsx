@@ -5,7 +5,7 @@ import type { BuildSession } from '../hooks/useBuildSession';
 import { useSkillCatalog } from '../hooks/useSkillName';
 import { activeSkillEffects } from '../lib/skillSelection';
 import { skillDisplayName } from '../lib/skillNames';
-import { STAT_SECTIONS, formatStatValue, statMap } from '../lib/statDisplay';
+import { formatNumber, STAT_SECTIONS, formatStatValue, statMap } from '../lib/statDisplay';
 import { detailKind } from '../lib/statDetails';
 import { bindT, damageTypeLabel, enemyTierLabel, statNameLabel, type Lang } from '../lib/i18n';
 import { AppSelect } from '../components/shared/AppSelect';
@@ -52,7 +52,7 @@ function useRecent<T>(value: T | undefined, ms: number): T | undefined {
 
 function percentText(change: StatChange) {
   if (change.percent === null) return `${change.delta > 0 ? '+' : '−'}${formatStatValue(Math.abs(change.delta), 'float2')}`;
-  return `${change.percent > 0 ? '+' : '−'}${Math.abs(change.percent).toFixed(1)}%`;
+  return `${change.percent > 0 ? '+' : '−'}${formatNumber(Math.abs(change.percent), 1, 1)}%`;
 }
 
 interface RowProps { label: string; value: ReactNode; color?: string; change?: StatChange; onOpen?: () => void; pin?: { on: boolean; toggle: () => void; label: string } }
@@ -92,7 +92,7 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
         const effect = catalog.size ? activeSkillEffects(group, catalog)[(group.main_active_skill ?? 1) - 1] : undefined;
         return { value: String(index), label: `${index + 1}. ${effect ? name(effect.skillId) : tt('calcs.unavailable')}${group.enabled ? '' : ` ${tt('sidebar.disabledGroup')}`}` };
       })} />}
-    <div className="rail-scenario"><span>{w('Against', '对象', '對象')}</span>
+    <div className="rail-scenario"><span>{w('Enemy tier', '敌人档位', '敵人檔位')}</span>
       <AppSelect ariaLabel={w('Enemy tier', '敌人档位', '敵人檔位')} value={enemy === 'custom' ? '' : enemy} placeholder={w('Custom', '自定义', '自訂')} disabled={session.busy}
         onChange={tier => session.updateParams({ enemy_tier: tier as EnemyTier })} options={TIERS.map(tier => ({ value: tier, label: enemyTierLabel(lang, tier) }))} /></div>
     {route !== 'overview' && calc && groups.length > 0 && <button type="button" className="rail-health" title={tt('sidebar.viewOverview')} data-state={findings.length === 0 ? 'ok' : findings.some(item => item.severity === 'bad') ? 'bad' : 'warn'} onClick={toOverview}>
@@ -101,7 +101,7 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
       <ChevronRight /></button>}
     {groups.length === 0 && <p className="rail-empty">{w('Add a skill to see damage.', '添加技能后即可查看伤害。', '新增技能後即可查看傷害。')}</p>}
     {groups.length > 0 && !mainSkill && <p className="rail-empty">{view.stale && !calc ? w('Calculating…', '计算中…', '計算中…') : tt('sidebar.noMainSkill')}</p>}
-    {mainSkill && mainSkill.group_index !== selected && <p className="rail-empty">{tt('sidebar.computedSkill')}: {name(mainSkill.skill_id)}</p>}
+    {mainSkill && mainSkill.group_index !== selected && <p className="rail-empty">{tt('sidebar.computedSkill')}{lang === 'en-US' ? ': ' : '：'}{name(mainSkill.skill_id)}</p>}
     {mainSkill && <>
       <div className="rail-hero">
         <span className="rail-hero-label">{tt('sidebar.combinedDps')}</span>
@@ -119,7 +119,7 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
         {parts.map(part => <div className="rail-share-row" role="listitem" key={part.damage_type}>
           <span className="rail-share-dot" style={{ background: DAMAGE_COLOR[part.damage_type] ?? 'var(--primary)' }} />
           <span className="rail-label">{damageTypeLabel(lang, part.damage_type)}</span>
-          <span className="rail-value">{((part.avg / total) * 100).toFixed(1)}%</span>
+          <span className="rail-value">{formatNumber((part.avg / total) * 100, 1, 1)}%</span>
         </div>)}
       </div>}
     </>}

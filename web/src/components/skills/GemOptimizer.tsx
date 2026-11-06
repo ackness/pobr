@@ -7,8 +7,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CalculateBuildRequest } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
-import { bindT, type Lang } from '../../lib/i18n';
-import { statMap } from '../../lib/statDisplay';
+import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
+import { formatStatValue, statFormat, formatNumber, statMap } from '../../lib/statDisplay';
 import { supportText } from '../../lib/supportI18n';
 import type { Objective } from '../../lib/optimize';
 import { applySupportPlan, eligibleSupports, lineageAvailable, optimizeSupports, type SupportMetadata, type SupportOptimization } from '../../lib/supportOptimizer';
@@ -155,9 +155,9 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     invalidate();
     session.setSocketGroups(groups);
   };
-  const number = (value: number) => value.toLocaleString(lang, { maximumFractionDigits: 1 });
+  const number = (value: number) => formatNumber(value);
   const change = (before: number, after: number) => before > 0
-    ? `${after >= before ? '+' : ''}${((after / before - 1) * 100).toFixed(1)}%` : `${after >= before ? '+' : ''}${number(after - before)}`;
+    ? `${after >= before ? '+' : ''}${formatNumber((after / before - 1) * 100, 1, 1)}%` : `${after >= before ? '+' : ''}${number(after - before)}`;
 
   if (!active) return null;
 
@@ -212,29 +212,29 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const errorBlock = error && <p className="opt-error">{error}</p>;
   const resultsBlock = result && <div className="support-results">
     <div className="support-baseline"><strong>{st('baseline')}</strong>
-      <span>DPS {number(result.baseline.TotalDPS ?? 0)}</span><span>EHP {number(result.baseline.TotalEHP ?? 0)}</span>
+      <span>{statNameLabel(lang, 'TotalDPS')} {formatStatValue(result.baseline.TotalDPS ?? 0, statFormat('TotalDPS'), lang)}</span><span>{statNameLabel(lang, 'TotalEHP')} {formatStatValue(result.baseline.TotalEHP ?? 0, statFormat('TotalEHP'), lang)}</span>
     </div>
     <details className="support-calculation-details">
     <summary>{st('calculationDetails')}</summary>
     <p className="skills-hint">{st('results')} {result.evaluated} · {st('unsupported')} {result.unmodeled}</p>
     <p className="skills-hint">{st('data')}{lang === 'en-US' ? ': ' : '：'}{result.dataVersion ?? st('unknownVersion')} · {st('tree')}{lang === 'en-US' ? ': ' : '：'}{result.request.tree_version ?? st('defaultTree')}</p>
     {result.baselineUnsupported.length > 0 && <details className="support-diagnostics support-baseline-unsupported">
-      <summary>{st('baselineLimits')}: {result.baselineUnsupported.length}</summary>
+      <summary>{st('baselineLimits')}{lang === 'en-US' ? ': ' : '：'}{result.baselineUnsupported.length}</summary>
       <p className="skills-hint">{st('baselineLimitsHint')}</p>
       <ul>{result.baselineUnsupported.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
     </details>}
     {result.excluded.length > 0 && <details className="support-diagnostics">
-      <summary>{st('diagnosticExcluded')}: {result.excluded.length}</summary>
+      <summary>{st('diagnosticExcluded')}{lang === 'en-US' ? ': ' : '：'}{result.excluded.length}</summary>
       <p className="skills-hint">{st('diagnosticExcludedHint')}</p>
       <ol className="support-diagnostic-excluded">{result.excluded.map((edit, index) => <li key={index}>
         <details>
-          <summary>{st('completeSet')}: {edit.supports.map(gem => gemName(gem.skill_id)).join(' · ') || st('noSupports')}</summary>
+          <summary>{st('completeSet')}{lang === 'en-US' ? ': ' : '：'}{edit.supports.map(gem => gemName(gem.skill_id)).join(' · ') || st('noSupports')}</summary>
           <ul className="support-diagnostic-gems">{edit.supports.map(gem => <li key={gem.skill_id} data-skill-id={gem.skill_id}>
             {gemName(gem.skill_id)} · {st('level')} {gem.level} · {st('quality')} {gem.quality} · {st('statSet')} {gem.stat_set_index ?? 1}
           </li>)}</ul>
           {edit.unsupported.length > 0 && <><p>{st('newLimits')}</p>
             <ul>{edit.unsupported.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul></>}
-          {edit.error && <p className="opt-error">{st('engineError')}: {edit.error}</p>}
+          {edit.error && <p className="opt-error">{st('engineError')}{lang === 'en-US' ? ': ' : '：'}{edit.error}</p>}
           {edit.invalidStats && <p className="opt-error">{st('invalidStats')}</p>}
         </details>
       </li>)}</ol>
@@ -259,7 +259,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
         const before = result.baseline[stat] ?? 0;
         const after = plan.stats[stat] ?? 0;
         return <span key={stat} className={after >= before ? 'is-positive' : 'is-negative'}>
-          {stat === 'TotalDPS' ? 'DPS' : 'EHP'} {number(after)} <strong>{change(before, after)}</strong>
+          {statNameLabel(lang, stat)} {formatStatValue(after, statFormat(stat), lang)} <strong>{change(before, after)}</strong>
         </span>;
       })}</div>
       <SupportDescriptions lang={lang} gems={plan.supports.map(gem => ({

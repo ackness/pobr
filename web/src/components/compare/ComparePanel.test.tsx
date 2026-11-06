@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { ComparePanel } from './ComparePanel';
 import type { BuildSession, SavedSession } from '../../hooks/useBuildSession';
+import type { Lang } from '../../lib/i18n';
 import { addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage } from '../../lib/buildWorkspace';
 
 // Replay the real picker and apply handlers without requiring a browser environment.
@@ -30,9 +31,9 @@ const saved = (): SavedSession => ({ version: 1, notes: '', state: {
   flasks: [], limbs: [], jewels: [], annotations: {}, params: { config_inputs: {} },
   socketGroups: [{ enabled: true, gems: [{ skill_id: 'SparkPlayer', level: 5, quality: 0 }] }],
 } });
-const render = (session: BuildSession) => {
+const render = (session: BuildSession, lang: Lang = 'en-US') => {
   ui.index = 0; ui.buttons = []; ui.selects = [];
-  return renderToStaticMarkup(<ComparePanel session={session} lang="en-US" />);
+  return renderToStaticMarkup(<ComparePanel session={session} lang={lang} />);
 };
 beforeEach(() => { ui.values = []; });
 
@@ -68,4 +69,28 @@ test('empty B cannot remove an A item even if its handler is called directly', (
   button.onClick!({} as never);
   expect(applyComparedStage).not.toHaveBeenCalled();
   expect(a.saved.state.items).toEqual([{ slot: 'ring1', text: 'A ring' }]);
+});
+
+test.each([
+  ['en-US', 'Enemy tier', 'Pinnacle Boss', 'Mapping'],
+  ['zh-CN', '敌人档位', '巅峰 Boss', '刷图'],
+  ['zh-TW', '敵人檔位', '巔峰頭目', '刷圖'],
+] as const)('enemy differences use shared names while preserving the tier keys in %s', (lang, label, pinnacle, mapping) => {
+  const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Target');
+  const [a, b] = workspace.builds[0].stages;
+  a.saved = { ...a.saved, state: { ...a.saved.state, params: { ...a.saved.state.params, enemy_tier: 'pinnacle' } } };
+  b.saved = { ...b.saved, state: { ...b.saved.state, params: { ...b.saved.state.params, enemy_tier: 'none' } } };
+  ui.values = [a.id, b.id, 'own', true, '', 'config', {}, {
+    key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
+    value: { stats: [], before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
+  }];
+  const session = { workspace, dataVersion: '0.5', applyComparedStage: vi.fn() } as unknown as BuildSession;
+  const html = render(session, lang);
+  expect(html).toContain(label);
+  expect(html).toContain(pinnacle);
+  expect(html).toContain(mapping);
+  expect(html).not.toContain('>pinnacle<');
+  expect(html).not.toContain('>none<');
+  expect(a.saved.state.params.enemy_tier).toBe('pinnacle');
+  expect(b.saved.state.params.enemy_tier).toBe('none');
 });

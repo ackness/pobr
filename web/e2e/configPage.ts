@@ -119,7 +119,7 @@ export const control = (page: Page, key: string): Locator => page.locator(`[id=$
 export const row = (page: Page, key: string): Locator => page.locator('.config-item').filter({ has: control(page, key) });
 
 /** Open the Config page (in the open interface language) and search for a setting. */
-export async function openSetting(page: Page, key: string, configName = 'Config') {
+export async function openSetting(page: Page, key: string, configName = 'Configuration') {
   await go(page, configName);
   await page.locator('.config-search').fill(key);
   await expect(control(page, key)).toBeVisible();

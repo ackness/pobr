@@ -3,7 +3,7 @@ import { bdLibraryButton, pageLink, statValue } from './shell';
 
 /** The results panel rows the Items / Upgrades specs read. Labels are anchored: "Life" must not match "Unreserved Life". */
 export const lifeValue = (page: Page): Locator => statValue(page, /^Life$/);
-export const dpsValue = (page: Page): Locator => statValue(page, /^Total DPS$/);
+export const dpsValue = (page: Page): Locator => statValue(page, /^Hit DPS$/);
 export const ehpValue = (page: Page): Locator => statValue(page, /^Effective HP$/);
 
 /** The stage that is open, as the top bar's "Current stage" control shows it. */

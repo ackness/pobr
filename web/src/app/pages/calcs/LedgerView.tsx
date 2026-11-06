@@ -67,7 +67,7 @@ function sourceLabel(lang: Lang, line: LineUsageLine, configLabels: Readonly<Rec
   const w = (en: string, cn: string, tw = cn) => words(lang, en, cn, tw);
   const id = line.source_id ?? '';
   if (id === 'quest') return w('Campaign reward', '任务奖励', '任務獎勵');
-  if (id === 'config.custom') return w('Custom modifier', '自定义词条', '自訂詞綴');
+  if (id === 'config.custom') return w('Custom modifier', '自定义词缀', '自訂詞綴');
   if (id.startsWith('config.') && configLabels[id.slice(7)]) return configLabels[id.slice(7)];
   if (/^(item|flask|node|jewel|config|base)\./.test(id)) return originLabel(lang, id);
   return line.source_kind ? originKindLabel(lang, line.source_kind) : id;
@@ -136,22 +136,22 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
   return <section className="ledger" aria-labelledby="ledger-heading" aria-busy={running}>
     <header className="ledger-head">
       <div>
-        <h3 id="ledger-heading" tabIndex={-1}>{w('Line ledger', '词条账本', '詞綴帳本')}</h3>
+        <h3 id="ledger-heading" tabIndex={-1}>{w('Modifier ledger', '词缀账本', '詞綴帳本')}</h3>
         <p className="calcs-hint">{w('Every line of this BD and what the calculation did with it: counted, waiting for a condition, or lost.',
-          '这个 BD 的每一行词条，以及计算对它做了什么：已计入、在等条件，还是丢失。',
+          '这个 BD 的每一行词缀，以及计算对它做了什么：已计入、在等条件，还是丢失。',
           '這個 BD 的每一行詞綴，以及計算對它做了什麼：已計入、在等條件，還是遺失。')}</p>
       </div>
       <AppButton className="ledger-run" onClick={run} disabled={running || session.busy || !session.calc}>
-        {running ? w('Checking…', '正在检查…', '正在檢查…') : done ? w('Check again', '重新检查', '重新檢查') : w('Check lines', '检查词条', '檢查詞綴')}
+        {running ? w('Checking…', '正在检查…', '正在檢查…') : done ? w('Check again', '重新检查', '重新檢查') : w('Check lines', '检查词缀', '檢查詞綴')}
       </AppButton>
     </header>
     {running && <p className="calcs-hint" role="status">{w('Checking every line. This is slower than a calculation.', '正在逐行检查，比普通计算慢一些。', '正在逐行檢查，比一般計算慢一些。')}</p>}
     {error && <div className="calc-error" role="alert">{error}</div>}
-    {!done && !running && !error && <p className="ledger-empty">{w('Check the lines to see what became of each one. It takes a few seconds.', '检查词条，看看每一行最终去了哪里。需要几秒钟。', '檢查詞綴，看看每一行最終去了哪裡。需要幾秒鐘。')}</p>}
+    {!done && !running && !error && <p className="ledger-empty">{w('Check the lines to see what became of each one. It takes a few seconds.', '检查词缀，看看每一行最终去了哪里。需要几秒钟。', '檢查詞綴，看看每一行最終去了哪裡。需要幾秒鐘。')}</p>}
     {done && summary && usage && <div className="ledger-result" data-stale={stale || undefined}>
       {stale && <p className="ledger-stale" role="status">{w('The BD changed after this check. Check again to refresh it.', '检查之后 BD 又有改动。重新检查即可刷新。', '檢查之後 BD 又有改動。重新檢查即可更新。')}</p>}
       <p className="ledger-headline">
-        <strong>{summary.total}</strong> {w('lines', '行词条', '行詞綴')}
+        <strong>{summary.total}</strong> {w('lines', '行词缀', '行詞綴')}
         <span aria-hidden="true"> · </span><strong>{summary.appliedPercent}%</strong> {w('applied', '已生效', '已生效')}
         <span aria-hidden="true"> · </span><strong className={summary.attention > 0 ? 'is-warn' : undefined}>{summary.attention}</strong> {w('need a look', '需要留意', '需要留意')}
         {usage.main_skill && <span className="ledger-skill">{w('Read for', '按此技能读取：', '依此技能讀取：')} {skillName(usage.main_skill)}</span>}
@@ -172,8 +172,8 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
       </ul>
       {single && <p className="ledger-hint">{statusHint(lang, single)}</p>}
       <div className="ledger-filters">
-        <AppInput type="search" className="ledger-search" value={filter.query} aria-label={w('Search lines', '搜索词条', '搜尋詞綴')}
-          placeholder={w('Search lines, items, nodes, stats…', '搜索词条、装备、节点、属性…', '搜尋詞綴、裝備、節點、屬性…')}
+        <AppInput type="search" className="ledger-search" value={filter.query} aria-label={w('Search lines', '搜索词缀', '搜尋詞綴')}
+          placeholder={w('Search lines, items, nodes, stats…', '搜索词缀、装备、节点、属性…', '搜尋詞綴、裝備、節點、屬性…')}
           onChange={event => changeFilter({ ...filter, query: event.target.value })} />
         {groups.length > 1 && <AppSelectControl className="ledger-group" aria-label={w('Source', '来源', '來源')} value={filter.group}
           onChange={event => changeFilter({ ...filter, group: event.target.value as SourceGroup | 'all' })}>
@@ -183,7 +183,7 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
         <span className="ledger-count" role="status">{w(`${shown.length} of ${summary.total} lines`, `${shown.length} / ${summary.total} 行`, `${shown.length} / ${summary.total} 行`)}</span>
       </div>
       {shown.length === 0 ? <div className="ledger-none" role="status">
-        <p>{w('No lines match.', '没有符合条件的词条。', '沒有符合條件的詞綴。')}</p>
+        <p>{w('No lines match.', '没有符合条件的词缀。', '沒有符合條件的詞綴。')}</p>
         <AppButton onClick={() => changeFilter(NO_FILTER)}>{w('Clear filters', '清除筛选', '清除篩選')}</AppButton>
       </div> : <ul className="ledger-list">
         {visible.map(line => {
@@ -203,7 +203,7 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
               {line.used_in.length > 0 && <p className="ledger-meta">{w('Counts in', '计入', '計入')}: {line.used_in.map(id => statNameLabel(lang, id)).join(' · ')}</p>}
               {line.modifiers.length > 0 && <>
                 <button type="button" className="ledger-toggle" aria-expanded={expanded} onClick={() => toggleRow(index)}>
-                  {w('Modifiers', '词条项', '詞綴項')} ({line.modifiers.length})</button>
+                  {w('Modifiers', '词缀项', '詞綴項')} ({line.modifiers.length})</button>
                 {expanded && <table className="ledger-mods">
                   <thead><tr><th scope="col">{w('Name', '名称', '名稱')}</th><th scope="col">{w('Type', '类型', '類型')}</th><th scope="col">{w('Value', '数值', '數值')}</th><th scope="col">{w('State', '状态', '狀態')}</th></tr></thead>
                   <tbody>{line.modifiers.map((mod, modIndex) => <tr key={modIndex} data-status={mod.status}>
@@ -224,7 +224,7 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
         {needsWaiting.length > 0 && <details>
           <summary>{w(`Conditions waiting to be set (${needsWaiting.length})`, `等待设置的条件（${needsWaiting.length}）`, `等待設定的條件（${needsWaiting.length}）`)}</summary>
           <ul>{needsWaiting.map(item => <li key={item.condition}><b>{item.condition}</b>
-            <span>{item.config_option ? w(`Turn on “${item.config_option}” in Combat setup`, `在战斗配置中打开“${item.config_option}”`, `在戰鬥配置中開啟「${item.config_option}」`) : w('Nothing sets this', '没有任何来源能设置它', '沒有任何來源能設定它')}</span>
+            <span>{item.config_option ? w(`Turn on “${item.config_option}” in Configuration`, `在配置中打开“${item.config_option}”`, `在設定中開啟「${item.config_option}」`) : w('Nothing sets this', '没有任何来源能设置它', '沒有任何來源能設定它')}</span>
             <small>{w(`${item.modifiers.length} waiting`, `${item.modifiers.length} 条在等待`, `${item.modifiers.length} 條在等待`)}</small></li>)}</ul>
         </details>}
         {rejected.length > 0 && <details>
@@ -235,7 +235,7 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
         </details>}
       </div>}
       {done.response.item_errors.length > 0 && <ul className="ledger-errors">
-        {done.response.item_errors.map((issue, index) => <li key={index} className="calc-error">{slotLabel(lang, issue.slot)}: {issue.message}</li>)}
+        {done.response.item_errors.map((issue, index) => <li key={index} className="calc-error">{slotLabel(lang, issue.slot)}{lang === 'en-US' ? ': ' : '：'}{issue.message}</li>)}
       </ul>}
     </div>}
   </section>;

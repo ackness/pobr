@@ -1,5 +1,5 @@
 import { usePreview } from '../../components/shared/PreviewContext';
-import { formatStatValue } from '../../lib/statDisplay';
+import { formatNumber, formatStatValue } from '../../lib/statDisplay';
 import type { Lang } from '../../lib/i18n';
 import { statFormat, statLabel } from '../inspector/statId';
 import type { StatChange } from '../motion/statChanges';
@@ -7,7 +7,7 @@ import { words } from '../text';
 
 function percentText(change: StatChange) {
   if (change.percent === null) return `${change.delta > 0 ? '+' : '−'}${formatStatValue(Math.abs(change.delta), 'float2')}`;
-  return `${change.percent > 0 ? '+' : '−'}${Math.abs(change.percent).toFixed(1)}%`;
+  return `${change.percent > 0 ? '+' : '−'}${formatNumber(Math.abs(change.percent), 1, 1)}%`;
 }
 
 /** What the candidate under the pointer would do, as a bar along the bottom. Shown only while something is previewed. */

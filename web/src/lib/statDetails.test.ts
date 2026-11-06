@@ -73,7 +73,7 @@ test.each([
 test('primary inputs only gain a main-skill prefix when a secondary pass is present', () => {
   const primary = { id: 'PrimaryHitChance', value: 1 };
   expect(detailInputLabel(primary.id, [primary], 'zh-CN')).toBe('命中率');
-  expect(detailInputLabel(primary.id, [primary, { id: 'SecondaryHitChance', value: 0.5 }], 'zh-CN')).toBe('主技能：命中率');
+  expect(detailInputLabel(primary.id, [primary, { id: 'SecondaryHitChance', value: 0.5 }], 'zh-CN')).toBe('计算技能：命中率');
   expect(detailFormula('ActionRate / 2', [{ id: 'ActionRate', value: 2 }], 'en-US')).toBe('Attack/Cast Rate ÷ 2');
 });
 

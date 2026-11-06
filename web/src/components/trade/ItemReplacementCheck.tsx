@@ -1,3 +1,5 @@
+import { formatStatValue, statFormat, formatNumber } from '../../lib/statDisplay';
+import { formatComparisonDelta } from '../../lib/compare';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
 import { usePreview } from '../shared/PreviewContext';
@@ -86,7 +88,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   const selectedItem = selected?.variant.set_items?.length === 1 ? selected.variant.set_items[0] : undefined;
   const alreadyAdded = !!report && !!selectedItem && equipmentCandidates.some(candidate =>
     candidate.itemId === report.text && candidate.slot === selectedItem.slot && candidate.text === selectedItem.text);
-  const format = (value: number) => value.toLocaleString(lang, { maximumFractionDigits: 2 });
+  const format = (value: number) => formatNumber(value);
   const deltaText = (value: number) => `${value > 0 ? '+' : ''}${format(value)}`;
   const positionLabel = (slot: string) => slot.startsWith('Jewel@') ? socketLabel?.(Number(slot.slice(6))) ?? ut('jewelPosition') : slotLabel(lang, slot);
   const errorText = useCallback((message: string) => ({
@@ -237,8 +239,8 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
             onMouseEnter={preview ? () => preview.showChanges(`${positionLabel(row.slot)} ← ${ut('replacementOutcome')}`, changesFromRecords(report.baseline, row.stats)) : undefined}
             onMouseLeave={preview?.clear} onFocus={preview ? () => preview.showChanges(`${positionLabel(row.slot)} ← ${ut('replacementOutcome')}`, changesFromRecords(report.baseline, row.stats)) : undefined} onBlur={preview?.clear}>
             <strong>{positionLabel(row.slot)}</strong>{recommended === row.slot && <span className="replacement-recommended">{ut('recommendedPosition')}</span>}
-            <span className={(row.stats.TotalDPS ?? 0) < (report.baseline.TotalDPS ?? 0) ? 'delta-neg' : ''}>DPS {deltaText((row.stats.TotalDPS ?? 0) - (report.baseline.TotalDPS ?? 0))}</span>
-            <span className={(row.stats.TotalEHP ?? 0) < (report.baseline.TotalEHP ?? 0) ? 'delta-neg' : ''}>EHP {deltaText((row.stats.TotalEHP ?? 0) - (report.baseline.TotalEHP ?? 0))}</span>
+            <span className={(row.stats.TotalDPS ?? 0) < (report.baseline.TotalDPS ?? 0) ? 'delta-neg' : ''}>{statNameLabel(lang, 'TotalDPS')} {deltaText((row.stats.TotalDPS ?? 0) - (report.baseline.TotalDPS ?? 0))}</span>
+            <span className={(row.stats.TotalEHP ?? 0) < (report.baseline.TotalEHP ?? 0) ? 'delta-neg' : ''}>{statNameLabel(lang, 'TotalEHP')} {deltaText((row.stats.TotalEHP ?? 0) - (report.baseline.TotalEHP ?? 0))}</span>
           </AppButton>)}
         </div>
         <div className="replacement-verdict"><span className="trade-section-label">{ut('replacementOutcome')}</span>
@@ -251,12 +253,12 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
           const before = report.baseline[stat] ?? 0, after = selected.stats[stat] ?? 0, delta = after - before;
           return <div className="replacement-metric" key={stat}><span>{statNameLabel(lang, stat)}</span>
             <strong className={delta < 0 ? 'delta-neg' : delta > 0 ? 'delta-pos' : ''}>{before > 0 ? `${deltaText(delta / before * 100)}%` : deltaText(delta)}</strong>
-            <span>{format(before)} <span aria-hidden>→</span> <b>{format(after)}</b></span></div>;
+            <span>{formatStatValue(before, statFormat(stat), lang)} <span aria-hidden>→</span> <b>{formatStatValue(after, statFormat(stat), lang)}</b></span></div>;
         })}</div>
         <div className="replacement-table-wrap"><table><thead><tr><th>{positionLabel(selected.slot)}</th><th>{ut('before')}</th><th>{ut('after')}</th><th>{ut('change')}</th></tr></thead><tbody>
           {['TotalDPS', 'TotalEHP', 'Life', 'FireResist', 'ColdResist', 'LightningResist', 'ChaosResist'].map(stat => {
             const before = report.baseline[stat] ?? 0, after = selected.stats[stat] ?? 0, delta = after - before;
-            return <tr key={stat}><th>{statNameLabel(lang, stat)}</th><td>{format(before)}</td><td>{format(after)}</td><td className={delta < 0 ? 'delta-neg' : delta > 0 ? 'delta-pos' : ''}>{deltaText(delta)}</td></tr>;
+            return <tr key={stat}><th>{statNameLabel(lang, stat)}</th><td>{formatStatValue(before, statFormat(stat), lang)}</td><td>{formatStatValue(after, statFormat(stat), lang)}</td><td className={delta < 0 ? 'delta-neg' : delta > 0 ? 'delta-pos' : ''}>{formatComparisonDelta(delta, statFormat(stat), lang)}</td></tr>;
           })}</tbody></table></div>
         {!!selected.unsupported.length && <details className="trade-notice replacement-unsupported"><summary>{ut('incomplete')} ({selected.unsupported.length})</summary><ul>{selected.unsupported.map((line, index) => <li key={index}>{line}</li>)}</ul></details>}
         {!!report.rejected.length && <p className="trade-notice">{report.rejected.map(row => `${positionLabel(row.slot)}: ${errorText(row.reason)}`).join('\n')}</p>}
