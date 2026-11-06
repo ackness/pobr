@@ -67,6 +67,8 @@ export function refundDelta(before: CalculateBuildResponse | null, after: Calcul
 
 /** The report follows the player's current optimization goal until they choose a report metric. */
 export function defaultReportStat(preset: string, available: string[]): string {
-  const goal = OBJECTIVE_PRESETS.find(entry => entry.id === preset)?.stat;
+  let goal = OBJECTIVE_PRESETS.find(entry => entry.id === preset)?.stat;
+  // A summoner build's damage is its main minion's.
+  if ((goal === 'TotalDPS' || goal === 'CombinedDPS') && available.includes('MainMinionDPS')) goal = 'MainMinionDPS';
   return goal && available.includes(goal) ? goal : available[0] ?? 'Life';
 }

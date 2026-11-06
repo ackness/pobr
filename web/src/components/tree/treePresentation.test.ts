@@ -57,4 +57,9 @@ test('node report metric follows life, survival and damage goals with an availab
   expect(defaultReportStat('dps', stats)).toBe('TotalDPS');
   expect(defaultReportStat('balanced', stats)).toBe('TotalDPS');
   expect(defaultReportStat('dps', ['Life'])).toBe('Life');
+  // A summoner build measures its minion for a damage goal, and keeps other goals.
+  const summoner = ['MainMinionDPS', ...stats];
+  expect(defaultReportStat('dps', summoner)).toBe('MainMinionDPS');
+  expect(defaultReportStat('balanced', summoner)).toBe('MainMinionDPS');
+  expect(defaultReportStat('life', summoner)).toBe('Life');
 });
