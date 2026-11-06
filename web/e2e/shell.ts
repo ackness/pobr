@@ -22,3 +22,16 @@ export async function openItemsAfterImport(page: Page) {
   await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
   await pageLink(page, 'Items').click();
 }
+
+/** Open the actions belonging to a build row; defaults to the currently open build. */
+export async function openBuildMenu(page: Page, name?: string) {
+  const rows = page.locator('.bd-list > li');
+  const row = name ? rows.filter({ has: page.locator('.bd-build-select strong', { hasText: name }) })
+    : rows.filter({ has: page.locator('.bd-build-select[aria-pressed="true"]') });
+  await row.locator('[data-slot="dropdown-menu-trigger"]').click();
+}
+
+export async function buildAction(page: Page, action: string) {
+  await openBuildMenu(page);
+  await page.getByRole('menuitem', { name: action, exact: true }).click();
+}

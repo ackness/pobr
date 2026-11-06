@@ -67,6 +67,7 @@ test('applicable view hides irrelevant controls, all options exposes them, impor
   await stacks.locator('input').blur();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   await page.getByRole('radio', { name: 'Relevant to this build', exact: true }).click();
+  if (!(await stacks.locator('.config-option-help').evaluate(element => (element as HTMLDetailsElement).open))) await stacks.locator('summary').click();
   await expect(stacks).toContainText('Saved value kept visible');
   await expect(stacks.locator('input')).toHaveValue('0');
 
@@ -74,17 +75,19 @@ test('applicable view hides irrelevant controls, all options exposes them, impor
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
   await go(page, 'Configuration');
   await search.fill('demonFormStacks');
+  if (!(await stacks.locator('.config-option-help').evaluate(element => (element as HTMLDetailsElement).open))) await stacks.locator('summary').click();
   await expect(stacks).toContainText('Not relevant to this build');
   await expect(stacks.locator('input')).toHaveValue('0');
   await search.fill('BrandsInLastHalf');
   const half = page.locator('.config-item[data-config-var="BrandsInLastHalf"]');
+  await half.locator('summary').click();
   await expect(half).toContainText('Saved value kept visible');
   await expect(half.locator('input')).not.toBeChecked();
   await half.scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('saved-config.png'), fullPage: true });
   await search.fill('ailmentMode');
   const help = page.locator('.config-item[data-config-var="ailmentMode"]');
-  // The help and the internal key sit behind the row's "Help & source" disclosure.
+  // The help and the internal key sit behind the row's "Help" disclosure.
   await help.locator('summary').click();
   await expect(help.locator('.config-help')).toContainText('Controls how');
   await expect(help.locator('.config-raw-key')).toHaveText('ailmentMode');

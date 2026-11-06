@@ -77,8 +77,6 @@ test('choose a companion and its skill, inspect minion breakdowns, and preserve 
   const xml = inflateSync(Buffer.from(code, 'base64url')).toString();
   expect(xml).toContain('skillMinion="Metadata/Monsters/Quadrilla/Quadrilla"');
   expect(xml).toContain('skillMinionSkill="3"');
-  // The import form is a closed disclosure on the BD page, as in importBuild().
-  if (!await page.locator('.bd-import').evaluate(el => (el as HTMLDetailsElement).open)) await page.locator('.bd-import > summary').click();
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await expect.poll(async () => (await state()).socketGroups[0].gems[0].minion_skill).toBe(3);
