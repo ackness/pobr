@@ -130,7 +130,7 @@
     "config.minions": "Minions",
     "config.defaultsHint": "Fixed quest rewards and combat defaults follow PoB2. Choice rewards default to None; imported settings take priority. Check rewards, resources and combat conditions against your actual character.",
     "config.importReview": "Check quest rewards and enemy type.",
-    "config.review": "Go to Config",
+    "config.review": "Go to Configuration",
     "config.reviewDismiss": "Dismiss reminder",
     "config.showAll": "All",
     "tree.editOptions": "Attributes & planning",

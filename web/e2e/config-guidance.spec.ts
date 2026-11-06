@@ -247,7 +247,7 @@ test('review, jump, edit/reset, share and reload preserve imported false/zero/nu
   await importCode(page, syntheticCode(['Comet', 'Fireball'], raw));
   const before = await savedState(page);
   await expect(page.locator('.shell-notice[role=note]')).toBeVisible();
-  await page.locator('.shell-notice[role=note]').getByRole('link', { name: 'Go to Config', exact: true }).click();
+  await page.locator('.shell-notice[role=note]').getByRole('link', { name: 'Go to Configuration', exact: true }).click();
   await openQuickAccess(page);
   for (const [key, value] of [['conditionEnemyShocked', false], ['conditionShockEffect', 0], ['enemyColdResist', 17]] as const) {
     await expect(entry(page, key).locator('output code')).toHaveText(JSON.stringify(value));

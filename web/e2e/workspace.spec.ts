@@ -177,7 +177,7 @@ test('tabs of one browser share the saved skill sets', async ({ page, context })
 
 test('navigation, settings and confirmations retain the current editor', async ({ page }) => {
   await importBuild(page);
-  await expect(page.getByRole('note')).toContainText('configuration');
+  await expect(page.getByRole('note')).toContainText('Go to Configuration');
   await openBuilds(page);
   const notes = page.getByRole('textbox', { name: 'Notes', exact: true });
   await notes.fill('Persistent stage note'); await notes.blur();
