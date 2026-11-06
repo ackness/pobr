@@ -216,16 +216,8 @@ pre {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-  }
-}
+/* Reduced motion is handled once, in app/styles.css. This file sits in the earlier `panels` layer, where an
+   `!important` rule would beat every exception the app layer makes. */
 
 /* Shared page structure and surfaces. */
 .ui-page {
