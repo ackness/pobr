@@ -51,7 +51,7 @@
 |------|------|
 | Rust 局部逻辑 / 算法 | 代码与调用方审阅、能复现变化的回归断言；需要时 `mise run verify <crate> <suite> [filter]`；合并前须有绿色的 `mise run ci <branch>` |
 | 词条规则 | 填写游戏来源与 `examples`；协调者整批运行一次 `mise run regen`，解析覆盖率上升时同步抬高 `devs/ci/parse-coverage-baseline.json` |
-| 计算 / Modifier / parser | 定向机制用例；远端完整 CI 的 parity / reference 基线；调查性 accuracy/triage 按批次另选 |
+| 计算 / Modifier / parser | 定向机制用例；合并前须有绿色的 `mise run ci <branch>`（含 parity / reference 基线）；调查性 accuracy/triage 按批次另选 |
 | 跨 crate API / 数据结构 | 直接使用者的契约与回归用例；合并前须有绿色的 `mise run ci <branch>` |
 | Web TS / React / Worker | typecheck、相关 Vitest / Worker 测试；交互风险需要时运行相关 Playwright spec |
 | Rust → WASM / Web 契约 | 完整 CI 重建 WASM、真实 WASM 契约与打包计算；相关交互 E2E 按需开启 |

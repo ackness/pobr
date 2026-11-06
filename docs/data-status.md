@@ -15,7 +15,7 @@ PoBR 一侧的换数据、发版与回退步骤见 [RELEASING.md](../RELEASING.m
 | --- | --- | --- |
 | 游戏包 | `game/0.5.5.5-3`，从 Release 采用。比 `-2` 只多可选文件 `overlay/gem_descriptions.json`（英文宝石说明，`contract/1.3`），计算结果不变。`-2` 起包含 `base/active_skill_types.json`、`base_maximum_rage` 与天赋节点的原生 stat packet，引擎不再内嵌这些表（保留项见 `crates/pobr-data/tests/no_embedded_data.rs`） | 无 |
 | 语言包 | `locale/0.5.5.5-4`，从 Release 采用。简中词条与宝石说明（`GemEffects.SupportText`、`ActiveSkills.Description`）优先取国服客户端的官方文本（RePoE `inputs/0.5.5.5-1`），繁中宝石说明来自国际服客户端（`inputs/0.5.5.5-2`）；繁中词缀名与简中一样以英文为键。只换语言发布不需要新的游戏发布；锁的 `locale` 须是语言包提供的语言（当前支持英文、简中、繁中） | 无 |
-| 辅助显示 | 沿用 `locale/0.5.5.5-3` 的附件（`-4` 不再发布它，交易目录未变，`catalog_sha256` 仍绑定游戏包的交易目录）；宝石说明改由语言包 `display_texts.json` 提供 | 退役旧附件路径（P2）：未退役前 `data:bump` 拒绝换补丁，须在下一个补丁之前完成 |
+| 辅助显示 | 沿用 `locale/0.5.5.5-3` 的附件（`-4` 不再发布它，交易目录未变，`catalog_sha256` 仍绑定游戏包的交易目录）；宝石说明改由语言包 `display_texts.json` 提供 | 退役旧附件路径（P2）：未退役前 `data:bump` 拒绝换补丁或交易目录改变，须在其前完成 |
 | 测试夹具 | `test_fixtures` 按 `handoff/*` tag + commit 拉取，换目标时保留 | 无 |
 | 运行 manifest | 按 owner 组合：游戏 snapshot 只列游戏成员，`data:prepare` 加入语言包的 `i18n/**` 并推出 `languages`。仍列语言成员的旧游戏 snapshot（`game/0.5.5.5-1` 及更早）和未声明 `contract_version` 的 schema 3 manifest 都被拒绝 | 无（已生效；真实 Release 的采用见“游戏包”） |
 | PoBR 自有规则 | `local_mods.json`、`special_mods.json` 在锁的 `shared_files`；九份构筑配置选项编译进 `crates/pobr-gamedata/src/domains/config_options/`，计入引擎身份 | 无 |

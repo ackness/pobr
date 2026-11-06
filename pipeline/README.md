@@ -155,7 +155,8 @@ schema-3 manifest 封存默认运行字节；维护报告和本地 patch 不进�
   同目标只 bump 游戏包而交易目录变了时，保留的辅助显示不再绑定，同样拒绝：请语言 owner 发布下一个
   `locale/<patch>-<m>`（语言包字节可不变）并一起 bump。保留的辅助显示还须与语言包同源：Web 测试要求其
   `_meta.source_commit` 等于语言包 `i18n/zh-CN/_meta.json` 的 `source_commit`，`data:bump` 不核对这一项。
-  `locale/0.5.5.5-4` 起翻译库不再发布辅助显示，所以在退役它的 PR 合并前，换目标的 bump 会被拒绝。
+  `locale/0.5.5.5-4` 起翻译库不再发布辅助显示，所以在退役它的 PR 合并前，换目标或交易目录改变的 bump 都会被拒绝，
+  上一句的做法暂不可行。
 - **测试夹具**：`test_fixtures` 是与补丁无关的 API 响应样本；换目标时保留，条目加 `target` 记录它们发布时的目标。
 - **receipt 绑定**：receipt 的 `package`（ZIP 与根 manifest 的字节数与 SHA-256）存在时必须与下载的包一致；
   `repoe-release-receipt/v2` 必须带它；旧 receipt 不带时仍可读。

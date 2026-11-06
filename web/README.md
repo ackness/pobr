@@ -181,8 +181,8 @@ lines are translated through templates to canonical English before parsing; PoB
 structural lines such as `Rarity:` keep their format. Unknown text remains visible
 with diagnostics. Traditional Chinese has noun dictionaries but no native mod-line
 templates; display can fall back through script conversion, not official translations.
-Its gem descriptions and minion names come from the language package's own
-`display_texts.json` (the international client's tables).
+Traditional Chinese gem descriptions and minion names use the language
+package's own `display_texts.json` (the international client's tables).
 Rendering never rewrites imported text or stable calculation ids.
 
 ## Quick start

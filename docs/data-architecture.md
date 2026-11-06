@@ -96,7 +96,7 @@ RePoE 发布 ───┐
   但它绑定的目录必须仍与新游戏包一致，否则拒绝并提示语言 owner 为新目录重新发布。`test_fixtures` 是 RePoE 保留的
   PoBR API 响应样本，与补丁无关：换目标时保留原条目，并在条目中记下它们发布时的 `target`（不改夹具或其 manifest）。
   两个条目都可读旧 `handoff/*` 的 commit + 路径或 Release 附件（`repository` + `tag`；夹具另有 `asset`）。
-  语言 owner 在 `locale/<patch>-<n>` 下发布同样的三件附件（翻译库 `mise run release:publish`；`locale/0.5.5.5-4` 起不再附辅助显示，见下文“退役”），包为
+  语言 owner 在 `locale/<patch>-<n>` 下发布同样的三件附件（翻译库 `mise run release:publish`），包为
   `pobr-build-data-part/v1`、`kind: "language"` 的 ZIP（与游戏包同一格式），成员按 STORED 写入，
   与提交无关，任何后续干净提交都能逐字节重建。
 - **宝石说明（契约 1.3）。** 主动、精魂、元技能与辅助宝石的说明：英文属于游戏 owner，译文属于语言 owner，

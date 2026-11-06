@@ -27,8 +27,8 @@ CI 与 release workflow 的机制见[开发工作流](docs/development-workflow.
    按它的 [RELEASING.md](https://github.com/ackness/poe2-zh-cn-stats/blob/main/RELEASING.md) 发布语言包。
    `locale/0.5.5.5-4` 起语言 Release 不再附辅助显示（`support-display.zh-CN.json`、`supportDescriptions.zh-CN.json`），
    宝石说明改由 `display_texts.json` 的作用域承担（[数据架构](docs/data-architecture.md#3-发布与导入契约)）。
-   PoBR 的 `data:bump` 目前仍要求换目标的语言 Release 带新的辅助显示，所以**下一个补丁之前须先合并退役
-   `support_display` 的 PoBR PR**，否则换目标会被拒绝。
+   PoBR 的 `data:bump` 目前仍要求换目标（或交易目录改变）时语言 Release 带新的辅助显示，所以**下一个补丁或
+   交易目录变更之前须先合并退役 `support_display` 的 PoBR PR**，否则 bump 会被拒绝。
 3. **翻译库的 `published` PR。** 发布后在翻译库另开 PR，把该 Release 的附件 pin 写进配置的 `published`，
    让它的 CI 持续下载并核对这个 Release；然后再到 PoBR 改锁。
 
@@ -46,7 +46,7 @@ mise run data:bump ackness/repoe game/<patch>-<n> ackness/poe2-zh-cn-stats local
 游戏包与语言包的序号各自递增，`<n>` 与 `<m>` 不必相同。
 
 - owner 也可简写为 `repoe`、`poe2-zh-cn-stats`。目标改变时只 bump 一个 owner 会被拒绝。
-- 命令按 `SHA256SUMS` 校验下载的附件，读取 `receipt.json`，替换两个包条目与 `support_display`，
+- 命令按 `SHA256SUMS` 校验下载的附件，读取 `receipt.json`，替换两个包条目（语言 Release 带辅助显示时一并替换 `support_display`），
   重算快照 pin、运行身份与 `release_id`，写入 `pipeline/data.lock.json` 和 `data/CURRENT`，再运行 `data:prepare`。
   导入失败时恢复原来的锁和 `CURRENT`，以非零状态退出。
 - 标准输出是一份 `pobr-data-bump/v1` JSON：`before`／`after`（目标、快照、运行身份、`release_id`、
@@ -99,7 +99,8 @@ mise run data:bump ackness/poe2-zh-cn-stats locale/<patch>-<m>
 
 语言 Release 不带辅助显示时保留原条目，但它必须仍与新语言包配套：`data:bump` 核对它绑定的交易目录等于游戏包的，
 Web 测试另要求它的 `_meta.source_commit` 等于新语言包 `i18n/zh-CN/_meta.json` 的 `source_commit`。
-后者不成立时，请翻译库在这个 Release 里一并发布新的辅助显示。只换语言不需要重绑测试基线。
+后者不成立时（翻译库自 `locale/0.5.5.5-4` 起不再发布辅助显示），须先合并退役 `support_display` 的 PoBR PR，再 bump。
+只换语言不需要重绑测试基线。
 
 **只换游戏包。** RePoE 在同一补丁上发布 `game/<patch>-<n+1>`。交易目录不变时只 bump 游戏 owner：
 
@@ -108,8 +109,8 @@ git switch -c chore/data-bump-game-<patch>-<n+1> origin/master
 mise run data:bump ackness/repoe game/<patch>-<n+1>
 ```
 
-交易目录改变时原辅助显示不再绑定，`data:bump` 拒绝：翻译库须为新目录发布下一个 `locale/<patch>-<m>`
-（语言包字节可以不变），PoBR 一次 bump 两者。任何新游戏包都要按 §2 的表重绑测试基线。
+交易目录改变时原辅助显示不再绑定，`data:bump` 拒绝；翻译库自 `locale/0.5.5.5-4` 起不再发布辅助显示，所以这也要等
+退役 `support_display` 的 PR 合并。任何新游戏包都要按 §2 的表重绑测试基线。
 
 ## 4. 发版上线
 
