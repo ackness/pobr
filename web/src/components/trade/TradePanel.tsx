@@ -301,6 +301,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
         <div>{['dps', 'ehp', 'balanced'].map(id => TRADE_OBJECTIVES.find(entry => entry.id === id)!).map(entry => <AppButton key={entry.id} aria-pressed={preset === entry.id}
           onClick={() => setPreset(entry.id)}>{presetLabel(entry.id)}</AppButton>)}</div>
       </div>
+      {damage.note && <p className="trade-priority-hint">{damage.note}</p>}
         {session.socketGroups.length > 0 && <div className="trade-skill-context"><span>{words(lang, 'Calculated skill', '计算技能', '計算技能')}</span>
           <AppSelect value={mainGroup === undefined ? '' : String(mainGroup)} ariaLabel={tt('trade.analysisSkill')} disabled={session.busy}
             placeholder={tt('sidebar.unselected')}
@@ -511,7 +512,6 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     <section className="up-step up-goal" aria-labelledby="up-goal">
       {step('up-goal', 1, flowT('goalTitle'))}
       {goalBlock}
-      {damage.note && <p className="trade-priority-hint">{damage.note}</p>}
     </section>
     <section className="up-step up-method" aria-labelledby="up-method">
       {step('up-method', 2, flowT('methodTitle'))}

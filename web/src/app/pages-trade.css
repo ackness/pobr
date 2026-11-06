@@ -41,6 +41,8 @@
   .shell-root .trade-page .trade-skill-context .app-select { min-width: 0; }
   .shell-root .trade-page .weapon-set-control { flex: 0 1 auto; padding: 0; }
   .shell-root .trade-page .upgrade-evaluation > .trade-notice { flex: 1 0 100%; }
+  /* The per-minion note explains the damage goal, so it sits on its own line under the goal buttons. */
+  .shell-root .trade-page .upgrade-evaluation > .trade-priority-hint { flex: 1 0 100%; margin: -.6rem 0 0; }
   .shell-root .trade-page .trade-safety-settings { flex: 1 0 100%; gap: .5rem 1.75rem; margin: 0; padding: 0; }
   .shell-root .trade-page .trade-safety-settings label { color: var(--foreground); }
   .shell-root .trade-page .trade-safety-settings input[type='number'] { width: 4.5rem; }
