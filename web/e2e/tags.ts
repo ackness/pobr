@@ -1,9 +1,10 @@
 /**
  * Tags that leave a test out of the default run (playwright.config.ts `grepInvert`).
- * `POBR_E2E_ALL=1` runs them as well; `POBR_E2E_ALL=1 … --grep @quarantine` runs only those.
+ * `POBR_E2E_ALL=1` runs them as well; `POBR_E2E_ALL=1 … --grep @quarantine` runs only those. The full CI E2E step
+ * sets `POBR_E2E_ALL=1` with `--grep-invert @quarantine`, so every @extended cell still runs there.
  */
 
-/** Fails on the current interface for a reason other than a product bug and waits for a rewrite. */
+/** Fails on the current interface for a reason other than a product bug and waits for a rewrite or a decision. */
 export const QUARANTINE = { tag: '@quarantine' } as const;
 
 /** An extra cell of a matrix whose representative cells stay in the default run. */

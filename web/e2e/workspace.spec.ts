@@ -2,7 +2,6 @@ import { buildAction, openBuildMenu } from './shell';
 import { expect, test, type Page } from '@playwright/test';
 import { deflateSync } from 'node:zlib';
 import { mainSkillPinned } from './buildLibrary';
-import { QUARANTINE } from './tags';
 
 const code = deflateSync('<PathOfBuilding2><Build level="60" className="Witch" mainSocketGroup="1"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree><Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="FireballPlayer" level="12" quality="0" enabled="true"/></Skill></SkillSet></Skills><Items/><Config><Input name="enemyLevel" number="82"/><Input name="buffOnslaught" boolean="false"/></Config></PathOfBuilding2>').toString('base64url');
 const nav = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name, exact: true });
@@ -342,9 +341,7 @@ test('a retained skill optimizer keeps its results through the first visit to a 
   await expect(page.locator('.support-results')).toHaveText(receipt);
 });
 
-// Quarantined: opening Calcs now selects a default metric and requests its breakdown (CombinedDPS) at once, which
-// this test reads as an eager request. Decide whether that is intended, then update the expectation.
-test('real WASM details stay lazy and configuration tracking follows the active route', QUARANTINE, async ({ page }) => {
+test('real WASM details stay lazy and configuration tracking follows the active route', async ({ page }) => {
   await page.addInitScript(() => {
     const observed = window as typeof window & { calcRequests: Array<{ breakdowns?: string[]; config_context?: boolean }> };
     observed.calcRequests = [];
@@ -370,11 +367,13 @@ test('real WASM details stay lazy and configuration tracking follows the active 
   await importBuild(page);
   await nav(page, 'Calculations').click();
   await expect(page.locator('#breakdown-Life')).toBeVisible();
-  expect((await requests()).filter(request => request.breakdowns?.length)).toHaveLength(0);
+  // Calcs starts on an available damage metric and asks for that one explanation only (docs/web-contracts.md).
+  const combined = expect.objectContaining({ breakdowns: ['CombinedDPS'], breakdown_actor: { kind: 'player' } });
+  await expect.poll(async () => (await requests()).filter(request => request.breakdowns?.length)).toEqual([combined]);
   await page.locator('#breakdown-Life').click();
   await expect(page.locator('#calcs-detail .formula-conclusion')).toBeVisible();
   expect((await requests()).filter(request => request.breakdowns?.length)).toEqual([
-    expect.objectContaining({ breakdowns: ['Life'], breakdown_actor: { kind: 'player' } }),
+    combined, expect.objectContaining({ breakdowns: ['Life'], breakdown_actor: { kind: 'player' } }),
   ]);
   await nav(page, 'Configuration').click();
   await expect.poll(async () => (await requests()).at(-1)?.config_context).toBe(true);
