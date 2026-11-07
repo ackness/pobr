@@ -5,8 +5,9 @@ import { comparisonWorkspace } from './fixtures/compare-workspace';
 import { busy, pageLink } from './shell';
 import { choose, compareStageA, compareStageB, compareTab } from './treePage';
 import { workspaceEnvelope } from '../src/lib/buildWorkspace';
+import { SMOKE } from './tags';
 
-test('compare stages without mutation, share A config, and apply one item to inactive A only', async ({ page }, testInfo) => {
+test('compare stages without mutation, share A config, and apply one item to inactive A only', SMOKE, async ({ page }, testInfo) => {
   await page.addInitScript(raw => { if (!localStorage.getItem('pobr-v2-build-state')) localStorage.setItem('pobr-v2-build-state', raw); }, workspaceEnvelope(comparisonWorkspace()));
   await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });

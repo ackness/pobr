@@ -6,6 +6,7 @@ import { choose, closeInspector, detailValue, importBuild, openStat, expandFormu
 import { formatStatValue } from '../src/lib/statDisplay';
 import { setLanguage } from './configPage';
 import { bindT } from '../src/lib/i18n';
+import { SMOKE } from './tags';
 
 // A committed PoB2 build whose Armour bucket holds a conditional line that is not met
 // ("if you haven't been Hit Recently") next to active INC and MORE lines.
@@ -30,7 +31,7 @@ async function inspectFromRail(page: Page, label: string | RegExp, heading: stri
 }
 
 for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
-  test(`wolf DPS has one final precision across overview, rail, inspector and Calcs in ${lang}`, async ({ page }) => {
+  test(`wolf DPS has one final precision across overview, rail, inspector and Calcs in ${lang}`, lang === 'zh-TW' ? {} : SMOKE, async ({ page }) => {
     await importBuild(page, code);
     await setLanguage(page, lang);
     const hero = page.locator('#character-stats .rail-hero-value');

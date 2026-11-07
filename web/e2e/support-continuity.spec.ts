@@ -3,6 +3,7 @@ import { openItemsAfterImport } from './shell';
 import { headlineDps } from './skillsAndCalcs';
 import { copyCurrentStage, currentStage, ehpValue, goTo, openCustomModifiers, openOptimizerSettings, openStage, reduceMotion, settledNumber, settledText } from './upgradesPage';
 import type { SocketGroupInput } from '../src/api/types';
+import { SMOKE } from './tags';
 
 const dps = headlineDps;
 const capacity = (page: Page) => page.getByRole('spinbutton', { name: 'Unlocked support sockets', exact: true });
@@ -153,7 +154,7 @@ test('completed support plans and nondefault socket and lineage settings survive
   await expect(dps(page)).toHaveText(beforeDps);
 });
 
-test('same-stage Apply after returning to Skills equips the displayed complete support set and DPS preview', async ({ page }) => {
+test('same-stage Apply after returning to Skills equips the displayed complete support set and DPS preview', SMOKE, async ({ page }) => {
   await syntheticCaster(page);
   await openOptimizer(page);
   await capacity(page).fill('3');

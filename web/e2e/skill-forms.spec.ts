@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { statRow } from './shell';
 import { choose, goTo, importBuild, shareCode } from './skillsAndCalcs';
+import { SMOKE } from './tags';
 
 const source = `<PathOfBuilding2>
   <Build level="90" className="Sorceress" mainSocketGroup="1"/>
@@ -13,7 +14,7 @@ const source = `<PathOfBuilding2>
   <Items activeItemSet="1"><ItemSet id="1"/></Items><Config/>
 </PathOfBuilding2>`;
 
-test('forms, stages, disabled supports and Full DPS can be edited and shared', async ({ page }) => {
+test('forms, stages, disabled supports and Full DPS can be edited and shared', SMOKE, async ({ page }) => {
   await importBuild(page, deflateSync(source).toString('base64url'));
   await goTo(page, 'Skills');
   const group = page.locator('.skill-group').first();

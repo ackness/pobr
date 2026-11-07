@@ -7,8 +7,9 @@ import { expect, test } from '@playwright/test';
 import { pageLink, statValue, playerHitDps } from './shell';
 import { choose, closeSettings, settled, stableText } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
+import { SMOKE } from './tags';
 
-test('scratch build: class picker, level edit, tree allocation', async ({ page }) => {
+test('scratch build: class picker, level edit, tree allocation', SMOKE, async ({ page }) => {
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character' })).toBeVisible({ timeout: 90_000 });
 

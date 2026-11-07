@@ -8,12 +8,13 @@ import { deflateSync } from 'node:zlib';
 import { pageLink, statValue } from './shell';
 import { openBuild, stableText } from './buildLibrary';
 import { importBuild } from './skillsAndCalcs';
+import { SMOKE } from './tags';
 
 const code = deflateSync(`<PathOfBuilding2><Build level="20" className="Witch" mainSocketGroup="1"/>
 <Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="5" quality="0" enabled="true"/></Skill></Skills>
 <Items/><Config/></PathOfBuilding2>`).toString('base64url');
 
-test('edits persist across reload; builtin config toggles recalc', async ({ page }) => {
+test('edits persist across reload; builtin config toggles recalc', SMOKE, async ({ page }) => {
   await importBuild(page, code);
   await openBuild(page);
   await expect(page.getByRole('heading', { name: 'Character' })).toBeVisible({ timeout: 90_000 });

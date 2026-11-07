@@ -2,6 +2,7 @@ import { buildAction, openBuildMenu } from './shell';
 import { expect, test, type Page } from '@playwright/test';
 import { deflateSync } from 'node:zlib';
 import { mainSkillPinned } from './buildLibrary';
+import { SMOKE } from './tags';
 
 const code = deflateSync('<PathOfBuilding2><Build level="60" className="Witch" mainSocketGroup="1"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree><Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="FireballPlayer" level="12" quality="0" enabled="true"/></Skill></SkillSet></Skills><Items/><Config><Input name="enemyLevel" number="82"/><Input name="buffOnslaught" boolean="false"/></Config></PathOfBuilding2>').toString('base64url');
 const nav = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name, exact: true });
@@ -84,7 +85,7 @@ async function deafToStorage(page: Page) {
   });
 }
 
-test('tabs of one browser follow each other and merge what a tab missed', async ({ page, context }) => {
+test('tabs of one browser follow each other and merge what a tab missed', SMOKE, async ({ page, context }) => {
   await deafToStorage(page);
   await importBuild(page);
   const other = await context.newPage();

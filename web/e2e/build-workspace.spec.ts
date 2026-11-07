@@ -4,6 +4,7 @@ import { buildAction, pageLink } from './shell';
 import { importInto, openBuild, openExport, selectStage, settled } from './buildLibrary';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
+import { SMOKE } from './tags';
 
 const code = (level: number, nodes: string, notes: string) => deflateSync(`<PathOfBuilding2>
 <Build level="${level}" className="Ranger" ascendClassName="Deadeye"/>
@@ -36,7 +37,7 @@ async function snapshot(page: Page) {
   return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));
 }
 
-test('independent builds and stages preserve passive routes and notes across reload and sharing', async ({ page }) => {
+test('independent builds and stages preserve passive routes and notes across reload and sharing', SMOKE, async ({ page }) => {
   await page.goto('/build');
   await ready(page);
   await importCode(page, code(30, '1,2', 'Leveling Ice Shot'));

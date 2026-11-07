@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
 import type { ConfigInputValue } from '../src/api/types';
 import { choose, configGroupNames, control, currentStageName, go, hitDps, idle, importCode, nativeSelect, noMotion, openConfigGroup, openStage, row, savedState, setLanguage, shareCode } from './configPage';
+import { SMOKE } from './tags';
 
 test.use(noMotion);
 
@@ -185,7 +186,7 @@ test('review and keyboard jump clear both filters, preserve the request and keep
   await expect(hitDps(page)).toHaveText(baseline);
 });
 
-test('cold resistance changes real hit DPS and reset restores the exact absent override/default state', async ({ page }) => {
+test('cold resistance changes real hit DPS and reset restores the exact absent override/default state', SMOKE, async ({ page }) => {
   await ready(page);
   await importCode(page, syntheticCode(['Comet']));
   await openConfig(page);
