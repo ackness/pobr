@@ -4,6 +4,24 @@ Notable changes to PoBR, the browser build planner at [pobr.win](https://pobr.wi
 
 Versions follow [SemVer](https://semver.org/). While the version is 0.0.x, any release may change behaviour; changes that need action from WASM, CLI or data consumers are listed under **Breaking changes**. How a release section is written: [RELEASING.md](RELEASING.md#4-发版上线).
 
+## [0.0.48] - 2026-11-07
+
+The passive tree's side column now resizes by dragging its edge and remembers its width. Browser tests moved out of cloud CI into a local, tiered runner, and every release now runs the full browser suite before it is tagged. Builds saved in v0.0.47 open unchanged, and the WASM JSON schema version stays at 19.
+
+### Breaking changes
+
+- None.
+
+### Added
+
+- Passive tree: drag the side column's left edge to resize it, between 22 and 44rem and at most 48% of the page. The edge also works from the keyboard (arrow keys, Shift for bigger steps, Home/End), double-click resets it, and each browser remembers the width. This replaces the width slider, which also forgot its value between visits. (#337)
+
+### For developers
+
+- `mise run e2e [smoke|affected|default|release]` runs the Playwright suite locally: a 20-test `@smoke` tier, the specs affected by your changes (the default), today's default run, or the full matrix plus the isolated configs. It rebuilds only stale WASM, data and dist, and gives each worktree its own port on 127.0.0.1. (#338)
+- Cloud CI no longer runs the browser suite: `mise run ci` drops `--e2e`, and only the data-bump smoke spec still runs in the cloud when the data lock changes. Releases run `mise run e2e release` locally, and `mise run release:e2e-check` must pass on the merge commit before tagging. (#338)
+- `mise run check:pr --quick` runs fmt, `cargo check` of the affected packages, i18n, typecheck and the Vitest tests related to your changes, in seconds. `check:pr` now really passes `--maxWorkers=4` to Vitest. (#338)
+
 ## [0.0.47] - 2026-11-06
 
 A maintenance release: the passive tree and the Skills page do less work while you use them, and release notes now come from this changelog. Builds saved in v0.0.46 open unchanged, and the WASM JSON schema version stays at 19.
@@ -192,6 +210,7 @@ pobr.win now calculates with game data 0.5.5.5 (was 0.5.5.4.2), imported from th
 
 Notes for 0.0.43 and earlier are on [GitHub Releases](https://github.com/ackness/pobr/releases).
 
+[0.0.48]: https://github.com/ackness/pobr/compare/v0.0.47...v0.0.48
 [0.0.47]: https://github.com/ackness/pobr/compare/v0.0.46...v0.0.47
 [0.0.46]: https://github.com/ackness/pobr/compare/v0.0.45...v0.0.46
 [0.0.45]: https://github.com/ackness/pobr/compare/v0.0.44...v0.0.45
