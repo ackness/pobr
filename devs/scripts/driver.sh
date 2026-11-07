@@ -345,12 +345,12 @@ warm_clone() {
 warm_copy() {
   local free_kb
   free_kb="$(df -Pk target | awk 'NR==2 {print $4}')"
+  if [[ ! "$free_kb" =~ ^[0-9]+$ ]]; then echo "ERROR: cannot read free disk space" >&2; return 1; fi
   if (( free_kb < $1 * 2 )); then
     echo "ERROR: need about $(( $1 * 2 / 1024 )) MB free for the copy, only $(( free_kb / 1024 )) MB available" >&2
     return 1
   fi
-  if ! cp -a "$2" "$3"; then rm -rf "$3"; return 1; fi
-  find "$3" -name incremental -type d -prune -exec rm -rf {} +
+  cp -a "$2" "$3" && find "$3" -name incremental -type d -prune -exec rm -rf {} +
 }
 
 cmd_warm() {
@@ -371,18 +371,31 @@ cmd_warm() {
     echo "target/debug already exists; leaving it unchanged"; return 0
   fi
   mkdir -p target || return 1
+  # Stale temps come from a killed earlier run (SIGKILL skips the cleanup below).
+  local stale
+  for stale in target/.debug.warm.*; do [[ -e "$stale" ]] && rm -rf "$stale"; done
   local src="$source/target/debug" size_kb start=$SECONDS
   size_kb="$(du -sk "$src" | awk '{print $1}')"
+  if [[ ! "$size_kb" =~ ^[0-9]+$ ]]; then echo "ERROR: cannot measure $src" >&2; return 1; fi
   say "Warm target/debug ($((size_kb / 1024)) MB) from $source"
-  if warm_clone "$src" target/debug; then
-    echo "OK: copy-on-write clone in $((SECONDS - start)) s; Cargo reuses unchanged dependencies"
-  elif warm_copy "$size_kb" "$src" target/debug; then
-    echo "OK: no copy-on-write here; plain copy (cp -a, mtimes kept) in $((SECONDS - start)) s," \
-      "using $((size_kb / 1024)) MB of disk"
-  else
-    echo "ERROR: could not warm target/debug; build normally" >&2
-    return 1
+  # Build in a sibling temp and rename last, so an interrupted or failed copy
+  # never leaves a target/debug that the next run would trust.
+  WARM_TMP="target/.debug.warm.$$"
+  trap 'rm -rf "$WARM_TMP"; trap - INT TERM; exit 130' INT TERM
+  local method=""
+  if warm_clone "$src" "$WARM_TMP"; then
+    method="copy-on-write clone"
+  elif warm_copy "$size_kb" "$src" "$WARM_TMP"; then
+    method="no copy-on-write here; plain copy (cp -a, mtimes kept), $((size_kb / 1024)) MB of disk"
   fi
+  if [[ -n "$method" ]] && mv "$WARM_TMP" target/debug; then
+    trap - INT TERM
+    echo "OK: $method, in $((SECONDS - start)) s; Cargo reuses unchanged dependencies"
+    return 0
+  fi
+  rm -rf "$WARM_TMP"; trap - INT TERM
+  echo "ERROR: could not warm target/debug; build normally" >&2
+  return 1
 }
 
 # The batch gate a coordinator runs once after merging several changes: every
