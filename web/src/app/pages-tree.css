@@ -71,6 +71,11 @@
 
   /* ── The side column: node details, attributes, node power, planners ───── */
   .shell-root .tree-panel .tree-side { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; border-left: 1px solid var(--border); background: var(--card); container-type: inline-size; container-name: tree-sidebar; }
+  /* The drag handle straddles the border between canvas and column; its line shows on hover, focus and while dragging. */
+  .shell-root .tree-panel .tree-side-resize { position: absolute; z-index: 7; top: 0; bottom: 0; right: calc(var(--tree-side) - .3rem); width: .6rem; cursor: col-resize; touch-action: none; }
+  .shell-root .tree-panel .tree-side-resize::after { content: ''; position: absolute; inset: 0 .25rem; background: var(--primary); opacity: 0; transition: opacity .12s; }
+  .shell-root .tree-panel .tree-side-resize:is(:hover, :focus-visible)::after, .shell-root .tree-panel[data-resizing] .tree-side-resize::after { opacity: .7; }
+  .shell-root .tree-panel[data-resizing] { user-select: none; }
   .shell-root .tree-panel .tree-edit-tools { display: grid; align-content: start; min-width: 0; padding: 1rem 1.1rem 2.5rem; scroll-margin: 0; }
   .shell-root .tree-panel .tree-edit-tools:focus { outline: none; }
   .shell-root .tree-panel .tree-edit-tools > * { margin: 0; min-width: 0; }
@@ -173,6 +178,7 @@
     .shell-root .tree-panel .tree-search input { flex: 1 1 0; width: 0; min-width: 0; max-width: none; }
     .shell-root .tree-panel .tree-conversion-preview { position: fixed; inset: auto .75rem .75rem; width: auto; max-height: 70dvh; }
     .shell-root .tree-panel .tree-side { overflow: visible; border-left: 0; border-top: 1px solid var(--border); }
+    .shell-root .tree-panel .tree-side-resize { display: none; }
     .shell-root .tree-panel .tree-edit-tools { padding-inline: .9rem; }
     .shell-root .tree-panel .asc-hint { top: .75rem; }
   }
@@ -189,8 +195,6 @@
   .shell-root .tree-panel .tree-tooltip { pointer-events: auto; max-height: min(34rem, 65dvh); overflow-y: auto; max-width: min(24rem, calc(100% - 1rem)); }
   .shell-root .tree-panel .tree-tooltip .diff-list { display: flex; flex-direction: column; }
   .shell-root .tree-panel .tree-tooltip .diff-entry { white-space: normal; }
-  .shell-root .tree-panel .tree-sidebar-width { display: grid; gap: .25rem; font-size: var(--text-xs); }
-  .shell-root .tree-panel .tree-sidebar-width input { width: 100%; }
   .shell-root .tree-panel .tree-import-notice { color: var(--foreground); border-left-color: var(--primary); }
   .shell-root .tree-panel .tree-refund-result { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center; gap: .5rem; font-variant-numeric: tabular-nums; }
   .shell-root .tree-panel .tree-heat-legend { max-width: 22rem; }
@@ -207,5 +211,4 @@
   .shell-root .tree-panel .tree-plan-heading span { white-space: normal; }
   .shell-root .tree-panel .tree-plan-metrics { flex-wrap: wrap; gap: .25rem .75rem; margin-top: .3rem; }
   .shell-root .tree-panel .tree-plan-actions { margin-top: .4rem; }
-  @container shell-container (max-width: 64rem) { .shell-root .tree-panel .tree-sidebar-width { display: none; } }
 }

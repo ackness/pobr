@@ -952,7 +952,7 @@
     "tree.heatLegend": "{stat}：藍色表示降低，紅色到金色表示收益遞增，未著色表示零收益或尚未評估。顏色表示單點收益，將滑鼠指標停在節點上可查看整條路徑收益。",
     "tree.planNumber": "天賦方案 {number}",
     "tree.details": "詳細資料",
-    "tree.sidebarWidth": "側欄寬度",
+    "tree.resizeSidebar": "調整側欄寬度",
     "tree.minimum": "{stat}最低值（{unit}）",
     "tree.constraintBaseline": "目前{stat}：{value}。填寫最低值或最高值後，此限制才會生效。",
     "tree.constraintActive": "限制：{stat} 不低於 {value}",

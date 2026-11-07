@@ -952,7 +952,7 @@
     "tree.heatLegend": "{stat}：蓝色表示降低，红色到金色表示收益递增，未着色表示零收益或尚未评估。颜色表示单点收益，悬浮显示整条路径收益。",
     "tree.planNumber": "天赋方案 {number}",
     "tree.details": "详情",
-    "tree.sidebarWidth": "侧栏宽度",
+    "tree.resizeSidebar": "调整侧栏宽度",
     "tree.minimum": "{stat}最低值（{unit}）",
     "tree.constraintBaseline": "当前{stat}：{value}。填写最低值或最高值后，此约束才会生效。",
     "tree.constraintActive": "约束：{stat} 不低于 {value}",

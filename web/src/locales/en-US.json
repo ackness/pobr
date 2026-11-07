@@ -952,7 +952,7 @@
     "tree.heatLegend": "{stat}: blue = loss; red → gold = increasing gain; no tint = zero or not evaluated. Colors show single-node gain; hover shows full path gain.",
     "tree.planNumber": "Passive plan {number}",
     "tree.details": "Details",
-    "tree.sidebarWidth": "Sidebar width",
+    "tree.resizeSidebar": "Resize sidebar",
     "tree.minimum": "Minimum {stat} ({unit})",
     "tree.constraintBaseline": "Current {stat}: {value}. Enter a minimum or maximum to apply this constraint.",
     "tree.constraintActive": "Constraint: {stat} at least {value}",
