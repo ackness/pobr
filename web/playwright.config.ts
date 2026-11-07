@@ -1,9 +1,8 @@
 import { defineConfig } from '@playwright/test';
+import { e2eServer } from './e2e/server';
 
-// POBR_E2E_PORT lets a second run use its own preview server and port next to the default one.
-const custom = process.env.POBR_E2E_PORT;
-const port = Number(custom ?? 4173);
-const baseURL = `http://localhost:${port}`;
+// `mise run e2e` passes a per-worktree port; a plain run uses 4173 (e2e/server.ts).
+const { port, baseURL } = e2eServer(4173);
 // Tests tagged @quarantine or @extended (e2e/tags.ts) stay out of the default run; POBR_E2E_ALL=1 includes them.
 const all = process.env.POBR_E2E_ALL === '1';
 // Recording a trace costs every test CPU time. CI keeps traces of failures; locally POBR_E2E_TRACE=1 turns them on.
@@ -30,10 +29,12 @@ export default defineConfig({
     trace: traces ? 'retain-on-failure' : 'off',
   },
   webServer: {
-    // preview 用已构建的 dist（含 wasm + public/data）；先 pnpm build + sync-data。
-    command: `pnpm preview --port ${port} --strictPort`,
+    // preview 用已构建的 dist（含 wasm + public/data）；先 pnpm build + sync-data（`mise run e2e` 自动检查并重建）。
+    command: `pnpm preview --host 127.0.0.1 --port ${port} --strictPort`,
     url: baseURL,
-    reuseExistingServer: !custom,
+    // A server already on the port may be another worktree's preview of another build. Reuse it only when asked
+    // (POBR_E2E_REUSE=1, e.g. a preview you started yourself); otherwise a taken port fails the run.
+    reuseExistingServer: process.env.POBR_E2E_REUSE === '1',
     timeout: 60_000,
   },
 });

@@ -240,9 +240,13 @@ description = "Report game-text translation coverage of the prepared data per la
 run = "python3 devs/scripts/translation-coverage.py"
 
 [tasks."web:e2e"]
-description = "Run Playwright with automatically prepared browser dependencies; requires current dist/WASM/data"
+description = "Raw Playwright after installing the browser (setup:e2e); requires current dist/WASM/data. Prefer `mise run e2e`"
 depends = ["setup:e2e"]
 run = "pnpm --dir web exec playwright test"
+
+[tasks.e2e]
+description = "Browser tests in tiers after refreshing stale WASM/data/dist: `mise run e2e [smoke|affected|default|release] [--workers N] [<playwright args>]` (default affected)"
+run = "python3 devs/scripts/e2e.py"
 
 [tasks."setup:oracle"]
 description = "Prepare the pinned LuaJIT and PoB2 test reference automatically for oracle tasks"
