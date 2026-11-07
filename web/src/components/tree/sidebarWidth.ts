@@ -4,7 +4,7 @@ export const SIDE_DEFAULT = 27;
 const SIDE_MIN = 22;
 const SIDE_MAX = 44;
 /** The side column never takes more than this share of the panel (the `48%` in pages-tree.css). */
-const SIDE_MAX_SHARE = 0.48;
+export const SIDE_MAX_SHARE = 0.48;
 const STEP = 1;
 const STEP_LARGE = 4;
 const KEY = uiStorageKey('pobr-tree-side-width');
@@ -21,11 +21,15 @@ export function clampSideWidth(rem: number, panelRem?: number): number {
   return Math.round(Math.min(max, Math.max(min, rem)) * 10) / 10;
 }
 
-/** The width a key asks for (the column is on the right, so ← widens it), or undefined for any other key. */
-export function sideWidthForKey(key: string, shift: boolean, current: number, panelRem?: number): number | undefined {
-  const step = shift ? STEP_LARGE : STEP;
+/**
+ * The width a key asks for (the column is on the right, so ← widens it), or undefined for any other key.
+ * Alt, Ctrl and Meta arrows belong to the browser (Alt+← is "back"), so they are not ours.
+ */
+export function sideWidthForKey(event: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'altKey' | 'ctrlKey' | 'metaKey'>, current: number, panelRem?: number): number | undefined {
+  if (event.altKey || event.ctrlKey || event.metaKey) return undefined;
+  const step = event.shiftKey ? STEP_LARGE : STEP;
   const { min, max } = sideWidthLimits(panelRem);
-  switch (key) {
+  switch (event.key) {
     case 'ArrowLeft': return clampSideWidth(current + step, panelRem);
     case 'ArrowRight': return clampSideWidth(current - step, panelRem);
     case 'Home': return min;

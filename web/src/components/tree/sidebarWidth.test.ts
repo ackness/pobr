@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { afterEach, expect, test, vi } from 'vitest';
-import { SIDE_DEFAULT, clampSideWidth, parseSideWidth, readSideWidth, sideWidthForKey, sideWidthLimits, writeSideWidth } from './sidebarWidth';
+import { SIDE_DEFAULT, SIDE_MAX_SHARE, clampSideWidth, parseSideWidth, readSideWidth, sideWidthForKey, sideWidthLimits, writeSideWidth } from './sidebarWidth';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -18,17 +20,34 @@ test('clamps to the range and rounds to a tenth', () => {
   expect(clampSideWidth(40, 60)).toBe(28.8);
 });
 
+const key = (name: string, modifiers: { shiftKey?: boolean; altKey?: boolean; ctrlKey?: boolean; metaKey?: boolean } = {}) =>
+  ({ key: name, shiftKey: false, altKey: false, ctrlKey: false, metaKey: false, ...modifiers });
+
 test('keys move by 1rem, 4rem with Shift, and jump to the ends; the column is on the right so left widens', () => {
-  expect(sideWidthForKey('ArrowLeft', false, 27)).toBe(28);
-  expect(sideWidthForKey('ArrowRight', false, 27)).toBe(26);
-  expect(sideWidthForKey('ArrowLeft', true, 27)).toBe(31);
-  expect(sideWidthForKey('ArrowRight', true, 27)).toBe(23);
-  expect(sideWidthForKey('ArrowRight', true, 24)).toBe(22);
-  expect(sideWidthForKey('ArrowLeft', true, 42)).toBe(44);
-  expect(sideWidthForKey('Home', false, 30)).toBe(22);
-  expect(sideWidthForKey('End', false, 30)).toBe(44);
-  expect(sideWidthForKey('End', false, 30, 60)).toBe(28.8);
-  expect(sideWidthForKey('Enter', false, 30)).toBeUndefined();
+  expect(sideWidthForKey(key('ArrowLeft'), 27)).toBe(28);
+  expect(sideWidthForKey(key('ArrowRight'), 27)).toBe(26);
+  expect(sideWidthForKey(key('ArrowLeft', { shiftKey: true }), 27)).toBe(31);
+  expect(sideWidthForKey(key('ArrowRight', { shiftKey: true }), 27)).toBe(23);
+  expect(sideWidthForKey(key('ArrowRight', { shiftKey: true }), 24)).toBe(22);
+  expect(sideWidthForKey(key('ArrowLeft', { shiftKey: true }), 42)).toBe(44);
+  expect(sideWidthForKey(key('Home'), 30)).toBe(22);
+  expect(sideWidthForKey(key('End'), 30)).toBe(44);
+  expect(sideWidthForKey(key('End'), 30, 60)).toBe(28.8);
+  expect(sideWidthForKey(key('Enter'), 30)).toBeUndefined();
+});
+
+test('keys with Alt, Ctrl or Meta are left to the browser', () => {
+  for (const modifier of ['altKey', 'ctrlKey', 'metaKey'] as const) {
+    for (const name of ['ArrowLeft', 'ArrowRight', 'Home', 'End']) expect(sideWidthForKey(key(name, { [modifier]: true }), 27)).toBeUndefined();
+  }
+});
+
+test('the stylesheet fallback and 48% cap match the constants here', () => {
+  const css = readFileSync(fileURLToPath(new URL('../../app/pages-tree.css', import.meta.url)), 'utf8');
+  const match = /--tree-side:\s*min\(var\(--tree-side-preference,\s*([\d.]+)rem\),\s*([\d.]+)%\)/.exec(css);
+  expect(match).not.toBeNull();
+  expect(Number(match![1])).toBe(SIDE_DEFAULT);
+  expect(Number(match![2])).toBe(Math.round(SIDE_MAX_SHARE * 100));
 });
 
 test('a stored width is only used when it is a number inside the range', () => {

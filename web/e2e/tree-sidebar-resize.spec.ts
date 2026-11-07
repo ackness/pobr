@@ -72,6 +72,27 @@ test.describe('1440px', () => {
     expect(await sideRem(page)).toBeCloseTo(27, 1);
   });
 
+  test('a drag that returns to its start, or a plain click, leaves the width and storage alone', async ({ page }) => {
+    await open(page);
+    const grip = handle(page);
+    const box = (await grip.boundingBox())!;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x - 200, y, { steps: 4 });
+    // Let a frame paint the wide width, then come back before the next one.
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve(null))));
+    await page.mouse.move(x, y, { steps: 4 });
+    await page.mouse.up();
+    await expect(page.locator('.tree-panel')).not.toHaveAttribute('data-resizing');
+    await expect(grip).toHaveAttribute('aria-valuenow', '27');
+    expect(await sideRem(page)).toBeCloseTo(27, 1);
+    await page.mouse.click(x, y);
+    expect(await sideRem(page)).toBeCloseTo(27, 1);
+    expect(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEY)).toBeNull();
+  });
+
   test('the width is remembered, ignores bad stored values, and the handle goes with the closed column', async ({ page }) => {
     await open(page);
     expect(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEY)).toBeNull();

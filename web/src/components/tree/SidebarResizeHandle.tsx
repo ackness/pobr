@@ -31,7 +31,19 @@ export function SidebarResizeHandle({ panelRef, width, label, onCommit }: Props)
     observer.observe(panel);
     return () => observer.disconnect();
   }, [panelRef]);
-  useEffect(() => () => { if (drag.current) cancelAnimationFrame(drag.current.frame); }, []);
+  // The last committed width, for undoing a drag that is cut short.
+  const committed = useRef(width);
+  committed.current = width;
+  // Closing the column mid-drag: drop the drag marker and the half-dragged width.
+  useEffect(() => {
+    const panel = panelRef.current;
+    return () => {
+      if (!drag.current) return;
+      cancelAnimationFrame(drag.current.frame);
+      drag.current = null;
+      if (panel) { delete panel.dataset.resizing; panel.style.setProperty('--tree-side-preference', `${committed.current}rem`); }
+    };
+  }, [panelRef]);
 
   const { min, max } = sideWidthLimits(panelRem);
   const value = clampSideWidth(width, panelRem);
@@ -39,7 +51,7 @@ export function SidebarResizeHandle({ panelRef, width, label, onCommit }: Props)
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     const panel = panelRef.current;
-    if (event.button !== 0 || !panel) return;
+    if (event.button !== 0 || !panel || drag.current) return;
     const { rootPx, panelRem: now } = measure(panel);
     event.currentTarget.setPointerCapture(event.pointerId);
     panel.dataset.resizing = '';
@@ -60,11 +72,15 @@ export function SidebarResizeHandle({ panelRef, width, label, onCommit }: Props)
     drag.current = null;
     delete panelRef.current?.dataset.resizing;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    if (commit) onCommit(current.pending);
-    else paint(width);
+    // A click without movement changes nothing, so it does not overwrite a stored preference.
+    if (!commit) paint(committed.current);
+    else {
+      paint(current.pending);
+      if (current.pending !== current.startRem) onCommit(current.pending);
+    }
   };
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const next = sideWidthForKey(event.key, event.shiftKey, value, panelRem);
+    const next = sideWidthForKey(event, value, panelRem);
     if (next === undefined) return;
     event.preventDefault();
     event.stopPropagation();
@@ -73,6 +89,6 @@ export function SidebarResizeHandle({ panelRef, width, label, onCommit }: Props)
 
   return <div className="tree-side-resize" role="separator" aria-orientation="vertical" aria-controls="tree-side" aria-label={label}
     aria-valuenow={value} aria-valuemin={min} aria-valuemax={max} tabIndex={0}
-    onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={event => finish(event, true)} onPointerCancel={event => finish(event, false)}
+    onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={event => finish(event, true)} onPointerCancel={event => finish(event, false)} onLostPointerCapture={event => finish(event, false)}
     onKeyDown={onKeyDown} onDoubleClick={() => onCommit(SIDE_DEFAULT)} />;
 }
