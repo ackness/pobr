@@ -350,7 +350,7 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual((self.root / "target/debug/keep").read_text(), "own build")
 
-    def test_warm_copies_cache_directories_when_the_filesystem_has_no_clone(self):
+    def test_warm_copies_debug_only_when_the_filesystem_has_no_clone(self):
         source = self.root / "source tree"
         for name in ["debug", "wasm32-unknown-unknown", "wasm-release", "release"]:
             self.write(f"source tree/target/{name}/deps/lib.rlib", name)
@@ -365,8 +365,9 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         result = self.run_script("devs/scripts/driver.sh", "warm", str(source))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("plain copy", result.stdout)
-        for name in ["debug", "wasm32-unknown-unknown", "wasm-release"]:
-            self.assertEqual((self.root / f"target/{name}/deps/lib.rlib").read_text(), name)
+        self.assertEqual((self.root / "target/debug/deps/lib.rlib").read_text(), "debug")
+        self.assertFalse((self.root / "target/wasm32-unknown-unknown").exists())
+        self.assertFalse((self.root / "target/wasm-release").exists())
         self.assertEqual(int((self.root / "target/debug/deps/lib.rlib").stat().st_mtime), stamp)
         self.assertFalse((self.root / "target/release").exists())
         self.assertFalse((self.root / "target/debug/incremental").exists())

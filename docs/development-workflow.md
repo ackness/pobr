@@ -107,7 +107,7 @@ mise run cache                                # Read-only storage and file count
 mise run regen                                # After a rule edit: regenerate parser artifacts, test the generator
 mise run gate                                 # Optional local batch validation on a warm checkout
 mise run gate --only core,parity              # Rerun only the failed steps
-mise run warm <warm checkout>                 # New worktree: copy its target/debug and WASM caches (CoW, else cp -a)
+mise run warm <warm checkout>                 # New worktree: copy its target/debug (CoW, else cp -a)
 ```
 
 基准和手动诊断按需编译，普通测试不编译 Criterion 或五个 WASM 诊断/fixture 生成目标：
@@ -202,12 +202,11 @@ mise run check:workflows                             # Automation contracts; no 
 
 新 worktree 的 `target/` 为空，第一次测试会重新编译全部依赖。选择空闲、版本兼容的
 已编译 checkout 作为来源，在新 worktree 运行 `mise run warm <已编译的 checkout>`，
-复制 `target/debug`、`target/wasm32-unknown-unknown` 和 `target/wasm-release`（后两者是 `build-wasm.mjs` 的
-wasm-pack 产物目录）。优先写时复制（APFS clonefile 或 Linux reflink）：开始时复用数据块，修改时才占用新块。
-文件系统不支持时回退为保留 mtime 的 `cp -a`（Cargo 指纹比较 mtime），按实际大小占用磁盘（主 checkout 约 6 GB），
-并在剩余空间不足两倍时拒绝；不使用硬链接或符号链接，也不复制 `incremental/`。已存在的目录不覆盖，`target/release` 不预热。
-Cargo 复用输入未变的依赖，路径不同的 workspace crate 仍会重编译；实测（ext4，约 4.5 s 复制）
-Rust 测试省下依赖编译时间，WASM 构建主要耗在 workspace crate 的 LTO 上，几乎不变。
+复制 `target/debug`。优先写时复制（APFS clonefile 或 Linux reflink）：开始时复用数据块，修改时才占用新块。
+文件系统不支持时回退为保留 mtime 的 `cp -a`（Cargo 指纹比较 mtime），按实际大小占用磁盘（主 checkout 约 5.5 GB），
+并在剩余空间不足两倍时拒绝；不使用硬链接或符号链接，也不复制 `incremental/`。已有 `target/debug` 时不覆盖。
+Cargo 复用输入未变的依赖，路径不同的 workspace crate 仍会重编译（实测 Rust 测试套件冷 61 s、预热 42 s）。
+WASM 构建和 `target/release` 不预热：WASM 的 LTO 与 wasm-opt 主导耗时，实测冷热都约 90–100 s。
 分析工具（`gap`、`gaps`、`triage`、`compare`、`config:coverage`、`skills:sweep`、`output-coverage.py`）
 默认会准备 CLI，并把台账与 PoB2 结果缓存在本 checkout 的 `.cache/`。设 `POBR_BIN=<checkout>/target/debug/pobr`
 使用已编译的 CLI，设 `POBR_CACHE_DIR=<checkout>/.cache` 共用已有缓存（台账按程序内容、PoB2 结果按构筑码与 vendor 失效）。

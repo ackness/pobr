@@ -168,7 +168,7 @@ description = "Regenerate parser artifacts (precompile-mods --report) and test t
 run = "bash devs/scripts/driver.sh regen"
 
 [tasks.warm]
-description = "Copy another worktree's target/debug and WASM build caches into this new worktree (copy-on-write if available, else `cp -a`): `mise run warm [source worktree]`"
+description = "Copy another worktree's target/debug into this new worktree (copy-on-write if available, else `cp -a`): `mise run warm [source worktree]`"
 run = "bash devs/scripts/driver.sh warm"
 
 [tasks.cache]
