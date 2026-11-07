@@ -350,6 +350,56 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual((self.root / "target/debug/keep").read_text(), "own build")
 
+    def test_warm_copies_debug_only_when_the_filesystem_has_no_clone(self):
+        source = self.root / "source tree"
+        for name in ["debug", "wasm32-unknown-unknown", "wasm-release", "release"]:
+            self.write(f"source tree/target/{name}/deps/lib.rlib", name)
+        self.write("source tree/target/debug/incremental/state", "path-bound")
+        stamp = 1_700_000_000
+        os.utime(source / "target/debug/deps/lib.rlib", (stamp, stamp))
+        # A cp that, like ext4, refuses copy-on-write requests.
+        self.write("bin/cp", f'#!/bin/bash\n'
+                   f'for a in "$@"; do [[ "$a" == --reflink=always || "$a" == -ac ]] && exit 1; done\n'
+                   f'exec {shutil.which("cp")} "$@"\n')
+        (self.root / "bin/cp").chmod(0o755)
+        result = self.run_script("devs/scripts/driver.sh", "warm", str(source))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("plain copy", result.stdout)
+        self.assertEqual((self.root / "target/debug/deps/lib.rlib").read_text(), "debug")
+        self.assertFalse((self.root / "target/wasm32-unknown-unknown").exists())
+        self.assertFalse((self.root / "target/wasm-release").exists())
+        self.assertEqual(int((self.root / "target/debug/deps/lib.rlib").stat().st_mtime), stamp)
+        self.assertFalse((self.root / "target/release").exists())
+        self.assertFalse((self.root / "target/debug/incremental").exists())
+        self.assertTrue((source / "target/debug/incremental/state").is_file())
+
+    def test_warm_copies_into_a_temp_and_leaves_nothing_when_the_copy_fails_midway(self):
+        source = self.root / "source tree"
+        self.write("source tree/target/debug/deps/lib.rlib", "debug")
+        # A cp that logs its destination, refuses target/debug itself (marker, exit 99),
+        # and otherwise writes part of the destination, then dies.
+        self.write("bin/cp", f'#!/bin/bash\n'
+                   f'for a in "$@"; do [[ "$a" == --reflink=always ]] && exit 1; done\n'
+                   f'dest="${{@: -1}}"; echo "$dest" >> "{self.root}/cp-dests"\n'
+                   f'[[ "$dest" == target/debug ]] && {{ touch "{self.root}/wrote-target-debug"; exit 99; }}\n'
+                   f'mkdir -p "$dest"; echo partial > "$dest/half"; exit 1\n')
+        (self.root / "bin/cp").chmod(0o755)
+        result = self.run_script("devs/scripts/driver.sh", "warm", str(source))
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertFalse((self.root / "wrote-target-debug").exists())
+        self.assertRegex((self.root / "cp-dests").read_text(), r"^target/\.debug\.warm\.\d+$")
+        self.assertEqual(sorted(p.name for p in (self.root / "target").iterdir()), [])
+        self.assertEqual((source / "target/debug/deps/lib.rlib").read_text(), "debug")
+
+    def test_warm_removes_stale_temps_from_a_killed_run(self):
+        source = self.root / "source tree"
+        self.write("source tree/target/debug/deps/lib.rlib", "debug")
+        self.write("target/.debug.warm.123/x", "left by SIGKILL")
+        result = self.run_script("devs/scripts/driver.sh", "warm", str(source))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(sorted(p.name for p in (self.root / "target").iterdir()), ["debug"])
+        self.assertEqual((self.root / "target/debug/deps/lib.rlib").read_text(), "debug")
+
 
 class ModifierWorkflowTests(unittest.TestCase):
     def setUp(self):
