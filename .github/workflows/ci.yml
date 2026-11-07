@@ -3,16 +3,7 @@ name: Full validation
 # No publication or secrets: this is shared by PRs, release tags and manual CI.
 on:
   workflow_call:
-    inputs:
-      e2e:
-        type: boolean
-        default: false
   workflow_dispatch:
-    inputs:
-      e2e:
-        description: Also run the Playwright E2E suite (about 15 minutes)
-        type: boolean
-        default: false
   schedule:
     - cron: '0 19 * * *'
 
@@ -107,7 +98,8 @@ jobs:
 
   # Independent Web gate: script tests, typecheck, unit tests and Worker checks.
   # Then build real WASM, sync data and bundle the site once. The standalone
-  # package smoke validates the compiled engine; Playwright E2E is opt-in. Release and deploy
+  # package smoke validates the compiled engine; the Playwright suite runs locally
+  # (`mise run e2e`), only the data-bump spec runs here. Release and deploy
   # wait for this job and both Rust gates to pass.
   web:
     name: web (tsc + vitest + build + package)
@@ -196,11 +188,10 @@ jobs:
           path: web/dist
           if-no-files-found: error
           retention-days: 3
-      # The full E2E suite is opt-in: it runs only for a manual dispatch with `e2e` enabled
-      # (`mise run ci <ref> --e2e`), never on tags or release PRs. A range that changes the
-      # data lock (master push, or a manual run on a branch whose lock differs from the
-      # default branch) runs the one data-bump spec instead: the ordinary player flow on
-      # the new data. ci-plan.py decides; an unknown branch range selects it.
+      # The Playwright suite runs locally (`mise run e2e`; `mise run e2e release` before a
+      # release). A range that changes the data lock (master push, or a manual run on a branch
+      # whose lock differs from the default branch) runs the one data-bump spec here: the
+      # ordinary player flow on the new data. ci-plan.py decides; an unknown branch range selects it.
       - name: Select data-bump smoke
         id: data-smoke
         working-directory: .
@@ -224,17 +215,10 @@ jobs:
           fi
           python3 devs/scripts/ci-plan.py --data-smoke "$base"
       - name: Install Playwright
-        if: inputs.e2e || steps.data-smoke.outputs.run == 'true'
+        if: steps.data-smoke.outputs.run == 'true'
         run: pnpm exec playwright install --with-deps chromium
-      - name: E2E smoke
-        if: inputs.e2e
-        # Every matrix cell, including the @extended ones a local default run leaves out;
-        # quarantined tests stay out (web/e2e/tags.ts).
-        env:
-          POBR_E2E_ALL: '1'
-        run: pnpm exec playwright test --grep-invert @quarantine
       - name: Data-bump smoke
-        if: ${{ !inputs.e2e && steps.data-smoke.outputs.run == 'true' }}
+        if: steps.data-smoke.outputs.run == 'true'
         run: pnpm exec playwright test data-bump-smoke.spec.ts
       - name: Package standalone WASM and report size
         run: |

@@ -176,7 +176,7 @@ description = "Read-only report of cache sizes and file counts"
 run = "bash devs/scripts/driver.sh cache"
 
 [tasks.ci]
-description = "Request full cloud CI for a pushed ref: `mise run ci <ref> [--e2e]`"
+description = "Request full cloud CI for a pushed ref: `mise run ci <ref>` (no Playwright; browser tests run locally with `mise run e2e`)"
 run = "bash devs/scripts/driver.sh ci"
 
 [tasks."ci-status"]
