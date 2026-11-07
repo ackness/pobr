@@ -350,6 +350,28 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual((self.root / "target/debug/keep").read_text(), "own build")
 
+    def test_warm_copies_cache_directories_when_the_filesystem_has_no_clone(self):
+        source = self.root / "source tree"
+        for name in ["debug", "wasm32-unknown-unknown", "wasm-release", "release"]:
+            self.write(f"source tree/target/{name}/deps/lib.rlib", name)
+        self.write("source tree/target/debug/incremental/state", "path-bound")
+        stamp = 1_700_000_000
+        os.utime(source / "target/debug/deps/lib.rlib", (stamp, stamp))
+        # A cp that, like ext4, refuses copy-on-write requests.
+        self.write("bin/cp", f'#!/bin/bash\n'
+                   f'for a in "$@"; do [[ "$a" == --reflink=always || "$a" == -ac ]] && exit 1; done\n'
+                   f'exec {shutil.which("cp")} "$@"\n')
+        (self.root / "bin/cp").chmod(0o755)
+        result = self.run_script("devs/scripts/driver.sh", "warm", str(source))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("plain copy", result.stdout)
+        for name in ["debug", "wasm32-unknown-unknown", "wasm-release"]:
+            self.assertEqual((self.root / f"target/{name}/deps/lib.rlib").read_text(), name)
+        self.assertEqual(int((self.root / "target/debug/deps/lib.rlib").stat().st_mtime), stamp)
+        self.assertFalse((self.root / "target/release").exists())
+        self.assertFalse((self.root / "target/debug/incremental").exists())
+        self.assertTrue((source / "target/debug/incremental/state").is_file())
+
 
 class ModifierWorkflowTests(unittest.TestCase):
     def setUp(self):

@@ -12,7 +12,7 @@
 #   full       fmt + clippy + all workspace tests
 #   gate       optional local batch validation; reports every failing step
 #   regen      precompile-mods --report, then its tests
-#   warm       copy-on-write clone of another worktree's target/debug
+#   warm       copy another worktree's Rust and WASM build caches (clone or cp -a)
 #   smoke      Quick representative aggregation, parser and codec checks.
 #   data       数据现状自检 + 再生管线说明（含云端约束）
 #   lua <pat>  在 vendor PoB2 Lua 里 grep 一个 pattern（公式/规则裁决用）
@@ -295,7 +295,7 @@ PoBR development commands (mise tasks; without mise run this script with the sam
   mise run full                             Explicit full local Rust gate
   mise run gate [--only step,...]           Optional warm-checkout batch validation; remote CI preferred
   mise run regen                            Regenerate parser artifacts and test precompile-mods
-  mise run warm [source worktree]           Copy-on-write clone of another worktree's target/debug
+  mise run warm [source worktree]           Copy another worktree's target/debug and WASM caches
   mise run ci <pushed-branch-or-tag>        Request full cloud CI via gh (no Playwright; see mise run e2e)
   mise run ci-status [--branch <branch>]     List cloud CI results via gh
 
@@ -323,8 +323,38 @@ cmd_regen() {
 }
 
 # A new worktree starts with an empty target and rebuilds every dependency.
-# Clone another worktree's debug cache copy-on-write (APFS clonefile, or a Linux
-# reflink); Cargo then rebuilds only the workspace crates whose paths differ.
+# Copy another worktree's build caches: target/debug (Rust tests) plus the two
+# directories `wasm-pack --profile wasm-release` fills (target/wasm-release for
+# host build scripts, target/wasm32-unknown-unknown for the module). Prefer a
+# copy-on-write clone (APFS clonefile, Linux reflink); without one, a plain
+# `cp -a` that keeps mtimes, which Cargo's fingerprints compare. Never link
+# files: Cargo rewrites artifacts in place and would corrupt the source.
+# target/release is not warmed: no dev task builds it (only release packaging).
+WARM_DIRS=(debug wasm32-unknown-unknown wasm-release)
+
+# Clone $1 to $2 copy-on-write; fail quietly when the filesystem cannot.
+warm_clone() {
+  if [[ "$(uname)" == Darwin ]]; then
+    cp -ac "$1" "$2" 2>/dev/null && return 0
+  else
+    cp -a --reflink=always "$1" "$2" 2>/dev/null && return 0
+  fi
+  rm -rf "$2"; return 1
+}
+
+# Plain mtime-preserving copy of $2 (size $1 KB) to $3; refuses below twice the
+# size in free space. Incremental state is tied to absolute paths, so it is dropped.
+warm_copy() {
+  local free_kb
+  free_kb="$(df -Pk target | awk 'NR==2 {print $4}')"
+  if (( free_kb < $1 * 2 )); then
+    echo "ERROR: need about $(( $1 * 2 / 1024 )) MB free for the copy, only $(( free_kb / 1024 )) MB available" >&2
+    return 1
+  fi
+  if ! cp -a "$2" "$3"; then rm -rf "$3"; return 1; fi
+  find "$3" -name incremental -type d -prune -exec rm -rf {} +
+}
+
 cmd_warm() {
   if [[ $# -gt 1 || "${1:-}" == -* ]]; then
     echo "usage: mise run warm [source worktree; default: the repository's main worktree]" >&2
@@ -339,19 +369,25 @@ cmd_warm() {
   if [[ "$(cd "$source" && pwd -P)" == "$(pwd -P)" ]]; then
     echo "ERROR: source is this worktree" >&2; return 1
   fi
-  if [[ -e target/debug ]]; then
-    echo "target/debug already exists; leaving it unchanged"; return 0
-  fi
   mkdir -p target || return 1
-  say "Copy-on-write clone of $source/target/debug"
-  if cp -cR "$source/target/debug" target/ 2>/dev/null ||
-     cp -R --reflink=always "$source/target/debug" target/ 2>/dev/null; then
-    echo "OK: target/debug cloned; Cargo reuses unchanged dependencies"
-  else
-    rm -rf target/debug
-    echo "ERROR: this filesystem has no copy-on-write clone; build normally" >&2
-    return 1
-  fi
+  local name src dest size_kb start
+  for name in "${WARM_DIRS[@]}"; do
+    src="$source/target/$name"; dest="target/$name"
+    if [[ -e "$dest" ]]; then echo "target/$name already exists; leaving it unchanged"; continue; fi
+    if [[ ! -d "$src" ]]; then echo "target/$name: not in the source; skipped"; continue; fi
+    size_kb="$(du -sk "$src" | awk '{print $1}')"
+    say "Warm target/$name ($((size_kb / 1024)) MB) from $source"
+    start=$SECONDS
+    if warm_clone "$src" "$dest"; then
+      echo "OK: copy-on-write clone in $((SECONDS - start)) s; Cargo reuses unchanged dependencies"
+    elif warm_copy "$size_kb" "$src" "$dest"; then
+      echo "OK: no copy-on-write here; plain copy (cp -a, mtimes kept) in $((SECONDS - start)) s," \
+        "using $((size_kb / 1024)) MB of disk"
+    else
+      echo "ERROR: could not warm target/$name; build normally" >&2
+      return 1
+    fi
+  done
 }
 
 # The batch gate a coordinator runs once after merging several changes: every

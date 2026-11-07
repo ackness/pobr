@@ -117,7 +117,7 @@ mise run gate --only core,parity # 修复后只重跑失败项
 如果确需这些工具或本地编译，再按需复用已有缓存；仅审阅或文档工作不必预热：
 
 ```bash
-mise run warm /path/to/warm/checkout                         # 首次运行：写时复制其 target/debug
+mise run warm /path/to/warm/checkout                         # 首次运行：复制其 target/debug 与 WASM 缓存（写时复制，否则 cp -a）
 export POBR_BIN=/path/to/warm/checkout/target/debug/pobr     # 分析工具使用现有 CLI，不另行编译
 export POBR_CACHE_DIR=/path/to/warm/checkout/.cache          # 共用逐行记录和 oracle 结果
 ```
