@@ -4,6 +4,7 @@ import { hasDisconnectedTreeNodes, isDisconnectedTree, isImportProblem, needsTre
 import { TreeRefundNotice, type RefundReceipt } from './TreeRefundNotice';
 import { evaluateHeatmap } from './heatmap';
 import { fitToParentInPixels } from './pixelSize';
+import { trackBarBottom } from './barClearance';
 import { SidebarResizeHandle } from './SidebarResizeHandle';
 import { readSideWidth, writeSideWidth } from './sidebarWidth';
 import { TreePointSummary } from './TreePointSummary';
@@ -1484,7 +1485,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
       <h2 id="tree-heading" className="sr-only">{tt('tree.title')}</h2>
       <div className="tree-stage">
         {canvasEl}
-        <div className="tree-bar tree-bar-top" role="group" aria-label={words(lang, 'Find and allocate', '查找与加点', '尋找與加點')}>
+        <div ref={trackBarBottom} className="tree-bar tree-bar-top" role="group" aria-label={words(lang, 'Find and allocate', '查找与加点', '尋找與加點')}>
           {searchEl}
           {modeEl}
           {heatEl}

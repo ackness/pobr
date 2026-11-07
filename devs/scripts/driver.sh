@@ -12,7 +12,7 @@
 #   full       fmt + clippy + all workspace tests
 #   gate       optional local batch validation; reports every failing step
 #   regen      precompile-mods --report, then its tests
-#   warm       copy-on-write clone of another worktree's target/debug
+#   warm       copy another worktree's target/debug (clone or cp -a)
 #   smoke      Quick representative aggregation, parser and codec checks.
 #   data       数据现状自检 + 再生管线说明（含云端约束）
 #   lua <pat>  在 vendor PoB2 Lua 里 grep 一个 pattern（公式/规则裁决用）
@@ -295,7 +295,7 @@ PoBR development commands (mise tasks; without mise run this script with the sam
   mise run full                             Explicit full local Rust gate
   mise run gate [--only step,...]           Optional warm-checkout batch validation; remote CI preferred
   mise run regen                            Regenerate parser artifacts and test precompile-mods
-  mise run warm [source worktree]           Copy-on-write clone of another worktree's target/debug
+  mise run warm [source worktree]           Copy another worktree's target/debug (clone or cp -a)
   mise run ci <pushed-branch-or-tag>        Request full cloud CI via gh (no Playwright; see mise run e2e)
   mise run ci-status [--branch <branch>]     List cloud CI results via gh
 
@@ -323,8 +323,36 @@ cmd_regen() {
 }
 
 # A new worktree starts with an empty target and rebuilds every dependency.
-# Clone another worktree's debug cache copy-on-write (APFS clonefile, or a Linux
-# reflink); Cargo then rebuilds only the workspace crates whose paths differ.
+# Copy another worktree's target/debug (Rust tests). Prefer a copy-on-write clone
+# (APFS clonefile, Linux reflink); without one, a plain `cp -a` that keeps mtimes,
+# which Cargo's fingerprints compare. Never link files: Cargo rewrites artifacts in
+# place and would corrupt the source. The WASM build (target/wasm32-unknown-unknown,
+# target/wasm-release) is not warmed: LTO and wasm-opt dominate its time. target/release
+# is not warmed either: only release packaging builds it.
+
+# Clone $1 to $2 copy-on-write; fail quietly when the filesystem cannot.
+warm_clone() {
+  if [[ "$(uname)" == Darwin ]]; then
+    cp -ac "$1" "$2" 2>/dev/null && return 0
+  else
+    cp -a --reflink=always "$1" "$2" 2>/dev/null && return 0
+  fi
+  rm -rf "$2"; return 1
+}
+
+# Plain mtime-preserving copy of $2 (size $1 KB) to $3; refuses below twice the
+# size in free space. Incremental state is tied to absolute paths, so it is dropped.
+warm_copy() {
+  local free_kb
+  free_kb="$(df -Pk target | awk 'NR==2 {print $4}')"
+  if [[ ! "$free_kb" =~ ^[0-9]+$ ]]; then echo "ERROR: cannot read free disk space" >&2; return 1; fi
+  if (( free_kb < $1 * 2 )); then
+    echo "ERROR: need about $(( $1 * 2 / 1024 )) MB free for the copy, only $(( free_kb / 1024 )) MB available" >&2
+    return 1
+  fi
+  cp -a "$2" "$3" && find "$3" -name incremental -type d -prune -exec rm -rf {} +
+}
+
 cmd_warm() {
   if [[ $# -gt 1 || "${1:-}" == -* ]]; then
     echo "usage: mise run warm [source worktree; default: the repository's main worktree]" >&2
@@ -343,15 +371,31 @@ cmd_warm() {
     echo "target/debug already exists; leaving it unchanged"; return 0
   fi
   mkdir -p target || return 1
-  say "Copy-on-write clone of $source/target/debug"
-  if cp -cR "$source/target/debug" target/ 2>/dev/null ||
-     cp -R --reflink=always "$source/target/debug" target/ 2>/dev/null; then
-    echo "OK: target/debug cloned; Cargo reuses unchanged dependencies"
-  else
-    rm -rf target/debug
-    echo "ERROR: this filesystem has no copy-on-write clone; build normally" >&2
-    return 1
+  # Stale temps come from a killed earlier run (SIGKILL skips the cleanup below).
+  local stale
+  for stale in target/.debug.warm.*; do [[ -e "$stale" ]] && rm -rf "$stale"; done
+  local src="$source/target/debug" size_kb start=$SECONDS
+  size_kb="$(du -sk "$src" | awk '{print $1}')"
+  if [[ ! "$size_kb" =~ ^[0-9]+$ ]]; then echo "ERROR: cannot measure $src" >&2; return 1; fi
+  say "Warm target/debug ($((size_kb / 1024)) MB) from $source"
+  # Build in a sibling temp and rename last, so an interrupted or failed copy
+  # never leaves a target/debug that the next run would trust.
+  WARM_TMP="target/.debug.warm.$$"
+  trap 'rm -rf "$WARM_TMP"; trap - INT TERM; exit 130' INT TERM
+  local method=""
+  if warm_clone "$src" "$WARM_TMP"; then
+    method="copy-on-write clone"
+  elif warm_copy "$size_kb" "$src" "$WARM_TMP"; then
+    method="no copy-on-write here; plain copy (cp -a, mtimes kept), $((size_kb / 1024)) MB of disk"
   fi
+  if [[ -n "$method" ]] && mv "$WARM_TMP" target/debug; then
+    trap - INT TERM
+    echo "OK: $method, in $((SECONDS - start)) s; Cargo reuses unchanged dependencies"
+    return 0
+  fi
+  rm -rf "$WARM_TMP"; trap - INT TERM
+  echo "ERROR: could not warm target/debug; build normally" >&2
+  return 1
 }
 
 # The batch gate a coordinator runs once after merging several changes: every

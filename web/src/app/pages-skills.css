@@ -96,7 +96,7 @@
   .shell-root .skills-page .skill-section-label { margin: 0 0 .55rem; font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-foreground); }
 
   /* Gems: a table without borders. Each label is named by its column heading, not repeated per row. */
-  .shell-root .skills-page .skill-detail { --gem-cols: 1.25rem minmax(8rem, 16rem) 3.6rem 3.6rem 1.9rem; }
+  .shell-root .skills-page .skill-detail { --gem-cols: 1.25rem minmax(0, 1fr) 3.6rem 3.6rem 1.9rem; }
   .shell-root .skills-page .skill-detail .gem-column-labels { display: grid; grid-template-columns: var(--gem-cols); align-items: end; column-gap: .5rem; padding: 0 0 .35rem; border-bottom: 1px solid var(--border); font-size: .6875rem; color: var(--muted-foreground); }
   .shell-root .skills-page .skill-detail .gem-column-labels > :nth-child(n + 3):nth-child(-n + 5) { text-align: right; padding-right: .5rem; }
   .shell-root .skills-page .skill-detail .skill-gems { display: grid; margin: 0; padding: 0; list-style: none; }
@@ -121,7 +121,6 @@
   .shell-root .skills-page .gem-advanced-controls { display: flex; flex-wrap: wrap; gap: .75rem; padding-block: .5rem; }
   .shell-root .skills-page .gem-advanced-controls label { display: flex; align-items: center; gap: .4rem; }
   .shell-root .skills-page .skill-gem .gem-advanced-controls input[type='number'] { width: 4.25rem; }
-  .shell-root .skills-page .gem-column-labels, .shell-root .skills-page .skill-gems { max-width: 31rem; }
   .shell-root .skills-page .skill-gem input[type='number'] { width: 100%; min-width: 0; height: 2rem; min-height: 0; padding: 0 .5rem; font-size: var(--text-sm); text-align: right; font-variant-numeric: tabular-nums; appearance: textfield; }
   .shell-root .skills-page .skill-gem input[type='number']::-webkit-inner-spin-button,
   .shell-root .skills-page .skill-gem input[type='number']::-webkit-outer-spin-button { appearance: none; margin: 0; }
@@ -168,8 +167,13 @@
   .shell-root .skills-page .skill-advanced > summary:hover { color: var(--foreground); }
   .shell-root .skills-page .gem-optimizer-settings-body { display: grid; gap: .8rem; margin-top: .7rem; }
   .shell-root .skills-page .gem-optimizer-settings-body .opt-row { align-items: flex-end; gap: .75rem 1.25rem; }
-  .shell-root .skills-page .skill-group-picker { margin: .5rem 0 0; }
-  .shell-root .skills-page .skill-group-picker .gem-picker { max-width: 28rem; }
+  /* Add a support: heading, status line, picker and recommendations are separate rows, not one block. */
+  .shell-root .skills-page .skill-support-section { display: grid; gap: var(--space-3); align-content: start; min-width: 0; }
+  .shell-root .skills-page .skill-support-section > .skill-section-label { margin: 0; }
+  .shell-root .skills-page .skill-group-picker { display: grid; gap: var(--space-2); margin: 0; }
+  .shell-root .skills-page .skill-group-picker .gem-picker { max-width: none; width: 100%; }
+  /* A disclosure's text, field and list keep one gap, as the settings body and advanced body do. */
+  .shell-root .skills-page .gem-optimizer-body :is(.support-pool-details, .support-diagnostics) > summary ~ * { margin: var(--space-3) 0 0; }
 
   /* Advanced: out of the way until asked for. */
   .shell-root .skills-page .skill-advanced { padding-top: .9rem; border-top: 1px solid var(--border); }
@@ -193,6 +197,13 @@
     .shell-root .skills-page .skill-group-header { margin-right: 0; }
     .shell-root .skills-page .skill-detail { grid-column: 2; grid-row: 1; position: static; max-height: none; overflow: visible; margin: 0; padding: .1rem 0 1.5rem 2rem; border-left: 1px solid var(--border); scrollbar-width: thin; }
     .shell-root .skills-page .skills-empty { grid-column: 1 / -1; }
+  }
+
+  /* Wide page: the gems stay on the left and "Add a support" opens beside them instead of leaving the right half empty. */
+  @container skills-page (min-width: 90rem) {
+    .shell-root .skills-page .skill-detail { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); column-gap: 2rem; }
+    .shell-root .skills-page .skill-detail > :not(.skill-gems-section, .skill-support-section) { grid-column: 1 / -1; }
+    .shell-root .skills-page .skill-detail > .skill-support-section { grid-column: 2; }
   }
 
   /* ── The detail's own width decides how a gem row lays out ─────────────── */
