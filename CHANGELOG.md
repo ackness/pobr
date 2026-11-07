@@ -4,6 +4,26 @@ Notable changes to PoBR, the browser build planner at [pobr.win](https://pobr.wi
 
 Versions follow [SemVer](https://semver.org/). While the version is 0.0.x, any release may change behaviour; changes that need action from WASM, CLI or data consumers are listed under **Breaking changes**. How a release section is written: [RELEASING.md](RELEASING.md#4-发版上线).
 
+## [0.0.49] - 2026-11-07
+
+Layout fixes. The Skills page uses the full width like the other pages. The left rail's damage split lines up with the rows below it. Dragging the passive tree's side column no longer stutters, and the tree's top bar no longer covers the ascendancy hint. Builds saved in v0.0.48 open unchanged, and the WASM JSON schema version stays at 19.
+
+### Breaking changes
+
+- None.
+
+### Fixed
+
+- Passive tree: dragging the side column's edge no longer stutters. The tree keeps its size while you drag and lays out once when you let go. (#342)
+- Passive tree: when the tree's top bar wraps to two rows (a narrow tree area, or the longer Chinese labels), it no longer covers the "Pick an ascendancy" hint, the edit error or the import notice. They now sit below the bar. (#342)
+- Skills page: the gem list and support picker use the page's full width. Wide windows show two columns: the socket group's gems on the left, and Add support plus the optimizer on the right. The support picker's description and search box no longer touch. (#343)
+- Left rail: the damage-type split (Cold, Lightning, Fire, Physical…) and its colour dots no longer touch the window edge. They line up with the rows below. (#340)
+
+### For developers
+
+- `mise run warm` now also works on filesystems without copy-on-write, such as ext4. It falls back to a plain copy that preserves timestamps, after checking for free space, and it copies atomically. (#341)
+- The browser suite runs the tests of one spec file in parallel, and the exhaustive config sweep is split into four tests (`… (share 1/4)` to `(share 4/4)`). A tree-only change's `affected` tier takes about 170 s instead of 217 s, and the release tier about 11.5 minutes. (#344)
+
 ## [0.0.48] - 2026-11-07
 
 The passive tree's side column now resizes by dragging its edge and remembers its width. Browser tests moved out of cloud CI into a local, tiered runner, and every release now runs the full browser suite before it is tagged. Builds saved in v0.0.47 open unchanged, and the WASM JSON schema version stays at 19.
@@ -210,6 +230,7 @@ pobr.win now calculates with game data 0.5.5.5 (was 0.5.5.4.2), imported from th
 
 Notes for 0.0.43 and earlier are on [GitHub Releases](https://github.com/ackness/pobr/releases).
 
+[0.0.49]: https://github.com/ackness/pobr/compare/v0.0.48...v0.0.49
 [0.0.48]: https://github.com/ackness/pobr/compare/v0.0.47...v0.0.48
 [0.0.47]: https://github.com/ackness/pobr/compare/v0.0.46...v0.0.47
 [0.0.46]: https://github.com/ackness/pobr/compare/v0.0.45...v0.0.46
