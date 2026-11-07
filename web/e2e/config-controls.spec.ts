@@ -82,7 +82,7 @@ for (let share = 0; share < SHARES; share++) {
         else await expect(control.type === 'select-one' ? nativeSelect(input) : input, `${control.key} reset`).toHaveValue(control.value);
       }
       summary.push({ section: name, controls: controls.length, choices });
-      }
+    }
     // Every share reads every group, so this checks the whole catalog whichever share exercised a control.
     expect(visitedKeys.sort()).toEqual(expectedKeys);
     expect((await savedState(page)).params.config_inputs).toEqual(initialInputs);
