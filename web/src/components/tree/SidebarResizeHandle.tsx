@@ -72,12 +72,12 @@ export function SidebarResizeHandle({ panelRef, width, label, onCommit }: Props)
     drag.current = null;
     delete panelRef.current?.dataset.resizing;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    // A click without movement changes nothing, so it does not overwrite a stored preference.
-    if (!commit) paint(committed.current);
-    else {
+    // A click, or a drag back to where it started, changes nothing: restore the stored preference
+    // (CSS caps it to the panel) instead of writing its clamped value.
+    if (commit && current.pending !== current.startRem) {
       paint(current.pending);
-      if (current.pending !== current.startRem) onCommit(current.pending);
-    }
+      onCommit(current.pending);
+    } else paint(committed.current);
   };
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const next = sideWidthForKey(event, value, panelRem);
