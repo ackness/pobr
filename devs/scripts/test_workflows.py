@@ -373,18 +373,32 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         self.assertFalse((self.root / "target/debug/incremental").exists())
         self.assertTrue((source / "target/debug/incremental/state").is_file())
 
-    def test_warm_leaves_no_target_debug_or_temp_when_the_copy_fails_midway(self):
+    def test_warm_copies_into_a_temp_and_leaves_nothing_when_the_copy_fails_midway(self):
         source = self.root / "source tree"
         self.write("source tree/target/debug/deps/lib.rlib", "debug")
-        # A cp that writes part of the destination, then dies.
-        self.write("bin/cp", '#!/bin/bash\n'
-                   'for a in "$@"; do [[ "$a" == --reflink=always ]] && exit 1; done\n'
-                   'dest="${@: -1}"; mkdir -p "$dest"; echo partial > "$dest/half"; exit 1\n')
+        # A cp that logs its destination, refuses target/debug itself (marker, exit 99),
+        # and otherwise writes part of the destination, then dies.
+        self.write("bin/cp", f'#!/bin/bash\n'
+                   f'for a in "$@"; do [[ "$a" == --reflink=always ]] && exit 1; done\n'
+                   f'dest="${{@: -1}}"; echo "$dest" >> "{self.root}/cp-dests"\n'
+                   f'[[ "$dest" == target/debug ]] && {{ touch "{self.root}/wrote-target-debug"; exit 99; }}\n'
+                   f'mkdir -p "$dest"; echo partial > "$dest/half"; exit 1\n')
         (self.root / "bin/cp").chmod(0o755)
         result = self.run_script("devs/scripts/driver.sh", "warm", str(source))
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertFalse((self.root / "wrote-target-debug").exists())
+        self.assertRegex((self.root / "cp-dests").read_text(), r"^target/\.debug\.warm\.\d+$")
         self.assertEqual(sorted(p.name for p in (self.root / "target").iterdir()), [])
         self.assertEqual((source / "target/debug/deps/lib.rlib").read_text(), "debug")
+
+    def test_warm_removes_stale_temps_from_a_killed_run(self):
+        source = self.root / "source tree"
+        self.write("source tree/target/debug/deps/lib.rlib", "debug")
+        self.write("target/.debug.warm.123/x", "left by SIGKILL")
+        result = self.run_script("devs/scripts/driver.sh", "warm", str(source))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(sorted(p.name for p in (self.root / "target").iterdir()), ["debug"])
+        self.assertEqual((self.root / "target/debug/deps/lib.rlib").read_text(), "debug")
 
 
 class ModifierWorkflowTests(unittest.TestCase):
