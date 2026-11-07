@@ -4,6 +4,8 @@ import { hasDisconnectedTreeNodes, isDisconnectedTree, isImportProblem, needsTre
 import { TreeRefundNotice, type RefundReceipt } from './TreeRefundNotice';
 import { evaluateHeatmap } from './heatmap';
 import { fitToParentInPixels } from './pixelSize';
+import { SidebarResizeHandle } from './SidebarResizeHandle';
+import { readSideWidth, writeSideWidth } from './sidebarWidth';
 import { TreePointSummary } from './TreePointSummary';
 import { jewelSocketNames } from './jewelSocketNames';
 import { defaultReportStat, distributeAttributeChoices, passivePointSummary } from './treePresentation';
@@ -154,7 +156,9 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
   const tt = bindT(lang);
   /** Whether the planner / details column beside the canvas is shown. */
   const [sideOpen, setSideOpen] = useState(true);
-  const [sideWidth, setSideWidth] = useState(27);
+  const [sideWidth, setSideWidth] = useState(readSideWidth);
+  const panelRef = useRef<HTMLElement>(null);
+  const commitSideWidth = useCallback((rem: number) => { setSideWidth(rem); writeSideWidth(rem); }, []);
   const { hover, setHover, hoverNode, keepHover, leaveHover, onFocus: focusHover, onBlur: blurHover } = useTreeHover();
   const dialogs = useAppDialogs(lang);
   const captureAction = useSessionAction(session);
@@ -1476,7 +1480,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     requestAnimationFrame(() => toolsRef.current?.focus({ preventScroll: true }));
   };
   return (
-    <section className="ui-page tree-panel" aria-labelledby="tree-heading" style={{ '--tree-side-preference': `${sideWidth}rem` } as React.CSSProperties} data-side={sideOpen ? 'open' : 'closed'} onKeyDown={onPanelKeyDown}>
+    <section ref={panelRef} className="ui-page tree-panel" aria-labelledby="tree-heading" style={{ '--tree-side-preference': `${sideWidth}rem` } as React.CSSProperties} data-side={sideOpen ? 'open' : 'closed'} onKeyDown={onPanelKeyDown}>
       <h2 id="tree-heading" className="sr-only">{tt('tree.title')}</h2>
       <div className="tree-stage">
         {canvasEl}
@@ -1501,9 +1505,9 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
           {conversion}
         </div>
       </div>
+      {sideOpen && <SidebarResizeHandle panelRef={panelRef} width={sideWidth} label={tt('tree.resizeSidebar')} onCommit={commitSideWidth} />}
       <aside id="tree-side" className="tree-side" hidden={!sideOpen} aria-label={tt('tree.editOptions')}>
         <div className="tree-edit-tools" ref={toolsRef} tabIndex={-1}>
-          <label className="tree-sidebar-width">{tt('tree.sidebarWidth')}<AppInput type="range" min={22} max={38} value={sideWidth} onChange={event => setSideWidth(Number(event.target.value))} /></label>
           {toolsBody}
           <details className="tree-legend-help"><summary className="disclosure">{words(lang, 'Colors and weapon sets', '颜色与武器组', '顏色與武器組')}</summary><p className="tree-hint">{tt('tree.weaponRules')}</p></details>
         </div>
