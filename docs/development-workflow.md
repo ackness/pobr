@@ -45,7 +45,7 @@ setup 检查 Git、make、C 编译器；macOS 的 Apple SDK/Command Line Tools �
 | Web 界面文字 | `mise run i18n:check`：`web/src/locales/` 每种已登记语言的键集须与 `en-US.json` 一致、`{占位符}` 相同；PR、完整 CI 与 gate 的 Web 步骤都运行。新语言未译完时本地用 `node web/scripts/check-locales.mjs --allow-missing` |
 | 独立数据 | `mise run data:prepare`按`pipeline/data.lock.json`临时导入固定owner输入；`data:check`离线检查；原料采集、导出与领域生产在owner仓库 |
 | PoB2 对照、triage、词条审计 | 对应任务依赖 `setup:oracle`，自动准备固定 LuaJIT commit 与固定 vendor；重复运行复用缓存 |
-| 浏览器回归 | `mise run web:e2e <spec>`，自动安装 lockfile 对应的 Playwright 浏览器/系统依赖；仍须当前 dist/WASM/data |
+| 浏览器回归 | `mise run e2e [smoke\|affected\|default\|release]`（见[浏览器测试](#浏览器测试)）：先检查并按需重建 WASM、同步数据与 dist；缺浏览器时提示 `mise run setup:e2e`（安装 lockfile 对应的 Playwright 浏览器与系统依赖） |
 
 `setup:oracle` 将兼容的 LuaJIT 暴露到 `.cache/runtime/bin`；mise 为任务配置 PATH、
 `POBR_LUAJIT` 与 vendor 的 `LUA_PATH`，无需各自修改 shell。
@@ -91,6 +91,7 @@ PR gate 不运行 Clippy 或 Rust 测试，本地检查也不代替完整集成 
 
 ```bash
 mise run check:pr                             # Before pushing: changed areas, offline
+mise run e2e                                  # Browser: @smoke + specs mapped from the change (see below)
 mise run hooks:install                        # Opt in once per clone; shared by worktrees
 mise run targets                              # List current suites without compiling
 mise run verify build skills support_gating:: # Selected tests, fmt and Clippy
@@ -287,7 +288,7 @@ PR merge ref 的缓存供该 PR 后续运行复用，默认分支缓存也可供
 PR 缓存不会反向成为默认分支或其他 PR 的缓存。
 
 master 选中完整验证时，轻量 Rust/Web/脚本 jobs 按计划跳过；PR 中完整 job 默认跳过。
-E2E 默认未选中，显式开启才运行；数据锁改变时的冒烟 spec 例外（见下文）。
+云端 CI 不运行 Playwright 套件，只在数据锁改变时运行一个冒烟 spec（见下文）；浏览器测试在本地运行。
 缓存命中不会跳过这些正确性检查。更新 PR 后旧 run 的取消可由新 run 接替，
 确认结果时始终核对当前 head，以及 gate 是否成功验证了所有应运行的 jobs。
 
@@ -343,7 +344,7 @@ PR 不在 workflow 层过滤文档，以免必需检查永久 pending：只运�
 已准备数据上派生规则的逐字节复现与解析覆盖率棘轮、数据兼容、Web 类型/单测/Worker、真实 WASM 契约与打包计算。
 缺少 vendor 的项目会明确跳过，不能将其描述为已验收。
 它不等同于本地 `mise run gate` 的额外 accuracy 报告和全部本地输入。
-完整 E2E 只在显式手动输入时运行；交互风险需要时选择相关本地 spec 或云端 E2E。
+云端不运行 Playwright 套件（全矩阵在 2 个 worker 上超出 web 作业的 45 分钟），浏览器测试在本地运行（见[浏览器测试](#浏览器测试)）。
 例外是数据 bump：完整 CI 的范围改动了 `pipeline/data.lock.json`（master push，或对分支 `mise run ci <ref>`、
 其数据锁与默认分支不同）时，只运行一个冒烟 spec [data-bump-smoke.spec.ts](../web/e2e/data-bump-smoke.spec.ts)：
 导入构筑码、技能与辅助、打造器、加点（恰好退一点再加一点）、刷新重开（加点、辅助、能量护盾与 DPS 不变）。选择由 `ci-plan.py --data-smoke` 决定；
@@ -353,9 +354,35 @@ tag 与 nightly 不选，分支范围无法比较时保守选中。它不进入 
 [e2e/tags.ts](../web/e2e/tags.ts)：`@quarantine` 留给界面已改、等待重写或等待决定的用例（目前没有用例使用它），`@extended` 是矩阵中额外的
 语言／宽度／同路径变体（英文 1440px 与简体中文 390px 等代表格仍在默认集），或默认运行嫌慢的穷举扫描（如全部配置控件）。`POBR_E2E_ALL=1` 连同它们一起运行，
 再加 `--grep @quarantine` 只运行隔离的用例（当前为空）；有用例被隔离时修好后去掉标签。产品缺陷导致的失败不打标签，照常报告。
-完整 CI 的 E2E 步骤设 `POBR_E2E_ALL=1` 并 `--grep-invert @quarantine`：运行全部矩阵格，隔离的用例（若有）不运行。
+本地 `mise run e2e release` 设 `POBR_E2E_ALL=1` 并 `--grep-invert @quarantine`：运行全部矩阵格，隔离的用例（若有）不运行。
 默认配置还给单个操作与导航设 30 秒超时（等待真实 WASM 导入或计算的地方写在显式的 `expect(...)` 超时里）；本地默认 4 个 worker、不录 trace，
 `POBR_E2E_TRACE=1` 开启，CI 保留失败用例的 trace。
+
+### 浏览器测试
+
+`mise run e2e [层级] [--workers N] [Playwright 参数]`（[e2e.py](../devs/scripts/e2e.py)）按层级运行 Playwright：
+
+| 层级 | 运行什么 | 何时用 |
+| --- | --- | --- |
+| `smoke` | 带 `@smoke` 的约 20 个用例：每个顶层页面与核心流程一次，真实 WASM，只取代表格（本机约 35 秒） | 任何 UI 改动后先跑；挑选规则见 [e2e/tags.ts](../web/e2e/tags.ts) |
+| `affected`（默认） | `@smoke` 加上由变更映射到的 spec：变更范围同 `check:pr`（merge-base 到 HEAD 加未提交文件），映射表在 `e2e.py` 的 `AFFECTED`。改动的 spec 跑它自己，spec 读取的示例文件跑读取它的 spec；表里没有的 Web 文件跑 `default`；引擎、WASM 输入与数据锁跑 calc/import 类 spec；文档和脚本不跑并说明原因 | 日常改动，推送前 |
+| `default` | 今天的默认集（不含 `@extended`／`@quarantine`，本机约 9 分钟） | 共享代码（hooks、lib、locales）或大改动 |
+| `release` | 全部矩阵格（`POBR_E2E_ALL=1 --grep-invert @quarantine`），再依次运行三个独立配置（calcs-config、item-display、controls），合并汇总（本机约 12 分钟） | 每次发版前，见 [RELEASING.md](../RELEASING.md#4-发版上线) |
+
+运行前的检查：缺 `node_modules` 时离线安装；缺 lockfile 对应的 Chromium 时停止并提示 `mise run setup:e2e`；
+数据按锁离线校验（`build_data --install data --offline`）；WASM 身份（`wasm-cache-key.mjs`）、同步数据与 dist 的输入哈希
+记在 `.cache/e2e/inputs.json`，只在变化时运行 `build-wasm.mjs`、`pnpm sync-data` 或 `vite build`，不重复 typecheck；
+worktree 的 Rust `target/` 为空时提示 `mise run warm`。无法廉价修复的问题以一行 `STOP …` 给出要运行的命令。
+服务器只绑 127.0.0.1：运行器传入由 worktree 路径推出的 `POBR_E2E_PORT`（4200–4999，被占用时顺延），
+直接运行 `playwright test` 时用各配置的固定端口；已有服务器只在 `POBR_E2E_REUSE=1` 时复用，否则端口被占即失败，
+不会悄悄测到另一个 worktree 的构建。默认 4 个 worker（机器共享）。汇总按套件列出通过／失败／flaky／跳过与耗时；
+失败时给出报告（`.cache/e2e/runs/<套件>/html`）与截图、trace 目录。
+
+`release` 在干净工作树上全部通过时写回执 `.cache/e2e/release-<tree>.json`（commit、tree、数据锁 SHA-256、Playwright 版本、
+worker 数、各套件计数与耗时、起止时间）；有未提交改动、额外 Playwright 参数或失败时不写。回执以 tree 哈希为键：
+master 未前进时 release PR 的合并提交与 PR 头 tree 相同，分支上的回执仍然匹配。`mise run release:e2e-check [<rev>]`
+只读检查 `<rev>`（默认 HEAD）的 tree 是否有通过的回执（本 checkout 与同一 clone 的其他 worktree），没有时给出要运行的命令；
+它不在任何 workflow 里。`mise run web:e2e` 仍是直接调用 Playwright 的旧入口，不做上述检查。
 
 PR 与完整 CI 的 web 作业在作业摘要里打印游戏文本缺译统计（`devs/scripts/translation-coverage.py`）：
 每种语言的名词表、词条模板（与英文 stat 描述模板逐字对照）与原生显示文本覆盖率，缺译只报告、不使检查失败；
@@ -365,8 +392,7 @@ PR 与完整 CI 的 web 作业在作业摘要里打印游戏文本缺译统计�
 mise run check:workflows                   # 自动化契约，不编译 Rust
 mise run i18n:check                        # Web 界面文字的键集、占位符与语言登记
 mise run i18n:coverage                     # 游戏文本缺译统计（按语言对照英文数据；只报告，不失败）
-mise run ci feature/my-change              # 先推送目标提交；只请求检查，不推送代码
-mise run ci feature/my-change --e2e        # 显式启用 E2E
+mise run ci feature/my-change              # 先推送目标提交；只请求检查，不推送代码；不运行 Playwright（不再接受 --e2e）
 mise run ci-status --branch feature/my-change
 mise run full                             # 显式本地 Rust 全量检查，不含 Web
 ```
@@ -543,4 +569,4 @@ mise exec -- cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakd
   - `perf record --call-graph dwarf` 可查看上述运行的时间花在哪里。
     优化前先测当前版本，保留输入、工具链、主机与原始采样，避免沿用旧版热点结论。
 - `mise run web package-wasm`：将已准备 WASM 与同步数据打包到 `.cache/wasm-release/`；`mise run web smoke-wasm-package` 解压后执行真实计算。`build-wasm` 校验源码、工具链、构建设置和产物记录，未变时直接复用；`mise run web build-wasm --force` 显式重建但不清 Cargo 缓存。打包继续校验源码 / 绑定指纹、实际 schema 和数据快照，来源 commit 保留编译时值。脚本改动运行 `mise exec -- node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`；发布流程见 [WASM 打包说明](wasm-package.md)。release workflow 在完整门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
-- `mise run web test:worker`：在实际 workerd 运行时测试 Worker，使用合成上游响应，无外网依赖。E2E 失败的截图与 trace 由 CI 上传为 `playwright-failure`。
+- `mise run web test:worker`：在实际 workerd 运行时测试 Worker，使用合成上游响应，无外网依赖。数据 bump 冒烟失败的截图与 trace 由 CI 上传为 `playwright-failure`；本地运行的报告在 `.cache/e2e/runs/<套件>/`。

@@ -248,6 +248,10 @@ run = "pnpm --dir web exec playwright test"
 description = "Browser tests in tiers after refreshing stale WASM/data/dist: `mise run e2e [smoke|affected|default|release] [--workers N] [<playwright args>]` (default affected)"
 run = "python3 devs/scripts/e2e.py"
 
+[tasks."release:e2e-check"]
+description = "Read-only: pass when a passing `mise run e2e release` receipt exists for <rev>'s tree (default HEAD)"
+run = "python3 devs/scripts/e2e.py release-check"
+
 [tasks."setup:oracle"]
 description = "Prepare the pinned LuaJIT and PoB2 test reference automatically for oracle tasks"
 run = [
