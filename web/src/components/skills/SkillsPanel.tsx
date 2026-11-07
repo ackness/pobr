@@ -448,7 +448,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
         </header>
         {!selectedId && <p className="skills-hint">{tt(`skills.${noActiveState}Hint`)}</p>}
         {active && <SkillFormControls session={session} lang={lang} groupIndex={idx} catalog={byId} />}
-        {active && <section className="skill-detail-section" aria-label={w('Gems in this group', '本组宝石', '本組寶石')}>
+        {active && <section className="skill-gems-section" aria-label={w('Gems in this group', '本组宝石', '本組寶石')}>
           <h4 className="skill-section-label">{w('Gems', '宝石', '寶石')}</h4>
           <div className="gem-column-labels" aria-hidden="true">
             <span /><span>{tt('calcs.skill')}</span><span>{tt('skills.level')}</span><span>{tt('skills.quality')}</span>
@@ -456,7 +456,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
           </div>
           {gemList}
         </section>}
-        <section className="skill-detail-section" aria-label={w('Add a support gem', '添加辅助宝石', '新增輔助寶石')}>
+        <section className="skill-support-section" aria-label={w('Add a support gem', '添加辅助宝石', '新增輔助寶石')}>
           <h4 className="skill-section-label">{w('Add a support', '添加辅助', '新增輔助')}</h4>
           {supportPicker}
           {optimizer}
