@@ -13,6 +13,10 @@ export default defineConfig({
   testIgnore: ['calcs-config.spec.ts', 'item-display.spec.ts', 'global-display.spec.ts'], // Isolated fixtures have their own server/config.
   grepInvert: all ? undefined : /@quarantine|@extended/,
   timeout: 120_000,
+  // Tests of one file spread across workers, so a long spec no longer bounds the run. Every test starts from a fresh
+  // browser context and nothing outside the page is shared. A file whose tests must run in order on one worker opts out
+  // with `test.describe.configure({ mode: 'default' })` and a one-line reason.
+  fullyParallel: true,
   // Each worker is a Chromium renderer running real WASM plus its GPU process (about two cores). CI keeps
   // Playwright's default (half the runner's cores); `--workers` overrides both.
   workers: process.env.CI ? undefined : 4,
