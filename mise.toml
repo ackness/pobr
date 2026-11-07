@@ -85,7 +85,7 @@ description = "fmt check plus Clippy for selected targets: `mise run lint build 
 run = "bash devs/scripts/driver.sh lint"
 
 [tasks."check:pr"]
-description = "Offline checks for the current PR range and local changes, plus affected-crate Clippy/tests"
+description = "Offline checks for the current PR range and local changes, plus affected-crate Clippy/tests (`--quick`: fmt, cargo check, i18n, types, changed unit tests)"
 run = "python3 devs/scripts/check-pr.py"
 
 [tasks."hooks:install"]

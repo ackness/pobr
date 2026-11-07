@@ -79,6 +79,9 @@ mise exec -- python3 devs/scripts/tool-versions.py --check
 数据、共享输入及 full 改动检查所有 crate，full 还运行全部本地区域。
 Web 运行 i18n、类型、单测与 Worker 检查，脚本运行离线自动化契约。
 任务跳过依赖安装、数据下载和远端 tag 校验，使用已准备的依赖、WASM 和 fixtures，缺失时检查失败并显示原因。
+编辑中的快速检查用 `mise run check:pr --quick`：Rust 只查格式并对涉及的包运行 `cargo check`（不跑 Clippy 与测试），
+Web 运行 i18n、类型与变更文件相关的单测（`vitest run --changed origin/master`，含未提交文件），不运行 Worker 测试与自动化契约；
+推送前仍运行完整的 `check:pr`。
 
 可运行一次 `mise run hooks:install`，把 `core.hooksPath` 设为 `devs/hooks`，
 pre-push hook 会自动执行上述检查；同一 clone 的所有 worktree **共享此设置**，各自使用本地的
@@ -91,6 +94,7 @@ PR gate 不运行 Clippy 或 Rust 测试，本地检查也不代替完整集成 
 
 ```bash
 mise run check:pr                             # Before pushing: changed areas, offline
+mise run check:pr --quick                     # While editing: fmt, cargo check, i18n, types, changed unit tests
 mise run e2e                                  # Browser: @smoke + specs mapped from the change (see below)
 mise run hooks:install                        # Opt in once per clone; shared by worktrees
 mise run targets                              # List current suites without compiling

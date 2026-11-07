@@ -147,6 +147,21 @@ class LocalPlannerTests(unittest.TestCase):
         self.assertIn(["bash", "devs/scripts/check-workflows.sh"], commands)
 
     @patch.object(check.subprocess, "run", return_value=metadata_result())
+    def test_quick_checks_affected_packages_and_changed_unit_tests_only(self, _metadata):
+        files = ["crates/pobr-build/src/lib.rs", "web/src/app/App.tsx", "devs/scripts/e2e.py"]
+        plan = check.planner.classify(files)
+        steps = check.steps_for(plan, check.touched_packages(files), quick=True)
+        commands = {label: command for label, _, command in steps}
+        self.assertEqual(list(commands), ["Rust fmt", "Rust check", "Web i18n:check", "Web typecheck", "Web test"])
+        self.assertEqual(commands["Rust check"], ["cargo", "check", "--offline", "--locked", "-p", "pobr-build",
+                                                  "-p", "pobr-cli", "-p", "pobr-wasm", "--all-targets"])
+        # No `--` separator: Vitest ignores options after one.
+        self.assertEqual(commands["Web test"], ["pnpm", "test", "--changed", "origin/master", "--maxWorkers=4"])
+        full = [command for _, _, command in check.steps_for(plan, check.touched_packages(files))]
+        self.assertIn(["pnpm", "test", "--maxWorkers=4"], full)
+        self.assertNotIn("--", [arg for command in full if command[:2] == ["pnpm", "test"] for arg in command])
+
+    @patch.object(check.subprocess, "run", return_value=metadata_result())
     def test_plan_only_prints_packages_without_executing_checks(self, _metadata):
         with patch.object(check.planner, "local_changed_files", return_value=["crates/pobr-core/src/lib.rs"]), \
                 patch.object(sys, "argv", ["check-pr.py", "--plan-only"]), \
