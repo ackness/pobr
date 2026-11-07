@@ -266,6 +266,10 @@ class RoutingTests(unittest.TestCase):
         for step in ("Install Playwright", "Data-bump smoke"):
             block = web.split(f"- name: {step}\n", 1)[1].split("      - name: ", 1)[0]
             self.assertIn("if: steps.data-smoke.outputs.run == 'true'", block, step)
+        # A failing smoke leaves its traces and screenshots for download.
+        upload = web.split("- name: Upload E2E failure artifacts\n", 1)[1].split("      - name: ", 1)[0]
+        self.assertIn("if: failure()", upload)
+        self.assertIn("path: web/test-results", upload)
         for filename in ("pr.yml", "release.yml"):
             caller = (HERE.parents[1] / ".github/workflows" / filename).read_text()
             self.assertNotIn("e2e", caller, filename)
