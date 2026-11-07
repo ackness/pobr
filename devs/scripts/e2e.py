@@ -101,6 +101,8 @@ AFFECTED = (
     ("web/src/components/compare/*", COMPARE), ("web/src/app/pages/compare/*", COMPARE),
     ("web/src/app/pages-compare.css", COMPARE),
     ("web/src/components/guidance/*", ("build-guidance",)),
+    # sync-build-references.mjs serves these as public/build-references/, which build guidance loads.
+    ("examples/demo-bd-test/builds/*", ("build-guidance",)),
     ("web/src/app/Overview.tsx", ("overview-ux", "calcs-breakdown")),
     ("web/src/app/CommandPalette.tsx", ("workbench",)),
 )
@@ -140,11 +142,13 @@ def map_file(name, stems, inputs):
     """What one changed file runs: spec patterns, "@isolated" names, DEFAULT, or NONE."""
     if planner.documentation(name):
         return NONE
-    if name in inputs:
-        return tuple(sorted(inputs[name]))
+    readers = tuple(sorted(inputs.get(name, ())))
     for pattern, target in AFFECTED:
         if fnmatch.fnmatchcase(name, pattern):
-            return target
+            # A spec input that the table also maps runs both (e.g. a build that guidance and import read).
+            return tuple(dict.fromkeys(readers + target))
+    if readers:
+        return readers
     if name.startswith("web/e2e/") and name.endswith(SPEC):
         stem = name.removeprefix("web/e2e/").removesuffix(SPEC)
         # A deleted spec has nothing left to run.
@@ -275,7 +279,8 @@ class Inputs:
         if not current.is_file() or current.read_text().strip() != version or not manifest.is_file():
             return None
         return sha256(json.dumps([sha256(lock), sha256(manifest.read_bytes()),
-                                  tree_digest(self.root, ["data/overlay-common"]),
+                                  tree_digest(self.root, ["data/overlay-common", f"data/{version}/patch",
+                                                          "examples/demo-bd-test/builds"]),
                                   tree_digest(self.web, ["scripts/sync-data.mjs", "scripts/sync-build-references.mjs"])]).encode())
 
     def data(self):
@@ -295,17 +300,11 @@ class Inputs:
         return key
 
     def wasm(self):
-        result = self.run(["node", "web/scripts/wasm-cache-key.mjs"], cwd=self.root, env=self.env,
-                          capture_output=True, text=True)
-        key = result.stdout.strip().removeprefix("key=")
-        if result.returncode or not key:
-            raise Stop("computing the WASM identity failed: run `node web/scripts/wasm-cache-key.mjs` for details")
-        if key == self.state.get("wasm") and (self.web / "src/wasm/pkg/build-receipt.json").is_file():
-            return
-        # build-wasm.mjs reuses verified bindings itself and recompiles only stale ones (about a minute).
+        # build-wasm.mjs checks the fingerprint, binding hashes, schema and build inputs itself and exits
+        # without writing when the bindings are fresh (about 0.2 s); stale ones recompile (about a minute).
+        # A rebuilt web/src/wasm/pkg changes the dist key, so dist follows.
         if not self.call(["node", "web/scripts/build-wasm.mjs"]):
             raise Stop("the WASM build failed: run `node web/scripts/build-wasm.mjs` for details")
-        self.save(wasm=key)
 
     def dist_key(self, data):
         vite = sorted((name, value) for name, value in self.env.items() if name.startswith("VITE_"))

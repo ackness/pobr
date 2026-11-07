@@ -104,6 +104,17 @@ class TierTests(unittest.TestCase):
         grep = main_grep(affected(name))
         self.assertTrue(all(re.escape(f"{stem}.spec.ts") in grep for stem in readers), (name, readers))
 
+    def test_build_references_run_build_guidance_and_their_readers(self):
+        grep = main_grep(affected("examples/demo-bd-test/builds/druid-oracle-comet/meta.json"))
+        self.assertIn(re.escape("build-guidance.spec.ts"), grep)
+        # A build that specs also import runs those specs as well.
+        name = "examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt"
+        grep = main_grep(affected(name))
+        for stem in ("build-guidance", *sorted(e2e.spec_inputs(E2E)[name])):
+            self.assertIn(re.escape(f"{stem}.spec.ts"), grep)
+        # Docs beside the builds stay documentation.
+        self.assertEqual(affected("examples/demo-bd-test/builds/druid-oracle-comet/notes.md").suites, ())
+
     def test_grep_matches_whole_file_names_only(self):
         pattern = re.compile(e2e.grep_for(("tree-convert",), STEMS))
         self.assertTrue(pattern.search("chromium tree-convert.spec.ts converts a tree"))
@@ -148,6 +159,7 @@ class FakeRun:
 
     def __init__(self, root, answers=None):
         self.root, self.answers, self.calls = root, answers or {}, []
+        self.effects = {}  # needle → callable run when a matching command runs
 
     def __call__(self, command, **kwargs):
         line = " ".join(str(part) for part in command)
@@ -155,6 +167,9 @@ class FakeRun:
         if "vite build" in line:
             (self.root / "web/dist").mkdir(parents=True, exist_ok=True)
             (self.root / "web/dist/index.html").write_text(f"build {len(self.calls)}")
+        for needle, effect in self.effects.items():
+            if needle in line:
+                effect()
         for needle, (code, stdout) in self.answers.items():
             if needle in line:
                 return subprocess.CompletedProcess(command, code, stdout, "")
@@ -178,22 +193,23 @@ class PreflightTests(unittest.TestCase):
             "web/pnpm-lock.yaml": "lock", "web/node_modules/.modules.yaml": "modules",
             "web/src/app.ts": "app", "web/public/data/1.0/x.json": "{}",
             "web/src/wasm/pkg/build-receipt.json": "{}", "web/scripts/sync-data.mjs": "sync",
+            "data/1.0/patch/fix.json": "{}", "examples/demo-bd-test/builds/a/meta.json": "{}",
         }
         for name, text in files.items():
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             (self.root / name).write_text(text)
         self.answers = {
             "--dry-run chromium": (0, f"Chrome\n  Install location:    {browsers}\n"),
-            "wasm-cache-key.mjs": (0, "key=abc\n"),
             "--git-common-dir": (0, f"{self.root}/.git\n"),
         }
 
-    def inputs(self, **answers):
+    def inputs(self, effects=None, **answers):
         run = FakeRun(self.root, {**self.answers, **answers})
+        run.effects = effects or {}
         return e2e.Inputs(self.root, env={}, run=run), run
 
-    def prepared(self):
-        inputs, run = self.inputs()
+    def prepared(self, effects=None):
+        inputs, run = self.inputs(effects)
         with contextlib.redirect_stdout(io.StringIO()):
             inputs.prepare()
         return run
@@ -206,25 +222,38 @@ class PreflightTests(unittest.TestCase):
         self.assertFalse(run.ran("tsc"))
         self.assertFalse(run.ran("pnpm --dir web install"))
         again = self.prepared()
-        for needle in ("build_data", "sync-data", "build-wasm.mjs", "vite build"):
+        for needle in ("build_data", "sync-data", "vite build"):
             self.assertFalse(again.ran(needle), needle)
+        # build-wasm.mjs always runs: its own reuse check is the WASM freshness test.
+        self.assertTrue(again.ran("build-wasm.mjs"))
+        self.assertFalse(again.ran("wasm-cache-key"))
 
     def test_a_source_edit_rebuilds_only_dist(self):
         self.prepared()
         (self.root / "web/src/app.ts").write_text("edited")
         run = self.prepared()
         self.assertTrue(run.ran("vite build"))
-        self.assertFalse(run.ran("build-wasm.mjs"))
         self.assertFalse(run.ran("sync-data"))
 
-    def test_a_replaced_dist_or_new_wasm_identity_is_stale(self):
+    def test_a_replaced_dist_or_rebuilt_wasm_pkg_rebuilds_dist(self):
         self.prepared()
         (self.root / "web/dist/index.html").write_text("someone else's build")
         self.assertTrue(self.prepared().ran("vite build"))
-        self.answers["wasm-cache-key.mjs"] = (0, "key=changed\n")
-        run = self.prepared()
-        self.assertTrue(run.ran("build-wasm.mjs"))
-        self.assertFalse(run.ran("vite build"))
+        # build-wasm.mjs recompiled stale bindings: the new pkg reaches dist.
+        rebuild = lambda: (self.root / "web/src/wasm/pkg/pobr_wasm_bg.wasm").write_bytes(os.urandom(8))
+        run = self.prepared({"build-wasm.mjs": rebuild})
+        self.assertTrue(run.ran("vite build"))
+        self.assertFalse(run.ran("sync-data"))
+        self.assertFalse(self.prepared().ran("vite build"))
+
+    def test_patch_or_build_reference_edits_resync_data_and_rebuild_dist(self):
+        self.prepared()
+        for name in ("data/1.0/patch/fix.json", "examples/demo-bd-test/builds/a/meta.json"):
+            with self.subTest(name=name):
+                (self.root / name).write_text('{"edited": true}')
+                run = self.prepared()
+                self.assertTrue(run.ran("pnpm sync-data"))
+                self.assertTrue(run.ran("vite build"))
 
     def test_a_lock_change_reinstalls_and_resyncs_data(self):
         self.prepared()
