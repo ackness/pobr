@@ -369,13 +369,16 @@ tag 与 nightly 不选，分支范围无法比较时保守选中。它不进入 
 | 层级 | 运行什么 | 何时用 |
 | --- | --- | --- |
 | `smoke` | 带 `@smoke` 的约 20 个用例：每个顶层页面与核心流程一次，真实 WASM，只取代表格（本机约 35 秒） | 任何 UI 改动后先跑；挑选规则见 [e2e/tags.ts](../web/e2e/tags.ts) |
-| `affected`（默认） | `@smoke` 加上由变更映射到的 spec：变更范围同 `check:pr`（merge-base 到 HEAD 加未提交文件），映射表在 `e2e.py` 的 `AFFECTED`。改动的 spec 跑它自己，spec 读取的示例文件跑读取它的 spec；表里没有的 Web 文件跑 `default`；引擎、WASM 输入与数据锁跑 calc/import 类 spec；文档和脚本不跑并说明原因 | 日常改动，推送前 |
+| `affected`（默认） | `@smoke` 加上由变更映射到的 spec：变更范围同 `check:pr`（merge-base 到 HEAD 加未提交文件），映射表在 `e2e.py` 的 `AFFECTED`。改动的 spec 跑它自己，spec 读取的示例文件跑读取它的 spec，`examples/demo-bd-test/builds` 另跑 build-guidance；表里没有的 Web 文件跑 `default`；引擎、WASM 输入与数据锁跑 calc/import 类 spec；文档和脚本不跑并说明原因 | 日常改动，推送前 |
 | `default` | 今天的默认集（不含 `@extended`／`@quarantine`，本机约 9 分钟） | 共享代码（hooks、lib、locales）或大改动 |
 | `release` | 全部矩阵格（`POBR_E2E_ALL=1 --grep-invert @quarantine`），再依次运行三个独立配置（calcs-config、item-display、controls），合并汇总（本机约 12 分钟） | 每次发版前，见 [RELEASING.md](../RELEASING.md#4-发版上线) |
 
 运行前的检查：缺 `node_modules` 时离线安装；缺 lockfile 对应的 Chromium 时停止并提示 `mise run setup:e2e`；
-数据按锁离线校验（`build_data --install data --offline`）；WASM 身份（`wasm-cache-key.mjs`）、同步数据与 dist 的输入哈希
-记在 `.cache/e2e/inputs.json`，只在变化时运行 `build-wasm.mjs`、`pnpm sync-data` 或 `vite build`，不重复 typecheck；
+数据锁、manifest、`data/<版本>/patch`、`data/overlay-common`、`examples/demo-bd-test/builds` 与两个同步脚本的哈希变化
+（或缺 `web/public/data`）时，按锁离线校验安装（`build_data --install data --offline`）、检查归属并运行 `pnpm sync-data`，
+没变时不再校验；每次都运行 `build-wasm.mjs`，它自己核对指纹、绑定哈希、schema 与构建输入，新鲜时约 0.2 秒直接复用；
+源码（含 `src/wasm/pkg`）、构建配置、`VITE_*` 或数据变化、`dist/index.html` 被替换时运行 `vite build`，不重复 typecheck；
+哈希记在 `.cache/e2e/inputs.json`；
 worktree 的 Rust `target/` 为空时提示 `mise run warm`。无法廉价修复的问题以一行 `STOP …` 给出要运行的命令。
 服务器只绑 127.0.0.1：运行器传入由 worktree 路径推出的 `POBR_E2E_PORT`（4200–4999，被占用时顺延），
 直接运行 `playwright test` 时用各配置的固定端口；已有服务器只在 `POBR_E2E_REUSE=1` 时复用，否则端口被占即失败，
