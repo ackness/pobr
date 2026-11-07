@@ -5,6 +5,8 @@
    update of the panel alone and not of the ~10k tree shapes below it. */
 @property --tree-side-preference { syntax: '*'; inherits: false; }
 @property --tree-side { syntax: '*'; inherits: false; }
+/* Written by the bar tracker; handed only to the canvas and its hint (below), so a new bar height does not restyle the tree shapes. No initial-value: rem is rejected there. */
+@property --tree-top-bar-bottom { syntax: '*'; inherits: false; }
 
 @layer app {
   /* ── The page frame: no padding, no page scroll, the canvas takes the remaining height ── */
@@ -24,6 +26,7 @@
      highlights are the dark-theme values for the same reason; floating panels keep the page's own colours. */
   .shell-root .tree-panel .tree-canvas { --accent-gold: #d8b66f; --accent-gold-bright: #e8c988; --accent-gold-dim: #a18a5e; --color-cold: #8bbce8; position: absolute; inset: 0; height: auto; min-height: 0; margin: 0; border: 0; border-radius: 0; background: radial-gradient(ellipse at 50% 42%, #1b1d21 0%, #101113 72%); }
   .shell-root .tree-panel .tree-canvas:focus-within { outline: none; }
+  .shell-root .tree-panel .tree-canvas, .shell-root .tree-panel .asc-hint { --tree-top-bar-bottom: inherit; }
   .shell-root .tree-panel .asc-hint { top: calc(var(--tree-top-bar-bottom, 3.5rem) + .5rem); border-color: var(--border); background: var(--card); color: var(--muted-foreground); }
 
   /* The node tooltip is a floating panel: page colours, kind-coloured name, then its stats and the "if allocated" delta. */
@@ -77,7 +80,7 @@
   /* ── The side column: node details, attributes, node power, planners ───── */
   .shell-root .tree-panel .tree-side { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; border-left: 1px solid var(--border); background: var(--card); container-type: inline-size; container-name: tree-sidebar; }
   /* The drag handle straddles the border between canvas and column; its line shows on hover, focus and while dragging. */
-  .shell-root .tree-panel .tree-side-resize { position: absolute; z-index: 7; top: 0; bottom: 0; grid-column: 2; grid-row: 1; left: -.3rem; width: .6rem; cursor: col-resize; touch-action: none; }
+  .shell-root .tree-panel .tree-side-resize { position: absolute; z-index: 7; top: 0; bottom: 0; grid-column: 2; grid-row: 1; left: -.3rem; width: .6rem; cursor: col-resize; touch-action: none; user-select: none; -webkit-user-select: none; }
   .shell-root .tree-panel .tree-side-resize::after { content: ''; position: absolute; inset: 0 .25rem; background: var(--primary); opacity: 0; transition: opacity .12s; }
   .shell-root .tree-panel .tree-side-resize:is(:hover, :focus-visible)::after, .shell-root .tree-panel[data-resizing] .tree-side-resize::after { opacity: .7; }
   /* While the column is dragged the handle pins the canvas to its width and the stage clips it, so the tree is not laid out per frame. */

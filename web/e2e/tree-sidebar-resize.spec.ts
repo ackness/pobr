@@ -109,7 +109,7 @@ test.describe('1440px', () => {
     expect(await canvas.evaluate(element => (element as HTMLElement).style.width)).toBe('');
   });
 
-  test('a drag that is cancelled hands the canvas back at its old size', async ({ page }) => {
+  test('closing the column mid-drag releases the pin', async ({ page }) => {
     await open(page);
     const svg = page.locator('.tree-canvas svg');
     const start = await box(svg);
@@ -124,6 +124,26 @@ test.describe('1440px', () => {
     await page.mouse.up();
     await expect.poll(async () => (await box(svg)).width).toBeGreaterThan(start.width);
     expect(await page.locator('.tree-canvas').evaluate(element => (element as HTMLElement).style.width)).toBe('');
+  });
+
+  test('a cancelled pointer drag releases the pin and restores the width', async ({ page }) => {
+    await open(page);
+    const svg = page.locator('.tree-canvas svg');
+    const start = await box(svg);
+    const grip = handle(page);
+    const grab = await box(grip);
+    await page.mouse.move(grab.x + grab.width / 2, grab.y + grab.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(grab.x - 150, grab.y + grab.height / 2, { steps: 4 });
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve(null))));
+    expect(await sideRem(page)).toBeGreaterThan(30);
+    await grip.dispatchEvent('pointercancel', { pointerId: 1, pointerType: 'mouse', bubbles: true });
+    await expect(page.locator('.tree-panel')).not.toHaveAttribute('data-resizing');
+    expect(await page.locator('.tree-canvas').evaluate(element => (element as HTMLElement).style.width)).toBe('');
+    expect(await sideRem(page)).toBeCloseTo(27, 1);
+    await expect(grip).toHaveAttribute('aria-valuenow', '27');
+    await expect.poll(async () => (await box(svg)).width).toBe(start.width);
+    await page.mouse.up();
   });
 
   test('a drag that returns to its start, or a plain click, leaves the width and storage alone', async ({ page }) => {
