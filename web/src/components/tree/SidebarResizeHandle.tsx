@@ -1,6 +1,22 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react';
 import { SIDE_DEFAULT, clampSideWidth, sideWidthForKey, sideWidthLimits } from './sidebarWidth';
 
+/**
+ * Marks the panel as being dragged and pins the canvas to the width it has now, so the column can move
+ * without laying out the tree again. The pin is an inline width on the canvas: a custom property on the
+ * panel would be inherited by every tree shape and restyle all of them.
+ */
+function startResizing(panel: HTMLElement) {
+  panel.dataset.resizing = '';
+  const canvas = panel.querySelector<HTMLElement>('.tree-canvas');
+  canvas?.style.setProperty('width', `${canvas.clientWidth}px`);
+}
+function stopResizing(panel: HTMLElement | null) {
+  if (!panel) return;
+  delete panel.dataset.resizing;
+  panel.querySelector<HTMLElement>('.tree-canvas')?.style.removeProperty('width');
+}
+
 /** The panel's width in rem, and the root font size in px that turns pointer pixels into rem. */
 function measure(panel: HTMLElement | null) {
   const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
@@ -18,7 +34,8 @@ interface Props {
 
 /**
  * Drag handle on the left edge of the side column. While dragging, the width goes straight into the panel's
- * CSS variable (one write per frame); React and storage hear about it once, on release.
+ * CSS variable (one write per frame) and the tree canvas keeps its pixel size, so its ~10k SVG shapes are laid
+ * out once, on release, instead of on every frame. React and storage hear about the width once, on release.
  */
 export function SidebarResizeHandle({ panelRef, width, label, onCommit }: Props) {
   const [panelRem, setPanelRem] = useState(Infinity);
@@ -41,7 +58,8 @@ export function SidebarResizeHandle({ panelRef, width, label, onCommit }: Props)
       if (!drag.current) return;
       cancelAnimationFrame(drag.current.frame);
       drag.current = null;
-      if (panel) { delete panel.dataset.resizing; panel.style.setProperty('--tree-side-preference', `${committed.current}rem`); }
+      stopResizing(panel);
+      panel?.style.setProperty('--tree-side-preference', `${committed.current}rem`);
     };
   }, [panelRef]);
 
@@ -52,9 +70,13 @@ export function SidebarResizeHandle({ panelRef, width, label, onCommit }: Props)
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     const panel = panelRef.current;
     if (event.button !== 0 || !panel || drag.current) return;
+    // No text selection while dragging (`user-select` on the panel would restyle every tree shape). Cancelling
+    // the press also skips the browser's focus step, so focus the handle for the keys.
+    event.preventDefault();
+    event.currentTarget.focus();
     const { rootPx, panelRem: now } = measure(panel);
     event.currentTarget.setPointerCapture(event.pointerId);
-    panel.dataset.resizing = '';
+    startResizing(panel);
     const startRem = clampSideWidth(width, now);
     drag.current = { startX: event.clientX, startRem, rootPx, panelRem: now, pending: startRem, frame: 0 };
   };
@@ -70,7 +92,7 @@ export function SidebarResizeHandle({ panelRef, width, label, onCommit }: Props)
     if (!current) return;
     cancelAnimationFrame(current.frame);
     drag.current = null;
-    delete panelRef.current?.dataset.resizing;
+    stopResizing(panelRef.current);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     // A click, or a drag back to where it started, changes nothing: restore the stored preference
     // (CSS caps it to the panel) instead of writing its clamped value.
