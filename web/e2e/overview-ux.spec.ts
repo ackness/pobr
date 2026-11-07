@@ -14,6 +14,13 @@ for (const width of [390, 1440, 2560]) {
   test(`Overview keeps its layout and calculated-skill selection clear at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await importBuild(page, code);
+    // The damage-share list sits inside the rail inset, and its labels line up with the section rows below (the narrow layout hides the rail).
+    if (width > 390) {
+      const left = (selector: string) => page.locator(`.shell-rail ${selector}`).first().evaluate(element => element.getBoundingClientRect().left);
+      await expect(page.locator('.shell-rail .rail-share-dot').first()).toBeVisible();
+      expect(await left('.rail-share-dot')).toBe(await left('.rail-row .rail-label'));
+      expect(await left('.rail-share-row .rail-label')).toBe(await left('.rail-item .rail-label'));
+    }
     const skills = page.locator('[aria-labelledby="ov-skills"]');
     await expect(skills).toContainText('Select a skill to use it for calculations across all pages.');
     const current = skills.locator('button[aria-pressed="true"]');
