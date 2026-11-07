@@ -356,11 +356,13 @@ tag 与 nightly 不选，分支范围无法比较时保守选中。它不进入 
 
 默认 Playwright 配置（[playwright.config.ts](../web/playwright.config.ts)）不运行带标签的用例，标签定义在
 [e2e/tags.ts](../web/e2e/tags.ts)：`@quarantine` 留给界面已改、等待重写或等待决定的用例（目前没有用例使用它），`@extended` 是矩阵中额外的
-语言／宽度／同路径变体（英文 1440px 与简体中文 390px 等代表格仍在默认集），或默认运行嫌慢的穷举扫描（如全部配置控件）。`POBR_E2E_ALL=1` 连同它们一起运行，
+语言／宽度／同路径变体（英文 1440px 与简体中文 390px 等代表格仍在默认集），或默认运行嫌慢的穷举扫描（如全部配置控件，分成 4 份在不同 worker 上运行）。`POBR_E2E_ALL=1` 连同它们一起运行，
 再加 `--grep @quarantine` 只运行隔离的用例（当前为空）；有用例被隔离时修好后去掉标签。产品缺陷导致的失败不打标签，照常报告。
 本地 `mise run e2e release` 设 `POBR_E2E_ALL=1` 并 `--grep-invert @quarantine`：运行全部矩阵格，隔离的用例（若有）不运行。
 默认配置还给单个操作与导航设 30 秒超时（等待真实 WASM 导入或计算的地方写在显式的 `expect(...)` 超时里）；本地默认 4 个 worker、不录 trace，
-`POBR_E2E_TRACE=1` 开启，CI 保留失败用例的 trace。
+`POBR_E2E_TRACE=1` 开启，CI 保留失败用例的 trace。同一 spec 文件的用例也分到不同 worker（`fullyParallel`），一个长文件不再拖住整次运行；
+每个用例从全新的浏览器上下文开始，不依赖同文件其他用例留下的状态，确需按顺序在同一 worker 上运行的文件用
+`test.describe.configure({ mode: 'default' })` 退出并写明原因。三个独立配置保持各自的 worker 设置。
 
 ### 浏览器测试
 
@@ -370,7 +372,7 @@ tag 与 nightly 不选，分支范围无法比较时保守选中。它不进入 
 | --- | --- | --- |
 | `smoke` | 带 `@smoke` 的约 20 个用例：每个顶层页面与核心流程一次，真实 WASM，只取代表格（本机约 35 秒） | 任何 UI 改动后先跑；挑选规则见 [e2e/tags.ts](../web/e2e/tags.ts) |
 | `affected`（默认） | `@smoke` 加上由变更映射到的 spec：变更范围同 `check:pr`（merge-base 到 HEAD 加未提交文件），映射表在 `e2e.py` 的 `AFFECTED`。改动的 spec 跑它自己，spec 读取的示例文件跑读取它的 spec，`examples/demo-bd-test/builds` 另跑 build-guidance；表里没有的 Web 文件跑 `default`；引擎、WASM 输入与数据锁跑 calc/import 类 spec；文档和脚本不跑并说明原因 | 日常改动，推送前 |
-| `default` | 今天的默认集（不含 `@extended`／`@quarantine`，本机约 9 分钟） | 共享代码（hooks、lib、locales）或大改动 |
+| `default` | 今天的默认集（不含 `@extended`／`@quarantine`，本机约 8.5 分钟，接近串行用例时间除以 4 个 worker 的下限） | 共享代码（hooks、lib、locales）或大改动 |
 | `release` | 全部矩阵格（`POBR_E2E_ALL=1 --grep-invert @quarantine`），再依次运行三个独立配置（calcs-config、item-display、controls），合并汇总（本机约 12 分钟） | 每次发版前，见 [RELEASING.md](../RELEASING.md#4-发版上线) |
 
 运行前的检查：缺 `node_modules` 时离线安装；缺 lockfile 对应的 Chromium 时停止并提示 `mise run setup:e2e`；
