@@ -25,6 +25,10 @@ async function drag(page: Page, grip: Locator, dx: number) {
   await page.mouse.up();
 }
 
+const box = async (locator: Locator) => (await locator.boundingBox())!;
+const overlaps = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
+  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
 test.describe('1440px', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -72,6 +76,56 @@ test.describe('1440px', () => {
     expect(await sideRem(page)).toBeCloseTo(27, 1);
   });
 
+  test('the tree keeps its size while the column is dragged and fits the canvas once on release', async ({ page }) => {
+    await open(page);
+    const svg = page.locator('.tree-canvas svg');
+    const canvas = page.locator('.tree-canvas');
+    const start = await box(svg);
+    const grip = handle(page);
+    const grab = await box(grip);
+    const x = grab.x + grab.width / 2;
+    const y = grab.y + grab.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await expect(page.locator('.tree-panel')).toHaveAttribute('data-resizing');
+    await page.mouse.move(x - 120, y, { steps: 6 });
+    // The column follows the pointer; the tree and the canvas behind it do not change size.
+    expect(await sideRem(page)).toBeGreaterThan(33);
+    const during = await box(svg);
+    expect([during.width, during.height]).toEqual([start.width, start.height]);
+    expect((await box(canvas)).width).toBe(start.width);
+    expect(await page.evaluate(() => getSelection()?.toString())).toBe('');
+
+    await page.mouse.up();
+    await expect(page.locator('.tree-panel')).not.toHaveAttribute('data-resizing');
+    // The press was cancelled to stop text selection, so the handle takes focus itself for the arrow keys.
+    await expect(grip).toBeFocused();
+    // One resize on release: the tree takes the new canvas size, and the pin is gone.
+    await expect.poll(async () => (await box(svg)).width).toBeLessThan(start.width - 100);
+    const canvasBox = await box(canvas);
+    const end = await box(svg);
+    expect(end.width).toBeCloseTo(canvasBox.width, 0);
+    expect(end.height).toBeCloseTo(canvasBox.height, 0);
+    expect(await canvas.evaluate(element => (element as HTMLElement).style.width)).toBe('');
+  });
+
+  test('a drag that is cancelled hands the canvas back at its old size', async ({ page }) => {
+    await open(page);
+    const svg = page.locator('.tree-canvas svg');
+    const start = await box(svg);
+    const grab = await box(handle(page));
+    await page.mouse.move(grab.x + grab.width / 2, grab.y + grab.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(grab.x - 200, grab.y + grab.height / 2, { steps: 4 });
+    // Closing the column mid-drag unmounts the handle.
+    await page.getByRole('button', { name: 'Attributes & planning' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.tree-panel')).not.toHaveAttribute('data-resizing');
+    await page.mouse.up();
+    await expect.poll(async () => (await box(svg)).width).toBeGreaterThan(start.width);
+    expect(await page.locator('.tree-canvas').evaluate(element => (element as HTMLElement).style.width)).toBe('');
+  });
+
   test('a drag that returns to its start, or a plain click, leaves the width and storage alone', async ({ page }) => {
     await open(page);
     const grip = handle(page);
@@ -114,6 +168,31 @@ test.describe('1440px', () => {
     await expect(page.locator('.tree-canvas svg')).toBeVisible({ timeout: 90_000 });
     await expect(handle(page)).toHaveAttribute('aria-valuenow', '27');
   });
+
+  for (const lang of ['en-US', 'zh-CN'] as const) {
+    test(`the top bar stays clear of the ascendancy hint at a narrow canvas (${lang})`, async ({ page }) => {
+      await open(page);
+      await setLanguage(page, lang);
+      const hint = page.locator('.asc-hint');
+      await expect(hint).toBeVisible();
+      const bar = page.locator('.tree-bar-top');
+      const toggle = page.locator('.tree-side-toggle');
+      // Default width, then the widest column: the canvas shrinks and the bar wraps.
+      for (const widen of [false, true]) {
+        if (widen) {
+          await handle(page).focus();
+          await page.keyboard.press('End');
+          await expect.poll(async () => (await box(page.locator('.tree-canvas'))).width).toBeLessThan(680);
+        }
+        const barBox = await box(bar);
+        const hintBox = await box(hint);
+        expect(overlaps(barBox, hintBox), `bar ${JSON.stringify(barBox)} vs hint ${JSON.stringify(hintBox)}`).toBe(false);
+        expect(overlaps(await box(toggle), hintBox)).toBe(false);
+        // Under the bar, with the same small gap at any number of rows.
+        expect(hintBox.y - (barBox.y + barBox.height)).toBeCloseTo(8, 0);
+      }
+    });
+  }
 });
 
 test.describe('390px', () => {
