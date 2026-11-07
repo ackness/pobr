@@ -4,6 +4,7 @@ import { chooseTradeGoal, copyCurrentStage, currentStage, goTo, openLibrary, ope
 import { deflateSync } from 'node:zlib';
 import { installTradeCatalogFixture } from './tradeCatalogFixture';
 import { categoryAffixPool } from '../src/lib/tradeOptimizer';
+import { SMOKE } from './tags';
 
 declare global {
   interface Window {
@@ -71,7 +72,7 @@ async function pauseScoringClock(page: Page) {
   await page.clock.pauseAt(new Date('2026-01-01T00:00:01Z'));
 }
 
-test('item details hand off the slot, goal and baseline to step 4 without page overflow', async ({ page }) => {
+test('item details hand off the slot, goal and baseline to step 4 without page overflow', SMOKE, async ({ page }) => {
   await reduceMotion(page);
   await openTrade(page, 2);
   await completeAll(page);

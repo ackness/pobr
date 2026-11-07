@@ -2,6 +2,7 @@ import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { headlineDpsValue, goTo, openOptimizerSettings, settledNumber, settledText } from './upgradesPage';
+import { SMOKE } from './tags';
 
 async function caster(page: Page) {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
@@ -24,7 +25,7 @@ async function caster(page: Page) {
 }
 const dps = headlineDpsValue;
 
-test('current market Sum is a reference; complete replacement detects a downgrade before applying', async ({ page }) => {
+test('current market Sum is a reference; complete replacement detects a downgrade before applying', SMOKE, async ({ page }) => {
   await caster(page);
   const before = await settledText(dps(page));
   await goTo(page, 'Upgrades');

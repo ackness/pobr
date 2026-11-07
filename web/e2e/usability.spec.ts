@@ -4,6 +4,7 @@ import { answerConfirm } from './confirmDialog';
 import { choose, goTo } from './skillsAndCalcs';
 import { deflateSync } from 'node:zlib';
 import { animationsSettled } from './buildLibrary';
+import { SMOKE } from './tags';
 
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));
 
@@ -20,7 +21,7 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
 });
 
-test('failed code and file imports retain the editor and current build; a valid file opens the imported build', async ({ page }) => {
+test('failed code and file imports retain the editor and current build; a valid file opens the imported build', SMOKE, async ({ page }) => {
   await page.getByLabel('Level', { exact: true }).fill('40');
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   const before = await saved(page);

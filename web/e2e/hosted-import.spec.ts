@@ -4,11 +4,12 @@ import { openItemsAfterImport } from './shell';
 import { loadoutSelect, openBuild, openExport, openLoadouts } from './buildLibrary';
 import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
+import { SMOKE } from './tags';
 
 const mainSkill = (page: Page) => page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
 const code = readFileSync(new URL('../worker-tests/fixtures/build-code.txt', import.meta.url), 'utf8').trim();
 
-test('hosted import keeps selection and loadouts through editing and export; failures preserve the build', async ({ page }, testInfo) => {
+test('hosted import keeps selection and loadouts through editing and export; failures preserve the build', SMOKE, async ({ page }, testInfo) => {
   let calls = 0;
   await page.route('**/api/import/build-code', async route => {
     calls++;

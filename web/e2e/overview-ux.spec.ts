@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { deflateSync } from 'node:zlib';
 import { importBuild } from './skillsAndCalcs';
+import { SMOKE } from './tags';
 
 const code = deflateSync(`<PathOfBuilding2><Build level="80" className="Witch" mainSocketGroup="1"/>
 <Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
@@ -32,7 +33,7 @@ for (const width of [390, 1440, 2560]) {
   });
 }
 
-test('a first visit focuses import/create and keeps blank character stats out of the rail', async ({ page }) => {
+test('a first visit focuses import/create and keeps blank character stats out of the rail', SMOKE, async ({ page }) => {
   await page.goto('/');
   const empty = page.locator('.ov-empty');
   await expect(empty).toBeVisible({ timeout: 90_000 });

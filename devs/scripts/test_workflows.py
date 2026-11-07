@@ -239,11 +239,13 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         self.assertEqual(self.calls(), [["gh", "workflow", "run", "ci.yml", "--ref", "feature/ci-workflow"]])
         self.assertNotIn("CI requested", result.stdout)
 
-    def test_ci_requests_e2e_only_when_asked(self):
-        result = self.run_script("devs/scripts/driver.sh", "ci", "feature/ci-workflow", "--e2e")
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(self.calls(), [["gh", "workflow", "run", "ci.yml", "--ref", "feature/ci-workflow",
-                                         "-f", "e2e=true"]])
+    def test_ci_rejects_e2e_and_points_to_the_local_runner(self):
+        for args in (["feature/ci-workflow", "--e2e"], ["--e2e", "feature/ci-workflow"], ["--e2e"]):
+            with self.subTest(args=args):
+                result = self.run_script("devs/scripts/driver.sh", "ci", *args)
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertIn("mise run e2e", result.stderr)
+                self.assertFalse((self.root / "calls.jsonl").exists())
 
     def calls(self):
         return [json.loads(line) for line in

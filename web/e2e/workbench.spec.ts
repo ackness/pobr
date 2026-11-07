@@ -2,6 +2,7 @@ import { expandFormulaDetails } from './skillsAndCalcs';
 import { expect, test, type Page } from '@playwright/test';
 import { deflateSync } from 'node:zlib';
 import { installTradeCatalogFixture } from './tradeCatalogFixture';
+import { SMOKE } from './tags';
 
 // Same minimal Witch build as workspace.spec.ts; the engine calculates it for real.
 const code = deflateSync('<PathOfBuilding2><Build level="60" className="Witch" mainSocketGroup="1"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree><Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="FireballPlayer" level="12" quality="0" enabled="true"/></Skill></SkillSet></Skills><Items/><Config><Input name="enemyLevel" number="82"/></Config></PathOfBuilding2>').toString('base64url');
@@ -103,7 +104,7 @@ for (const width of [390, 1440]) {
   });
 }
 
-test('Ctrl+K finds a stat by name and opens its calculation', async ({ page }) => {
+test('Ctrl+K finds a stat by name and opens its calculation', SMOKE, async ({ page }) => {
   await importBuild(page);
   await page.keyboard.press('Control+k');
   const palette = page.getByRole('dialog', { name: 'Search and commands' });

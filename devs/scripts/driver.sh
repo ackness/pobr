@@ -258,15 +258,17 @@ cmd_cache() {
 }
 
 cmd_ci() {
-  if [[ $# -lt 1 || $# -gt 2 || "$1" == -* || ( $# -eq 2 && "$2" != "--e2e" ) ]]; then
-    echo "usage: mise run ci <pushed-branch-or-tag> [--e2e]" >&2
-    echo "Runs the remote ref, not uncommitted or unpushed local changes." >&2
-    echo "E2E is skipped unless --e2e is given." >&2
+  if [[ " $* " == *" --e2e "* ]]; then
+    echo "mise run ci no longer runs Playwright; run the browser suite locally: mise run e2e [smoke|affected|default|release]" >&2
     return 2
   fi
-  local extra=()
-  if [[ $# -eq 2 ]]; then extra=(-f e2e=true); fi
-  gh workflow run ci.yml --ref "$1" ${extra[@]+"${extra[@]}"} &&
+  if [[ $# -ne 1 || "$1" == -* ]]; then
+    echo "usage: mise run ci <pushed-branch-or-tag>" >&2
+    echo "Runs the remote ref, not uncommitted or unpushed local changes." >&2
+    echo "Browser tests run locally: mise run e2e [smoke|affected|default|release]." >&2
+    return 2
+  fi
+  gh workflow run ci.yml --ref "$1" &&
     echo "CI requested for remote ref '$1'. Check 'mise run ci-status'; this is not a passing result."
 }
 
@@ -294,7 +296,7 @@ PoBR development commands (mise tasks; without mise run this script with the sam
   mise run gate [--only step,...]           Optional warm-checkout batch validation; remote CI preferred
   mise run regen                            Regenerate parser artifacts and test precompile-mods
   mise run warm [source worktree]           Copy-on-write clone of another worktree's target/debug
-  mise run ci <pushed-branch-or-tag> [--e2e] Request full cloud CI via gh (E2E only with --e2e)
+  mise run ci <pushed-branch-or-tag>        Request full cloud CI via gh (no Playwright; see mise run e2e)
   mise run ci-status [--branch <branch>]     List cloud CI results via gh
 
 test/lint/timings also accept raw Cargo arguments (-p, --test, --lib, ...).

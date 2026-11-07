@@ -66,28 +66,36 @@ def touched_packages(files, root=ROOT, full=False):
     return sorted(touched)
 
 
-def steps_for(plan, packages, root=ROOT):
+def steps_for(plan, packages, root=ROOT, quick=False):
+    """Quick mode: fmt and `cargo check` of the affected packages, then Web copy, types and the
+    unit tests related to the changed files. No Clippy, Rust or Worker tests, or automation contracts."""
     steps = []
     if packages:
         selectors = [arg for name in packages for arg in ("-p", name)]
         features = [f"{name}/{feature}" for name, feature in CLIPPY_FEATURES.items()
                     if name in packages]
-        steps += [
-            ("Rust fmt", root, ["cargo", "fmt", "--all", "--check"]),
-            ("Rust check", root, ["cargo", "check", "--offline", "--locked", "--workspace", "--all-targets"]),
-            ("Rust clippy", root, ["cargo", "clippy", "--offline", "--locked", *selectors,
-                                   "--all-targets", *(["--features", ",".join(features)] if features else []),
-                                   "--", "-D", "warnings"]),
-            ("Rust tests", root, ["cargo", "test", "--offline", "--locked", *selectors]),
-        ]
+        steps.append(("Rust fmt", root, ["cargo", "fmt", "--all", "--check"]))
+        if quick:
+            steps.append(("Rust check", root, ["cargo", "check", "--offline", "--locked", *selectors, "--all-targets"]))
+        else:
+            steps += [
+                ("Rust check", root, ["cargo", "check", "--offline", "--locked", "--workspace", "--all-targets"]),
+                ("Rust clippy", root, ["cargo", "clippy", "--offline", "--locked", *selectors,
+                                       "--all-targets", *(["--features", ",".join(features)] if features else []),
+                                       "--", "-D", "warnings"]),
+                ("Rust tests", root, ["cargo", "test", "--offline", "--locked", *selectors]),
+            ]
     if plan["web"] or plan["full"]:
+        # pnpm forwards these flags to `vitest run`; a `--` separator would make Vitest ignore them.
+        # `--changed origin/master` covers the merge-base range plus staged, unstaged and new files.
+        tests = ["test", "--changed", "origin/master", "--maxWorkers=4"] if quick else ["test", "--maxWorkers=4"]
         steps += [("Web " + args[0], root / "web", ["pnpm", *args]) for args in (
             ["i18n:check"],
             ["typecheck"],
-            ["test", "--", "--maxWorkers=4"],
-            ["test:worker"],
+            tests,
+            *([] if quick else [["test:worker"]]),
         )]
-    if plan["scripts"] or plan["full"]:
+    if (plan["scripts"] or plan["full"]) and not quick:
         steps.append(("Automation contracts", root, ["bash", "devs/scripts/check-workflows.sh"]))
     return steps
 
@@ -117,6 +125,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--plan-only", action="store_true",
                         help="print selected areas and packages without running checks")
+    parser.add_argument("--quick", action="store_true",
+                        help="fmt + cargo check of affected packages, Web copy/typecheck and changed-file unit tests")
     args = parser.parse_args()
     plan = {}
     try:
@@ -135,7 +145,10 @@ def main():
         print("SKIP network steps: dependency installation, pinned owner-data downloads "
               "and remote release-tag validation. "
               "Use already prepared dependencies, WASM and fixtures; missing inputs fail their checks.", flush=True)
-        return run_steps(steps_for(plan, packages))
+        if args.quick:
+            print("Quick: no Clippy, Rust/Worker tests or automation contracts; "
+                  "run `mise run check:pr` before pushing.", flush=True)
+        return run_steps(steps_for(plan, packages, quick=args.quick))
     except (ValueError, OSError, KeyError) as error:
         print(f"FAIL local planning: {error}", flush=True)
         return 1

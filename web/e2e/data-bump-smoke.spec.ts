@@ -20,6 +20,7 @@ import { buildPassiveGraph } from '../src/lib/passiveGraph';
 import { busy, statValue } from './shell';
 import { goTo, headlineDps, importBuild } from './skillsAndCalcs';
 import { stableText } from './buildLibrary';
+import { SMOKE } from './tags';
 
 const code = readFileSync(new URL('../../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', import.meta.url), 'utf8').trim();
 const version = readFileSync(new URL('../../data/CURRENT', import.meta.url), 'utf8').trim();
@@ -65,7 +66,7 @@ async function clickNode(page: Page, skill: number) {
   });
 }
 
-test('after a data bump: import, skills and supports, crafting, passives, save and reopen', async ({ page }) => {
+test('after a data bump: import, skills and supports, crafting, passives, save and reopen', SMOKE, async ({ page }) => {
   // The results panel eases numbers toward new values; reduced motion shows them settled.
   await page.emulateMedia({ reducedMotion: 'reduce' });
 

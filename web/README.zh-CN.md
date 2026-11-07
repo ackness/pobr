@@ -174,6 +174,7 @@ E2E 使用当前生产 `dist`，`build` 已包含 typecheck。
 | `mise run web test src/lib/skillSelection.test.ts` | 定向单元测试。 |
 | `mise run web test:wasm-contract` | 用已准备的真实 WASM／数据检查前端请求转换。 |
 | `mise run web test:worker` | 在 workerd 中检查 HTTP Worker。 |
+| `mise run e2e [smoke\|affected\|default\|release]` | 分层浏览器测试；先按需重建过期的 WASM／数据／dist，并使用本 worktree 的端口（[层级](../docs/development-workflow.md#浏览器测试)）。 |
 | `mise run web exec playwright test e2e/build-roundtrip.spec.ts` | 使用当前 dist／WASM／数据的定向浏览器回归。 |
 | `POBR_E2E_ALL=1 mise run web exec playwright test` | 同时运行默认跳过的 `@extended` 用例（标签见 `e2e/tags.ts`；`@quarantine` 已定义，目前没有用例使用）；`POBR_E2E_TRACE=1` 在本地记录失败 trace。 |
 | `mise run web build-wasm` / `mise run web sync-data` | 准备 WASM／复制版本数据到 public。 |

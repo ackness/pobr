@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { lifeValue, settledText } from './upgradesPage';
+import { SMOKE } from './tags';
 
-test('craft a rare from a game base, save it and equip the previewed delta', async ({ page }, testInfo) => {
+test('craft a rare from a game base, save it and equip the previewed delta', SMOKE, async ({ page }, testInfo) => {
   await page.route('**/api/import/wegame', route => route.fulfill({ json: {
     format: 'wegame', version: 1, role: { level: 85, class_name: 'Sorceress' },
     equipments: [{ inventoryId: 'Ring', x: 0, baseType: 'Sapphire Ring', name: 'Current Ring', frameType: 2,

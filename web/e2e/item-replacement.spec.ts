@@ -2,6 +2,7 @@ import { expectOriginalModifiersKeyboard } from './skillsAndCalcs';
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { chooseTradeGoal, augmentOption, choose, headlineDpsValue, ehpValue, lifeValue, settledText } from './upgradesPage';
+import { SMOKE } from './tags';
 
 async function loadRings(page: Page, includeAmulet = false) {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
@@ -169,7 +170,7 @@ test('joint equipment candidates retain unmodeled effects and cannot apply an un
   await expect(planner.locator('.equipment-candidates > li')).toHaveCount(3);
 });
 
-test('pasting detects both rings, recommends the actual better destination, and applies only the selected replacement', async ({ page }) => {
+test('pasting detects both rings, recommends the actual better destination, and applies only the selected replacement', SMOKE, async ({ page }) => {
   await loadRings(page);
   const before = await settledText(dps(page));
   const original = await savedState(page);

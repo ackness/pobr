@@ -125,9 +125,12 @@ mise exec -- cargo metadata --format-version 1 > /dev/null   # 刷新 Cargo.lock
 mise exec -- bash devs/scripts/release-check.sh origin/master  # 应输出 release=true：SemVer 递增、锁版本一致、CHANGELOG 有本版一节、tag 未被占用
 python3 devs/scripts/release-policy.py notes v0.x.y .cache/release-notes.md   # 取出本版一节，作为 PR 说明
 git commit -am "chore: release v0.x.y"
+mise run e2e release   # 须全部通过：本地完整浏览器套件，写下该提交 tree 的回执
 git push -u origin HEAD
 gh pr create --title "chore: release v0.x.y" --body-file .cache/release-notes.md
 ```
+
+- 浏览器套件只在本地运行（`mise run ci` 不再接受 `--e2e`）；层级、回执与端口见[浏览器测试](docs/development-workflow.md#浏览器测试)。
 
 CHANGELOG 的一节用英文写，读者依次是 pobr.win 的玩家、使用 WASM 包／CLI／数据包的开发者；写读者看到的变化，不写实现过程：
 
@@ -149,10 +152,12 @@ CHANGELOG 的一节用英文写，读者依次是 pobr.win 的玩家、使用 WA
   ```sh
   git fetch origin
   git log -1 --format='%H %s' origin/master   # 应是 release/v0.x.y 的合并提交
+  mise run release:e2e-check <合并提交>        # 须 PASS
   git tag -a v0.x.y -m "Release v0.x.y" <合并提交>
   git push origin v0.x.y
   ```
 
+- `release:e2e-check` 不通过时，`git switch --detach <合并提交>` 后重跑 `mise run e2e release`，通过后再打 tag。
 - tag 触发 [release.yml](.github/workflows/release.yml)：`release identity` 核对 tag 等于 workspace 版本、
   `Cargo.lock` 一致、CHANGELOG 有本版一节且 tag 指向该提交；`release validation` 对该提交运行完整 CI；
   `publish standalone WASM` 创建 GitHub Release `v0.x.y`，附上同次构建的 WASM 包、体积报告和 `SHA256SUMS`，

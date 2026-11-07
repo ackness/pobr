@@ -85,7 +85,7 @@ description = "fmt check plus Clippy for selected targets: `mise run lint build 
 run = "bash devs/scripts/driver.sh lint"
 
 [tasks."check:pr"]
-description = "Offline checks for the current PR range and local changes, plus affected-crate Clippy/tests"
+description = "Offline checks for the current PR range and local changes, plus affected-crate Clippy/tests (`--quick`: fmt, cargo check, i18n, types, changed unit tests)"
 run = "python3 devs/scripts/check-pr.py"
 
 [tasks."hooks:install"]
@@ -176,7 +176,7 @@ description = "Read-only report of cache sizes and file counts"
 run = "bash devs/scripts/driver.sh cache"
 
 [tasks.ci]
-description = "Request full cloud CI for a pushed ref: `mise run ci <ref> [--e2e]`"
+description = "Request full cloud CI for a pushed ref: `mise run ci <ref>` (no Playwright; browser tests run locally with `mise run e2e`)"
 run = "bash devs/scripts/driver.sh ci"
 
 [tasks."ci-status"]
@@ -240,9 +240,17 @@ description = "Report game-text translation coverage of the prepared data per la
 run = "python3 devs/scripts/translation-coverage.py"
 
 [tasks."web:e2e"]
-description = "Run Playwright with automatically prepared browser dependencies; requires current dist/WASM/data"
+description = "Raw Playwright after installing the browser (setup:e2e); requires current dist/WASM/data. Prefer `mise run e2e`"
 depends = ["setup:e2e"]
 run = "pnpm --dir web exec playwright test"
+
+[tasks.e2e]
+description = "Browser tests in tiers after refreshing stale WASM/data/dist: `mise run e2e [smoke|affected|default|release] [--workers N] [<playwright args>]` (default affected)"
+run = "python3 devs/scripts/e2e.py"
+
+[tasks."release:e2e-check"]
+description = "Read-only: pass when a passing `mise run e2e release` receipt exists for <rev>'s tree (default HEAD)"
+run = "python3 devs/scripts/e2e.py release-check"
 
 [tasks."setup:oracle"]
 description = "Prepare the pinned LuaJIT and PoB2 test reference automatically for oracle tasks"

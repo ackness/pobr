@@ -247,13 +247,32 @@ class RoutingTests(unittest.TestCase):
                 self.assertFalse(plan.data_smoke([], event, "branch"))
                 # An unknown range must not let a data bump through unchecked.
                 self.assertTrue(plan.data_smoke(None, event, "branch"))
-                # Release tags were verified on master; the full suite is opt-in there too.
+                # Release tags were verified on master; the full suite runs locally before a release.
                 self.assertFalse(plan.data_smoke(lock, event, "tag"))
                 self.assertFalse(plan.data_smoke(None, event, "tag"))
         for event in ("schedule", "pull_request", None):
             with self.subTest(event=event):
                 self.assertFalse(plan.data_smoke(lock, event, "branch"))
                 self.assertFalse(plan.data_smoke(None, event, "branch"))
+
+    def test_cloud_ci_runs_only_the_data_bump_spec(self):
+        # The Playwright suite runs locally (`mise run e2e`); cloud CI keeps the one data-bump spec.
+        workflow = (HERE.parents[1] / ".github/workflows/ci.yml").read_text()
+        self.assertNotIn("inputs.e2e", workflow)
+        self.assertNotIn("e2e:", workflow.split("\npermissions:", 1)[0])
+        runs = re.findall(r"playwright test[^\n]*", workflow)
+        self.assertEqual(runs, ["playwright test data-bump-smoke.spec.ts"])
+        web = workflow.split("\n  web:\n", 1)[1].split("\n  runtime:\n", 1)[0]
+        for step in ("Install Playwright", "Data-bump smoke"):
+            block = web.split(f"- name: {step}\n", 1)[1].split("      - name: ", 1)[0]
+            self.assertIn("if: steps.data-smoke.outputs.run == 'true'", block, step)
+        # A failing smoke leaves its traces and screenshots for download.
+        upload = web.split("- name: Upload E2E failure artifacts\n", 1)[1].split("      - name: ", 1)[0]
+        self.assertIn("if: failure()", upload)
+        self.assertIn("path: web/test-results", upload)
+        for filename in ("pr.yml", "release.yml"):
+            caller = (HERE.parents[1] / ".github/workflows" / filename).read_text()
+            self.assertNotIn("e2e", caller, filename)
 
     def test_data_bump_smoke_cli_compares_the_given_base(self):
         with tempfile.TemporaryDirectory() as temp:
