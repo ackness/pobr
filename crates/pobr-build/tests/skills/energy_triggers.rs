@@ -380,19 +380,21 @@ fn a_spell_with_nothing_to_fill_its_gem_keeps_its_own_rate() {
 #[test]
 fn a_spell_in_another_meta_gem_is_not_a_source() {
     let data = data();
-    // The only other Spark is itself triggered by a Cast on Critical.
-    let other_meta = format!(
-        "{}{}",
-        gem("MetaCastOnCritPlayer", "Cast on Critical"),
-        spark()
-    );
-    let comet = calculate(
-        &data,
-        &build_xml(&[], &[other_meta], COMET),
-        &options(BOSS.0, &[]),
-    );
-    assert_eq!(comet.energy_trigger_source, None);
-    assert_eq!(comet.skill_trigger_rate, 0.0);
+    // Triggered spells cannot fill another gem, including unsupported event sources.
+    for meta in [
+        "MetaCastOnCritPlayer",
+        "MetaCastOnDodgePlayer",
+        "MetaCastWhenStunnedPlayer",
+    ] {
+        let other_meta = format!("{}{}", gem(meta, meta), spark());
+        let comet = calculate(
+            &data,
+            &build_xml(&[], &[other_meta], COMET),
+            &options(BOSS.0, &[]),
+        );
+        assert_eq!(comet.energy_trigger_source, None, "{meta}");
+        assert_eq!(comet.skill_trigger_rate, 0.0, "{meta}");
+    }
     // Nor is the Spark socketed next to the Comet.
     let together = calculate(
         &data,
@@ -458,8 +460,43 @@ fn unmodelled_meta_gems_report_their_gain_stats_instead_of_self_casting() {
             "MetaCastWhenDamageTakenPlayer",
             &["cast_on_damage_taken_gain_X_centienergy_when_hit"][..],
         ),
+        (
+            // Its support half carries the trigger marker; the meta lacks Triggers.
+            "MetaCastWhenStunnedPlayer",
+            &["cast_when_stunned_gain_X_centienergy_when_stunned"][..],
+        ),
+        (
+            // This support half has no cast-time-based Energy capacity stat.
+            "MetaCastOnDeathPlayer",
+            &["cast_on_death_gain_X_centienergy_on_death"][..],
+        ),
+        (
+            "MetaCastOnCharmUsePlayer",
+            &["cast_on_using_charm_gain_X_centienergy_per_charm_charge_used_on_using_charm"][..],
+        ),
+        (
+            "MetaBarrierInvocationPlayer",
+            &["barrier_invocation_gain_1_energy_per_X_energy_shield_damage_taken_when_hit"][..],
+        ),
+        (
+            "MetaCastFireSpellOnHitPlayer",
+            &["cast_fire_spell_on_hit_gain_X_centienergy_per_monster_power_on_hit"][..],
+        ),
+        (
+            "MetaCastLightningSpellOnHitPlayer",
+            &["cast_lightning_spell_on_hit_gain_X_centienergy_per_monster_power_on_hit"][..],
+        ),
+        (
+            "MetaCastOnMeleeKillPlayer",
+            &["cast_on_melee_kill_gain_X_centienergy_per_monster_power_on_melee_kill"][..],
+        ),
     ] {
-        let build = parse_build(&meta_xml(meta, &[], &[])).unwrap();
+        let host = match meta {
+            "MetaCastFireSpellOnHitPlayer" => "FireballPlayer",
+            "MetaCastLightningSpellOnHitPlayer" => "SparkPlayer",
+            _ => "CometPlayer",
+        };
+        let build = parse_build(&meta_xml(meta, &[], &[]).replace("CometPlayer", host)).unwrap();
         let session = pobr_build::calculate_with_data_session(
             &build,
             &data,
@@ -474,7 +511,7 @@ fn unmodelled_meta_gems_report_their_gain_stats_instead_of_self_casting() {
         assert_eq!(output.skill_trigger_rate, 0.0, "{meta}");
         assert_eq!(output.dps, 0.0, "{meta}");
         assert!(session.unsupported_modifier_texts().contains(&format!(
-            "MetaTrigger:{meta}:stat={}:host=CometPlayer: Energy trigger event rate is not modelled",
+            "MetaTrigger:{meta}:stat={}:host={host}: Energy trigger event rate is not modelled",
             gain_stats.join(", "),
         )));
 
@@ -495,12 +532,32 @@ fn unmodelled_meta_gems_report_their_gain_stats_instead_of_self_casting() {
             .get_mut(meta)
             .unwrap()
             .skill_types
-            .retain(|kind| kind != "Triggers");
+            .retain(|kind| kind != "Meta");
         let own =
             pobr_build::calculate_with_data_session(&build, &own_data, &reference_options).unwrap();
         assert!(reference.output().dps > 0.0, "{meta}");
         assert_eq!(reference.output(), own.output(), "{meta}");
     }
+}
+
+#[test]
+fn a_meta_gem_without_energy_mechanics_does_not_report_an_energy_trigger() {
+    let data = data();
+    // Called Shots has Meta + Triggers but only modifies socketed Marks.
+    let xml = meta_xml("MetaDeadeyeMarksPlayer", &[], &[])
+        .replace("CometPlayer", "SnipersMarkPlayer")
+        .replace("Comet", "Sniper's Mark");
+    let build = parse_build(&xml).unwrap();
+    let session =
+        pobr_build::calculate_with_data_session(&build, &data, &DataOrchestratorOptions::default())
+            .unwrap();
+    assert!(!session.has_flag(EVENT_RATE_UNMODELLED));
+    assert!(
+        session
+            .unsupported_modifier_texts()
+            .iter()
+            .all(|limit| !limit.starts_with("MetaTrigger:"))
+    );
 }
 
 #[test]
@@ -528,6 +585,48 @@ fn incompatible_or_disabled_meta_gems_do_not_hide_self_cast_damage() {
                 .unsupported_modifier_texts()
                 .iter()
                 .all(|limit| !limit.starts_with("MetaTrigger:"))
+        );
+    }
+}
+
+#[test]
+fn reference_meta_selection_skips_newly_recognized_gems_before_cast_on_crit() {
+    let data = data();
+    for first in ["MetaCastWhenStunnedPlayer", "MetaCastWhenDamageTakenPlayer"] {
+        let xml = build_xml(&[], &[spark()], COMET).replace(
+            r#"mainActiveSkill="2">"#,
+            &format!(r#"mainActiveSkill="3">{}"#, gem(first, first)),
+        );
+        let build = parse_build(&xml).unwrap();
+        let reference = pobr_build::calculate_with_data_session(
+            &build,
+            &data,
+            &DataOrchestratorOptions::reference_conditions(),
+        )
+        .unwrap();
+        assert!(!reference.has_flag(EVENT_RATE_UNMODELLED), "{first}");
+        assert!(!reference.has_flag("TriggerSourceGlobal"), "{first}");
+        assert!(
+            reference
+                .unsupported_modifier_texts()
+                .iter()
+                .all(|limit| !limit.starts_with("MetaTrigger:"))
+        );
+        let original = calculate(
+            &data,
+            &build_xml(&[], &[spark()], COMET),
+            &DataOrchestratorOptions::reference_conditions(),
+        );
+        assert_eq!(reference.output().dps, original.dps, "{first}");
+        assert_eq!(
+            reference.output().action_rate,
+            original.action_rate,
+            "{first}"
+        );
+        assert_eq!(
+            reference.output().total_hit_avg,
+            original.total_hit_avg,
+            "{first}"
         );
     }
 }
