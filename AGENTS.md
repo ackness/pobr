@@ -50,6 +50,29 @@ mise run web test src/lib/skillSelection.test.ts
 Common small changes: [change recipes](docs/recipes.md). Commands, caches, CI,
 merge and release mechanics: [development workflow](docs/development-workflow.md).
 
+## Common pitfalls
+
+- **`missing manifest` / `Cannot find module '../fixtures/*.json'` in a new worktree.**
+  `data/` starts with only `CURRENT` and `overlay-common/`, and `web/` has no
+  `node_modules`. Run `mise run data:prepare` (imports `data/<version>/` and
+  `web/src/fixtures/*.json`) and `mise run setup` (frozen Web dependencies) first.
+- **Tests use another checkout's data.** `POBR_DATA_ROOT` overrides `data/`; in a
+  worktree leave it unset or set `POBR_DATA_ROOT=$PWD/data`.
+- **Never `git add` `web/src/fixtures/*.json`.** They are untracked local inputs
+  ([local preparation](docs/development-workflow.md#repository-layout)).
+- **`mise run` fails with `failed to ln -sf … trusted-configs … Read-only file system`.**
+  mise must trust the worktree's `mise.toml` and records it under
+  `~/.local/state/mise/`. Run `mise trust`; where that path is read-only, point
+  `MISE_STATE_DIR` and `MISE_CACHE_DIR` at writable temporary directories.
+- **`<tool> is not provided by the active node@…`.** Inside the repo mise pins
+  Node, so globally installed npm CLIs built for another version are hidden.
+  Start such tools from outside the repository directory.
+- **`mise run check:pr` stops at `Rust fmt`.** It stops before compiling when
+  formatting differs, and `mise run lint` only checks. Run
+  `mise exec -- cargo fmt --all` before committing.
+- **Offline or sandboxed Cargo fails to resolve crates.** Set
+  `CARGO_NET_OFFLINE=true`.
+
 ## Hard rules
 
 - **Validate by risk.** Choose evidence by risk and cost
