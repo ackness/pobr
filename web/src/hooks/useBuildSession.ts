@@ -1578,7 +1578,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   // merged a newer write cannot bring an older library back.
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
-      if (event.storageArea !== localStorage) return;
+      try { if (event.storageArea !== localStorage) return; } catch { return; }
       if (event.key === STORAGE.library) {
         let storedLibrary: string | null = null;
         try { storedLibrary = localStorage.getItem(STORAGE.library); } catch { return; }

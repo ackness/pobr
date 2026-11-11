@@ -121,6 +121,12 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   const pasteRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const cacheRef = useRef<Record<string, CachedTradeAnalysis<SlotResult>>>({});
+  const leagueChoices = useRef<Partial<Record<TradeRealm, string>>>({});
+  const chooseLeague = (next: string) => {
+    leagueChoices.current[realm] = next;
+    setLeague(next);
+    writePreference(preferenceKey(leagueKey(realm)), next);
+  };
   useLayoutEffect(() => {
     if (!focus || !active || handledFocus.current === focus.nonce) return;
     setSelected(focus.slot);
@@ -158,7 +164,8 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     loadTradeLeagues(realm).then(list => {
       if (cancelled) return;
       setLeagues(list);
-      if (readPreference(preferenceKey(leagueKey(realm))) === null) setLeague(list[0]);
+      // A user choice wins even when storage could not save it.
+      if (leagueChoices.current[realm] === undefined && readPreference(preferenceKey(leagueKey(realm))) === null) setLeague(list[0]);
     }).catch(() => { if (!cancelled) setLeagueFallback(true); });
     return () => { cancelled = true; };
   }, [realm]);
@@ -353,12 +360,12 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
         <label><span className="trade-field-label">{tt('trade.realm')}</span><AppSelect value={realm} ariaLabel={tt('trade.realm')}
           options={[{ value: 'intl', label: tt('trade.realmIntl') }, { value: 'cn', label: tt('trade.realmCn') }]}
           onChange={value => { const next = value as TradeRealm; setRealm(next); writePreference(preferenceKey(REALM_KEY), next);
-            setLeague(readPreference(preferenceKey(leagueKey(next))) ?? REALM_DEFAULT_LEAGUE[next]); }} /></label>
+            setLeague(leagueChoices.current[next] ?? readPreference(preferenceKey(leagueKey(next))) ?? REALM_DEFAULT_LEAGUE[next]); }} /></label>
         <label><span className="trade-field-label">{tt('trade.league')}</span><AppSelect value={leagues.includes(league) ? league : '__custom'} ariaLabel={tt('trade.league')}
           options={[...leagues.map(name => ({ value: name, label: name })), { value: '__custom', label: tt('trade.leagueCustom') }]}
-          onChange={value => { const next = value === '__custom' ? '' : value; setLeague(next); writePreference(preferenceKey(leagueKey(realm)), next); }} /></label>
+          onChange={value => chooseLeague(value === '__custom' ? '' : value)} /></label>
         {!leagues.includes(league) && <AppInput aria-label={tt('trade.leagueCustom')} value={league} placeholder={REALM_DEFAULT_LEAGUE[realm]}
-          onChange={event => { setLeague(event.target.value); writePreference(preferenceKey(leagueKey(realm)), event.target.value); }} />}
+          onChange={event => chooseLeague(event.target.value)} />}
       </div>
     </div>
   </>;
