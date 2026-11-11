@@ -527,6 +527,70 @@ fn consecrated_ground_creation_properties_are_local_even_when_the_charm_is_inact
     assert!(!session.has_flag("Condition:OnConsecratedGround"));
 }
 
+fn minion_with_onslaught(
+    data: &BuildData,
+    enabled: bool,
+) -> pobr_core::calc::CompletedCalculationSession {
+    use pobr_build::calculate_with_data_session;
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+
+    let mut build = parse_build(
+        r#"<PathOfBuilding2>
+<Build level="90" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="SummonSkeletalArsonistsPlayer" level="20" enabled="true"/></Skill></Skills>
+</PathOfBuilding2>"#,
+    )
+    .unwrap();
+    build.config.raw_inputs.values.insert(
+        "minionBuffOnslaught".into(),
+        ConfigInputValue::Bool(enabled),
+    );
+    calculate_with_data_session(&build, data, &Default::default()).unwrap()
+}
+
+#[test]
+fn minion_onslaught_config_reaches_the_minions_modifiers() {
+    let data = data();
+    for enabled in [false, true, false] {
+        let session = minion_with_onslaught(data, enabled);
+        let modifiers = session.minion_stat_mods(0, "Condition:Onslaught");
+        let source_id = "config.minionBuffOnslaught";
+        let configured: Vec<_> = modifiers
+            .iter()
+            .filter(|row| {
+                row.modifier
+                    .origin
+                    .as_ref()
+                    .is_some_and(|origin| origin.source_id.id == source_id)
+            })
+            .collect();
+        assert_eq!(configured.len(), usize::from(enabled));
+        if enabled {
+            assert_eq!(configured[0].modifier.value.as_bool(), Some(true));
+        }
+        assert!(session.mods_named("Condition:Onslaught").is_empty());
+    }
+}
+
+#[test]
+#[ignore = "minion misc-buff expansion is not implemented; config forwarding alone cannot grant Onslaught"]
+fn minion_onslaught_config_increases_minion_speed_and_dps() {
+    let data = data();
+    let mut outputs = Vec::new();
+    for enabled in [false, true, false] {
+        let session = minion_with_onslaught(data, enabled);
+        let minion = session.minion_output(0).expect("skeletal arsonist output");
+        outputs.push((minion.action_rate, minion.dps));
+    }
+    let (plain, onslaught, unchecked) = (outputs[0], outputs[1], outputs[2]);
+    assert!(plain.0 > 0.0 && plain.1 > 0.0);
+    assert!(
+        onslaught.0 > plain.0 && onslaught.1 > plain.1,
+        "minion speed/DPS: {plain:?} -> {onslaught:?}"
+    );
+    assert_eq!(unchecked, plain);
+}
+
 #[test]
 fn consecrated_ground_minions_require_their_own_explicit_state() {
     let data = data();
