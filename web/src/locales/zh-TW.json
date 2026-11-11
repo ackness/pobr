@@ -991,6 +991,8 @@
     "skills.supportPicker.ready": "在下方搜尋並新增輔助。",
     "skills.supportPartial": "僅檢查了已辨識的寶石。未辨識寶石仍保留在組內，其相容性和效果未知。",
     "skills.triggeredBy": "由 {skill} 觸發",
+    "skills.unmodelledMetaTriggerTitle": "尚未模擬能量觸發頻率",
+    "skills.unmodelledMetaTriggerNote": "由 {gem} 觸發：PoBR 尚未模擬這顆寶石獲得能量的頻率，因此 DPS 顯示為 0。仍會計算平均擊中傷害。",
     "skills.gemAdvanced": "寶石選項",
     "skills.notApplicable": "不適用",
     "skills.disabledActive": "（主動寶石未啟用）",

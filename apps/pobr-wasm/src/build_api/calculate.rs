@@ -48,6 +48,9 @@ struct CalculateBuildResponse<'a> {
     full_dps: Option<&'a pobr_core::calc::output::FullDpsOutput>,
     #[serde(skip_serializing_if = "Option::is_none")]
     energy_trigger: Option<&'a pobr_core::calc::energy::EnergyTriggerTerms>,
+    /// The main skill's meta gem cannot supply a modelled Energy event rate.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    unmodelled_meta_trigger: Option<UnmodelledMetaTrigger>,
     /// The full set of display_catalog Computed fields (id/value/category).
     stats: &'a [pobr_data::display_stat::DisplayStatValue],
     /// Only requested by a client displaying configuration applicability.
@@ -70,6 +73,27 @@ struct CalculateBuildResponse<'a> {
     /// everything parsed successfully.
     item_errors: &'a [super::request::SlotIssue],
     tree_effects: &'a pobr_build::jewel_tree::PassiveJewelState,
+}
+
+#[derive(Debug, Serialize)]
+struct UnmodelledMetaTrigger {
+    meta_gem_id: String,
+    host_skill_id: String,
+}
+
+/// Adapt the engine's existing limitation channel once at the JSON boundary.
+fn unmodelled_meta_trigger(limits: &[String], host_skill_id: &str) -> Option<UnmodelledMetaTrigger> {
+    limits.iter().find_map(|limit| {
+        let detail = limit
+            .strip_prefix("MetaTrigger:")?
+            .strip_suffix(": Energy trigger event rate is not modelled")?;
+        let (meta_gem_id, detail) = detail.split_once(":stat=")?;
+        let (_, host) = detail.rsplit_once(":host=")?;
+        (host == host_skill_id).then_some(UnmodelledMetaTrigger {
+            meta_gem_id: meta_gem_id.to_string(),
+            host_skill_id: host.to_string(),
+        })
+    })
 }
 
 #[derive(Debug, Serialize)]
@@ -378,6 +402,9 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         main_minion_index: snapshot.calculated.main_minion_index,
         full_dps: session.output().full_dps.as_ref(),
         energy_trigger: session.output().energy_trigger.as_ref(),
+        unmodelled_meta_trigger: snapshot.main_skill.as_ref().and_then(|main| {
+            unmodelled_meta_trigger(&snapshot.unsupported_modifiers, &main.skill_id)
+        }),
         stats: snapshot.calculated.display_values(),
         config_context: snapshot.config_context.as_ref(),
         unsupported_modifiers: &snapshot.unsupported_modifiers,
@@ -409,6 +436,8 @@ struct SkillMetricsJson {
     skill_id: String,
     status: &'static str,
     metrics: Option<SkillMetricValues>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    unmodelled_meta_trigger: Option<UnmodelledMetaTrigger>,
     unsupported_modifiers: Vec<String>,
     error: Option<String>,
 }
@@ -442,6 +471,8 @@ fn skill_metrics_impl(request_json: &str) -> Result<String, super::ApiError> {
             .skills
             .into_iter()
             .map(|skill| {
+                let unmodelled_meta_trigger =
+                    unmodelled_meta_trigger(&skill.unsupported_modifiers, &skill.skill_id);
                 let mut error = skill.error;
                 let metrics = skill.output.and_then(|output| {
                     let values = [
@@ -479,6 +510,7 @@ fn skill_metrics_impl(request_json: &str) -> Result<String, super::ApiError> {
                         "unavailable"
                     },
                     metrics,
+                    unmodelled_meta_trigger,
                     unsupported_modifiers: skill.unsupported_modifiers,
                     error,
                 }

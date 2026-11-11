@@ -45,6 +45,16 @@ it('puts the global selection explanation above the ranking and marks the curren
   expect(html.indexOf('Select a skill to use it for calculations across all pages.')).toBeLessThan(html.indexOf('class="ov-rank"'));
   expect(html).toContain('aria-pressed="true"'); expect(html).toContain('Current');
 });
+
+it('retains a zero-DPS meta-trigger row with an explanation and a finite empty bar', () => {
+  h.skills = [{ group_index: 0, active_skill_index: 2, skill_id: 'CometPlayer', status: 'calculated',
+    metrics: { combined_dps: 0 }, unmodelled_meta_trigger: { meta_gem_id: 'MetaCastOnDodgePlayer', host_skill_id: 'CometPlayer' },
+  }] as SkillMetricsEntry[];
+  const ranking = render().match(/<ol class="ov-rank"[\s\S]*?<\/ol>/)![0];
+  expect(ranking).toContain('DPS is shown as 0. Average hit is still calculated.');
+  expect(ranking).toContain('class="ov-rank-value">0</span>');
+  expect(ranking).toContain('style="width:0%"');
+});
 it('explains that source analysis needs recalculating after a skill switch', () => {
   h.contribution = { version: 1, selection: '0:1', data: { baseline: {}, entries: [] } };
   const html = render();

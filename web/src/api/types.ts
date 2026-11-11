@@ -816,6 +816,12 @@ export interface EnergyTriggerTerms {
   rate_multiplier: number;
 }
 
+export interface UnmodelledMetaTrigger {
+  /** Granted effect ID of the meta gem whose Energy event rate is not modelled. */
+  meta_gem_id: string;
+  host_skill_id: string;
+}
+
 export interface CalculateBuildResponse {
   /** Engine release and runtime input pack; absent in older saved/mock responses. */
   provenance?: CalculationProvenance;
@@ -825,6 +831,8 @@ export interface CalculateBuildResponse {
   main_minion_index?: number | null;
   full_dps?: { dps: number; dot_dps: number; skills: FullDpsSkill[] };
   energy_trigger?: EnergyTriggerTerms;
+  /** Main skill only; absent for ordinary and modelled triggers. */
+  unmodelled_meta_trigger?: UnmodelledMetaTrigger;
   stats: DisplayStatValue[];
   /**
    * Lines the calculation could not apply, so their effect is missing from the
@@ -1188,6 +1196,7 @@ export interface SkillMetricsEntry {
     life_cost: number;
     cooldown: number;
   } | null;
+  unmodelled_meta_trigger?: UnmodelledMetaTrigger;
   unsupported_modifiers: string[];
   error: string | null;
 }

@@ -991,6 +991,8 @@
     "skills.supportPicker.ready": "Search below to add a support.",
     "skills.supportPartial": "Only recognised gems were checked. Unrecognised gems stay in the group; their compatibility and effects are unknown.",
     "skills.triggeredBy": "Triggered by {skill}",
+    "skills.unmodelledMetaTriggerTitle": "Energy trigger rate is not modelled",
+    "skills.unmodelledMetaTriggerNote": "Triggered by {gem}: PoBR does not model how often this gem gains Energy, so its DPS is shown as 0. Average hit is still calculated.",
     "skills.gemAdvanced": "Gem options",
     "skills.notApplicable": "Not applicable",
     "skills.disabledActive": "(Active gem disabled)",

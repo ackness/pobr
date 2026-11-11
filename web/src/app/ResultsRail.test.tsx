@@ -35,6 +35,22 @@ it('explains energy-trigger mapping beside the enemy tier only for a confirmed t
 });
 
 it.each([
+  ['en-US', 'DPS is shown as 0. Average hit is still calculated.'],
+  ['zh-CN', 'DPS 显示为 0。平均击中伤害仍会计算。'],
+  ['zh-TW', 'DPS 顯示為 0。仍會計算平均擊中傷害。'],
+] as const)('explains an unmodelled meta trigger beside the rail DPS in %s', (lang, note) => {
+  const html = render('skills', { lang, hit: 0, extra: {
+    main_skill: { group_index: 0, active_skill_index: 2, skill_id: 'CometPlayer', hit_damage: [], combined_dps: 0, hit_dps: 0, dot_dps: 0 },
+    unmodelled_meta_trigger: { meta_gem_id: 'MetaCastOnDodgePlayer', host_skill_id: 'CometPlayer' },
+  } });
+  const hero = html.match(/<div class="rail-hero"[^]*?<\/small><\/div>/)![0];
+  expect(hero).toContain('>0</strong>');
+  expect(hero).toContain(note);
+  expect(hero).not.toContain('MetaCastOnDodgePlayer');
+  expect(render('skills', { lang })).not.toContain(note);
+});
+
+it.each([
   ['en-US', 'Hit DPS', 'Combined DPS'],
   ['zh-CN', '击中 DPS', '综合 DPS'],
   ['zh-TW', '擊中 DPS', '綜合 DPS'],

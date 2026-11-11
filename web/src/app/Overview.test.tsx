@@ -128,3 +128,21 @@ it('explains mapping beside the DPS only when the result confirms an energy trig
   expect(damage).toContain('刷图按单个普通怪（力量 1）计算，清群时实际更快充满');
   expect(summary({})).not.toContain('刷图按单个普通怪');
 });
+
+it.each([
+  ['en-US', 'Energy trigger rate is not modelled', 'DPS is shown as 0. Average hit is still calculated.'],
+  ['zh-CN', '尚未建模能量触发频率', 'DPS 显示为 0。平均击中伤害仍会计算。'],
+  ['zh-TW', '尚未模擬能量觸發頻率', 'DPS 顯示為 0。仍會計算平均擊中傷害。'],
+] as const)('explains the zero main-skill DPS and adds a finding in %s', (lang, title, note) => {
+  const html = summary({}, { lang, extra: {
+    main_skill: { group_index: 0, active_skill_index: 2, skill_id: 'CometPlayer', hit_damage: [], hit_dps: 0, dot_dps: 0, combined_dps: 0 },
+    unmodelled_meta_trigger: { meta_gem_id: 'MetaCastOnDodgePlayer', host_skill_id: 'CometPlayer' },
+  } });
+  const damage = html.match(/<div[^>]+class="ov-figure is-dps"[^]*?<\/div>/)![0];
+  expect(damage).toContain('>0<span');
+  expect(damage).toContain(note);
+  const finding = html.match(/<ul class="ov-findings"[^]*?<\/ul>/)![0];
+  expect(finding).toContain(title);
+  expect(finding).toContain(note);
+  expect(html).not.toContain('MetaCastOnDodgePlayer');
+});

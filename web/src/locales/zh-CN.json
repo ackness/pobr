@@ -991,6 +991,8 @@
     "skills.supportPicker.ready": "在下方搜索并添加辅助。",
     "skills.supportPartial": "仅检查了已识别的宝石。未识别宝石仍保留在组内，其兼容性和效果未知。",
     "skills.triggeredBy": "由 {skill} 触发",
+    "skills.unmodelledMetaTriggerTitle": "尚未建模能量触发频率",
+    "skills.unmodelledMetaTriggerNote": "由 {gem} 触发：PoBR 尚未建模这颗宝石获取能量的频率，因此 DPS 显示为 0。平均击中伤害仍会计算。",
     "skills.gemAdvanced": "宝石选项",
     "skills.notApplicable": "不适用",
     "skills.disabledActive": "（主动宝石未启用）",

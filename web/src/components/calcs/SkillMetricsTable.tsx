@@ -8,6 +8,7 @@ import { highestDpsSkill, isNonDamagingSkill, isSummonerSkill } from '../../lib/
 import { formatStatValue } from '../../lib/statDisplay';
 import { skillDisplayName } from '../../lib/skillNames';
 import { AppButton } from '../shared/controls';
+import { EnergyTriggerNote } from '../config/EnergyTriggerNote';
 
 export { isNonDamagingSkill, isSummonerSkill } from '../../lib/skillSelection';
 
@@ -87,6 +88,7 @@ export function SkillMetricsTable({ session, lang, report, displayed }: {
                   ? formatStatValue(entry.metrics![key], format, lang) : '—'}
             </td>)}
             <td className="skill-metrics-diagnostics">
+              {available && minionDps === null && <EnergyTriggerNote trigger={entry.unmodelled_meta_trigger} catalog={catalog} lang={lang} />}
               {report && !available && <p>{tt('calcs.unavailable')}</p>}
               {summoner && minionDps === null && <p>{tt('skills.summonerPending')}</p>}
               {report && available && entry.unsupported_modifiers.length > 0 && <p>{tt('calcs.excludedModifiers')}</p>}

@@ -33,6 +33,21 @@ test('skill metrics use the same damage, rate and cost precision as the results 
   expect(html).toContain('<td class="mod-value">2</td>');
 });
 
+test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('shows the meta-trigger note with the affected row only in %s', lang => {
+  harness.catalog = new Map();
+  const report: SkillMetricsResponse = { item_errors: [], skills: [
+    { ...row('CometPlayer'), unmodelled_meta_trigger: { meta_gem_id: 'MetaCastOnDodgePlayer', host_skill_id: 'CometPlayer' }, metrics: { ...metrics, average_hit: 123 } },
+    row('SparkPlayer', 1),
+  ] };
+  const session = { socketGroups: report.skills.map(() => ({ enabled: true, gems: [] })), calcParams: {} } as unknown as BuildSession;
+  const html = renderToStaticMarkup(<SkillMetricsTable session={session} lang={lang} report={report} displayed={report} />);
+  const [affected, ordinary] = html.split('<tr class="skill-metrics-row').slice(1);
+  expect(affected).toContain('<td class="mod-value">0</td>');
+  expect(affected).toContain('<td class="skill-metrics-diagnostics"><small class="energy-trigger-note');
+  expect(affected).toContain('<td class="mod-value">123</td>');
+  expect(ordinary).not.toContain('energy-trigger-note');
+});
+
 test('zero damage is not enough to label a skill non-damaging, and secondary effects do not borrow the host tags', () => {
   const catalog = new Map([['Curse', gem('Curse', ['Spell', 'AppliesCurse'])],
     ['Fireball', gem('Fireball', ['Spell', 'Damage', 'Projectile'])],

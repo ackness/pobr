@@ -22,6 +22,16 @@ describe('groupDps', () => {
     expect(rows.get(2)).toEqual({ kind: 'unavailable' });
   });
 
+  it('keeps an unmodelled meta trigger at zero with its explanation on the selected effect', () => {
+    const trigger = { meta_gem_id: 'MetaCastOnDodgePlayer', host_skill_id: 'CometPlayer' };
+    const affected = { ...entry(0, 2, 0), skill_id: trigger.host_skill_id, unmodelled_meta_trigger: trigger };
+    const skills = [entry(0, 1, 0), affected, entry(1, 1, 200)];
+    const rows = groupDps(skills, [{ main_active_skill: 2 }, {}]);
+    expect(rows.get(0)).toEqual({ kind: 'damage', dps: 0, unmodelled_meta_trigger: trigger });
+    expect(groupDps(skills, [{ main_active_skill: 1 }]).get(0)).toEqual({ kind: 'none' });
+    expect(topDps(rows)).toBe(200);
+  });
+
   it('gives the calculated summoning skill its minion\'s damage and marks other summoners', () => {
     const summoner = (id: string) => id === 'skill0' || id === 'skill1';
     const rows = groupDps([entry(0, 1, 0), entry(1, 1, 0), entry(2, 1, 0), entry(3, 1, 400)], [{}, {}, {}, {}],
