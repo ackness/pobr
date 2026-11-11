@@ -41,6 +41,13 @@ fn shield_local_defences_match_the_defence_panel_and_skill_scaling() {
             "+80 to Evasion Rating\n+40 to maximum Energy Shield",
             [317.0, 134.0, 48.0],
         ),
+        // UniqueLocalIncreasedEvasionRatingPercent5 (Bristleboar): the negative
+        // local_evasion_rating_+% is displayed as reduced Evasion Rating.
+        (
+            "50% reduced Evasion Rating",
+            "+80 to Evasion Rating\n+40 to maximum Energy Shield",
+            [317.0, 48.0, 48.0],
+        ),
         ("20% increased Armour", "+267 to Armour", [765.0, 0.0, 0.0]),
         (
             "40% increased Armour, Evasion and Energy Shield",
@@ -63,10 +70,14 @@ fn shield_local_defences_match_the_defence_panel_and_skill_scaling() {
             .enumerate()
             {
                 let rating = off_hand_defence(&build, data, idx);
-                let panel_base = panel.stat_totals(name).0;
+                let (panel_base, panel_increase, _) = panel.stat_totals(name);
                 assert!(
                     (panel_base - expected[idx]).abs() < 1e-9,
                     "{increase}, {display:?}, {name}: {panel_base}"
+                );
+                assert_eq!(
+                    panel_increase, 0.0,
+                    "{increase}: local modifier leaked globally"
                 );
                 assert_eq!(rating, panel_base, "shield scaling and panel: {name}");
                 for divisor in [5, 15] {

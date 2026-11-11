@@ -923,10 +923,9 @@ pub(super) fn inject_items(
                 },
             );
         }
-        // Armour item: strips local "increased / +flat Armour/Evasion/ES" (already
-        // folded into the rolled per-item base value / the base-fallback multiplier
-        // zone, see defence_base_modifiers); leaving it in the global set would
-        // double-count (and incorrectly turn it into a global additive term).
+        // Armour item: strips local "increased / +flat Armour/Evasion/ES", already
+        // folded into each item's local value by item_local_defences. Leaving them
+        // in the global set would double-count and turn them into global bonuses.
         // Determining an armour item: has a base armour entry **or** the text gives a
         // rolled defence line (fallback coverage for a unique without a catalog entry).
         let rd = &item.rolled_defence;

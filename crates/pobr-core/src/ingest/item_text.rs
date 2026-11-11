@@ -416,10 +416,10 @@ fn implicits_header(line: &str) -> Option<usize> {
 /// Parses **rolled defence value** lines from PoB-exported item text
 /// (`Armour: 4018` / `Evasion: 192` / `Energy Shield: 26`), accumulating them into `out`.
 ///
-/// These lines are the item's actual rolled defence values (already
-/// including base roll / affixes / influence), which PoB2's `CalcDefence`
-/// uses directly as the per-slot base (`item.armourData`). Returns `true`
-/// when the line was recognized as a defence line.
+/// These display values already include the item's local modifiers. Armour,
+/// evasion and energy shield are recomputed when the base is known, with these
+/// fields retained as a fallback for unknown bases. Returns `true` when the line
+/// was recognized as a defence line.
 fn accumulate_rolled_defence(line: &str, out: &mut RolledDefence) -> bool {
     let parse_num = |rest: &str| -> Option<f64> {
         // Tolerates parenthetical annotations / ranges (e.g. `Armour: 100 (augmented)`): takes the first number token.

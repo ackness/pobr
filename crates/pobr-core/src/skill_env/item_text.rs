@@ -208,18 +208,15 @@ pub fn is_weapon_local_mod(
         .any(|s| parse_adds_with_suffix(&clean, s).is_some())
 }
 
-/// Parses an armour item's **local** "N% increased <combination of Armour/Evasion/Energy
-/// Shield>" → per-type boost `[armour, evasion, es]` (affected types get N). Returns
-/// `None` for anything containing `global` or a non-pure-defence combination.
+/// Parses an armour item's **local** "N% increased/reduced <combination of
+/// Armour/Evasion/Energy Shield>" → `[armour, evasion, es]` (reductions are negative).
+/// Returns `None` for global, conditional or non-defence terms.
 pub fn parse_local_defence_inc(clean: &str) -> Option<[f64; 3]> {
-    let (pct_str, rest) = clean.split_once("% increased ")?;
-    let pct: f64 = pct_str.trim().parse().ok()?;
-    if rest.contains("global") {
-        return None; // Global defence boosts aren't treated as local
-    }
+    let (_, rest) = clean.split_once("% ")?;
+    let (_, rest) = rest.split_once(' ')?;
+    let pct = local_percent(clean, rest)?;
     let normalized = rest.replace(" rating", "").replace(" and ", ", ");
     let mut out = [0.0; 3];
-    let mut any = false;
     for part in normalized.split(", ") {
         match part.trim() {
             "armour" => out[0] = pct,
@@ -227,9 +224,8 @@ pub fn parse_local_defence_inc(clean: &str) -> Option<[f64; 3]> {
             "energy shield" | "maximum energy shield" => out[2] = pct,
             _ => return None, // Contains a non-defence term → not a pure local defence boost
         }
-        any = true;
     }
-    any.then_some(out)
+    Some(out)
 }
 
 /// Parses an armour item's **local** "+N to <Armour/Evasion Rating/maximum Energy

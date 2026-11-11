@@ -54,6 +54,17 @@ fn shield_local_defences_recompute_hybrids_and_evasion_rating() {
         ),
         ("40% increased Armour and Evasion", [444.0, 202.0, 36.0]),
         ("40% increased Evasion Rating", [317.0, 202.0, 36.0]),
+        (
+            "40% reduced Armour, Evasion and Energy Shield",
+            [190.0, 86.0, 22.0],
+        ),
+        ("40% reduced Armour and Evasion", [190.0, 86.0, 36.0]),
+        ("50% reduced Evasion Rating", [317.0, 72.0, 36.0]),
+        ("50% reduced Global Evasion Rating", [317.0, 144.0, 36.0]),
+        (
+            "40% reduced Armour and Evasion while Stationary",
+            [317.0, 144.0, 36.0],
+        ),
     ] {
         for display in ["", "Armour: 1\nEvasion Rating: 2\nEnergy Shield: 3\n"] {
             let shield = ShieldDefences {
