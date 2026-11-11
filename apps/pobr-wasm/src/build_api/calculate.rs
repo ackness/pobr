@@ -82,7 +82,10 @@ struct UnmodelledMetaTrigger {
 }
 
 /// Adapt the engine's existing limitation channel once at the JSON boundary.
-fn unmodelled_meta_trigger(limits: &[String], host_skill_id: &str) -> Option<UnmodelledMetaTrigger> {
+fn unmodelled_meta_trigger(
+    limits: &[String],
+    host_skill_id: &str,
+) -> Option<UnmodelledMetaTrigger> {
     limits.iter().find_map(|limit| {
         let detail = limit
             .strip_prefix("MetaTrigger:")?

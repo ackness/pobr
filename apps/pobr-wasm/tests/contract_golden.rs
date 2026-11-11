@@ -2419,10 +2419,9 @@ fn unmodelled_meta_trigger_has_structured_main_and_per_skill_limits() {
             ],
             "breakdowns": [],
         });
-        let response: Value = serde_json::from_str(
-            &pobr_wasm::calculate_build_json(&request.to_string()).unwrap(),
-        )
-        .unwrap();
+        let response: Value =
+            serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+                .unwrap();
         let report: Value =
             serde_json::from_str(&pobr_wasm::skill_metrics_json(&request.to_string()).unwrap())
                 .unwrap();
@@ -2465,10 +2464,9 @@ fn unmodelled_meta_trigger_has_structured_main_and_per_skill_limits() {
         }
         let mut ordinary = request.clone();
         ordinary["main_socket_group"] = 1.into();
-        let ordinary: Value = serde_json::from_str(
-            &pobr_wasm::calculate_build_json(&ordinary.to_string()).unwrap(),
-        )
-        .unwrap();
+        let ordinary: Value =
+            serde_json::from_str(&pobr_wasm::calculate_build_json(&ordinary.to_string()).unwrap())
+                .unwrap();
         assert!(ordinary.get("unmodelled_meta_trigger").is_none());
     }
 }
