@@ -84,6 +84,7 @@ does not estimate peak memory.
 | `skillMetricsJson(json)` | Calculation request JSON; no main selection required | `SkillMetricsResponse` JSON string with independent `skills` and `item_errors` |
 | `attributionJson(json)` | `AttributionRequest` JSON | Source contribution JSON string |
 | `gemCatalogJson()` | No argument; data initialized | Gem catalog JSON string |
+| `displayCatalogJson()` | No argument; no game data needed | JSON array of `{id, category, value_type, higher_is_better}` for every display stat: use `value_type: "Percent"` to add `%` (values are already 0–100) and `higher_is_better` (`false` lower is better, `null` neutral) to colour comparisons |
 | `encodeBuildJson(json)` | Calculation request with `character.class_name` required | PoB2 code string, not JSON |
 | `translateLines(lang, json)` | Locale code and a JSON array of English mod lines | JSON array of display lines in that locale |
 | `translateLinesDetailed(lang, json)` | Same input as `translateLines` | JSON array of `{ text, origin }`: `text` equals `translateLines`; `origin` is `null` for official text (and lines kept in English) or `agent` / `human` when the template is the translation repository's own supplement |

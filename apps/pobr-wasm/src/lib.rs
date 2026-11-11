@@ -22,7 +22,7 @@ mod xml_write;
 pub use build_api::{
     attribution_json, available_locales_json, breakdown_descriptors_json, calculate_build_json,
     classify_item_lines_json, decode_build_file_json, decode_build_json, decode_build_loadout_json,
-    encode_build_file_json, encode_build_json, game_name, gem_catalog_json,
+    display_catalog_json, encode_build_file_json, encode_build_json, game_name, gem_catalog_json,
     import_party_member_json, import_trade_items_json, item_augment_info_json,
     item_crafting_catalog_json, line_usage_json, manage_loadout_json, minion_catalog_json,
     node_power_json, normalize_item_draft_json, optimize_variants_json, parse_localized_lines_json,
@@ -44,7 +44,7 @@ pub use state::{
 /// compares them at boot (see [`wasm::schema_version`]); a mismatch prompts
 /// a hard refresh — closing the door on "stale frontend cache + new wasm
 /// assets" silently breaking.
-pub const SCHEMA_VERSION: u32 = 19;
+pub const SCHEMA_VERSION: u32 = 20;
 
 /// wasm-bindgen bindings: compiled only under the `wasm` feature, exposing
 /// functions with the same names as the host API to JS.
@@ -120,6 +120,12 @@ pub mod wasm {
     #[wasm_bindgen(js_name = breakdownDescriptorsJson)]
     pub fn breakdown_descriptors_json() -> Result<String, JsError> {
         crate::build_api::breakdown_descriptors_json().map_err(|err| JsError::new(&err))
+    }
+
+    /// JS entry point: `displayCatalogJson() -> string` (static display metadata).
+    #[wasm_bindgen(js_name = displayCatalogJson)]
+    pub fn display_catalog_json() -> Result<String, JsError> {
+        crate::build_api::display_catalog_json().map_err(|err| JsError::new(&err))
     }
 
     /// JS entry point: `skillMetricsJson(requestJson) -> string` (independent active-effect metrics).

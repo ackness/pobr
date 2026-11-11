@@ -620,12 +620,10 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 // Life goes 0.79x->0.96x, flipping 8 columns (including
 // TotalEHP/5×MaxHit/LifeUnres) to correct.
 // **Re-recorded for item ES recalculation (+2 @5% core-8 136->138)**: per-slot
-// item ES changed from "trusting the item text's display line" to PoB2's
-// convention "recalculate from the base DB:
-// (esBase+flat)×(1+localInc/100)×(1+quality/100)" (Item.lua:1994-1996; the
-// display line lags across data versions) -- titan ES 41->55, stormweaver ES
-// 986->1120, each with ESRecoveryCap following. See
-// calc_orchestrator/defence.rs::item_rolled_defence.
+// item ES is recomputed from the current base, local modifiers and quality:
+// the display line can lag across data versions. Titan ES 41->55, stormweaver
+// ES 986->1120, each with ESRecoveryCap following. See
+// pobr_core::skill_env::item_local_defences.
 // **Re-recorded for 0.5.4b #4 Communion/LowLife + Voices (+2 @5% core-8
 // 138->140)**: huntress-ritualist SpiritUnres -13.00x->1.00x / LifeUnres
 // 12.74x->1.01x -- once Atziri's Communion's Spirit->Life reservation
@@ -825,9 +823,9 @@ const BASELINE_DEF_CORE_HIT5: usize = 144; // After #14's long-tail triage: 144/
 //    after parsing and injects -> Int 135->139 -> Mana exactly 770 (with the
 //    ChaosMaxHit tail-gap closing along with it).
 // ③ titan Armour 0.985x = three Runeforged-base items (buffed in 0.5.4b) had
-//    a stale armour display line: item_rolled_defence's "always recalculate
-//    from a known base" was expanded from ES-only to all three defences
-//    (vendor Item.lua:1994-1996 + the round convention) -- gloves 96->101 /
+//    a stale armour display line: item_local_defences' "always recalculate
+//    from a known base" was expanded from ES-only to all three defences,
+//    rounded to whole points -- gloves 96->101 /
 //    helmet 192->284 / boots 58->100, Gear:Armour 6100->6239 = vendor,
 //    closing titan's Armour/ES/5×MaxHit exactly; pathfinder Evasion
 //    0.98x->1.00x and twister DeflectChance 0.97x->1.00x also become exact.

@@ -1185,11 +1185,10 @@ pub struct ReferenceDifference {
 #[derive(Debug, Clone, Serialize)]
 pub struct ReferenceCheck {
     pub tolerance: f64,
-    /// `true` when the main skill is a spell in a meta gem that fills with
-    /// Energy and the rows below compare it at its own rate of use. The
-    /// exporter counts it so, having no Energy model; `output` reports it at
-    /// the rate the gem triggers it (`output.energy_trigger`), so its DPS and
-    /// action rate are not the `pobr` values of the rows.
+    /// `true` when the rows compare the main skill at its own rate of use
+    /// because the exporter lacks its trigger model. `output` retains the
+    /// modelled trigger rate, or zero when the event rate is unmodelled, so
+    /// its DPS and action rate can differ from the reference rows' values.
     pub at_own_rate_of_use: bool,
     /// `true` when the main skill is a rain and the rows below count a hit
     /// whenever the enemy can be hit again, as the exporter does; `output`
@@ -1419,11 +1418,13 @@ pub fn calculate_build_detailed(
     // are at the spell's own rate of use. It counts a rain's hits whenever
     // the enemy can be hit again. The comparison asks the same questions, so
     // it is made on that basis, not at the rates the output above reports.
+    let event_rate_unmodelled = session.has_flag(pobr_core::calc::trigger::EVENT_RATE_UNMODELLED);
     let at_own_rate = compares
-        && out
-            .energy_trigger
-            .as_ref()
-            .is_some_and(|terms| !terms.at_own_rate);
+        && (event_rate_unmodelled
+            || out
+                .energy_trigger
+                .as_ref()
+                .is_some_and(|terms| !terms.at_own_rate));
     let rain_hits_whenever_allowed = compares && output.rain.is_some();
     let periodic_hits_assume_sustained = compares && session.has_periodic_hits();
     let exporter_absent_rules_omitted = compares

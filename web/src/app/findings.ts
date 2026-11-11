@@ -12,8 +12,6 @@ export type Finding =
   | { kind: 'net-regen'; severity: Severity; route: Route; value: number }
   | { kind: 'unsupported'; severity: Severity; route: Route; count: number };
 
-/** The elemental resistance cap a character has before any maximum-resistance modifier. */
-export const BASE_RESIST_CAP = 75;
 const ELEMENTS = ['Fire', 'Cold', 'Lightning'] as const;
 const ATTRIBUTES = ['Str', 'Dex', 'Int'] as const;
 
@@ -39,9 +37,8 @@ export function deriveFindings(calc: CalculateBuildResponse | null, hasSkills: b
     if (have !== null && need !== null && need > have) found.push({ kind: 'attribute', severity: 'bad', route: 'items', attribute, have, need });
   }
   for (const element of ELEMENTS) {
-    const value = num(`${element}Resist`), over = num(`${element}ResistOverCap`) ?? 0;
-    // A value under the base cap with nothing over a (possibly raised) maximum is a real shortfall.
-    if (value !== null && value < BASE_RESIST_CAP && over <= 0) found.push({ kind: 'resist', severity: value < 0 ? 'bad' : 'warn', route: 'items', element, value, missing: BASE_RESIST_CAP - value });
+    const value = num(`${element}Resist`), max = num(`${element}ResistMax`) ?? 75;
+    if (value !== null && value < max) found.push({ kind: 'resist', severity: value < 0 ? 'bad' : 'warn', route: 'items', element, value, missing: max - value });
   }
   const chaos = num('ChaosResist');
   if (chaos !== null && chaos < 0) found.push({ kind: 'resist', severity: 'warn', route: 'items', element: 'Chaos', value: chaos, missing: -chaos });

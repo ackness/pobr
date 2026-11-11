@@ -1,4 +1,4 @@
-//! triggers — trigger fixed point + support-applicability judgement (pure migration from calc_orchestrator, no logic change).
+//! Build wiring for trigger recognition, source calculations and limitations.
 
 use pobr_core::Modifier;
 
@@ -143,42 +143,10 @@ impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
     }
 }
 
-/// The main skill's trigger-chain modifiers (build-layer wiring for findings
-/// 03-01/03-02/03-06; expanded since).
-///
-/// Two recognition paths (data-driven first, then built-in triggers; returns as soon as one matches):
-///
-/// 1. **Data-driven recognition (`overlay/trigger_configs.json`)**: PoBR's projection of
-///    vendor `CalcTriggers.lua:1452-1455`'s four-level key lookup — an entry's
-///    `match_effect_ids` (PoE2 granted effect ids) match either a **gem in the group**
-///    (a triggeredBy relation, e.g. `MetaCastOnCritPlayer`) or the **main skill itself**
-///    (a skill key). On a match, injects per the entry's declarative facts: trigger
-///    cooldown (override value > trigger gem's own cooldown > triggered skill's
-///    cooldown), `TriggerRateCapOverride`, a global marker, source-skill predicate
-///    matching + sub-calculation statistics.
-/// 2. **Built-in triggers** (`skill_types` includes `Triggered`/`InbuiltTrigger`,
-///    matching PoB2's `isTriggered`: an auto-triggered skill built into an item/ascendancy):
-///    injects the triggered skill's cooldown + in-group source rate.
-///
-/// **Source rate**: the source skill runs one full [`calculate_with_data`]
-/// sub-calculation (a minimal equivalent of PoB2's GlobalCache,
-/// `CalcTriggers.lua:74-86`'s `cachedData[uuid].HitSpeed or Speed`), taking its
-/// **post-calculation** effective action rate and injecting it as `TriggerSourceRate`
-/// BASE — a CoC build stacking attack speed sees its source rate grow with the attack
-/// speed multiplier zone. Hit/crit is injected via `TriggerSourceHitChance`/
-/// `TriggerSourceCritChance` BASE (as a percentage); perform's `fill_trigger` builds a
-/// [`pobr_core::calc::TriggerSourceStats`] (contract 4) and folds it into trigger chance
-/// (`:716-770`). Sub-calculation guards: stripped inside a trigger-source context (this function's
-/// top-level early return), and source = the triggered skill itself (a cycle) falls back
-/// to the base `1/use_time`.
-///
-/// **Deferred**: ① fetching the `trigger_chance_stat`/`source_rate_stat` stat values
-/// (the values live in the build mod domain, injection source not wired up yet); ②
-/// handler entries' real logic (the registry is pending, count monitored to stay <100);
-/// ③ per-skill cooldown rotation for multiple triggered skills (needs the full gem-link
-/// list). Cross-call source sub-calculations can be reused through the caller-owned
-/// `DataCalcCache`, keyed by the complete selected source Build and bound immutable
-/// data/options. Uncached/report APIs and Compare mode do not reuse that memo.
+/// Delegates recognition and modifiers to [`pobr_core::skill_env::trigger_modifiers`].
+/// Sources run through [`OrchestratorSubCalc`]; unmodelled mechanics join the
+/// session's existing limitation channel. `energy_triggers` selects the game or
+/// reference basis for both rates and limitations.
 pub(crate) fn trigger_modifiers(
     context: &mut CalculationContext,
     build: &Build,
@@ -199,6 +167,7 @@ pub(crate) fn trigger_modifiers(
     let bonuses = super::resolve::gem_property_bonuses(build, data);
     let build_cfg = build.config.to_calc_config();
     let is_trigger_source = context.is_trigger_source;
+    let mut limits = Vec::new();
     let mut sub = OrchestratorSubCalc {
         context,
         build,
@@ -213,8 +182,9 @@ pub(crate) fn trigger_modifiers(
         is_trigger_source,
         class_name: &build.character.class_name,
         energy_triggers: options.energy_triggers,
+        limits: &mut limits,
     };
-    pobr_core::skill_env::trigger_modifiers(
+    let mods = pobr_core::skill_env::trigger_modifiers(
         &mut ctx,
         data,
         &bonuses,
@@ -222,7 +192,9 @@ pub(crate) fn trigger_modifiers(
         &eg,
         group_index,
         main_skill_id,
-    )
+    );
+    context.support_limits.extend(limits);
+    mods
 }
 
 // End of trigger section

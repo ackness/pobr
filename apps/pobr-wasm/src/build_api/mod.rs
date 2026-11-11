@@ -46,9 +46,9 @@ pub use augments::{item_augment_info_json, reforge_runes_json, rune_catalog_json
 pub(crate) use calculate::clear_snapshots;
 pub use calculate::{breakdown_descriptors_json, calculate_build_json, skill_metrics_json};
 pub use catalog::{
-    available_locales_json, classify_item_lines_json, game_name, gem_catalog_json,
-    minion_catalog_json, parse_localized_lines_json, translate_lines_detailed_json,
-    translate_lines_json,
+    available_locales_json, classify_item_lines_json, display_catalog_json, game_name,
+    gem_catalog_json, minion_catalog_json, parse_localized_lines_json,
+    translate_lines_detailed_json, translate_lines_json,
 };
 pub use crafting::{item_crafting_catalog_json, normalize_item_draft_json};
 pub use decode::{

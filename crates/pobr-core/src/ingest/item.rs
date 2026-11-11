@@ -20,25 +20,11 @@
 //!
 //! ## Quality — not modeled here
 //!
-//! PoB2's item quality is **not** a global `more` modifier, it's a per-stat
-//! **base scaling**:
-//!
-//! - Weapons: physical damage `min/max = base × (1 + physInc/100) × (1 + quality/100)`
-//!   (`src/Classes/Item.lua`'s `BuildModListForSlotNum` 1751-1756, physical only).
-//! - Armour: armour/evasion/ES **each** get `value = base × (1 + inc/100) × (1 + quality/100)`
-//!   (same file, 1812-1819 — each stat scales independently, with no crosstalk).
-//! - Jewellery / belts: quality scales affix strength by tag via a
-//!   **catalyst** (`getCatalystScalar`), not an overall base scaling.
-//!
-//! So if quality were injected into ModDb as a global `LocalPhysicalDamageMore`
-//! / `LocalDefencesMore` `More` modifier, it would incorrectly apply to
-//! **global** damage / all defences (across slots, across damage types),
-//! contradicting PoB2's "per-item, per-stat base scaling" semantics. The
-//! actual quality scaling is handled directly by the orchestration layer
-//! ([`pobr-build::calc_orchestrator`]) when computing per-item base values
-//! (`item_rolled_defence` / weapon `physical_min/max` × `(1 + quality/100)`,
-//! per stat, per item), matching PoB2. So this module **no longer** injects a
-//! quality modifier.
+//! Item quality scales a weapon's own physical damage or each armour item's
+//! own defences. [`crate::skill_env::item_local_defences`] and
+//! [`crate::skill_env::weapon_item_contribution`] apply it when computing those
+//! local values. A global quality modifier would incorrectly scale other items
+//! and damage types, so this module injects none.
 //!
 //! Catalysts (accessory quality → catalyst) aren't modeled yet: PoBR's parsed
 //! modifiers don't carry GGG affix tags (life/mana/defences/physical/attack/

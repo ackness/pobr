@@ -218,6 +218,9 @@ pub struct UnselectedSetStats {
 pub trait EquipmentView {
     /// Returns the item in `slot`, or `None` if empty.
     fn item(&self, slot: pobr_data::item::EquipmentSlot) -> Option<&pobr_data::item::Item>;
+
+    /// The player's level, used by equipped items' per-level defences.
+    fn player_level(&self) -> u32;
 }
 
 /// Socket-group view (the `Build.socket_groups` domain) — read-only access to the

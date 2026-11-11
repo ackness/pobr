@@ -557,9 +557,8 @@ fn resistance_above_floor_unchanged() {
 /// The stat name says "base": the game text ("Evasion and Armour on your Helmet")
 /// is the helmet's local final values (the displayed Armour/Evasion on the item:
 /// base + local flat, × local inc, × quality, before any global/tree scaling),
-/// not the base type's values. This matches the existing per-slot defence
-/// multiplier semantics (item_rolled_defence) and vendor CalcDefence.lua:816's
-/// armourBase/evasionBase (the item's base values after local calculation).
+/// not the base type's values. The per-slot defence multipliers use these
+/// local values from item_local_defences, before global scaling.
 ///
 /// Helmet with 200 Armour / 150 Evasion → lowest 150 → +150 Stun Threshold
 /// (life 1000 + 150 = 1150).

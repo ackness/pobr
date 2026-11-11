@@ -87,7 +87,7 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
             "TMPDIR": str(self.root / "tmp"),
             "POBR_PATCH": "test",
         }
-        for key in ["FAIL_COMMAND", "FAIL_TEST", "FAIL_REGEN", "GH_EXIT"]:
+        for key in ["FAIL_COMMAND", "FAIL_TEST", "FAIL_REGEN", "GH_EXIT", "POBR_DATA_ROOT", "POBR_DATA_VERSION"]:
             self.env.pop(key, None)
 
     def write(self, rel, text):

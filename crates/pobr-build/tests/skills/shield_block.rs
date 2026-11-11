@@ -111,7 +111,14 @@ fn shield_bashes_use_the_shield_source_and_skill_attack_time() {
             0.75,
         ),
     ] {
-        let calculate = |rating, main_hand| {
+        let base_rating = data.armour_base(base).unwrap();
+        let base_rating = if defence == "Armour" {
+            base_rating.armour
+        } else {
+            base_rating.evasion
+        };
+        let calculate = |rating: u32, main_hand| {
+            let local_flat = rating - base_rating;
             let xml = format!(
                 r#"<PathOfBuilding2>
 <Build level="90" className="Witch" mainSocketGroup="1"/>
@@ -120,6 +127,7 @@ fn shield_bashes_use_the_shield_source_and_skill_attack_time() {
 {base}
 {defence}: {rating}
 Implicits: 0
+{local_flat:+} to {defence}
 </Item><Item id="2">Rarity: RARE
 Test Mace
 Wooden Club
@@ -133,14 +141,15 @@ Implicits: 0
             calculate_with_data(&build, &data, &DataOrchestratorOptions::default())
                 .expect("shield bash")
         };
-        let low = calculate(10, "");
-        let fractional = calculate(14, "");
-        let next = calculate(15, "");
-        let armed = calculate(10, r#"<Slot name="Weapon 1" itemId="2"/>"#);
-        // 3–4 Physical per 5 defence, twice, then the skill multiplier.
+        let low_rating = base_rating.div_ceil(5) * 5;
+        let low = calculate(low_rating, "");
+        let fractional = calculate(low_rating + 4, "");
+        let next = calculate(low_rating + 5, "");
+        let armed = calculate(low_rating, r#"<Slot name="Weapon 1" itemId="2"/>"#);
+        // 3–4 Physical per complete 5 defence, then the skill multiplier.
         let damage: f64 = low.damage_components.iter().map(|part| part.avg()).sum();
         assert!(
-            (damage - 7.0 * multiplier).abs() < 1e-6,
+            (damage - 3.5 * f64::from(low_rating / 5) * multiplier).abs() < 1e-6,
             "{skill}: {damage}"
         );
         assert!((low.action_rate - 1.0 / time).abs() < 1e-6, "{skill}");
@@ -150,7 +159,10 @@ Implicits: 0
             "{skill}: complete groups only"
         );
         let next_damage: f64 = next.damage_components.iter().map(|part| part.avg()).sum();
-        assert!((next_damage - damage * 1.5).abs() < 1e-6, "{skill}");
+        assert!(
+            (next_damage - damage - 3.5 * multiplier).abs() < 1e-6,
+            "{skill}"
+        );
         assert_eq!(
             low.damage_components, armed.damage_components,
             "{skill}: main hand must not supply damage"
