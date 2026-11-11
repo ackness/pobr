@@ -754,6 +754,15 @@ pub fn skill_inflicting_withered(
     skill_with_stat(groups, data, skill_stats::inflicts_withered)
 }
 
+/// The first enabled active skill that inflicts Incision, on its own or
+/// through a compatible support. Its stacks help every skill cause Bleeding.
+pub fn skill_inflicting_incision(
+    groups: &dyn SocketGroupView,
+    data: &dyn BuffEnv,
+) -> Option<String> {
+    skill_with_stat(groups, data, skill_stats::inflicts_incision)
+}
+
 /// The first enabled active skill of the build whose hits Crush their
 /// target, by its own stats or by those of a support that applies to it
 /// (Styrn's Ferocity, [`skill_stats::crushes_on_hit`]). A target is Crushed

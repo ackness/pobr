@@ -576,6 +576,8 @@ const SET_BY_THE_ORCHESTRATION: &[&str] = &[
     "MajorityRedSocketedSupports",
     "MajorityGreenSocketedSupports",
     "MajorityBlueSocketedSupports",
+    // `inject::inject_self_buff_exposure`: any enabled skill inflicts Incision.
+    "CanInflictIncision",
     // `inject::inject_enemy`: the config input of the same name.
     "DisableEHPGainOnBlock",
 ];
