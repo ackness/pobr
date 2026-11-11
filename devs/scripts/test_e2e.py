@@ -69,7 +69,7 @@ class TierTests(unittest.TestCase):
         self.assertEqual([suite.name for suite in selection.suites], ["affected"])
         grep = main_grep(selection)
         self.assertTrue(grep.startswith("@smoke|"))
-        for stem in ("passive-continuity", "tree-keyboard-decisions", "weapon-set-tree", "node-power"):
+        for stem in ("passive-continuity", "tree-keyboard-decisions", "weapon-set-tree", "node-power", "tree-heatmap"):
             self.assertIn(re.escape(f"{stem}.spec.ts"), grep)
         self.assertNotIn("config-controls", grep)
         self.assertIn("TreePanel.tsx", "\n".join(selection.reasons))
@@ -85,7 +85,7 @@ class TierTests(unittest.TestCase):
                      "pipeline/data.lock.json", "Cargo.lock"):
             with self.subTest(name=name):
                 grep = main_grep(affected(name))
-                for stem in ("calcs-breakdown", "import-planning-errors", "data-bump-smoke"):
+                for stem in ("calcs-breakdown", "import-planning-errors", "data-bump-smoke", "tree-heatmap"):
                     self.assertIn(re.escape(f"{stem}.spec.ts"), grep)
         self.assertEqual(affected("apps/pobr-cli/src/main.rs").suites, ())
 

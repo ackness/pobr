@@ -1252,7 +1252,6 @@ fn instantiate_value(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pobr_data::catalog::parser_rules::SpecialModsDef;
 
     fn def(json: &str) -> SpecialTemplateDef {
         serde_json::from_str(json).unwrap()
@@ -1790,38 +1789,5 @@ mod tests {
             assert_eq!(m.mods[0].value.as_number(), Some(value), "{line}");
             assert!(!m.verified);
         }
-    }
-
-    /// Smoke gate: the full corpus of real repo data compiles successfully
-    /// (the formal assertions live in special_mods_gate.rs). special_mods
-    /// is split into two layers: a version-independent curation layer
-    /// `data/overlay-common/` (P1-3) plus a version layer
-    /// `data/<ver>/overlay/`. This test reads and concatenates the same
-    /// union before compiling (pobr-core doesn't depend on pobr-gamedata,
-    /// so it reads the files directly instead of going through the
-    /// loader).
-    #[test]
-    fn repo_special_mods_compile() {
-        let data_root = crate::mod_parser::test_data_dir();
-        let mut entries = Vec::new();
-        for path in [
-            data_root.join("../overlay-common/special_mods.json"),
-            data_root.join("overlay/special_mods.json"),
-        ] {
-            let raw = match std::fs::read_to_string(&path) {
-                Ok(raw) => raw,
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
-                Err(e) => panic!("{}: {e}", path.display()),
-            };
-            let doc: SpecialModsDef =
-                serde_json::from_str(&raw).expect("special_mods.json should parse");
-            entries.extend(doc.entries);
-        }
-        assert!(!entries.is_empty(), "special_mods both layers empty?");
-        let mut registry = HandlerRegistry::new();
-        crate::rules::register_special_handlers(&mut registry).unwrap();
-        let rules = SpecialModRules::compile(&entries, &registry)
-            .expect("all repo special_mods should compile successfully");
-        assert_eq!(rules.len(), entries.len());
     }
 }

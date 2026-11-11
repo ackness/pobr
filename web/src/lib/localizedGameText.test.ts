@@ -2,7 +2,6 @@ import { expect, test } from 'vitest';
 import type { GemCatalogEntry } from '../api/types';
 import { GameTextLocalizer } from './localizedGameText';
 import { gemDisplayName } from './skillNames';
-import { localizeStructLine, cleanLine, itemLines } from '../hooks/useLocalizedLines';
 import gems from '../fixtures/gem_catalog.json';
 
 const localizer = new GameTextLocalizer(gems);
@@ -41,16 +40,4 @@ test('ambiguous alternate names do not choose another skill arbitrarily', () => 
   expect(names.localize('同名', '同名', 'zh-TW')).toBe('同名');
   expect(names.localize('Second', '同名', 'zh-TW')).toBe('第二個');
   expect(names.localize('Grants Second', '获得同名', 'zh-TW')).toBe('獲得第二個');
-});
-
-test('structural item display text uses the selected locale and preserves raw item text', () => {
-  expect(localizeStructLine('Attacks per Second: 1.25', 'zh-TW')).toBe('每秒攻擊次數: 1.25');
-  expect(localizeStructLine('Energy Shield: 500', 'zh-CN')).toBe('能量护盾: 500');
-  expect(localizeStructLine('Radius: Large', 'zh-TW')).toBe('範圍: 大型');
-  expect(localizeStructLine('Corrupted', 'zh-CN')).toBe('已腐化');
-  expect(localizeStructLine('Unknown: raw_ID', 'zh-TW')).toBeNull();
-  const raw = 'Rarity: RARE\nExample\nEnergy Shield: 500\n{crafted}+10 to [MaximumLife|maximum Life]';
-  expect(itemLines(raw)).toEqual(['Example', 'Energy Shield: 500', '+10 to maximum Life']);
-  expect(cleanLine('{crafted}[Strength]')).toBe('Strength');
-  expect(raw).toContain('{crafted}');
 });

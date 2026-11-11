@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { linesToTranslate, localizeStructLine, localizedLines } from './useLocalizedLines';
+import { cleanLine, itemLines, linesToTranslate, localizeStructLine, localizedLines } from './useLocalizedLines';
 import { itemDisplaySections } from '../lib/itemDisplay';
 
 it.each([
@@ -25,6 +25,15 @@ it('leaves modifier lines, unknown properties, numeric formatting and English so
   }
   expect(localizeStructLine('Evasion Rating: 1,234 (augmented)', 'zh-CN')).toBe('闪避值: 1,234 (augmented)');
   expect(localizeStructLine('Evasion Rating: 431', 'en-US')).toBeNull();
+  expect(localizeStructLine('Attacks per Second: 1.25', 'zh-TW')).toBe('每秒攻擊次數: 1.25');
+  expect(localizeStructLine('Radius: Large', 'zh-TW')).toBe('範圍: 大型');
+  expect(localizeStructLine('Corrupted', 'zh-CN')).toBe('已腐化');
+});
+
+it('removes item markup and rarity headers from display lines', () => {
+  const raw = 'Rarity: RARE\nExample\nEnergy Shield: 500\n{crafted}+10 to [MaximumLife|maximum Life]';
+  expect(itemLines(raw)).toEqual(['Example', 'Energy Shield: 500', '+10 to maximum Life']);
+  expect(cleanLine('{crafted}[Strength]')).toBe('Strength');
 });
 
 it('matches translations by position, so one line can be covered in one place and stand alone in another', () => {

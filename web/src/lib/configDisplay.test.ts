@@ -2,11 +2,9 @@ import { expect, test } from 'vitest';
 import { configListLabel, configValueLabel } from './configDisplay';
 import type { ConfigOption } from '../api/types';
 
-test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('list display reuses configuration labels in %s without changing saved values', lang => {
+test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('list display reuses configuration labels in %s', lang => {
   const option: ConfigOption = { var: 'cadiroAmmo', input_type: 'list', list_options: [{ value: 'arrow-id', label: '^1Diamond Arrow^7' }] };
-  const value = 'arrow-id';
-  expect(configValueLabel(lang, option, value)).toBe(configListLabel(lang, 'Diamond Arrow'));
-  expect(value).toBe('arrow-id');
+  expect(configValueLabel(lang, option, 'arrow-id')).toBe(configListLabel(lang, 'Diamond Arrow'));
   expect(configValueLabel(lang, undefined, undefined)).not.toContain('undefined');
   expect(configValueLabel(lang, { var: 'check', input_type: 'check' }, 0)).not.toBe('0');
   expect(configValueLabel(lang, undefined, 0)).toBe('0');

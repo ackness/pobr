@@ -18,8 +18,7 @@ use pobr_core::calc::trigger::{
 use pobr_core::calc::{calc_cwc_trigger_rate_traced, resolve_trigger_rate_traced};
 use pobr_data::prelude::SERVER_TICK_SECONDS;
 
-// §1  cooldown-driven triggers, basics (regression: kept strictly identical to the
-// pre-existing tests)
+// §1  Cooldown-driven trigger helpers, including the former internal cases.
 
 #[test]
 fn server_tick_rate_is_inverse_of_constant() {
@@ -31,20 +30,24 @@ fn server_tick_rate_is_inverse_of_constant() {
 #[test]
 fn cooldown_is_rounded_up_to_server_frame() {
     let rate = server_tick_rate(SERVER_TICK_SECONDS);
-    // 0.2s cooldown: ceil(0.2 x 30.303) = ceil(6.06) = 7 frames -> 7/30.303 ~= 0.231s.
-    let rounded = round_cooldown_to_tick(0.2, rate);
-    assert!((rounded - 7.0 / rate).abs() < 1e-9);
-    assert!(rounded >= 0.2);
+    for (cooldown, frames) in [(0.10, 4.0), (0.20, 7.0)] {
+        let rounded = round_cooldown_to_tick(cooldown, rate);
+        assert!(
+            (rounded - frames / rate).abs() < 1e-9,
+            "cooldown={cooldown}"
+        );
+        assert!(rounded > cooldown, "cooldown={cooldown}");
+    }
 }
 
 #[test]
 fn trigger_rate_cap_formula_matches_doc() {
-    // cap = 1 / (ceil(cd x rate) / rate), matching agent-docs/triggers.md §3.1.
     let rate = server_tick_rate(SERVER_TICK_SECONDS);
-    let cd = 0.3;
-    let cap = trigger_rate_cap(cd, rate);
-    let expected = 1.0 / round_cooldown_to_tick(cd, rate);
-    assert!((cap - expected).abs() < 1e-6);
+    for cooldown in [0.15, 0.3] {
+        let cap = trigger_rate_cap(cooldown, rate);
+        let expected = 1.0 / round_cooldown_to_tick(cooldown, rate);
+        assert!((cap - expected).abs() < 1e-6, "cooldown={cooldown}");
+    }
 }
 
 #[test]
@@ -60,43 +63,42 @@ fn zero_cooldown_yields_zero_cap() {
 }
 
 #[test]
-fn icdr_divides_trigger_cooldown() {
-    // ICDR=2.0 shortens the trigger gem's 0.4s cooldown to 0.2s (the triggered skill
-    // itself has no cooldown).
-    let cd = action_cooldown(0.4, 0.0, 2.0);
-    assert!((cd - 0.2).abs() < 1e-9);
-}
-
-#[test]
-fn action_cooldown_takes_larger_of_two() {
-    // max(triggeredCD=0.6, triggerCD/icdr=0.4/2=0.2) = 0.6.
-    let cd = action_cooldown(0.4, 0.6, 2.0);
-    assert!((cd - 0.6).abs() < 1e-9);
-}
-
-#[test]
-fn zero_icdr_falls_back_to_raw_trigger_cd() {
-    // icdr<=0 skips the division (avoids divide-by-zero) and uses trigger_cd as-is.
-    let cd = action_cooldown(0.4, 0.0, 0.0);
-    assert!((cd - 0.4).abs() < 1e-9);
+fn action_cooldown_combines_trigger_skill_and_recovery() {
+    for (case, trigger_cd, triggered_cd, icdr, expected) in [
+        ("recovery", 0.3, 0.0, 1.5, 0.2),
+        ("double recovery", 0.4, 0.0, 2.0, 0.2),
+        ("skill cooldown", 0.3, 0.5, 1.0, 0.5),
+        ("skill beats recovered trigger", 0.4, 0.6, 2.0, 0.6),
+        ("zero recovery fallback", 0.4, 0.0, 0.0, 0.4),
+    ] {
+        let actual = action_cooldown(trigger_cd, triggered_cd, icdr);
+        assert!((actual - expected).abs() < 1e-9, "{case}: {actual}");
+    }
 }
 
 #[test]
 fn skill_trigger_rate_is_min_of_cap_and_source() {
-    // Dual gating: source rate 1.5/s is below the cap -> the effective rate is
-    // gated by the source.
-    let r = resolve_trigger_rate(0.15, 0.0, 1.0, 1.5, SERVER_TICK_SECONDS);
-    assert!(r.limited_by_source);
-    assert!((r.skill_trigger_rate - 1.5).abs() < 1e-6);
-    assert!(r.trigger_rate_cap > 1.5);
+    for (cooldown, source_rate) in [(0.05, 2.0), (0.15, 1.5)] {
+        let r = resolve_trigger_rate(cooldown, 0.0, 1.0, source_rate, SERVER_TICK_SECONDS);
+        assert!(r.limited_by_source, "cooldown={cooldown}");
+        assert!(
+            (r.skill_trigger_rate - source_rate).abs() < 1e-6,
+            "cooldown={cooldown}"
+        );
+        assert!(r.trigger_rate_cap > source_rate, "cooldown={cooldown}");
+    }
 }
 
 #[test]
 fn fast_source_is_capped_by_rate_cap() {
-    // Source rate 50/s exceeds the cap -> the effective rate equals the cap.
-    let r = resolve_trigger_rate(0.3, 0.0, 1.0, 50.0, SERVER_TICK_SECONDS);
-    assert!(!r.limited_by_source);
-    assert!((r.skill_trigger_rate - r.trigger_rate_cap).abs() < 1e-9);
+    for source_rate in [50.0, 100.0] {
+        let r = resolve_trigger_rate(0.3, 0.0, 1.0, source_rate, SERVER_TICK_SECONDS);
+        assert!(!r.limited_by_source, "source={source_rate}");
+        assert!(
+            (r.skill_trigger_rate - r.trigger_rate_cap).abs() < 1e-9,
+            "source={source_rate}"
+        );
+    }
 }
 
 #[test]
@@ -118,19 +120,17 @@ fn higher_icdr_raises_trigger_rate_cap() {
 
 // §3  multi-skill rotation
 
-/// Single skill: with no cooldown bottleneck, the rate approaches the source rate.
-/// Source: agent-docs/triggers.md §5; PoB2 calcMultiSpellRotationImpact.
+/// Without a cooldown bottleneck, a single skill uses every opportunity.
 #[test]
 fn single_skill_rate_approaches_source_rate() {
-    // 0.1s cooldown < 0.25s trigger interval (4/s) -> every opportunity can trigger,
-    // rate ~= 4/s.
-    let skill = RotationSkill::new(0.1);
-    let result = calc_multi_spell_rotation(&[skill], 4.0, SERVER_TICK_SECONDS);
-    assert!(!result.rates.is_empty());
-    // The rate should approach source_rate (never exceed it).
-    assert!(result.rates[0] > 3.0);
-    assert!(result.rates[0] <= 4.0 + 1e-6);
-    assert_eq!(result.wasted_fraction, 0.0);
+    for (cooldown, minimum_rate) in [(0.10, 3.0), (0.15, 0.0)] {
+        let result =
+            calc_multi_spell_rotation(&[RotationSkill::new(cooldown)], 4.0, SERVER_TICK_SECONDS);
+        assert_eq!(result.rates.len(), 1, "cooldown={cooldown}");
+        assert!(result.rates[0] > minimum_rate, "cooldown={cooldown}");
+        assert!(result.rates[0] <= 4.0 + 1e-6, "cooldown={cooldown}");
+        assert_eq!(result.wasted_fraction, 0.0, "cooldown={cooldown}");
+    }
 }
 
 /// Two skills share the same trigger opportunities, so their rates sum to at most
@@ -141,6 +141,7 @@ fn two_skills_total_rate_bounded_by_source() {
     let b = RotationSkill::new(0.5);
     let source_rate = 4.0;
     let result = calc_multi_spell_rotation(&[a, b], source_rate, SERVER_TICK_SECONDS);
+    assert_eq!(result.rates.len(), 2);
     let total: f64 = result.rates.iter().sum();
     assert!(
         total <= source_rate + 1e-6,
@@ -150,44 +151,50 @@ fn two_skills_total_rate_bounded_by_source() {
     assert!(result.rates[1] > 0.0);
 }
 
-/// A long-cooldown skill wastes a large share of trigger opportunities.
+/// Long cooldowns waste a large share of trigger opportunities.
 #[test]
 fn long_cooldown_causes_high_waste_fraction() {
-    let skills: Vec<RotationSkill> = (0..3).map(|_| RotationSkill::new(8.0)).collect();
-    let result = calc_multi_spell_rotation(&skills, 8.0, SERVER_TICK_SECONDS);
-    assert!(
-        result.wasted_fraction > 0.4,
-        "wasted={}",
-        result.wasted_fraction
-    );
+    for (cooldown, source_rate, minimum_waste) in [(8.0, 8.0, 0.4), (10.0, 10.0, 0.5)] {
+        let skills: Vec<RotationSkill> = (0..3).map(|_| RotationSkill::new(cooldown)).collect();
+        let result = calc_multi_spell_rotation(&skills, source_rate, SERVER_TICK_SECONDS);
+        assert!(
+            result.wasted_fraction > minimum_waste,
+            "cooldown={cooldown}: wasted={}",
+            result.wasted_fraction
+        );
+    }
 }
 
-/// A trigger chance below 1 yields a lower steady-state rate than chance=1.
-/// Source: agent-docs/triggers.md §5 "trigger chance is folded in via the expected
-/// value of a geometric distribution".
+/// A trigger chance below 1 reduces the steady-state rate.
 #[test]
 fn lower_trigger_chance_reduces_effective_rate() {
-    let full = RotationSkill::new(0.3).with_trigger_chance(1.0);
-    let half = RotationSkill::new(0.3).with_trigger_chance(0.5);
-    let r_full = calc_multi_spell_rotation(&[full], 4.0, SERVER_TICK_SECONDS);
-    let r_half = calc_multi_spell_rotation(&[half], 4.0, SERVER_TICK_SECONDS);
-    assert!(
-        r_half.rates[0] < r_full.rates[0],
-        "half={} full={}",
-        r_half.rates[0],
-        r_full.rates[0]
-    );
+    for source_rate in [3.0, 4.0] {
+        let full = RotationSkill::new(0.3).with_trigger_chance(1.0);
+        let half = RotationSkill::new(0.3).with_trigger_chance(0.5);
+        let r_full = calc_multi_spell_rotation(&[full], source_rate, SERVER_TICK_SECONDS);
+        let r_half = calc_multi_spell_rotation(&[half], source_rate, SERVER_TICK_SECONDS);
+        assert!(
+            r_half.rates[0] < r_full.rates[0],
+            "source={source_rate}: half={} full={}",
+            r_half.rates[0],
+            r_full.rates[0]
+        );
+    }
 }
 
-/// added_cooldown (SpellCastTimeAddedToCooldownIfTriggered) slows down the rotation rate.
-/// Source: agent-docs/triggers.md §4.3; PoB2 addsCastTime.
+/// SpellCastTimeAddedToCooldownIfTriggered slows the rotation.
 #[test]
 fn added_cooldown_slows_rotation_rate() {
-    let no_add = RotationSkill::new(0.3).with_added_cooldown(0.0);
-    let with_add = RotationSkill::new(0.3).with_added_cooldown(1.0);
-    let r_no = calc_multi_spell_rotation(&[no_add], 5.0, SERVER_TICK_SECONDS);
-    let r_with = calc_multi_spell_rotation(&[with_add], 5.0, SERVER_TICK_SECONDS);
-    assert!(r_with.rates[0] <= r_no.rates[0] + 1e-6);
+    for (added_cooldown, tolerance) in [(0.5, 1e-9), (1.0, 1e-6)] {
+        let no_add = RotationSkill::new(0.3).with_added_cooldown(0.0);
+        let with_add = RotationSkill::new(0.3).with_added_cooldown(added_cooldown);
+        let r_no = calc_multi_spell_rotation(&[no_add], 5.0, SERVER_TICK_SECONDS);
+        let r_with = calc_multi_spell_rotation(&[with_add], 5.0, SERVER_TICK_SECONDS);
+        assert!(
+            r_with.rates[0] <= r_no.rates[0] + tolerance,
+            "added={added_cooldown}"
+        );
+    }
 }
 
 /// An empty rotation / zero source rate should return an empty result, not panic.
@@ -213,28 +220,36 @@ fn more_skills_dilute_individual_rates() {
 
 // §4  CWC (Cast While Channelling)
 
-/// CWC basics: triggerTime rounds up to the server frame, and the base frequency is correct.
-/// Source: agent-docs/triggers.md §4.2; PoB2 CWCHandler `adjTriggerInterval`.
+/// CWC's interval rounds up to the server frame, determining its frequency.
 #[test]
 fn cwc_adjusted_interval_is_frame_aligned() {
     let tick_rate = server_tick_rate(SERVER_TICK_SECONDS);
-    let r = calc_cwc_trigger_rate(0.25, 0.0, 0.0, 1.0, SERVER_TICK_SECONDS);
-    let expected_interval = round_cooldown_to_tick(0.25, tick_rate);
-    assert!((r.adjusted_trigger_interval - expected_interval).abs() < 1e-9);
-    assert!((r.channelling_trigger_rate - 1.0 / expected_interval).abs() < 1e-6);
+    for interval in [0.25, 0.3] {
+        let r = calc_cwc_trigger_rate(interval, 0.0, 0.0, 1.0, SERVER_TICK_SECONDS);
+        let expected_interval = round_cooldown_to_tick(interval, tick_rate);
+        assert!(
+            (r.adjusted_trigger_interval - expected_interval).abs() < 1e-9,
+            "interval={interval}"
+        );
+        assert!(
+            (r.channelling_trigger_rate - 1.0 / expected_interval).abs() < 1e-6,
+            "interval={interval}"
+        );
+        assert!(!r.limited_by_triggered_cd, "interval={interval}");
+    }
 }
 
-/// When the triggered skill's cooldown exceeds the channelling interval, it becomes
-/// the rate bottleneck.
-/// Source: agent-docs/triggers.md §4.2 `TriggerRateCap = min(1/effCDTriggeredSkill, triggerRateOfTrigger)`.
+/// A triggered skill cooldown longer than the channel interval limits the rate.
 #[test]
 fn cwc_triggered_cd_limits_rate_when_long() {
-    let r = calc_cwc_trigger_rate(0.1, 0.8, 0.0, 1.0, SERVER_TICK_SECONDS);
-    assert!(
-        r.limited_by_triggered_cd,
-        "triggered_cd=0.8 > triggerTime=0.1 → should limit"
-    );
-    assert!(r.trigger_rate_cap < r.channelling_trigger_rate);
+    for cooldown in [0.8, 1.0] {
+        let r = calc_cwc_trigger_rate(0.1, cooldown, 0.0, 1.0, SERVER_TICK_SECONDS);
+        assert!(r.limited_by_triggered_cd, "cooldown={cooldown}");
+        assert!(
+            r.trigger_rate_cap < r.channelling_trigger_rate,
+            "cooldown={cooldown}"
+        );
+    }
 }
 
 /// ICDR raises the CWC trigger-rate cap (by shortening the triggered skill's
@@ -248,69 +263,79 @@ fn cwc_icdr_reduces_effective_triggered_cd() {
     assert!(r_icdr2.trigger_rate_cap >= r_no_icdr.trigger_rate_cap);
 }
 
-/// SpellCastTimeAddedToCooldownIfTriggered: cast time is appended to the cooldown.
-/// Source: agent-docs/triggers.md §4.3; PoB2 CalcTriggers.lua `processAddedCastTime`.
+/// Added cast time contributes to the effective triggered cooldown.
 #[test]
 fn cwc_adds_cast_time_raises_effective_cd() {
-    // triggered_cd=0.2, adds_cast_time=0.5 -> max(0.2, 0.5)=0.5 -> effective_cd=0.5/icdr=0.5.
-    let r = calc_cwc_trigger_rate(0.1, 0.2, 0.5, 1.0, SERVER_TICK_SECONDS);
-    assert!(
-        (r.effective_triggered_cd - 0.5).abs() < 1e-6,
-        "effective_cd={}",
-        r.effective_triggered_cd
-    );
-    assert!(r.limited_by_triggered_cd);
+    for interval in [0.1, 0.2] {
+        let r = calc_cwc_trigger_rate(interval, 0.2, 0.5, 1.0, SERVER_TICK_SECONDS);
+        assert!(
+            (r.effective_triggered_cd - 0.5).abs() < 1e-6,
+            "interval={interval}: effective_cd={}",
+            r.effective_triggered_cd
+        );
+        assert!(r.limited_by_triggered_cd, "interval={interval}");
+    }
 }
 
-/// spell_cast_time_added_to_cooldown: base cast time / cast speed multiplier.
+/// Added cooldown divides the base cast time by the cast speed multiplier.
 #[test]
 fn spell_cast_time_to_cooldown_divides_by_speed() {
-    // base=0.6s, speed=1.5 -> 0.6/1.5 = 0.4s.
-    let added = spell_cast_time_added_to_cooldown(0.6, 1.5);
-    assert!((added - 0.4).abs() < 1e-9);
-}
-
-/// With no cast-speed bonus, the added cooldown equals the base cast time.
-#[test]
-fn spell_cast_time_to_cooldown_no_bonus() {
-    let added = spell_cast_time_added_to_cooldown(0.8, 1.0);
-    assert!((added - 0.8).abs() < 1e-9);
+    for (base, speed, expected, tolerance) in [
+        (0.5, 1.5, 0.5 / 1.5, 1e-6),
+        (0.6, 1.5, 0.4, 1e-9),
+        (0.8, 1.0, 0.8, 1e-9),
+    ] {
+        let actual = spell_cast_time_added_to_cooldown(base, speed);
+        assert!(
+            (actual - expected).abs() < tolerance,
+            "base={base}, speed={speed}: {actual}"
+        );
+    }
 }
 
 // §5  TraceGraph attribution
 
-/// Cooldown-driven attribution: the result node's value matches the non-traced
-/// version, with enough input nodes recorded.
-/// Source: agent-docs/triggers.md §"Implications for the pobr implementation" #5.
+/// Tracing preserves the result and records the rate's inputs.
 #[test]
 fn trace_cooldown_trigger_result_matches_non_traced() {
-    let expected = resolve_trigger_rate(0.3, 0.5, 1.5, 4.0, SERVER_TICK_SECONDS);
-    let mut trace = TraceGraph::new();
-    let (result, rate_node) =
-        resolve_trigger_rate_traced(0.3, 0.5, 1.5, 4.0, SERVER_TICK_SECONDS, &mut trace);
-    // The traced version's value matches the non-traced version's.
-    assert!((result.skill_trigger_rate - expected.skill_trigger_rate).abs() < 1e-9);
-    let node = trace.node(rate_node).unwrap();
-    assert!((node.value - result.skill_trigger_rate).abs() < 1e-9);
-    assert!(trace.nodes().len() >= 5);
-    let incoming = trace.incoming(rate_node);
-    assert!(
-        incoming.len() >= 2,
-        "rate_node should have >=2 inputs (cap, sourceRate)"
-    );
+    for (triggered_cd, icdr, source_rate) in [(0.0, 1.0, 5.0), (0.5, 1.5, 4.0)] {
+        let expected =
+            resolve_trigger_rate(0.3, triggered_cd, icdr, source_rate, SERVER_TICK_SECONDS);
+        let mut trace = TraceGraph::new();
+        let (result, rate_node) = resolve_trigger_rate_traced(
+            0.3,
+            triggered_cd,
+            icdr,
+            source_rate,
+            SERVER_TICK_SECONDS,
+            &mut trace,
+        );
+        assert!((result.skill_trigger_rate - expected.skill_trigger_rate).abs() < 1e-9);
+        let node = trace.node(rate_node).unwrap();
+        assert!((node.value - result.skill_trigger_rate).abs() < 1e-9);
+        assert!(trace.nodes().len() >= 5);
+        assert!(trace.incoming(rate_node).len() >= 2);
+    }
 }
 
-/// CWC attribution: the result node's value matches, with enough nodes and input edges.
+/// CWC tracing records the rate cap and its input edges.
 #[test]
 fn trace_cwc_trigger_result_matches_non_traced() {
-    let mut trace = TraceGraph::new();
-    let (result, node) =
-        calc_cwc_trigger_rate_traced(0.3, 0.5, 0.2, 1.5, SERVER_TICK_SECONDS, &mut trace);
-    let n = trace.node(node).unwrap();
-    assert!((n.value - result.trigger_rate_cap).abs() < 1e-9);
-    assert!(trace.nodes().len() >= 4);
-    let incoming = trace.incoming(node);
-    assert!(incoming.len() >= 2);
+    for (added_cast_time, icdr) in [(0.0, 1.0), (0.2, 1.5)] {
+        let mut trace = TraceGraph::new();
+        let (result, node) = calc_cwc_trigger_rate_traced(
+            0.3,
+            0.5,
+            added_cast_time,
+            icdr,
+            SERVER_TICK_SECONDS,
+            &mut trace,
+        );
+        let n = trace.node(node).unwrap();
+        assert!((n.value - result.trigger_rate_cap).abs() < 1e-9);
+        assert!(trace.nodes().len() >= 4);
+        assert!(trace.incoming(node).len() >= 2);
+    }
 }
 
 /// The trigger rate's source_ancestors can be traced back to SourceId sources.

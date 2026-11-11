@@ -9,12 +9,15 @@
 //!
 //! ```bash
 //! # Compare's pure-observation contract (runs normally, not ignored):
-//! cargo test -p pobr-build --test statmap_dual_run
+//! mise exec -- cargo test --locked -p pobr-build --test dualrun \
+//!   statmap_dual_run::compare_mode_is_pure_observation
 //! # Observation-record locator tool (manual run):
-//! POBR_L2_BUILD=<build-dir-name> cargo test -p pobr-build --test statmap_dual_run -- --ignored --nocapture runtime
+//! POBR_L2_BUILD=<build-dir-name> mise exec -- cargo test --locked -p pobr-build \
+//!   --test dualrun statmap_dual_run::l2_runtime_compare_records -- --ignored --nocapture
 //! # oracle sampling requires the vendor PoB2 source + luajit:
 //! POBR_POB2_SRC=/path/to/PathOfBuilding-PoE2/src \
-//!   cargo test -p pobr-build --test statmap_dual_run -- --ignored --nocapture oracle
+//!   mise exec -- cargo test --locked -p pobr-build --test dualrun \
+//!   statmap_dual_run::oracle_statmap_sampling -- --ignored --nocapture
 //! ```
 //!
 //! - **Compare's pure-observation contract**: the same build runs once each
@@ -138,16 +141,11 @@ fn scalar_fields(out: &OutputTable) -> Vec<(&'static str, f64)> {
 #[test]
 fn compare_mode_is_pure_observation() {
     let game_data = load_game_data();
-    let Ok(Some(def)) = game_data.skill_stat_map() else {
-        return; // skip when the data package isn't in place yet
-    };
-    let catalog = Arc::new(StatMapCatalog::new(def));
+    let catalog = Arc::new(load_stat_map_catalog(&game_data));
     let data = BuildData::load(&game_data).expect("load BuildData");
     // Uses a fixed sample build (same as the quality fixture, has 15×q20 gems and covers three sampling points).
     let code_path = builds_dir().join("sorceress-stormweaver-comet/code.txt");
-    let Ok(code) = std::fs::read_to_string(&code_path) else {
-        return;
-    };
+    let code = std::fs::read_to_string(&code_path).expect("read observation build fixture");
     let build = parse_build_from_code(code.trim()).expect("parse build");
 
     let data_out =
@@ -186,7 +184,7 @@ fn compare_mode_is_pure_observation() {
 /// sampling-point context) — a root-cause locator for field-level deviations
 /// (which stat is unmapped/Unsupported at which sampling point).
 #[test]
-#[ignore = "observation locator (manual run): POBR_L2_BUILD=<build-dir-name> cargo test … runtime_compare_records"]
+#[ignore = "manual observation locator; set POBR_L2_BUILD; see module documentation"]
 fn l2_runtime_compare_records() {
     let build_name =
         std::env::var("POBR_L2_BUILD").unwrap_or_else(|_| "sorceress-stormweaver-comet".into());
@@ -446,7 +444,7 @@ fn vendor_src_dir() -> PathBuf {
 /// gain-as / skill_data / per-set variants, compared against PoB2's real
 /// `mergeSkillInstanceMods`.
 #[test]
-#[ignore = "needs vendor PoB2 + luajit: POBR_POB2_SRC=<…>/src cargo test -p pobr-build --test statmap_dual_run -- --ignored oracle"]
+#[ignore = "requires vendor PoB2 source and LuaJIT; see module documentation"]
 fn oracle_statmap_sampling() {
     const PROBE_VALUE: f64 = 240.0;
     let game_data = load_game_data();

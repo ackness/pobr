@@ -57,3 +57,7 @@ required-features = ["diagnostics"]
 [[test]]
 name = "gen_fixtures"
 required-features = ["diagnostics"]
+
+[[test]]
+name = "perf_variants"
+required-features = ["diagnostics"]

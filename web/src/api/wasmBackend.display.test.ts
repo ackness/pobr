@@ -1,10 +1,8 @@
-import { readFileSync } from 'node:fs';
 import { afterEach, expect, test, vi } from 'vitest';
 import { EXPECTED_SCHEMA_VERSION } from './types';
 import { createWasmBackend } from './wasmBackend';
 import type { GemCatalogEntry } from './types';
 import { classDisplayName } from '../lib/nativeDisplayNames';
-import { chineseScript } from '../lib/chinese';
 import { gemDisplayName } from '../lib/skillNames';
 
 const state = vi.hoisted(() => ({ gems: [] as GemCatalogEntry[], crafting: { bases: [] as unknown[], mods: [] as unknown[] },
@@ -186,48 +184,36 @@ test('names of known identity use the id-scoped catalog, and every other name th
   expect(await backend.translateNames(names, 'zh-CN')).toEqual(await backend.translateLines(names.map(name => name.name), 'zh-CN'));
 });
 
-// The active data version's own zh-CN catalog (a -3 pack: no MonsterVarieties.Name, no origins), when prepared.
-const activeCatalog = (() => {
-  try {
-    const version = readFileSync('../data/CURRENT', 'utf8').trim();
-    return JSON.parse(readFileSync(`../data/${version}/i18n/zh-CN/display_texts.json`, 'utf8')) as { game_patch: string;
-      scopes: Record<string, Record<string, [string | null, string | null]>>; origins?: unknown };
-  } catch { return null; }
-})();
-
-test.skipIf(!activeCatalog)('minion names through translateNamesDetailed: official variety names on the active catalog, a supplement origin once listed', async () => {
-  const catalog = activeCatalog!;
-  const serve = (display: unknown) => vi.stubGlobal('fetch', async (url: string) => {
-    const files: Record<string, unknown> = { 'i18n/zh-CN/display_texts.json': display };
-    if (url === '/data/manifest.json') return new Response(JSON.stringify({ version: catalog.game_patch, files: Object.keys(files) }));
-    return new Response(JSON.stringify(files[url.replace(`/data/${catalog.game_patch}/`, '')]));
+test.each([
+  { source: 'official', origin: null },
+  { source: 'supplement', origin: 'agent' },
+] as const)('minion names keep $source origins, script conversion and English fallbacks', async ({ origin }) => {
+  const wolfId = 'Metadata/Monsters/Wolves/WolfCompanionPlayerSummoned';
+  const sidecar = {
+    schema: 'pobr-native-display-texts/v1', game_patch: 'test', realm: 'international', locale: 'zh-CN',
+    catalog_sha256: 'a'.repeat(64), entries: {}, scopes: {
+      'MonsterVarieties.Name': { [wolfId]: ['Wolf Companion', '狼伙伴'] },
+      'PassiveSkills.Name': { mana10: ['Mana Regeneration', '魔力再生'] },
+    },
+    ...(origin ? { origins: { entries: {}, scopes: { 'MonsterVarieties.Name': { [wolfId]: origin } } } } : {}),
+  };
+  vi.stubGlobal('fetch', async (url: string) => {
+    if (url === '/data/manifest.json') return new Response(JSON.stringify({ version: 'test', files: ['i18n/zh-CN/display_texts.json'] }));
+    if (url === '/data/test/i18n/zh-CN/display_texts.json') return new Response(JSON.stringify(sidecar));
+    throw new Error(`Unexpected fetch: ${url}`);
   });
-  const passiveId = Object.keys(catalog.scopes['PassiveSkills.Name'] ?? {})
-    .find(id => catalog.scopes['PassiveSkills.Name'][id].every(Boolean))!;
-  const [passiveName, passiveText] = catalog.scopes['PassiveSkills.Name'][passiveId] as [string, string];
-  const requests = [{ kind: 'monster', id: 'Metadata/Monsters/Wolves/WolfCompanionPlayerSummoned', name: 'Wolf Companion' },
-    { kind: 'monster', name: 'Raging Spirit' }, { kind: 'passive', id: passiveId, name: passiveName }] as const;
-  serve(catalog);
-  let backend = await createWasmBackend();
-  // The active catalog's own record for the wolf (official client text since locale/0.5.5.5-4); a
-  // name without a variety id stays English.
-  const official = catalog.scopes['MonsterVarieties.Name']?.[requests[0].id]?.[1] ?? requests[0].name;
-  // Only the zh-CN catalog is served here, so zh-TW shows it in Traditional script.
-  const traditional = chineseScript(official, 'zh-TW');
-  for (const [lang, wolf] of [['zh-CN', official], ['zh-TW', traditional]] as const) {
+  const backend = await createWasmBackend();
+  const requests = [{ kind: 'monster', id: wolfId, name: 'Wolf Companion' },
+    { kind: 'monster', name: 'Raging Spirit' }, { kind: 'passive', id: 'mana10', name: 'Mana Regeneration' }] as const;
+  // Monster varieties fall back to the CN name; passive names use the locale's line translator.
+  for (const [lang, wolf, passive] of [['zh-CN', '狼伙伴', '魔力再生'], ['zh-TW', '狼夥伴', '舊譯文']] as const) {
     const names = await backend.translateNamesDetailed(requests, lang);
-    expect(names.slice(0, 2)).toEqual([{ text: wolf, origin: null }, { text: 'Raging Spirit', origin: null }]);
-    expect(names.every(name => name.origin === null)).toBe(true);
+    expect(names).toEqual([{ text: wolf, origin }, { text: 'Raging Spirit', origin: null },
+      { text: passive, origin: null }]);
+    expect(await backend.translateNames(requests, lang)).toEqual(names.map(name => name.text));
   }
-  expect((await backend.translateNamesDetailed(requests, 'zh-CN'))[2]).toEqual({ text: passiveText, origin: null });
-  // The same catalog with the variety record and its origin (a -4 shape).
-  serve({ ...catalog, scopes: { ...catalog.scopes, 'MonsterVarieties.Name': {
-    'Metadata/Monsters/Wolves/WolfCompanionPlayerSummoned': ['Wolf Companion', '狼伙伴'] } },
-  origins: { entries: {}, scopes: { 'MonsterVarieties.Name': { 'Metadata/Monsters/Wolves/WolfCompanionPlayerSummoned': 'agent' } } } });
-  backend = await createWasmBackend();
-  expect((await backend.translateNamesDetailed(requests, 'zh-CN')).slice(0, 2))
-    .toEqual([{ text: '狼伙伴', origin: 'agent' }, { text: 'Raging Spirit', origin: null }]);
-  expect((await backend.translateNamesDetailed(requests, 'zh-TW'))[0]).toEqual({ text: '狼夥伴', origin: 'agent' });
+  expect(await backend.translateNamesDetailed(requests, 'en-US'))
+    .toEqual(requests.map(({ name }) => ({ text: name, origin: null })));
 });
 
 test('unlisted class compatibility data is absent while listed invalid data is reported', async () => {

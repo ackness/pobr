@@ -29,5 +29,3 @@ mod load_skill_gems;
 mod load_skill_overrides;
 #[path = "skills/load_trigger_configs.rs"]
 mod load_trigger_configs;
-#[path = "skills/skill_overrides_migration.rs"]
-mod skill_overrides_migration;

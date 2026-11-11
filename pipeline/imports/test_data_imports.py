@@ -152,7 +152,7 @@ class ReleaseTransportTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = Path(temporary.name).resolve()
         self.server = ReleaseServer(self.root / "srv")
         self.addCleanup(self.server.close)
         self.releases = imports.ReleaseInputs(base=self.server.base, backoff=0)
