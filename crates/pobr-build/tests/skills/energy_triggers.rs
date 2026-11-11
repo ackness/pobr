@@ -10,6 +10,7 @@
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::OutputTable;
+use pobr_core::calc::trigger::EVENT_RATE_UNMODELLED;
 use pobr_data::monster::EnemyTier;
 
 /// Enemy level of every calculation here: the lowest a Pinnacle boss has.
@@ -193,7 +194,17 @@ fn the_spell_is_used_as_often_as_critical_hits_fill_the_gem() {
     let data = data();
     for (tier, power) in [BOSS, MONSTER] {
         let source = spark_by_hand(&data, tier);
-        let triggered = comet(&data, tier, &[]);
+        let build = parse_build(&build_xml(&[], &[spark()], COMET)).unwrap();
+        let session =
+            pobr_build::calculate_with_data_session(&build, &data, &options(tier, &[])).unwrap();
+        let triggered = session.output();
+        assert!(!session.has_flag(EVENT_RATE_UNMODELLED));
+        assert!(
+            session
+                .unsupported_modifier_texts()
+                .iter()
+                .all(|limit| !limit.starts_with("MetaTrigger:MetaCastOnCritPlayer:"))
+        );
         let own = calculate(
             &data,
             &build_xml(&[], &[spark()], COMET),
@@ -421,6 +432,104 @@ fn meta_xml(meta: &str, others: &[String], inputs: &[(&str, f64)]) -> String {
             "</PathOfBuilding2>",
             &format!("<Config>{config}</Config></PathOfBuilding2>"),
         )
+}
+
+#[test]
+fn unmodelled_meta_gems_report_their_gain_stats_instead_of_self_casting() {
+    let data = data();
+    for (meta, gain_stats) in [
+        (
+            "MetaCastOnDodgePlayer",
+            &["cast_on_dodge_roll_gain_X_centienergy_per_unit_travelled_while_dodge_rolling"][..],
+        ),
+        (
+            "MetaReapersInvocationPlayer",
+            &["melee_kill_invocation_gain_X_centienergy_per_monster_power_on_melee_kill"][..],
+        ),
+        (
+            "MetaCastOnMeleeStunPlayer",
+            &[
+                "cast_on_melee_stun_gain_X_centienergy_per_monster_power_on_heavy_stun",
+                "cast_on_melee_stun_gain_X_centienergy_per_monster_power_on_stun",
+            ][..],
+        ),
+        (
+            // This meta gem has Meta + Triggers, without GeneratesEnergy.
+            "MetaCastWhenDamageTakenPlayer",
+            &["cast_on_damage_taken_gain_X_centienergy_when_hit"][..],
+        ),
+    ] {
+        let build = parse_build(&meta_xml(meta, &[], &[])).unwrap();
+        let session = pobr_build::calculate_with_data_session(
+            &build,
+            &data,
+            &DataOrchestratorOptions::default(),
+        )
+        .unwrap();
+        assert!(session.has_flag(EVENT_RATE_UNMODELLED), "{meta}");
+        let output = session.output();
+        assert!(output.total_hit_avg > 0.0, "{meta}");
+        assert_eq!(output.action_rate, 0.0, "{meta}");
+        assert_eq!(output.effective_action_rate, 0.0, "{meta}");
+        assert_eq!(output.skill_trigger_rate, 0.0, "{meta}");
+        assert_eq!(output.dps, 0.0, "{meta}");
+        assert!(session.unsupported_modifier_texts().contains(&format!(
+            "MetaTrigger:{meta}:stat={}:host=CometPlayer: Energy trigger event rate is not modelled",
+            gain_stats.join(", "),
+        )));
+
+        // The reference exporter uses the spell's own rate, with no Energy model.
+        let reference_options = DataOrchestratorOptions::reference_conditions();
+        let reference =
+            pobr_build::calculate_with_data_session(&build, &data, &reference_options).unwrap();
+        assert!(!reference.has_flag(EVENT_RATE_UNMODELLED), "{meta}");
+        assert!(
+            reference
+                .unsupported_modifier_texts()
+                .iter()
+                .all(|limit| !limit.starts_with("MetaTrigger:"))
+        );
+        let mut own_data = data.clone();
+        own_data
+            .granted_effects
+            .get_mut(meta)
+            .unwrap()
+            .skill_types
+            .retain(|kind| kind != "Triggers");
+        let own =
+            pobr_build::calculate_with_data_session(&build, &own_data, &reference_options).unwrap();
+        assert!(reference.output().dps > 0.0, "{meta}");
+        assert_eq!(reference.output(), own.output(), "{meta}");
+    }
+}
+
+#[test]
+fn incompatible_or_disabled_meta_gems_do_not_hide_self_cast_damage() {
+    let data = data();
+    for (meta, enabled, active) in [
+        // The fire-only meta gem cannot trigger the cold Comet.
+        ("MetaCastFireSpellOnHitPlayer", true, 2),
+        ("MetaCastOnDodgePlayer", false, 1),
+    ] {
+        let mut build = parse_build(&meta_xml(meta, &[], &[])).unwrap();
+        build.socket_groups[0].gem_skills[0].enabled = enabled;
+        build.socket_groups[0].main_active_skill = Some(active);
+        let session = pobr_build::calculate_with_data_session(
+            &build,
+            &data,
+            &DataOrchestratorOptions::default(),
+        )
+        .unwrap();
+        assert!(!session.has_flag(EVENT_RATE_UNMODELLED), "{meta}");
+        assert!(session.output().effective_action_rate > 0.0, "{meta}");
+        assert!(session.output().dps > 0.0, "{meta}");
+        assert!(
+            session
+                .unsupported_modifier_texts()
+                .iter()
+                .all(|limit| !limit.starts_with("MetaTrigger:"))
+        );
+    }
 }
 
 #[test]

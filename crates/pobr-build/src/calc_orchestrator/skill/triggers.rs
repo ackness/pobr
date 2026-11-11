@@ -199,6 +199,7 @@ pub(crate) fn trigger_modifiers(
     let bonuses = super::resolve::gem_property_bonuses(build, data);
     let build_cfg = build.config.to_calc_config();
     let is_trigger_source = context.is_trigger_source;
+    let mut limits = Vec::new();
     let mut sub = OrchestratorSubCalc {
         context,
         build,
@@ -213,8 +214,9 @@ pub(crate) fn trigger_modifiers(
         is_trigger_source,
         class_name: &build.character.class_name,
         energy_triggers: options.energy_triggers,
+        limits: &mut limits,
     };
-    pobr_core::skill_env::trigger_modifiers(
+    let mods = pobr_core::skill_env::trigger_modifiers(
         &mut ctx,
         data,
         &bonuses,
@@ -222,7 +224,9 @@ pub(crate) fn trigger_modifiers(
         &eg,
         group_index,
         main_skill_id,
-    )
+    );
+    context.support_limits.extend(limits);
+    mods
 }
 
 // End of trigger section

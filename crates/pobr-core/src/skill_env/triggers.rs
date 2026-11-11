@@ -104,6 +104,8 @@ pub struct TriggerCtx<'a, S: TriggerSubCalc> {
     /// Whether a spell in an Energy meta gem is used at the rate the gem
     /// triggers it. Off, it keeps its own rate of use.
     pub energy_triggers: bool,
+    /// Recognized trigger mechanics that cannot supply a rate for this skill.
+    pub limits: &'a mut Vec<String>,
 }
 
 /// The result of data-driven recognition: the matched trigger config + the trigger
@@ -290,7 +292,8 @@ const MAX_ENERGY_SOURCES: usize = 6;
 /// filled by skill or external events: capacity, consumption, gain, and the
 /// character's source skills. Disabled on the reference basis.
 ///
-/// `None` when the main skill is not such a spell.
+/// `None` when the main skill is not such a spell. Unmodelled meta gems keep
+/// their hit damage, with no event rate and an explicit limit.
 fn energy_trigger_modifiers<S: TriggerSubCalc>(
     ctx: &mut TriggerCtx<'_, S>,
     data: &dyn TriggerEnv,
@@ -307,7 +310,19 @@ fn energy_trigger_modifiers<S: TriggerSubCalc>(
     // The spells a meta gem triggers are the ones its support half supports.
     let (meta, ms_per_energy) = group.gems.iter().find_map(|gem| {
         let support_half = triggering_half(data, group, &gem.skill_id, main_skill_id)?;
-        Some((gem, stat_of(gem, support_half, MS_OF_CAST_TIME_PER_ENERGY)?))
+        let ms_per_energy = stat_of(gem, support_half, MS_OF_CAST_TIME_PER_ENERGY);
+        // Reference calculations retain the original meta-gem eligibility.
+        if !ctx.energy_triggers
+            && (ms_per_energy.is_none()
+                || !data
+                    .effect(&gem.skill_id)?
+                    .skill_types
+                    .iter()
+                    .any(|kind| kind == "GeneratesEnergy"))
+        {
+            return None;
+        }
+        Some((gem, ms_per_energy))
     })?;
     let crit = stat_of(meta, &meta.skill_id, CENTIENERGY_PER_POWER_ON_CRIT);
     if !ctx.energy_triggers {
@@ -379,9 +394,29 @@ fn energy_trigger_modifiers<S: TriggerSubCalc>(
             "Energy from the killed minion's Power",
         ));
     }
-    if gains.is_empty() {
-        return None;
-    }
+    let Some(ms_per_energy) = ms_per_energy.filter(|_| !gains.is_empty()) else {
+        let stats = energy_stats(data, gem_level_bonuses, meta, &meta.skill_id);
+        let mut gain_stats: Vec<_> = stats
+            .all()
+            .filter(|stat| stat.stat.contains("_gain_") && stat.stat.contains("energy"))
+            .map(|stat| stat.stat.as_str())
+            .collect();
+        gain_stats.sort_unstable();
+        gain_stats.dedup();
+        let gain_stats = if gain_stats.is_empty() {
+            "unknown Energy gain stat".to_string()
+        } else {
+            gain_stats.join(", ")
+        };
+        ctx.limits.push(format!(
+            "MetaTrigger:{}:stat={gain_stats}:host={main_skill_id}: Energy trigger event rate is not modelled",
+            meta.skill_id,
+        ));
+        return Some(vec![mk_trigger_flag(
+            crate::calc::trigger::EVENT_RATE_UNMODELLED,
+            "meta gem Energy trigger event rate is not modelled",
+        )]);
+    };
     let spellslinger = gains
         .iter()
         .any(|m| m.name.as_str() == energy::ENERGY_PER_CAST_MS);
@@ -576,6 +611,19 @@ fn energy_stat(
     effect_id: &str,
     stat: &str,
 ) -> Option<f64> {
+    energy_stats(data, gem_level_bonuses, gem, effect_id)
+        .all()
+        .filter(|entry| entry.stat == stat)
+        .map(|entry| entry.value)
+        .reduce(|sum, value| sum + value)
+}
+
+fn energy_stats(
+    data: &dyn TriggerEnv,
+    gem_level_bonuses: &[crate::skill_env::GemPropertyBonus],
+    gem: &GemInput,
+    effect_id: &str,
+) -> crate::skill_env::EffectStats {
     let level = gem
         .gem_level
         .saturating_add(gem.global_levels(gem_level_bonuses, data.as_gem_property()));
@@ -583,10 +631,6 @@ fn energy_stat(
         .then_some(gem.stat_set_index)
         .flatten();
     data.effect_stats(effect_id, level, gem.quality, set_index)
-        .all()
-        .filter(|entry| entry.stat == stat)
-        .map(|entry| entry.value)
-        .reduce(|sum, value| sum + value)
 }
 
 /// Time from an empty Energy bar to the first CWC trigger. This display
@@ -657,7 +701,7 @@ fn channel_energy_modifiers(
 
 /// The support half through which the meta gem `meta_id` triggers `skill_id`
 /// in `group`: a meta gem that gains Energy grants, next to its own skill, a
-/// support for the spells socketed in it. `None` when `meta_id` is not such a
+/// support for the skills socketed in it. `None` when `meta_id` is not such a
 /// gem or does not support the skill.
 fn triggering_half<'a>(
     data: &'a dyn TriggerEnv,
@@ -665,12 +709,12 @@ fn triggering_half<'a>(
     meta_id: &str,
     skill_id: &str,
 ) -> Option<&'a str> {
-    let fills_with_energy = data.effect(meta_id).is_some_and(|effect| {
-        ["Meta", "GeneratesEnergy", "Triggers"]
+    let is_meta_trigger = data.effect(meta_id).is_some_and(|effect| {
+        ["Meta", "Triggers"]
             .iter()
             .all(|wanted| effect.skill_types.iter().any(|kind| kind == wanted))
     });
-    if !fills_with_energy || meta_id == skill_id {
+    if !is_meta_trigger || meta_id == skill_id {
         return None;
     }
     supporting_half(data, group, meta_id, skill_id)
