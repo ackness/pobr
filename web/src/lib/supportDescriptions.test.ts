@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { expect, it } from 'vitest';
-import generated from './supportDescriptions.zh-CN.json';
+import generated from './supportDescriptions.zh-CN.json' with { type: 'json' };
 import { supportDescription } from './supportDescriptions';
 import type { TradeCatalog } from './tradeOptimizer';
 

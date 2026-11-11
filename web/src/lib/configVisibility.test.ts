@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import type { ConfigContext, ConfigOption } from '../api/types';
 import { configApplicability, configExistsInGame, configVisibilityInputs, showConfigOption } from './configVisibility';
-import gameRelevance from './configGameRelevance.json';
+import gameRelevance from './configGameRelevance.json' with { type: 'json' };
 
 const dataVersion = readFileSync(new URL('../../../data/CURRENT', import.meta.url), 'utf8').trim();
 

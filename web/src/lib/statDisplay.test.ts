@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 import { formatNumber, formatStatValue, statFormat, statMap, STAT_SECTIONS, formatStat, setDisplayCatalog } from './statDisplay';
 import { statNameLabel } from './i18n';
-import catalog from '../api/generated/display_catalog.json';
+import catalog from '../api/generated/display_catalog.json' with { type: 'json' };
 import type { DisplayCatalogEntry } from '../api/types';
 
 beforeEach(() => setDisplayCatalog(catalog as DisplayCatalogEntry[]));

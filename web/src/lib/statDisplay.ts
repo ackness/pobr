@@ -4,7 +4,7 @@
  */
 
 import type { DisplayCatalogEntry, DisplayStatValue } from '../api/types';
-import generatedCatalog from '../api/generated/display_catalog.json';
+import generatedCatalog from '../api/generated/display_catalog.json' with { type: 'json' };
 import type { Lang } from './i18n';
 
 export type { Lang };
