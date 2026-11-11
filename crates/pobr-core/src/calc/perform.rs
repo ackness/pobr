@@ -593,13 +593,12 @@ fn derive_minion_state(env: &Env, db: &ModDb, cfg: &mut CalcConfig) {
     let own_multipliers = charge_counts.chain(MINION_OWN_MULTIPLIERS.iter().map(|n| n.to_string()));
     for name in own_multipliers {
         // "… per Power Charge you have" on a minion still counts the
-        // character's: keep the character's value as its actor snapshot.
+        // character's: keep the character's value as its actor snapshot,
+        // including zero, so a missing count never falls back to the minion's.
         let snapshot = format!("{}.{name}", crate::ActorRef::Player.key());
-        if !cfg.actor_multipliers.contains_key(&snapshot)
-            && let Some(&value) = env.cfg.multipliers.get(&name)
-        {
-            cfg.actor_multipliers.insert(snapshot, value);
-        }
+        cfg.actor_multipliers
+            .entry(snapshot)
+            .or_insert_with(|| env.cfg.multipliers.get(&name).copied().unwrap_or(0.0));
         cfg.multipliers.remove(&name);
     }
     cfg.stats.remove("Rage");

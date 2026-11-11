@@ -188,3 +188,25 @@ fn a_minion_line_per_the_characters_charge_counts_the_characters() {
     perform(&mut env).unwrap();
     close(env.minions[0].output.dps, 130.0);
 }
+
+/// With no charges of its own, the character's count is zero: the minion's
+/// own charges must not stand in for "per Power Charge you have".
+#[test]
+fn a_character_without_charges_gives_minion_lines_per_its_charge_nothing() {
+    let mut env = environment();
+    env.minions[0].mod_db.add_list([
+        Modifier::number("PowerChargesMin", ModType::Base, 2.0),
+        Modifier::number("Damage", ModType::Inc, 10.0).with_tag(ModTag::Multiplier {
+            var: "PowerCharge".into(),
+            div: 1.0,
+            limit: None,
+            actor: Some(pobr_core::ActorRef::Player),
+            limit_var: None,
+            limit_actor: None,
+            invert: false,
+            limit_total: false,
+        }),
+    ]);
+    perform(&mut env).unwrap();
+    close(env.minions[0].output.dps, 100.0);
+}
