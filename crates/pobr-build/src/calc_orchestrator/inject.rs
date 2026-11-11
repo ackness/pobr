@@ -1123,16 +1123,28 @@ pub(super) fn inject_self_buff_exposure(
             session.set_condition(can_apply_exposure(element), true);
         }
     }
-    // 4c''. A skill that inflicts Withered lets the character have it on the
-    //      enemy, whichever skill is being calculated.
-    if let Some(skill_id) = pobr_core::skill_env::skill_inflicting_withered(build, data) {
+    // 4c''. Infliction by any enabled skill makes the configured enemy
+    //      stacks available to every skill being calculated.
+    for (skill_id, flag, source) in [
+        (
+            pobr_core::skill_env::skill_inflicting_withered(build, data),
+            pobr_core::calc::withered::CAN_WITHER,
+            "inflicts_withered",
+        ),
+        (
+            pobr_core::skill_env::skill_inflicting_incision(build, data),
+            "Condition:CanInflictIncision",
+            "inflicts_incision",
+        ),
+    ] {
+        let Some(skill_id) = skill_id else {
+            continue;
+        };
         let origin = ModifierSource::new(SourceId::new(
             SourceKind::SkillGem,
-            format!("skill.{skill_id}.inflicts_withered"),
+            format!("skill.{skill_id}.{source}"),
         ));
-        session.add_modifiers(vec![
-            Modifier::flag(pobr_core::calc::withered::CAN_WITHER).with_origin(origin),
-        ]);
+        session.add_modifiers(vec![Modifier::flag(flag).with_origin(origin)]);
     }
     //      Likewise a skill whose hits Crush leaves the enemy Crushed.
     if let Some(skill_id) = pobr_core::skill_env::skill_crushing_on_hit(build, data) {
