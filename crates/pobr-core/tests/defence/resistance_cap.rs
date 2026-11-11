@@ -178,3 +178,56 @@ fn fire_resistance_sharing_excludes_all_elemental_and_truncates_the_total() {
     // trunc(71.5 + 5 - 7 - 60 - 20) = -10, toward zero rather than floor.
     assert_eq!(output.lightning_resistance, -10.0);
 }
+
+#[test]
+fn fire_resistance_sharing_uses_item_scope_without_display_text() {
+    use pobr_core::{ingest_item_with_ctx, modifier::ModExpansion, parse_item_text};
+
+    for (line, expansion, expected) in [
+        (
+            "+30% to all Elemental Resistances",
+            Some(ModExpansion::AllElementalResistance),
+            [30.0, 30.0, 30.0],
+        ),
+        (
+            "+30% to all Resistances",
+            Some(ModExpansion::AllElementalResistance),
+            [30.0, 30.0, 30.0],
+        ),
+        ("+30% to Fire Resistance", None, [30.0, 15.0, 15.0]),
+    ] {
+        let item = parse_item_text(&format!(
+            "Rarity: Rare\nTest Ring\nGold Ring\n--------\n{line}"
+        ))
+        .unwrap();
+        let ingest =
+            ingest_item_with_ctx(EquipmentSlot::Ring1, &item, crate::support::ctx()).unwrap();
+        assert!(ingest.unsupported.is_empty(), "{line}");
+        assert!(!ingest.modifiers.is_empty(), "{line}");
+        let mut db = ModDb::new();
+        for mut modifier in ingest.modifiers {
+            assert_eq!(modifier.expanded_from, expansion, "{line}");
+            modifier.source = None;
+            modifier.origin.as_mut().unwrap().raw_text = None;
+            db.add_mod(modifier);
+        }
+        for modifier in parse_mod(
+            "Modifiers to Fire Resistance also grant Cold and Lightning Resistance at 50% of their value",
+        )
+        .unwrap()
+        .mods
+        {
+            db.add_mod(modifier);
+        }
+        let output = calculate_minimal(&db, &CalcConfig::new(), &MinimalInput::default());
+        assert_eq!(
+            [
+                output.fire_resistance,
+                output.cold_resistance,
+                output.lightning_resistance
+            ],
+            expected,
+            "{line}",
+        );
+    }
+}

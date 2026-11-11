@@ -516,6 +516,12 @@ impl ModTag {
     }
 }
 
+/// The scope of a stat expanded into separate modifier names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModExpansion {
+    AllElementalResistance,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Modifier {
     pub name: ModName,
@@ -523,6 +529,8 @@ pub struct Modifier {
     pub value: ModValue,
     pub source: Option<String>,
     pub origin: Option<ModifierSource>,
+    /// Original scope survives source attribution and display-text changes.
+    pub expanded_from: Option<ModExpansion>,
     /// Rule provenance survives replacing an item's/gem's source origin.
     pub exporter_rule: Option<std::sync::Arc<pobr_data::source::ExporterRule>>,
     pub flags: ModFlags,
@@ -550,6 +558,7 @@ impl Modifier {
             value,
             source: None,
             origin: None,
+            expanded_from: None,
             exporter_rule: None,
             flags: ModFlags::NONE,
             keyword_flags: KeywordFlags::NONE,

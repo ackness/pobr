@@ -354,6 +354,9 @@ fn collect_curse_mod(
         } else {
             Modifier::number(translated, mod_type, merged_value)
         };
+        if name == "ElementalResist" {
+            modifier.expanded_from = Some(crate::modifier::ModExpansion::AllElementalResistance);
+        }
         for tag in &tags {
             modifier = modifier.with_tag(tag.clone());
         }

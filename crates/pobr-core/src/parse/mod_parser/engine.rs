@@ -30,6 +30,7 @@ use super::compiled::CompiledParserRules;
 use super::forms::{FormReject, eval_form};
 use super::outcome::{ParseOutcome, ParseStatus, SpecialMatchMeta};
 use super::template::{compile_flags, compile_keyword_flags, compile_tag};
+use crate::modifier::ModExpansion;
 use crate::{ModTag, ModValue, Modifier};
 use pobr_data::modifier::{KeywordFlags, ModFlags};
 use pobr_data::skill::SkillTypes;
@@ -267,6 +268,10 @@ fn parse_mod_engine_impl(
         .iter()
         .any(|t| matches!(t, ModTag::SkillTypes(st) if st.intersects(SkillTypes::TRIGGERED)));
 
+    let expanded_from = ["FireResistance", "ColdResistance", "LightningResistance"]
+        .iter()
+        .all(|name| form_result.names.iter().any(|candidate| candidate == name))
+        .then_some(ModExpansion::AllElementalResistance);
     let mut mods = Vec::with_capacity(form_result.names.len());
     for ((name, ty), value) in form_result
         .names
@@ -288,6 +293,7 @@ fn parse_mod_engine_impl(
             _ => ModValue::Number(*value),
         };
         let mut m = Modifier::new(norm.name, *ty, modv).with_source(original);
+        m.expanded_from = expanded_from;
         if !norm.flags.is_empty() {
             m = m.with_flags(norm.flags);
         }

@@ -50,9 +50,7 @@ fn numeric_stat(name: &str) -> (&str, ModType, f64) {
             Base,
             1.0,
         ),
-        "FireResistance" | "ColdResistance" | "LightningResistance" => {
-            ("base_resist_all_elements_%", Base, 1.0)
-        }
+        "base_resist_all_elements_%" => ("base_resist_all_elements_%", Base, 1.0),
         "DamageGainAsCold" => ("non_skill_base_all_damage_%_to_gain_as_cold", Base, 1.0),
         "EnergyShield" => ("maximum_energy_shield_+%", Inc, 1.0),
         "EnemyFreezeBuildup" => ("hit_damage_freeze_multiplier_+%", Inc, 1.0),
