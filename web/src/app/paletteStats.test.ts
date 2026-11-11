@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import type { CalculateBuildResponse, DisplayStatValue } from '../api/types';
 import { paletteStats } from './paletteStats';
+
 const calc = (values: Record<string, number | null>) => ({ stats: Object.entries(values).map(([id, value]) => ({ id, value })) as DisplayStatValue[] }) as CalculateBuildResponse;
 it('puts common resistances ahead of internal totem metrics, hides internal zeros, and formats maximums as percentages', () => {
   const result = paletteStats(calc({ TotemFireResist: 0, TotemColdResist: 0, TotemLightningResist: 12,

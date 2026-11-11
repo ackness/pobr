@@ -94,6 +94,52 @@ fn catalog_defines_core_display_stats() {
     assert!(ids.contains(&"BlockChance"));
 }
 
+/// Comparison colouring reads `higher_is_better`, so stats whose cost or delay
+/// grows with the value must not inherit the default improvement direction.
+#[test]
+fn catalog_comparison_directions_match_costs_damage_and_duration_semantics() {
+    let lower_is_better = |id: &str| {
+        id.ends_with("Cost")
+            // Damage taken and its multipliers; the largest survivable hit is the opposite.
+            || (id.contains("Taken") && !id.contains("MaximumHitTaken"))
+            || matches!(id, "ReqStr" | "ReqDex" | "ReqInt" | "TotalBuildDegen" | "Cooldown" | "EsRechargeDelay")
+            || matches!(
+                id,
+                "TotalTotemPlacementTime"
+                    | "TrapThrowingTime"
+                    | "MineLayingTime"
+                    | "WarcryCastTime"
+                    | "ChannelTime"
+                    | "ChannelTimeToTrigger"
+            )
+    };
+    let wrong: Vec<_> = display_catalog::display_catalog_ref()
+        .iter()
+        .filter(|def| lower_is_better(def.id.as_str()) && def.higher_is_better != Some(false))
+        .map(|def| def.id.as_str())
+        .collect();
+    assert!(
+        wrong.is_empty(),
+        "lower-is-better stats declared otherwise: {wrong:?}"
+    );
+    for def in display_catalog::display_catalog_ref()
+        .iter()
+        .filter(|def| def.id.as_str().contains("MaximumHitTaken"))
+    {
+        assert_eq!(def.higher_is_better, Some(true), "{}", def.id.as_str());
+    }
+    for def in display_catalog::display_catalog_ref().iter() {
+        if let Some((slot, "Duration")) = pobr_core::calc::utility::item_stat(def.id.as_str()) {
+            let expected = if slot.starts_with("Flask") {
+                None
+            } else {
+                Some(true)
+            };
+            assert_eq!(def.higher_is_better, expected, "{}", def.id.as_str());
+        }
+    }
+}
+
 /// Reference keys are optional for game mechanics the exporter does not expose.
 /// When a key is supplied, it must identify a real, nonempty comparison field.
 #[test]
@@ -496,6 +542,11 @@ fn extract_wave2_defence_values_from_output_table() {
     };
 
     assert_eq!(lookup("EsRechargeRate"), Some(0.125));
+    let rate = display_catalog()
+        .into_iter()
+        .find(|def| def.id.as_str() == "EsRechargeRate")
+        .unwrap();
+    assert_eq!(rate.value_type, StatValueType::Number);
     assert_eq!(lookup("EsRechargeDelay"), Some(4.0));
     assert_eq!(lookup("EsRechargePerSecond"), Some(250.0));
     assert_eq!(lookup("AvoidAllDamageFromHits"), Some(10.0));
@@ -573,6 +624,14 @@ fn extract_wave2_ailment_values_from_output_table() {
     assert_eq!(lookup("ChillEffect"), Some(30.0));
     assert_eq!(lookup("FreezeBuildupPct"), Some(15.0));
     assert_eq!(lookup("ElectrocuteBuildupPct"), Some(20.0));
+    // The engine includes the factor of 100; these are percentages per damage point.
+    for id in ["FreezeBuildupPct", "ElectrocuteBuildupPct"] {
+        let def = display_catalog()
+            .into_iter()
+            .find(|def| def.id.as_str() == id)
+            .unwrap();
+        assert_eq!(def.value_type, StatValueType::Percent, "{id}");
+    }
     assert_eq!(lookup("BleedStackedDPS"), Some(800.0));
     assert_eq!(lookup("BleedActiveStacks"), Some(5.0));
     assert_eq!(lookup("PoisonStackedDPS"), Some(1200.0));
@@ -614,47 +673,6 @@ fn extract_wave2_skill_mechanics_values_from_output_table() {
     assert_eq!(lookup("SpiritReserved"), Some(30.0));
     assert_eq!(lookup("TriggerRateCap"), Some(4.0));
     assert_eq!(lookup("SkillTriggerRate"), Some(3.5));
-}
-
-/// Verify taken-multiplier higher_is_better flags are correctly set to false.
-#[test]
-fn taken_multi_and_cost_entries_have_higher_is_better_false() {
-    let catalog = display_catalog();
-    let entry = |id: &str| {
-        catalog
-            .iter()
-            .find(|def| def.id.as_str() == id)
-            .unwrap_or_else(|| panic!("{id} not found in catalog"))
-    };
-
-    // Taken multipliers: more damage taken → worse.
-    assert_eq!(
-        entry("TakenMultiPhysical").higher_is_better,
-        Some(false),
-        "TakenMultiPhysical should have higher_is_better=false"
-    );
-    assert_eq!(
-        entry("TakenMultiFire").higher_is_better,
-        Some(false),
-        "TakenMultiFire should have higher_is_better=false"
-    );
-    // Cost fields: lower cost → better.
-    assert_eq!(
-        entry("ManaCost").higher_is_better,
-        Some(false),
-        "ManaCost should have higher_is_better=false"
-    );
-    assert_eq!(
-        entry("Cooldown").higher_is_better,
-        Some(false),
-        "Cooldown should have higher_is_better=false"
-    );
-    // EsRechargeDelay: shorter delay → better.
-    assert_eq!(
-        entry("EsRechargeDelay").higher_is_better,
-        Some(false),
-        "EsRechargeDelay should have higher_is_better=false"
-    );
 }
 
 #[test]

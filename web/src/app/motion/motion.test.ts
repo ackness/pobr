@@ -1,10 +1,14 @@
-import { describe, expect, it } from 'vitest';
-import type { DisplayStatValue } from '../../api/types';
+import { beforeEach, describe, expect, it } from 'vitest';
+import type { DisplayCatalogEntry, DisplayStatValue } from '../../api/types';
+import catalog from '../../api/generated/display_catalog.json';
+import { setDisplayCatalog } from '../../lib/statDisplay';
 import { computeStatChanges } from './statChanges';
 import { statPolarity } from './statPolarity';
 import { easeOutCubic, tween } from './tween';
 
 const stat = (id: string, value: number | null): DisplayStatValue => ({ id, value, category: 'Offence' });
+
+beforeEach(() => setDisplayCatalog(catalog as DisplayCatalogEntry[]));
 
 describe('tween', () => {
   it('starts at the origin, ends exactly on the target, and never overshoots', () => {
@@ -25,14 +29,16 @@ describe('tween', () => {
 });
 
 describe('statPolarity', () => {
-  it('treats costs, drain, requirements and use times as lower-is-better', () => {
-    for (const id of ['ManaCost', 'LifePerSecondCost', 'ESPercentCost', 'TotalBuildDegen', 'ReqStr', 'ReloadTime', 'TrapThrowingTime']) expect(statPolarity(id), id).toBe(-1);
+  it('honors every explicit catalog direction', () => {
+    for (const entry of catalog) expect(statPolarity(entry.id), entry.id).toBe(entry.higher_is_better === false ? -1 : entry.higher_is_better === null ? 0 : 1);
   });
-  it('treats damage, defences and resources as higher-is-better', () => {
-    for (const id of ['CombinedDPS', 'Life', 'TotalEHP', 'FireResist', 'SpiritUnreserved', 'Str']) expect(statPolarity(id), id).toBe(1);
+  it('resolves comparison aliases through the engine stats', () => {
+    setDisplayCatalog(catalog.map(entry => ({ ...entry, higher_is_better: false })) as DisplayCatalogEntry[]);
+    for (const id of ['MainMinionDPS', 'MainSkillHitDPS', 'MainSkillDotDPS', 'MainSkillCombinedDPS']) expect(statPolarity(id), id).toBe(-1);
   });
-  it('does not guess about durations and areas', () => {
-    for (const id of ['Duration', 'AuraDuration', 'AreaOfEffectRadiusMetres', 'PresenceRadiusMetres']) expect(statPolarity(id), id).toBe(0);
+  it('keeps unspecified catalog directions neutral', () => {
+    expect(statPolarity('Flask1Duration')).toBe(0);
+    expect(statPolarity('UnknownStat')).toBe(0);
   });
 });
 
@@ -42,12 +48,12 @@ describe('computeStatChanges', () => {
   });
   it('reports only what moved and judges it by polarity', () => {
     const changes = computeStatChanges(
-      [stat('CombinedDPS', 1000), stat('ManaCost', 20), stat('Life', 500), stat('Duration', 4)],
-      [stat('CombinedDPS', 1100), stat('ManaCost', 25), stat('Life', 500), stat('Duration', 5)]);
-    expect([...changes.keys()].sort()).toEqual(['CombinedDPS', 'Duration', 'ManaCost']);
+      [stat('CombinedDPS', 1000), stat('ManaCost', 20), stat('Life', 500), stat('Flask1Duration', 4)],
+      [stat('CombinedDPS', 1100), stat('ManaCost', 25), stat('Life', 500), stat('Flask1Duration', 5)]);
+    expect([...changes.keys()].sort()).toEqual(['CombinedDPS', 'Flask1Duration', 'ManaCost']);
     expect(changes.get('CombinedDPS')).toMatchObject({ delta: 100, percent: 10, tone: 'better' });
     expect(changes.get('ManaCost')?.tone).toBe('worse');
-    expect(changes.get('Duration')?.tone).toBe('neutral');
+    expect(changes.get('Flask1Duration')?.tone).toBe('neutral');
   });
   it('ignores float noise and unbounded values', () => {
     expect(computeStatChanges([stat('Life', 100), stat('ChaosMaxHit', null)], [stat('Life', 100.001), stat('ChaosMaxHit', 5)]).size).toBe(0);

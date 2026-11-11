@@ -217,7 +217,7 @@ export function ResultsRail({ route, session, view, lang, onStatClick, onNavigat
         <div className="rail-fold" data-open={!folded || undefined} inert={folded || undefined}><div>
           {section.playerDamage && calc?.main_skill && !minion && <DamageShare mainSkill={calc.main_skill} lang={lang} />}
           {rows.map(row => <Row key={row.id} stat={row.id} label={row.id === 'TotalDotDPS' ? bindT(lang)('sidebar.dotDps') : row.label[lang]} color={row.colorVar ? `var(--${row.colorVar})` : undefined} change={changes.get(row.id)} pin={pinFor(row.id)}
-            value={<AnimatedNumber value={values?.get(row.id)} format={shown => formatStatValue(shown, row.format, lang)} />}
+            value={<AnimatedNumber value={values?.get(row.id)} format={shown => formatStat(row.id, shown, lang)} />}
             onOpen={calc && detailKind(calc, row.id) !== 'none' ? () => onStatClick(row.id) : undefined} />)}
         </div></div>
       </section>;

@@ -1239,7 +1239,9 @@
     "Cost": "消耗",
     "Requirement": "需求",
     "Minion": "召喚物",
+    "Enemy": "敵人",
     "Utility": "功用",
+    "Misc": "雜項",
     "Other": "其他聚合量"
   },
   "detail": {

@@ -73,6 +73,7 @@ test('archive preserves complete data, bindings and skill; hashes and size arith
     'skills/use-pobr-wasm/references/api.md', 'skills/use-pobr-wasm/scripts/demo.mjs', 'example.mjs', 'LICENSE']) {
     assert.ok(readFileSync(join(packageRoot, file)).length);
   }
+  assert.throws(() => readFileSync(join(packageRoot, 'generated/display_catalog.json')), { code: 'ENOENT' });
   assert.throws(() => readFileSync(join(packageRoot, 'unrelated.txt')), { code: 'ENOENT' });
   execFileSync(process.execPath, [join(repo, 'web/node_modules/typescript/bin/tsc'),
     '--noEmit', '--strict', '--module', 'NodeNext', '--target', 'ES2022', 'api-types.ts'],
