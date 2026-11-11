@@ -1,26 +1,34 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { PobrBackend } from './backend';
 import { withBreakdownDescriptors } from './descriptors';
-import type { CalculateBuildResponse } from './types';
+import type { CalculateBuildResponse, DisplayCatalogEntry } from './types';
+import catalog from './generated/display_catalog.json';
+import { statFormat } from '../lib/statDisplay';
 
 const table = { Life: 'steps', Str: 'sources' } as const;
 
 function backend(response: () => Partial<CalculateBuildResponse>) {
   const fetchTable = vi.fn(async () => ({ ...table }));
+  const fetchCatalog = vi.fn(async () => catalog as DisplayCatalogEntry[]);
   const calculateBuild = vi.fn(async () => response() as CalculateBuildResponse);
-  const target = { breakdownDescriptors: fetchTable, calculateBuild, dataVersion: '0.5', decodeBuild: async () => 'decoded' };
-  return { target: target as unknown as PobrBackend, fetchTable, calculateBuild };
+  const target = { breakdownDescriptors: fetchTable, displayCatalog: fetchCatalog, calculateBuild, dataVersion: '0.5', decodeBuild: async () => 'decoded' };
+  return { target: target as unknown as PobrBackend, fetchTable, fetchCatalog, calculateBuild };
 }
 
 describe('breakdown descriptors', () => {
   it('fetches the table once and puts that one object into every response', async () => {
-    const { target, fetchTable } = backend(() => ({ stats: [], breakdowns: {} }));
+    const { target, fetchTable, fetchCatalog } = backend(() => ({ stats: [], breakdowns: {} }));
     const wrapped = await withBreakdownDescriptors(target);
     const first = await wrapped.calculateBuild({ pob_code: 'a' });
     const second = await wrapped.calculateBuild({ pob_code: 'b' });
     expect(first.breakdown_descriptors).toEqual(table);
     expect(second.breakdown_descriptors).toBe(first.breakdown_descriptors);
     expect(fetchTable).toHaveBeenCalledTimes(1);
+    expect(await wrapped.displayCatalog()).toBe(catalog);
+    expect(await wrapped.displayCatalog()).toBe(catalog);
+    expect(fetchCatalog).toHaveBeenCalledTimes(1);
+    expect(statFormat('EvadeChance')).toBe('percent');
+    expect(first).not.toHaveProperty('display_catalog');
   });
 
   it('leaves a table the response already carries, and every other member, alone', async () => {

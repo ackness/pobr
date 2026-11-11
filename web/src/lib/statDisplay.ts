@@ -3,7 +3,7 @@
  * 纯展示映射，不含任何计算。
  */
 
-import type { DisplayStatValue } from '../api/types';
+import type { DisplayCatalogEntry, DisplayStatValue } from '../api/types';
 import type { Lang } from './i18n';
 
 export type { Lang };
@@ -294,10 +294,22 @@ export function metricMeaning(id: string, lang: Lang): string | null {
 
 const STAT_FORMATS = new Map(STAT_SECTIONS.flatMap(section => section.rows.map(row => [row.id, row.format] as const)));
 
+const DISPLAY_CATALOG = new Map<string, DisplayCatalogEntry>();
+
+/** Installed once by the shared backend initialization, before any calculation. */
+export function setDisplayCatalog(entries: readonly DisplayCatalogEntry[]): void {
+  DISPLAY_CATALOG.clear();
+  for (const entry of entries) DISPLAY_CATALOG.set(entry.id, entry);
+}
+
+export function displayStatDefinition(id: string): DisplayCatalogEntry | undefined {
+  return DISPLAY_CATALOG.get(id);
+}
+
 export function statFormat(stat: string): StatFormat {
   if (stat === 'MainMinionDPS') return statFormat('TotalDPS');
-  if (/^(Fire|Cold|Lightning|Chaos)Resist(?:Total|Max|OverCap)$/.test(stat)) return 'percent';
-  return STAT_FORMATS.get(stat) ?? (/Resist(?:Total|Max|OverCap)?$/.test(stat) ? 'percent' : 'float2');
+  if (displayStatDefinition(stat)?.value_type === 'Percent') return 'percent';
+  return STAT_FORMATS.get(stat) ?? 'float2';
 }
 
 const NUMBER_FORMATTERS = new Map<string, Intl.NumberFormat>();

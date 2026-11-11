@@ -1,0 +1,3920 @@
+[
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "CadiroArrowReturn",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "CadiroArrowKillRarity",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "PhysicalMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "PhysicalMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "PhysicalEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "FireMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "FireMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "FireEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "ColdMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "ColdMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "ColdEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "LightningMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "LightningMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "LightningEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "ChaosMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "ChaosMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "ChaosEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "TotalMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "TotalMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "CritEffect",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "DpsMultiplier",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandPhysicalMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandPhysicalMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandPhysicalEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandFireMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandFireMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandFireEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandColdMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandColdMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandColdEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandLightningMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandLightningMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandLightningEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandChaosMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandChaosMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandChaosEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandTotalMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandTotalMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandCritEffect",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandDpsMultiplier",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandPhysicalMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandPhysicalMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandPhysicalEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandFireMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandFireMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandFireEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandColdMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandColdMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandColdEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandLightningMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandLightningMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandLightningEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandChaosMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandChaosMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandChaosEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandTotalMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandTotalMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandCritEffect",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandDpsMultiplier",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "Repeats",
+    "value_type": "Number"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "TotalNumberOfHits",
+    "value_type": "Number"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "ExposureEffectOnSelf",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "WitherEffectOnSelf",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "SelfBleedEffect",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "SelfIgniteEffect",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "SelfChillEffect",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "SelfFreezeEffect",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "SelfPoisonEffect",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "SelfBlindDuration",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "DebuffExpirationModifier",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "CurseEffectOnSelf",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "SelfBleedDuration",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "SelfPoisonDuration",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "SelfIgniteDuration",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "SelfChillDuration",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "SelfFreezeDuration",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "SelfShockDuration",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "CorruptedBloodImmunity",
+    "value_type": "Bool"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "MaimImmunity",
+    "value_type": "Bool"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "HinderImmunity",
+    "value_type": "Bool"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "IgniteChancePerHit",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "IgniteDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "IgniteEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "IgniteMagnitudeEffect",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "IgniteRollAverage",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "IgniteStacksMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "IgniteStackPotentialPercent",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "IgniteFireMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "IgniteFireMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "IgniteColdMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "IgniteColdMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "IgniteLightningMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "IgniteLightningMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "BleedChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "BleedDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "BleedEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "BleedMagnitudeEffect",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "BleedRollAverage",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "BleedStacksMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "BleedStackPotentialPercent",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "BleedPhysicalMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "BleedPhysicalMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "PoisonChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "PoisonDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "PoisonEffMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "PoisonMagnitudeEffect",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "PoisonRollAverage",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "PoisonStacksMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "PoisonStackPotentialPercent",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "PoisonPhysicalMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "PoisonPhysicalMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "PoisonChaosMin",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "PoisonChaosMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "ShockChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "DecayDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "MirageBurningGroundDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "ReservationDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "NetWardRegen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MirageDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "BurningGroundDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "EffectiveMovementSpeedMod",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "MovementSpeedWhileUsingSkill",
+    "value_type": "Number"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "PresenceRadiusMetres",
+    "value_type": "Number"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "PresenceRadius",
+    "value_type": "Number"
+  },
+  {
+    "category": "Utility",
+    "higher_is_better": true,
+    "id": "CharmLimit",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "EnemyCurseLimit",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "EnemyMarkLimit",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "ActiveHazardLimit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "ActionSpeedMod",
+    "value_type": "Number"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "MovementSpeedMod",
+    "value_type": "Number"
+  },
+  {
+    "category": "Misc",
+    "higher_is_better": true,
+    "id": "LightRadiusMod",
+    "value_type": "Number"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "FreezeThreshold",
+    "value_type": "Number"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "FreezeThresholdAdded",
+    "value_type": "Number"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "FreezeThresholdMod",
+    "value_type": "Number"
+  },
+  {
+    "category": "Misc",
+    "higher_is_better": true,
+    "id": "GemLevel",
+    "value_type": "Number"
+  },
+  {
+    "category": "Misc",
+    "higher_is_better": true,
+    "id": "EffectiveLootRarityMod",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "LifeRecoveryRateMod",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "ManaRecoveryRateMod",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "EnergyShieldRecoveryRateMod",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "LowLifePercentage",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "LifeCancellableReservation",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "ManaCancellableReservation",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "FullLifePercentage",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "FullManaPercentage",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "DurationMod",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "StrikeTargets",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "LowestAttribute",
+    "value_type": "Number"
+  },
+  {
+    "category": "Requirement",
+    "higher_is_better": true,
+    "id": "GlobalGemAttributeRequirements",
+    "value_type": "Number"
+  },
+  {
+    "category": "Requirement",
+    "higher_is_better": true,
+    "id": "GlobalItemAttributeRequirements",
+    "value_type": "Number"
+  },
+  {
+    "category": "Requirement",
+    "higher_is_better": true,
+    "id": "GlobalWeaponAttributeRequirements",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "MaximumChill",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "MaximumShock",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "CurrentChill",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "CurrentShock",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "AuraEffectMod",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "CurseEffectMod",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "ActiveMinionLimit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "ExplodeChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "CombinedAvgToMonsterLife",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "CritBifurcates",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "AverageDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "AverageBurstDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "AverageBurstHits",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "CombinedAvg",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "HitSpeed",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "IgniteDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "BleedDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "PoisonDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "WithIgniteDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "WithBleedDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "WithPoisonDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "MainHandAccuracy",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "OffHandAccuracy",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "AccuracyHitChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "AccuracyHitChanceUncapped",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "QuantityMultiplier",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "Duration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "DurationSecondary",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "AuraDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "ReserveDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "AreaOfEffectRadiusMetres",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "PierceCount",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "ForkCount",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "ChainMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "SplitCount",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "BounceCount",
+    "value_type": "Number"
+  },
+  {
+    "category": "Requirement",
+    "higher_is_better": false,
+    "id": "ReqStr",
+    "value_type": "Number"
+  },
+  {
+    "category": "Requirement",
+    "higher_is_better": false,
+    "id": "ReqDex",
+    "value_type": "Number"
+  },
+  {
+    "category": "Requirement",
+    "higher_is_better": false,
+    "id": "ReqInt",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "ManaPercentCost",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "ManaPercentPerSecondCost",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "ManaPerSecondCost",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "LifePercentCost",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "LifePercentPerSecondCost",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "LifePerSecondCost",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "ESCost",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "ESPercentCost",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "ESPercentPerSecondCost",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "ESPerSecondCost",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "WardCost",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "WardPercentCost",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "WardPercentPerSecondCost",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "WardPerSecondCost",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "RageCost",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "RagePerSecondCost",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "TotalTotemPlacementTime",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "TotemLife",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "TotemArmour",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "ActiveTotemLimit",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "TotemEvasion",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "TotemEnergyShield",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "TotemDurationMod",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "TotemFireResist",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "TotemColdResist",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "TotemLightningResist",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "TotemChaosResist",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "TotemFireResistTotal",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "TotemColdResistTotal",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "TotemLightningResistTotal",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "TotemChaosResistTotal",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "MissingTotemFireResist",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "MissingTotemColdResist",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "MissingTotemLightningResist",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "MissingTotemChaosResist",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "TrapThrowingTime",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "TrapThrowCount",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "MineLayingTime",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "MineThrowCount",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "WarcryCastTime",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "ChannelTime",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "ChannelTimeToTrigger",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "ArchonDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "ArchonRecoveryPeriod",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "TotalDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "HitDamage",
+    "higher_is_better": true,
+    "id": "TotalHitAvg",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "FullDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "FullDotDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "CombinedDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "Accuracy",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "HitChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "ActionRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "EffectiveActionRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "CritChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "CritMultiplier",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "TotalDotDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "BleedDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "IgniteDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "PoisonDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "ShockEffect",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "Life",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "Mana",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "EnergyShield",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": false,
+    "id": "LifeReserved",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "LifeUnreserved",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": false,
+    "id": "ManaReserved",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "ManaUnreserved",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "LifeRegenRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "ManaRegenRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "EnergyShieldRegenRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "WardRegenRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "RageRegenRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "NetLifeRegen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "NetManaRegen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "NetEnergyShieldRegen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "TotalNetRegen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": false,
+    "id": "TotalBuildDegen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "LifeLeechGainRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "ManaLeechGainRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "EnergyShieldLeechGainRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "LifeLeechGainPerHit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "ManaLeechGainPerHit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "EnergyShieldLeechGainPerHit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "LifeRegen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "ManaRegen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "EnergyShieldRegen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "Armour",
+    "value_type": "Number"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "Evasion",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "FireResist",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "ColdResist",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "LightningResist",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "ChaosResist",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "FireResistMax",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "ColdResistMax",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "LightningResistMax",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "ChaosResistMax",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "BlockChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "SpellBlockChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "TotalEHP",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalMaxHit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireMaxHit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdMaxHit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningMaxHit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ChaosMaxHit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "EsRechargeRate",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": false,
+    "id": "EsRechargeDelay",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "EsRechargePerSecond",
+    "value_type": "Number"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "AvoidAllDamageFromHits",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "AvoidProjectileDamage",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "AvoidStun",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "AvoidIgnite",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "AvoidShock",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "AvoidChill",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "AvoidFreeze",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "AvoidPoison",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "AvoidBleeding",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": false,
+    "id": "TakenMultiPhysical",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": false,
+    "id": "TakenMultiFire",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": false,
+    "id": "TakenMultiCold",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": false,
+    "id": "TakenMultiLightning",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": false,
+    "id": "TakenMultiChaos",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "CritExtraDamageReduction",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": false,
+    "id": "EnemyCritEffect",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": false,
+    "id": "EnemyCritChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "SecondMinimalMaximumHitTaken",
+    "value_type": "Number"
+  },
+  {
+    "category": "Utility",
+    "higher_is_better": true,
+    "id": "ChargePowerCurrent",
+    "value_type": "Number"
+  },
+  {
+    "category": "Utility",
+    "higher_is_better": true,
+    "id": "ChargePowerMaximum",
+    "value_type": "Number"
+  },
+  {
+    "category": "Utility",
+    "higher_is_better": true,
+    "id": "ChargeFrenzyCurrent",
+    "value_type": "Number"
+  },
+  {
+    "category": "Utility",
+    "higher_is_better": true,
+    "id": "ChargeFrenzyMaximum",
+    "value_type": "Number"
+  },
+  {
+    "category": "Utility",
+    "higher_is_better": true,
+    "id": "ChargeEnduranceCurrent",
+    "value_type": "Number"
+  },
+  {
+    "category": "Utility",
+    "higher_is_better": true,
+    "id": "ChargeEnduranceMaximum",
+    "value_type": "Number"
+  },
+  {
+    "category": "Utility",
+    "higher_is_better": true,
+    "id": "PowerChargesDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Utility",
+    "higher_is_better": true,
+    "id": "FrenzyChargesDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Utility",
+    "higher_is_better": true,
+    "id": "EnduranceChargesDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "LifeLeechRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "ManaLeechRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "EsLeechRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "MaxLifeLeechRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "MaxManaLeechRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "MaxEnergyShieldLeechRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "MaxLifeLeechRatePercent",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "LifeRecoupRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "ManaRecoupRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "EsRecoupRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "AilmentThreshold",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "LifeOnKill",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "ManaOnKill",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "EnergyShieldOnKill",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "HeavyStunBuildupAvg",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "PinBuildupAvg",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": false,
+    "id": "PinBuildupRequired",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "PinDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "DazeChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "FullyBrokenArmourEffect",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "ArmourBreakPerHit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": false,
+    "id": "HitsToFullyBreakArmour",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": false,
+    "id": "TimeToFullyBreakArmour",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "DazeUptime",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "MaimUptime",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "BlindUptime",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "MaximumFireInfusions",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "MaximumColdInfusions",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "MaximumLightningInfusions",
+    "value_type": "Number"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "SurroundedRadiusMetres",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "CurseActivationDelay",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "RemnantsPerUse",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "ChillEffect",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "ChillEffectMod",
+    "value_type": "Number"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "ChillDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "ShockDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "FreezeDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "FreezeBuildupAvg",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "FreezeBuildupPct",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Ailment",
+    "higher_is_better": true,
+    "id": "ElectrocuteBuildupPct",
+    "value_type": "Percent"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "BleedStackedDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "BleedActiveStacks",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "PoisonStackedDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "PoisonActiveStacks",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "AoeRadius",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "AoeAreaMod",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "ProjectileCount",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "Cooldown",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "CooldownStoredUses",
+    "value_type": "Number"
+  },
+  {
+    "category": "Cost",
+    "higher_is_better": false,
+    "id": "ManaCost",
+    "value_type": "Number"
+  },
+  {
+    "category": "Cost",
+    "higher_is_better": false,
+    "id": "LifeCost",
+    "value_type": "Number"
+  },
+  {
+    "category": "Cost",
+    "higher_is_better": false,
+    "id": "SpiritReserved",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "TriggerRateCap",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "SkillTriggerRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "Spirit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "SpiritUnreserved",
+    "value_type": "Number"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "BlockChanceMax",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "SpellBlockChanceMax",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "EffectiveBlockChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "EffectiveSpellBlockChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "BlockEffect",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "DeflectionRating",
+    "value_type": "Number"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "DeflectChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "DeflectEffect",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "EvadeChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "MeleeEvadeChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "ProjectileEvadeChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "SpellEvadeChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Avoidance",
+    "higher_is_better": true,
+    "id": "SpellProjectileEvadeChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": true,
+    "id": "StunThreshold",
+    "value_type": "Number"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "SelfStunChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Defence",
+    "higher_is_better": false,
+    "id": "StunDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "Ward",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "WardRegen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "LifeRecoverable",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "EnergyShieldRecoveryCap",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalDamageReduction",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "NumberOfDamagingHits",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "NumberOfMitigatedHits",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalEnemyDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireEnemyDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdEnemyDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningEnemyDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ChaosEnemyDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalTakenDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireTakenDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdTakenDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningTakenDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ChaosTakenDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalTakenHit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireTakenHit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdTakenHit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningTakenHit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ChaosTakenHit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ChaosTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalEnergyShieldBypass",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireEnergyShieldBypass",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdEnergyShieldBypass",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningEnergyShieldBypass",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ChaosEnergyShieldBypass",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireDamageReduction",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdDamageReduction",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningDamageReduction",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "totalEnemyDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "totalTakenDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "totalTakenHit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ConfiguredDamageChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ConfiguredNotHitChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "DamageTakenOnBlock",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalEnemyDamageMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireEnemyDamageMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdEnemyDamageMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningEnemyDamageMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ChaosEnemyDamageMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalEnemyPen",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireEnemyPen",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdEnemyPen",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningEnemyPen",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ChaosEnemyPen",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalResistTakenHitMulti",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireResistTakenHitMulti",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdResistTakenHitMulti",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningResistTakenHitMulti",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ChaosResistTakenHitMulti",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalAttackTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireAttackTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdAttackTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningAttackTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ChaosAttackTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalSpellTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireSpellTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdSpellTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningSpellTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ChaosSpellTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalAfterReductionTakenHitMulti",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireAfterReductionTakenHitMulti",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdAfterReductionTakenHitMulti",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningAfterReductionTakenHitMulti",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ChaosAfterReductionTakenHitMulti",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalBaseTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireBaseTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdBaseTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningBaseTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ChaosBaseTakenHitMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalDamageReductionMax",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireDamageReductionMax",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdDamageReductionMax",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningDamageReductionMax",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ChaosDamageReductionMax",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "PhysicalManaEffectiveLife",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "FireManaEffectiveLife",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "ColdManaEffectiveLife",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "LightningManaEffectiveLife",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "ChaosManaEffectiveLife",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "PhysicalMoMHitPool",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "FireMoMHitPool",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "ColdMoMHitPool",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "LightningMoMHitPool",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "ChaosMoMHitPool",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "PhysicalTotalHitPool",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "FireTotalHitPool",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "ColdTotalHitPool",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "LightningTotalHitPool",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "ChaosTotalHitPool",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "DamageReductionMax",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "LifeHitPool",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "FireResistTotal",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "ColdResistTotal",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "LightningResistTotal",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "ChaosResistTotal",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "FireResistOverTime",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "ColdResistOverTime",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "LightningResistOverTime",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "ChaosResistOverTime",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalTakenDotMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireTakenDotMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdTakenDotMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningTakenDotMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ChaosTakenDotMult",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "PhysicalTotalPool",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "FireTotalPool",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "ColdTotalPool",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "LightningTotalPool",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "ChaosTotalPool",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "PhysicalDotEHP",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "FireDotEHP",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ColdDotEHP",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "LightningDotEHP",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "ChaosDotEHP",
+    "value_type": "Number"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "EHPSurvivalTime",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Mitigation",
+    "higher_is_better": true,
+    "id": "TotalEHPLowestMaxHit",
+    "value_type": "Number"
+  },
+  {
+    "category": "Requirement",
+    "higher_is_better": true,
+    "id": "Str",
+    "value_type": "Number"
+  },
+  {
+    "category": "Requirement",
+    "higher_is_better": true,
+    "id": "Dex",
+    "value_type": "Number"
+  },
+  {
+    "category": "Requirement",
+    "higher_is_better": true,
+    "id": "Int",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "Rage",
+    "value_type": "Number"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "FireResistOverCap",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "ColdResistOverCap",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "LightningResistOverCap",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resistance",
+    "higher_is_better": true,
+    "id": "ChaosResistOverCap",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "LifeUnreservedPercent",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "ManaUnreservedPercent",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Resource",
+    "higher_is_better": true,
+    "id": "SpiritUnreservedPercent",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "PreEffectiveCritChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "PreEffectiveCritMultiplier",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "StoredUses",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "TotalDot",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "WithDotDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "FiringRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": false,
+    "id": "ReloadTime",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "CullingDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "CullMultiplier",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "EnemyAilmentThreshold",
+    "value_type": "Number"
+  },
+  {
+    "category": "Offence",
+    "higher_is_better": true,
+    "id": "ReservationDpsMultiplier",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "ProjectileSpeedMod",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "BeiraIgniteDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": true,
+    "id": "CombinedIgniteDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "ComboMaximum",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "ComboGainPerEligibleEvent",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "RemnantManaRecoveryPercent",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "RemnantManaRecoverablePerPickup",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "RemnantManaRecoverablePerSecond",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "CreatedRemnantDuplicateChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "CreatedRemnantEffectGrantsPerPickup",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "CreatedRemnantEffectGrantsPerSecond",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "CreatedRemnantPotentialEffectGrantsPerUse",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "VolatilityRefreshChance",
+    "value_type": "Percent"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "VolatilityExplosionQuantity",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "VolatilityRestoredPerExplosion",
+    "value_type": "Number"
+  },
+  {
+    "category": "SkillMechanics",
+    "higher_is_better": true,
+    "id": "VolatilityRestoredPerSecond",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "DynamismChargeInterval",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "DynamismChargeEventRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "DynamismAllyChargeEventRate",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "FlaskEffect",
+    "value_type": "Percent"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "FlaskChargeGen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "LifeFlaskChargeGen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "ManaFlaskChargeGen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": true,
+    "id": "UtilityFlaskChargeGen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1Duration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1ChargesMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": false,
+    "id": "Flask1ChargesUsed",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1Uses",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1ChargeGen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1ChargesGained",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1Recovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1InstantRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1RecoveryPerSecond",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1GuardAfterEffect",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1GuardDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1EnergyShieldRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1EnergyShieldInstantRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1EnergyShieldRecoveryPerSecond",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1LifeRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1LifeInstantRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1LifeRecoveryPerSecond",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1ManaRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1ManaInstantRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask1ManaRecoveryPerSecond",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": false,
+    "id": "Flask1ManaRemovedOnUse",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": false,
+    "id": "Flask1LifeRemovedOnUse",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2Duration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2ChargesMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": false,
+    "id": "Flask2ChargesUsed",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2Uses",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2ChargeGen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2ChargesGained",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2Recovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2InstantRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2RecoveryPerSecond",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2GuardAfterEffect",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2GuardDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2EnergyShieldRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2EnergyShieldInstantRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2EnergyShieldRecoveryPerSecond",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2LifeRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2LifeInstantRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2LifeRecoveryPerSecond",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2ManaRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2ManaInstantRecovery",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Flask2ManaRecoveryPerSecond",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": false,
+    "id": "Flask2ManaRemovedOnUse",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": false,
+    "id": "Flask2LifeRemovedOnUse",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm1Duration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm1ChargesMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": false,
+    "id": "Charm1ChargesUsed",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm1Uses",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm1ChargeGen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm1ChargesGained",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm1LifeRecoveryOnUse",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm1ManaRecoveryOnUse",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm1ConsecratedGroundDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm1ConsecratedGroundRadiusMetres",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": null,
+    "id": "Charm1IgnitedGroundDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": null,
+    "id": "Charm1IgnitedGroundRadiusMetres",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": null,
+    "id": "Charm1IgnitedGroundSourceDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": null,
+    "id": "Charm1IgnitedGroundIgniteDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": null,
+    "id": "Charm1IgnitedGroundIgniteDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm2Duration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm2ChargesMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": false,
+    "id": "Charm2ChargesUsed",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm2Uses",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm2ChargeGen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm2ChargesGained",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm2LifeRecoveryOnUse",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm2ManaRecoveryOnUse",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm2ConsecratedGroundDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm2ConsecratedGroundRadiusMetres",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": null,
+    "id": "Charm2IgnitedGroundDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": null,
+    "id": "Charm2IgnitedGroundRadiusMetres",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": null,
+    "id": "Charm2IgnitedGroundSourceDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": null,
+    "id": "Charm2IgnitedGroundIgniteDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": null,
+    "id": "Charm2IgnitedGroundIgniteDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm3Duration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm3ChargesMax",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": false,
+    "id": "Charm3ChargesUsed",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm3Uses",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm3ChargeGen",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm3ChargesGained",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm3LifeRecoveryOnUse",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm3ManaRecoveryOnUse",
+    "value_type": "Number"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm3ConsecratedGroundDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "Recovery",
+    "higher_is_better": null,
+    "id": "Charm3ConsecratedGroundRadiusMetres",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": null,
+    "id": "Charm3IgnitedGroundDuration",
+    "value_type": "TimeSeconds"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": null,
+    "id": "Charm3IgnitedGroundRadiusMetres",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": null,
+    "id": "Charm3IgnitedGroundSourceDamage",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": null,
+    "id": "Charm3IgnitedGroundIgniteDPS",
+    "value_type": "Number"
+  },
+  {
+    "category": "DotDamage",
+    "higher_is_better": null,
+    "id": "Charm3IgnitedGroundIgniteDuration",
+    "value_type": "TimeSeconds"
+  }
+]

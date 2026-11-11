@@ -1,13 +1,16 @@
-import { expect, test } from 'vitest';
-import type { Breakdown, BreakdownMod, LineUsageLine } from '../api/types';
+import { beforeAll, expect, test } from 'vitest';
+import type { Breakdown, BreakdownMod, DisplayCatalogEntry, LineUsageLine } from '../api/types';
 import { damageChain, groupModifiers, resistanceIds } from './calcsPresentation';
-import { metricMeaning, statFormat } from './statDisplay';
+import { metricMeaning, setDisplayCatalog, statFormat } from './statDisplay';
+import catalog from '../api/generated/display_catalog.json';
 import { modifierText } from '../components/calcs/ModifierText';
 import { displayedLedgerReason, filterLedger, NO_FILTER, reasonConfigField } from '../app/pages/calcs/ledger';
 
 const mod = (value: number, type: BreakdownMod['mod_type'], kind = 'PassiveNode', active = true): BreakdownMod =>
   ({ value, mod_type: type, origin_kind: kind, active, origin_id: null, slot: null, source_text: null });
 const empty: Breakdown = { base_total: 0, inc_total: 0, more_total: 1, mods: [], formula: null };
+
+beforeAll(() => setDisplayCatalog(catalog as DisplayCatalogEntry[]));
 
 test('real source families keep BASE, INC and multiplicative MORE subtotals separate', () => {
   const groups = groupModifiers([mod(20, 'BASE'), mod(15, 'INC'), mod(50, 'MORE'), mod(-20, 'MORE'),

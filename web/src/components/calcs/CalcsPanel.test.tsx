@@ -1,6 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { expect, test } from 'vitest';
-import type { Breakdown, BreakdownMod, CalculateBuildResponse, DetailKind } from '../../api/types';
+import { beforeAll, expect, test } from 'vitest';
+import type { Breakdown, BreakdownMod, CalculateBuildResponse, DetailKind, DisplayCatalogEntry } from '../../api/types';
+import catalog from '../../api/generated/display_catalog.json';
+import { setDisplayCatalog } from '../../lib/statDisplay';
 import { BreakdownTable, CalcsPanel, followedActorKey } from './CalcsPanel';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { UiProvider } from '../shared/UiContext';
@@ -9,6 +11,8 @@ import details from '../../fixtures/stat_details.json';
 import { bindT, type Lang, type UiKey } from '../../lib/i18n';
 
 const empty: Breakdown = { base_total: 0, inc_total: 0, more_total: 1, mods: [], formula: null };
+
+beforeAll(() => setDisplayCatalog(catalog as DisplayCatalogEntry[]));
 
 test.each([[0, '∞'], [3, '3']] as const)('ailment details show the stack ceiling %s', (cap, displayed) => {
   const fixture = details.IgniteDPS as Breakdown;
@@ -117,6 +121,21 @@ function panel(calc: Partial<CalculateBuildResponse>, lang: Lang = 'en-US', focu
     <CalcsPanel session={session} lang={lang} focus={focus} />
   </TooltipProvider></UiProvider>);
 }
+
+test('Calcs keeps Misc and future categories after the preferred categories', () => {
+  const html = panel({ stats: [
+    { id: 'FutureStat', category: 'FutureCategory', value: 2 },
+    { id: 'GemLevel', category: 'Misc', value: 20 },
+    { id: 'Life', category: 'Resource', value: 100 },
+  ] as unknown as CalculateBuildResponse['stats'] }).replace(/<!--.*?-->/g, '');
+  expect(html).toContain('FutureCategory (1)');
+  expect(html).toContain('Miscellaneous (1)');
+  expect(html.indexOf('Resources (1)')).toBeLessThan(html.indexOf('Miscellaneous (1)'));
+  expect(html.indexOf('Miscellaneous (1)')).toBeLessThan(html.indexOf('FutureCategory (1)'));
+  const future = panel({ stats: [{ id: 'FutureStat', category: 'FutureCategory', value: 2 }] as unknown as CalculateBuildResponse['stats'] });
+  expect(future).toContain('id="breakdown-FutureStat"');
+  expect(panel({ stats: [{ id: 'GemLevel', category: 'Misc', value: 20 }] })).toContain('id="breakdown-GemLevel"');
+});
 
 test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('Calcs shows honest empty states without a kind badge in %s', lang => {
   const tt = bindT(lang);

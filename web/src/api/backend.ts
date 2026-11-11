@@ -21,6 +21,7 @@ import type {
   SelectedLoadoutJson,
   CalculateBuildRequest,
   CalculateBuildResponse,
+  DisplayCatalogEntry,
   ConfigOption,
   SkillMetricsResponse,
   GemCatalogEntry,
@@ -81,6 +82,8 @@ export interface PobrBackend {
    * into the responses it returns, so callers do not have to.
    */
   breakdownDescriptors(): Promise<NonNullable<CalculateBuildResponse['breakdown_descriptors']>>;
+  /** Static display units, categories and comparison direction from the engine. */
+  displayCatalog(): Promise<DisplayCatalogEntry[]>;
   /** 编辑态 → PoB2 分享 code（请求同 calculateBuild + 可选 notes）。 */
   encodeBuild(request: CalculateBuildRequest & { notes?: string; base_code?: string }): Promise<string>;
   /** Independent metrics for every active effect, including utility and unavailable skills. */

@@ -435,7 +435,17 @@ export type DisplayStatCategory =
   | 'Cost'
   | 'Requirement'
   | 'Minion'
-  | 'Utility';
+  | 'Enemy'
+  | 'Utility'
+  | 'Misc';
+
+/** Static engine metadata from displayCatalogJson; keep contract_golden.rs in sync. */
+export interface DisplayCatalogEntry {
+  id: string;
+  category: DisplayStatCategory;
+  value_type: 'Number' | 'Percent' | 'TimeSeconds' | 'Text' | 'Bool' | 'Unknown';
+  higher_is_better: boolean | null;
+}
 
 export interface DisplayStatValue {
   id: string;

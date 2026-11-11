@@ -96,6 +96,34 @@ fn catalog_defines_core_display_stats() {
 
 /// Reference keys are optional for game mechanics the exporter does not expose.
 /// When a key is supplied, it must identify a real, nonempty comparison field.
+/// Comparison colouring reads `higher_is_better`, so stats whose cost or delay
+/// grows with the value must not inherit the default improvement direction.
+#[test]
+fn costs_requirements_action_times_and_degen_are_lower_is_better() {
+    let lower_is_better = |id: &str| {
+        id.ends_with("Cost")
+            || matches!(id, "ReqStr" | "ReqDex" | "ReqInt" | "TotalBuildDegen")
+            || matches!(
+                id,
+                "TotalTotemPlacementTime"
+                    | "TrapThrowingTime"
+                    | "MineLayingTime"
+                    | "WarcryCastTime"
+                    | "ChannelTime"
+                    | "ChannelTimeToTrigger"
+            )
+    };
+    let wrong: Vec<_> = display_catalog::display_catalog_ref()
+        .iter()
+        .filter(|def| lower_is_better(def.id.as_str()) && def.higher_is_better != Some(false))
+        .map(|def| def.id.as_str())
+        .collect();
+    assert!(
+        wrong.is_empty(),
+        "lower-is-better stats declared otherwise: {wrong:?}"
+    );
+}
+
 #[test]
 fn catalog_entries_have_known_status_and_valid_optional_reference_keys() {
     let catalog = display_catalog();

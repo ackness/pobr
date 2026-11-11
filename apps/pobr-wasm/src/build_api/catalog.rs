@@ -7,9 +7,32 @@
 
 use std::collections::BTreeMap;
 
+use pobr_data::display_stat::{DisplayStatCategory, DisplayStatId, StatValueType};
 use serde::Serialize;
 
 use crate::state;
+
+#[derive(Debug, Serialize)]
+struct DisplayCatalogEntry<'a> {
+    id: &'a DisplayStatId,
+    category: &'a DisplayStatCategory,
+    value_type: &'a StatValueType,
+    higher_is_better: Option<bool>,
+}
+
+/// Static display metadata; no game data initialization is needed.
+pub fn display_catalog_json() -> Result<String, String> {
+    let entries: Vec<_> = pobr_core::display_catalog::display_catalog_ref()
+        .iter()
+        .map(|definition| DisplayCatalogEntry {
+            id: &definition.id,
+            category: &definition.category,
+            value_type: &definition.value_type,
+            higher_is_better: definition.higher_is_better,
+        })
+        .collect();
+    serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))
+}
 
 // classify_item_lines_json (item text -> per-line categories, for Items panel coloring)
 
@@ -520,6 +543,56 @@ pub fn minion_catalog_json() -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn display_catalog_destination() -> std::path::PathBuf {
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../web/src/api/generated/display_catalog.json")
+    }
+
+    fn display_catalog_pretty() -> String {
+        let value: serde_json::Value =
+            serde_json::from_str(&display_catalog_json().unwrap()).unwrap();
+        serde_json::to_string_pretty(&value).unwrap() + "\n"
+    }
+
+    #[test]
+    fn display_catalog_generated_copy_is_current() {
+        assert_eq!(
+            std::fs::read_to_string(display_catalog_destination())
+                .expect("read generated display catalog"),
+            display_catalog_pretty(),
+            "display catalog changed; run the export_display_catalog ignored test and commit the generated file"
+        );
+    }
+
+    #[test]
+    #[ignore = "explicitly regenerate the committed web display catalog"]
+    fn export_display_catalog() {
+        let path = display_catalog_destination();
+        std::fs::create_dir_all(path.parent().unwrap()).expect("create generated directory");
+        std::fs::write(path, display_catalog_pretty()).expect("write generated display catalog");
+    }
+
+    #[test]
+    fn display_catalog_export_lists_every_id_once() {
+        let entries: Vec<serde_json::Value> =
+            serde_json::from_str(&display_catalog_json().unwrap()).unwrap();
+        let ids: std::collections::BTreeSet<_> = entries
+            .iter()
+            .map(|entry| entry["id"].as_str().unwrap())
+            .collect();
+        let expected: std::collections::BTreeSet<_> =
+            pobr_core::display_catalog::display_catalog_ref()
+                .iter()
+                .map(|definition| definition.id.as_str())
+                .collect();
+        assert_eq!(ids.len(), entries.len(), "duplicate display stat id");
+        assert_eq!(
+            entries.len(),
+            pobr_core::display_catalog::display_catalog_ref().len()
+        );
+        assert_eq!(ids, expected);
+    }
 
     #[test]
     fn gem_catalog_names_survive_shared_base_names() {

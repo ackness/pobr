@@ -1,10 +1,14 @@
-import { describe, expect, it } from 'vitest';
-import type { DisplayStatValue } from '../../../api/types';
+import { beforeAll, describe, expect, it } from 'vitest';
+import type { DisplayCatalogEntry, DisplayStatValue } from '../../../api/types';
+import catalog from '../../../api/generated/display_catalog.json';
+import { setDisplayCatalog } from '../../../lib/statDisplay';
 import { compareStats } from '../../../lib/compare';
 import { collapseContext, countPhrase, defaultCompareTab, deltaTone, headlineDeltas, signedPercent, summaryLine, totalChanges, treeDifferenceCount, type DiffCounts } from './summary';
 
 const stat = (id: string, value: number): DisplayStatValue => ({ id, value, category: 'Offence' });
 const counts = (over: Partial<DiffCounts> = {}): DiffCounts => ({ stats: 0, items: 0, skills: 0, config: 0, tree: 0, ...over });
+
+beforeAll(() => setDisplayCatalog(catalog as DisplayCatalogEntry[]));
 
 describe('compare summary', () => {
   it('opens on the first part with a difference, otherwise on stats', () => {
@@ -33,7 +37,7 @@ describe('compare summary', () => {
     expect(deltaTone('ManaCost', -5)).toBe('better');
     expect(deltaTone('ManaCost', null)).toBe('neutral');
     expect(deltaTone('Life', 0)).toBe('neutral');
-    expect(deltaTone('AreaOfEffectMod', 4)).toBe('neutral');
+    expect(deltaTone('Flask1Duration', 4)).toBe('neutral');
   });
 
   it('picks the damage and survivability movements for the headline', () => {

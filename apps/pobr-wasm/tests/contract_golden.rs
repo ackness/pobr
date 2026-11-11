@@ -41,6 +41,28 @@ fn assert_keys(value: &Value, expected: &[&str], label: &str) {
 }
 
 #[test]
+fn display_catalog_json_shape() {
+    let json: Value =
+        serde_json::from_str(&pobr_wasm::display_catalog_json().expect("display catalog"))
+            .expect("valid json");
+    let entries = json.as_array().expect("catalog array");
+    assert!(!entries.is_empty());
+    for entry in entries {
+        assert_keys(
+            entry,
+            &["id", "category", "value_type", "higher_is_better"],
+            "DisplayCatalogEntry",
+        );
+        assert!(entry["id"].is_string());
+        assert!(entry["category"].is_string());
+        assert!(entry["value_type"].is_string());
+        assert!(entry["higher_is_better"].is_boolean() || entry["higher_is_better"].is_null());
+    }
+    // Drift against the committed web copy is checked by
+    // `build_api::catalog::tests::display_catalog_generated_copy_is_current`.
+}
+
+#[test]
 fn decode_build_json_shape() {
     let json: Value =
         serde_json::from_str(&pobr_wasm::decode_build_json(&demo_code()).expect("decode"))

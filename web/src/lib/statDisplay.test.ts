@@ -1,6 +1,25 @@
-import { describe, expect, test } from 'vitest';
-import { formatNumber, formatStatValue, statFormat, statMap, STAT_SECTIONS, formatStat } from './statDisplay';
+import { beforeAll, describe, expect, test } from 'vitest';
+import { formatNumber, formatStatValue, statFormat, statMap, STAT_SECTIONS, formatStat, setDisplayCatalog } from './statDisplay';
 import { statNameLabel } from './i18n';
+import catalog from '../api/generated/display_catalog.json';
+import type { DisplayCatalogEntry } from '../api/types';
+
+beforeAll(() => setDisplayCatalog(catalog as DisplayCatalogEntry[]));
+
+test('every catalog Percent stat uses the display percentage scale', () => {
+  const percentages = catalog.filter(entry => entry.value_type === 'Percent');
+  expect(percentages.length).toBeGreaterThan(100);
+  for (const entry of percentages) {
+    expect(statFormat(entry.id), entry.id).toBe('percent');
+    expect(formatStat(entry.id, 40), entry.id).toBe('40%');
+  }
+});
+
+test('retains numeric precision for seconds and neutral multiplier conversions', () => {
+  expect(formatStat('EHPSurvivalTime', 2.345)).toBe('2.35');
+  expect(formatStat('CritMultiplier', 1.5)).toBe('+50%');
+  expect(formatStat('CritBifurcates', 1.5)).toBe('50%');
+});
 
 describe('copied flask recovery labels', () => {
   test('both resources and their detail inputs have localized labels', () => {

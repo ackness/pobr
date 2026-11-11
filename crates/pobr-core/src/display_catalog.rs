@@ -872,96 +872,116 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "BounceCount",
         ),
-        computed("ReqStr", Cat::Requirement, Vt::Number, "ReqStr"),
-        computed("ReqDex", Cat::Requirement, Vt::Number, "ReqDex"),
-        computed("ReqInt", Cat::Requirement, Vt::Number, "ReqInt"),
+        computed("ReqStr", Cat::Requirement, Vt::Number, "ReqStr")
+            .with_higher_is_better(Some(false)),
+        computed("ReqDex", Cat::Requirement, Vt::Number, "ReqDex")
+            .with_higher_is_better(Some(false)),
+        computed("ReqInt", Cat::Requirement, Vt::Number, "ReqInt")
+            .with_higher_is_better(Some(false)),
         computed(
             "ManaPercentCost",
             Cat::SkillMechanics,
             Vt::Percent,
             "ManaPercentCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ManaPercentPerSecondCost",
             Cat::SkillMechanics,
             Vt::Percent,
             "ManaPercentPerSecondCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ManaPerSecondCost",
             Cat::SkillMechanics,
             Vt::Number,
             "ManaPerSecondCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "LifePercentCost",
             Cat::SkillMechanics,
             Vt::Percent,
             "LifePercentCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "LifePercentPerSecondCost",
             Cat::SkillMechanics,
             Vt::Percent,
             "LifePercentPerSecondCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "LifePerSecondCost",
             Cat::SkillMechanics,
             Vt::Number,
             "LifePerSecondCost",
-        ),
-        computed("ESCost", Cat::SkillMechanics, Vt::Number, "ESCost"),
+        )
+        .with_higher_is_better(Some(false)),
+        computed("ESCost", Cat::SkillMechanics, Vt::Number, "ESCost")
+            .with_higher_is_better(Some(false)),
         computed(
             "ESPercentCost",
             Cat::SkillMechanics,
             Vt::Percent,
             "ESPercentCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ESPercentPerSecondCost",
             Cat::SkillMechanics,
             Vt::Percent,
             "ESPercentPerSecondCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ESPerSecondCost",
             Cat::SkillMechanics,
             Vt::Number,
             "ESPerSecondCost",
-        ),
-        computed("WardCost", Cat::SkillMechanics, Vt::Number, "WardCost"),
+        )
+        .with_higher_is_better(Some(false)),
+        computed("WardCost", Cat::SkillMechanics, Vt::Number, "WardCost")
+            .with_higher_is_better(Some(false)),
         computed(
             "WardPercentCost",
             Cat::SkillMechanics,
             Vt::Percent,
             "WardPercentCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "WardPercentPerSecondCost",
             Cat::SkillMechanics,
             Vt::Percent,
             "WardPercentPerSecondCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "WardPerSecondCost",
             Cat::SkillMechanics,
             Vt::Number,
             "WardPerSecondCost",
-        ),
-        computed("RageCost", Cat::SkillMechanics, Vt::Number, "RageCost"),
+        )
+        .with_higher_is_better(Some(false)),
+        computed("RageCost", Cat::SkillMechanics, Vt::Number, "RageCost")
+            .with_higher_is_better(Some(false)),
         computed(
             "RagePerSecondCost",
             Cat::SkillMechanics,
             Vt::Number,
             "RagePerSecondCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "TotalTotemPlacementTime",
             Cat::SkillMechanics,
             Vt::TimeSeconds,
             "TotemPlacementTime",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed("TotemLife", Cat::SkillMechanics, Vt::Number, "TotemLife"),
         computed(
             "TotemArmour",
@@ -1074,7 +1094,8 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
             Cat::SkillMechanics,
             Vt::TimeSeconds,
             "TrapThrowingTime",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "TrapThrowCount",
             Cat::SkillMechanics,
@@ -1086,7 +1107,8 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
             Cat::SkillMechanics,
             Vt::TimeSeconds,
             "MineLayingTime",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "MineThrowCount",
             Cat::SkillMechanics,
@@ -1098,19 +1120,22 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
             Cat::SkillMechanics,
             Vt::TimeSeconds,
             "WarcryCastTime",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ChannelTime",
             Cat::SkillMechanics,
             Vt::TimeSeconds,
             "ChannelTime",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ChannelTimeToTrigger",
             Cat::SkillMechanics,
             Vt::TimeSeconds,
             "ChannelTimeToTrigger",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ArchonDuration",
             Cat::SkillMechanics,
@@ -1211,7 +1236,8 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
             Cat::Recovery,
             Vt::Number,
             "TotalBuildDegen",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "LifeLeechGainRate",
             Cat::Recovery,
