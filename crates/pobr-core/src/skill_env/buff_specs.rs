@@ -108,11 +108,19 @@ pub fn gem_judgements<'a>(
         .filter(|id| data.effect(id).is_some_and(|e| !e.is_support));
     std::iter::once(gem_skill_id)
         .chain(secondary)
-        .flat_map(|id| {
-            std::iter::once(group_judgement(group, data, id))
-                .chain(super::minions::minion_support_judgements(group, data, id))
-        })
+        .flat_map(|id| skill_judgements(group, data, id))
         .collect()
+}
+
+/// A support can apply to the skill itself or to one of its minion's skills.
+fn skill_judgements(
+    group: &EnabledGroup<'_>,
+    data: &(impl EffectLookup + MinionLookup + ?Sized),
+    skill_id: &str,
+) -> impl Iterator<Item = GroupSupportJudgement> {
+    std::iter::once(group_judgement(group, data, skill_id)).chain(
+        super::minions::minion_support_judgements(group, data, skill_id),
+    )
 }
 
 /// The first skill gem that accepts this support on any of its active
@@ -755,7 +763,8 @@ pub fn skill_inflicting_withered(
 }
 
 /// The first enabled active skill that inflicts Incision, on its own or
-/// through a compatible support. Its stacks help every skill cause Bleeding.
+/// through a compatible support on it or its minion's attacks. Its stacks
+/// help every skill cause Bleeding.
 pub fn skill_inflicting_incision(
     groups: &dyn SocketGroupView,
     data: &dyn BuffEnv,
@@ -772,7 +781,8 @@ pub fn skill_crushing_on_hit(groups: &dyn SocketGroupView, data: &dyn BuffEnv) -
 }
 
 /// The first enabled active skill of the build that has a non-zero stat
-/// `wanted` accepts, its own or that of a support that applies to it.
+/// `wanted` accepts, its own or that of a support that applies to it or a
+/// skill of one of its minions.
 fn skill_with_stat(
     groups: &dyn SocketGroupView,
     data: &dyn BuffEnv,
@@ -799,16 +809,15 @@ fn skill_with_stat(
                     continue;
                 }
                 let by_support = || {
-                    group_judgement(&group, data, skill_id)
-                        .compatible
-                        .iter()
+                    skill_judgements(&group, data, skill_id)
+                        .flat_map(|judgement| judgement.compatible)
                         .any(|sup| {
                             let host = &group.gems[sup.gem_index];
                             inflicts(
                                 &sup.effect_id,
                                 host.gem_level,
                                 host.quality,
-                                support_stat_set_index(sup, group.gems),
+                                support_stat_set_index(&sup, group.gems),
                             )
                         })
                 };
@@ -861,10 +870,7 @@ pub fn strongest_skill_blind(
                 // Protector, not the non-damaging summoning action. Resolve
                 // each minion skill separately: incompatible support payloads
                 // on different attacks must not be summed into one Blind.
-                let judgements = std::iter::once(group_judgement(&group, data, skill_id)).chain(
-                    super::minions::minion_support_judgements(&group, data, skill_id),
-                );
-                for judgement in judgements {
+                for judgement in skill_judgements(&group, data, skill_id) {
                     let by_supports: f64 = judgement
                         .compatible
                         .iter()

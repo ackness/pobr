@@ -525,23 +525,32 @@ fn incision_from_another_group_exposes_its_stack_configuration() {
         serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
             .unwrap()
     };
+    let visible = |request: &Value| {
+        calculate(request)["config_context"]["predicates"]["if_flag"]
+            ["Condition:CanInflictIncision"]
+            .clone()
+    };
     for support in ["SupportIncisionPlayer", "SupportBleedPlayerFour"] {
-        let mut supported = request.clone();
-        supported["socket_groups"][1]["gems"][1]["skill_id"] = support.into();
-        let visible = |request: &Value| {
-            calculate(request)["config_context"]["predicates"]["if_flag"]
-                ["Condition:CanInflictIncision"]
-                .clone()
-        };
-        // No saved stack input: the infliction flag alone exposes the option.
-        assert_eq!(visible(&supported), true, "{support}");
-        supported["config_inputs"] = serde_json::json!({ "multiplierIncisionStackCount": 10 });
-        assert_eq!(visible(&supported), true, "{support}");
-        supported["socket_groups"][1]["enabled"] = false.into();
-        assert_eq!(visible(&supported), false, "{support}");
-        supported["socket_groups"][1]["enabled"] = true.into();
-        supported["socket_groups"][1]["gems"][0]["skill_id"] = "EnfeeblePlayer".into();
-        assert_eq!(visible(&supported), false, "{support}");
+        for skill in ["MeleePlayer", "WolfPackPlayer", "WildProtectorPlayer"] {
+            let mut supported = request.clone();
+            supported["socket_groups"][1]["gems"][0]["skill_id"] = skill.into();
+            supported["socket_groups"][1]["gems"][1]["skill_id"] = support.into();
+            // No saved stack input: the infliction flag alone exposes the option.
+            assert_eq!(visible(&supported), true, "{skill}: {support}");
+            supported["config_inputs"] = serde_json::json!({ "multiplierIncisionStackCount": 10 });
+            assert_eq!(visible(&supported), true, "{skill}: {support}");
+            for gem in 0..2 {
+                supported["socket_groups"][1]["gems"][gem]["enabled"] = false.into();
+                // With minions present, an absent actor flag stays unknown.
+                assert_ne!(visible(&supported), true, "{skill}: {support}: gem {gem}");
+                supported["socket_groups"][1]["gems"][gem]["enabled"] = true.into();
+            }
+            supported["socket_groups"][1]["enabled"] = false.into();
+            assert_eq!(visible(&supported), false, "{skill}: {support}");
+            supported["socket_groups"][1]["enabled"] = true.into();
+            supported["socket_groups"][1]["gems"][0]["skill_id"] = "EnfeeblePlayer".into();
+            assert_eq!(visible(&supported), false, "{skill}: {support}");
+        }
     }
 }
 
