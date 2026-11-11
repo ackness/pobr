@@ -22,7 +22,7 @@
 use pobr_data::constants::ATTACK_DAMAGE_MORE_PER_RAGE;
 use pobr_data::prelude::*;
 
-use crate::Modifier;
+use crate::{CalcConfig, ModDb, Modifier};
 
 use super::Env;
 
@@ -32,21 +32,69 @@ const RAGE_SOURCE: &str = "Rage";
 /// Applies the character's Rage. Does nothing out of combat or for a
 /// character that cannot gain Rage.
 pub fn apply_rage(env: &mut Env) {
-    let db = &env.player.mod_db;
-    let cfg = &env.cfg;
-    if !cfg.mode_combat {
+    apply_actor_rage(&mut env.player.mod_db, &mut env.cfg);
+}
+
+/// Applies the Rage of one actor (the character or a minion), from its own
+/// modifiers and calculation context. Every actor that can gain Rage holds
+/// its own: a minion's comes from its own stated Rage, never the character's.
+pub(crate) fn apply_actor_rage(db: &mut ModDb, cfg: &mut CalcConfig) {
+    let Some(state) = rage_state(db, cfg) else {
         return;
+    };
+    let applied = db
+        .named("Damage")
+        .any(|modifier| modifier.source.as_deref() == Some(RAGE_SOURCE));
+    if !applied && state.effective != 0.0 {
+        let origin = ModifierSource::new(SourceId::new(SourceKind::Buff, "buff.Rage"))
+            .with_raw_text(format!("{} Rage", state.rage));
+        db.add_mod(
+            Modifier::number(
+                "Damage",
+                ModType::More,
+                state.effective * ATTACK_DAMAGE_MORE_PER_RAGE,
+            )
+            .with_flags(state.flags)
+            .with_source(RAGE_SOURCE)
+            .with_origin(origin),
+        );
+    }
+    state.write(cfg);
+}
+
+/// What an actor's Rage comes to.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct RageState {
+    rage: f64,
+    effective: f64,
+    maximum: f64,
+    flags: ModFlags,
+}
+
+impl RageState {
+    /// Writes the multipliers, stat and condition the rest of the
+    /// calculation reads.
+    pub(crate) fn write(&self, cfg: &mut CalcConfig) {
+        cfg.multipliers.insert("Rage".into(), self.rage);
+        cfg.multipliers.insert("RageEffect".into(), self.effective);
+        cfg.stats.insert("Rage".into(), self.rage);
+        if self.rage > 0.0 && self.rage >= self.maximum {
+            cfg.conditions.insert("HaveMaximumRage".into(), true);
+        }
+    }
+}
+
+/// An actor's Rage, or `None` out of combat or when it cannot gain Rage.
+pub(crate) fn rage_state(db: &ModDb, cfg: &CalcConfig) -> Option<RageState> {
+    if !cfg.mode_combat {
+        return None;
     }
     let rage_name = [ModName::from("RageRegen")];
     let can_gain = db.flag(cfg, "Condition:CanGainRage")
         || cfg.condition("CanGainRage")
         || db.sum(ModType::Base, cfg, &rage_name) > 0.0;
-    if !can_gain
-        || db
-            .named("Damage")
-            .any(|modifier| modifier.source.as_deref() == Some(RAGE_SOURCE))
-    {
-        return;
+    if !can_gain {
+        return None;
     }
 
     let scaled = |name: &str, base: f64| {
@@ -84,27 +132,12 @@ pub fn apply_rage(env: &mut Env) {
     } else {
         ModFlags::ATTACK
     };
-
-    if effective != 0.0 {
-        let origin = ModifierSource::new(SourceId::new(SourceKind::Buff, "buff.Rage"))
-            .with_raw_text(format!("{rage} Rage"));
-        env.player.mod_db.add_mod(
-            Modifier::number(
-                "Damage",
-                ModType::More,
-                effective * ATTACK_DAMAGE_MORE_PER_RAGE,
-            )
-            .with_flags(flags)
-            .with_source(RAGE_SOURCE)
-            .with_origin(origin),
-        );
-    }
-    env.cfg.multipliers.insert("Rage".into(), rage);
-    env.cfg.multipliers.insert("RageEffect".into(), effective);
-    env.cfg.stats.insert("Rage".into(), rage);
-    if rage > 0.0 && rage >= maximum {
-        env.cfg.conditions.insert("HaveMaximumRage".into(), true);
-    }
+    Some(RageState {
+        rage,
+        effective,
+        maximum,
+        flags,
+    })
 }
 
 #[cfg(test)]

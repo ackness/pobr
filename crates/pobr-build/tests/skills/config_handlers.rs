@@ -527,31 +527,86 @@ fn consecrated_ground_creation_properties_are_local_even_when_the_charm_is_inact
     assert!(!session.has_flag("Condition:OnConsecratedGround"));
 }
 
+const ARSONISTS: &str = "SummonSkeletalArsonistsPlayer";
+const WARRIORS: &str = "SummonSkeletalWarriorsPlayer";
+/// The Skeletal Reaver can gain Rage.
+const REAVERS: &str = "SummonSkeletalReaversPlayer";
+
+/// A level 90 Witch whose main skill summons `skill`, with config `inputs`
+/// and the extra player lines `texts`.
+fn minion_build(
+    skill: &str,
+    inputs: &[(&str, pobr_core::rules::config_interpreter::ConfigInputValue)],
+) -> pobr_build::Build {
+    let mut build = parse_build(&format!(
+        r#"<PathOfBuilding2>
+<Build level="90" className="Witch" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="{skill}" level="20" enabled="true"/></Skill></Skills>
+</PathOfBuilding2>"#
+    ))
+    .unwrap();
+    for (name, value) in inputs {
+        build
+            .config
+            .raw_inputs
+            .values
+            .insert((*name).into(), value.clone());
+    }
+    build
+}
+
+fn texts_options(texts: &[&str]) -> DataOrchestratorOptions {
+    DataOrchestratorOptions {
+        extra_modifier_texts: texts.iter().map(|text| text.to_string()).collect(),
+        ..Default::default()
+    }
+}
+
+fn minion_session(
+    data: &BuildData,
+    skill: &str,
+    inputs: &[(&str, pobr_core::rules::config_interpreter::ConfigInputValue)],
+    texts: &[&str],
+) -> pobr_core::calc::CompletedCalculationSession {
+    pobr_build::calculate_with_data_session(
+        &minion_build(skill, inputs),
+        data,
+        &texts_options(texts),
+    )
+    .unwrap()
+}
+
 fn minion_with_onslaught(
     data: &BuildData,
     enabled: bool,
 ) -> pobr_core::calc::CompletedCalculationSession {
-    use pobr_build::calculate_with_data_session;
     use pobr_core::rules::config_interpreter::ConfigInputValue;
-
-    let mut build = parse_build(
-        r#"<PathOfBuilding2>
-<Build level="90" className="Witch" mainSocketGroup="1"/>
-<Skills><Skill enabled="true"><Gem skillId="SummonSkeletalArsonistsPlayer" level="20" enabled="true"/></Skill></Skills>
-</PathOfBuilding2>"#,
+    minion_session(
+        data,
+        ARSONISTS,
+        &[("minionBuffOnslaught", ConfigInputValue::Bool(enabled))],
+        &[],
     )
-    .unwrap();
-    build.config.raw_inputs.values.insert(
-        "minionBuffOnslaught".into(),
-        ConfigInputValue::Bool(enabled),
+}
+
+/// `(action rate, DPS)` of the first minion.
+fn minion_speed_and_dps(session: &pobr_core::calc::CompletedCalculationSession) -> (f64, f64) {
+    let minion = session.minion_output(0).expect("minion output");
+    (minion.action_rate, minion.dps)
+}
+
+fn assert_ratio(label: &str, before: f64, after: f64, ratio: f64) {
+    assert!(before > 0.0, "{label}: {before}");
+    assert!(
+        (after / before - ratio).abs() < 1e-6,
+        "{label}: {before} -> {after}, expected x{ratio}"
     );
-    calculate_with_data_session(&build, data, &Default::default()).unwrap()
 }
 
 #[test]
 fn minion_onslaught_config_reaches_the_minions_modifiers() {
     let data = data();
-    for enabled in [false, true, false] {
+    for enabled in [false, true] {
         let session = minion_with_onslaught(data, enabled);
         let modifiers = session.minion_stat_mods(0, "Condition:Onslaught");
         let source_id = "config.minionBuffOnslaught";
@@ -567,28 +622,183 @@ fn minion_onslaught_config_reaches_the_minions_modifiers() {
         assert_eq!(configured.len(), usize::from(enabled));
         if enabled {
             assert_eq!(configured[0].modifier.value.as_bool(), Some(true));
+            // The option is stated in combat: the minion is in combat too.
+            assert!(configured[0].active, "{:?}", configured[0]);
         }
         assert!(session.mods_named("Condition:Onslaught").is_empty());
     }
 }
 
+/// Onslaught is 20% increased Attack and Cast Speed: once, on the minion.
 #[test]
-#[ignore = "minion misc-buff expansion is not implemented; config forwarding alone cannot grant Onslaught"]
 fn minion_onslaught_config_increases_minion_speed_and_dps() {
     let data = data();
-    let mut outputs = Vec::new();
-    for enabled in [false, true, false] {
-        let session = minion_with_onslaught(data, enabled);
-        let minion = session.minion_output(0).expect("skeletal arsonist output");
-        outputs.push((minion.action_rate, minion.dps));
-    }
-    let (plain, onslaught, unchecked) = (outputs[0], outputs[1], outputs[2]);
-    assert!(plain.0 > 0.0 && plain.1 > 0.0);
-    assert!(
-        onslaught.0 > plain.0 && onslaught.1 > plain.1,
-        "minion speed/DPS: {plain:?} -> {onslaught:?}"
+    let plain = minion_with_onslaught(data, false);
+    let onslaught = minion_with_onslaught(data, true);
+    let (before, after) = (
+        minion_speed_and_dps(&plain),
+        minion_speed_and_dps(&onslaught),
     );
-    assert_eq!(unchecked, plain);
+    assert_ratio("action rate", before.0, after.0, 1.2);
+    assert_ratio("DPS", before.1, after.1, 1.2);
+    // The detail views rebuild the minion's context and must agree with it.
+    for session in [&plain, &onslaught] {
+        let formula = session.minion_stat_formula(0, "TotalDPS");
+        assert!(formula.is_some(), "the minion's DPS steps match its output");
+    }
+}
+
+/// How an option shows on the minion.
+enum MinionOutcome {
+    /// Its action rate and DPS scale by these factors.
+    Scales(f64, f64),
+    /// Nothing reads these of its modifiers on the minion: the ledger lists
+    /// the option as unread, naming them.
+    Unread(&'static [&'static str]),
+    /// A state of the minion nothing in the build asks for: no effect here.
+    NotAsked(&'static str),
+}
+
+/// Every option that configures the minions, with what the game gives:
+/// the buffs and conditions take effect on the minion only, against a line
+/// that reads them where the build has none of its own. Each charge option
+/// sets `Use<Kind>Charges`, a name no calculation reads (the charge rules
+/// read the `Condition:` form), so it stays unread in the ledger rather
+/// than taking effect silently or wrongly. Minion Rage counts only for a
+/// minion that can gain Rage, such as the Skeletal Reaver; for any other the
+/// option has no effect.
+#[test]
+fn every_minion_config_option_takes_effect_on_the_minion_or_is_reported_unread() {
+    use pobr_build::usage::{LineStatus, ModifierStatus};
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+
+    let data = data();
+    let on = |name: &'static str| (name, ConfigInputValue::Bool(true));
+    let count = |name: &'static str| (name, ConfigInputValue::Number(2.0));
+    let per_charge: &[&str] = &[
+        "Minions deal 10% increased Damage per Power Charge",
+        "Minions deal 10% increased Damage per Frenzy Charge",
+        "Minions deal 10% increased Damage per Endurance Charge",
+    ];
+    #[rustfmt::skip]
+    let cases: Vec<(&str, Vec<(&str, ConfigInputValue)>, &str, &[&str], MinionOutcome)> = vec![
+        ("minionBuffOnslaught", vec![on("minionBuffOnslaught")], ARSONISTS, &[], MinionOutcome::Scales(1.2, 1.2)),
+        // 30% of the Warriors' all-Physical hit as extra Chaos.
+        ("minionbuffChaoticMight", vec![on("minionbuffChaoticMight")], WARRIORS, &[], MinionOutcome::Scales(1.0, 1.3)),
+        ("minionbuffUnholyMight", vec![on("minionbuffUnholyMight")], WARRIORS, &[], MinionOutcome::Scales(1.0, 1.3)),
+        ("minionsConditionFullLife", vec![on("minionsConditionFullLife")], ARSONISTS,
+            &["Minions deal 50% increased Damage while on Full Life"], MinionOutcome::Scales(1.0, 1.5)),
+        ("minionsConditionFullEnergyShield", vec![on("minionsConditionFullEnergyShield")], ARSONISTS,
+            &["Minions have 10% increased Attack Speed while on Full Energy Shield"], MinionOutcome::Scales(1.1, 1.1)),
+        ("minionsConditionLeechingEnergyShield", vec![on("minionsConditionLeechingEnergyShield")], ARSONISTS,
+            &["Minions deal 20% increased Damage while Leeching"], MinionOutcome::Scales(1.0, 1.2)),
+        ("minionsUsePowerCharges", vec![on("minionsUsePowerCharges")], ARSONISTS, per_charge,
+            MinionOutcome::Unread(&["UsePowerCharges"])),
+        ("minionsUseFrenzyCharges", vec![on("minionsUseFrenzyCharges")], ARSONISTS, per_charge,
+            MinionOutcome::Unread(&["UseFrenzyCharges"])),
+        ("minionsUseEnduranceCharges", vec![on("minionsUseEnduranceCharges")], ARSONISTS, per_charge,
+            MinionOutcome::Unread(&["UseEnduranceCharges"])),
+        ("minionsOverridePowerCharges", vec![on("minionsUsePowerCharges"), count("minionsOverridePowerCharges")],
+            ARSONISTS, per_charge, MinionOutcome::Unread(&["PowerCharges"])),
+        ("minionsOverrideFrenzyCharges", vec![on("minionsUseFrenzyCharges"), count("minionsOverrideFrenzyCharges")],
+            ARSONISTS, per_charge, MinionOutcome::Unread(&["FrenzyCharges"])),
+        ("minionsOverrideEnduranceCharges", vec![on("minionsUseEnduranceCharges"), count("minionsOverrideEnduranceCharges")],
+            ARSONISTS, per_charge, MinionOutcome::Unread(&["EnduranceCharges"])),
+        // 20 Rage: 20% more Attack damage for the Reaver.
+        ("multiplierMinionRage", vec![("multiplierMinionRage", ConfigInputValue::Number(20.0))], REAVERS, &[],
+            MinionOutcome::Scales(1.0, 1.2)),
+        // A minion that cannot gain Rage has none: nothing asks for it.
+        ("multiplierMinionRage", vec![("multiplierMinionRage", ConfigInputValue::Number(20.0))], ARSONISTS, &[],
+            MinionOutcome::NotAsked("Multiplier:RageStack")),
+    ];
+    let options: std::collections::BTreeSet<_> = cases.iter().map(|case| case.0).collect();
+    assert_eq!(options.len(), 13);
+    for (option, inputs, skill, texts, outcome) in cases {
+        let plain = minion_speed_and_dps(&minion_session(data, skill, &[], texts));
+        let session = minion_session(data, skill, &inputs, texts);
+        let configured = minion_speed_and_dps(&session);
+        let build = minion_build(skill, &inputs);
+        let diagnosis = pobr_build::diagnose(&build, data, &texts_options(texts)).unwrap();
+        let ledger = pobr_build::usage::line_usage(&diagnosis, &build, data);
+        let source_id = format!("config.{option}");
+        let lines: Vec<_> = ledger
+            .lines
+            .iter()
+            .filter(|line| line.source_id.as_deref() == Some(source_id.as_str()))
+            .collect();
+        assert!(!lines.is_empty(), "{option}: no ledger line");
+        match outcome {
+            MinionOutcome::Scales(rate, dps) => {
+                assert_ratio(
+                    &format!("{option} action rate"),
+                    plain.0,
+                    configured.0,
+                    rate,
+                );
+                assert_ratio(&format!("{option} DPS"), plain.1, configured.1, dps);
+                for line in lines {
+                    assert_eq!(line.status, LineStatus::Applied, "{option}: {line:#?}");
+                }
+            }
+            MinionOutcome::NotAsked(name) => {
+                assert_eq!(configured, plain, "{option}");
+                for line in &lines {
+                    assert_eq!(line.status, LineStatus::NoEffect, "{option}: {line:#?}");
+                    assert!(format!("{line:?}").contains(name), "{option}: {line:#?}");
+                }
+            }
+            MinionOutcome::Unread(names) => {
+                assert_eq!(configured, plain, "{option}");
+                for line in &lines {
+                    assert_eq!(line.status, LineStatus::Unread, "{option}: {line:#?}");
+                }
+                let modifiers: Vec<_> = lines.iter().flat_map(|line| &line.modifiers).collect();
+                for name in names {
+                    assert!(
+                        modifiers.iter().any(|modifier| {
+                            modifier.status == ModifierStatus::Unread
+                                && modifier.reason.as_deref().is_some_and(|reason| {
+                                    reason.contains("no minion's calculation reads")
+                                        && reason.contains(name)
+                                })
+                        }),
+                        "{option}: {modifiers:#?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// The character's own state is not its minions': being on Full Life,
+/// Leeching, having Onslaught, Chaotic or Unholy Might, Power Charges or
+/// Rage leaves a minion's output as it was.
+#[test]
+fn the_characters_buffs_charges_and_conditions_do_not_reach_its_minions() {
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+
+    let data = data();
+    let texts: &[&str] = &[
+        "Minions deal 50% increased Damage while on Full Life",
+        "Minions deal 20% increased Damage while Leeching",
+        "Minions deal 10% increased Damage per Power Charge",
+    ];
+    for skill in [ARSONISTS, WARRIORS] {
+        let plain = minion_speed_and_dps(&minion_session(data, skill, &[], texts));
+        for (option, value) in [
+            ("conditionFullLife", ConfigInputValue::Bool(true)),
+            ("conditionLeeching", ConfigInputValue::Bool(true)),
+            ("buffOnslaught", ConfigInputValue::Bool(true)),
+            ("buffChaoticMight", ConfigInputValue::Bool(true)),
+            ("buffUnholyMight", ConfigInputValue::Bool(true)),
+            ("usePowerCharges", ConfigInputValue::Bool(true)),
+            ("multiplierRage", ConfigInputValue::Number(20.0)),
+            ("conditionAffectedByArchon", ConfigInputValue::Bool(true)),
+        ] {
+            let session = minion_session(data, skill, &[(option, value)], texts);
+            assert_eq!(minion_speed_and_dps(&session), plain, "{skill} {option}");
+        }
+    }
 }
 
 #[test]

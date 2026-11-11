@@ -578,6 +578,9 @@ mod tests {
         );
     }
 
+    /// Both ways an option gives a minion a modifier reach the minions: a
+    /// player effect wrapping it in `MinionModifier` and an effect that
+    /// targets the minion directly (`conditionMinionsOnConsecratedGround`).
     #[test]
     fn every_catalog_minion_modifier_is_forwarded_once_with_attribution() {
         use pobr_data::catalog::config_def::ConfigInputType;
@@ -585,13 +588,20 @@ mod tests {
 
         let catalog = load_catalog();
         let mut checked = 0;
+        let mut direct = 0;
         for def in &catalog.options {
             let expected_count = def
                 .effects
                 .iter()
                 .filter(|effect| {
-                    effect.target == EffectTarget::Player && effect.name == "MinionModifier"
+                    (effect.target == EffectTarget::Player && effect.name == "MinionModifier")
+                        || effect.target == EffectTarget::Minion
                 })
+                .count();
+            direct += def
+                .effects
+                .iter()
+                .filter(|effect| effect.target == EffectTarget::Minion)
                 .count();
             if expected_count == 0 {
                 continue;
@@ -646,9 +656,10 @@ mod tests {
             checked += 1;
         }
         assert!(
-            checked >= 13,
+            checked >= 14,
             "expected the minion config catalog, checked {checked}"
         );
+        assert!(direct >= 1, "expected a config effect that targets minions");
     }
 
     /// Enemy condition bridge: `conditionEnemyChilled` → enemy bucket FLAG → cfg
