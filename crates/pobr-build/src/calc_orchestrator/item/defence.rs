@@ -5,13 +5,11 @@ use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::ModType;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
-use super::super::item::weapon::{
-    clean_item_text, item_local_defence_flat, item_local_defence_inc, weapon_mod_texts,
-};
+use super::super::item::weapon::{clean_item_text, weapon_mod_texts};
 use crate::build::Build;
 use crate::build_data::BuildData;
 use pobr_core::ModTag;
-use pobr_core::skill_env::parse_local_block_chance;
+use pobr_core::skill_env::{item_local_defences, parse_local_block_chance};
 
 /// Injects each item's local defence values as slot-tagged BASE modifiers.
 /// Known bases are recomputed from the game's base value, local flat/increased
@@ -39,7 +37,7 @@ pub(crate) fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Mod
             );
         }
 
-        let Some(values) = item_rolled_defence(item, data, level) else {
+        let Some(values) = item_local_defences(item, data, level) else {
             continue;
         };
         for (idx, name) in [(0, "Armour"), (1, "Evasion"), (2, "EnergyShield")] {
@@ -214,94 +212,10 @@ pub(crate) fn item_ward_modifiers(build: &Build, data: &BuildData) -> Vec<Modifi
     mods
 }
 
-/// A single item's per-item defence base values `[armour, evasion, energy_shield]`
-/// (already includes local increased + quality + flat).
-///
-/// Prefers the rolled line exported in the item text (`item.rolled_defence`, already
-/// computed by PoB per item); falls back to the base item's default value × local
-/// increased × quality + local flat when missing (a fallback semantics for bare items /
-/// test fixtures). Returns `None` for a non-armour item (no base armour entry and no
-/// rolled defence line at all).
-///
-/// Shared with [`defence_base_modifiers`], and also used to fetch values for per-slot
-/// defence scaling (the `<Stat>On<Slot>` multiplier) — both use the same per-item base value semantics.
-pub(crate) fn item_rolled_defence(item: &Item, data: &BuildData, level: u32) -> Option<[f64; 3]> {
-    let base_default = data.armour_base(&item.base.to_string());
-    let rolled = &item.rolled_defence;
-    // Per-level base value (`Has +N to <Defence> per player level`, PoB2's
-    // `<X>PerLevel`): makes this item count as a defensive item even without any
-    // rolled/base defence (e.g. the purely-implicit unique gloves Pain Caress).
-    let per_level = item_per_level_defence(item);
-    let has_per_level = per_level.iter().any(|&v| v > 0.0);
-    if base_default.is_none()
-        && rolled.armour.is_none()
-        && rolled.evasion.is_none()
-        && rolled.energy_shield.is_none()
-        && !has_per_level
-    {
-        return None;
-    }
-    let quality_pct = f64::from(item.quality);
-    let local_pct = item_local_defence_inc(item);
-    let local_flat = item_local_defence_flat(item);
-    let entries = [
-        (rolled.armour, base_default.map(|a| a.armour)),
-        (rolled.evasion, base_default.map(|a| a.evasion)),
-        (rolled.energy_shield, base_default.map(|a| a.energy_shield)),
-    ];
-    let mut out = [0.0; 3];
-    for (idx, (rolled_val, default_val)) in entries.into_iter().enumerate() {
-        let base = f64::from(default_val.unwrap_or(0)) + local_flat[idx];
-        let recompute = if base <= 0.0 {
-            0.0
-        } else {
-            base * (1.0 + local_pct[idx] / 100.0) * (1.0 + quality_pct / 100.0)
-        };
-        // PoB2 always recomputes the three defences from the base item DB as
-        // `round((base+flat) × (1+localInc/100) × (1+quality/100))` (Item.lua:1994-1996),
-        // never trusting the item text's `Armour:/Evasion:/Energy Shield: N` display
-        // lines — those lines can lag behind the current data version's base values
-        // (confirmed divergence between cross-version recompute and import-time display
-        // values: titan ES gloves 26→28 / boots 15→27 = 41→55; after the 0.5.4b
-        // Runeforged base armour buff, titan gloves 96→101 / helmet 192→284 / boots
-        // 58→100, Gear:Armour 6100→6239, matching vendor). Recomputed when the base is
-        // known (matching vendor's rounding); falls back to the rolled line when the
-        // base isn't in the catalog (never invented).
-        out[idx] = if default_val.is_some() {
-            recompute.round()
-        } else {
-            rolled_val.unwrap_or(recompute)
-        };
-        // Per-level base value layered on (PoB2's `GetArmourDataValue` = base + PerLevel × level).
-        // PoB2's `armourData.<X>PerLevel` also picks up that item's local inc/quality (Item.lua 1821-1822).
-        if per_level[idx] > 0.0 {
-            out[idx] += per_level[idx]
-                * f64::from(level)
-                * (1.0 + local_pct[idx] / 100.0)
-                * (1.0 + quality_pct / 100.0);
-        }
-    }
-    Some(out)
-}
-
-/// A single item's per-level defence **rate coefficients** `[armour, evasion, es]`
-/// (+N per level, PoB2's `<X>PerLevel`), parsed from `Has +N to <Defence> per player
-/// level` (see mod_parser's `parse_has_defence_per_level`). The caller folds this into
-/// the per-item base value by `× level`.
-pub(crate) fn item_per_level_defence(item: &Item) -> [f64; 3] {
-    pobr_core::skill_env::item_per_level_defence(item)
-}
-
-/// Parses "has +N to <armour/evasion rating/maximum energy shield> per player level" →
-/// `[armour, evasion, es]` (+N per level). Returns `None` for any other form.
-pub(crate) fn parse_has_per_level_defence(clean: &str) -> Option<[f64; 3]> {
-    pobr_core::skill_env::parse_has_per_level_defence(clean)
-}
-
 /// Per-slot defence scaling multipliers `<Stat>On<SlotId>` (PoB2's PerStat, e.g.
 /// `EnergyShieldOnboots`).
 ///
-/// For each item's per-item defence base value ([`item_rolled_defence`]), builds a
+/// For each item's per-item defence base value ([`item_local_defences`]), builds a
 /// multiplier key from `Armour/Evasion/EnergyShield` × that item's slot id, for mods
 /// like `+N to <stat> per M <defence> on equipped <slot>` (parsed as
 /// `ModTag::Multiplier{var, div}`) to expand by count/div during perform. Generic:
@@ -310,7 +224,7 @@ pub(crate) fn per_slot_defence_multipliers(build: &Build, data: &BuildData) -> V
     let mut out = Vec::new();
     let level = build.character.level;
     for (slot, item) in &build.items {
-        let Some(values) = item_rolled_defence(item, data, level) else {
+        let Some(values) = item_local_defences(item, data, level) else {
             continue;
         };
         let slot_id = slot.id();
@@ -323,7 +237,7 @@ pub(crate) fn per_slot_defence_multipliers(build: &Build, data: &BuildData) -> V
         // = min(item armour base, item evasion base)` — consumed by PerStat mods
         // (e.g. the boots AilmentThreshold per lowest, Strong Chin's Stun Threshold
         // per lowest on helmet). The values are the item's local final defences
-        // (item_rolled_defence: base + local flat, × local inc, × quality, before
+        // (item_local_defences: base + local flat, × local inc, × quality, before
         // global scaling), not the base type's values — the game text ("Evasion
         // and Armour on your Helmet") is the helmet's displayed values, and the
         // stat name's "base" is the pre-global item base. When min≤0, a missing key is

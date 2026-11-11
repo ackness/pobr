@@ -109,7 +109,9 @@ Makeshift Crossbow
 #[test]
 fn magma_spray_uses_its_fire_base_and_complete_groups_of_shield_defence() {
     let data = crate::test_data();
+    let base_armour = data.armour_base("Splintered Tower Shield").unwrap().armour;
     let run = |armour: u32| {
+        let local_flat = armour - base_armour;
         let build = parse_build(&format!(
             r#"<PathOfBuilding2><Build level="90" className="Witch"/>
 <Skills><Skill mainActiveSkill="2"><Gem skillId="MagmaBarrierPlayer" level="20"/></Skill></Skills>
@@ -117,6 +119,7 @@ fn magma_spray_uses_its_fire_base_and_complete_groups_of_shield_defence() {
 Splintered Tower Shield
 Armour: {armour}
 Implicits: 0
++{local_flat} to Armour
 </Item><ItemSet id="1"><Slot name="Weapon 2" itemId="1"/></ItemSet></Items></PathOfBuilding2>"#
         ))
         .unwrap();
@@ -129,11 +132,17 @@ Implicits: 0
     };
     // off_hand_weapon_*_fire_damage = 103–155 at level 20;
     // off_hand_*_added_fire_damage_per_15_shield_armour = 5–7.
-    let bare = run(0);
+    let groups = base_armour / 15;
+    let boundary = (groups + 1) * 15;
+    let bare = run(base_armour);
     assert!(bare.output().dps > 0.0);
-    assert_eq!(run(14).output().total_hit_avg, bare.output().total_hit_avg);
-    let ratio = run(15).output().total_hit_avg / bare.output().total_hit_avg;
-    assert!((ratio - (129.0 + 6.0) / 129.0).abs() < 1e-9, "{ratio}");
+    assert_eq!(
+        run(boundary - 1).output().total_hit_avg,
+        bare.output().total_hit_avg
+    );
+    let ratio = run(boundary).output().total_hit_avg / bare.output().total_hit_avg;
+    let expected = (129.0 + 6.0 * f64::from(groups + 1)) / (129.0 + 6.0 * f64::from(groups));
+    assert!((ratio - expected).abs() < 1e-9, "{ratio}");
 }
 
 #[test]

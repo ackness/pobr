@@ -436,7 +436,7 @@ pub(super) fn stage_build_cfg(
         .items
         .get(&EquipmentSlot::Helmet)
         .and_then(|item| {
-            super::item::defence::item_rolled_defence(item, data, build.character.level)
+            pobr_core::skill_env::item_local_defences(item, data, build.character.level)
         })
         .unwrap_or_default();
     cfg = cfg

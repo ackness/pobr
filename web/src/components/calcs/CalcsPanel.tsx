@@ -22,7 +22,7 @@ import type {
   CalculateBuildResponse,
 } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { formatNumber, statFormat, statMap, metricMeaning, formatStat } from '../../lib/statDisplay';
+import { displayStatDefinition, formatNumber, statFormat, statMap, metricMeaning, formatStat } from '../../lib/statDisplay';
 import { mainMinion } from '../../lib/mainMinion';
 import {
   bindT,
@@ -1175,16 +1175,16 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
       });
     const byCat = new Map<string, string[]>();
     for (const name of filteredNames) {
-      const cat = catOf.get(name) ?? 'Other';
+      const cat = displayStatDefinition(name)?.category ?? catOf.get(name) ?? 'Other';
       if (!byCat.has(cat)) byCat.set(cat, []);
       byCat.get(cat)!.push(name);
     }
     const CAT_ORDER: string[] = [
       'Offence', 'HitDamage', 'DotDamage', 'Ailment', 'SkillMechanics',
       'Defence', 'Resistance', 'Avoidance', 'Mitigation',
-      'Resource', 'Recovery', 'Degen', 'Cost', 'Requirement', 'Minion', 'Utility', 'Other',
+      'Resource', 'Recovery', 'Degen', 'Cost', 'Requirement', 'Minion', 'Enemy', 'Utility', 'Misc', 'Other',
     ];
-    return CAT_ORDER.filter((c) => byCat.has(c)).map((category) => ({
+    return [...new Set([...CAT_ORDER, ...byCat.keys()])].filter((c) => byCat.has(c)).map((category) => ({
       category,
       names: byCat.get(category)!,
     }));

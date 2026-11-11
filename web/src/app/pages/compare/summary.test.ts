@@ -33,7 +33,8 @@ describe('compare summary', () => {
     expect(deltaTone('ManaCost', -5)).toBe('better');
     expect(deltaTone('ManaCost', null)).toBe('neutral');
     expect(deltaTone('Life', 0)).toBe('neutral');
-    expect(deltaTone('AreaOfEffectMod', 4)).toBe('neutral');
+    expect(deltaTone('UnknownStat', 4)).toBe('neutral');
+    expect(deltaTone('Charm1Duration', 4)).toBe('better');
   });
 
   it('picks the damage and survivability movements for the headline', () => {

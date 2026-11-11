@@ -118,6 +118,21 @@ function panel(calc: Partial<CalculateBuildResponse>, lang: Lang = 'en-US', focu
   </TooltipProvider></UiProvider>);
 }
 
+test('Calcs keeps Misc and future categories after the preferred categories', () => {
+  const html = panel({ stats: [
+    { id: 'FutureStat', category: 'FutureCategory', value: 2 },
+    { id: 'GemLevel', category: 'Misc', value: 20 },
+    { id: 'Life', category: 'Resource', value: 100 },
+  ] as unknown as CalculateBuildResponse['stats'] }).replace(/<!--.*?-->/g, '');
+  expect(html).toContain('FutureCategory (1)');
+  expect(html).toContain('Miscellaneous (1)');
+  expect(html.indexOf('Resources (1)')).toBeLessThan(html.indexOf('Miscellaneous (1)'));
+  expect(html.indexOf('Miscellaneous (1)')).toBeLessThan(html.indexOf('FutureCategory (1)'));
+  const future = panel({ stats: [{ id: 'FutureStat', category: 'FutureCategory', value: 2 }] as unknown as CalculateBuildResponse['stats'] });
+  expect(future).toContain('id="breakdown-FutureStat"');
+  expect(panel({ stats: [{ id: 'GemLevel', category: 'Misc', value: 20 }] })).toContain('id="breakdown-GemLevel"');
+});
+
 test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('Calcs shows honest empty states without a kind badge in %s', lang => {
   const tt = bindT(lang);
   for (const kind of ['steps', 'derived', 'none'] as DetailKind[]) {

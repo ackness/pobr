@@ -30,14 +30,13 @@ use super::collect::{
 use super::conditions::grenade_type_count;
 use super::context::CalculationContext;
 use super::item::defence::{
-    defence_base_modifiers, is_local_spirit_mod, item_per_level_defence, item_spirit_modifiers,
-    item_ward_modifiers, parse_has_per_level_defence, per_slot_defence_multipliers,
-    per_slot_socket_multipliers, shield_base_block, shield_block_modifiers,
+    defence_base_modifiers, is_local_spirit_mod, item_spirit_modifiers, item_ward_modifiers,
+    per_slot_defence_multipliers, per_slot_socket_multipliers, shield_base_block,
+    shield_block_modifiers,
 };
 use super::item::mirror::{kalandra_reflected_ring, scale_item_bonuses, slot_bonus_effect_scales};
 use super::item::weapon::{
-    clean_item_text, is_weapon_local_mod, parse_adds_with_suffix, parse_local_defence_flat,
-    parse_local_defence_inc, parse_weapon_local_crit,
+    clean_item_text, is_weapon_local_mod, parse_adds_with_suffix, parse_weapon_local_crit,
 };
 use super::skill::buffs::{
     buff_skill_specs, herald_skill_names, spirit_reservation_modifiers, support_buff_specs,
@@ -56,12 +55,14 @@ use crate::build::{Build, SocketGroup};
 use crate::build_data::BuildData;
 use crate::error::BuildError;
 use pobr_core::CampaignProgress;
+use pobr_core::skill_env::{
+    item_per_level_defence, parse_has_per_level_defence, parse_local_defence_flat,
+    parse_local_defence_inc,
+};
 
 /// Stage 1d: item base defence (armour/evasion/ES) + shield base block + per-item Spirit/Ward → BASE mods.
 pub(super) fn inject_defence_base(session: &mut SourceWriter, build: &Build, data: &BuildData) {
-    // 1d. Item base defence (armour/evasion/ES) → Item-attributed BASE mods (× quality).
-    //     Item `increased Armour/Evasion/EnergyShield` mods are injected as INC via
-    //     add_item, scaling this base.
+    // Local flat/increased modifiers and quality are already folded into each item.
     session.add_modifiers(defence_base_modifiers(build, data));
     // 1d'. Shield base block → `ShieldBlockChance` BASE (13-G8).
     //      PoB2 CalcDefence.lua:975-980 reads Weapon 2/3's `armourData.BlockChance` as
@@ -922,16 +923,15 @@ pub(super) fn inject_items(
                 },
             );
         }
-        // Armour item: strips local "increased / +flat Armour/Evasion/ES" (already
-        // folded into the rolled per-item base value / the base-fallback multiplier
-        // zone, see defence_base_modifiers); leaving it in the global set would
-        // double-count (and incorrectly turn it into a global additive term).
+        // Armour item: strips local "increased / +flat Armour/Evasion/ES", already
+        // folded into each item's local value by item_local_defences. Leaving them
+        // in the global set would double-count and turn them into global bonuses.
         // Determining an armour item: has a base armour entry **or** the text gives a
         // rolled defence line (fallback coverage for a unique without a catalog entry).
         let rd = &item.rolled_defence;
         // A per-level defensive item (e.g. a purely-implicit unique glove) also counts
         // as an armour item — its `Has +N per level` is already folded into the
-        // per-item base value (item_rolled_defence), and must be stripped from the
+        // per-item base value (item_local_defences), and must be stripped from the
         // global path to avoid double/incorrect global injection.
         let has_per_level_def = item_per_level_defence(item).iter().any(|&v| v > 0.0);
         let is_armour_piece = data.armour_base(&item.base.to_string()).is_some()
@@ -1123,16 +1123,28 @@ pub(super) fn inject_self_buff_exposure(
             session.set_condition(can_apply_exposure(element), true);
         }
     }
-    // 4c''. A skill that inflicts Withered lets the character have it on the
-    //      enemy, whichever skill is being calculated.
-    if let Some(skill_id) = pobr_core::skill_env::skill_inflicting_withered(build, data) {
+    // 4c''. Infliction by any enabled skill makes the configured enemy
+    //      stacks available to every skill being calculated.
+    for (skill_id, flag, source) in [
+        (
+            pobr_core::skill_env::skill_inflicting_withered(build, data),
+            pobr_core::calc::withered::CAN_WITHER,
+            "inflicts_withered",
+        ),
+        (
+            pobr_core::skill_env::skill_inflicting_incision(build, data),
+            "Condition:CanInflictIncision",
+            "inflicts_incision",
+        ),
+    ] {
+        let Some(skill_id) = skill_id else {
+            continue;
+        };
         let origin = ModifierSource::new(SourceId::new(
             SourceKind::SkillGem,
-            format!("skill.{skill_id}.inflicts_withered"),
+            format!("skill.{skill_id}.{source}"),
         ));
-        session.add_modifiers(vec![
-            Modifier::flag(pobr_core::calc::withered::CAN_WITHER).with_origin(origin),
-        ]);
+        session.add_modifiers(vec![Modifier::flag(flag).with_origin(origin)]);
     }
     //      Likewise a skill whose hits Crush leaves the enemy Crushed.
     if let Some(skill_id) = pobr_core::skill_env::skill_crushing_on_hit(build, data) {

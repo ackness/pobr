@@ -1243,7 +1243,9 @@
     "Cost": "Costs",
     "Requirement": "Requirements",
     "Minion": "Minions",
+    "Enemy": "Enemy",
     "Utility": "Utility",
+    "Misc": "Miscellaneous",
     "Other": "Other Aggregates"
   },
   "detail": {

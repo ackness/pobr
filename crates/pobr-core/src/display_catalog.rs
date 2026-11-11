@@ -872,96 +872,116 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "BounceCount",
         ),
-        computed("ReqStr", Cat::Requirement, Vt::Number, "ReqStr"),
-        computed("ReqDex", Cat::Requirement, Vt::Number, "ReqDex"),
-        computed("ReqInt", Cat::Requirement, Vt::Number, "ReqInt"),
+        computed("ReqStr", Cat::Requirement, Vt::Number, "ReqStr")
+            .with_higher_is_better(Some(false)),
+        computed("ReqDex", Cat::Requirement, Vt::Number, "ReqDex")
+            .with_higher_is_better(Some(false)),
+        computed("ReqInt", Cat::Requirement, Vt::Number, "ReqInt")
+            .with_higher_is_better(Some(false)),
         computed(
             "ManaPercentCost",
             Cat::SkillMechanics,
             Vt::Percent,
             "ManaPercentCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ManaPercentPerSecondCost",
             Cat::SkillMechanics,
             Vt::Percent,
             "ManaPercentPerSecondCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ManaPerSecondCost",
             Cat::SkillMechanics,
             Vt::Number,
             "ManaPerSecondCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "LifePercentCost",
             Cat::SkillMechanics,
             Vt::Percent,
             "LifePercentCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "LifePercentPerSecondCost",
             Cat::SkillMechanics,
             Vt::Percent,
             "LifePercentPerSecondCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "LifePerSecondCost",
             Cat::SkillMechanics,
             Vt::Number,
             "LifePerSecondCost",
-        ),
-        computed("ESCost", Cat::SkillMechanics, Vt::Number, "ESCost"),
+        )
+        .with_higher_is_better(Some(false)),
+        computed("ESCost", Cat::SkillMechanics, Vt::Number, "ESCost")
+            .with_higher_is_better(Some(false)),
         computed(
             "ESPercentCost",
             Cat::SkillMechanics,
             Vt::Percent,
             "ESPercentCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ESPercentPerSecondCost",
             Cat::SkillMechanics,
             Vt::Percent,
             "ESPercentPerSecondCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ESPerSecondCost",
             Cat::SkillMechanics,
             Vt::Number,
             "ESPerSecondCost",
-        ),
-        computed("WardCost", Cat::SkillMechanics, Vt::Number, "WardCost"),
+        )
+        .with_higher_is_better(Some(false)),
+        computed("WardCost", Cat::SkillMechanics, Vt::Number, "WardCost")
+            .with_higher_is_better(Some(false)),
         computed(
             "WardPercentCost",
             Cat::SkillMechanics,
             Vt::Percent,
             "WardPercentCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "WardPercentPerSecondCost",
             Cat::SkillMechanics,
             Vt::Percent,
             "WardPercentPerSecondCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "WardPerSecondCost",
             Cat::SkillMechanics,
             Vt::Number,
             "WardPerSecondCost",
-        ),
-        computed("RageCost", Cat::SkillMechanics, Vt::Number, "RageCost"),
+        )
+        .with_higher_is_better(Some(false)),
+        computed("RageCost", Cat::SkillMechanics, Vt::Number, "RageCost")
+            .with_higher_is_better(Some(false)),
         computed(
             "RagePerSecondCost",
             Cat::SkillMechanics,
             Vt::Number,
             "RagePerSecondCost",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "TotalTotemPlacementTime",
             Cat::SkillMechanics,
             Vt::TimeSeconds,
             "TotemPlacementTime",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed("TotemLife", Cat::SkillMechanics, Vt::Number, "TotemLife"),
         computed(
             "TotemArmour",
@@ -1074,7 +1094,8 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
             Cat::SkillMechanics,
             Vt::TimeSeconds,
             "TrapThrowingTime",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "TrapThrowCount",
             Cat::SkillMechanics,
@@ -1086,7 +1107,8 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
             Cat::SkillMechanics,
             Vt::TimeSeconds,
             "MineLayingTime",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "MineThrowCount",
             Cat::SkillMechanics,
@@ -1098,19 +1120,22 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
             Cat::SkillMechanics,
             Vt::TimeSeconds,
             "WarcryCastTime",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ChannelTime",
             Cat::SkillMechanics,
             Vt::TimeSeconds,
             "ChannelTime",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ChannelTimeToTrigger",
             Cat::SkillMechanics,
             Vt::TimeSeconds,
             "ChannelTimeToTrigger",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ArchonDuration",
             Cat::SkillMechanics,
@@ -1211,7 +1236,8 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
             Cat::Recovery,
             Vt::Number,
             "TotalBuildDegen",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "LifeLeechGainRate",
             Cat::Recovery,
@@ -1335,7 +1361,7 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
         computed(
             "EsRechargeRate",
             Cat::Recovery,
-            Vt::Percent,
+            Vt::Number,
             "EnergyShieldRechargeRate",
         ),
         computed(
@@ -1909,81 +1935,96 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
             Cat::Mitigation,
             Vt::Number,
             "PhysicalTakenDamage",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "FireTakenDamage",
             Cat::Mitigation,
             Vt::Number,
             "FireTakenDamage",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ColdTakenDamage",
             Cat::Mitigation,
             Vt::Number,
             "ColdTakenDamage",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "LightningTakenDamage",
             Cat::Mitigation,
             Vt::Number,
             "LightningTakenDamage",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ChaosTakenDamage",
             Cat::Mitigation,
             Vt::Number,
             "ChaosTakenDamage",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "PhysicalTakenHit",
             Cat::Mitigation,
             Vt::Number,
             "PhysicalTakenHit",
-        ),
-        computed("FireTakenHit", Cat::Mitigation, Vt::Number, "FireTakenHit"),
-        computed("ColdTakenHit", Cat::Mitigation, Vt::Number, "ColdTakenHit"),
+        )
+        .with_higher_is_better(Some(false)),
+        computed("FireTakenHit", Cat::Mitigation, Vt::Number, "FireTakenHit")
+            .with_higher_is_better(Some(false)),
+        computed("ColdTakenHit", Cat::Mitigation, Vt::Number, "ColdTakenHit")
+            .with_higher_is_better(Some(false)),
         computed(
             "LightningTakenHit",
             Cat::Mitigation,
             Vt::Number,
             "LightningTakenHit",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ChaosTakenHit",
             Cat::Mitigation,
             Vt::Number,
             "ChaosTakenHit",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "PhysicalTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "PhysicalTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "FireTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "FireTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ColdTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "ColdTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "LightningTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "LightningTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ChaosTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "ChaosTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "PhysicalEnergyShieldBypass",
             Cat::Mitigation,
@@ -2043,13 +2084,15 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
             Cat::Mitigation,
             Vt::Number,
             "totalTakenDamage",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "totalTakenHit",
             Cat::Mitigation,
             Vt::Number,
             "totalTakenHit",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ConfiguredDamageChance",
             Cat::Mitigation,
@@ -2067,7 +2110,8 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
             Cat::Mitigation,
             Vt::Percent,
             "DamageTakenOnBlock",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         // Further retained EHP terms: enemy assembly, the mitigation snapshot and hit pools.
         computed(
             "PhysicalEnemyDamageMult",
@@ -2124,151 +2168,176 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
             Cat::Mitigation,
             Vt::Number,
             "PhysicalResistTakenHitMulti",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "FireResistTakenHitMulti",
             Cat::Mitigation,
             Vt::Number,
             "FireResistTakenHitMulti",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ColdResistTakenHitMulti",
             Cat::Mitigation,
             Vt::Number,
             "ColdResistTakenHitMulti",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "LightningResistTakenHitMulti",
             Cat::Mitigation,
             Vt::Number,
             "LightningResistTakenHitMulti",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ChaosResistTakenHitMulti",
             Cat::Mitigation,
             Vt::Number,
             "ChaosResistTakenHitMulti",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "PhysicalAttackTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "PhysicalAttackTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "FireAttackTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "FireAttackTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ColdAttackTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "ColdAttackTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "LightningAttackTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "LightningAttackTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ChaosAttackTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "ChaosAttackTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "PhysicalSpellTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "PhysicalSpellTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "FireSpellTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "FireSpellTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ColdSpellTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "ColdSpellTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "LightningSpellTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "LightningSpellTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ChaosSpellTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "ChaosSpellTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "PhysicalAfterReductionTakenHitMulti",
             Cat::Mitigation,
             Vt::Number,
             "PhysicalAfterReductionTakenHitMulti",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "FireAfterReductionTakenHitMulti",
             Cat::Mitigation,
             Vt::Number,
             "FireAfterReductionTakenHitMulti",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ColdAfterReductionTakenHitMulti",
             Cat::Mitigation,
             Vt::Number,
             "ColdAfterReductionTakenHitMulti",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "LightningAfterReductionTakenHitMulti",
             Cat::Mitigation,
             Vt::Number,
             "LightningAfterReductionTakenHitMulti",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ChaosAfterReductionTakenHitMulti",
             Cat::Mitigation,
             Vt::Number,
             "ChaosAfterReductionTakenHitMulti",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "PhysicalBaseTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "PhysicalBaseTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "FireBaseTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "FireBaseTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ColdBaseTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "ColdBaseTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "LightningBaseTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "LightningBaseTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ChaosBaseTakenHitMult",
             Cat::Mitigation,
             Vt::Number,
             "ChaosBaseTakenHitMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "PhysicalDamageReductionMax",
             Cat::Mitigation,
@@ -2449,31 +2518,36 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
             Cat::Mitigation,
             Vt::Number,
             "PhysicalTakenDotMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "FireTakenDotMult",
             Cat::Mitigation,
             Vt::Number,
             "FireTakenDotMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ColdTakenDotMult",
             Cat::Mitigation,
             Vt::Number,
             "ColdTakenDotMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "LightningTakenDotMult",
             Cat::Mitigation,
             Vt::Number,
             "LightningTakenDotMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "ChaosTakenDotMult",
             Cat::Mitigation,
             Vt::Number,
             "ChaosTakenDotMult",
-        ),
+        )
+        .with_higher_is_better(Some(false)),
         computed(
             "PhysicalTotalPool",
             Cat::Resource,
@@ -2724,16 +2798,18 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
                 } else {
                     definition.with_pob_key(id.as_str())
                 };
-                catalog.push(definition.with_higher_is_better(
-                    if matches!(
-                        *field,
-                        "ChargesUsed" | "ManaRemovedOnUse" | "LifeRemovedOnUse"
-                    ) {
-                        Some(false)
-                    } else {
-                        None
-                    },
-                ));
+                let definition = if matches!(
+                    *field,
+                    "ChargesUsed" | "ManaRemovedOnUse" | "LifeRemovedOnUse"
+                ) {
+                    definition.with_higher_is_better(Some(false))
+                } else if kind == "Flask" && *field == "Duration" {
+                    // Faster recovery shortens this time; a longer duration can also sustain effects.
+                    definition.with_higher_is_better(None)
+                } else {
+                    definition
+                };
+                catalog.push(definition);
             }
         }
     }

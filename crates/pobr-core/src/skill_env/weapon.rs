@@ -9,8 +9,8 @@ use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::ModFlags;
 
 use crate::skill_env::item_text::{
-    item_local_defence_flat, item_local_defence_inc, parse_weapon_local_crit,
-    weapon_local_attack_speed, weapon_local_phys_adds, weapon_local_phys_inc, weapon_mod_texts,
+    item_local_defences, parse_weapon_local_crit, weapon_local_attack_speed,
+    weapon_local_phys_adds, weapon_local_phys_inc, weapon_mod_texts,
 };
 use crate::skill_env::lookup::{
     ArmourBaseLookup, BaseItemLookup, EffectLookup, EquipmentView, UnarmedDataLookup,
@@ -379,10 +379,9 @@ pub fn shield_elemental_damage_modifiers(
 }
 
 /// The off-hand's own (the shield in [`EquipmentSlot::Weapon2`]) defence value (`idx`
-/// 0=armour/1=evasion/2=energy shield), using the same semantics as
-/// `defence_base_modifiers`'s per-item base value: prefers the rolled per-item value
-/// (includes local increased + quality), falling back to `base default × (1+local
-/// increased) × (1+quality)` when missing. Matches PoB2's `ArmourOnWeapon 2` etc.
+/// 0=armour/1=evasion/2=energy shield), before global modifiers. Shares the
+/// defence panel's base recomputation and displayed-value fallback through
+/// [`item_local_defences`].
 pub fn off_hand_defence(
     equipment: &dyn EquipmentView,
     data: &dyn ArmourBaseLookup,
@@ -391,28 +390,7 @@ pub fn off_hand_defence(
     let Some(item) = equipment.item(EquipmentSlot::Weapon2) else {
         return 0.0;
     };
-    let rolled = &item.rolled_defence;
-    let rolled_val = match idx {
-        0 => rolled.armour,
-        1 => rolled.evasion,
-        _ => rolled.energy_shield,
-    };
-    if let Some(v) = rolled_val {
-        return v;
-    }
-    let base_default = data.armour_base(&item.base.to_string());
-    let default_val = base_default.map(|a| match idx {
-        0 => a.armour,
-        1 => a.evasion,
-        _ => a.energy_shield,
-    });
-    let local_flat = item_local_defence_flat(item);
-    let local_pct = item_local_defence_inc(item);
-    let base = f64::from(default_val.unwrap_or(0)) + local_flat[idx];
-    if base <= 0.0 {
-        return 0.0;
-    }
-    base * (1.0 + local_pct[idx] / 100.0) * (1.0 + f64::from(item.quality) / 100.0)
+    item_local_defences(item, data, equipment.player_level()).map_or(0.0, |values| values[idx])
 }
 
 /// Unarmed weapon contribution (PoB2's `data.unarmedWeaponData[classId]`): the attack
