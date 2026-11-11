@@ -41,6 +41,8 @@ import { isTyping, shortcutAction } from './shortcuts';
 import { useActiveJobCount } from './jobs/activeJobs';
 import { useShellRems } from './useShellRems';
 import { usePinnedStats } from './pinned';
+import { BackupDownload, download } from './BackupDownload';
+import { PageErrorBoundary } from './PageErrorBoundary';
 
 const ComparePanel = lazy(() => import('../components/compare/ComparePanel').then(m => ({ default: m.ComparePanel })));
 const TradePanel = lazy(() => import('../components/trade/TradePanel').then(m => ({ default: m.TradePanel })));
@@ -66,12 +68,6 @@ const RAIL_HIDDEN_KEY = uiStorageKey('pobr-rail-hidden');
 const IS_APPLE_PLATFORM = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 const shortcutKey = IS_APPLE_PLATFORM ? '⌘' : 'Ctrl';
 const icons = { overview: LayoutDashboard, build: Library, tree: Network, skills: Gem, items: Swords, trade: TrendingUp, calcs: Calculator, config: SlidersHorizontal, compare: Columns2 };
-
-function download(text: string, name: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-  const link = document.createElement('a'); link.href = url; link.download = name; link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 function usePreferences() {
   const [preferences, setPreferences] = useState<Preferences>(() => {
@@ -199,8 +195,8 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const tabs = (withIcons = false) => <nav className="shell-tabs" aria-label={t(lang, 'a11y.mainNavigation')}>
     {NAV_GROUPS.map((group, index) => <Fragment key={index}>{index > 0 && <span className="shell-tab-divider" aria-hidden="true" />}{group.map(page => link(page, withIcons))}</Fragment>)}</nav>;
   const brand = <a className="shell-brand" href={routePath('overview')} onClick={go('overview')}><BrandMark className="shell-brand-mark" /><strong>PoBR</strong><span className="shell-brand-version" title={`v${__POBR_APP_VERSION__} · ${session.dataVersion}`}>v{__POBR_APP_VERSION__}</span></a>;
-  const inspector = inspect && <Suspense fallback={<div className="insp" role="status"><Skeleton className="h-6 w-1/2" /><Skeleton className="mt-4 h-40 w-full" /></div>}>
-    <Inspector session={session} view={view} lang={lang} id={inspect} onClose={() => setInspect(null)} onNavigate={() => { skipInspectorRestore.current = !docked; setInspect(null); }} onOpenCalcs={focusStat} pinned={pinned.includes(inspect)} onTogglePin={() => togglePin(inspect)} /></Suspense>;
+  const inspector = inspect && <PageErrorBoundary key={inspect} lang={lang} exportWorkspace={session.exportWorkspace}><Suspense fallback={<div className="insp" role="status"><Skeleton className="h-6 w-1/2" /><Skeleton className="mt-4 h-40 w-full" /></div>}>
+    <Inspector session={session} view={view} lang={lang} id={inspect} onClose={() => setInspect(null)} onNavigate={() => { skipInspectorRestore.current = !docked; setInspect(null); }} onOpenCalcs={focusStat} pinned={pinned.includes(inspect)} onTogglePin={() => togglePin(inspect)} /></Suspense></PageErrorBoundary>;
   const panelLoading = <div role="status" className="shell-panel-loading"><Skeleton className="h-12 w-2/3" /><Skeleton className="h-64 w-full" /><p>{t(lang, 'ui.loadingPanel')}</p></div>;
   const saveState = session.storageFailed ? w('Save failed', '保存失败', '儲存失敗') : session.busy ? w('Calculating', '计算中', '計算中') : t(lang, 'shell.saved');
   const rail = <ResultsRail route={route} session={session} view={view} lang={lang} onStatClick={inspectStat} onNavigate={navigate} pinned={pinned} onTogglePin={togglePin} />;
@@ -235,7 +231,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
     <div className="shell-body" data-rail={railHidden || undefined} data-inspector={docked && inspect ? '' : undefined}>
       <div className="shell-rail">{rail}</div>
       <main id="shell-main" tabIndex={-1} className={`shell-main shell-page-${route}`} data-display-mode={pageDisplayMode(preferences, route)} ref={main} key={stageKey}>
-        {session.storageFailed && <div className="shell-alert" role="alert"><p>{w('Browser storage is full or unavailable. Download a backup before leaving.', '浏览器存储已满或不可用，请先下载完整备份。', '瀏覽器儲存空間已滿或無法使用，請先下載完整備份。')}</p><Button onClick={() => download(session.exportWorkspace(), 'pobr-backup.json')}><Download />{w('Download backup', '下载备份', '下載備份')}</Button></div>}
+        {session.storageFailed && <div className="shell-alert" role="alert"><p>{t(lang, 'shell.storageUnavailable')}</p><BackupDownload lang={lang} exportWorkspace={session.exportWorkspace} /></div>}
         {preferencesFailed && <p className="shell-alert" role="alert">{w('Display preferences could not be saved on this device.', '显示偏好暂时无法保存到当前设备。', '顯示偏好暫時無法儲存至目前裝置。')}</p>}
         {session.syncNotice && <div className="shell-notice" role="status" data-sync={session.syncNotice.kind}><p>{syncMessage(session.syncNotice.kind, w)}</p><Button variant="ghost" onClick={session.dismissSyncNotice}>{w('Dismiss', '知道了', '知道了')}</Button></div>}
         {route !== 'build' && importNotice}
@@ -243,16 +239,16 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
         {session.calcError && <div className="shell-alert" role="alert"><strong>{w('Calculation unavailable', '当前计算不可用', '目前計算無法使用')}</strong><p>{session.calcError}</p></div>}
         {session.operationError && <div className="shell-alert" role="alert">{buildImportErrorMessage(session.operationError, lang)}</div>}
         <UiProvider lang={lang} displayMode={pageDisplayMode(preferences, route)}><div className="shell-page-content" data-page={route}>
-          {route === 'overview' && <Overview session={session} view={view} lang={lang} navigate={navigate} focusStat={inspectStat} onSpirit={() => { setSpiritFocus(Date.now()); navigate('skills'); }} />}
-          {route === 'build' && <BuildPage session={session} lang={lang} claimImportFocus={claimImportFocus} importNotice={importNotice} onImported={() => { setReviewStage({ scope: null }); navigate('overview'); }} />}
-          {route === 'items' && <ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({ slot, nonce: Date.now() }); navigate('trade'); }} />}
-          {route === 'config' && <ConfigPanel session={session} lang={lang} settledCalc={view.calc} />}
-          {/* One boundary per lazy page: a page that is still loading must not hide, and so re-run the effects of, the planners kept mounted beside it. */}
-            {route === 'calcs' && <Suspense fallback={panelLoading}><CalcsPanel session={session} lang={lang} settledCalc={view.calc} focus={stageChanged ? null : calcsFocus} onFocusConsumed={() => setCalcsFocus(null)} /></Suspense>}
-            {route === 'compare' && <Suspense fallback={panelLoading}><ComparePanel key={`${session.comparisonRevision}:${session.workspace?.activeBuild}:${session.workspace?.builds.find(build => build.id === session.workspace?.activeBuild)?.activeStage}`} session={session} lang={lang} /></Suspense>}
-            {retained('tree') && <div hidden={route !== 'tree'}><PanelActivity active={route === 'tree'}><Suspense fallback={panelLoading}><TreePanel session={session} lang={lang} active={route === 'tree'} focusPlanner={stageChanged ? undefined : treeFocus} onJewelSearch={socket => { setUpgradeFocus({ slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius' }); navigate('trade'); }} /></Suspense></PanelActivity></div>}
-            {retained('skills') && <div hidden={route !== 'skills'}><PanelActivity active={route === 'skills'}><SkillsPanel session={session} lang={lang} active={route === 'skills'} focusOptimizer={stageChanged ? undefined : skillFocus} focusSpirit={stageChanged ? undefined : spiritFocus} /></PanelActivity></div>}
-            {retained('trade') && <div hidden={route !== 'trade'}><PanelActivity active={route === 'trade'}><Suspense fallback={panelLoading}><TradePanel session={session} lang={lang} active={route === 'trade'} focus={stageChanged ? undefined : upgradeFocus} onSkills={group => { setSkillFocus({ group, nonce: Date.now() }); navigate('skills'); }} onTree={node => { setTreeFocus({ nonce: Date.now(), node }); navigate('tree'); }} /></Suspense></PanelActivity></div>}
+          {route === 'overview' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><Overview session={session} view={view} lang={lang} navigate={navigate} focusStat={inspectStat} onSpirit={() => { setSpiritFocus(Date.now()); navigate('skills'); }} /></PageErrorBoundary>}
+          {route === 'build' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><BuildPage session={session} lang={lang} claimImportFocus={claimImportFocus} importNotice={importNotice} onImported={() => { setReviewStage({ scope: null }); navigate('overview'); }} /></PageErrorBoundary>}
+          {route === 'items' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({ slot, nonce: Date.now() }); navigate('trade'); }} /></PageErrorBoundary>}
+          {route === 'config' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><ConfigPanel session={session} lang={lang} settledCalc={view.calc} /></PageErrorBoundary>}
+          {/* Separate Suspense and error boundaries keep retained planners mounted when another page loads or fails. */}
+            {route === 'calcs' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><Suspense fallback={panelLoading}><CalcsPanel session={session} lang={lang} settledCalc={view.calc} focus={stageChanged ? null : calcsFocus} onFocusConsumed={() => setCalcsFocus(null)} /></Suspense></PageErrorBoundary>}
+            {route === 'compare' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><Suspense fallback={panelLoading}><ComparePanel key={`${session.comparisonRevision}:${session.workspace?.activeBuild}:${session.workspace?.builds.find(build => build.id === session.workspace?.activeBuild)?.activeStage}`} session={session} lang={lang} /></Suspense></PageErrorBoundary>}
+            {retained('tree') && <div hidden={route !== 'tree'}><PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><PanelActivity active={route === 'tree'}><Suspense fallback={panelLoading}><TreePanel session={session} lang={lang} active={route === 'tree'} focusPlanner={stageChanged ? undefined : treeFocus} onJewelSearch={socket => { setUpgradeFocus({ slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius' }); navigate('trade'); }} /></Suspense></PanelActivity></PageErrorBoundary></div>}
+            {retained('skills') && <div hidden={route !== 'skills'}><PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><PanelActivity active={route === 'skills'}><SkillsPanel session={session} lang={lang} active={route === 'skills'} focusOptimizer={stageChanged ? undefined : skillFocus} focusSpirit={stageChanged ? undefined : spiritFocus} /></PanelActivity></PageErrorBoundary></div>}
+            {retained('trade') && <div hidden={route !== 'trade'}><PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><PanelActivity active={route === 'trade'}><Suspense fallback={panelLoading}><TradePanel session={session} lang={lang} active={route === 'trade'} focus={stageChanged ? undefined : upgradeFocus} onSkills={group => { setSkillFocus({ group, nonce: Date.now() }); navigate('skills'); }} onTree={node => { setTreeFocus({ nonce: Date.now(), node }); navigate('tree'); }} /></Suspense></PanelActivity></PageErrorBoundary></div>}
         </div></UiProvider>
       </main>
       <ChangeBar lang={lang} />

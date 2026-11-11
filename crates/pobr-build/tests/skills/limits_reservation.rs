@@ -592,4 +592,35 @@ Implicits: 0
     assert!((scaled - none - 60.0).abs() < 1e-6, "{scaled}");
     // Without a source of Incision the configured stacks change nothing.
     assert_eq!(chance(BARE, Some(10), None), chance(BARE, None, None));
+    // Another group's hits leave Incision for the main skill to consume.
+    for support in ["SupportIncisionPlayer", "SupportBleedPlayerFour"] {
+        // Attack supports on a summon apply to its minion's attacks.
+        for skill in ["MeleePlayer", "WolfPackPlayer", "WildProtectorPlayer"] {
+            let secondary = format!(
+                r#"{BARE}<Skill><Gem skillId="{skill}" level="20"/><Gem skillId="{support}" level="1"/></Skill>"#
+            );
+            assert_eq!(
+                chance(&secondary, Some(10), None),
+                100.0,
+                "{skill}: {support}"
+            );
+            assert_eq!(chance(&secondary, None, None), none, "{skill}: {support}");
+            // Disabled gems/groups and incompatible supports are not sources.
+            for unavailable in [
+                secondary.replace("<Skill>", r#"<Skill enabled="false">"#),
+                secondary.replace(
+                    &format!(r#"skillId="{skill}" level="20"/>"#),
+                    &format!(r#"skillId="{skill}" level="20" enabled="false"/>"#),
+                ),
+                secondary.replace("level=\"1\"/>", "level=\"1\" enabled=\"false\"/>"),
+                secondary.replace(skill, "EnfeeblePlayer"),
+            ] {
+                assert_eq!(
+                    chance(&unavailable, Some(10), None),
+                    none,
+                    "{skill}: {support}"
+                );
+            }
+        }
+    }
 }

@@ -2,9 +2,22 @@ import { expect, test } from 'vitest';
 import type { PassiveNode } from '../../api/types';
 import { jewelSocketNames } from './jewelSocketNames';
 import { passiveNameKey } from './passiveNodeNames';
-import { defaultReportStat, distributeAttributeChoices, passivePointSummary, powerGain } from './treePresentation';
+import { defaultReportStat, distributeAttributeChoices, passivePointSummary, powerGain, treeHoverLines } from './treePresentation';
 
 const node = (skill: number, patch: Partial<PassiveNode> = {}): PassiveNode => ({ skill, id: String(skill), kind: 'normal', ...patch });
+
+test.each([
+  ['en-US', 'Strength', 'Dexterity', 'Intelligence'],
+  ['zh-CN', '力量', '敏捷', '智慧'],
+  ['zh-TW', '力量', '敏捷', '智慧'],
+] as const)('hover lines follow attribute changes without retranslating the node in %s', (lang, str, dex, int) => {
+  const stats = ['+5'];
+  expect(treeHoverLines(stats, 'str', lang)).toEqual(['+5', `→ ${str}`]);
+  expect(treeHoverLines(stats, 'dex', lang)).toEqual(['+5', `→ ${dex}`]);
+  expect(treeHoverLines(stats, 'int', lang)).toEqual(['+5', `→ ${int}`]);
+  expect(treeHoverLines(stats, undefined, lang)).toEqual(['+5']);
+  expect(stats).toEqual(['+5']);
+});
 
 test('attribute redistribution changes the chosen nodes, preserves other choices and leaves excess nodes unassigned', () => {
   const original = { '10': 'int' as const, '20': 'int' as const, '30': 'dex' as const, '99': 'str' as const };

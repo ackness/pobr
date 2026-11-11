@@ -16,7 +16,7 @@ export type {
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 19;
+export const EXPECTED_SCHEMA_VERSION = 20;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
@@ -435,7 +435,17 @@ export type DisplayStatCategory =
   | 'Cost'
   | 'Requirement'
   | 'Minion'
-  | 'Utility';
+  | 'Enemy'
+  | 'Utility'
+  | 'Misc';
+
+/** Static engine metadata from displayCatalogJson; keep contract_golden.rs in sync. */
+export interface DisplayCatalogEntry {
+  id: string;
+  category: DisplayStatCategory;
+  value_type: 'Number' | 'Percent' | 'TimeSeconds' | 'Text' | 'Bool' | 'Unknown';
+  higher_is_better: boolean | null;
+}
 
 export interface DisplayStatValue {
   id: string;

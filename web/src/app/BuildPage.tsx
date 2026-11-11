@@ -16,16 +16,11 @@ import { buildDisplayName, stageDisplayName } from '../lib/workspaceNames';
 import { workspaceText } from '../lib/workspaceText';
 import { words } from './text';
 import { classChangeMessage } from './classChange';
+import { download } from './BackupDownload';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem } from '../components/ui/dropdown-menu';
 
 type Destination = 'newBuild' | 'currentStage';
 type Naming = 'newBuild' | 'copyStage' | 'renameBuild' | 'renameStage' | 'copyBuild';
-
-function download(content: string, filename: string) {
-  const url = URL.createObjectURL(new Blob([content], { type: 'application/json' }));
-  const link = document.createElement('a'); link.href = url; link.download = filename; link.click();
-  URL.revokeObjectURL(url);
-}
 
 /**
  * Build and stage management with an always available import form.

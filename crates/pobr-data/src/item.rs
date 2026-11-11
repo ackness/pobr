@@ -32,14 +32,13 @@ pub struct Socket {
     pub group: u8,
 }
 
-/// Defence values as actually rolled on an item, read from the `Armour:`,
-/// `Evasion:` and `Energy Shield:` lines of its exported text.
+/// Displayed item values read from exported text, including the item's local
+/// modifiers and quality where applicable. They may predate the current game data.
 ///
-/// These already include the item's own percentage roll, affixes and influence,
-/// so they are not the base type's defaults (catalog `ArmourBaseStats`). PoB2's
-/// `CalcDefence` takes them as-is via `item.armourData` and only then applies
-/// the item's local `increased X` mods and quality. `None` means the item text
-/// had no such line, and the base type's default applies instead.
+/// Armour, evasion and energy shield are recomputed from a known catalog base,
+/// local modifiers and quality; these fields are a fallback for unknown bases.
+/// Per-level defence is added separately at the player's level. `None` means the
+/// item text had no such line. Spirit and Ward follow their own calculation rules.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RolledDefence {
@@ -72,9 +71,8 @@ pub struct Item {
     pub modifier_texts: Vec<String>,
     /// Enchant mod lines. Attributed to `SourceKind::ItemEnchant`.
     pub enchant_texts: Vec<String>,
-    /// Defence values as the item text states them. A piece whose base type is
-    /// in the data has its defences recomputed from that base, so these only
-    /// stand in for a base the data does not know.
+    /// Imported display values. Armour, evasion and energy shield only stand in
+    /// for unknown bases; see [`RolledDefence`] for their calculation priority.
     pub rolled_defence: RolledDefence,
     /// What the item's sockets hold (Runes, Idols, Soul Cores), by name, from
     /// the `Rune:` and `Soul Core:` lines; an empty socket is not listed. Their

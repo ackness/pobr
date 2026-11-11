@@ -118,6 +118,21 @@ function panel(calc: Partial<CalculateBuildResponse>, lang: Lang = 'en-US', focu
   </TooltipProvider></UiProvider>);
 }
 
+test('Calcs keeps Misc and future categories after the preferred categories', () => {
+  const html = panel({ stats: [
+    { id: 'FutureStat', category: 'FutureCategory', value: 2 },
+    { id: 'GemLevel', category: 'Misc', value: 20 },
+    { id: 'Life', category: 'Resource', value: 100 },
+  ] as unknown as CalculateBuildResponse['stats'] }).replace(/<!--.*?-->/g, '');
+  expect(html).toContain('FutureCategory (1)');
+  expect(html).toContain('Miscellaneous (1)');
+  expect(html.indexOf('Resources (1)')).toBeLessThan(html.indexOf('Miscellaneous (1)'));
+  expect(html.indexOf('Miscellaneous (1)')).toBeLessThan(html.indexOf('FutureCategory (1)'));
+  const future = panel({ stats: [{ id: 'FutureStat', category: 'FutureCategory', value: 2 }] as unknown as CalculateBuildResponse['stats'] });
+  expect(future).toContain('id="breakdown-FutureStat"');
+  expect(panel({ stats: [{ id: 'GemLevel', category: 'Misc', value: 20 }] })).toContain('id="breakdown-GemLevel"');
+});
+
 test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('Calcs shows honest empty states without a kind badge in %s', lang => {
   const tt = bindT(lang);
   for (const kind of ['steps', 'derived', 'none'] as DetailKind[]) {
@@ -307,6 +322,8 @@ test('resource formula summary preserves operation order and reports missing con
   expect(html).toContain('78 points');
   expect(html).toContain('Conversion destination is not returned');
   expect(html).toContain('<details class="formula-steps"><summary class="disclosure">How it&#x27;s calculated</summary>');
+  const converted = renderToStaticMarkup(<BreakdownTable breakdown={{ ...breakdown, sources: ['LifeConvertToEnergyShield', 'LifeConvertToMana'].map(name => ({ ...empty, name, base_total: 50, more_precision: null })) }} stat="Life" lang="en-US" />);
+  expect(converted).toContain('<p class="breakdown-note">LifeConvertToEnergyShield, LifeConvertToMana</p>');
 });
 
 test('resistance figures use returned total, cap and over-cap and show missing sources honestly', () => {
@@ -315,10 +332,18 @@ test('resistance figures use returned total, cap and over-cap and show missing s
   expect(html).toContain('<h4>Total</h4><strong class="mod-value">113%</strong>');
   expect(html).toContain('<h4>Cap</h4><strong class="mod-value">75%</strong>');
   expect(html).toContain('<h4>Over cap</h4><strong class="mod-value">38%</strong>');
+  expect(html).toContain('>Total: Source</summary>');
   expect(html).toContain('does not provide the source');
   const missing = renderToStaticMarkup(<BreakdownTable breakdown={empty} stat="FireResist" lang="en-US" />);
   expect(missing).toContain('Not returned by this calculation');
   expect(missing).not.toContain('38%');
+});
+
+test('English enemy conditions use an English colon', () => {
+  const breakdown: Breakdown = { ...empty, mitigation: [{ damage_type: 'Fire', average: 100, resist: 40, reduction: 40,
+    taken: 1, multiplier: 0.6, mitigated: 60, resist_inverted: 0, defence_mods: [], taken_mods: [] }] };
+  const html = renderToStaticMarkup(<BreakdownTable breakdown={breakdown} lang="en-US" />);
+  expect(html).toContain('Fire: 40% Enemy resistance');
 });
 
 test('item names are shown as sources instead of being passed off as modifier text', () => {
