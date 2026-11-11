@@ -5,11 +5,12 @@ import { TradePanel } from './TradePanel';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import type { TradeOptimization, TradeCatalog } from '../../lib/tradeOptimizer';
 import type { ObjectiveState } from '../shared/OptimizerControls';
+import { bindT } from '../../lib/i18n';
 import type { GemPlan } from '../../lib/tradeMarket';
 
-const ui = vi.hoisted(() => ({ buttons: [] as (ComponentProps<'button'> & { 'data-slot-id'?: string })[], scroll: vi.fn(), focus: vi.fn(), optimize: vi.fn(), replacement: vi.fn(), gems: vi.fn(),
-  selects: [] as { ariaLabel: string; onChange: (value: string) => void }[],
-  frames: [] as (() => void)[], goal: { preset: 'life', cStat: '', cMin: '', cMax: '' } as ObjectiveState }));
+const ui = vi.hoisted(() => ({ buttons: [] as (ComponentProps<'button'> & { 'data-slot-id'?: string })[], inputs: [] as ComponentProps<'input'>[], scroll: vi.fn(), focus: vi.fn(), optimize: vi.fn(), replacement: vi.fn(), gems: vi.fn(),
+  selects: [] as { value: string; ariaLabel: string; onChange: (value: string) => void }[],
+  frames: [] as (() => void)[], leagues: vi.fn<() => Promise<string[]>>(), goal: { preset: 'life', cStat: '', cMin: '', cMax: '' } as ObjectiveState }));
 const hooks = await vi.hoisted(async () => {
   const { createHookHarness } = await import('../../testing/hookHarness');
   return createHookHarness({ refs: { initialize: (initial, index) => [0, 1, 3].includes(index)
@@ -29,16 +30,16 @@ vi.mock('../../hooks/useLocalizedLines', () => ({
 vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
 vi.mock('../shared/PreviewContext', () => ({ usePreview: () => null }));
 vi.mock('./ItemReplacementCheck', () => ({ ItemReplacementCheck: (props: unknown) => { ui.replacement(props); return null; } }));
-vi.mock('../shared/AppSelect', () => ({ AppSelect: (props: { ariaLabel: string; onChange: (value: string) => void }) => { ui.selects.push(props); return null; } }));
+vi.mock('../shared/AppSelect', () => ({ AppSelect: (props: { value: string; ariaLabel: string; onChange: (value: string) => void }) => { ui.selects.push(props); return null; } }));
 vi.mock('../../api/backend', () => ({ getBackend: async () => ({ loadPassiveTree: async () => [] }) }));
-vi.mock('../../lib/trade', async original => ({ ...await original<typeof import('../../lib/trade')>(), loadTradeLeagues: async () => ['Standard'] }));
+vi.mock('../../lib/trade', async original => ({ ...await original<typeof import('../../lib/trade')>(), loadTradeLeagues: () => ui.leagues() }));
 vi.mock('../../lib/tradeMarket', () => ({ planGemUpgrades: (...args: unknown[]) => ui.gems(...args) }));
 vi.mock('../../lib/tradeOptimizer', async original => ({ ...await original<typeof import('../../lib/tradeOptimizer')>(),
   loadTradeCatalog: async () => catalog, optimizeTradeAffixes: (...args: unknown[]) => ui.optimize(...args),
 }));
 vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { ui.buttons.push(props); return <button {...props} />; },
-  AppInput: (props: ComponentProps<'input'>) => <input {...props} />,
+  AppInput: (props: ComponentProps<'input'>) => { ui.inputs.push(props); return <input {...props} />; },
 }));
 const catalog: TradeCatalog = { bases: [{ name: 'Sapphire Ring', category: 'accessory.ring', tags: [], implicits: [], level: 1 }], mods: [] };
 const item = 'Rarity: RARE\nCurrent Ring\nSapphire Ring';
@@ -50,7 +51,7 @@ let active: boolean;
 function render(lang: ComponentProps<typeof TradePanel>['lang'] = 'en-US') {
   let html = '';
   for (let count = 0; count < 10; count++) {
-    hooks.beginRender(); ui.buttons = []; ui.selects = [];
+    hooks.beginRender(); ui.buttons = []; ui.selects = []; ui.inputs = [];
     html = renderToStaticMarkup(<TradePanel active={active} focus={focus} lang={lang} session={session} />);
     hooks.runEffects();
     if (!hooks.dirty) return html;
@@ -75,6 +76,7 @@ function deferred<T>() {
 }
 beforeEach(() => {
   hooks.reset(); ui.scroll.mockClear(); ui.focus.mockClear(); ui.optimize.mockReset(); ui.replacement.mockClear(); ui.gems.mockReset();
+  ui.leagues.mockReset().mockResolvedValue(['Standard']);
   ui.goal = { preset: 'life', cStat: '', cMin: '', cMax: '' }; focus = undefined; active = true;
   vi.stubGlobal('localStorage', { getItem: () => null, setItem: vi.fn() });
   ui.frames = [];
@@ -87,6 +89,37 @@ beforeEach(() => {
     minimumWeight: 0, unsupported: [], currentItemScore: null, scoreWarnings: [] };
 });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+test('blocked localStorage access keeps market defaults usable', async () => {
+  vi.spyOn(globalThis, 'localStorage', 'get').mockImplementation(() => { throw new Error('Storage blocked'); });
+  expect(await ready()).toContain('value="100"');
+  expect(ui.selects.find(select => select.ariaLabel === 'League')).toBeDefined();
+});
+
+test.each(['blocked', 'full'])('%s storage keeps market changes through delayed leagues and realm switches', async failure => {
+  vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => { throw new Error('Storage full'); } });
+  if (failure === 'blocked') vi.spyOn(globalThis, 'localStorage', 'get').mockImplementation(() => { throw new Error('Storage blocked'); });
+  await ready();
+  const leagues = deferred<string[]>();
+  ui.leagues.mockReturnValueOnce(leagues.promise);
+  ui.inputs.find(input => input['aria-label'] === bindT('en-US')('trade.budget'))!.onChange!({ target: { value: '250' } } as never);
+  ui.selects.find(select => select.ariaLabel === bindT('en-US')('trade.currency'))!.onChange('divine');
+  ui.selects.find(select => select.ariaLabel === bindT('en-US')('trade.realm'))!.onChange('cn');
+  render();
+  expect(ui.selects.find(select => select.ariaLabel === bindT('en-US')('trade.currency'))!.value).toBe('divine');
+  expect(ui.selects.find(select => select.ariaLabel === bindT('en-US')('trade.realm'))!.value).toBe('cn');
+  ui.selects.find(select => select.ariaLabel === 'League')!.onChange('__custom');
+  render();
+  ui.inputs.find(input => input['aria-label'] === bindT('en-US')('trade.leagueCustom'))!.onChange!({ target: { value: 'Custom League' } } as never);
+  expect(render()).toContain('value="Custom League"');
+  expect(render()).toContain('value="250"');
+  leagues.resolve(['Live League']);
+  expect(await ready()).toContain('value="Custom League"');
+  ui.selects.find(select => select.ariaLabel === bindT('en-US')('trade.realm'))!.onChange('intl');
+  await ready();
+  ui.selects.find(select => select.ariaLabel === bindT('en-US')('trade.realm'))!.onChange('cn');
+  expect(await ready()).toContain('value="Custom League"');
+});
 
 test('no useful scores disable market search and offer a focused target adjustment', async () => {
   await ready();

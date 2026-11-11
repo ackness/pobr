@@ -10,7 +10,7 @@ const harness = vi.hoisted(() => ({ calculate: vi.fn<(request: CalculateBuildReq
 }));
 const hooks = await vi.hoisted(async () => {
   const { createHookHarness } = await import('../testing/hookHarness');
-  return createHookHarness({ separateCursors: true, refs: { reuse: 'nullish' }, callback: 'identity', effects: 'ignore' });
+  return createHookHarness({ separateCursors: true, refs: { reuse: 'nullish' }, callback: 'identity', effects: 'latest' });
 });
 vi.mock('react', () => hooks.mockReact());
 vi.mock('../api/backend', () => ({ getBackend: async () => ({
@@ -42,7 +42,24 @@ beforeEach(() => {
   vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null,
     setItem: (key: string, value: string) => storage.set(key, value) });
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+it('initializes notes when access to localStorage itself throws', () => {
+  vi.spyOn(globalThis, 'localStorage', 'get').mockImplementation(() => { throw new Error('Storage blocked'); });
+  expect(renderSession().notes).toBe('');
+});
+
+it('ignores storage events when access to localStorage becomes blocked', () => {
+  const addEventListener = vi.fn(), removeEventListener = vi.fn();
+  vi.stubGlobal('window', { addEventListener, removeEventListener });
+  renderSession();
+  const cleanup = hooks.effect!();
+  const onStorage = addEventListener.mock.calls.find(([type]) => type === 'storage')![1];
+  vi.spyOn(globalThis, 'localStorage', 'get').mockImplementation(() => { throw new Error('Storage blocked'); });
+  expect(() => onStorage({ storageArea: null })).not.toThrow();
+  if (cleanup) cleanup();
+  expect(removeEventListener).toHaveBeenCalledWith('storage', onStorage);
+});
 
 it('delayed highest-DPS metrics and their recalculation finish before the import summary freezes', async () => {
   const metrics = deferred<SkillMetricsResponse>(), recalculation = deferred<CalculateBuildResponse>();

@@ -1,14 +1,22 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { Children, type ComponentProps, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AttributionResponse, CalculateBuildResponse, SocketGroupInput } from '../api/types';
 import type { BuildSession } from '../hooks/useBuildSession';
 import { UpgradeGoalProvider } from '../hooks/useUpgradeGoal';
 import { Overview } from './Overview';
+import type { ObjectiveState } from '../components/shared/OptimizerControls';
+
+const ui = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], setGoal: vi.fn(),
+  goal: { preset: 'balanced', resistanceTarget: 75 } as ObjectiveState }));
+vi.mock('../components/ui/button', () => ({ Button: (props: ComponentProps<'button'>) => { ui.buttons.push(props); return <button {...props} />; } }));
+vi.mock('../hooks/useUpgradeGoal', () => ({ UpgradeGoalProvider: ({ children }: { children: ReactNode }) => children,
+  useUpgradeGoal: () => ({ goal: ui.goal, setGoal: ui.setGoal }) }));
 
 vi.mock('../hooks/useSkillName', () => ({ useSkillCatalog: () => new Map() }));
 const job = vi.hoisted(() => ({ result: null as { version: number; data: AttributionResponse } | null, running: false }));
 vi.mock('./jobs/useCancellableJob', () => ({ useCancellableJob: () => job }));
-afterEach(() => { job.result = null; });
+afterEach(() => { job.result = null; ui.buttons = []; ui.setGoal.mockClear(); });
 
 function render(busy: boolean, lang: 'en-US' | 'zh-CN' | 'zh-TW', overrides: Partial<BuildSession> = {}) {
   const session = { socketGroups: [{ gems: [] }], hasBuildContent: true, character: null, calcParams: {},
@@ -103,6 +111,14 @@ it('shows all four base resistances in a compact summary', () => {
   const html = summary({ FireResist: 75, ColdResist: 60, LightningResist: 76, ChaosResist: -20 });
   const resistance = html.match(/<dl class="ov-resistances"[\s\S]*?<\/dl>/)![0];
   for (const text of ['火焰抗性', '冰冷抗性', '闪电抗性', '混沌抗性', '75%', '60%', '76%', '-20%']) expect(resistance).toContain(text);
+});
+
+it.each([74, 76])('opens resistance upgrades at %s using the returned cap instead of the saved default target', value => {
+  summary({ FireResist: value, FireResistMax: 78 }, { lang: 'en-US' });
+  const action = ui.buttons.find(button => Children.toArray(button.children).includes('Fix in Upgrades'));
+  expect(action).toBeDefined();
+  action!.onClick!({} as never);
+  expect(ui.setGoal).toHaveBeenCalledWith(expect.objectContaining({ resistanceFirst: true, resistanceTarget: 78 }));
 });
 
 it('explains mapping beside the DPS only when the result confirms an energy trigger', () => {

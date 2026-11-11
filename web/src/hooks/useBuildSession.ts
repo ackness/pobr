@@ -41,7 +41,7 @@ import type {
 } from '../api/types';
 import { highestDpsSkill } from '../lib/skillSelection';
 import { createId } from '../lib/createId';
-import { STORAGE } from '../lib/sessionStorage';
+import { readPreference, STORAGE } from '../lib/sessionStorage';
 
 export interface CharacterState {
   level: number;
@@ -729,7 +729,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const [calcError, setCalcError] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [notes, setNotesState] = useState<string>(
-    () => localStorage.getItem(STORAGE.notes) ?? '',
+    () => readPreference(STORAGE.notes) ?? '',
   );
 
   const notesRef = useRef(notes);
@@ -1578,7 +1578,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   // merged a newer write cannot bring an older library back.
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
-      if (event.storageArea !== localStorage) return;
+      try { if (event.storageArea !== localStorage) return; } catch { return; }
       if (event.key === STORAGE.library) {
         let storedLibrary: string | null = null;
         try { storedLibrary = localStorage.getItem(STORAGE.library); } catch { return; }
