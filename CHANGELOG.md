@@ -4,6 +4,52 @@ Notable changes to PoBR, the browser build planner at [pobr.win](https://pobr.wi
 
 Versions follow [SemVer](https://semver.org/). While the version is 0.0.x, any release may change behaviour; changes that need action from WASM, CLI or data consumers are listed under **Breaking changes**. How a release section is written: [RELEASING.md](RELEASING.md#4-发版上线).
 
+## [0.0.50] - 2026-11-11
+
+Skills triggered by a meta gem whose Energy source PoBR does not model (Cast on Dodge, Cast Fire Spell on Hit and similar) now show 0 action rate and 0 DPS instead of a number based on the spell's own rate of use, and the app says why. Minion configuration options such as Onslaught and Chaotic Might now change the minions, stats like Evasion and Block show as percentages, and a page that fails to render no longer blanks the whole app. Builds saved in v0.0.49 open unchanged, and the WASM JSON schema version is now 20.
+
+### Breaking changes
+
+- The WASM JSON schema version is now 20 (was 19), because the app now requires the new `displayCatalogJson()` export; a cached older engine fails the version handshake instead of breaking later. No existing request or response field changed, so consumers that do not check `schemaVersion()` need no code change; consumers that compare it must expect 20. (#348)
+
+### Added
+
+- Calcs: the Miscellaneous category (gem level, light radius, item rarity) is shown again, and the Compare table also lists stats outside the usual sections when they changed or are non-zero. (#348)
+- Skills triggered by an unmodelled meta gem now carry a short note beside the 0 DPS (results rail, Overview headline and skill ranking, Skills list and detail, Calcs skill metrics) naming the meta gem, plus an Overview "needs attention" warning. Affected skills stay in the Overview ranking with an empty bar. (#357)
+- A page that fails to render or load no longer blanks the app: the error is shown on that page with a download of a backup of the current workspace, and the other pages keep working. (#352)
+
+### Changed
+
+- Main skills triggered by meta gems whose Energy event rate PoBR does not model (Cast on Dodge, Cast when Stunned, Cast Fire Spell on Hit, Reaper's Invocation and similar) now show 0 action rate and 0 DPS, and the limitation names the gem. This is deliberate: the old number was the spell's own cast rate, not the rate the meta gem triggers it, so it overstated or misstated DPS. The average hit is kept, and no new trigger rate is modelled. Among the corpus builds, only the four that use Cast on Dodge or Cast Fire Spell on Hit change. (#353, #357)
+- Stats that are percentages (evade, block, deflect, damage reduction and about a hundred more) now show with a `%` sign, and Compare shows their change in percentage points (for example `+20 pp`). Comparison colours now follow the engine's own list of which direction is better, so damage-taken rows, `TakenMulti*`, survival time, costs, attribute requirements and totem, trap, mine, warcry and channel times are no longer coloured the wrong way. ES recharge rate and freeze and electrocute buildup show as plain numbers, not percentages. Flask and charm recovery, uses, charges, duration and area now count as higher is better. (#348)
+- Resistance findings use your build's own resistance cap instead of assuming 75%. A raised cap no longer misses a warning, a lowered cap no longer gets a false one, and "Fix in Upgrades" targets the real cap. (#352)
+- Shield skills (shield-scaled added damage, Raise Shield and Parry style groups) now read the same Armour, Evasion and Energy Shield as the item panel, including hybrid bases, whole-point rounding and per-level defences. In the audit example the skill saw 1529 Armour against 1657 on the panel. (#351)
+
+### Fixed
+
+- Minion configuration options now take effect on minions: Onslaught, Chaotic Might, Unholy Might, Full Life, Full Energy Shield, Leeching Energy Shield and minion Rage did nothing before. Minions also no longer inherit the character's Full Life, leech, Rage and similar state. The six minion charge options remain unsupported and are shown as unread in the line ledger. Builds with minions can change; for example the corpus build `spirit-walker-09` goes from 312,585 to 332,883 DPS, matching the PoB2 export of its attack speed. (#347)
+- Incision (and Bleed IV) from a support in any skill group now counts for the main skill, and the "# of Incision Stacks" option is no longer hidden when Incision is in a different group. Incision on a minion's attacks (Wolf Pack, Wild Protector) counts too. In the example, bleed chance goes from 0% to 100%. (#349)
+- Reduced local defence lines, such as `50% reduced Evasion Rating`, now lower the item's own defence instead of acting as a character-wide increase. (#351)
+- Coal Stoker no longer shares the fire part of an "all elemental resistances" source, such as the Stag charm spirit's, to cold and lightning. Stag with Coal Stoker now gives 30/30/30 instead of 30/45/45. This follows PoB2 and has not been checked in game. (#354)
+- Calcs no longer shows Chinese full-width colons and commas in English text. (#352)
+- Passive tree: the hover tooltip now follows the attribute choice after you change it. (#352)
+- Browsers that block `localStorage` or have it full no longer break the app: preferences fall back to defaults and your choices are kept for the session. (#352)
+
+### For developers
+
+- New optional field `unmodelled_meta_trigger: { meta_gem_id, host_skill_id }` on the `calculate_build_json` response and on each `skill_metrics_json` row. It appears only for a main skill whose meta gem's Energy event rate is not modelled, and is omitted otherwise; `unsupported_modifiers` is unchanged. It is additive, so the schema version is not affected. (#357)
+- New static WASM export `displayCatalogJson()` returns `{id, category, value_type, higher_is_better}` for every display stat and needs no game data. Use `value_type: "Percent"` to add `%` (values are 0-100) and `higher_is_better` to colour comparisons. The calculate response is unchanged. (#348)
+- `pobr calculate-build` default output reports 0 action rate and 0 DPS for skills triggered by an unmodelled meta gem. The reference-basis recomputation now also runs for them, so `reference.at_own_rate_of_use` is `true` and exports are compared at the spell's own rate, not against zeros. (#353)
+- `mise run audit:display` reports "0 DPS explained: unmodelled meta trigger" for these skills, so an explained zero is distinguished from an unexplained one. (#357)
+
+### Internal
+
+- Removed unused UI components, the old comparison list and two unused dependencies; consolidated duplicate trigger and modifier tests and strengthened data-loading and localization tests; the scratch browser test is split into equipment and heat-map regressions; script tests are discovered automatically; performance diagnostics stay opt-in. (#346)
+- Fixed the driver tests of `mise run check:pr`: they no longer inherit the caller's `POBR_DATA_ROOT`, which made "Automation contracts" fail on local runs. (#350)
+- `AGENTS.md` gains a "Common pitfalls" section for agent environment errors, and the maintainer guide orders mechanism sources as game data, Wiki/PoE2DB, `agent-docs/`, PoB2 Lua. (#355)
+- JSON imports in the web code declare `with { type: 'json' }` and a test guards it. Without it every browser test spec failed at collection since #348, so `mise run e2e` ran 0 tests and `mise run audit:display` failed. (#356)
+- CI no longer installs `lua-dkjson` with apt. Nothing in CI loads it and local oracle runs use the copy bundled with PoB2, so an Ubuntu mirror outage no longer blocks the Rust test shard. (#358)
+
 ## [0.0.49] - 2026-11-07
 
 Layout fixes. The Skills page uses the full width like the other pages. The left rail's damage split lines up with the rows below it. Dragging the passive tree's side column no longer stutters, and the tree's top bar no longer covers the ascendancy hint. Builds saved in v0.0.48 open unchanged, and the WASM JSON schema version stays at 19.
@@ -230,6 +276,7 @@ pobr.win now calculates with game data 0.5.5.5 (was 0.5.5.4.2), imported from th
 
 Notes for 0.0.43 and earlier are on [GitHub Releases](https://github.com/ackness/pobr/releases).
 
+[0.0.50]: https://github.com/ackness/pobr/compare/v0.0.49...v0.0.50
 [0.0.49]: https://github.com/ackness/pobr/compare/v0.0.48...v0.0.49
 [0.0.48]: https://github.com/ackness/pobr/compare/v0.0.47...v0.0.48
 [0.0.47]: https://github.com/ackness/pobr/compare/v0.0.46...v0.0.47
