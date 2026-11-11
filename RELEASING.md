@@ -25,10 +25,8 @@ CI 与 release workflow 的机制见[开发工作流](docs/development-workflow.
    （[数据契约版本](docs/data-architecture.md#31-数据契约版本)）。
 2. **翻译库发布 `locale/<patch>-<n>`。** 在 [ackness/poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats)
    按它的 [RELEASING.md](https://github.com/ackness/poe2-zh-cn-stats/blob/main/RELEASING.md) 发布语言包。
-   `locale/0.5.5.5-4` 起语言 Release 不再附辅助显示（`support-display.zh-CN.json`、`supportDescriptions.zh-CN.json`），
-   宝石说明改由 `display_texts.json` 的作用域承担（[数据架构](docs/data-architecture.md#3-发布与导入契约)）。
-   PoBR 的 `data:bump` 目前仍要求换目标（或交易目录改变）时语言 Release 带新的辅助显示，所以**下一个补丁或
-   交易目录变更之前须先合并退役 `support_display` 的 PoBR PR**，否则 bump 会被拒绝。
+   宝石说明译文随语言包 `display_texts.json` 的作用域发布，英文随游戏包发布
+   （[数据架构](docs/data-architecture.md#3-发布与导入契约)）。
 3. **翻译库的 `published` PR。** 发布后在翻译库另开 PR，把该 Release 的附件 pin 写进配置的 `published`，
    让它的 CI 持续下载并核对这个 Release；然后再到 PoBR 改锁。
 
@@ -46,11 +44,11 @@ mise run data:bump ackness/repoe game/<patch>-<n> ackness/poe2-zh-cn-stats local
 游戏包与语言包的序号各自递增，`<n>` 与 `<m>` 不必相同。
 
 - owner 也可简写为 `repoe`、`poe2-zh-cn-stats`。目标改变时只 bump 一个 owner 会被拒绝。
-- 命令按 `SHA256SUMS` 校验下载的附件，读取 `receipt.json`，替换两个包条目（语言 Release 带辅助显示时一并替换 `support_display`），
+- 命令按 `SHA256SUMS` 校验下载的附件，读取 `receipt.json`，替换两个包条目，
   重算快照 pin、运行身份与 `release_id`，写入 `pipeline/data.lock.json` 和 `data/CURRENT`，再运行 `data:prepare`。
   导入失败时恢复原来的锁和 `CURRENT`，以非零状态退出。
 - 标准输出是一份 `pobr-data-bump/v1` JSON：`before`／`after`（目标、快照、运行身份、`release_id`、
-  各包的 tag 与 SHA-256、辅助显示）、`identity_changed`，以及本地已导入旧快照时的成员差异。保存它，贴进 PR 描述。
+  各包的 tag 与 SHA-256）、`identity_changed`，以及本地已导入旧快照时的成员差异。保存它，贴进 PR 描述。
   成员路径带版本目录，所以新补丁的成员差异会把每个文件都列成删除加新增；这时改看 owner receipt 里各成员的分类。
 - `data:bump` 不提交、不推送，也不开 PR。
 
@@ -80,8 +78,8 @@ mise run ci-status --branch chore/data-bump-<patch>-<n>
 - 分支的数据锁与 master 不同，所以完整 CI 自动加跑数据 bump 冒烟 E2E
   （[data-bump-smoke.spec.ts](web/e2e/data-bump-smoke.spec.ts)）。PR gate 不运行它，合并前必须有这次完整 CI。
   核对 run 的 head SHA 与结果，dispatch 成功不等于通过。
-- 审阅身份差异：两个包的 tag 与 SHA-256 是要采用的 Release（`producer_commit` 在锁的 diff 里）；`support_display`
-  指向新的语言 Release；`test_fixtures` 保留原条目并带着它们发布时的 `target`；成员的增删改与 owner 的发布说明一致。
+- 审阅身份差异：两个包的 tag 与 SHA-256 是要采用的 Release（`producer_commit` 在锁的 diff 里）；可选的
+  `test_fixtures` 保留原条目并带着它们发布时的 `target`；成员的增删改与 owner 的发布说明一致。
 - PR gate 与完整 CI 都在当前 head 上通过后，用 merge commit 合并（`mise run pr-ready <N>` 可做只读预检）。
   master push 会再跑一次完整 CI，不部署。要上线，按 §4 发版。
 
@@ -97,20 +95,16 @@ git switch -c chore/data-bump-locale-<patch>-<m> origin/master
 mise run data:bump ackness/poe2-zh-cn-stats locale/<patch>-<m>
 ```
 
-语言 Release 不带辅助显示时保留原条目，但它必须仍与新语言包配套：`data:bump` 核对它绑定的交易目录等于游戏包的，
-Web 测试另要求它的 `_meta.source_commit` 等于新语言包 `i18n/zh-CN/_meta.json` 的 `source_commit`。
-后者不成立时（翻译库自 `locale/0.5.5.5-4` 起不再发布辅助显示），须先合并退役 `support_display` 的 PoBR PR，再 bump。
 只换语言不需要重绑测试基线。
 
-**只换游戏包。** RePoE 在同一补丁上发布 `game/<patch>-<n+1>`。交易目录不变时只 bump 游戏 owner：
+**只换游戏包。** RePoE 在同一补丁上发布 `game/<patch>-<n+1>`，只 bump 游戏 owner：
 
 ```sh
 git switch -c chore/data-bump-game-<patch>-<n+1> origin/master
 mise run data:bump ackness/repoe game/<patch>-<n+1>
 ```
 
-交易目录改变时原辅助显示不再绑定，`data:bump` 拒绝；翻译库自 `locale/0.5.5.5-4` 起不再发布辅助显示，所以这也要等
-退役 `support_display` 的 PR 合并。任何新游戏包都要按 §2 的表重绑测试基线。
+任何新游戏包都要按 §2 的表重绑测试基线。
 
 ## 4. 发版上线
 
@@ -184,7 +178,7 @@ tag 不可移动、不可删除。同一 tag 的失败作业可以重跑（重�
 只能向前回退：已发布的 tag 不动，只有最高的稳定 v0 tag 会部署，重跑旧 tag 的 workflow 不会部署旧版本。
 
 1. **数据回退。** 在新分支上回退 bump PR 的合并提交，恢复上一份锁的原字节（连同 `data/CURRENT`、
-   `support_display`、`release_id` 和迁移过的消费者）：
+   `release_id` 和迁移过的消费者）：
 
    ```sh
    git switch -c revert/data-bump-<patch>-<n> origin/master

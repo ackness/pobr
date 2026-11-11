@@ -66,7 +66,6 @@ vi.mock('../shared/OptimizerControls', async original => ({ ...await original<ty
 vi.mock('./MinionSelection', () => ({ MinionSelection: () => null }));
 vi.mock('./SkillFormControls', () => ({ SkillFormControls: () => null }));
 vi.mock('./GemNameCopy', () => ({ GemNameCopy: () => null }));
-vi.mock('./SupportDescriptions', () => ({ SupportDescriptions: () => null }));
 vi.mock('./GemPicker', () => ({ GemPicker: (props: { placeholder: string; entries: GemCatalogEntry[] }) => { ui.pickers.push(props); return null; } }));
 vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { ui.buttons.push(props); return <button {...props} />; },

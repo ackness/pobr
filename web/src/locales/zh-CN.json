@@ -2553,8 +2553,6 @@
     "adjustment": "普通辅助宝石无需搜索市集",
     "keepActive": "保留主动宝石，替换整套辅助。",
     "descriptions": "查看辅助效果说明",
-    "descriptionsHint": "中文说明取自固定中英对照词典；未匹配时标注英文来源。说明用于了解效果与取舍，不代表当前等级的具体数值或 PoBR 已建模的效果范围。",
-    "descriptionEnglish": "英文来源",
     "descriptionUnavailable": "此数据快照没有提供来源说明。",
     "loading": "正在读取辅助兼容数据…",
     "catalogError": "辅助兼容数据加载失败，请刷新后重试。",

@@ -147,6 +147,15 @@ class TransportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Expanded archive size"):
             imports.unpack(raw.getvalue(), {**spec, "expanded_bytes": 1}, self.root / "size")
 
+    def test_atomic_replacement_rejects_symlinks_without_changing_the_target(self):
+        target = self.root / "asset.json"
+        target.write_bytes(b"previous")
+        link = self.root / "link.json"
+        link.symlink_to(target)
+        with self.assertRaisesRegex(ValueError, "Unsafe atomic output path"):
+            imports.replace_atomically(link, b"new")
+        self.assertEqual(target.read_bytes(), b"previous")
+
 
 class ReleaseTransportTests(unittest.TestCase):
     def setUp(self):

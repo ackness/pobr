@@ -6,7 +6,6 @@ import unittest
 
 from pipeline.imports import data_bump as bump
 from pipeline.imports import data_imports as imports
-from pipeline.imports import display_assets as display
 from pipeline.runtime import build_data as build
 from pipeline.runtime import data_bundle as bundle
 from pipeline.runtime import runtime_pack as pack
@@ -37,24 +36,6 @@ def locale_receipt(spec, archive, target=TARGET, extra=None, package=True):
               "expanded_bytes": spec["expanded_bytes"], "manifest": spec["manifest"], "members": {}, "index": {}}
     return receipt(target=target, repository="ackness/poe2-zh-cn-stats", drop=("contract",), schema=LOCALE_RECEIPT,
                    extra={**({"package": pinned} if package else {}), **(extra or {})})
-
-
-def support_display(target, catalog, drift=None):
-    """A language owner's support display assets for `target` and trade catalog bytes."""
-    provenance = {"kind": "generated-asset", "generation_data_version": target["game_patch"],
-                  "source": "synthetic", "source_commit": "c" * 40, "source_file": "GemEffects.json",
-                  "source_sha256": "d" * 64}
-    asset = {"_meta": {**{k: v for k, v in provenance.items() if k not in ("kind", "generation_data_version")},
-                       "data_version": target["game_patch"], "catalog_sha256": bundle.sha256(catalog)},
-             "entries": {"synthetic": {"en": "English", "zh_cn": "合成"}}, "untranslated": []}
-    manifest = {"schema": display.MANIFEST_SCHEMA, "locale": "zh-CN",
-                "target": {"game": target["game"], "version": target["game_patch"], "realm": target["realm"]},
-                "catalog_sha256": bundle.sha256(catalog), "provenance": provenance}
-    if drift:
-        drift(manifest, asset)
-    asset_raw = bundle.encoded(asset)
-    manifest["files"] = {display.ASSET: pack.pin(asset_raw)}
-    return {display.MANIFEST: bundle.encoded(manifest), display.ASSET: asset_raw}
 
 
 class DataBumpTests(BuildDataTests):
@@ -108,6 +89,28 @@ class DataBumpTests(BuildDataTests):
         second = self.server.requests[len(first):]
         self.assertEqual(len(first), 3)
         self.assertEqual([p.rsplit("/", 1)[1] for p in second], ["SHA256SUMS"])
+
+    def test_new_patch_bump_without_optional_fixtures_prepares(self):
+        del self.lock["test_fixtures"]
+        self.save()
+        self.publish_new_patch()
+        result = self.run_bump(self.NEW_PATCH)
+        self.assertTrue(result["identity_changed"])
+        self.assertNotIn("test_fixtures", bundle.decode(self.lock_path.read_bytes()))
+        self.assertEqual(build.prepare(self.lock_path, self.out, self.cache, self.shared,
+                                       fetcher=self.owner_inputs())["runtime_identity"], result["after"]["runtime_identity"])
+
+    def test_language_bump_ignores_retired_display_attachments(self):
+        self.server.publish("ackness/poe2-zh-cn-stats", "locale/9.1-2", {
+            "pobr-locale-9.1.zip": self.archives["language"],
+            "receipt.json": locale_receipt(self.lock["packages"]["language"], self.archives["language"]),
+            "support-display.zh-CN.json": b"unused manifest",
+            "supportDescriptions.zh-CN.json": b"unused descriptions",
+        })
+        result = self.run_bump([("ackness/poe2-zh-cn-stats", "locale/9.1-2")])
+        self.assertFalse(result["identity_changed"])
+        self.assertEqual([path.rsplit("/", 1)[1] for path in self.server.requests],
+                         ["SHA256SUMS", "receipt.json", "pobr-locale-9.1.zip"])
 
     def test_new_game_bytes_change_snapshot_and_runtime_identity(self):
         self.contents["data/9.1/base/skills.json"] = b'[{"id":"raw","value":1}]'
@@ -244,7 +247,7 @@ class DataBumpTests(BuildDataTests):
         self.assertEqual({path: path.read_bytes() for path in before}, before)
         self.assertEqual(list(self.lock_path.parent.glob(f".{self.lock_path.name}.*")), [])
 
-    def publish_new_patch(self, version="9.2", catalog=b'{"gems":[]}', shown=True, drift=None, extra=None):
+    def publish_new_patch(self, version="9.2", catalog=b'{"gems":[]}'):
         target = {**TARGET, "game_patch": version}
         contents = {n.replace("data/9.1/", f"data/{version}/"): r for n, r in self.contents.items()}
         contents[f"data/{version}/overlay/trade_catalog.json"] = catalog
@@ -258,12 +261,9 @@ class DataBumpTests(BuildDataTests):
             self.set_part(kind, {n: r for n, r in contents.items() if ("/i18n/" in n) == (kind == "language")},
                           target=target)
             assets = {asset: self.archives[kind]}
-            if kind == "language" and shown:
-                assets.update(support_display(target, catalog, drift))
             if kind == "language":
                 assets["receipt.json"] = locale_receipt({**self.lock["packages"][kind], "asset": asset},
-                                                        self.archives[kind], target,
-                                                        extra=extra(assets) if extra else None)
+                                                        self.archives[kind], target)
             else:
                 assets["receipt.json"] = receipt(target=target)
             self.server.publish(owner, tag, assets)
@@ -271,7 +271,7 @@ class DataBumpTests(BuildDataTests):
 
     NEW_PATCH = [("ackness/repoe", "game/9.2-1"), ("ackness/poe2-zh-cn-stats", "locale/9.2-1")]
 
-    def test_new_patch_needs_every_owner_and_rewrites_current(self):
+    def test_new_patch_without_display_attachments_needs_every_owner_and_rewrites_current(self):
         target = self.publish_new_patch()
         data = self.root / "source/data"
         original = self.lock_path.read_bytes()
@@ -289,82 +289,20 @@ class DataBumpTests(BuildDataTests):
         self.assertTrue(result["identity_changed"])
         self.assertEqual(build.prepare(self.lock_path, self.out, self.cache, self.shared,
                                        fetcher=self.owner_inputs())["runtime_identity"], after["runtime_identity"])
-        # The support display moved to the language Release; it imports from there.
-        assets = support_display(target, b'{"gems":[]}')
-        self.assertEqual(after["support_display"], {
-            "repository": "ackness/poe2-zh-cn-stats", "tag": "locale/9.2-1",
-            "manifest": pack.pin(assets[display.MANIFEST]), "asset": pack.pin(assets[display.ASSET]),
-            "catalog_sha256": bundle.sha256(b'{"gems":[]}'), "source_data_version": "9.2"})
-        self.assertEqual(result["after"]["support_display"]["tag"], "locale/9.2-1")
-        self.assertEqual(display.prepare(self.lock_path, self.out, self.cache, fetcher=self.owner_inputs()),
-                         assets[display.ASSET])
         # The patch-independent fixtures stay, recording the target they were published for.
         self.assertEqual(after["test_fixtures"], {**before["test_fixtures"], "target": TARGET})
 
-    def test_new_patch_without_a_matching_support_display_leaves_the_lock(self):
-        original = self.lock_path.read_bytes()
-        cases = {
-            "unlisted": ({"shown": False}, "needs a new support display"),
-            "half-listed": ({"extra": None, "drift": None, "shown": True}, "without"),
-            "catalog": ({"drift": lambda m, a: (m.update(catalog_sha256="e" * 64),
-                                                a["_meta"].update(catalog_sha256="e" * 64))},
-                        "bound to trade catalog"),
-            "target": ({"drift": lambda m, a: m["target"].update(version="9.1")}, "target/schema"),
-            "provenance": ({"drift": lambda m, a: a["_meta"].update(data_version="8.0")}, "provenance"),
-            "receipt": ({"extra": lambda assets: {"support_display": {
-                "manifest": pack.pin(b"other"), "asset": pack.pin(assets[display.ASSET])}}},
-                        "pins another support display"),
-            "receipt-without-assets": ({"shown": False, "extra": lambda assets: {"support_display": {
-                "manifest": pack.pin(b"m"), "asset": pack.pin(b"a")}}}, "lists neither"),
-        }
-        for name, (options, message) in cases.items():
-            with self.subTest(name):
-                for cached in self.cache.glob("*"):
-                    cached.unlink()
-                self.publish_new_patch(**options)
-                if name == "half-listed":
-                    sums = self.server.root / "ackness/poe2-zh-cn-stats/releases/download/locale/9.2-1/SHA256SUMS"
-                    sums.write_text("".join(line + "\n" for line in sums.read_text().splitlines()
-                                            if not line.endswith(display.ASSET)))
-                with self.assertRaisesRegex(ValueError, message):
-                    self.run_bump(self.NEW_PATCH)
-                self.assertEqual(self.lock_path.read_bytes(), original)
-
-    def test_a_receipt_pinning_the_display_is_accepted(self):
-        self.publish_new_patch(extra=lambda assets: {"support_display": {
-            "manifest": {"asset": display.MANIFEST, **pack.pin(assets[display.MANIFEST])},
-            "asset": {"asset": display.ASSET, **pack.pin(assets[display.ASSET])}}})
-        self.run_bump(self.NEW_PATCH)
-        self.assertEqual(bundle.decode(self.lock_path.read_bytes())["support_display"]["tag"], "locale/9.2-1")
-
-    def test_a_kept_git_support_display_must_match_a_changed_catalog(self):
-        original = self.lock_path.read_bytes()
+    def test_game_only_bump_accepts_a_changed_trade_catalog(self):
         self.contents["data/9.1/overlay/trade_catalog.json"] = b'{"gems":[{"skill_id":"new"}]}'
         snapshot = bundle.decode(self.contents["data/9.1/manifest.json"])
         snapshot["files"]["overlay/trade_catalog.json"] = bundle.sha256(self.contents["data/9.1/overlay/trade_catalog.json"])
         self.contents["data/9.1/manifest.json"] = pack.raw_json(snapshot)
         self.set_part("game", {n: r for n, r in self.contents.items() if "/i18n/" not in n})
         self.publish_game(self.archives["game"])
-        with self.assertRaisesRegex(ValueError, "bound to trade catalog"):
-            self.run_bump()
-        self.assertEqual(self.lock_path.read_bytes(), original)
-
-    def test_a_kept_support_display_must_match_the_new_catalog(self):
-        """A game re-release that changes the trade catalog needs a new support display."""
-        self.publish_new_patch()
-        self.run_bump(self.NEW_PATCH)
-        adopted = self.lock_path.read_bytes()
-        self.lock = bundle.decode(adopted)
-        # Same target, new catalog, language untouched: the kept display no longer binds.
-        self.publish_new_patch(catalog=b'{"gems":[{"skill_id":"new"}]}', shown=False)
-        with self.assertRaisesRegex(ValueError, "bound to trade catalog .* publish a support display"):
-            self.run_bump([("ackness/repoe", "game/9.2-1")])
-        self.assertEqual(self.lock_path.read_bytes(), adopted)
-        # The same catalog keeps it.
-        self.publish_new_patch(shown=False)
-        self.run_bump([("ackness/repoe", "game/9.2-1")])
-        self.assertEqual(bundle.decode(self.lock_path.read_bytes())["support_display"],
-                         bundle.decode(adopted)["support_display"])
+        result = self.run_bump()
+        self.assertTrue(result["identity_changed"])
+        self.assertEqual(bundle.decode(self.lock_path.read_bytes())["snapshot_manifest"],
+                         pack.pin(self.contents["data/9.1/manifest.json"]))
 
     def test_wrong_part_kind_and_unknown_owner_reject(self):
         self.server.publish("ackness/repoe", TAG, {ASSET: self.archives["language"], "receipt.json": receipt()})

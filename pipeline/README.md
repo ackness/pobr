@@ -17,7 +17,7 @@ PoBR 不生产数据。把 RePoE 事实转换成运行 JSON 的
 | --- | --- |
 | [data.lock.json](data.lock.json) | 唯一数据锁：两个 owner 的 Release 附件（或旧 `handoff/*` 的 commit + 路径）与 SHA-256，目标、自有规则 pin 与期望身份 |
 | [runtime/](runtime/build-data.md) | 按锁临时导入、快照封存与精简发行包（`data:prepare`、`data:pack`）；按另一份锁的本地选择与回退演练（`data:update`，见[锁驱动的本地选择](runtime/locked-update.md)） |
-| [imports/](imports/sources.lock.json) | Release 附件与固定 Git 传输、`data:bump`、辅助说明投影、数据归属检查；台账仅存消费范围接受决定 |
+| [imports/](imports/sources.lock.json) | Release 附件与固定 Git 传输、`data:bump`、测试夹具导入、数据归属检查；台账仅存消费范围接受决定 |
 | [diagnostics/](diagnostics/README.md) | 数据版本差异、描述来源核对与词条审计；不自动采用数据 |
 
 各功能的说明、锁和测试与实现放在一起。Python 从仓库根目录以模块运行，
@@ -102,7 +102,7 @@ PoB2 本身把两层工作分开：`Data/StatDescriptions` 等从游戏数据导
 PoBR 沿用这个边界：从 PoB2 转换的解析规则（`mod_parser_rules.json`、`special_vendor.json`）随 RePoE owner 包固定导入，
 PoBR 的修正放在 `data/overlay-common/special_mods.json`，更新数据后自动继承；真正的新机制仍需要实现和数值回归测试。
 
-## 语言数据与辅助显示
+## 语言数据与宝石说明
 
 语言包由[翻译库](https://github.com/ackness/poe2-zh-cn-stats)生成并发布为 `locale/<patch>-<n>` Release，
 PoBR 按锁导入，不在本仓库重新生成、下载词典或跟踪上游 HEAD；运行时不联网取词典。
@@ -113,11 +113,11 @@ PoBR 按锁导入，不在本仓库重新生成、下载词典或跟踪上游 HE
 选定 locale 的显示侧表 `i18n/<locale>/display_texts.json` 随语言包导入，接入普通 Web `translateLines`：
 精确来源查询、跨表同名冲突和缺译保留，不改原始构筑文本或计算。审核补译只消费精确绑定的已审核记录，草稿不生效。
 
-辅助宝石说明来自语言 Release 的两件附件（`support-display.zh-CN.json` 清单与 `supportDescriptions.zh-CN.json`），
-锁中记为 `support_display`。`mise run data:prepare` 在构建／实物测试前导入，物化忽略的
-`web/src/lib/supportDescriptions.zh-CN.json`，不改 GameData 快照身份；清单绑定的交易目录 SHA 必须与游戏包一致，
-UI 仍核对 `skill_id` 和完整英文。繁体仍是字形转换回退，不宣称官方繁中译文；这些说明不是当前等级／品质数值或机制认证。
-`locale/0.5.5.5-4` 起语言 Release 不再发布这两件附件，锁保留 `locale/0.5.5.5-3` 的条目，直至退役（见[数据架构](../docs/data-architecture.md#3-发布与导入契约)）。
+宝石说明的英文来自游戏包的可选 `overlay/gem_descriptions.json`，译文来自语言包
+`display_texts.json` 的 `GemEffects.SupportText` 与 `ActiveSkills.Description` 作用域。
+Web 的宝石选择器与辅助推荐共用说明面板，按稳定 ID 和完整英文查询译文；没有英文文件时不显示说明。
+文件形状与来源约定见[数据架构](../docs/data-architecture.md#3-发布与导入契约)，显示与语言回退见
+[Web 契约](../docs/web-contracts.md#宝石天赋与珠宝规划)。
 
 ## 固定输入、版本与候选
 
@@ -152,16 +152,7 @@ schema-3 manifest 封存默认运行字节；维护报告和本地 patch 不进�
 
 - **目标**：目标改变时必须在一次调用中 bump 两个 owner，只 bump 一个会被拒绝。命令原子替换锁与 `data/CURRENT`；
   随后的 `data:prepare` 失败时恢复原字节并以非零退出。
-- **辅助显示**：语言 Release 的 `SHA256SUMS` 列出 `support-display.zh-CN.json` 与 `supportDescriptions.zh-CN.json` 时，
-  `support_display` 改为该 Release 的两件附件（`repository` + `tag` + manifest／资产 pin + `catalog_sha256` +
-  `source_data_version`），按 SHA256SUMS 校验，并核对新目标、语言、provenance 及新游戏包交易目录的 SHA-256。
-  新目标的语言 Release 缺这两件附件、只列其一，或 receipt 的 `support_display` pin 与附件不符时拒绝。
-  同目标只 bump 游戏包而交易目录变了时，保留的辅助显示不再绑定，同样拒绝：请语言 owner 发布下一个
-  `locale/<patch>-<m>`（语言包字节可不变）并一起 bump。保留的辅助显示还须与语言包同源：Web 测试要求其
-  `_meta.source_commit` 等于语言包 `i18n/zh-CN/_meta.json` 的 `source_commit`，`data:bump` 不核对这一项。
-  `locale/0.5.5.5-4` 起翻译库不再发布辅助显示，所以在退役它的 PR 合并前，换目标或交易目录改变的 bump 都会被拒绝，
-  上一句的做法暂不可行。
-- **测试夹具**：`test_fixtures` 是与补丁无关的 API 响应样本；换目标时保留，条目加 `target` 记录它们发布时的目标。
+- **测试夹具**：可选的 `test_fixtures` 是与补丁无关的 API 响应样本；换目标时保留，条目加 `target` 记录它们发布时的目标；缺省时跳过。
 - **receipt 绑定**：receipt 的 `package`（ZIP 与根 manifest 的字节数与 SHA-256）存在时必须与下载的包一致；
   `repoe-release-receipt/v2` 必须带它；旧 receipt 不带时仍可读。
 - **契约**：新游戏快照未声明 `contract_version` 时拒绝，报错指向 RePoE 声明中 snapshot-manifest job 的

@@ -207,7 +207,7 @@ it('the minion-only support hover previews the same damage stat as its card', as
 });
 
 
-it.each([true, false])('recommendations use official gem panels when the index exists (%s), retaining legacy descriptions otherwise', async available => {
+it.each([true, false])('recommendations show descriptions only when the engine catalog is available (%s)', async available => {
   harness.descriptions = available ? buildGemDescriptionIndex({ scopes: {
     'GemEffects.SupportText': { variant: 'Official [Area] description.' }, 'ActiveSkills.Description': {},
   } }, [{ gem_id: 'Gem', granted_effect_id: 'support', variant_id: 'variant' }], {}, [], []) : null;
@@ -217,16 +217,17 @@ it.each([true, false])('recommendations use official gem panels when the index e
       variant: {}, stats: { CombinedDPS: 120, TotalEHP: 100 } }] });
   render(); expand(); render(); await button('Calculate support combinations').onClick!({} as never);
   const html = render();
-  expect(html).toContain('support-descriptions');
   if (available) {
+    expect(html).toContain('support-descriptions');
     expect(html).toContain('gem-description-panel');
     expect(html).toContain('Official Area description.');
     expect(html).toContain('These describe the gem’s effects, not current-level values.');
-    expect(html).not.toContain('Descriptions from the pinned PoB2 source.');
     expect(harness.buttons.some(button => button.children === 'Add')).toBe(false);
   } else {
+    expect(html).not.toContain('support-descriptions');
     expect(html).not.toContain('gem-description-panel');
-    expect(html).toContain('Descriptions from the pinned PoB2 source.');
+    expect(html).toContain('support');
+    expect(html).toContain('Apply');
   }
 });
 

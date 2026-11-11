@@ -2553,8 +2553,6 @@
     "adjustment": "一般輔助寶石不需要搜尋交易市集",
     "keepActive": "保留主動寶石，替換整套輔助。",
     "descriptions": "查看輔助效果說明",
-    "descriptionsHint": "中文說明取自固定簡中詞典並轉為繁體字形；未匹配時標註英文來源。說明用於了解效果與取捨，不代表目前等級的具體數值或 PoBR 已建模的效果範圍。",
-    "descriptionEnglish": "英文來源",
     "descriptionUnavailable": "此資料快照沒有提供來源說明。",
     "loading": "正在讀取輔助相容資料…",
     "catalogError": "輔助相容資料載入失敗，請重新整理後重試。",

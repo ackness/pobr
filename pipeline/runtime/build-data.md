@@ -117,18 +117,10 @@ directories are not inputs; historical Git objects are neither rewritten nor
 used as runtime fallbacks. `check_data_ownership.py` rejects full payloads
 forced into PoBR's Git index.
 
-The `support_display` entry also imports the translation owner's support
-description asset before Web builds/tests: from a retained `handoff/*` commit and
-path, or from the `support-display.zh-CN.json` and `supportDescriptions.zh-CN.json`
-assets of a `locale/<patch>-<n>` Release, which `data:bump` adopts with the
-language package (`locale/0.5.5.5-4` and later carry none; the lock keeps the
-`locale/0.5.5.5-3` entry). Its manifest, asset and complete target trade-catalog hashes
-must match; the asset's original generation version and source
-provenance remain unchanged. The ignored Web JSON is installed atomically only for
-the selected version.
-The complete table and its language projection code are maintained in the
-translation repository. PoBR retains import and display guards; this auxiliary
-asset is outside the GameData bundle and does not change its runtime identity.
+Gem descriptions come from the game part's optional
+`overlay/gem_descriptions.json` and the language part's `display_texts.json`
+scopes; no separate display input is imported. See the
+[description contract](../../docs/data-architecture.md#3-发布与导入契约).
 
 Focused tests: `test_build_data.py` covers owner/path separation, retained language
 evidence, shared intersections, exact identity, data-lock schema and tag rules,
@@ -136,13 +128,14 @@ archive/cache corruption, missing/unpublished pins, CURRENT gating and
 tracked-data rejection. These synthetic contracts are not Rust calculation or
 remote CI evidence.
 
-The `test_fixtures` package retains eleven API response samples in RePoE for mock
+The optional `test_fixtures` package retains eleven API response samples in RePoE for mock
 development and UI contracts. They are opaque historical test inputs, with unknown
 original client identity, rather than current game-fact references. Preparation
 validates the archive, manifest, target (the entry's `target`, recorded by
 `data:bump` when the lock moves to a new patch, else the lock target) and exact
 inventory before materializing
 ignored `web/src/fixtures/*.json`; complete fixture tables cannot be tracked.
+If the lock omits `test_fixtures`, preparation skips fixture import and installation.
 Small synthetic unit fixtures remain in the tests that own their behavior.
 
 Small reviewed regression statistics live in the gamedata test fixture
