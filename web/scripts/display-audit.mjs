@@ -56,12 +56,6 @@ registerHooks({
       throw error;
     }
   },
-  // Vite imports JSON without an attribute; Node requires `type: 'json'`.
-  load(url, context, next) {
-    if (url.endsWith('.json') && !context.importAttributes?.type)
-      return next(url, { ...context, importAttributes: { ...context.importAttributes, type: 'json' } });
-    return next(url, context);
-  },
 });
 const webLib = name => import(pathToFileURL(join(webDir, 'src/lib', `${name}.ts`)).href);
 const [{ NativeNameIndex, classDisplayName, nativeClassNames, nativeGemNames }, { nativeDisplayTexts }, { skillDisplayName },
