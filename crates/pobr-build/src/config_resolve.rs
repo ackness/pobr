@@ -291,25 +291,18 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
         .filter(|m| !is_quest_mod(m))
         .cloned()
         .collect();
-    // Minions are assembled later from MinionModifier payloads. Forward this
-    // explicit per-actor ground state through that channel; the other legacy
-    // minion config effects remain outside this mechanic's scope.
-    player_mods.extend(
-        outcome
-            .minion_mods
-            .iter()
-            .filter(|modifier| modifier.name.as_str() == "Condition:OnConsecratedGround")
-            .map(|modifier| {
-                let mut wrapped = Modifier::new(
-                    "MinionModifier",
-                    pobr_data::prelude::ModType::List,
-                    pobr_core::ModValue::NestedMods(vec![modifier.clone()]),
-                );
-                wrapped.origin = modifier.origin.clone();
-                wrapped.source = modifier.source.clone();
-                wrapped
-            }),
-    );
+    // Minions are assembled later from MinionModifier payloads. Forward every
+    // minion config effect through that channel, retaining its attribution.
+    player_mods.extend(outcome.minion_mods.iter().map(|modifier| {
+        let mut wrapped = Modifier::new(
+            "MinionModifier",
+            ModType::List,
+            pobr_core::ModValue::NestedMods(vec![modifier.clone()]),
+        );
+        wrapped.origin = modifier.origin.clone();
+        wrapped.source = modifier.source.clone();
+        wrapped
+    }));
     let enemy_mods = outcome.enemy_mods.clone();
 
     ResolvedConfig {
@@ -583,6 +576,90 @@ mod tests {
             resolved.config.campaign_progress,
             Some(CampaignProgress::Act1)
         );
+    }
+
+    /// Both ways an option gives a minion a modifier reach the minions: a
+    /// player effect wrapping it in `MinionModifier` and an effect that
+    /// targets the minion directly (`conditionMinionsOnConsecratedGround`).
+    #[test]
+    fn every_catalog_minion_modifier_is_forwarded_once_with_attribution() {
+        use pobr_data::catalog::config_def::ConfigInputType;
+        use pobr_data::catalog::value_expr::EffectTarget;
+
+        let catalog = load_catalog();
+        let mut checked = 0;
+        let mut direct = 0;
+        for def in &catalog.options {
+            let expected_count = def
+                .effects
+                .iter()
+                .filter(|effect| {
+                    (effect.target == EffectTarget::Player && effect.name == "MinionModifier")
+                        || effect.target == EffectTarget::Minion
+                })
+                .count();
+            direct += def
+                .effects
+                .iter()
+                .filter(|effect| effect.target == EffectTarget::Minion)
+                .count();
+            if expected_count == 0 {
+                continue;
+            }
+            let value = match def.input_type {
+                ConfigInputType::Check => ConfigInputValue::Bool(true),
+                ConfigInputType::Count
+                | ConfigInputType::CountAllowZero
+                | ConfigInputType::Integer
+                | ConfigInputType::Float => ConfigInputValue::Number(2.0),
+                other => panic!("{} needs a forwarding test input for {other:?}", def.var),
+            };
+            let build = build_with_inputs(RawConfigInputs::new().with(&def.var, value));
+            let outcome = interpret(
+                std::slice::from_ref(def),
+                &build.config.raw_inputs,
+                &build_registry(),
+            );
+            assert!(
+                outcome.diagnostics.is_empty(),
+                "{}: {:?}",
+                def.var,
+                outcome.diagnostics
+            );
+            assert_eq!(outcome.minion_mods.len(), expected_count, "{}", def.var);
+
+            let resolved = resolve_config(&build, Some(&catalog));
+            let source_id = format!("config.{}", def.var);
+            let forwarded: Vec<_> = resolved
+                .player_mods
+                .iter()
+                .filter(|modifier| {
+                    modifier.name.as_str() == "MinionModifier"
+                        && modifier
+                            .origin
+                            .as_ref()
+                            .is_some_and(|origin| origin.source_id.id == source_id)
+                })
+                .collect();
+            assert_eq!(forwarded.len(), expected_count, "{}", def.var);
+            for (wrapper, inner) in forwarded.iter().zip(&outcome.minion_mods) {
+                assert_eq!(wrapper.mod_type, ModType::List, "{}", def.var);
+                assert_eq!(
+                    wrapper.value.as_nested_mods(),
+                    Some(std::slice::from_ref(inner)),
+                    "{}",
+                    def.var
+                );
+                assert_eq!(wrapper.origin, inner.origin, "{}", def.var);
+                assert_eq!(wrapper.source, inner.source, "{}", def.var);
+            }
+            checked += 1;
+        }
+        assert!(
+            checked >= 14,
+            "expected the minion config catalog, checked {checked}"
+        );
+        assert!(direct >= 1, "expected a config effect that targets minions");
     }
 
     /// Enemy condition bridge: `conditionEnemyChilled` → enemy bucket FLAG → cfg

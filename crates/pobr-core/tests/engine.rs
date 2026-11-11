@@ -14,6 +14,9 @@ mod enemy_resistance;
 #[path = "engine/unholy_might.rs"]
 mod unholy_might;
 
+#[path = "engine/minion_own_state.rs"]
+mod minion_own_state;
+
 #[path = "engine/companion_presence.rs"]
 mod companion_presence;
 

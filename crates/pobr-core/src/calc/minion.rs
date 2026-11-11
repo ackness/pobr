@@ -782,8 +782,8 @@ pub fn resolve_minion_level(gem_level: u32) -> u32 {
 /// The modifiers of its monster's own that a minion has: the entries of
 /// `def.mod_list` the engine has a reader for, under the engine's names
 /// (Zekoa's `CritMultiplier` INC 150 is "150% increased Critical Damage
-/// Bonus"). An entry with conditions, with keyword flags, or of a name the
-/// engine does not read is left out.
+/// Bonus"; the Skeletal Reaver "can gain Rage"). An entry with conditions,
+/// with keyword flags, or of a name the engine does not read is left out.
 pub fn definition_modifiers(def: &MinionDef) -> Vec<Modifier> {
     use pobr_data::catalog::actors::LuaValueDef;
     let number = |value: &Option<LuaValueDef>| match value {
@@ -791,8 +791,29 @@ pub fn definition_modifiers(def: &MinionDef) -> Vec<Modifier> {
         Some(LuaValueDef::Number(n)) => Some(*n),
         Some(_) => None,
     };
+    let origin = |entry: &pobr_data::catalog::actors::MinionModDef, value: String| {
+        ModifierSource::new(SourceId::new(
+            SourceKind::GameConstant,
+            format!("minion.{}", def.id),
+        ))
+        .with_raw_text(format!(
+            "{}: {} {} {value}",
+            def.name, entry.name, entry.mod_type
+        ))
+    };
     let mut modifiers = Vec::new();
     for entry in &def.mod_list {
+        // Flags the engine reads for the minion itself: its Rage.
+        if entry.mod_type == "FLAG"
+            && entry.name == "Condition:CanGainRage"
+            && entry.value == LuaValueDef::Bool(true)
+            && entry.tags.is_empty()
+        {
+            modifiers.push(
+                Modifier::flag(entry.name.as_str()).with_origin(origin(entry, "true".into())),
+            );
+            continue;
+        }
         let (Some(flags), Some(0.0), LuaValueDef::Number(value), true) = (
             number(&entry.flags),
             number(&entry.keyword_flags),
@@ -816,15 +837,9 @@ pub fn definition_modifiers(def: &MinionDef) -> Vec<Modifier> {
             ("Speed", 1.0) => "AttackSpeed",
             _ => continue,
         };
-        let origin = ModifierSource::new(SourceId::new(
-            SourceKind::GameConstant,
-            format!("minion.{}", def.id),
-        ))
-        .with_raw_text(format!(
-            "{}: {} {} {}",
-            def.name, entry.name, entry.mod_type, value
-        ));
-        modifiers.push(Modifier::number(name, mod_type, *value).with_origin(origin));
+        modifiers.push(
+            Modifier::number(name, mod_type, *value).with_origin(origin(entry, value.to_string())),
+        );
     }
     modifiers
 }

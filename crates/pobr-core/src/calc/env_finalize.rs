@@ -487,35 +487,55 @@ pub fn buff_pass(env: &mut Env) {
     super::buff_pass::buff_pass(env);
 }
 
-/// Stage 6: equivalent to doActorMisc -- built-in buff flags are expanded
-/// via `Env::buff_definitions` (injected from `overlay/buff_definitions.json`)
+/// Stage 6: the character's built-in buffs -- flags are expanded via
+/// `Env::buff_definitions` (injected from `overlay/buff_definitions.json`)
 /// into mods written back to `env.player.mod_db`, with accompanying
-/// conditions written to `env.cfg.conditions` (mirrors CalcPerform.lua:503-765,
-/// the whole section gated on `cfg.mode_combat` -- default false means a
-/// no-op, a migration invariant anchor; B4's automatic mode_combat activation is a separate behavior commit).
+/// conditions written to `env.cfg.conditions`, only in combat
+/// (`cfg.mode_combat`). Each minion runs the same expansion on itself
+/// (`perform_minions`), see [`expand_actor_misc_buffs`].
 ///
 /// Attribution: `(SourceKind::Buff, "buff.<id>")`; a def whose id has
 /// already been expanded (a repeated `perform` within the same Env) is skipped, guaranteeing idempotency with no double-counting.
 pub fn expand_misc_buffs(env: &mut Env) {
+    let enemy_mods = expand_actor_misc_buffs(
+        &mut env.player.mod_db,
+        &mut env.cfg,
+        &env.enemy.mod_db,
+        &env.buff_definitions,
+        &env.buff_handler_registry,
+    );
+    env.enemy.mod_db.add_list(enemy_mods);
+}
+
+/// Expands the built-in buffs one actor (the character or a minion) has,
+/// from its own modifiers and calculation context, into its own ModDb and
+/// context. Returns the modifiers the buffs give the enemy, for the caller
+/// to place. Out of combat nothing is expanded.
+pub(crate) fn expand_actor_misc_buffs(
+    db: &mut crate::ModDb,
+    cfg: &mut crate::CalcConfig,
+    enemy_db: &crate::ModDb,
+    definitions: &[pobr_data::catalog::buffs::BuffDef],
+    registry: &crate::rules::registry::HandlerRegistry,
+) -> Vec<Modifier> {
     use pobr_data::source::SourceKind;
 
     use crate::rules::buff_expander::{self, BuffExpandState};
 
-    if !env.cfg.mode_combat {
-        return;
+    if !cfg.mode_combat {
+        return Vec::new();
     }
 
-    // Idempotency guard: excludes defs already expanded for this Env (decided by attribution id `buff.<id>`).
-    let expanded_ids: std::collections::BTreeSet<&str> = env
-        .player
-        .mod_db
+    // Idempotency guard: excludes defs already expanded for this actor
+    // (decided by attribution id `buff.<id>`), including a buff an ally
+    // grant has already expanded with its caster's magnitude.
+    let expanded_ids: std::collections::BTreeSet<&str> = db
         .iter_mods()
         .filter_map(|m| m.origin.as_ref())
         .filter(|o| o.source_id.kind == SourceKind::Buff)
         .map(|o| o.source_id.id.as_str())
         .collect();
-    let pending: Vec<_> = env
-        .buff_definitions
+    let pending: Vec<_> = definitions
         .iter()
         .filter(|def| !expanded_ids.contains(format!("buff.{}", def.id).as_str()))
         .cloned()
@@ -523,17 +543,17 @@ pub fn expand_misc_buffs(env: &mut Env) {
 
     let expansion = buff_expander::expand_misc_buffs(
         &BuffExpandState {
-            db: &env.player.mod_db,
-            enemy_db: Some(&env.enemy.mod_db),
-            cfg: &env.cfg,
-            mode_combat: env.cfg.mode_combat,
+            db,
+            enemy_db: Some(enemy_db),
+            cfg,
+            mode_combat: cfg.mode_combat,
             // Main skill context: Env has no main-skill snapshot field yet,
             // so this is None until wired up -- handlers depending on it
             // (buff:fanaticism) conservatively produce zero output.
             main_skill: None,
         },
         &pending,
-        &env.buff_handler_registry,
+        registry,
     );
     // A buff's own multiplier (Unholy Might's magnitude, 100, that its "Gain
     // 30% of Damage as Extra Chaos Damage" is counted per) joins the
@@ -544,19 +564,19 @@ pub fn expand_misc_buffs(env: &mut Env) {
             && let Some(var) = modifier.name.as_str().strip_prefix("Multiplier:")
             && let Some(value) = modifier.value.as_number()
         {
-            *env.cfg.multipliers.entry(var.to_string()).or_insert(0.0) += value;
+            *cfg.multipliers.entry(var.to_string()).or_insert(0.0) += value;
         }
     }
-    env.player.mod_db.add_list(expansion.mods);
-    env.enemy.mod_db.add_list(expansion.enemy_mods);
+    db.add_list(expansion.mods);
     for condition in expansion.conditions_set {
-        env.cfg.conditions.insert(condition, true);
+        cfg.conditions.insert(condition, true);
     }
-    // Handler scalars → additively merged into cfg.multipliers (vendor's
-    // `modDB.multipliers[var] += v` shape, e.g. Fortify's BuffOnSelf; see the registry::HandlerOutcome docs).
+    // Handler scalars add to the actor's multipliers (Fortify adds one
+    // `BuffOnSelf`; see the registry::HandlerOutcome docs).
     for (var, value) in expansion.multipliers {
-        *env.cfg.multipliers.entry(var).or_insert(0.0) += value;
+        *cfg.multipliers.entry(var).or_insert(0.0) += value;
     }
+    expansion.enemy_mods
 }
 
 /// The definition installs the base magnitude before final Mana is available.
