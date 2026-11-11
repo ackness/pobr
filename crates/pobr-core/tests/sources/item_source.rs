@@ -280,19 +280,8 @@ fn session_add_item_feeds_minimal_calc() {
     assert_eq!(session.unsupported_modifier_texts(), ["mirrored"]);
 }
 
-// Quality is not injected as a More modifier (finding 02-05 fix)
-//
-// PoB2's item quality is a **per-stat base scaling** (weapons: physical only;
-// armour: armour/evasion/ES each independently x (1 + quality/100)), not a single
-// global `more` modifier. Injecting quality as a global More mod
-// (`LocalPhysicalDamageMore` / `LocalDefencesMore`) would incorrectly spill over
-// into global damage / all defences. The actual scaling is handled per-item,
-// per-stat by the orchestration layer's `pobr-build::calc_orchestrator`
-// (item_rolled_defence and weapon physical_min/max), matching PoB2. So ingest
-// injects no quality modifier.
-//
-// Source: PoB2 src/Classes/Item.lua BuildModListForSlotNum 1751-1756 (weapons),
-//         1812-1819 (armour, per-stat independent scaling).
+// item_local_defences and weapon_item_contribution apply quality to each item's
+// own values. Ingest must not add a global modifier that scales other items too.
 
 /// Helper: asserts that ingesting an item produces **no** modifier attributed to
 /// `ItemQuality`.

@@ -1,4 +1,4 @@
-//! weapon — weapon/unarmed base contribution + local weapon/defence mod parsing + clean_item_text.
+//! weapon — weapon/unarmed base contribution + local weapon mod parsing + clean_item_text.
 
 use pobr_data::item::Item;
 use pobr_data::modifier::ModType;
@@ -152,69 +152,4 @@ pub(crate) fn weapon_accuracy_multipliers(build: &crate::Build) -> Vec<(String, 
 /// hardcoded enum). The match is core's, which the weapon source folds by.
 pub(crate) fn is_weapon_local_mod(text: &str, rules: &WeaponLocalModsDef) -> bool {
     pobr_core::skill_env::is_weapon_local_mod(text, rules)
-}
-
-/// Parses an armour item's **local** "N% increased <combination of Armour/Evasion/Energy
-/// Shield>" → per-type boost `[armour, evasion, es]` (affected types get N). Returns
-/// `None` for anything containing `global` or a non-pure-defence combination.
-pub(crate) fn parse_local_defence_inc(clean: &str) -> Option<[f64; 3]> {
-    let (pct_str, rest) = clean.split_once("% increased ")?;
-    let pct: f64 = pct_str.trim().parse().ok()?;
-    if rest.contains("global") {
-        return None; // Global defence boosts aren't treated as local
-    }
-    let normalized = rest.replace(" rating", "").replace(" and ", ", ");
-    let mut out = [0.0; 3];
-    let mut any = false;
-    for part in normalized.split(", ") {
-        match part.trim() {
-            "armour" => out[0] = pct,
-            "evasion" => out[1] = pct,
-            "energy shield" | "maximum energy shield" => out[2] = pct,
-            _ => return None, // Contains a non-defence term → not a pure local defence boost
-        }
-        any = true;
-    }
-    any.then_some(out)
-}
-
-/// Sum of local defence boosts across all mods on an armour item, `[armour, evasion, es]` (percentage points).
-pub(crate) fn item_local_defence_inc(item: &Item) -> [f64; 3] {
-    let mut total = [0.0; 3];
-    for t in weapon_mod_texts(item) {
-        if let Some(inc) = parse_local_defence_inc(&clean_item_text(t)) {
-            for i in 0..3 {
-                total[i] += inc[i];
-            }
-        }
-    }
-    total
-}
-
-/// Parses an armour item's **local** "+N to <Armour/Evasion Rating/maximum Energy
-/// Shield>" → `[armour, evasion, es]`.
-pub(crate) fn parse_local_defence_flat(clean: &str) -> Option<[f64; 3]> {
-    let (num, rest) = clean.strip_prefix('+')?.split_once(" to ")?;
-    let n: f64 = num.trim().parse().ok()?;
-    let mut out = [0.0; 3];
-    match rest.replace(" rating", "").trim() {
-        "armour" => out[0] = n,
-        "evasion" => out[1] = n,
-        "energy shield" | "maximum energy shield" => out[2] = n,
-        _ => return None,
-    }
-    Some(out)
-}
-
-/// Sum of local flat defence across all mods on an armour item, `[armour, evasion, es]`.
-pub(crate) fn item_local_defence_flat(item: &Item) -> [f64; 3] {
-    let mut total = [0.0; 3];
-    for t in weapon_mod_texts(item) {
-        if let Some(flat) = parse_local_defence_flat(&clean_item_text(t)) {
-            for i in 0..3 {
-                total[i] += flat[i];
-            }
-        }
-    }
-    total
 }
