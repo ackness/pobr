@@ -257,5 +257,5 @@ description = "Prepare the pinned LuaJIT and PoB2 test reference automatically f
 run = [
   "bash devs/scripts/driver.sh deps",
   "bash devs/scripts/driver.sh vendor",
-  "luajit -e 'local n = 1; n += 1; assert(n == 2); assert(require(\"dkjson\"))'",
+  "luajit -e 'local n = 1; n += 1; assert(n == 2)'",
 ]

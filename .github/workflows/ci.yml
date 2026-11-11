@@ -54,8 +54,6 @@ jobs:
       fail-fast: false
       matrix:
         shard: [build, wasm, libraries-tools]
-    env:
-      LUA_PATH: '/usr/share/lua/5.1/?.lua;;'
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -70,12 +68,6 @@ jobs:
           shared-key: tests-${{ matrix.shard }}
           cache-bin: 'false'
           save-if: ${{ github.event_name != 'pull_request' }}
-      - name: Install Lua JSON module
-        if: matrix.shard == 'libraries-tools'
-        run: |
-          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/microsoft-prod.sources
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends lua-dkjson
       - name: Restore owner data downloads
         uses: actions/cache@v6
         with:
