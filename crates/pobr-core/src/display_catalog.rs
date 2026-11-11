@@ -1361,7 +1361,7 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
         computed(
             "EsRechargeRate",
             Cat::Recovery,
-            Vt::Percent,
+            Vt::Number,
             "EnergyShieldRechargeRate",
         ),
         computed(
@@ -1693,13 +1693,13 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
         computed(
             "FreezeBuildupPct",
             Cat::Ailment,
-            Vt::Percent,
+            Vt::Number,
             "FreezeBuildupPerHit",
         ),
         computed(
             "ElectrocuteBuildupPct",
             Cat::Ailment,
-            Vt::Percent,
+            Vt::Number,
             "ElectrocuteBuildupPerHit",
         ),
         computed(
@@ -2757,7 +2757,8 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
                     ) {
                         Some(false)
                     } else {
-                        None
+                        // More recovery, uses, charges, duration or area is an improvement.
+                        Some(true)
                     },
                 ));
             }

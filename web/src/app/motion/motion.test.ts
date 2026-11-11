@@ -8,7 +8,8 @@ import { easeOutCubic, tween } from './tween';
 
 const stat = (id: string, value: number | null): DisplayStatValue => ({ id, value, category: 'Offence' });
 
-beforeAll(() => setDisplayCatalog(catalog as DisplayCatalogEntry[]));
+// The engine currently declares no neutral stat, so a synthetic entry keeps that branch covered.
+beforeAll(() => setDisplayCatalog([...catalog as DisplayCatalogEntry[], { id: 'NeutralProbe', category: 'Misc', value_type: 'Number', higher_is_better: null }]));
 
 describe('tween', () => {
   it('starts at the origin, ends exactly on the target, and never overshoots', () => {
@@ -36,7 +37,8 @@ describe('statPolarity', () => {
     for (const id of ['CombinedDPS', 'Life', 'TotalEHP', 'FireResist', 'SpiritUnreserved', 'Str']) expect(statPolarity(id), id).toBe(1);
   });
   it('keeps unspecified catalog directions neutral', () => {
-    for (const id of ['Flask1Duration', 'Flask1Recovery']) expect(statPolarity(id), id).toBe(0);
+    expect(statPolarity('NeutralProbe')).toBe(0);
+    for (const id of ['Flask1Duration', 'Flask1Recovery']) expect(statPolarity(id), id).toBe(1);
   });
 });
 
@@ -46,12 +48,12 @@ describe('computeStatChanges', () => {
   });
   it('reports only what moved and judges it by polarity', () => {
     const changes = computeStatChanges(
-      [stat('CombinedDPS', 1000), stat('ManaCost', 20), stat('Life', 500), stat('Flask1Duration', 4)],
-      [stat('CombinedDPS', 1100), stat('ManaCost', 25), stat('Life', 500), stat('Flask1Duration', 5)]);
-    expect([...changes.keys()].sort()).toEqual(['CombinedDPS', 'Flask1Duration', 'ManaCost']);
+      [stat('CombinedDPS', 1000), stat('ManaCost', 20), stat('Life', 500), stat('NeutralProbe', 4)],
+      [stat('CombinedDPS', 1100), stat('ManaCost', 25), stat('Life', 500), stat('NeutralProbe', 5)]);
+    expect([...changes.keys()].sort()).toEqual(['CombinedDPS', 'ManaCost', 'NeutralProbe']);
     expect(changes.get('CombinedDPS')).toMatchObject({ delta: 100, percent: 10, tone: 'better' });
     expect(changes.get('ManaCost')?.tone).toBe('worse');
-    expect(changes.get('Flask1Duration')?.tone).toBe('neutral');
+    expect(changes.get('NeutralProbe')?.tone).toBe('neutral');
   });
   it('ignores float noise and unbounded values', () => {
     expect(computeStatChanges([stat('Life', 100), stat('ChaosMaxHit', null)], [stat('Life', 100.001), stat('ChaosMaxHit', 5)]).size).toBe(0);

@@ -95,7 +95,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
       }
       section.rows.push({ id: row.id, label: { 'en-US': statNameLabel('en-US', row.id), 'zh-CN': statNameLabel('zh-CN', row.id), 'zh-TW': statNameLabel('zh-TW', row.id) }, format: statFormat(row.id) });
     }
-    return [...ordered, ...extra.values()];
+    return { list: [...ordered, ...extra.values()], appended: new Set([...extra.values()].flatMap(section => section.rows.map(row => row.id))) };
   }, [value]);
   const absent = tt('compare.notSet');
   const skill = (group: SocketGroupInput | undefined, main: boolean, other: SocketGroupInput | undefined) => {
@@ -147,7 +147,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
     </div>)}
     <Button variant="ghost" size="sm" aria-label={tt('compare.swap')} disabled={!a || !b} onClick={() => { setAId(b?.stageId); setBId(a?.stageId); setMessage(''); }}>⇄</Button>
   </div>;
-  const statDefs = useMemo(() => new Map(sections.flatMap(section => section.rows.map(def => [def.id, def] as const))), [sections]);
+  const statDefs = useMemo(() => new Map(sections.list.flatMap(section => section.rows.map(def => [def.id, def] as const))), [sections]);
   const comparedStats = useMemo(() => new Map(value?.stats.map(row => [row.id, row])), [value]);
   const pair = a && b ? { a: a.saved.state, b: b.saved.state } : null;
   const itemChanges = pair ? itemDifferences(pair.a, pair.b) : [];
@@ -214,9 +214,11 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
               <p className="cmp-note">{tt('compare.percentHint')}</p>
             </div>
             {!(changedOnly && counts.stats === 0) && <div className="compare-table-wrap"><table><thead><tr><th scope="col">{tt('compare.summary')}</th><th scope="col">{tt('compare.before')}</th><th scope="col">{tt('compare.after')}</th><th scope="col">{tt('compare.delta')}</th><th scope="col">{tt('compare.percent')}</th></tr></thead>
-            {sections.map(section => {
+            {sections.list.map(section => {
               const rows = section.rows.map(def => ({ def, row: comparedStats.get(def.id) }))
-                .filter(({ row }) => row && (!changedOnly || row.changed));
+                // Stats outside the preferred sections appear only when they carry a value.
+                .filter(({ def, row }) => row && (!changedOnly || row.changed)
+                  && (row.changed || !sections.appended.has(def.id) || [row.before, row.after].some(number => typeof number === 'number' && number !== 0)));
               if (!rows.length) return null;
               return <tbody key={section.rows[0].id}><tr className="cmp-section-row"><th scope="rowgroup" colSpan={5}>{section.title[lang]}</th></tr>{rows.map(({ def, row: maybe }) => { const row = maybe!; const tone = deltaTone(row.id, row.delta); return <tr key={row.id} data-stat={row.id}>
                   <th scope="row">{def.label[lang]}</th>{[row.before, row.after].map((number, i) => <td key={i} data-label={i === 0 ? 'A' : 'B'}>{typeof number === 'number' && Number.isFinite(number) ? formatStatValue(number, def.format, lang) : number === Infinity ? '∞' : number === -Infinity ? '−∞' : <span role="img" aria-label={tt('compare.unavailable')}>—</span>}</td>)}

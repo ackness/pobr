@@ -59,6 +59,8 @@ stats 另含 `MainMinionDPS`（Offence）：主召唤物单只击中 DPS，不�
 数值和 actor 身份不受明细选择影响，技能总览和 Full DPS 缓存忽略明细选择。
 breakdownDescriptorsJson 无需游戏数据，每个引擎版本取一次；Web 的 getBackend()／descriptors.ts
 在页面侧把同一份表附回响应，Worker 不反复复制。
+displayCatalogJson 同样无需游戏数据：返回每个显示属性的 `id`、`category`、`value_type`、`higher_is_better`，
+Web 据此决定百分比格式与对比的好坏方向；仓库内副本在 `web/src/api/generated/display_catalog.json`，由 wasm 漂移测试守护。
 
 | 明细种类 | 含义 |
 |---|---|

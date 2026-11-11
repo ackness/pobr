@@ -986,3 +986,21 @@ fn remaining_calcs_fields_have_units_and_neutral_defaults() {
         assert_eq!(display_value(&OutputTable::default(), id), 0.0, "{id}");
     }
 }
+
+/// These outputs are fractions (0.15 is 15%/s, 1.0 is a full threshold), not the
+/// 0-100 scale the web adds `%` to, so they must not be declared Percent until the
+/// display boundary rescales them.
+#[test]
+fn fractional_outputs_are_not_declared_percent() {
+    for id in [
+        "EsRechargeRate",
+        "FreezeBuildupPct",
+        "ElectrocuteBuildupPct",
+    ] {
+        let def = display_catalog::display_catalog_ref()
+            .iter()
+            .find(|def| def.id.as_str() == id)
+            .unwrap_or_else(|| panic!("{id} missing"));
+        assert_ne!(def.value_type, StatValueType::Percent, "{id}");
+    }
+}

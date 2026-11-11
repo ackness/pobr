@@ -63,7 +63,7 @@ describe('whole-build comparison', () => {
     expect(deltaTone('TakenMultiFire', -0.1)).toBe('better');
     expect(deltaTone('TakenMultiPhysical', 0.1)).toBe('worse');
     expect(deltaTone('EHPSurvivalTime', 5)).toBe('better');
-    expect(deltaTone('Flask1Duration', 5)).toBe('neutral');
+    expect(deltaTone('Flask1Duration', 5)).toBe('better');
   });
   test('retains missing, null and non-finite values and never divides by zero', () => {
     const rows = compareStats(stats([['Life', 0], ['Mana', 10], ['ChaosMaxHit', null], ['Infinite', Infinity]]),

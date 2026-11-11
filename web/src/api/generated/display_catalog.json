@@ -1761,7 +1761,7 @@
     "category": "Recovery",
     "higher_is_better": true,
     "id": "EsRechargeRate",
-    "value_type": "Percent"
+    "value_type": "Number"
   },
   {
     "category": "Recovery",
@@ -2169,13 +2169,13 @@
     "category": "Ailment",
     "higher_is_better": true,
     "id": "FreezeBuildupPct",
-    "value_type": "Percent"
+    "value_type": "Number"
   },
   {
     "category": "Ailment",
     "higher_is_better": true,
     "id": "ElectrocuteBuildupPct",
-    "value_type": "Percent"
+    "value_type": "Number"
   },
   {
     "category": "DotDamage",
@@ -3385,13 +3385,13 @@
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1Duration",
     "value_type": "TimeSeconds"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1ChargesMax",
     "value_type": "Number"
   },
@@ -3403,103 +3403,103 @@
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1Uses",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1ChargeGen",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1ChargesGained",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1Recovery",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1InstantRecovery",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1RecoveryPerSecond",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1GuardAfterEffect",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1GuardDuration",
     "value_type": "TimeSeconds"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1EnergyShieldRecovery",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1EnergyShieldInstantRecovery",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1EnergyShieldRecoveryPerSecond",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1LifeRecovery",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1LifeInstantRecovery",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1LifeRecoveryPerSecond",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1ManaRecovery",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1ManaInstantRecovery",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask1ManaRecoveryPerSecond",
     "value_type": "Number"
   },
@@ -3517,13 +3517,13 @@
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2Duration",
     "value_type": "TimeSeconds"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2ChargesMax",
     "value_type": "Number"
   },
@@ -3535,103 +3535,103 @@
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2Uses",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2ChargeGen",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2ChargesGained",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2Recovery",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2InstantRecovery",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2RecoveryPerSecond",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2GuardAfterEffect",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2GuardDuration",
     "value_type": "TimeSeconds"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2EnergyShieldRecovery",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2EnergyShieldInstantRecovery",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2EnergyShieldRecoveryPerSecond",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2LifeRecovery",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2LifeInstantRecovery",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2LifeRecoveryPerSecond",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2ManaRecovery",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2ManaInstantRecovery",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Flask2ManaRecoveryPerSecond",
     "value_type": "Number"
   },
@@ -3649,13 +3649,13 @@
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm1Duration",
     "value_type": "TimeSeconds"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm1ChargesMax",
     "value_type": "Number"
   },
@@ -3667,85 +3667,85 @@
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm1Uses",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm1ChargeGen",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm1ChargesGained",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm1LifeRecoveryOnUse",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm1ManaRecoveryOnUse",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm1ConsecratedGroundDuration",
     "value_type": "TimeSeconds"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm1ConsecratedGroundRadiusMetres",
     "value_type": "Number"
   },
   {
     "category": "DotDamage",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm1IgnitedGroundDuration",
     "value_type": "TimeSeconds"
   },
   {
     "category": "DotDamage",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm1IgnitedGroundRadiusMetres",
     "value_type": "Number"
   },
   {
     "category": "DotDamage",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm1IgnitedGroundSourceDamage",
     "value_type": "Number"
   },
   {
     "category": "DotDamage",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm1IgnitedGroundIgniteDPS",
     "value_type": "Number"
   },
   {
     "category": "DotDamage",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm1IgnitedGroundIgniteDuration",
     "value_type": "TimeSeconds"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm2Duration",
     "value_type": "TimeSeconds"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm2ChargesMax",
     "value_type": "Number"
   },
@@ -3757,85 +3757,85 @@
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm2Uses",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm2ChargeGen",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm2ChargesGained",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm2LifeRecoveryOnUse",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm2ManaRecoveryOnUse",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm2ConsecratedGroundDuration",
     "value_type": "TimeSeconds"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm2ConsecratedGroundRadiusMetres",
     "value_type": "Number"
   },
   {
     "category": "DotDamage",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm2IgnitedGroundDuration",
     "value_type": "TimeSeconds"
   },
   {
     "category": "DotDamage",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm2IgnitedGroundRadiusMetres",
     "value_type": "Number"
   },
   {
     "category": "DotDamage",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm2IgnitedGroundSourceDamage",
     "value_type": "Number"
   },
   {
     "category": "DotDamage",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm2IgnitedGroundIgniteDPS",
     "value_type": "Number"
   },
   {
     "category": "DotDamage",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm2IgnitedGroundIgniteDuration",
     "value_type": "TimeSeconds"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm3Duration",
     "value_type": "TimeSeconds"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm3ChargesMax",
     "value_type": "Number"
   },
@@ -3847,73 +3847,73 @@
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm3Uses",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm3ChargeGen",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm3ChargesGained",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm3LifeRecoveryOnUse",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm3ManaRecoveryOnUse",
     "value_type": "Number"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm3ConsecratedGroundDuration",
     "value_type": "TimeSeconds"
   },
   {
     "category": "Recovery",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm3ConsecratedGroundRadiusMetres",
     "value_type": "Number"
   },
   {
     "category": "DotDamage",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm3IgnitedGroundDuration",
     "value_type": "TimeSeconds"
   },
   {
     "category": "DotDamage",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm3IgnitedGroundRadiusMetres",
     "value_type": "Number"
   },
   {
     "category": "DotDamage",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm3IgnitedGroundSourceDamage",
     "value_type": "Number"
   },
   {
     "category": "DotDamage",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm3IgnitedGroundIgniteDPS",
     "value_type": "Number"
   },
   {
     "category": "DotDamage",
-    "higher_is_better": null,
+    "higher_is_better": true,
     "id": "Charm3IgnitedGroundIgniteDuration",
     "value_type": "TimeSeconds"
   }
