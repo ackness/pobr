@@ -114,7 +114,8 @@ fn parse_mod_engine_impl(
     //     mods directly (with source text attached uniformly), matching vendor's
     //     specialModList anchor priority. When no data is injected, rules.special is always
     //     empty, so this branch never matches (behaviour = conv1 engine).
-    if let Some(matched) = rules.special.try_match(&lower, &rules.special_handlers) {
+    if let Some(mut matched) = rules.special.try_match(&lower, &rules.special_handlers) {
+        mark_special_resistance_expansions(matched.mods.iter_mut());
         let mods: Vec<Modifier> = matched
             .mods
             .into_iter()
@@ -268,10 +269,7 @@ fn parse_mod_engine_impl(
         .iter()
         .any(|t| matches!(t, ModTag::SkillTypes(st) if st.intersects(SkillTypes::TRIGGERED)));
 
-    let expanded_from = ["FireResistance", "ColdResistance", "LightningResistance"]
-        .iter()
-        .all(|name| form_result.names.iter().any(|candidate| candidate == name))
-        .then_some(ModExpansion::AllElementalResistance);
+    let expanded_from = resistance_expansion(form_result.names.iter().map(String::as_str));
     let mut mods = Vec::with_capacity(form_result.names.len());
     for ((name, ty), value) in form_result
         .names
@@ -354,6 +352,39 @@ fn parse_mod_engine_impl(
         status: ParseStatus::Parsed,
         unparsed: tail_unparsed(&work),
         special_meta: None,
+    }
+}
+
+fn resistance_expansion<'a>(names: impl Iterator<Item = &'a str> + Clone) -> Option<ModExpansion> {
+    [
+        ["FireResistance", "FireResist"],
+        ["ColdResistance", "ColdResist"],
+        ["LightningResistance", "LightningResist"],
+    ]
+    .iter()
+    .all(|aliases| names.clone().any(|name| aliases.contains(&name)))
+    .then_some(ModExpansion::AllElementalResistance)
+}
+
+/// Special rules can split one actor's expansion across several LIST wrappers.
+fn mark_special_resistance_expansions<'a>(modifiers: impl Iterator<Item = &'a mut Modifier>) {
+    let mut modifiers: Vec<_> = modifiers.collect();
+    if let Some(expansion) = resistance_expansion(modifiers.iter().map(|m| m.name.as_str())) {
+        for modifier in &mut modifiers {
+            modifier.expanded_from = Some(expansion);
+        }
+    }
+    let mut nested = std::collections::BTreeMap::<_, Vec<_>>::new();
+    for modifier in modifiers {
+        if let ModValue::NestedMods(mods) = &mut modifier.value {
+            nested
+                .entry(modifier.name.as_str())
+                .or_default()
+                .extend(mods.iter_mut());
+        }
+    }
+    for modifiers in nested.into_values() {
+        mark_special_resistance_expansions(modifiers.into_iter());
     }
 }
 
@@ -785,6 +816,39 @@ mod tests {
         let r = real_rules();
         let o = parse_mod_engine("Mirrored", &r);
         assert_eq!(o.status, ParseStatus::Unsupported);
+    }
+
+    #[test]
+    fn special_resistance_expansions_retain_scope_through_actor_wrappers() {
+        let rules = crate::mod_parser::test_compiled_rules();
+        for line in [
+            "Elemental Resistances are Zero",
+            "You have no Elemental Resistances",
+            "Enemies in your Presence have no Elemental Resistances",
+        ] {
+            let outcome = parse_mod_engine(line, &rules);
+            assert!(outcome.is_complete(), "{line}: {outcome:?}");
+            assert_eq!(parse_mod_engine(line, &rules), outcome, "cached {line}");
+            let modifiers: Vec<_> = outcome
+                .mods
+                .iter()
+                .flat_map(|modifier| {
+                    modifier
+                        .value
+                        .as_nested_mods()
+                        .unwrap_or(std::slice::from_ref(modifier))
+                })
+                .collect();
+            assert_eq!(modifiers.len(), 3, "{line}");
+            for modifier in modifiers {
+                assert_eq!(modifier.mod_type, ModType::Override, "{line}");
+                assert_eq!(
+                    modifier.expanded_from,
+                    Some(ModExpansion::AllElementalResistance),
+                    "{line}: {modifier:?}",
+                );
+            }
+        }
     }
 
     #[test]
