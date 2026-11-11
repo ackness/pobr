@@ -41,6 +41,28 @@ fn assert_keys(value: &Value, expected: &[&str], label: &str) {
 }
 
 #[test]
+fn display_catalog_json_shape() {
+    let json: Value =
+        serde_json::from_str(&pobr_wasm::display_catalog_json().expect("display catalog"))
+            .expect("valid json");
+    let entries = json.as_array().expect("catalog array");
+    assert!(!entries.is_empty());
+    for entry in entries {
+        assert_keys(
+            entry,
+            &["id", "category", "value_type", "higher_is_better"],
+            "DisplayCatalogEntry",
+        );
+        assert!(entry["id"].is_string());
+        assert!(entry["category"].is_string());
+        assert!(entry["value_type"].is_string());
+        assert!(entry["higher_is_better"].is_boolean() || entry["higher_is_better"].is_null());
+    }
+    // Drift against the committed web copy is checked by
+    // `build_api::catalog::tests::display_catalog_generated_copy_is_current`.
+}
+
+#[test]
 fn decode_build_json_shape() {
     let json: Value =
         serde_json::from_str(&pobr_wasm::decode_build_json(&demo_code()).expect("decode"))
@@ -503,6 +525,55 @@ fn conditional_culling_exposes_rarity_configuration_without_activating_it() {
         rejected["config_context"]["predicates"]["if_flag"]["CanCull"],
         false
     );
+}
+
+#[test]
+fn incision_from_another_group_exposes_its_stack_configuration() {
+    ensure_data();
+    let request = serde_json::json!({
+        "config_context": true,
+        "main_socket_group": 0,
+        "character": { "level": 80, "class_name": "Warrior" },
+        "items": [{ "slot": "weapon1", "text": "Rarity: NORMAL\nWooden Club" }],
+        "socket_groups": [
+            { "gems": [{ "skill_id": "BoneshatterPlayer", "level": 20 }] },
+            { "gems": [
+                { "skill_id": "MeleePlayer", "level": 20 },
+                { "skill_id": "SupportIncisionPlayer", "level": 1 }
+            ] }
+        ]
+    });
+    let calculate = |request: &Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap()
+    };
+    let visible = |request: &Value| {
+        calculate(request)["config_context"]["predicates"]["if_flag"]
+            ["Condition:CanInflictIncision"]
+            .clone()
+    };
+    for support in ["SupportIncisionPlayer", "SupportBleedPlayerFour"] {
+        for skill in ["MeleePlayer", "WolfPackPlayer", "WildProtectorPlayer"] {
+            let mut supported = request.clone();
+            supported["socket_groups"][1]["gems"][0]["skill_id"] = skill.into();
+            supported["socket_groups"][1]["gems"][1]["skill_id"] = support.into();
+            // No saved stack input: the infliction flag alone exposes the option.
+            assert_eq!(visible(&supported), true, "{skill}: {support}");
+            supported["config_inputs"] = serde_json::json!({ "multiplierIncisionStackCount": 10 });
+            assert_eq!(visible(&supported), true, "{skill}: {support}");
+            for gem in 0..2 {
+                supported["socket_groups"][1]["gems"][gem]["enabled"] = false.into();
+                // With minions present, an absent actor flag stays unknown.
+                assert_ne!(visible(&supported), true, "{skill}: {support}: gem {gem}");
+                supported["socket_groups"][1]["gems"][gem]["enabled"] = true.into();
+            }
+            supported["socket_groups"][1]["enabled"] = false.into();
+            assert_eq!(visible(&supported), false, "{skill}: {support}");
+            supported["socket_groups"][1]["enabled"] = true.into();
+            supported["socket_groups"][1]["gems"][0]["skill_id"] = "EnfeeblePlayer".into();
+            assert_eq!(visible(&supported), false, "{skill}: {support}");
+        }
+    }
 }
 
 fn close(a: f64, b: f64) -> bool {

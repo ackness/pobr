@@ -91,7 +91,9 @@ export function packageWasm({ root = repoRoot, outDir = join(root, '.cache/wasm-
       ['web/src/api/types.ts', 'api-types.ts'], ['LICENSE', 'LICENSE'],
       ['docs/wasm-package.md', 'README.md'], ['.agents/skills/use-pobr-wasm/scripts/demo.mjs', 'example.mjs'],
     ]) cpSync(join(root, source), join(stage, dest));
-    cpSync(join(root, 'web/src/api/generated'), join(stage, 'generated'), { recursive: true });
+    // Only the request types ship; the display catalog is web-internal (consumers call displayCatalogJson()).
+    mkdirSync(join(stage, 'generated'), { recursive: true });
+    cpSync(join(root, 'web/src/api/generated/request.ts'), join(stage, 'generated/request.ts'));
     cpSync(join(root, '.agents/skills/use-pobr-wasm'), join(stage, 'skills/use-pobr-wasm'), { recursive: true });
     const commit = build.commit;
     const manifest = { packageVersion: pkg.version, schemaVersion, dataVersion: version, commit, build,

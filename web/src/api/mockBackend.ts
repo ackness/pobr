@@ -8,6 +8,7 @@ import type { PobrBackend } from './backend';
 import type {
   BuildJson,
   CalculateBuildResponse,
+  DisplayCatalogEntry,
   SkillMetricsResponse,
   AttributionResponse,
   ConfigOption,
@@ -25,6 +26,7 @@ import treeMetaFixture from '../fixtures/tree_meta.json';
 import gemCatalogFixture from '../fixtures/gem_catalog.json';
 import minionCatalogFixture from '../fixtures/minion_catalog.json';
 import configOptionsFixture from '../fixtures/config_options.json';
+import displayCatalogFixture from './generated/display_catalog.json';
 
 // Published mock fixtures can predate additive catalog metadata.
 const gemCatalog = gemCatalogFixture.map(gem => ({
@@ -64,6 +66,9 @@ export function createMockBackend(): PobrBackend {
     },
     async breakdownDescriptors() {
       return (calculateFixture as unknown as CalculateBuildResponse).breakdown_descriptors ?? {};
+    },
+    async displayCatalog() {
+      return displayCatalogFixture as DisplayCatalogEntry[];
     },
     async calculateBuild(request) {
       const result = againstEnemy(calculateFixture as unknown as CalculateBuildResponse, request.enemy_tier);

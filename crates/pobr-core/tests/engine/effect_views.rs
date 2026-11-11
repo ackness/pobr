@@ -161,6 +161,33 @@ fn pin_gem_stats_share_the_application_model() {
 }
 
 #[test]
+fn incision_stacks_need_build_infliction_instead_of_a_skill_or_player_buff_grant() {
+    use pobr_core::rules::skill_stats::{self, BuffSkill};
+
+    for can_inflict in [false, true] {
+        let mut s = session(CalcConfig::attack().with_mode_effective(true), &[]);
+        let stat = "apply_X_incision_on_hit";
+        s.add_modifiers(skill_stats::skill_modifiers(stat, 1.0).unwrap());
+        s.add_modifiers(
+            skill_stats::player_buff_modifiers(stat, 1.0, BuffSkill::default()).unwrap(),
+        );
+        if can_inflict {
+            s.add_modifiers([Modifier::flag("Condition:CanInflictIncision")]);
+        }
+        s.add_enemy_modifiers([Modifier::number(
+            "Multiplier:IncisionStack",
+            ModType::Base,
+            10.0,
+        )]);
+        s.perform_minimal().unwrap();
+        assert_eq!(
+            display_value(s.output(), "BleedChance"),
+            if can_inflict { 100.0 } else { 0.0 }
+        );
+    }
+}
+
+#[test]
 fn primed_pin_cannot_apply_without_hits_or_to_an_immune_enemy() {
     for immune in [false, true] {
         let cfg = if immune {

@@ -131,6 +131,12 @@ pub fn inflicts_withered(stat: &str) -> bool {
     INFLICTS_WITHERED.contains(&stat)
 }
 
+/// Incision and Bleed IV let the supported skill put Incision on the enemy,
+/// whichever skill is calculated (`skill_env::skill_inflicting_incision`).
+pub fn inflicts_incision(stat: &str) -> bool {
+    stat == "apply_X_incision_on_hit"
+}
+
 /// Whether the corpse's Life the stat names is damage the skill only poisons
 /// with, without hitting: Decompose's cloud "Poisons enemies as though dealing
 /// Chaos damage equal to {0}% of Corpse's maximum Life". Without a hit there
@@ -469,13 +475,8 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         } else {
             Vec::new()
         }),
-        // The Incision support ("Supported Skills inflict Incision on Hit"): the character can inflict it, which is
-        // what the configured stacks and `IncisionEffect` wait for (`calc::setup_env::apply_enemy_incision`).
-        "apply_X_incision_on_hit" => Some(if value != 0.0 {
-            vec![Modifier::flag("Condition:CanInflictIncision")]
-        } else {
-            Vec::new()
-        }),
+        // Infliction is recognised across the build, not just this skill.
+        stat if inflicts_incision(stat) => Some(Vec::new()),
         "pin_almost_pinned_enemies" => Some(vec![Modifier::flag("PinOnPrimed")]),
         "pin_duration_+%" => Some(vec![Modifier::number(
             "EnemyPinDuration",
@@ -1178,8 +1179,8 @@ fn player_buff_modifiers_impl(stat: &str, value: f64, skill: BuffSkill) -> Optio
                     .with_tag(ModTag::condition("BannerPlanted", false)),
             ])
         }
-        // Not a buff on the character (see `inflicts_withered`).
-        stat if inflicts_withered(stat) => Some(Vec::new()),
+        // Enemy states recognised across the build, not player buffs.
+        stat if inflicts_withered(stat) || inflicts_incision(stat) => Some(Vec::new()),
         // Read where the buff is made (see `skill_modifiers`).
         REMNANT_EFFECT => Some(Vec::new()),
         // Into the Breach: a Purple Flame of Chayula "grants 7% of Damage as

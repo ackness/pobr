@@ -6,7 +6,7 @@
 import { skillFormName } from './skillNames';
 import { hasPosition, isAttributeNode } from './treeGeometry';
 import { classStartSkill } from './passiveGraph';
-import { STAT_SECTIONS, formatStatValue, type StatFormat, type Lang } from './statDisplay';
+import { STAT_SECTIONS, formatStatValue, statFormat, type StatFormat, type Lang } from './statDisplay';
 import { t } from './i18n';
 import { switchWeapons } from './weaponSets';
 import { getBackend } from '../api/backend';
@@ -35,8 +35,6 @@ export interface StatComparison {
   changed: boolean;
 }
 
-const statFormats = new Map(STAT_SECTIONS.flatMap(section => section.rows.map(row => [row.id, row.format] as const)));
-
 export function isPercentageStat(format: StatFormat | undefined): boolean {
   return format === 'percent' || format === 'modifier' || format === 'chanceMultiplier';
 }
@@ -47,7 +45,7 @@ export function compareStats(before: readonly Pick<DisplayStatValue, 'id' | 'val
   const b = new Map(after.map(stat => [stat.id, stat.value]));
   return [...new Set([...a.keys(), ...b.keys()])].map(id => {
     const before = a.get(id), after = b.get(id);
-    const format = statFormats.get(id);
+    const format = statFormat(id);
     const unboundedPierce = format === 'pierce' && (typeof before === 'number' && before >= 100 || typeof after === 'number' && after >= 100);
     const finite = !unboundedPierce && typeof before === 'number' && Number.isFinite(before)
       && typeof after === 'number' && Number.isFinite(after);
