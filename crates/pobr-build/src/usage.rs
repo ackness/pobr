@@ -391,8 +391,10 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
             .iter()
             .copied()
             .find_map(|modifier| modifier.origin.as_ref());
-        let modifiers: Vec<UsageModifier> = modifiers
-            .into_iter()
+        let stored = modifiers;
+        let modifiers: Vec<UsageModifier> = stored
+            .iter()
+            .copied()
             .map(|modifier| {
                 let context = if modifier.keyword_flags.intersects(KeywordFlags::HIT) {
                     hit.as_ref().unwrap_or(&main)
@@ -482,15 +484,21 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
             (LineStatus::NoEffect, Some(reason))
         } else if !config_option {
             (line_status(&modifiers), None)
-        } else if modifiers.iter().all(is_unasked_variable) {
+        } else if stored
+            .iter()
+            .zip(&modifiers)
+            .all(|(stored, modifier)| is_unasked_variable(stored, modifier))
+        {
             (
                 LineStatus::NoEffect,
                 Some("a config option nothing in this build asks for".to_string()),
             )
         } else {
-            let asked = modifiers
+            let asked = stored
                 .iter()
-                .filter(|modifier| !is_unasked_variable(modifier));
+                .zip(&modifiers)
+                .filter(|(stored, modifier)| !is_unasked_variable(stored, modifier))
+                .map(|(_, modifier)| modifier);
             (line_status(asked), None)
         };
         lines.push(UsageLine {
@@ -1077,9 +1085,17 @@ fn uncounted_reason(modifier: &Modifier, sites: &[String]) -> String {
 }
 
 /// A `Condition:` or `Multiplier:` modifier nothing asks for.
-fn is_unasked_variable(modifier: &UsageModifier) -> bool {
-    modifier.status == ModifierStatus::Unread
-        && (modifier.name.starts_with("Condition:") || modifier.name.starts_with("Multiplier:"))
+fn is_unasked_variable(stored: &Modifier, modifier: &UsageModifier) -> bool {
+    let variable = |name: &str| name.starts_with("Condition:") || name.starts_with("Multiplier:");
+    // The same setting given to the minions (`MinionModifier`) that no
+    // minion asks for, or with no minion to give it to.
+    let minion_variables = || {
+        stored.name.as_str() == "MinionModifier"
+            && stored.value.as_nested_mods().is_some_and(|nested| {
+                !nested.is_empty() && nested.iter().all(|inner| variable(inner.name.as_str()))
+            })
+    };
+    modifier.status == ModifierStatus::Unread && (variable(&modifier.name) || minion_variables())
 }
 
 /// Stored modifiers that change nothing a calculation reports, with the

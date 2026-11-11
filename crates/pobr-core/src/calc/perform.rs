@@ -498,19 +498,6 @@ fn inject_companion_life(env: &mut Env) {
 /// the created population twice and discard the independent Presence override.
 pub(crate) fn minion_cfg(env: &Env, minion: &super::Actor) -> CalcConfig {
     let mut cfg = env.cfg.clone();
-    // A named buff belongs to its recipient, never to every actor merely
-    // because the player has it. Ally grants install their own magnitude.
-    cfg.conditions.remove("UnholyMight");
-    cfg.multipliers.remove("UnholyMightMagnitude");
-    let magnitude = minion.mod_db.get_multiplier("UnholyMightMagnitude", &cfg);
-    cfg.multipliers
-        .insert("UnholyMightMagnitude".into(), magnitude);
-    // Standing on ground is per actor. The player's state never establishes
-    // the minion's position; its explicit Condition flag does.
-    cfg.conditions.remove("OnConsecratedGround");
-    let on_ground = super::consecrated_ground::is_active(&minion.mod_db, &cfg);
-    cfg.conditions
-        .insert("OnConsecratedGround".into(), on_ground);
     // The shared resistance pass reads the actor's inherent maximum.
     // A minion uses the monster default (75%), independent of the player.
     // This is the one place a configuration's shared constants are edited, so only
@@ -536,7 +523,119 @@ pub(crate) fn minion_cfg(env: &Env, minion: &super::Actor) -> CalcConfig {
             cfg = cfg.with_condition(crate::rules::skill_stats::COMMAND_SKILL, true);
         }
     }
+    derive_minion_state(env, &minion.mod_db, &mut cfg);
     cfg
+}
+
+/// The states of an actor that a minion's own configuration states ("Are
+/// your Minions always on Full Life?", "Minion is Leeching Energy Shield?",
+/// "Minion Rage:"), besides its buffs and charges. The character's value of
+/// them is the character's, never its minions'.
+const MINION_STATED_CONDITIONS: &[&str] = &[
+    "FullLife",
+    "FullEnergyShield",
+    "Leeching",
+    "LeechingEnergyShield",
+    "CanGainRage",
+    "HaveMaximumRage",
+    // The character's Archon buff, which its minions do not share.
+    crate::rules::archon::CONDITION,
+];
+
+/// The multipliers of an actor's own Rage and buffs that a minion holds for
+/// itself, besides its charge counts.
+const MINION_OWN_MULTIPLIERS: &[&str] = &[
+    "RemovableTotalCharges",
+    "Rage",
+    "RageEffect",
+    "RageStack",
+    "UnholyMightMagnitude",
+];
+
+/// The calculation context's state that belongs to a minion itself: the
+/// buffs it has, its charges, its Rage, standing on Consecrated Ground and
+/// the conditions its own configuration states. Every actor holds its own;
+/// the character having Onslaught, Power Charges or Full Life says nothing
+/// about its minions. Each is rebuilt from the minion's own modifiers:
+///
+/// - a condition holds when the minion has the `Condition:<name>` flag (the
+///   minion's configuration gives it these flags);
+/// - the minion is in combat whenever the calculation is, which is what its
+///   configured buffs, charges and Rage are stated for;
+/// - its charges and Rage come from the character's own charge and Rage
+///   rules, applied to the minion's modifiers.
+///
+/// Derived from the modifiers alone, so the detail views that rebuild the
+/// context see the same state the calculation did.
+fn derive_minion_state(env: &Env, db: &ModDb, cfg: &mut CalcConfig) {
+    let buff_triggers = env.buff_definitions.iter().flat_map(|def| {
+        let flag = def.trigger_flag.as_str();
+        [flag, flag.strip_prefix("Condition:").unwrap_or(flag)]
+    });
+    let charge_uses = super::survivability::CHARGE_MULTIPLIER_INPUTS
+        .iter()
+        .map(|&(_, _, use_condition)| use_condition);
+    for name in MINION_STATED_CONDITIONS
+        .iter()
+        .copied()
+        .chain(buff_triggers)
+        .chain(charge_uses)
+        .chain(["OnConsecratedGround"])
+    {
+        cfg.conditions.remove(name);
+    }
+    let charge_counts = super::survivability::CHARGE_MULTIPLIER_INPUTS
+        .iter()
+        .flat_map(|&(kind, _, _)| {
+            let key = kind.multiplier_key();
+            [key.to_string(), format!("Removable{key}")]
+        });
+    let own_multipliers = charge_counts.chain(MINION_OWN_MULTIPLIERS.iter().map(|n| n.to_string()));
+    for name in own_multipliers {
+        // "… per Power Charge you have" on a minion still counts the
+        // character's: keep the character's value as its actor snapshot,
+        // including zero, so a missing count never falls back to the minion's.
+        let snapshot = format!("{}.{name}", crate::ActorRef::Player.key());
+        cfg.actor_multipliers
+            .entry(snapshot)
+            .or_insert_with(|| env.cfg.multipliers.get(&name).copied().unwrap_or(0.0));
+        cfg.multipliers.remove(&name);
+    }
+    cfg.stats.remove("Rage");
+
+    cfg.conditions.insert("Combat".into(), cfg.mode_combat);
+    // A state of the minion itself, not one stated for a kind of hit ("on
+    // Hit"): evaluated without the skill's flags, as the buff expansion
+    // reads the character's.
+    let mut character_cfg = cfg.clone();
+    character_cfg.flags = ModFlags::NONE;
+    character_cfg.keyword_flags = KeywordFlags::NONE;
+    character_cfg.skill_types = pobr_data::skill::SkillTypes::NONE;
+    let stated: std::collections::BTreeSet<&str> = db
+        .iter_mods()
+        .filter(|m| m.mod_type == ModType::Flag)
+        .filter_map(|m| m.name.as_str().strip_prefix("Condition:"))
+        .collect();
+    for var in stated {
+        if db.flag(&character_cfg, &format!("Condition:{var}")) {
+            cfg.conditions.insert(var.to_string(), true);
+        }
+    }
+    // A named buff belongs to its recipient. Ally grants install their own
+    // magnitude.
+    let magnitude = db.get_multiplier("UnholyMightMagnitude", cfg);
+    cfg.multipliers
+        .insert("UnholyMightMagnitude".into(), magnitude);
+    // Standing on ground is per actor: only the minion's explicit Condition
+    // flag places it there.
+    let on_ground = super::consecrated_ground::is_active(db, cfg);
+    cfg.conditions
+        .insert("OnConsecratedGround".into(), on_ground);
+    // Without a stated use, an actor holds its minimum charges.
+    *cfg = super::survivability::charge_multipliers_panel_default(db, cfg);
+    if let Some(rage) = super::rage::rage_state(db, cfg) {
+        rage.write(cfg);
+    }
 }
 
 /// "Your Minions are Gigantic" (`minions_are_gigantic`, the minion's
@@ -697,15 +796,23 @@ fn apply_extra_auras(minion: &mut super::Actor, cfg: &mut CalcConfig, env: &Env)
     if auras.is_empty() {
         return;
     }
-    let unholy_might_grant = auras
-        .iter()
-        .find(|m| {
-            m.name.as_str() == "Condition:UnholyMight"
-                && m.mod_type == ModType::Flag
-                && m.value.as_bool() == Some(true)
-                && m.matches(&env.cfg)
-        })
-        .cloned();
+    let is_unholy_might_grant = |m: &Modifier| {
+        m.name.as_str() == "Condition:UnholyMight"
+            && m.mod_type == ModType::Flag
+            && m.value.as_bool() == Some(true)
+            && m.matches(&env.cfg)
+    };
+    let unholy_might_grant = auras.iter().find(|m| is_unholy_might_grant(m)).cloned();
+    // A zero Presence count explicitly excludes all minions from the grant.
+    // Its flag would otherwise give the minion the buff through its own
+    // misc-buff pass.
+    let excluded_by_presence = env
+        .cfg
+        .multiplier_if_set("MinionPresenceCount")
+        .is_some_and(|n| n <= 0.0);
+    if excluded_by_presence {
+        auras.retain(|m| !is_unholy_might_grant(m));
+    }
     let names = [
         ModName::from("BuffEffectOnSelf"),
         ModName::from("AuraEffectOnSelf"),
@@ -723,10 +830,7 @@ fn apply_extra_auras(minion: &mut super::Actor, cfg: &mut CalcConfig, env: &Env)
     // minions; a positive count does not assign positions to individual actors.
     if let Some(grant) = unholy_might_grant
         && cfg.mode_combat
-        && !env
-            .cfg
-            .multiplier_if_set("MinionPresenceCount")
-            .is_some_and(|n| n <= 0.0)
+        && !excluded_by_presence
     {
         expand_ally_unholy_might(minion, cfg, env, &grant);
     }
@@ -870,6 +974,18 @@ fn perform_minions(env: &mut Env) {
             minion_cfg.conditions.insert(condition, true);
         }
         apply_extra_auras(minion, &mut minion_cfg, env);
+        // The minion's own buffs and Rage, after the buffs and auras that
+        // grant or change them, with the character's rules for both.
+        derive_minion_state(env, &minion.mod_db, &mut minion_cfg);
+        let enemy_mods = super::env_finalize::expand_actor_misc_buffs(
+            &mut minion.mod_db,
+            &mut minion_cfg,
+            &env.enemy.mod_db,
+            &env.buff_definitions,
+            &env.buff_handler_registry,
+        );
+        env.enemy.mod_db.add_list(enemy_mods);
+        super::rage::apply_actor_rage(&mut minion.mod_db, &mut minion_cfg);
         apply_main_hand_share(minion, &minion_cfg, env);
         super::skill_mechanics::snapshot_remaining_chains(
             &minion.mod_db,
