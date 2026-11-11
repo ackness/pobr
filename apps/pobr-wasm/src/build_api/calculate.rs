@@ -540,6 +540,23 @@ fn collect_breakdowns<'a, T>(
 #[cfg(test)]
 mod detail_request_tests {
     use super::*;
+
+    #[test]
+    fn unmodelled_meta_trigger_requires_a_complete_diagnostic_for_the_exact_host() {
+        let limits = [
+            "TriggerSource:MetaTrigger:MetaCastOnDodgePlayer:stat=first:host=CometPlayer: Energy trigger event rate is not modelled",
+            "MetaTrigger:MetaCastOnDodgePlayer:stat=first:host=CometPlayerTwo: Energy trigger event rate is not modelled",
+            "MetaTrigger:MetaCastOnDodgePlayer:stat=first:host=CometPlayer: another limitation",
+            "MetaTrigger:MetaReapersInvocationPlayer:stat=first, second:host=CometPlayer: Energy trigger event rate is not modelled",
+        ]
+        .map(str::to_string);
+        let trigger = unmodelled_meta_trigger(&limits, "CometPlayer").unwrap();
+        assert_eq!(trigger.meta_gem_id, "MetaReapersInvocationPlayer");
+        assert_eq!(trigger.host_skill_id, "CometPlayer");
+        assert!(unmodelled_meta_trigger(&limits, "SparkPlayer").is_none());
+        assert!(unmodelled_meta_trigger(&[], "CometPlayer").is_none());
+    }
+
     #[test]
     fn unrequested_details_are_never_computed() {
         let mut called = Vec::new();

@@ -2403,6 +2403,7 @@ fn unmodelled_meta_trigger_has_structured_main_and_per_skill_limits() {
     // The same socketed-host fixtures as pobr-build's energy_triggers suite.
     for (meta, host) in [
         ("MetaCastOnDodgePlayer", "CometPlayer"),
+        ("MetaCastWhenStunnedPlayer", "CometPlayer"),
         ("MetaCastFireSpellOnHitPlayer", "FireballPlayer"),
         ("MetaReapersInvocationPlayer", "CometPlayer"),
         ("MetaCastOnCritPlayer", "CometPlayer"),
@@ -2469,6 +2470,94 @@ fn unmodelled_meta_trigger_has_structured_main_and_per_skill_limits() {
                 .unwrap();
         assert!(ordinary.get("unmodelled_meta_trigger").is_none());
     }
+
+    // The same host in different groups must keep each group's own trigger.
+    let request = serde_json::json!({
+        "character": { "class_name": "Sorceress", "level": 90 },
+        "main_socket_group": 0,
+        "socket_groups": [
+            { "main_active_skill": 2, "gems": [
+                { "skill_id": "MetaCastOnDodgePlayer", "level": 20 },
+                { "skill_id": "CometPlayer", "level": 20 },
+            ] },
+            { "main_active_skill": 2, "gems": [
+                { "skill_id": "MetaReapersInvocationPlayer", "level": 20 },
+                { "skill_id": "CometPlayer", "level": 20 },
+            ] },
+            { "gems": [{ "skill_id": "CometPlayer", "level": 20 }] },
+            { "gems": [{ "skill_id": "WolfPackPlayer", "level": 20 }] },
+        ],
+        "breakdowns": [],
+    });
+    let report: Value =
+        serde_json::from_str(&pobr_wasm::skill_metrics_json(&request.to_string()).unwrap())
+            .unwrap();
+    for (group, meta) in [
+        Some("MetaCastOnDodgePlayer"),
+        Some("MetaReapersInvocationPlayer"),
+        None,
+        None,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let mut selected = request.clone();
+        selected["main_socket_group"] = group.into();
+        let response: Value =
+            serde_json::from_str(&pobr_wasm::calculate_build_json(&selected.to_string()).unwrap())
+                .unwrap();
+        let row = report["skills"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| {
+                row["group_index"] == group && row["skill_id"] == response["main_skill"]["skill_id"]
+            })
+            .unwrap();
+        for output in [&response, row] {
+            if let Some(meta) = meta {
+                assert_eq!(
+                    output["unmodelled_meta_trigger"],
+                    serde_json::json!({
+                        "meta_gem_id": meta, "host_skill_id": "CometPlayer",
+                    })
+                );
+            } else {
+                assert!(output.get("unmodelled_meta_trigger").is_none(), "{output}");
+            }
+        }
+        if group == 3 {
+            assert!(response["main_minion_index"].is_number());
+            assert!(
+                response["minions"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|minion| minion["dps"].as_f64().unwrap() > 0.0)
+            );
+        }
+    }
+
+    // An incompatible meta before the owning one must not supply the note.
+    let mut multiple = request;
+    multiple["socket_groups"][0]["gems"]
+        .as_array_mut()
+        .unwrap()
+        .insert(
+            0,
+            serde_json::json!({ "skill_id": "MetaCastFireSpellOnHitPlayer", "level": 20 }),
+        );
+    multiple["socket_groups"][0]["main_active_skill"] = 3.into();
+    let response: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&multiple.to_string()).unwrap())
+            .unwrap();
+    assert_eq!(response["main_skill"]["active_skill_index"], 3);
+    assert_eq!(
+        response["unmodelled_meta_trigger"],
+        serde_json::json!({
+            "meta_gem_id": "MetaCastOnDodgePlayer", "host_skill_id": "CometPlayer",
+        })
+    );
 }
 
 /// The encode round-trip contract: edit-state request -> a share code ->
