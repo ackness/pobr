@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { diffStats } from './compare';
 import type { DisplayStatValue } from '../api/types';
+import { statFormat, STAT_SECTIONS } from './statDisplay';
 
 const stats = (pairs: [string, number | null][]): DisplayStatValue[] =>
   pairs.map(([id, value]) => ({ id, value, category: 'Offence' }));
@@ -47,6 +48,13 @@ const state = (): StageState => ({
 });
 
 describe('whole-build comparison', () => {
+  test('compares a catalog percentage outside the preferred sections in percentage points', () => {
+    expect(STAT_SECTIONS.flatMap(section => section.rows).some(row => row.id === 'EvadeChance')).toBe(false);
+    const [row] = compareStats(stats([['EvadeChance', 40]]), stats([['EvadeChance', 50]]));
+    expect(row).toMatchObject({ delta: 10, percent: null, changed: true });
+    expect(formatComparisonDelta(row.delta, statFormat(row.id), 'en-US')).toBe('+10 pp');
+    expect(formatComparisonDelta(row.delta, statFormat(row.id), 'zh-CN')).toBe('+10 个百分点');
+  });
   test('retains missing, null and non-finite values and never divides by zero', () => {
     const rows = compareStats(stats([['Life', 0], ['Mana', 10], ['ChaosMaxHit', null], ['Infinite', Infinity]]),
       stats([['Life', 50], ['ChaosMaxHit', 20], ['Infinite', Infinity], ['New', 5]]));

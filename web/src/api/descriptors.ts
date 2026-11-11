@@ -1,7 +1,8 @@
 import type { PobrBackend } from './backend';
+import { setDisplayCatalog } from '../lib/statDisplay';
 
 /**
- * Gives every calculation response the detail-kind table.
+ * Loads static display metadata and gives every calculation response the detail-kind table.
  *
  * The table depends only on the engine build and is about a third of a response, so the
  * engine leaves it out and offers it once (`breakdownDescriptors`). It is fetched here,
@@ -10,9 +11,11 @@ import type { PobrBackend } from './backend';
  * entries across the channel on every calculation.
  */
 export async function withBreakdownDescriptors(backend: PobrBackend): Promise<PobrBackend> {
-  const table = await backend.breakdownDescriptors();
+  const [table, catalog] = await Promise.all([backend.breakdownDescriptors(), backend.displayCatalog()]);
+  setDisplayCatalog(catalog);
   return new Proxy(backend, {
     get(target, property, receiver) {
+      if (property === 'displayCatalog') return async () => catalog;
       if (property !== 'calculateBuild') return Reflect.get(target, property, receiver);
       return async (request: Parameters<PobrBackend['calculateBuild']>[0]) => {
         const response = await target.calculateBuild(request);

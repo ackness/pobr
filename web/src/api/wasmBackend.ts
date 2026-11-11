@@ -26,6 +26,7 @@ import type {
   SelectedLoadoutJson,
   CalculateBuildRequest,
   CalculateBuildResponse,
+  DisplayCatalogEntry,
   ConfigCatalogFile,
   SkillMetricsResponse,
   GemCatalogEntry,
@@ -60,6 +61,7 @@ interface WasmModule {
   calculateBuildJson(requestJson: string): string;
   /** Static: the detail kind of every display stat. */
   breakdownDescriptorsJson(): string;
+  displayCatalogJson(): string;
   encodeBuildJson(requestJson: string): string;
   skillMetricsJson(requestJson: string): string;
   importPartyMemberJson(code: string): string;
@@ -305,6 +307,9 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async breakdownDescriptors() {
       return JSON.parse(wasm.breakdownDescriptorsJson()) as Awaited<ReturnType<PobrBackend['breakdownDescriptors']>>;
+    },
+    async displayCatalog() {
+      return JSON.parse(wasm.displayCatalogJson()) as DisplayCatalogEntry[];
     },
     async encodeBuildFile(request) {
       return JSON.parse(wasm.encodeBuildFileJson(JSON.stringify(request)));
