@@ -30,7 +30,7 @@ use super::compiled::CompiledParserRules;
 use super::forms::{FormReject, eval_form};
 use super::outcome::{ParseOutcome, ParseStatus, SpecialMatchMeta};
 use super::template::{compile_flags, compile_keyword_flags, compile_tag};
-use crate::modifier::ModExpansion;
+use crate::modifier::{mark_resistance_expansions, resistance_expansion};
 use crate::{ModTag, ModValue, Modifier};
 use pobr_data::modifier::{KeywordFlags, ModFlags};
 use pobr_data::skill::SkillTypes;
@@ -115,7 +115,7 @@ fn parse_mod_engine_impl(
     //     specialModList anchor priority. When no data is injected, rules.special is always
     //     empty, so this branch never matches (behaviour = conv1 engine).
     if let Some(mut matched) = rules.special.try_match(&lower, &rules.special_handlers) {
-        mark_special_resistance_expansions(matched.mods.iter_mut());
+        mark_resistance_expansions(matched.mods.iter_mut());
         let mods: Vec<Modifier> = matched
             .mods
             .into_iter()
@@ -352,39 +352,6 @@ fn parse_mod_engine_impl(
         status: ParseStatus::Parsed,
         unparsed: tail_unparsed(&work),
         special_meta: None,
-    }
-}
-
-fn resistance_expansion<'a>(names: impl Iterator<Item = &'a str> + Clone) -> Option<ModExpansion> {
-    [
-        ["FireResistance", "FireResist"],
-        ["ColdResistance", "ColdResist"],
-        ["LightningResistance", "LightningResist"],
-    ]
-    .iter()
-    .all(|aliases| names.clone().any(|name| aliases.contains(&name)))
-    .then_some(ModExpansion::AllElementalResistance)
-}
-
-/// Special rules can split one actor's expansion across several LIST wrappers.
-fn mark_special_resistance_expansions<'a>(modifiers: impl Iterator<Item = &'a mut Modifier>) {
-    let mut modifiers: Vec<_> = modifiers.collect();
-    if let Some(expansion) = resistance_expansion(modifiers.iter().map(|m| m.name.as_str())) {
-        for modifier in &mut modifiers {
-            modifier.expanded_from = Some(expansion);
-        }
-    }
-    let mut nested = std::collections::BTreeMap::<_, Vec<_>>::new();
-    for modifier in modifiers {
-        if let ModValue::NestedMods(mods) = &mut modifier.value {
-            nested
-                .entry(modifier.name.as_str())
-                .or_default()
-                .extend(mods.iter_mut());
-        }
-    }
-    for modifiers in nested.into_values() {
-        mark_special_resistance_expansions(modifiers.into_iter());
     }
 }
 
@@ -773,6 +740,7 @@ pub mod test_support {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::modifier::ModExpansion;
     use pobr_data::catalog::parser_rules::ModParserRulesDoc;
 
     fn real_rules() -> CompiledParserRules {

@@ -1695,6 +1695,51 @@ fn aura_gem_injects_defensive_buff() {
     assert_eq!(aura.lightning_resistance, base.lightning_resistance);
 }
 
+#[test]
+fn all_elemental_aura_modifiers_retain_expansion_scope() {
+    use pobr_core::modifier::ModExpansion;
+
+    let mut data = repo_data();
+    // Current game auras grant individual resistances. Exercise the existing
+    // all-elemental mapping with the same aura assembly and source attribution.
+    for level in &mut data
+        .skill_stat_sets
+        .get_mut("PurityOfFirePlayer")
+        .unwrap()
+        .sets[0]
+        .levels
+    {
+        for stat in &mut level.stats {
+            if stat.stat == "base_skill_buff_fire_damage_resistance_%_to_apply" {
+                stat.stat = "base_skill_buff_all_elements_resistance_%_to_apply".into();
+            }
+        }
+    }
+    let build =
+        Build::new().add_socket_group(SocketGroup::new().with_gem_skill("PurityOfFirePlayer", 20));
+    let specs = buff_skill_specs(&mut test_context(&data), &build, &data);
+    let aura = specs
+        .iter()
+        .find(|spec| spec.kind == BuffKind::Aura)
+        .unwrap();
+    assert_eq!(aura.mods.len(), 3);
+    for (modifier, name) in
+        aura.mods
+            .iter()
+            .zip(["FireResistance", "ColdResistance", "LightningResistance"])
+    {
+        assert_eq!(modifier.name.as_str(), name);
+        assert_eq!(
+            modifier.expanded_from,
+            Some(ModExpansion::AllElementalResistance)
+        );
+        assert_eq!(
+            modifier.origin.as_ref().unwrap().source_id.kind,
+            SourceKind::SkillGem
+        );
+    }
+}
+
 // BuffSpec extraction (aura/curse classification + double-count guard)
 
 /// Aura/curse skill → BuffSpec classification: an `Aura` token → Aura kind
