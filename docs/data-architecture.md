@@ -88,17 +88,12 @@ RePoE 发布 ───┐
   较早的 receipt 可以没有，此时若根 manifest 带 `release_build.receipt`（旧格式），它必须正好钉住该 receipt。
   新快照必须声明 `contract_version`；缺失时的报错指向 RePoE 声明里 snapshot-manifest job 的
   `contract_version: "adapter"`。
-- **辅助显示与测试夹具。** 锁的 `support_display` 属于语言 owner：它是 `locale/<patch>-<n>` Release 的两件
-  额外附件 `support-display.zh-CN.json`（`poe2-support-display-publication/v1` manifest：目标、语言、
-  `catalog_sha256`、`files`、`provenance`）与 `supportDescriptions.zh-CN.json`，都列在同一 `SHA256SUMS` 中。
-  `data:bump` bump 语言 Release 时一并采用它，并核对目标、语言、来源 provenance，以及 `catalog_sha256` 等于新游戏包
-  `overlay/trade_catalog.json` 的 SHA-256；新目标的语言 Release 没有它时拒绝。没有新显示附件时保留原条目，
-  但它绑定的目录必须仍与新游戏包一致，否则拒绝并提示语言 owner 为新目录重新发布。`test_fixtures` 是 RePoE 保留的
-  PoBR API 响应样本，与补丁无关：换目标时保留原条目，并在条目中记下它们发布时的 `target`（不改夹具或其 manifest）。
-  两个条目都可读旧 `handoff/*` 的 commit + 路径或 Release 附件（`repository` + `tag`；夹具另有 `asset`）。
   语言 owner 在 `locale/<patch>-<n>` 下发布同样的三件附件（翻译库 `mise run release:publish`），包为
   `pobr-build-data-part/v1`、`kind: "language"` 的 ZIP（与游戏包同一格式），成员按 STORED 写入，
   与提交无关，任何后续干净提交都能逐字节重建。
+- **测试夹具。** 可选的 `test_fixtures` 是 RePoE 保留的 PoBR API 响应样本，与补丁无关：换目标时保留原条目，
+  并在条目中记下它们发布时的 `target`（不改夹具或其 manifest）。条目可读旧 `handoff/*` 的 commit + 路径，
+  或 Release 附件（`repository` + `tag` + `asset`）；没有条目时跳过夹具导入。
 - **宝石说明（契约 1.3）。** 主动、精魂、元技能与辅助宝石的说明：英文属于游戏 owner，译文属于语言 owner，
   两边用同一套作用域与 id，Web 的查找、回退与显示规则见 [Web 契约](web-contracts.md#宝石天赋与珠宝规划)。
   - 游戏包的可选成员 `overlay/gem_descriptions.json`（snapshot manifest 里是 overlay domain `gem_descriptions`）：
@@ -126,11 +121,6 @@ RePoE 发布 ───┐
     （`null` 表示"停在英文"，会挡住 zh-TW 回退到 zh-CN），也不写 `origins`（官方文本）。
     zh-CN 在现有文件里；zh-TW 是新文件 `i18n/zh-TW/display_texts.json`（`locale: "zh-TW"`，形状相同，已按 manifest
     `files` 读取），作用域还可以包括已有的 `MonsterVarieties.Name` 等。
-  - **`support_display` 退役。** 上面的作用域取代辅助显示附件，只保留一条说明来源。语言 owner 自 `locale/0.5.5.5-4`
-    起不再带两件辅助显示附件；目标不变时 `data:bump` 保留锁里原有的 `support_display` 条目（`locale/0.5.5.5-3`
-    的附件，它绑定的交易目录不变），所以 game -3 + locale -4 的 bump 是安全的。随后的 PoBR PR（待办）删除 `web/src/lib/supportDescriptions.ts`、
-    忽略的 `supportDescriptions.zh-CN.json`、锁的 `support_display`，以及（可选）`pipeline/imports/display_assets.py`
-    与它的测试；删除后"新目标的语言 Release 须带新显示附件"的要求一并取消。在那之前，上一条的辅助显示规则照旧有效。
 - **寻址。** Release 产物按 `repository` + `tag` + `asset` 下载（匿名 HTTPS；私有仓库设
   `POBR_RELEASE_TRANSPORT=gh` 用 `gh` 的登录），按锁中的字节数与 SHA-256 校验后按内容缓存。
   已锁定的旧 `handoff/*` 产物继续按 40 位 commit SHA + 路径浅拉取；这些 tag 保活被钉住的 commit，不得删除或移动，
@@ -146,7 +136,7 @@ RePoE 发布 ───┐
   游戏包重新发布；运行身份只由两个包与共享规则决定，和 manifest 的格式无关，同内容时与单 owner manifest 相同。
   仍列 `i18n/` 或写 `languages` 的游戏快照（`game/0.5.5.5-1` 及更早）被拒绝，提示改锁到 `game/0.5.5.5-2` 及以后；
   游戏包里出现 `i18n/` 成员按跨 owner 成员拒绝。锁的 `locale` 可以是任何语言标签（`zh-CN`、`ja`、`pt-BR` 形状），
-  只要语言包提供该语言；加语言不需要改 PoBR 代码，只有显示包（`support_display`，退役中，见上）需要有该语言的条目。
+  只要语言包提供该语言；加语言不需要改 PoBR 代码。
 - **身份。** schema-3 `manifest.json` 列出全部运行文件及 SHA-256，未列出的文件视为不存在；
   `GameData::identity()` 标识快照、共享覆盖层和有效 patch，并进入计算结果的 `provenance`。
   完整快照与紧凑 release 是不同投影，身份分别记录，不能互换。
@@ -215,7 +205,7 @@ RePoE 发布 ───┐
 | 运行快照 | `data/<版本>/` | 忽略 |
 | owner 提供的共享输入 | `data/overlay-common/` 中的外部文件 | 忽略 |
 | 下载缓存、候选与报告 | `.cache/` | 忽略 |
-| Web 同步数据、导入的测试夹具与辅助说明 | `web/public/data/`、`web/src/fixtures/`、`web/src/lib/supportDescriptions.zh-CN.json` | 忽略 |
+| Web 同步数据与导入的测试夹具 | `web/public/data/`、`web/src/fixtures/` | 忽略 |
 | PoB2 参考检出 | `vendor/` | 忽略 |
 
 - `pipeline/imports/check_data_ownership.py` 只允许 `data/` 下跟踪 `CURRENT` 和锁中声明的自有共享规则。
@@ -230,9 +220,9 @@ RePoE 发布 ───┐
 
 1. **owner 生产。** RePoE 与翻译库从固定输入生产、运行各自的完整检查，再发布不可变的 GitHub Release。PoBR 不代为生产。
 2. **改锁。** 维护者在审阅分支中运行 `mise run data:bump <owner> <tag> [<owner> <tag>]`：下载并按 `SHA256SUMS` 校验附件，
-   读取 `receipt.json`，替换该 owner 的锁条目（语言 Release 带辅助显示附件时一并替换 `support_display`），
+   读取 `receipt.json`，替换该 owner 的包条目，
    重算快照 pin、运行身份与紧凑发行身份，再 `data:prepare` 导入并打印身份差异。
-   新补丁两个 owner 一起 bump，语言 Release 须带新目标与新交易目录的辅助显示；当前发布情况与退役阻塞项见
+   新补丁两个 owner 一起 bump；当前发布情况与阻塞项见
    [数据现状](data-status.md#发布与采用)，执行前提见 [RELEASING.md](../RELEASING.md)。
    PoBR 不自动发现或采用 owner 发布；owner 尚无完整新发布时保留现有默认。
 3. **验证。** 候选在精确 head 上通过 PR gate 和 Full gate：完整快照按摘要导入、

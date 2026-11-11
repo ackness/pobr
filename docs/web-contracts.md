@@ -160,23 +160,14 @@ WASM 的计算响应与逐技能指标行按需提供
 离页取消运行，返回不自动重启；BD／目标变化使结果失效。换技能组、替换技能集、删组或切阶段会重置，
 不提供逐组缓存或刷新后恢复。推荐列实际等级／品质／形态，应用保持评估时的完整效果序号。
 
-辅助推荐的效果说明可用键盘展开。可选目录 `description` 是钉定 PoB2 定义中的定性英文原文，
-只为辅助导出。中文正文和`GemEffects.SupportText`语言配对处理由翻译库独立维护，
-PoBR构建时按`pipeline/data.lock.json`的`support_display`（旧`handoff/*`固定提交，或语言Release附件）及manifest和资产摘要导入，
-核对目标目录完整SHA后生成忽略的Web显示输入，不在PoBR Git存储完整说明表。
-原资产生成版本、社区提交和来源摘要保留；当前目标适用绑定不改写原生成版本，不消费native描述候选。
-运行时再次核对 ID 与完整英文，防止目录更新后使用过时译文。简中采用词典译文，繁体采用现有字形转换回退并在说明中注明；
-无匹配时保留英文并标明来源，无原文时显示不可用，不能从名称或预测收益编造。
-这些说明不是当前等级／品质数值，也不证明已计算该效果。词典或辅助目录更新由翻译库重新配对并交付固定资产，
-PoBR更新锁后运行`mise run data:prepare`；目录摘要不符时拒绝导入，不使用旧说明作隐式回退。
-宝石说明（下）已取代这条路径；它只在没有 `overlay/gem_descriptions.json` 的数据包上保留，随 `support_display` 一起退役，步骤见[数据架构](data-architecture.md#3-发布与导入契约)。
+辅助推荐的效果说明可用键盘展开，与宝石选择器共用下面的说明面板。
 
 宝石说明（数据契约 1.3）：主动、精魂、元技能与辅助宝石都有一段游戏自带的说明。英文来自游戏包可选文件
 `overlay/gem_descriptions.json`，译文来自 `display_texts.json` 的作用域 `GemEffects.SupportText` 与
 `ActiveSkills.Description`，形状与 id 规则见[数据架构](data-architecture.md#3-发布与导入契约)。按 manifest `files`
 判断英文文件是否存在，像其他可选文件一样读取。共用说明面板依次显示当前语言名称及不同时的英文名、说明、
 宝石种类／标签／属性需求。新增技能组与新增辅助宝石的选择器随高亮行切换说明，面板的“添加”按钮选择该宝石；
-辅助推荐结果也使用此面板，不带“添加”按钮。没有英文文件的数据包保留原选择器，推荐结果保留原 `support_display` 说明路径。
+辅助推荐结果也使用此面板，不带“添加”按钮。没有英文文件的数据包保留选择器与推荐结果，不显示说明。
 - 查找：辅助宝石用所选宝石在 `gem_effects.json` 里那一条的 `variant_id`（GemEffects.Id）查 `GemEffects.SupportText`；
   其他宝石用 `granted_effects[granted_effect_id].active_skill`（ActiveSkills.Id）查 `ActiveSkills.Description`。
 - 语言：en-US 直接用英文。其他语言沿游戏文本回退链（`gameTextChain(lang)`）逐个目录查找：

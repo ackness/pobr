@@ -76,6 +76,21 @@ def write(path, raw):
         handle.write(raw)
 
 
+def replace_atomically(path, raw):
+    """Replace a regular output without exposing partially written bytes."""
+    path = Path(path).absolute()
+    require(".." not in path.parts and all(not p.is_symlink() for p in (path, *path.parents)),
+            "Unsafe atomic output path")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(prefix=f".{path.name}.", dir=path.parent, delete=False) as handle:
+        handle.write(raw)
+        temporary = Path(handle.name)
+    try:
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def encoded(value):
     return (json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode()
 
@@ -279,6 +294,8 @@ def unpack(archive, specification, destination):
                     "Expanded archive size mismatch")
             raw = pinned(package.read("manifest.json"), specification["manifest"])
             manifest = decode(raw)
+            require(isinstance(manifest, dict) and isinstance(manifest.get("files"), dict),
+                    "Invalid archive file inventory")
             require(set(names) == {"manifest.json", *manifest["files"]}, "Unlisted/missing archive file")
             for name, pin in manifest["files"].items():
                 write(destination / relative_path(name), pinned(package.read(name), pin))

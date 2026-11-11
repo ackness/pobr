@@ -18,8 +18,8 @@ import tempfile
 from pipeline.runtime import data_bundle as bundle
 from pipeline.runtime import data_snapshot
 from pipeline.imports import data_imports
-from pipeline.imports.data_imports import (OwnerInputs, acquire, encoded, pinned, regular, require, source_address,
-                                           unpack, validate_pin, write)
+from pipeline.imports.data_imports import (OwnerInputs, acquire, encoded, pinned, regular, replace_atomically,
+                                           require, source_address, unpack, validate_pin, write)
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA_LOCK = ROOT / "pipeline/data.lock.json"
@@ -105,20 +105,25 @@ def validate(lock):
             "Invalid data lock locale")
     require(lock.get("release_id") is None or re.fullmatch(r"[a-f0-9]{64}", lock["release_id"]),
             "Invalid compact release identity")
-    for spec in (*lock["packages"].values(), lock["support_display"], lock["test_fixtures"]):
+    packages = lock.get("packages")
+    require(isinstance(packages, dict) and set(packages) == set(OWNERS),
+            "Both independent data owners are required")
+    fixtures = []
+    if "test_fixtures" in lock:
+        spec = lock["test_fixtures"]
+        require(isinstance(spec, dict), "Invalid test_fixtures data lock entry")
+        require("revision" in spec or "path" not in spec, "A Release asset has no Git revision/path")
+        fixtures.append(spec)
+    for spec in (*packages.values(), *fixtures):
         require(isinstance(spec, dict) and "publication" not in spec, "Retired publication status in the data lock")
         data_imports.valid_tag(spec.get("tag"))
-    # Support display and test fixtures: a Git path at a tagged commit, or an owner Release.
-    for spec in (lock["support_display"], lock["test_fixtures"]):
-        require("revision" in spec or "path" not in spec, "A Release asset has no Git revision/path")
     target = lock["target"]
     require(set(target) == {"game", "game_patch", "realm"} and target["game"] == "poe2"
             and re.fullmatch(r"[0-9]+(?:\.[0-9]+)+", target["game_patch"])
             and target["realm"] in ("international", "china"), "Invalid build target")
     validate_pin(lock["snapshot_manifest"])
     require(re.fullmatch(r"[a-f0-9]{64}", lock["runtime_identity"]), "Invalid build runtime identity")
-    require(set(lock["packages"]) == set(OWNERS), "Both independent data owners are required")
-    for kind, spec in lock["packages"].items():
+    for kind, spec in packages.items():
         require(spec.get("format", "zip") in ("zip", "locale-git-files"), "Unknown data package format")
         validate_pin(spec["manifest"])
         if spec.get("format", "zip") == "zip":
@@ -320,11 +325,10 @@ def install(prepared, data_root, owned_shared=frozenset()):
                             f"files; remove {destination} to re-import")
             action = "replace"
     if refresh_shared or write_shared or action != "keep":
-        from pipeline.imports import display_assets
         with data_snapshot.workspace_lock(data_root.parent):
             for name in refresh_shared:
-                display_assets.install(bundle.read_file(Path(prepared) / "data/overlay-common", name),
-                                       data_root / "overlay-common" / name)
+                replace_atomically(data_root / "overlay-common" / name,
+                                   bundle.read_file(Path(prepared) / "data/overlay-common", name))
             for name in write_shared:
                 write(data_root / "overlay-common" / name,
                       bundle.read_file(Path(prepared) / "data/overlay-common", name))
@@ -374,14 +378,12 @@ def main():
     local = {kind: path for kind in OWNERS if (path := getattr(args, kind)) is not None}
     def run(output):
         result = prepare(args.lock, output, args.cache, args.shared, args.offline, local)
-        from pipeline.imports import display_assets
-        display = display_assets.prepare(args.lock, output, args.cache, args.offline)
-        fixtures = display_assets.prepare_test_fixtures(args.lock, args.cache, args.offline)
+        from pipeline.imports import api_fixtures
+        fixtures = api_fixtures.prepare(args.lock, args.cache, args.offline)
         if args.install:
             owned = set(bundle.decode(regular(args.lock))["shared_files"])
             install(output, args.install, owned)
-            display_assets.install(display)
-            display_assets.install_test_fixtures(fixtures)
+            api_fixtures.install(fixtures)
         return result
     if args.out:
         result = run(args.out)

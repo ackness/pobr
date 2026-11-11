@@ -44,20 +44,6 @@
       "contract_version": null
     }
   },
-  "support_display": {
-    "repository": "ackness/poe2-zh-cn-stats",
-    "tag": "locale/0.5.5.5-3",
-    "manifest": {
-      "bytes": 1062,
-      "sha256": "88aef08b06b2b2987dd21db5c6ac276ce0a9411830b86a548729f5f2f10fe0d7"
-    },
-    "asset": {
-      "bytes": 183816,
-      "sha256": "57602ecb59184e5ba239531b5f47faa6c0c9f836530b3f516a976ed2041e3b49"
-    },
-    "catalog_sha256": "de57e010c8bf93f18bf557c650d6cdc06d98bc3fbde58049227b31feda9deea6",
-    "source_data_version": "0.5.5.4.2"
-  },
   "test_fixtures": {
     "repository": "ackness/repoe",
     "revision": "dbd35717c0807e42e398093d72554ea91b149809",

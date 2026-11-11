@@ -53,7 +53,6 @@ class BuildDataTests(unittest.TestCase):
                      "target": self.target, "locale": "zh-CN", "release_id": None,
                      "snapshot_manifest": pack.pin(self.contents["data/9.1/manifest.json"]),
                      "runtime_identity": identity, "packages": {},
-                     "support_display": self.support_display(),
                      "test_fixtures": {"tag": "handoff/test-fixtures"},
                      "shared_files": {"own.json": pack.pin((self.shared / "own.json").read_bytes())}}
         self.archives = {}
@@ -64,22 +63,6 @@ class BuildDataTests(unittest.TestCase):
         self.lock_path = self.root / "build-data.lock.json"
         self.save()
         self.out, self.cache = self.root / "prepared", self.root / "cache"
-
-    def support_display(self):
-        """A retained Git-form support display entry bound to this target's trade catalog."""
-        catalog = bundle.sha256(self.contents["data/9.1/overlay/trade_catalog.json"])
-        provenance = {"generation_data_version": "9.0", "source": "synthetic", "source_commit": "c" * 40,
-                      "source_file": "GemEffects.json", "source_sha256": "d" * 64}
-        asset = bundle.encoded({"_meta": {**{k: v for k, v in provenance.items() if k != "generation_data_version"},
-                                          "data_version": "9.0", "catalog_sha256": catalog},
-                                "entries": {}, "untranslated": []})
-        manifest = bundle.encoded({"schema": "poe2-support-display-publication/v1", "locale": "zh-CN",
-                                   "target": {"game": "poe2", "version": self.version, "realm": "international"},
-                                   "catalog_sha256": catalog, "provenance": provenance,
-                                   "files": {"supportDescriptions.zh-CN.json": pack.pin(asset)}})
-        return {"repository": build.OWNERS["language"], "revision": "a" * 40, "tag": "handoff/test-display",
-                "path": "handoff/test-display/manifest.json", "manifest": pack.pin(manifest),
-                "asset": pack.pin(asset), "catalog_sha256": catalog, "source_data_version": "9.0"}
 
     def set_part(self, kind, files, **changes):
         manifest = pack.raw_json({"schema": build.PART_SCHEMA, "kind": kind, "target": self.target,
@@ -112,6 +95,16 @@ class BuildDataTests(unittest.TestCase):
         shutil.copytree(self.shared, data / "overlay-common")
         build.install(self.out, data)
         return data
+
+    def test_missing_optional_fixtures_prepare_the_same_runtime(self):
+        del self.lock["test_fixtures"]
+        self.save()
+        result = self.prepare()
+        self.assertEqual(result["runtime_identity"], self.lock["runtime_identity"])
+
+    def test_invalid_optional_fixtures_have_a_named_error(self):
+        with self.assertRaisesRegex(ValueError, "Invalid test_fixtures data lock entry"):
+            build.validate({**self.lock, "test_fixtures": None})
 
     def test_exact_bundle_cache_replay_and_install(self):
         first = self.prepare()
@@ -415,7 +408,7 @@ class BuildDataTests(unittest.TestCase):
         self.assertEqual(bundle.sha256(raw), bundle.decode(self.contents["data/9.1/manifest.json"])
                          ["files"]["overlay/trade_crafting_sources.json"])
         self.assertFalse((self.cache / "build-input-receipts").exists())
-        for path, value in ((("packages", "game", "tag"), None), (("support_display", "tag"), "bad tag"),
+        for path, value in ((("packages", "game", "tag"), None), (("test_fixtures", "tag"), "bad tag"),
                             (("release_id",), "not-a-digest"), (("packages", "game", "revision"), "master")):
             with self.subTest(path=path, value=value):
                 changed = copy.deepcopy(self.lock)
@@ -587,7 +580,8 @@ class BuildDataTests(unittest.TestCase):
         from pipeline.imports.check_data_ownership import check
         declared = {"shared_files": {"own.json": pack.pin((self.shared / "own.json").read_bytes())}}
         check(["data/CURRENT", "data/overlay-common/own.json"], declared)
-        for name in ("data/9.1/base/skills.json", "data/9.1/i18n/zh-CN/skills.json", "data/overlay-common/facts.json"):
+        for name in ("data/9.1/base/skills.json", "data/9.1/i18n/zh-CN/skills.json", "data/overlay-common/facts.json",
+                     "web/src/fixtures/catalog.json", "web/src/lib/supportDescriptions.zh-CN.json"):
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, "cannot be tracked"):
                 check([name], declared)
 
