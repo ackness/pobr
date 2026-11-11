@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it } from 'vitest';
-import descriptions from '../../lib/supportDescriptions.zh-CN.json';
+import descriptions from '../../lib/supportDescriptions.zh-CN.json' with { type: 'json' };
 import { SupportDescriptions } from './SupportDescriptions';
 
 const gem = { skill_id: 'SupportRakiatasFlowPlayer', name: '拉琪塔之流', description: descriptions.entries.SupportRakiatasFlowPlayer.en };

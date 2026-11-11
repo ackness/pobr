@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PobrBackend } from './backend';
 import { withBreakdownDescriptors } from './descriptors';
 import type { CalculateBuildResponse, DisplayCatalogEntry } from './types';
-import catalog from './generated/display_catalog.json';
+import catalog from './generated/display_catalog.json' with { type: 'json' };
 import { setDisplayCatalog, statFormat } from '../lib/statDisplay';
 
 const table = { Life: 'steps', Str: 'sources' } as const;

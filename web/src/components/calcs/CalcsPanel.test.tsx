@@ -5,7 +5,7 @@ import { BreakdownTable, CalcsPanel, followedActorKey } from './CalcsPanel';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { UiProvider } from '../shared/UiContext';
 import { TooltipProvider } from '../ui/tooltip';
-import details from '../../fixtures/stat_details.json';
+import details from '../../fixtures/stat_details.json' with { type: 'json' };
 import { bindT, type Lang, type UiKey } from '../../lib/i18n';
 
 const empty: Breakdown = { base_total: 0, inc_total: 0, more_total: 1, mods: [], formula: null };

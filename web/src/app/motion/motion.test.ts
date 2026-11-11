@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { DisplayCatalogEntry, DisplayStatValue } from '../../api/types';
-import catalog from '../../api/generated/display_catalog.json';
+import catalog from '../../api/generated/display_catalog.json' with { type: 'json' };
 import { setDisplayCatalog } from '../../lib/statDisplay';
 import { computeStatChanges } from './statChanges';
 import { statPolarity } from './statPolarity';

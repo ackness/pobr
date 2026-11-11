@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import type { GemCatalogEntry } from '../api/types';
 import { GameTextLocalizer } from './localizedGameText';
 import { gemDisplayName } from './skillNames';
-import gems from '../fixtures/gem_catalog.json';
+import gems from '../fixtures/gem_catalog.json' with { type: 'json' };
 
 const localizer = new GameTextLocalizer(gems);
 

@@ -16,17 +16,17 @@ import type {
   PassiveNode,
   PassiveTreeMeta,
 } from './types';
-import decodeFixture from '../fixtures/decode.json';
-import calculateFixture from '../fixtures/calculate.json';
-import detailFixture from '../fixtures/stat_details.json';
-import attributionFixture from '../fixtures/attribution.json';
-import skillMetricsFixture from '../fixtures/skill_metrics.json';
-import treeFixture from '../fixtures/tree.json';
-import treeMetaFixture from '../fixtures/tree_meta.json';
-import gemCatalogFixture from '../fixtures/gem_catalog.json';
-import minionCatalogFixture from '../fixtures/minion_catalog.json';
-import configOptionsFixture from '../fixtures/config_options.json';
-import displayCatalogFixture from './generated/display_catalog.json';
+import decodeFixture from '../fixtures/decode.json' with { type: 'json' };
+import calculateFixture from '../fixtures/calculate.json' with { type: 'json' };
+import detailFixture from '../fixtures/stat_details.json' with { type: 'json' };
+import attributionFixture from '../fixtures/attribution.json' with { type: 'json' };
+import skillMetricsFixture from '../fixtures/skill_metrics.json' with { type: 'json' };
+import treeFixture from '../fixtures/tree.json' with { type: 'json' };
+import treeMetaFixture from '../fixtures/tree_meta.json' with { type: 'json' };
+import gemCatalogFixture from '../fixtures/gem_catalog.json' with { type: 'json' };
+import minionCatalogFixture from '../fixtures/minion_catalog.json' with { type: 'json' };
+import configOptionsFixture from '../fixtures/config_options.json' with { type: 'json' };
+import displayCatalogFixture from './generated/display_catalog.json' with { type: 'json' };
 
 // Published mock fixtures can predate additive catalog metadata.
 const gemCatalog = gemCatalogFixture.map(gem => ({

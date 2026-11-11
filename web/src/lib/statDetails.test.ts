@@ -1,8 +1,8 @@
 import { expect, test } from 'vitest';
 import { detailFormula, detailInputLabel, detailInputValue, detailEmptyKey, detailKind, StatDetailCache } from './statDetails';
 import type { CalculateBuildResponse, Breakdown } from '../api/types';
-import details from '../fixtures/stat_details.json';
-import declaredInputs from '../fixtures/detail_inputs.json';
+import details from '../fixtures/stat_details.json' with { type: 'json' };
+import declaredInputs from '../fixtures/detail_inputs.json' with { type: 'json' };
 import { statNameLabel, type Lang } from './i18n';
 
 test('detail inputs and modifier groups have readable labels in every language', () => {

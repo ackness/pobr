@@ -1,4 +1,4 @@
-import descriptions from './supportDescriptions.zh-CN.json';
+import descriptions from './supportDescriptions.zh-CN.json' with { type: 'json' };
 import { chineseScript } from './chinese';
 import type { Lang } from './i18n';
 import type { TradeGem } from './tradeOptimizer';
