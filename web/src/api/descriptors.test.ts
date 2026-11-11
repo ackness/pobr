@@ -3,7 +3,7 @@ import type { PobrBackend } from './backend';
 import { withBreakdownDescriptors } from './descriptors';
 import type { CalculateBuildResponse, DisplayCatalogEntry } from './types';
 import catalog from './generated/display_catalog.json';
-import { statFormat } from '../lib/statDisplay';
+import { setDisplayCatalog, statFormat } from '../lib/statDisplay';
 
 const table = { Life: 'steps', Str: 'sources' } as const;
 
@@ -18,6 +18,7 @@ function backend(response: () => Partial<CalculateBuildResponse>) {
 describe('breakdown descriptors', () => {
   it('fetches the table once and puts that one object into every response', async () => {
     const { target, fetchTable, fetchCatalog } = backend(() => ({ stats: [], breakdowns: {} }));
+    setDisplayCatalog([]);
     const wrapped = await withBreakdownDescriptors(target);
     const first = await wrapped.calculateBuild({ pob_code: 'a' });
     const second = await wrapped.calculateBuild({ pob_code: 'b' });

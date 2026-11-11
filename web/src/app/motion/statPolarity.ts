@@ -5,5 +5,5 @@ export type Polarity = 1 | -1 | 0;
 
 export function statPolarity(id: string): Polarity {
   const direction = displayStatDefinition(id)?.higher_is_better;
-  return direction === false ? -1 : direction === null ? 0 : 1;
+  return direction === false ? -1 : direction === true ? 1 : 0;
 }

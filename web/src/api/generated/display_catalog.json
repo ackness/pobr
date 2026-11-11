@@ -2169,13 +2169,13 @@
     "category": "Ailment",
     "higher_is_better": true,
     "id": "FreezeBuildupPct",
-    "value_type": "Number"
+    "value_type": "Percent"
   },
   {
     "category": "Ailment",
     "higher_is_better": true,
     "id": "ElectrocuteBuildupPct",
-    "value_type": "Number"
+    "value_type": "Percent"
   },
   {
     "category": "DotDamage",
@@ -3385,7 +3385,7 @@
   },
   {
     "category": "Recovery",
-    "higher_is_better": true,
+    "higher_is_better": null,
     "id": "Flask1Duration",
     "value_type": "TimeSeconds"
   },
@@ -3517,7 +3517,7 @@
   },
   {
     "category": "Recovery",
-    "higher_is_better": true,
+    "higher_is_better": null,
     "id": "Flask2Duration",
     "value_type": "TimeSeconds"
   },

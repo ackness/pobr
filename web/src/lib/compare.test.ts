@@ -1,11 +1,7 @@
-import { beforeAll, describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { diffStats } from './compare';
-import type { DisplayCatalogEntry, DisplayStatValue } from '../api/types';
-import catalog from '../api/generated/display_catalog.json';
-import { setDisplayCatalog, statFormat, STAT_SECTIONS } from './statDisplay';
-import { deltaTone } from '../app/pages/compare/summary';
-
-beforeAll(() => setDisplayCatalog(catalog as DisplayCatalogEntry[]));
+import type { DisplayStatValue } from '../api/types';
+import { statFormat, STAT_SECTIONS } from './statDisplay';
 
 const stats = (pairs: [string, number | null][]): DisplayStatValue[] =>
   pairs.map(([id, value]) => ({ id, value, category: 'Offence' }));
@@ -58,12 +54,6 @@ describe('whole-build comparison', () => {
     expect(row).toMatchObject({ delta: 10, percent: null, changed: true });
     expect(formatComparisonDelta(row.delta, statFormat(row.id), 'en-US')).toBe('+10 pp');
     expect(formatComparisonDelta(row.delta, statFormat(row.id), 'zh-CN')).toBe('+10 个百分点');
-  });
-  test('uses catalog direction for taken multipliers and survival time', () => {
-    expect(deltaTone('TakenMultiFire', -0.1)).toBe('better');
-    expect(deltaTone('TakenMultiPhysical', 0.1)).toBe('worse');
-    expect(deltaTone('EHPSurvivalTime', 5)).toBe('better');
-    expect(deltaTone('Flask1Duration', 5)).toBe('better');
   });
   test('retains missing, null and non-finite values and never divides by zero', () => {
     const rows = compareStats(stats([['Life', 0], ['Mana', 10], ['ChaosMaxHit', null], ['Infinite', Infinity]]),

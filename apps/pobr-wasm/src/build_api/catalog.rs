@@ -565,6 +565,7 @@ mod tests {
         );
     }
 
+    /// Regenerate with `mise exec -- cargo test -p pobr-wasm --lib export_display_catalog -- --ignored`.
     #[test]
     #[ignore = "explicitly regenerate the committed web display catalog"]
     fn export_display_catalog() {
@@ -574,24 +575,27 @@ mod tests {
     }
 
     #[test]
-    fn display_catalog_export_lists_every_id_once() {
+    fn display_catalog_export_preserves_every_definition_once() {
         let entries: Vec<serde_json::Value> =
             serde_json::from_str(&display_catalog_json().unwrap()).unwrap();
         let ids: std::collections::BTreeSet<_> = entries
             .iter()
             .map(|entry| entry["id"].as_str().unwrap())
             .collect();
-        let expected: std::collections::BTreeSet<_> =
-            pobr_core::display_catalog::display_catalog_ref()
-                .iter()
-                .map(|definition| definition.id.as_str())
-                .collect();
         assert_eq!(ids.len(), entries.len(), "duplicate display stat id");
-        assert_eq!(
-            entries.len(),
-            pobr_core::display_catalog::display_catalog_ref().len()
-        );
-        assert_eq!(ids, expected);
+        let catalog = pobr_core::display_catalog::display_catalog_ref();
+        assert_eq!(entries.len(), catalog.len());
+        for (entry, definition) in entries.iter().zip(catalog) {
+            assert_eq!(
+                *entry,
+                serde_json::json!({
+                    "id": definition.id,
+                    "category": definition.category,
+                    "value_type": definition.value_type,
+                    "higher_is_better": definition.higher_is_better,
+                })
+            );
+        }
     }
 
     #[test]

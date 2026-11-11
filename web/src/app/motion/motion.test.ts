@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { DisplayCatalogEntry, DisplayStatValue } from '../../api/types';
 import catalog from '../../api/generated/display_catalog.json';
 import { setDisplayCatalog } from '../../lib/statDisplay';
@@ -8,8 +8,7 @@ import { easeOutCubic, tween } from './tween';
 
 const stat = (id: string, value: number | null): DisplayStatValue => ({ id, value, category: 'Offence' });
 
-// The engine currently declares no neutral stat, so a synthetic entry keeps that branch covered.
-beforeAll(() => setDisplayCatalog([...catalog as DisplayCatalogEntry[], { id: 'NeutralProbe', category: 'Misc', value_type: 'Number', higher_is_better: null }]));
+beforeEach(() => setDisplayCatalog(catalog as DisplayCatalogEntry[]));
 
 describe('tween', () => {
   it('starts at the origin, ends exactly on the target, and never overshoots', () => {
@@ -33,12 +32,13 @@ describe('statPolarity', () => {
   it('honors every explicit catalog direction', () => {
     for (const entry of catalog) expect(statPolarity(entry.id), entry.id).toBe(entry.higher_is_better === false ? -1 : entry.higher_is_better === null ? 0 : 1);
   });
-  it('treats damage, defences and resources as higher-is-better', () => {
-    for (const id of ['CombinedDPS', 'Life', 'TotalEHP', 'FireResist', 'SpiritUnreserved', 'Str']) expect(statPolarity(id), id).toBe(1);
+  it('resolves comparison aliases through the engine stats', () => {
+    setDisplayCatalog(catalog.map(entry => ({ ...entry, higher_is_better: false })) as DisplayCatalogEntry[]);
+    for (const id of ['MainMinionDPS', 'MainSkillHitDPS', 'MainSkillDotDPS', 'MainSkillCombinedDPS']) expect(statPolarity(id), id).toBe(-1);
   });
   it('keeps unspecified catalog directions neutral', () => {
-    expect(statPolarity('NeutralProbe')).toBe(0);
-    for (const id of ['Flask1Duration', 'Flask1Recovery']) expect(statPolarity(id), id).toBe(1);
+    expect(statPolarity('Flask1Duration')).toBe(0);
+    expect(statPolarity('UnknownStat')).toBe(0);
   });
 });
 
@@ -48,12 +48,12 @@ describe('computeStatChanges', () => {
   });
   it('reports only what moved and judges it by polarity', () => {
     const changes = computeStatChanges(
-      [stat('CombinedDPS', 1000), stat('ManaCost', 20), stat('Life', 500), stat('NeutralProbe', 4)],
-      [stat('CombinedDPS', 1100), stat('ManaCost', 25), stat('Life', 500), stat('NeutralProbe', 5)]);
-    expect([...changes.keys()].sort()).toEqual(['CombinedDPS', 'ManaCost', 'NeutralProbe']);
+      [stat('CombinedDPS', 1000), stat('ManaCost', 20), stat('Life', 500), stat('Flask1Duration', 4)],
+      [stat('CombinedDPS', 1100), stat('ManaCost', 25), stat('Life', 500), stat('Flask1Duration', 5)]);
+    expect([...changes.keys()].sort()).toEqual(['CombinedDPS', 'Flask1Duration', 'ManaCost']);
     expect(changes.get('CombinedDPS')).toMatchObject({ delta: 100, percent: 10, tone: 'better' });
     expect(changes.get('ManaCost')?.tone).toBe('worse');
-    expect(changes.get('NeutralProbe')?.tone).toBe('neutral');
+    expect(changes.get('Flask1Duration')?.tone).toBe('neutral');
   });
   it('ignores float noise and unbounded values', () => {
     expect(computeStatChanges([stat('Life', 100), stat('ChaosMaxHit', null)], [stat('Life', 100.001), stat('ChaosMaxHit', 5)]).size).toBe(0);

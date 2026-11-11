@@ -1693,13 +1693,13 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
         computed(
             "FreezeBuildupPct",
             Cat::Ailment,
-            Vt::Number,
+            Vt::Percent,
             "FreezeBuildupPerHit",
         ),
         computed(
             "ElectrocuteBuildupPct",
             Cat::Ailment,
-            Vt::Number,
+            Vt::Percent,
             "ElectrocuteBuildupPerHit",
         ),
         computed(
@@ -2798,17 +2798,18 @@ fn build_display_catalog() -> Vec<DisplayStatDefinition> {
                 } else {
                     definition.with_pob_key(id.as_str())
                 };
-                catalog.push(definition.with_higher_is_better(
-                    if matches!(
-                        *field,
-                        "ChargesUsed" | "ManaRemovedOnUse" | "LifeRemovedOnUse"
-                    ) {
-                        Some(false)
-                    } else {
-                        // More recovery, uses, charges, duration or area is an improvement.
-                        Some(true)
-                    },
-                ));
+                let definition = if matches!(
+                    *field,
+                    "ChargesUsed" | "ManaRemovedOnUse" | "LifeRemovedOnUse"
+                ) {
+                    definition.with_higher_is_better(Some(false))
+                } else if kind == "Flask" && *field == "Duration" {
+                    // Faster recovery shortens this time; a longer duration can also sustain effects.
+                    definition.with_higher_is_better(None)
+                } else {
+                    definition
+                };
+                catalog.push(definition);
             }
         }
     }

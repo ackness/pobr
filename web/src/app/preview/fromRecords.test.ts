@@ -1,10 +1,5 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { changesFromRecords } from './fromRecords';
-import type { DisplayCatalogEntry } from '../../api/types';
-import catalog from '../../api/generated/display_catalog.json';
-import { setDisplayCatalog } from '../../lib/statDisplay';
-
-beforeAll(() => setDisplayCatalog(catalog as DisplayCatalogEntry[]));
 
 describe('changesFromRecords', () => {
   it('reports only what moved, the biggest relative move first, judged by polarity', () => {

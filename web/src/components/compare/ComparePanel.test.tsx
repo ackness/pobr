@@ -5,9 +5,6 @@ import { ComparePanel } from './ComparePanel';
 import type { BuildSession, SavedSession } from '../../hooks/useBuildSession';
 import type { Lang } from '../../lib/i18n';
 import { addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage } from '../../lib/buildWorkspace';
-import catalog from '../../api/generated/display_catalog.json';
-import type { DisplayCatalogEntry } from '../../api/types';
-import { setDisplayCatalog } from '../../lib/statDisplay';
 import { compareStats } from '../../lib/compare';
 
 // Replay the real picker and apply handlers without requiring a browser environment.
@@ -37,7 +34,7 @@ const render = (session: BuildSession, lang: Lang = 'en-US') => {
   hooks.beginRender(); ui.buttons = []; ui.selects = [];
   return renderToStaticMarkup(<ComparePanel session={session} lang={lang} />);
 };
-beforeEach(() => { hooks.reset(); setDisplayCatalog(catalog as DisplayCatalogEntry[]); });
+beforeEach(() => hooks.reset());
 
 test('an unrelated build leaves B unselected until the player chooses it', () => {
   const workspace = addWorkspaceBuild(createWorkspace(saved()), 'Imported', saved());
@@ -147,20 +144,28 @@ test('table changes are after minus before and lower costs are coloured as impro
   expect(html).toMatch(/class="cmp-bar"><div class="cmp-stages"[^]*?<\/div><\/div><div class="cmp-context"/);
 });
 
-test.each(['en-US', 'zh-CN'] as const)('table shows catalog percentages outside the preferred sections in %s', lang => {
+test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('table shows catalog percentages outside the preferred sections in %s', lang => {
   const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Later');
   const [a, b] = workspace.builds[0].stages;
-  const stats = compareStats([{ id: 'EvadeChance', value: 40 }], [{ id: 'EvadeChance', value: 50 }]);
+  const stats = compareStats([{ id: 'EvadeChance', value: 40 }, { id: 'EnemyCritChance', value: 0 }, { id: 'EnemyCritEffect', value: 1.5 }],
+    [{ id: 'EvadeChance', value: 50 }, { id: 'EnemyCritChance', value: 0 }, { id: 'EnemyCritEffect', value: 1.5 }]);
   hooks.slots = [a.id, b.id, 'own', true, '', 'stats', {
     key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
     value: { stats, before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
   }];
-  const html = render({ workspace, dataVersion: '0.5', applyComparedStage: vi.fn() } as unknown as BuildSession, lang);
+  const session = { workspace, dataVersion: '0.5', applyComparedStage: vi.fn() } as unknown as BuildSession;
+  const html = render(session, lang);
   expect(html).toContain('data-stat="EvadeChance"');
   expect(html).toContain('40%');
   expect(html).toContain('50%');
-  expect(html).toContain(lang === 'en-US' ? '+10 pp' : '+10 个百分点');
+  expect(html).toContain(lang === 'en-US' ? '+10 pp' : lang === 'zh-CN' ? '+10 个百分点' : '+10 個百分點');
   expect(html).not.toContain('+25.0%');
+  expect(html).not.toContain('data-stat="EnemyCritChance"');
+  expect(html).not.toContain('data-stat="EnemyCritEffect"');
+  hooks.slots[3] = false;
+  const all = render(session, lang);
+  expect(all).not.toContain('data-stat="EnemyCritChance"');
+  expect(all).toContain('data-stat="EnemyCritEffect"');
 });
 
 test('identical sides show one no-differences line instead of an empty table', () => {

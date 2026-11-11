@@ -4,6 +4,7 @@
  */
 
 import type { DisplayCatalogEntry, DisplayStatValue } from '../api/types';
+import generatedCatalog from '../api/generated/display_catalog.json';
 import type { Lang } from './i18n';
 
 export type { Lang };
@@ -13,7 +14,8 @@ export type StatFormat = 'int' | 'float2' | 'percent' | 'rate' | 'modifier' | 'p
 export interface StatRowDef {
   id: string;
   label: Record<Lang, string>;
-  format: StatFormat;
+  /** Numeric precision or a multiplier conversion; percentage units come from the catalog. */
+  format?: Exclude<StatFormat, 'percent'>;
   /** CSS 变量名（不带 var()），用于数值着色。 */
   colorVar?: string;
   /** 值为 0 时隐藏（DoT 等可选输出）。 */
@@ -46,8 +48,8 @@ export const STAT_SECTIONS: StatSectionDef[] = [
       { id: 'ReservationDPS', label: { 'en-US': 'Reservation DPS', 'zh-TW': '保留等效傷害', 'zh-CN': '保留等效伤害' }, format: 'float2', hideZero: true },
       { id: 'MirageDPS', label: { 'en-US': 'Mirage DPS', 'zh-TW': '幻影每秒傷害', 'zh-CN': '幻影每秒伤害' }, format: 'float2', hideZero: true },
       { id: 'BurningGroundDPS', label: { 'en-US': 'Ignited / Burning Ground DPS', 'zh-TW': '燃燒地面每秒傷害', 'zh-CN': '燃烧地面每秒伤害' }, format: 'float2', hideZero: true },
-      { id: 'ExplodeChance', label: { 'en-US': 'Chance to Explode Enemies', 'zh-TW': '敵人爆炸機率', 'zh-CN': '敌人爆炸几率' }, format: 'percent', hideZero: true },
-      { id: 'CombinedAvgToMonsterLife', label: { 'en-US': 'Enemy life dealt per hit', 'zh-TW': '單次擊中占敵人生命', 'zh-CN': '单次击中占敌人生命' }, format: 'percent', hideZero: true },
+      { id: 'ExplodeChance', label: { 'en-US': 'Chance to Explode Enemies', 'zh-TW': '敵人爆炸機率', 'zh-CN': '敌人爆炸几率' }, hideZero: true },
+      { id: 'CombinedAvgToMonsterLife', label: { 'en-US': 'Enemy life dealt per hit', 'zh-TW': '單次擊中占敵人生命', 'zh-CN': '单次击中占敌人生命' }, hideZero: true },
       { id: 'CritBifurcates', label: { 'en-US': 'Double Critical Roll Chance', 'zh-TW': '雙重暴擊機率', 'zh-CN': '双重暴击几率' }, format: 'chanceMultiplier', hideZero: true },
       { id: 'AverageDamage', label: { 'en-US': 'Average Damage', 'zh-TW': '平均傷害', 'zh-CN': '平均伤害' }, format: 'float2', hideZero: true },
       { id: 'AverageBurstDamage', label: { 'en-US': 'Average Burst Damage', 'zh-TW': '平均爆發傷害', 'zh-CN': '平均爆发伤害' }, format: 'float2', hideZero: true },
@@ -61,20 +63,20 @@ export const STAT_SECTIONS: StatSectionDef[] = [
       { id: 'WithPoisonDPS', label: { 'en-US': 'DPS including Poison', 'zh-TW': '包含中毒 DPS', 'zh-CN': '包含中毒 DPS' }, format: 'float2', hideZero: true },
       { id: 'MainHandAccuracy', label: { 'en-US': 'Main Hand Accuracy', 'zh-TW': '主手命中值', 'zh-CN': '主手命中值' }, format: 'int', hideZero: true },
       { id: 'OffHandAccuracy', label: { 'en-US': 'Off Hand Accuracy', 'zh-TW': '副手命中值', 'zh-CN': '副手命中值' }, format: 'int', hideZero: true },
-      { id: 'AccuracyHitChanceUncapped', label: { 'en-US': 'Uncapped Chance to Hit', 'zh-TW': '無上限命中率', 'zh-CN': '无上限命中率' }, format: 'percent', hideZero: true },
+      { id: 'AccuracyHitChanceUncapped', label: { 'en-US': 'Uncapped Chance to Hit', 'zh-TW': '無上限命中率', 'zh-CN': '无上限命中率' }, hideZero: true },
       { id: 'QuantityMultiplier', label: { 'en-US': 'Quantity Multiplier', 'zh-TW': '數量倍率', 'zh-CN': '数量倍率' }, format: 'float2', hideZero: true },
       { id: 'TotalDotDPS', label: { 'en-US': 'Total DoT DPS', 'zh-TW': '持續傷害 DPS', 'zh-CN': '持续伤害 DPS' }, format: 'float2', hideZero: true },
       { id: 'TotalDPS', label: { 'en-US': 'Hit DPS', 'zh-TW': '擊中 DPS', 'zh-CN': '击中 DPS' }, format: 'float2', colorVar: 'accent-gold-bright' },
       { id: 'TotalHitAvg', label: { 'en-US': 'Average Hit', 'zh-TW': '平均擊中', 'zh-CN': '平均击中' }, format: 'float2' },
       { id: 'ActionRate', label: { 'en-US': 'Attack/Cast Rate', 'zh-TW': '攻擊/施放速率', 'zh-CN': '攻击/施放速率' }, format: 'rate' },
-      { id: 'HitChance', label: { 'en-US': 'Hit Chance', 'zh-TW': '命中率', 'zh-CN': '命中率' }, format: 'percent' },
-      { id: 'CritChance', label: { 'en-US': 'Crit Chance', 'zh-TW': '暴擊率', 'zh-CN': '暴击率' }, format: 'percent' },
+      { id: 'HitChance', label: { 'en-US': 'Hit Chance', 'zh-TW': '命中率', 'zh-CN': '命中率' } },
+      { id: 'CritChance', label: { 'en-US': 'Crit Chance', 'zh-TW': '暴擊率', 'zh-CN': '暴击率' } },
       { id: 'CritMultiplier', label: { 'en-US': 'Critical damage bonus', 'zh-TW': '暴擊傷害加成', 'zh-CN': '暴击伤害加成' }, format: 'modifier' },
       { id: 'IgniteDPS', label: { 'en-US': 'Ignite DPS', 'zh-TW': '點燃 DPS', 'zh-CN': '点燃 DPS' }, format: 'float2', colorVar: 'color-fire', hideZero: true },
       { id: 'BleedDPS', label: { 'en-US': 'Bleed DPS', 'zh-TW': '流血 DPS', 'zh-CN': '流血 DPS' }, format: 'float2', colorVar: 'color-life', hideZero: true },
       { id: 'PoisonDPS', label: { 'en-US': 'Poison DPS', 'zh-TW': '中毒 DPS', 'zh-CN': '中毒 DPS' }, format: 'float2', colorVar: 'color-chaos', hideZero: true },
       { id: 'ManaCost', label: { 'en-US': 'Mana Cost', 'zh-TW': '魔力消耗', 'zh-CN': '魔力消耗' }, format: 'int', colorVar: 'color-mana' },
-      { id: 'PreEffectiveCritChance', label: { 'en-US': 'Crit Chance before Accuracy', 'zh-TW': '命中確認前暴擊率', 'zh-CN': '命中确认前暴击率' }, format: 'percent', hideZero: true },
+      { id: 'PreEffectiveCritChance', label: { 'en-US': 'Crit Chance before Accuracy', 'zh-TW': '命中確認前暴擊率', 'zh-CN': '命中确认前暴击率' }, hideZero: true },
       { id: 'TotalDot', label: { 'en-US': 'Skill DoT DPS', 'zh-TW': '技能持續傷害 DPS', 'zh-CN': '技能持续伤害 DPS' }, format: 'float2', hideZero: true },
       { id: 'WithDotDPS', label: { 'en-US': 'Hit and Skill DoT DPS', 'zh-TW': '擊中與技能持續傷害 DPS', 'zh-CN': '击中与技能持续伤害 DPS' }, format: 'float2', hideZero: true },
       { id: 'CullingDPS', label: { 'en-US': 'Culling DPS', 'zh-TW': '撲殺 DPS', 'zh-CN': '终结 DPS' }, format: 'float2', hideZero: true },
@@ -90,9 +92,9 @@ export const STAT_SECTIONS: StatSectionDef[] = [
       { id: 'SpiritUnreserved', label: { 'en-US': 'Unreserved Spirit', 'zh-TW': '未保留精魂', 'zh-CN': '未保留精魂' }, format: 'int' },
       { id: 'Ward', label: { 'en-US': 'Ward', 'zh-TW': '結界', 'zh-CN': '结界' }, format: 'int', hideZero: true },
       { id: 'Rage', label: { 'en-US': 'Rage', 'zh-TW': '盛怒', 'zh-CN': '怒火' }, format: 'int', hideZero: true },
-      { id: 'LifeUnreservedPercent', label: { 'en-US': 'Unreserved Life (%)', 'zh-TW': '未保留生命（%）', 'zh-CN': '未保留生命（%）' }, format: 'percent' },
-      { id: 'ManaUnreservedPercent', label: { 'en-US': 'Unreserved Mana (%)', 'zh-TW': '未保留魔力（%）', 'zh-CN': '未保留魔力（%）' }, format: 'percent' },
-      { id: 'SpiritUnreservedPercent', label: { 'en-US': 'Unreserved Spirit (%)', 'zh-TW': '未保留精魂（%）', 'zh-CN': '未保留精魂（%）' }, format: 'percent' },
+      { id: 'LifeUnreservedPercent', label: { 'en-US': 'Unreserved Life (%)', 'zh-TW': '未保留生命（%）', 'zh-CN': '未保留生命（%）' } },
+      { id: 'ManaUnreservedPercent', label: { 'en-US': 'Unreserved Mana (%)', 'zh-TW': '未保留魔力（%）', 'zh-CN': '未保留魔力（%）' } },
+      { id: 'SpiritUnreservedPercent', label: { 'en-US': 'Unreserved Spirit (%)', 'zh-TW': '未保留精魂（%）', 'zh-CN': '未保留精魂（%）' } },
     ],
   },
   {
@@ -102,22 +104,22 @@ export const STAT_SECTIONS: StatSectionDef[] = [
       { id: 'PresenceRadiusMetres', label: { 'en-US': 'Presence Radius (m)', 'zh-TW': '存在範圍半徑（公尺）', 'zh-CN': '在场半径（米）' }, format: 'float2', hideZero: true },
       { id: 'Armour', label: { 'en-US': 'Armour', 'zh-TW': '護甲', 'zh-CN': '护甲' }, format: 'int', colorVar: 'color-defence' },
       { id: 'Evasion', label: { 'en-US': 'Evasion', 'zh-TW': '閃避', 'zh-CN': '闪避' }, format: 'int', colorVar: 'color-defence' },
-      { id: 'PhysicalDamageReduction', label: { 'en-US': 'Phys. DR', 'zh-TW': '物理減傷', 'zh-CN': '物理减伤' }, format: 'percent' },
-      { id: 'BlockChance', label: { 'en-US': 'Block Chance', 'zh-TW': '格擋率', 'zh-CN': '格挡率' }, format: 'percent', hideZero: true },
+      { id: 'PhysicalDamageReduction', label: { 'en-US': 'Phys. DR', 'zh-TW': '物理減傷', 'zh-CN': '物理减伤' } },
+      { id: 'BlockChance', label: { 'en-US': 'Block Chance', 'zh-TW': '格擋率', 'zh-CN': '格挡率' }, hideZero: true },
       { id: 'StunThreshold', label: { 'en-US': 'Stun Threshold', 'zh-TW': '暈眩門檻', 'zh-CN': '晕眩门槛' }, format: 'int' },
     ],
   },
   {
     title: { 'en-US': 'Resistances', 'zh-TW': '抗性', 'zh-CN': '抗性' },
     rows: [
-      { id: 'FireResist', label: { 'en-US': 'Fire Res.', 'zh-TW': '火焰抗性', 'zh-CN': '火焰抗性' }, format: 'percent', colorVar: 'color-fire' },
-      { id: 'ColdResist', label: { 'en-US': 'Cold resistance', 'zh-TW': '冰冷抗性', 'zh-CN': '冰冷抗性' }, format: 'percent', colorVar: 'color-cold' },
-      { id: 'LightningResist', label: { 'en-US': 'Lightning Res.', 'zh-TW': '閃電抗性', 'zh-CN': '闪电抗性' }, format: 'percent', colorVar: 'color-lightning' },
-      { id: 'ChaosResist', label: { 'en-US': 'Chaos Res.', 'zh-TW': '混沌抗性', 'zh-CN': '混沌抗性' }, format: 'percent', colorVar: 'color-chaos' },
-      { id: 'FireResistOverCap', label: { 'en-US': 'Fire Res. Over Max', 'zh-TW': '超過上限火焰抗性', 'zh-CN': '超过上限火焰抗性' }, format: 'percent', hideZero: true },
-      { id: 'ColdResistOverCap', label: { 'en-US': 'Cold Res. Over Max', 'zh-TW': '超過上限冰冷抗性', 'zh-CN': '超过上限冰冷抗性' }, format: 'percent', hideZero: true },
-      { id: 'LightningResistOverCap', label: { 'en-US': 'Lightning Res. Over Max', 'zh-TW': '超過上限閃電抗性', 'zh-CN': '超过上限闪电抗性' }, format: 'percent', hideZero: true },
-      { id: 'ChaosResistOverCap', label: { 'en-US': 'Chaos Res. Over Max', 'zh-TW': '超過上限混沌抗性', 'zh-CN': '超过上限混沌抗性' }, format: 'percent', hideZero: true },
+      { id: 'FireResist', label: { 'en-US': 'Fire Res.', 'zh-TW': '火焰抗性', 'zh-CN': '火焰抗性' }, colorVar: 'color-fire' },
+      { id: 'ColdResist', label: { 'en-US': 'Cold resistance', 'zh-TW': '冰冷抗性', 'zh-CN': '冰冷抗性' }, colorVar: 'color-cold' },
+      { id: 'LightningResist', label: { 'en-US': 'Lightning Res.', 'zh-TW': '閃電抗性', 'zh-CN': '闪电抗性' }, colorVar: 'color-lightning' },
+      { id: 'ChaosResist', label: { 'en-US': 'Chaos Res.', 'zh-TW': '混沌抗性', 'zh-CN': '混沌抗性' }, colorVar: 'color-chaos' },
+      { id: 'FireResistOverCap', label: { 'en-US': 'Fire Res. Over Max', 'zh-TW': '超過上限火焰抗性', 'zh-CN': '超过上限火焰抗性' }, hideZero: true },
+      { id: 'ColdResistOverCap', label: { 'en-US': 'Cold Res. Over Max', 'zh-TW': '超過上限冰冷抗性', 'zh-CN': '超过上限冰冷抗性' }, hideZero: true },
+      { id: 'LightningResistOverCap', label: { 'en-US': 'Lightning Res. Over Max', 'zh-TW': '超過上限閃電抗性', 'zh-CN': '超过上限闪电抗性' }, hideZero: true },
+      { id: 'ChaosResistOverCap', label: { 'en-US': 'Chaos Res. Over Max', 'zh-TW': '超過上限混沌抗性', 'zh-CN': '超过上限混沌抗性' }, hideZero: true },
     ],
   },
   {
@@ -182,19 +184,19 @@ export const STAT_SECTIONS: StatSectionDef[] = [
       { id: 'ReqStr', label: { 'en-US': 'Strength Required', 'zh-TW': '力量需求', 'zh-CN': '力量需求' }, format: 'int', hideZero: true },
       { id: 'ReqDex', label: { 'en-US': 'Dexterity Required', 'zh-TW': '敏捷需求', 'zh-CN': '敏捷需求' }, format: 'int', hideZero: true },
       { id: 'ReqInt', label: { 'en-US': 'Intelligence Required', 'zh-TW': '智慧需求', 'zh-CN': '智慧需求' }, format: 'int', hideZero: true },
-      { id: 'ManaPercentCost', label: { 'en-US': 'Mana Cost (%)', 'zh-TW': '魔力消耗（%）', 'zh-CN': '魔力消耗（%）' }, format: 'percent', hideZero: true },
-      { id: 'ManaPercentPerSecondCost', label: { 'en-US': 'Mana Cost (%/s)', 'zh-TW': '魔力每秒消耗（%）', 'zh-CN': '魔力每秒消耗（%）' }, format: 'percent', hideZero: true },
+      { id: 'ManaPercentCost', label: { 'en-US': 'Mana Cost (%)', 'zh-TW': '魔力消耗（%）', 'zh-CN': '魔力消耗（%）' }, hideZero: true },
+      { id: 'ManaPercentPerSecondCost', label: { 'en-US': 'Mana Cost (%/s)', 'zh-TW': '魔力每秒消耗（%）', 'zh-CN': '魔力每秒消耗（%）' }, hideZero: true },
       { id: 'ManaPerSecondCost', label: { 'en-US': 'Mana Cost / s', 'zh-TW': '魔力每秒消耗', 'zh-CN': '魔力每秒消耗' }, format: 'float2', hideZero: true },
-      { id: 'LifePercentCost', label: { 'en-US': 'Life Cost (%)', 'zh-TW': '生命消耗（%）', 'zh-CN': '生命消耗（%）' }, format: 'percent', hideZero: true },
-      { id: 'LifePercentPerSecondCost', label: { 'en-US': 'Life Cost (%/s)', 'zh-TW': '生命每秒消耗（%）', 'zh-CN': '生命每秒消耗（%）' }, format: 'percent', hideZero: true },
+      { id: 'LifePercentCost', label: { 'en-US': 'Life Cost (%)', 'zh-TW': '生命消耗（%）', 'zh-CN': '生命消耗（%）' }, hideZero: true },
+      { id: 'LifePercentPerSecondCost', label: { 'en-US': 'Life Cost (%/s)', 'zh-TW': '生命每秒消耗（%）', 'zh-CN': '生命每秒消耗（%）' }, hideZero: true },
       { id: 'LifePerSecondCost', label: { 'en-US': 'Life Cost / s', 'zh-TW': '生命每秒消耗', 'zh-CN': '生命每秒消耗' }, format: 'float2', hideZero: true },
       { id: 'ESCost', label: { 'en-US': 'Energy Shield Cost', 'zh-TW': '能量護盾消耗', 'zh-CN': '能量护盾消耗' }, format: 'float2', hideZero: true },
-      { id: 'ESPercentCost', label: { 'en-US': 'Energy Shield Cost (%)', 'zh-TW': '能量護盾消耗（%）', 'zh-CN': '能量护盾消耗（%）' }, format: 'percent', hideZero: true },
-      { id: 'ESPercentPerSecondCost', label: { 'en-US': 'Energy Shield Cost (%/s)', 'zh-TW': '能量護盾每秒消耗（%）', 'zh-CN': '能量护盾每秒消耗（%）' }, format: 'percent', hideZero: true },
+      { id: 'ESPercentCost', label: { 'en-US': 'Energy Shield Cost (%)', 'zh-TW': '能量護盾消耗（%）', 'zh-CN': '能量护盾消耗（%）' }, hideZero: true },
+      { id: 'ESPercentPerSecondCost', label: { 'en-US': 'Energy Shield Cost (%/s)', 'zh-TW': '能量護盾每秒消耗（%）', 'zh-CN': '能量护盾每秒消耗（%）' }, hideZero: true },
       { id: 'ESPerSecondCost', label: { 'en-US': 'Energy Shield Cost / s', 'zh-TW': '能量護盾每秒消耗', 'zh-CN': '能量护盾每秒消耗' }, format: 'float2', hideZero: true },
       { id: 'WardCost', label: { 'en-US': 'Runic Ward Cost', 'zh-TW': '符文守護消耗', 'zh-CN': '符文守护消耗' }, format: 'float2', hideZero: true },
-      { id: 'WardPercentCost', label: { 'en-US': 'Runic Ward Cost (%)', 'zh-TW': '符文守護消耗（%）', 'zh-CN': '符文守护消耗（%）' }, format: 'percent', hideZero: true },
-      { id: 'WardPercentPerSecondCost', label: { 'en-US': 'Runic Ward Cost (%/s)', 'zh-TW': '符文守護每秒消耗（%）', 'zh-CN': '符文守护每秒消耗（%）' }, format: 'percent', hideZero: true },
+      { id: 'WardPercentCost', label: { 'en-US': 'Runic Ward Cost (%)', 'zh-TW': '符文守護消耗（%）', 'zh-CN': '符文守护消耗（%）' }, hideZero: true },
+      { id: 'WardPercentPerSecondCost', label: { 'en-US': 'Runic Ward Cost (%/s)', 'zh-TW': '符文守護每秒消耗（%）', 'zh-CN': '符文守护每秒消耗（%）' }, hideZero: true },
       { id: 'WardPerSecondCost', label: { 'en-US': 'Runic Ward Cost / s', 'zh-TW': '符文守護每秒消耗', 'zh-CN': '符文守护每秒消耗' }, format: 'float2', hideZero: true },
       { id: 'RageCost', label: { 'en-US': 'Rage Cost', 'zh-TW': '盛怒消耗', 'zh-CN': '怒火消耗' }, format: 'float2', hideZero: true },
       { id: 'RagePerSecondCost', label: { 'en-US': 'Rage Cost / s', 'zh-TW': '盛怒每秒消耗', 'zh-CN': '怒火每秒消耗' }, format: 'float2', hideZero: true },
@@ -294,7 +296,10 @@ export function metricMeaning(id: string, lang: Lang): string | null {
 
 const STAT_FORMATS = new Map(STAT_SECTIONS.flatMap(section => section.rows.map(row => [row.id, row.format] as const)));
 
-const DISPLAY_CATALOG = new Map<string, DisplayCatalogEntry>();
+// Keep pre-boot displays consistent; backend initialization installs its engine's catalog.
+const DISPLAY_CATALOG = new Map<string, DisplayCatalogEntry>(
+  (generatedCatalog as DisplayCatalogEntry[]).map(entry => [entry.id, entry]),
+);
 
 /** Installed once by the shared backend initialization, before any calculation. */
 export function setDisplayCatalog(entries: readonly DisplayCatalogEntry[]): void {
@@ -303,12 +308,16 @@ export function setDisplayCatalog(entries: readonly DisplayCatalogEntry[]): void
 }
 
 export function displayStatDefinition(id: string): DisplayCatalogEntry | undefined {
-  return DISPLAY_CATALOG.get(id);
+  const stat = id === 'MainMinionDPS' || id === 'MainSkillHitDPS' ? 'TotalDPS'
+    : id === 'MainSkillDotDPS' ? 'TotalDotDPS'
+    : id === 'MainSkillCombinedDPS' ? 'CombinedDPS' : id;
+  return DISPLAY_CATALOG.get(stat);
 }
 
 export function statFormat(stat: string): StatFormat {
-  if (stat === 'MainMinionDPS') return statFormat('TotalDPS');
-  if (displayStatDefinition(stat)?.value_type === 'Percent') return 'percent';
+  const type = displayStatDefinition(stat)?.value_type;
+  if (type === 'Percent') return 'percent';
+  if (type === 'TimeSeconds') return 'float2';
   return STAT_FORMATS.get(stat) ?? 'float2';
 }
 

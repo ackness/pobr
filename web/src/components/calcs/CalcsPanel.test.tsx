@@ -1,8 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { beforeAll, expect, test } from 'vitest';
-import type { Breakdown, BreakdownMod, CalculateBuildResponse, DetailKind, DisplayCatalogEntry } from '../../api/types';
-import catalog from '../../api/generated/display_catalog.json';
-import { setDisplayCatalog } from '../../lib/statDisplay';
+import { expect, test } from 'vitest';
+import type { Breakdown, BreakdownMod, CalculateBuildResponse, DetailKind } from '../../api/types';
 import { BreakdownTable, CalcsPanel, followedActorKey } from './CalcsPanel';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { UiProvider } from '../shared/UiContext';
@@ -11,8 +9,6 @@ import details from '../../fixtures/stat_details.json';
 import { bindT, type Lang, type UiKey } from '../../lib/i18n';
 
 const empty: Breakdown = { base_total: 0, inc_total: 0, more_total: 1, mods: [], formula: null };
-
-beforeAll(() => setDisplayCatalog(catalog as DisplayCatalogEntry[]));
 
 test.each([[0, '∞'], [3, '3']] as const)('ailment details show the stack ceiling %s', (cap, displayed) => {
   const fixture = details.IgniteDPS as Breakdown;

@@ -1,10 +1,6 @@
-import { beforeAll, expect, it } from 'vitest';
-import type { CalculateBuildResponse, DisplayCatalogEntry, DisplayStatValue } from '../api/types';
+import { expect, it } from 'vitest';
+import type { CalculateBuildResponse, DisplayStatValue } from '../api/types';
 import { paletteStats } from './paletteStats';
-import catalog from '../api/generated/display_catalog.json';
-import { setDisplayCatalog } from '../lib/statDisplay';
-
-beforeAll(() => setDisplayCatalog(catalog as DisplayCatalogEntry[]));
 
 const calc = (values: Record<string, number | null>) => ({ stats: Object.entries(values).map(([id, value]) => ({ id, value })) as DisplayStatValue[] }) as CalculateBuildResponse;
 it('puts common resistances ahead of internal totem metrics, hides internal zeros, and formats maximums as percentages', () => {

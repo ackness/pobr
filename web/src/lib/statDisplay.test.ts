@@ -1,10 +1,10 @@
-import { beforeAll, describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import { formatNumber, formatStatValue, statFormat, statMap, STAT_SECTIONS, formatStat, setDisplayCatalog } from './statDisplay';
 import { statNameLabel } from './i18n';
 import catalog from '../api/generated/display_catalog.json';
 import type { DisplayCatalogEntry } from '../api/types';
 
-beforeAll(() => setDisplayCatalog(catalog as DisplayCatalogEntry[]));
+beforeEach(() => setDisplayCatalog(catalog as DisplayCatalogEntry[]));
 
 test('every catalog Percent stat uses the display percentage scale', () => {
   const percentages = catalog.filter(entry => entry.value_type === 'Percent');
@@ -15,10 +15,18 @@ test('every catalog Percent stat uses the display percentage scale', () => {
   }
 });
 
-test('retains numeric precision for seconds and neutral multiplier conversions', () => {
+test('uses catalog units while preserving numeric precision and multiplier conversions', () => {
   expect(formatStat('EHPSurvivalTime', 2.345)).toBe('2.35');
   expect(formatStat('CritMultiplier', 1.5)).toBe('+50%');
   expect(formatStat('CritBifurcates', 1.5)).toBe('50%');
+  expect(formatStat('EsRechargeRate', 0.125)).toBe('0.13');
+  for (const id of ['FreezeBuildupPct', 'ElectrocuteBuildupPct']) expect(formatStat(id, 2.1), id).toBe('2.1%');
+  setDisplayCatalog(catalog.map(entry => entry.id === 'ManaCost' ? { ...entry, value_type: 'TimeSeconds' }
+    : entry.id === 'CritMultiplier' ? { ...entry, value_type: 'Percent' } : entry) as DisplayCatalogEntry[]);
+  expect(formatStat('CritMultiplier', 40)).toBe('40%');
+  expect(formatStat('ManaCost', 2.345)).toBe('2.35');
+  setDisplayCatalog(catalog.map(entry => entry.id === 'CritChance' ? { ...entry, value_type: 'Number' } : entry) as DisplayCatalogEntry[]);
+  expect(formatStat('CritChance', 40)).toBe('40');
 });
 
 describe('copied flask recovery labels', () => {
@@ -184,8 +192,8 @@ describe('STAT_SECTIONS', () => {
     ]) {
       expect(rows.has(id), id).toBe(true);
     }
-    expect(rows.get('LifeUnreservedPercent')?.format).toBe('percent');
-    expect(rows.get('PreEffectiveCritChance')?.format).toBe('percent');
+    expect(statFormat('LifeUnreservedPercent')).toBe('percent');
+    expect(statFormat('PreEffectiveCritChance')).toBe('percent');
     expect(rows.get('ReloadTime')?.label['en-US']).toContain('(s)');
     expect(rows.get('ProjectileSpeedMod')?.format).toBe('float2');
   });
@@ -197,18 +205,16 @@ test('movement multipliers and unlimited piercing use display conventions', () =
   expect(formatStatValue(100, 'pierce')).toBe('All targets');
   expect(formatStatValue(100, 'pierce', 'zh-TW')).toBe('所有目標');
   expect(formatStatValue(3, 'pierce')).toBe('3');
-  const rows = new Map(STAT_SECTIONS.flatMap((section) => section.rows.map((row) => [row.id, row] as const)));
   for (const id of ['ChainMax', 'ForkCount', 'SplitCount']) {
-    expect(formatStatValue(2, rows.get(id)!.format)).toBe('2');
+    expect(formatStat(id, 2)).toBe('2');
   }
 });
 
 test('double critical roll multiplier is displayed as a chance', () => {
-  const row = STAT_SECTIONS.flatMap(section => section.rows).find(row => row.id === 'CritBifurcates')!;
-  expect(formatStatValue(4 / 3, row.format)).toBe('33.3%');
-  expect(formatStatValue(1, row.format)).toBe('0%');
-  expect(formatStatValue(2, row.format)).toBe('100%');
-  expect(formatStatValue(0, row.format)).toBe('0%');
+  expect(formatStat('CritBifurcates', 4 / 3)).toBe('33.3%');
+  expect(formatStat('CritBifurcates', 1)).toBe('0%');
+  expect(formatStat('CritBifurcates', 2)).toBe('100%');
+  expect(formatStat('CritBifurcates', 0)).toBe('0%');
 });
 
 describe('stat section labels', () => {
