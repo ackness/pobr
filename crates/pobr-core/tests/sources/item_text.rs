@@ -18,6 +18,111 @@ use pobr_core::item_text::{
 };
 use pobr_data::prelude::*;
 
+struct ShieldDefences {
+    item: Item,
+    base: Option<pobr_data::catalog::ArmourBaseStats>,
+    level: u32,
+}
+
+impl pobr_core::skill_env::EquipmentView for ShieldDefences {
+    fn item(&self, slot: EquipmentSlot) -> Option<&Item> {
+        (slot == EquipmentSlot::Weapon2).then_some(&self.item)
+    }
+
+    fn player_level(&self) -> u32 {
+        self.level
+    }
+}
+
+impl pobr_core::skill_env::ArmourBaseLookup for ShieldDefences {
+    fn armour_base(&self, _: &str) -> Option<&pobr_data::catalog::ArmourBaseStats> {
+        self.base.as_ref()
+    }
+}
+
+#[test]
+fn shield_local_defences_recompute_hybrids_and_evasion_rating() {
+    use pobr_core::skill_env::{off_hand_defence, per_shield_defence_scale};
+    use pobr_data::catalog::ArmourBaseStats;
+
+    // Game text: local_armour_and_evasion_and_energy_shield_+%,
+    // local_armour_and_evasion_+% and local_evasion_rating_+%.
+    for (increase, expected) in [
+        (
+            "40% increased Armour, Evasion and Energy Shield",
+            [444.0, 202.0, 50.0],
+        ),
+        ("40% increased Armour and Evasion", [444.0, 202.0, 36.0]),
+        ("40% increased Evasion Rating", [317.0, 202.0, 36.0]),
+    ] {
+        for display in ["", "Armour: 1\nEvasion Rating: 2\nEnergy Shield: 3\n"] {
+            let shield = ShieldDefences {
+                item: parse_pob_xml_item(&format!(
+                    "Rarity: RARE\nTest Shield\nSynthetic Shield\nQuality: 20\n{display}Implicits: 0\n{increase}"
+                ))
+                .unwrap(),
+                base: Some(ArmourBaseStats {
+                    armour: 264,
+                    evasion: 120,
+                    energy_shield: 30,
+                    ward: 0,
+                    block_chance: None,
+                    movement_penalty: None,
+                }),
+                level: 90,
+            };
+            for (idx, defence) in ["armour", "evasion_rating", "energy_shield"]
+                .into_iter()
+                .enumerate()
+            {
+                assert_eq!(
+                    off_hand_defence(&shield, &shield, idx),
+                    expected[idx],
+                    "{increase}, {display:?}, {defence}"
+                );
+                let stat = format!("off_hand_minimum_added_physical_damage_per_5_shield_{defence}");
+                assert_eq!(
+                    per_shield_defence_scale(&stat, &shield, &shield),
+                    Some((false, (expected[idx] / 5.0).floor()))
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn shield_local_defences_keep_unknown_displays_and_scale_per_level() {
+    use pobr_core::skill_env::off_hand_defence;
+
+    let mut shield = ShieldDefences {
+        item: parse_pob_xml_item(
+            "Rarity: RARE\nTest Shield\nUnknown Shield\nQuality: 20\nArmour: 123\nEvasion Rating: 234\nEnergy Shield: 45\nImplicits: 0\n40% increased Armour, Evasion and Energy Shield",
+        )
+        .unwrap(),
+        base: None,
+        level: 90,
+    };
+    for (idx, expected) in [123.0, 234.0, 45.0].into_iter().enumerate() {
+        assert_eq!(off_hand_defence(&shield, &shield, idx), expected);
+    }
+
+    shield.item.rolled_defence = Default::default();
+    shield.item.modifier_texts.extend([
+        "Has +2 to Armour per player level".into(),
+        "Has +1 to Evasion Rating per player level".into(),
+        "Has +1 to maximum Energy Shield per player level".into(),
+    ]);
+    for (level, expected) in [(10, [33.6, 16.8, 16.8]), (90, [302.4, 151.2, 151.2])] {
+        shield.level = level;
+        for (idx, expected) in expected.into_iter().enumerate() {
+            let actual = off_hand_defence(&shield, &shield, idx);
+            assert!((actual - expected).abs() < 1e-9, "level {level}: {actual}");
+        }
+    }
+    shield.item.modifier_texts.clear();
+    assert_eq!(off_hand_defence(&shield, &shield, 0), 0.0);
+}
+
 #[test]
 fn selected_variants_and_ranges_preserve_section_boundaries() {
     let header = "Rarity: UNIQUE\nSynthetic Jewel\nDiamond\n";

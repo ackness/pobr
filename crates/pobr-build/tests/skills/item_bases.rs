@@ -1,7 +1,9 @@
 //! Imported item names retain their affixes; calculations resolve the game base.
 
-use pobr_build::{DataOrchestratorOptions, calculate_with_data, parse_build};
-use pobr_core::skill_env::weapon_item_contribution;
+use pobr_build::{
+    DataOrchestratorOptions, calculate_with_data, calculate_with_data_session, parse_build,
+};
+use pobr_core::skill_env::{off_hand_defence, per_shield_defence_scale, weapon_item_contribution};
 use pobr_data::item::EquipmentSlot;
 
 use crate::test_data;
@@ -14,6 +16,72 @@ fn imported(slot: &str, item: &str, skill: &str) -> pobr_build::Build {
 </PathOfBuilding2>"#
     ))
     .unwrap()
+}
+
+#[test]
+fn shield_local_defences_match_the_defence_panel_and_skill_scaling() {
+    let data = test_data();
+    let options = DataOrchestratorOptions {
+        inject_character_base: false,
+        ..Default::default()
+    };
+    for (increase, modifiers, expected) in [
+        (
+            "20% increased Armour, Evasion and Energy Shield",
+            "+267 to Armour\n33% increased Armour\n107% increased Armour\n+80 to Evasion Rating\n+40 to maximum Energy Shield",
+            [1657.0, 115.0, 58.0],
+        ),
+        (
+            "40% increased Armour and Evasion",
+            "+80 to Evasion Rating\n+40 to maximum Energy Shield",
+            [444.0, 134.0, 48.0],
+        ),
+        (
+            "40% increased Evasion Rating",
+            "+80 to Evasion Rating\n+40 to maximum Energy Shield",
+            [317.0, 134.0, 48.0],
+        ),
+        ("20% increased Armour", "+267 to Armour", [765.0, 0.0, 0.0]),
+        (
+            "40% increased Armour, Evasion and Energy Shield",
+            "+80 to Evasion Rating\n+40 to maximum Energy Shield\nHas +1 to Armour per player level\nHas +1 to Evasion Rating per player level\nHas +1 to maximum Energy Shield per player level",
+            [595.2, 285.2, 218.2],
+        ),
+    ] {
+        for display in ["", "Armour: 1\nEvasion Rating: 2\nEnergy Shield: 3\n"] {
+            let text = format!(
+                "Rarity: RARE\nTest Shield\nTawhoan Tower Shield\nQuality: 20\n{display}Implicits: 1\n{increase}\n{modifiers}"
+            );
+            let build = imported("Weapon 2", &text, "FireballPlayer");
+            let panel = calculate_with_data_session(&build, data, &options).unwrap();
+            for (idx, (name, suffix)) in [
+                ("Armour", "armour"),
+                ("Evasion", "evasion_rating"),
+                ("EnergyShield", "energy_shield"),
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                let rating = off_hand_defence(&build, data, idx);
+                let panel_base = panel.stat_totals(name).0;
+                assert!(
+                    (panel_base - expected[idx]).abs() < 1e-9,
+                    "{increase}, {display:?}, {name}: {panel_base}"
+                );
+                assert_eq!(rating, panel_base, "shield scaling and panel: {name}");
+                for divisor in [5, 15] {
+                    let stat = format!(
+                        "off_hand_maximum_added_physical_damage_per_{divisor}_shield_{suffix}"
+                    );
+                    assert_eq!(
+                        per_shield_defence_scale(&stat, &build, data),
+                        Some((true, (panel_base / f64::from(divisor)).floor())),
+                        "{increase}: {stat}"
+                    );
+                }
+            }
+        }
+    }
 }
 
 #[test]

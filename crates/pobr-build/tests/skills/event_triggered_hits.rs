@@ -6,6 +6,7 @@ use pobr_core::calc::OutputTable;
 use crate::test_data as data;
 
 fn calculate(data: &BuildData, primary: &str, extra: &[&str]) -> OutputTable {
+    let local_armour = 30 - data.armour_base("Splintered Tower Shield").unwrap().armour;
     let xml = format!(
         r#"<PathOfBuilding2>
 <Build level="90" className="Witch" mainSocketGroup="1"/>
@@ -17,6 +18,7 @@ Implicits: 0
 Splintered Tower Shield
 Armour: 30
 Implicits: 0
++{local_armour} to Armour
 </Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/><Slot name="Weapon 2" itemId="2"/></ItemSet></Items>
 </PathOfBuilding2>"#
     );

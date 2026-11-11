@@ -30,14 +30,13 @@ use super::collect::{
 use super::conditions::grenade_type_count;
 use super::context::CalculationContext;
 use super::item::defence::{
-    defence_base_modifiers, is_local_spirit_mod, item_per_level_defence, item_spirit_modifiers,
-    item_ward_modifiers, parse_has_per_level_defence, per_slot_defence_multipliers,
-    per_slot_socket_multipliers, shield_base_block, shield_block_modifiers,
+    defence_base_modifiers, is_local_spirit_mod, item_spirit_modifiers, item_ward_modifiers,
+    per_slot_defence_multipliers, per_slot_socket_multipliers, shield_base_block,
+    shield_block_modifiers,
 };
 use super::item::mirror::{kalandra_reflected_ring, scale_item_bonuses, slot_bonus_effect_scales};
 use super::item::weapon::{
-    clean_item_text, is_weapon_local_mod, parse_adds_with_suffix, parse_local_defence_flat,
-    parse_local_defence_inc, parse_weapon_local_crit,
+    clean_item_text, is_weapon_local_mod, parse_adds_with_suffix, parse_weapon_local_crit,
 };
 use super::skill::buffs::{
     buff_skill_specs, herald_skill_names, spirit_reservation_modifiers, support_buff_specs,
@@ -56,12 +55,14 @@ use crate::build::{Build, SocketGroup};
 use crate::build_data::BuildData;
 use crate::error::BuildError;
 use pobr_core::CampaignProgress;
+use pobr_core::skill_env::{
+    item_per_level_defence, parse_has_per_level_defence, parse_local_defence_flat,
+    parse_local_defence_inc,
+};
 
 /// Stage 1d: item base defence (armour/evasion/ES) + shield base block + per-item Spirit/Ward → BASE mods.
 pub(super) fn inject_defence_base(session: &mut SourceWriter, build: &Build, data: &BuildData) {
-    // 1d. Item base defence (armour/evasion/ES) → Item-attributed BASE mods (× quality).
-    //     Item `increased Armour/Evasion/EnergyShield` mods are injected as INC via
-    //     add_item, scaling this base.
+    // Local flat/increased modifiers and quality are already folded into each item.
     session.add_modifiers(defence_base_modifiers(build, data));
     // 1d'. Shield base block → `ShieldBlockChance` BASE (13-G8).
     //      PoB2 CalcDefence.lua:975-980 reads Weapon 2/3's `armourData.BlockChance` as
@@ -931,7 +932,7 @@ pub(super) fn inject_items(
         let rd = &item.rolled_defence;
         // A per-level defensive item (e.g. a purely-implicit unique glove) also counts
         // as an armour item — its `Has +N per level` is already folded into the
-        // per-item base value (item_rolled_defence), and must be stripped from the
+        // per-item base value (item_local_defences), and must be stripped from the
         // global path to avoid double/incorrect global injection.
         let has_per_level_def = item_per_level_defence(item).iter().any(|&v| v > 0.0);
         let is_armour_piece = data.armour_base(&item.base.to_string()).is_some()

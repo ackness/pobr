@@ -7,6 +7,8 @@
 use pobr_data::item::Item;
 use pobr_data::modifier::ModType;
 
+use super::lookup::ArmourBaseLookup;
+
 /// The first character [`clean_item_text`] keeps: the first one outside `{...}` that is
 /// not whitespace. A reader that only accepts lines whose cleaned form starts a certain
 /// way can rule most lines out from this alone, without building the cleaned copy.
@@ -206,111 +208,114 @@ pub fn is_weapon_local_mod(
         .any(|s| parse_adds_with_suffix(&clean, s).is_some())
 }
 
-/// Parses a local defence increased% mod (e.g. `+12% increased Armour` / `+8% increased Evasion and Energy Shield`).
-/// Returns `[armour%, evasion%, es%]` — each element is the matched percentage or 0.
+/// Parses an armour item's **local** "N% increased <combination of Armour/Evasion/Energy
+/// Shield>" → per-type boost `[armour, evasion, es]` (affected types get N). Returns
+/// `None` for anything containing `global` or a non-pure-defence combination.
 pub fn parse_local_defence_inc(clean: &str) -> Option<[f64; 3]> {
-    let clean = clean.trim();
-    let Some(rest) = clean.strip_suffix("increased armour") else {
-        return parse_local_defence_inc_multi(clean);
-    };
-    let v: f64 = rest
-        .trim()
-        .trim_start_matches('+')
-        .trim_end_matches('%')
-        .trim()
-        .parse()
-        .ok()?;
-    Some([v, 0.0, 0.0])
-}
-
-fn parse_local_defence_inc_multi(clean: &str) -> Option<[f64; 3]> {
-    let mut out = [0.0; 3];
-    let mut matched = false;
-    for part in clean.split(" and ") {
-        let part = part.trim();
-        if let Some(rest) = part.strip_suffix("increased armour") {
-            let v: f64 = rest
-                .trim()
-                .trim_start_matches('+')
-                .trim_end_matches('%')
-                .trim()
-                .parse()
-                .ok()?;
-            out[0] = v;
-            matched = true;
-        } else if let Some(rest) = part.strip_suffix("increased evasion") {
-            let v: f64 = rest
-                .trim()
-                .trim_start_matches('+')
-                .trim_end_matches('%')
-                .trim()
-                .parse()
-                .ok()?;
-            out[1] = v;
-            matched = true;
-        } else if let Some(rest) = part.strip_suffix("increased energy shield") {
-            let v: f64 = rest
-                .trim()
-                .trim_start_matches('+')
-                .trim_end_matches('%')
-                .trim()
-                .parse()
-                .ok()?;
-            out[2] = v;
-            matched = true;
-        }
+    let (pct_str, rest) = clean.split_once("% increased ")?;
+    let pct: f64 = pct_str.trim().parse().ok()?;
+    if rest.contains("global") {
+        return None; // Global defence boosts aren't treated as local
     }
-    matched.then_some(out)
+    let normalized = rest.replace(" rating", "").replace(" and ", ", ");
+    let mut out = [0.0; 3];
+    let mut any = false;
+    for part in normalized.split(", ") {
+        match part.trim() {
+            "armour" => out[0] = pct,
+            "evasion" => out[1] = pct,
+            "energy shield" | "maximum energy shield" => out[2] = pct,
+            _ => return None, // Contains a non-defence term → not a pure local defence boost
+        }
+        any = true;
+    }
+    any.then_some(out)
 }
 
-/// Parses a local defence flat mod (e.g. `+45 to Armour` / `+30 to Evasion` / `+25 to Energy Shield`).
-/// Returns `[armour, evasion, es]` — each element is the matched flat value or 0.
+/// Parses an armour item's **local** "+N to <Armour/Evasion Rating/maximum Energy
+/// Shield>" → `[armour, evasion, es]`.
 pub fn parse_local_defence_flat(clean: &str) -> Option<[f64; 3]> {
+    let (num, rest) = clean.strip_prefix('+')?.split_once(" to ")?;
+    let n: f64 = num.trim().parse().ok()?;
     let mut out = [0.0; 3];
-    let mut matched = false;
-    for part in clean.split(" and ") {
-        let part = part.trim();
-        if let Some(rest) = part.strip_suffix("to armour") {
-            let v: f64 = rest.trim().trim_start_matches('+').trim().parse().ok()?;
-            out[0] = v;
-            matched = true;
-        } else if let Some(rest) = part.strip_suffix("to evasion") {
-            let v: f64 = rest.trim().trim_start_matches('+').trim().parse().ok()?;
-            out[1] = v;
-            matched = true;
-        } else if let Some(rest) = part.strip_suffix("to energy shield") {
-            let v: f64 = rest.trim().trim_start_matches('+').trim().parse().ok()?;
-            out[2] = v;
-            matched = true;
-        }
+    match rest.replace(" rating", "").trim() {
+        "armour" => out[0] = n,
+        "evasion" => out[1] = n,
+        "energy shield" | "maximum energy shield" => out[2] = n,
+        _ => return None,
     }
-    matched.then_some(out)
+    Some(out)
 }
 
-/// Sum of local defence increased% on the item.
-pub fn item_local_defence_inc(item: &Item) -> [f64; 3] {
-    let mut out = [0.0; 3];
-    for t in weapon_mod_texts(item) {
-        if let Some(inc) = parse_local_defence_inc(&clean_item_text(t)) {
-            out[0] += inc[0];
-            out[1] += inc[1];
-            out[2] += inc[2];
+/// An item's local `[armour, evasion, energy_shield]`, before global modifiers.
+/// Known bases are recomputed from base + local flat, then local increases and
+/// quality, rounded to whole points. Displayed values are a fallback for unknown
+/// bases. Per-level defence is scaled locally and added at the player's `level`.
+/// Returns `None` when the item has no base, displayed or per-level defences.
+pub fn item_local_defences(
+    item: &Item,
+    data: &dyn ArmourBaseLookup,
+    level: u32,
+) -> Option<[f64; 3]> {
+    let base_default = data.armour_base(&item.base.to_string());
+    let rolled = &item.rolled_defence;
+    // Per-level modifiers can give an item defences even without a known base
+    // or a displayed value (e.g. Pain Caress).
+    let per_level = item_per_level_defence(item);
+    let has_per_level = per_level.iter().any(|&v| v > 0.0);
+    if base_default.is_none()
+        && rolled.armour.is_none()
+        && rolled.evasion.is_none()
+        && rolled.energy_shield.is_none()
+        && !has_per_level
+    {
+        return None;
+    }
+    let quality_pct = f64::from(item.quality);
+    let mut local_pct = [0.0; 3];
+    let mut local_flat = [0.0; 3];
+    for text in weapon_mod_texts(item) {
+        let clean = clean_item_text(text);
+        if let Some(inc) = parse_local_defence_inc(&clean) {
+            for i in 0..3 {
+                local_pct[i] += inc[i];
+            }
+        }
+        if let Some(flat) = parse_local_defence_flat(&clean) {
+            for i in 0..3 {
+                local_flat[i] += flat[i];
+            }
         }
     }
-    out
-}
-
-/// Sum of local defence flat on the item.
-pub fn item_local_defence_flat(item: &Item) -> [f64; 3] {
+    let entries = [
+        (rolled.armour, base_default.map(|a| a.armour)),
+        (rolled.evasion, base_default.map(|a| a.evasion)),
+        (rolled.energy_shield, base_default.map(|a| a.energy_shield)),
+    ];
     let mut out = [0.0; 3];
-    for t in weapon_mod_texts(item) {
-        if let Some(flat) = parse_local_defence_flat(&clean_item_text(t)) {
-            out[0] += flat[0];
-            out[1] += flat[1];
-            out[2] += flat[2];
+    for (idx, (rolled_val, default_val)) in entries.into_iter().enumerate() {
+        let base = f64::from(default_val.unwrap_or(0)) + local_flat[idx];
+        let recompute = if base <= 0.0 {
+            0.0
+        } else {
+            base * (1.0 + local_pct[idx] / 100.0) * (1.0 + quality_pct / 100.0)
+        };
+        // Displayed values can predate the current base data or rune edits.
+        // Recompute and round known bases; retain the display for unknown bases.
+        out[idx] = if default_val.is_some() {
+            recompute.round()
+        } else {
+            rolled_val.unwrap_or(recompute)
+        };
+        // Per-level defence shares the item's local increases and quality.
+        if per_level[idx] > 0.0 {
+            out[idx] += per_level[idx]
+                * f64::from(level)
+                * (1.0 + local_pct[idx] / 100.0)
+                * (1.0 + quality_pct / 100.0);
         }
     }
-    out
+    Some(out)
 }
 
 /// A local Runic Ward increase, in percent: the game's `local_ward_+%`, which

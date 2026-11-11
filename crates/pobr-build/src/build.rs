@@ -582,6 +582,10 @@ impl pobr_core::skill_env::EquipmentView for Build {
     fn item(&self, slot: pobr_data::item::EquipmentSlot) -> Option<&pobr_data::item::Item> {
         self.items.get(&slot)
     }
+
+    fn player_level(&self) -> u32 {
+        self.character.level
+    }
 }
 
 impl pobr_core::skill_env::SocketGroupView for Build {
