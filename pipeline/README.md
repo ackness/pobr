@@ -1,10 +1,13 @@
 # PoBR 数据管线（pipeline）
 
 本目录按唯一数据锁 [`data.lock.json`](data.lock.json) 临时导入 RePoE 的游戏包与翻译库的语言包，
-封存为运行目录与精简发行包。PoBR 不生产数据：把 RePoE 事实转换成运行 JSON 的
+封存为运行目录与精简发行包。
+
+PoBR 不生产数据。把 RePoE 事实转换成运行 JSON 的
 [`pobr-data-adapter`](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/README.md) 及其领域政策在 RePoE，
 [特殊制作目录](https://github.com/ackness/repoe/blob/master/RePoE/docs/release/pobr_crafting_catalog.md)也由 RePoE 投影后放进游戏包；
 尚未迁移的字段以 PoB2／社区兼容数据的形式随 owner 包固定导入，不称为已从客户端自主再生。
+
 三仓库职责与存储边界见[数据架构](../docs/data-architecture.md)，当前接入状态见[数据现状](../docs/data-status.md)，
 换数据、发版与回退的步骤见 [RELEASING.md](../RELEASING.md)。
 
@@ -20,8 +23,9 @@
 各功能的说明、锁和测试与实现放在一起。Python 从仓库根目录以模块运行，
 例如 `mise exec -- python3 -m pipeline.runtime.runtime_pack --help`；日常优先使用上表中保持稳定的 mise 任务。
 
-JSON 的职责各不相同：`data.lock.json` 是唯一的生产数据声明；CI 与本地准备都只读它。
+`data.lock.json` 是唯一的生产数据声明，CI 与本地准备都只读它。
 测试夹具只供测试读取，不能代替真实来源或运行验收。
+
 历史来源收据中的路径按记录时的 Git 版本解释，不为整理目录重写原始 pins、命令或接受范围。
 临时脚本、报告、下载、测试目录和物化运行包放在忽略的 `.cache/`。
 

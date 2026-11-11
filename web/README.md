@@ -141,14 +141,17 @@ effects or invalid results block automatic application where the planner require
 Completed compatible support, item and passive plans survive same-stage navigation.
 Leaving cancels running work; returning does not restart it. Relevant build/goal
 changes invalidate results, and stage changes or reloads reset temporary work.
+
 Heat maps run in cancellable batches of 64 candidates; completed partial results
 become stale after an edit. Manual tree budgets assume all 24 campaign reward points.
 Historical trees calculate/export as imported; convert explicitly before current-tree
-editing. Comparisons use each side's own config by default, optionally A's for both;
+editing.
+
+Comparisons use each side's own config by default, optionally A's for both;
 applying B to A never edits B. [Web contracts](../docs/web-contracts.md) cover exact
 search, application, undo and diagnostic boundaries; [jewel search](../docs/jewel-search.md)
-covers Time-Lost jewels and unique-jewel limits. Build-reference guidance remains
-hidden from navigation.
+covers Time-Lost jewels and unique-jewel limits.
+Build-reference guidance remains hidden from navigation.
 
 ## Workspace
 
@@ -165,12 +168,10 @@ use navigation/results sheets; wide screens can dock the stat inspector. No exte
 font service is required. `⌘K`/`Ctrl K` opens commands; `?` outside a text field lists
 shortcuts. Up to 12 stats can be pinned to the results panel.
 
-Saved data retains the `pobr-v2-*` local-storage prefix for compatibility. On first
-open, legacy `pobr-build-state`, `pobr-library` and `pobr-notes` values are copied once,
-with exact originals in `pobr-v2-original-backup`; the marker is written last so
-failed migration can retry. The old keys are not written afterwards. A legacy-only
-browser keeps `pobr-lang` until preferences are saved. An unreadable save is preserved
-for recovery; workspace persistence failures offer a backup download.
+Legacy saves migrate on first open, keeping the original strings; failed migration
+can retry. [Web contracts](../docs/web-contracts.md#web-workspace) describe storage-key
+and language-preference compatibility. An unreadable save is preserved for recovery;
+workspace persistence failures offer a backup download.
 
 ## Language support
 
@@ -213,7 +214,9 @@ VITE_POBR_BACKEND=mock mise run web dev
 
 Follow [scoped validation](../docs/maintainer-guide.md#验证分层). Choose relevant Vitest,
 typecheck or Playwright by risk and cost; prose needs diff/link review. Report
-deferred checks to the coordinator for integration CI. Rebuild WASM
+deferred checks to the coordinator for integration CI.
+
+Rebuild WASM
 when missing or when its Rust sources, dependencies, features or toolchain change.
 Sync missing/changed data. E2E requires current production `dist`; `build` includes
 typecheck. `build-wasm` reuses verified unchanged output; `--force` rebuilds without

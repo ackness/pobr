@@ -6,7 +6,11 @@
 引擎需要高效汇总大量 Modifier（词条的结构化表示）、计算多个技能，
 并保留装备、词条、天赋、宝石和配置等来源，供结果明细与来源贡献分析使用。
 
-本文是所有贡献者和代码代理共用的规则：构建与验证、架构、约定和排查流程。[CLAUDE.md](../CLAUDE.md) 整篇导入本文，所以这里只放跨主题、长期有效的规则；具体机制、输出字段和与 PoB2 的差异写在下面的专题文档里，按需打开。[AGENTS.md](../AGENTS.md) 是给其他代理工具的英文摘要：只列硬性规则并链接本文，两者不一致时以本文为准。
+所有贡献者和代码代理共用本文的构建与验证规则、架构约定和排查流程。
+[CLAUDE.md](../CLAUDE.md) 整篇导入本文，因此这里只保留跨主题、长期有效的规则。
+
+具体机制、输出字段和与 PoB2 的差异见下方专题文档，按需阅读。
+[AGENTS.md](../AGENTS.md) 为其他代理工具提供英文摘要，只列硬性规则并链接本文；两者不一致时以本文为准。
 
 ## 文档地图
 
@@ -64,7 +68,11 @@
 - 同一代码、依赖、工具链、features 和数据下的通过证据可复用。先修复并重跑失败的相关项，仅在影响范围改变时扩大验证。
 - 读码、review、`cargo check` 与运行时测试分别报告，不能互相冒充；通用 skill 的检查清单不覆盖本节。
 - **集中集成**：协调者先合并 worker 的变更与生成产物，再选一次批次验证，优先 `mise run ci <pushed-ref>`。`mise run gate` 保留为 warm checkout 上的显式本地方案，含额外 accuracy 报告；不要求与远端完整 CI 重复执行。修复后可用 `--only` 重跑本地失败步骤。
-- **CI 分层**：PR 按整个变更范围运行轻量检查；master 代码改动、手动、nightly 与 tag 运行完整 CI。Rust、data 或 pipeline 改动合并前须有绿色的 `mise run ci <分支>`；其他改动按风险选择。浏览器测试只在本地分层运行（`mise run e2e <层级>`，每次发版前运行完整的 `release` 层，见[浏览器测试](development-workflow.md#浏览器测试)）；云端只在数据锁改变时由完整 CI 加跑一个冒烟 spec。`PR gate` 只证明应运行的轻量检查通过，不能代替完整集成结论。推送前的本地检查、选路、分片与缓存复用见[开发工作流](development-workflow.md#ci-的责任与触发)。
+- **CI 验收责任**：Rust、data 或 pipeline 改动合并前须有绿色的 `mise run ci <分支>`；其他改动按风险选择。
+  `PR gate` 只证明应运行的轻量检查通过，不能代替完整集成结论。
+  浏览器测试在本地分层运行（`mise run e2e <层级>`），每次发版前运行完整的 `release` 层；云端的数据锁冒烟例外、
+  各类事件的触发范围、选路、分片与缓存复用见[开发工作流](development-workflow.md#ci-的责任与触发)，
+  本地层级见[浏览器测试](development-workflow.md#浏览器测试)。
 - 上述合并前完整 CI 要求是 review 规则，`pr-ready` 不强制执行。
 - **推送前检查**：执行 push 的协调者在推送前运行 `mise run check:pr`（opt-in hook 与跳过方法见[开发工作流](development-workflow.md#日常命令)）；只在本地提交的 worker 不必运行。它是 push 前按变更选区的检查，不改变上面"不固定串联"的 worker 规则，也不代替合并前的完整 CI。
 - **Review 按风险选择**：复杂、跨边界或高风险改动（核心计算、持久化／导入兼容、工具链、发布）使用独立 reviewer，说明检查过的 head/base 与未验证范围，建议与阻断问题分开；文档和明显小改动不增加审计表或固定 agent。修正留在同一 PR，新提交后重看受影响的证据。合并前的核对（`mise run pr-ready`）见[开发工作流](development-workflow.md#agent-提交review-与合并)。
@@ -202,7 +210,12 @@ PoB2 对照是回归基准，不是真值。三层互补：
 
 ### 静态模拟的范围与取舍
 
-PoBR 主要计算静态构筑及选定条件下的结果，不追求还原游戏中的战斗时间线。词条在游戏中有作用，不代表模拟器需要实现它。**实现或派发任何词条功能前，先评估它是否符合需求**：在目标角色、技能、条件和模拟假设下，它影响哪个输出，解决什么实际错误或用户需求，收益是否值得增加的实现与维护复杂度。说不出实际用途时，不因为词条尚未支持就立项；优先修复影响目标结果的错误，沿用现有计算路径做最小修改。
+PoBR 主要计算静态构筑及选定条件下的结果，不追求还原游戏中的战斗时间线。
+词条在游戏中有作用，不代表模拟器需要实现它。
+
+实现或派发词条功能前，先明确它在目标角色、技能、条件和模拟假设下影响哪个输出，
+解决什么实际错误或用户需求，再判断收益是否值得增加实现与维护复杂度。
+说不出实际用途时，不因词条尚未支持就立项。优先修复影响目标结果的错误，沿用现有计算路径做最小修改。
 
 - 判断依据是本次计算的目标及其假设，不是固定的词条名称或触发类型名单。在选定条件下能影响结果的效果按该条件计算；不适用的保持不生效，不为证明实现有用而虚构事件频率、触发历史或覆盖率。猎手偷取怪物词缀、移动回蓝、拾取魔力残片回魔是静态计算中通常无需追踪的事件收益，例子并不穷尽。
 - 缺口队列是问题清单，不是必须清零的待办。出现次数多、尚未解析或没有读取方，本身不足以立项；不为降低缺口数量新增模型、配置项、展示字段或通用抽象，也不做没有测量依据的性能优化。
@@ -213,7 +226,14 @@ PoBR 主要计算静态构筑及选定条件下的结果，不追求还原游戏
 先批量、后单个；各工具的输出见 [diagnostics.md](diagnostics.md)。
 
 1. `mise run triage` 一次计算基准组与 tuned 组的全部构筑和固定版本 PoB2，把不一致的行分为 `engine` / `both`（引擎要修）、`reference`（参考值来自另一版导出工具，不用修）和 `known`（`devs/scripts/known-differences.json` 已登记的有意差异），并跨构筑汇总线索与计算丢掉的输入。holdout 组只用 `mise run accuracy` 测量，不对它 triage 或诊断。
-2. 按涉及构筑最多的原因成批修复：triage 的共同线索、未解析行的模板，以及各构筑逐行台账（`calculate-build --usage`）显示计算丢掉的输入——规则认得但没有模型的行、没有读取方的 modifier 名、没人设置的条件、被拒的宝石 stat——不论该行是否有差异。`mise run gaps [--kind unique|passive|mods|...]` 按涉及构筑与来源排序游戏文本缺口，选中一行后用 `mise run gap "<模板或文本>"` 看 stat、完整来源文本、台账去向与相近的引擎规则。按游戏数据和物品原文实现，PoB2 只作交叉核对；并行 agent 写独立的修复并报告审阅／检查证据，协调者集成后选批次验证。
+2. 按涉及构筑最多的原因成批修复。线索包括 triage 的共同原因、未解析行的模板，以及各构筑逐行台账
+   （`calculate-build --usage`）显示计算丢掉的输入：规则认得但没有模型的行、没有读取方的 modifier 名、
+   没人设置的条件、被拒的宝石 stat。不论该行是否有数值差异，都要检查。
+
+   `mise run gaps [--kind unique|passive|mods|...]` 按涉及构筑与来源排序游戏文本缺口，选中一行后用
+   `mise run gap "<模板或文本>"` 看 stat、完整来源文本、台账去向与相近的引擎规则。
+   按游戏数据和物品原文实现，PoB2 只作交叉核对。并行 agent 分别修复并报告审阅／检查证据，
+   协调者集成后选择批次验证。
 3. 每批验证一次，优先远端完整 CI；需要显式的本地 accuracy／parity 批次时用 `mise run gate`。之后重跑 `mise run triage`（PoB2 一侧有缓存）。改进后上调基线，把原因与证据写进提交或 PR；生成的报告留在本地。
 4. triage 解释不了的行才单独看：`mise run diagnose <构筑>`、`mise run compare <构筑> [Stat ...]`、`calculate-build --breakdown <stats> --usage`。同一类行反复需要逐个人工排查，说明工具缺了输出：扩充 triage 或诊断，让下一轮批量运行直接给出这类线索。
 5. 参考值和 PoB2 都不是真值：按游戏词条和数据判断改哪一边（见上一节）。游戏文本或数据证明参考值有误时，把有意差异写进 [pob2-differences.md](pob2-differences.md)，并在 `known-differences.json` 登记对应行；PoB2 没有实现的规则只需 `exporter: "absent"`，不需要 known-difference 条目。
@@ -222,7 +242,8 @@ PoBR 主要计算静态构筑及选定条件下的结果，不追求还原游戏
 
 输入可能在四处丢失：导入、文本解析、宝石 stat 映射、ModDb 读取。每一处都必须留下记录（`ImportReport`、`unsupported_modifier_texts`、`Diagnosis` 的各项、逐行台账 `pobr_build::usage::line_usage`），而不是让数值悄悄偏小。写代码时：
 
-- 按名字消费 modifier 用 `ModDb::named(name)` 或聚合查询，不用 `iter_mods().filter(..)`：后者不算读取，诊断会误报“没有读取方”。在 ModDb 之外消费的名字登记进 `diagnosis.rs::READ_OUTSIDE_THE_DATABASE`；只在某个状态下读取的登记进 `READ_UNDER_A_STATE`，并在 `tests/skills/line_usage.rs` 用状态关闭／开启的构筑验证。
+- modifier 的读取必须能被诊断追踪。按名字读取、数据库外消费和按状态读取的登记方法见
+  [新读取方怎样登记](diagnostics.md#新读取方怎样登记)。
 - 在 ModDb 之外拿走或丢弃词条行（剥离本地词条、按文本读取）时调用 `SourceWriter::note_line` 写明读取方。
 - 由计算阶段或编排设置的新条件登记进 `calc/session.rs::CONDITIONS_SET_BY_A_PASS` 或 `diagnosis.rs::SET_BY_THE_ORCHESTRATION`，否则其他构筑会误报它。
 - 宝石等级与品质加成按文本读取（`skill::resolve::gem_property_bonuses`）；新增一条文本通道时同时接入它。

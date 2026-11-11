@@ -234,11 +234,13 @@ dropped_pre_flag_tags（审计 Partial）仍是另一项诊断。
 
 ### 新读取方怎样登记
 
-按名字消费用 ModDb::named(name) 或聚合查询，不用 iter_mods().filter(名字)，后者不记录读取。
-数据库外消费登记 diagnosis.rs::READ_OUTSIDE_THE_DATABASE 并注明消费者。
-仅某状态读取的名字登记 READ_UNDER_A_STATE，给出读取方、状态和配置 id，
+按名字消费 modifier 用 `ModDb::named(name)` 或聚合查询，不用 `iter_mods().filter(..)`：
+后者不记录读取，诊断会误报“没有读取方”。
+
+在 ModDb 之外消费的名字登记进 `diagnosis.rs::READ_OUTSIDE_THE_DATABASE`，并注明消费者。
+只在某个状态下读取的名字登记进 `READ_UNDER_A_STATE`，给出读取方、状态和配置 id，
 如受减速时的 slow potency，或等待 conditionAffectedByArchon 的共享加成。
-每个登记必须在 tests/skills/line_usage.rs 用关闭／开启状态验证 inactive → applied，不能拿登记掩盖未实现。
+每个登记必须在 `tests/skills/line_usage.rs` 用状态关闭／开启的构筑验证 inactive → applied，不能拿登记掩盖未实现。
 
 任务奖励和自定义行解析失败时为 `Config:<行>`，其他行照常生效，None 不产生行。
 所有输出均不受影响的规则可用 mods: []、batch: S0（如经验获取）；
