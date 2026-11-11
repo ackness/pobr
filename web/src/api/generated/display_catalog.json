@@ -2443,91 +2443,91 @@
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "PhysicalTakenDamage",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "FireTakenDamage",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ColdTakenDamage",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "LightningTakenDamage",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ChaosTakenDamage",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "PhysicalTakenHit",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "FireTakenHit",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ColdTakenHit",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "LightningTakenHit",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ChaosTakenHit",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "PhysicalTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "FireTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ColdTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "LightningTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ChaosTakenHitMult",
     "value_type": "Number"
   },
@@ -2587,13 +2587,13 @@
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "totalTakenDamage",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "totalTakenHit",
     "value_type": "Number"
   },
@@ -2611,7 +2611,7 @@
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "DamageTakenOnBlock",
     "value_type": "Percent"
   },
@@ -2677,151 +2677,151 @@
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "PhysicalResistTakenHitMulti",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "FireResistTakenHitMulti",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ColdResistTakenHitMulti",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "LightningResistTakenHitMulti",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ChaosResistTakenHitMulti",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "PhysicalAttackTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "FireAttackTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ColdAttackTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "LightningAttackTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ChaosAttackTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "PhysicalSpellTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "FireSpellTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ColdSpellTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "LightningSpellTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ChaosSpellTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "PhysicalAfterReductionTakenHitMulti",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "FireAfterReductionTakenHitMulti",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ColdAfterReductionTakenHitMulti",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "LightningAfterReductionTakenHitMulti",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ChaosAfterReductionTakenHitMulti",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "PhysicalBaseTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "FireBaseTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ColdBaseTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "LightningBaseTakenHitMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ChaosBaseTakenHitMult",
     "value_type": "Number"
   },
@@ -3007,31 +3007,31 @@
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "PhysicalTakenDotMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "FireTakenDotMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ColdTakenDotMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "LightningTakenDotMult",
     "value_type": "Number"
   },
   {
     "category": "Mitigation",
-    "higher_is_better": true,
+    "higher_is_better": false,
     "id": "ChaosTakenDotMult",
     "value_type": "Number"
   },

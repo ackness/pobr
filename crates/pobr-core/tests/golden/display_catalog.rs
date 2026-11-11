@@ -99,9 +99,11 @@ fn catalog_defines_core_display_stats() {
 /// Comparison colouring reads `higher_is_better`, so stats whose cost or delay
 /// grows with the value must not inherit the default improvement direction.
 #[test]
-fn costs_requirements_action_times_and_degen_are_lower_is_better() {
+fn costs_damage_taken_requirements_action_times_and_degen_are_lower_is_better() {
     let lower_is_better = |id: &str| {
         id.ends_with("Cost")
+            // Damage taken and its multipliers; the largest survivable hit is the opposite.
+            || (id.contains("Taken") && !id.contains("MaximumHitTaken"))
             || matches!(id, "ReqStr" | "ReqDex" | "ReqInt" | "TotalBuildDegen")
             || matches!(
                 id,
