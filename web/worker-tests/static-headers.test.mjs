@@ -40,39 +40,25 @@ test('the files that must be revalidated every visit are not matched', () => {
   }
 });
 
-test('static files never reach the worker, which is why their headers live in _headers', () => {
+test('Pages routes every API to the Worker and serves static files directly', () => {
   const { include, exclude } = JSON.parse(read('_routes.json'));
   const routed = (path) => include.some((pattern) => matches(pattern, path)) && !exclude.some((pattern) => matches(pattern, path));
-  for (const path of ['/assets/entry-DlLWRb60.js', `/data/h/${'a'.repeat(16)}/base/mods.json`, '/data/manifest.json']) {
+  for (const path of ['/', '/assets/app.js', '/assets/entry-DlLWRb60.js', `/data/h/${'a'.repeat(16)}/base/mods.json`, '/data/manifest.json']) {
     assert.equal(routed(path), false, `${path} would be served by the worker, not by the host's headers`);
   }
-  assert.equal(routed('/api/trade/search'), true);
+  for (const path of ['/api/import/build-code', '/api/import/wegame', '/api/trade/leagues', '/api/trade/search']) {
+    assert.equal(routed(path), true, path);
+  }
 });
 
 // A path that names no file is answered with the nearest `404.html` up the path, with a 404 status that
 // the host never lets be kept; only when there is none up to the root is it answered with the app shell
 // and a 200, which is what the client routes like /build rely on. Without a page of its own, a missing
 // file under a path `_headers` keeps for good would be answered with the shell and kept for good.
-const notFoundPage = (path, pages) => {
-  for (let dir = path; dir;) {
-    dir = dir.slice(0, dir.lastIndexOf('/'));
-    if (pages.includes(`${dir}/404.html`)) return `${dir}/404.html`;
-  }
-  return null;
-};
-// The pages the build ships: this one is a file of the repo, the one under /data/h/ is written by scripts/sync-data.mjs.
-const pages = ['/assets/404.html', '/data/h/404.html'];
-
-test('a missing file under a path that is kept for good gets a 404 page, not the app shell', () => {
+// sync-data.test.mjs checks the generated /data/h/404.html against actual publication output.
+test('immutable assets ship a script-free 404 page', () => {
   assert.equal(existsSync(new URL('../public/assets/404.html', import.meta.url)), true);
   assert.doesNotMatch(read('assets/404.html'), /<script|<link|src=/i);
-  assert.equal(notFoundPage('/assets/entry-Missing1.js', pages), '/assets/404.html');
-  assert.equal(notFoundPage('/assets/nested/chunk-Missing1.js', pages), '/assets/404.html');
-  assert.equal(notFoundPage(`/data/h/${'b'.repeat(16)}/base/mods.json`, pages), '/data/h/404.html');
-  // Every kept-for-good rule has one, so that no path it matches can be answered with the shell.
-  for (const rule of rules().filter((entry) => /\bimmutable\b/.test(entry.headers['cache-control'] ?? ''))) {
-    assert.notEqual(notFoundPage(`${rule.pattern.slice(0, -1)}missing-file.js`, pages), null, rule.pattern);
-  }
 });
 
 // The pages of the app, from the list the app itself routes by (the overview is the site root).
@@ -81,9 +67,6 @@ const routes = [...readFileSync(new URL('../src/app/routes.ts', import.meta.url)
 
 test('client routes still fall back to the app shell, so no 404 page may sit above them', () => {
   assert.ok(routes.includes('tree') && routes.includes('overview'), routes.join());
-  for (const path of ['/', ...routes.map((route) => `/${route}`), '/some/unknown/route', '/data/manifest.json']) {
-    assert.equal(notFoundPage(path, pages), null, path);
-  }
   // A 404.html at the top, or one in a directory a route lives in, would turn every such route into a 404.
   assert.equal(existsSync(new URL('../public/404.html', import.meta.url)), false);
   // Nor may a file or a directory take a route's name: the host would serve it instead of the shell.

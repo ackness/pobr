@@ -147,7 +147,7 @@ class ExternalDataShardTests(unittest.TestCase):
             job = re.split(r"\n  [a-z]+:", job, maxsplit=1)[0]
             self.assertIn("run: pnpm i18n:check", job, filename)
             self.assertLess(job.index("pnpm i18n:check"), job.index("pnpm typecheck"), filename)
-        self.assertIn("web/scripts/check-locales.test.mjs", (root / "devs/scripts/check-workflows.sh").read_text())
+        self.assertIn("node --test web/scripts/*.test.mjs", (root / "devs/scripts/check-workflows.sh").read_text())
         driver = (root / "devs/scripts/driver.sh").read_text()
         self.assertIn("web)      pnpm --dir web i18n:check && pnpm --dir web typecheck", driver)
 

@@ -26,16 +26,6 @@ export function diffStats(before: DisplayStatValue[], after: DisplayStatValue[])
     .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
 }
 
-/** 算一次候选请求并与当前结果求差。 */
-export async function previewDiff(
-  request: CalculateBuildRequest,
-  current: CalculateBuildResponse,
-): Promise<DiffEntry[]> {
-  const backend = await getBackend();
-  const next = await backend.calculateBuild(request);
-  return diffStats(current.stats, next.stats);
-}
-
 export interface StatComparison {
   id: string;
   before: number | null | undefined;

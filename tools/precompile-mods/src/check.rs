@@ -381,22 +381,18 @@ mod tests {
         }
     }
 
-    /// The committed repo data passes `--check` (deserialize + compile clean)
-    /// for the active version, discovered at runtime (no literal to re-pin);
-    /// stale/experimental dirs under `data/` are out of contract.
+    /// The prepared active package must pass the parser-rule check.
     #[test]
     fn repo_overlay_passes_check() {
-        for version in std::iter::once(pobr_gamedata::data_version()) {
-            let data_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../../data")
-                .join(&version);
-            if !data_dir.join("overlay/mod_parser_rules.json").is_file() {
-                eprintln!("SKIP: repo data dir {version} not present");
-                continue;
-            }
-            check(&data_dir)
-                .unwrap_or_else(|e| panic!("committed {version} JSON should pass --check: {e}"));
-        }
+        let version = pobr_gamedata::data_version();
+        let data_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../data")
+            .join(&version);
+        GameData::new(&data_dir)
+            .install_skill_type_names()
+            .expect("install the prepared package's skill type names");
+        check(&data_dir)
+            .unwrap_or_else(|e| panic!("prepared {version} JSON should pass --check: {e}"));
     }
 
     #[test]

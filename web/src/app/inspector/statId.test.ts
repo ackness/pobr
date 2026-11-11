@@ -14,6 +14,6 @@ describe('statFormat / statLabel', () => {
     expect(statFormat('FireResist')).toBe('percent');
     expect(statFormat('SomethingUnlisted')).toBe('float2');
     expect(statLabel('en-US', 'FireResist')).toBe('Fire Res.');
-    expect(statLabel('en-US', 'SomethingUnlisted')).toBeTruthy();
+    expect(statLabel('en-US', 'SomethingUnlisted')).toBe('SomethingUnlisted');
   });
 });

@@ -667,9 +667,12 @@ stats 的 `MainMinionDPS` 是主召唤物单只击中 DPS，无主召唤物时�
 应用源码在 `web/src/app/`。路由为 `/`（概览）、`/build`、`/skills`、`/items`、`/tree`、
 `/config`、`/trade`、`/compare`、`/calcs`，没有单独 `/v2` 界面或重定向。
 顶栏按“概览｜技能、装备、天赋、配置｜提升、对比、计算”导航；BD 库是管理操作，不占页签。
-本地存储保留 `pobr-v2-` 前缀，唯一拼写入口是 `sessionStorage.ts`。
-`app/storage.ts` 首次复制旧 build/library/notes 并保留原始备份，完成标记最后写；旧键之后只读。
-只有旧界面的浏览器沿用 `pobr-lang`，直到保存偏好。Playwright 使用的 DOM 标记需保留，
+本地存储保留 `pobr-v2-` 前缀（键名形如 `pobr-v2-*`），唯一拼写入口是 `sessionStorage.ts`。
+`app/storage.ts` 首次打开时迁移旧 `pobr-build-state`、`pobr-library` 和 `pobr-notes`，
+并在 `pobr-v2-original-backup` 保留原始字符串。完成标记最后写入，失败后可重试；旧键之后只读。
+只有旧界面的浏览器沿用 `pobr-lang`，直到保存偏好。
+
+Playwright 使用的 DOM 标记需保留，
 如 `.paper-doll .doll-slot`、`.import-submit`、`#config-heading`。
 
 显示偏好保存 `displayMode`（grouped／compact／game）与 `pageDisplayModes`。

@@ -387,7 +387,9 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         result = self.run_script("devs/scripts/driver.sh", "warm", str(source))
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertFalse((self.root / "wrote-target-debug").exists())
-        self.assertRegex((self.root / "cp-dests").read_text(), r"^target/\.debug\.warm\.\d+$")
+        destinations = set((self.root / "cp-dests").read_text().splitlines())
+        self.assertEqual(len(destinations), 1)  # Clone and plain-copy attempts share one temporary path.
+        self.assertRegex(destinations.pop(), r"^target/\.debug\.warm\.\d+$")
         self.assertEqual(sorted(p.name for p in (self.root / "target").iterdir()), [])
         self.assertEqual((source / "target/debug/deps/lib.rlib").read_text(), "debug")
 

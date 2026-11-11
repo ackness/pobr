@@ -11,6 +11,7 @@ while IFS= read -r -d '' script; do bash -n "$script"; done < <(
 # https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
 actionlint -ignore 'unexpected key "queue" for "concurrency" section'
 python3 -m unittest discover -s devs/scripts -p 'test_*.py'
+python3 -m unittest discover -s web/scripts -p '*_test.py'
 python3 -m pipeline.runtime.test_data_snapshot
 python3 -m pipeline.runtime.test_data_bundle
 python3 -m pipeline.imports.check_data_ownership
@@ -20,4 +21,4 @@ python3 -m pipeline.imports.test_display_assets
 python3 -m pipeline.runtime.test_runtime_pack
 python3 -m pipeline.imports.test_data_imports
 python3 -m pipeline.imports.test_data_bump
-node --test web/scripts/check-locales.test.mjs web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs web/scripts/bench-calc.test.mjs web/scripts/smoke-runtime-candidate.test.mjs
+node --test web/scripts/*.test.mjs

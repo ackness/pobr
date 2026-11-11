@@ -6,10 +6,10 @@
 不必从头搜索整个仓库。通用约定见[维护者指南](maintainer-guide.md)，机制规则见
 [机制约定](mechanics/README.md)，词条语法见[词条贡献指南](contributing-mods.md)。
 
-**验证按风险和成本选择。** 文档改动只审阅 diff、链接与示例；代码改动检查调用方与相关契约，
-补充必要的回归用例。算法或大幅修改可提前测试、编译或独立 review，普通 worker 不必逐项编译。
-交付说明已审阅、实际执行和未运行项；不要默认启动 parity、CLI、WASM 或整组构筑的分析。
-协调者汇总后一次验证，优先远端 CI；PR 只跑轻量检查，Rust、data 或 pipeline 改动合并前须有绿色的 `mise run ci <分支>`，其他改动按风险选择，master 合并后再跑全量。
+各步骤的检查按[验证分层](maintainer-guide.md#验证分层)选择，交付时说明已审阅、实际执行和未运行项。
+普通 worker 不必逐项编译，也不要默认启动 parity、CLI、WASM 或整组构筑的分析。
+协调者汇总后统一验收，优先远端 CI。Rust、data 或 pipeline 改动合并前须有绿色的 `mise run ci <分支>`；
+PR 轻量检查与 master 完整 CI 的职责见[开发工作流](development-workflow.md#ci-的责任与触发)。
 
 <a id="find-what-already-exists-no-compilation"></a>
 

@@ -16,10 +16,9 @@ use crate::{GameData, LoadError};
 impl GameData {
     /// Loads the SkillStatMap mapping table (always resolved under
     /// `overlay/`). Returns `Ok(None)` when the file is missing (an old
-    /// data pack without this overlay domain) — the consumer behaves as
-    /// "the data engine is unavailable" (the dual-run framework can only
-    /// use Legacy, backward compatible); other I/O / parse errors still
-    /// propagate, not silenced.
+    /// data pack without this overlay domain). Without a catalog, the
+    /// consumer's stat-map channels produce no mappings. Other I/O / parse
+    /// errors propagate.
     pub fn skill_stat_map(&self) -> Result<Option<SkillStatMapDef>, LoadError> {
         match self.load_json_at::<SkillStatMapDef>(self.overlay_path("skill_stat_map.json")) {
             Ok(def) => Ok(Some(def)),
@@ -107,20 +106,15 @@ mod tests {
         assert!(GameData::new(&dir).skill_stat_map().is_err());
     }
 
-    /// A real-data-pack smoke test: the repo's 4.5.0.3.4 overlay
-    /// deserializes as a whole, at a scale matching vendor's order of
-    /// magnitude (global 950+, per-set covering 300+ effects).
+    /// The prepared active package includes this overlay; legacy optional-domain
+    /// behavior is covered by `missing_overlay_file_yields_none` above.
     #[test]
     fn loads_repo_overlay_smoke() {
         let root = crate::current_data_dir();
-        if !root.join("overlay/skill_stat_map.json").exists() {
-            return; // Skipped when the data pack isn't in place (avoids a
-            // false report when CI is missing data)
-        }
         let def = GameData::new(&root)
             .skill_stat_map()
-            .unwrap()
-            .expect("repo overlay exists");
+            .expect("load the prepared repository skill stat map")
+            .expect("the active data package must include overlay/skill_stat_map.json");
         assert!(def.global.len() >= 950, "global={}", def.global.len());
         assert!(
             def.per_stat_set.len() >= 300,

@@ -232,8 +232,9 @@ RePoE 发布 ───┐
 2. **改锁。** 维护者在审阅分支中运行 `mise run data:bump <owner> <tag> [<owner> <tag>]`：下载并按 `SHA256SUMS` 校验附件，
    读取 `receipt.json`，替换该 owner 的锁条目（语言 Release 带辅助显示附件时一并替换 `support_display`），
    重算快照 pin、运行身份与紧凑发行身份，再 `data:prepare` 导入并打印身份差异。
-   新补丁两个 owner 一起 bump，语言 Release 须带新目标与新交易目录的辅助显示（`locale/0.5.5.5-4` 起翻译库不再发布它：
-   退役 PR 合并前，换补丁或换交易目录的 bump 会被拒绝）。PoBR 不自动发现或采用 owner 发布；owner 尚无完整新发布时保留现有默认。
+   新补丁两个 owner 一起 bump，语言 Release 须带新目标与新交易目录的辅助显示；当前发布情况与退役阻塞项见
+   [数据现状](data-status.md#发布与采用)，执行前提见 [RELEASING.md](../RELEASING.md)。
+   PoBR 不自动发现或采用 owner 发布；owner 尚无完整新发布时保留现有默认。
 3. **验证。** 候选在精确 head 上通过 PR gate 和 Full gate：完整快照按摘要导入、
    从同一快照组出的紧凑发行包，以及同次构建的 WASM 消费该包。对 bump 分支运行 `mise run ci <分支>`，
    完整 CI 因数据锁改变而自动加跑普通 Web 流程的冒烟 E2E（[开发工作流](development-workflow.md)）。PoBR 不在 CI 中重跑 owner 的领域生产。
@@ -295,9 +296,17 @@ RePoE 发布 ───┐
 导出时再还原；辅助、buff 与未选分支的作用域一并迁移，映射缺失或冲突显式诊断。
 
 
-品质领域已读取 `overlay/gem_quality_stats.json` 的 `_meta.unapplied_stat_set_scopes`：字段名保留生产端兼容拼写，其内容是原生作用域事实。DTO 同时保留显式生产端排除原因。作用域位置经基础 DTO 中的主 set／additional set 顺序解析为稳定 ID，兼容覆盖只提供选择编号与 stat-map key，不改变原生身份或顺序。空数组为所有分支，显式缺字段为未知；旧包无 metadata 则保留旧的 effect-wide 约定。有效成员可独立生效，未知关系／越界成员通过现有 Compare 记录诊断，详见[品质语义](mechanics/items.md#宝石等级品质与授予技能)。这是品质资格消费，不改变构筑导入／导出的 `stat_set_index` 契约。
+品质领域已读取 `overlay/gem_quality_stats.json` 的 `_meta.unapplied_stat_set_scopes`。
+字段名保留生产端兼容拼写，内容是原生作用域事实；DTO 同时保留显式生产端排除原因。
+作用域位置经基础 DTO 中的主 set／additional set 顺序解析为稳定 ID。
+兼容覆盖只提供选择编号与 stat-map key，不改变原生身份或顺序。
 
-**筛选原则。** "全"指目标版本 BD 构建所需的完整定义、数值和关联，不是把全部素材送进浏览器。
+空数组表示所有分支，显式缺字段表示未知；旧包无 metadata 时保留原有的 effect-wide 约定。
+有效成员可独立生效，未知关系／越界成员通过现有 Compare 记录诊断，详见
+[品质语义](mechanics/items.md#宝石等级品质与授予技能)。
+这是品质资格消费，不改变构筑导入／导出的 `stat_set_index` 契约。
+
+**筛选原则。** “全”指目标版本 BD 构建所需的完整定义、数值和关联，不是把全部素材送进浏览器。
 原始证据保留；按公开的产品范围选择目录并保留依赖闭包；排除项各有理由；
 玩家可遇到但引擎尚不支持的定义保留身份和诊断；历史构筑使用独立历史身份；筛选结果有可审阅清单，数量相同不能证明完整。
 

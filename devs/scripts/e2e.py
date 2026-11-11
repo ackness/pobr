@@ -64,7 +64,7 @@ TRADE = ("trade-*", "upgrade-guidance", "replacement-continuity", "market-*")
 COMPARE = ("compare-*",)
 # The engine and its data reach every page through calculation and import.
 ENGINE = ("calcs-breakdown", "import-planning-errors", "json-import-identity", "build-roundtrip",
-          "hosted-import", "wegame-import", "planner-file", "data-bump-smoke")
+          "hosted-import", "wegame-import", "planner-file", "data-bump-smoke", "tree-heatmap")
 DEFAULT = ("default",)
 NONE = ()
 
