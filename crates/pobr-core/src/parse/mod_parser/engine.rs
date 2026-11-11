@@ -30,6 +30,7 @@ use super::compiled::CompiledParserRules;
 use super::forms::{FormReject, eval_form};
 use super::outcome::{ParseOutcome, ParseStatus, SpecialMatchMeta};
 use super::template::{compile_flags, compile_keyword_flags, compile_tag};
+use crate::modifier::{mark_resistance_expansions, resistance_expansion};
 use crate::{ModTag, ModValue, Modifier};
 use pobr_data::modifier::{KeywordFlags, ModFlags};
 use pobr_data::skill::SkillTypes;
@@ -113,7 +114,8 @@ fn parse_mod_engine_impl(
     //     mods directly (with source text attached uniformly), matching vendor's
     //     specialModList anchor priority. When no data is injected, rules.special is always
     //     empty, so this branch never matches (behaviour = conv1 engine).
-    if let Some(matched) = rules.special.try_match(&lower, &rules.special_handlers) {
+    if let Some(mut matched) = rules.special.try_match(&lower, &rules.special_handlers) {
+        mark_resistance_expansions(matched.mods.iter_mut());
         let mods: Vec<Modifier> = matched
             .mods
             .into_iter()
@@ -267,6 +269,7 @@ fn parse_mod_engine_impl(
         .iter()
         .any(|t| matches!(t, ModTag::SkillTypes(st) if st.intersects(SkillTypes::TRIGGERED)));
 
+    let expanded_from = resistance_expansion(form_result.names.iter().map(String::as_str));
     let mut mods = Vec::with_capacity(form_result.names.len());
     for ((name, ty), value) in form_result
         .names
@@ -288,6 +291,7 @@ fn parse_mod_engine_impl(
             _ => ModValue::Number(*value),
         };
         let mut m = Modifier::new(norm.name, *ty, modv).with_source(original);
+        m.expanded_from = expanded_from;
         if !norm.flags.is_empty() {
             m = m.with_flags(norm.flags);
         }
@@ -736,6 +740,7 @@ pub mod test_support {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::modifier::ModExpansion;
     use pobr_data::catalog::parser_rules::ModParserRulesDoc;
 
     fn real_rules() -> CompiledParserRules {
@@ -779,6 +784,39 @@ mod tests {
         let r = real_rules();
         let o = parse_mod_engine("Mirrored", &r);
         assert_eq!(o.status, ParseStatus::Unsupported);
+    }
+
+    #[test]
+    fn special_resistance_expansions_retain_scope_through_actor_wrappers() {
+        let rules = crate::mod_parser::test_compiled_rules();
+        for line in [
+            "Elemental Resistances are Zero",
+            "You have no Elemental Resistances",
+            "Enemies in your Presence have no Elemental Resistances",
+        ] {
+            let outcome = parse_mod_engine(line, &rules);
+            assert!(outcome.is_complete(), "{line}: {outcome:?}");
+            assert_eq!(parse_mod_engine(line, &rules), outcome, "cached {line}");
+            let modifiers: Vec<_> = outcome
+                .mods
+                .iter()
+                .flat_map(|modifier| {
+                    modifier
+                        .value
+                        .as_nested_mods()
+                        .unwrap_or(std::slice::from_ref(modifier))
+                })
+                .collect();
+            assert_eq!(modifiers.len(), 3, "{line}");
+            for modifier in modifiers {
+                assert_eq!(modifier.mod_type, ModType::Override, "{line}");
+                assert_eq!(
+                    modifier.expanded_from,
+                    Some(ModExpansion::AllElementalResistance),
+                    "{line}: {modifier:?}",
+                );
+            }
+        }
     }
 
     #[test]

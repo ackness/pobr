@@ -432,19 +432,8 @@ fn shared_fire_resistance(db: &ModDb, cfg: &CalcConfig, element: &str) -> Shared
                 })
             })
             .filter(|row| {
-                // The parser expands all-elemental lines into three names.
-                // They already grant Cold/Lightning and must not be shared
-                // again. Keep their original scope when selecting Fire mods.
-                let text = row.modifier.source.as_deref().or_else(|| {
-                    row.modifier
-                        .origin
-                        .as_ref()
-                        .and_then(|origin| origin.raw_text.as_deref())
-                });
-                text.is_none_or(|text| {
-                    let text = pobr_data::text::strip_display_markup(text).to_ascii_lowercase();
-                    !text.contains("all elemental resistances") && !text.contains("all resistances")
-                })
+                row.modifier.expanded_from
+                    != Some(crate::modifier::ModExpansion::AllElementalResistance)
             })
             .filter_map(|row| row.value)
             .sum()

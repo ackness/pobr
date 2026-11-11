@@ -247,6 +247,7 @@ fn counted_key(modifier: &Modifier) -> u64 {
     modifier.mod_type.hash(&mut hasher);
     modifier.flags.hash(&mut hasher);
     modifier.keyword_flags.hash(&mut hasher);
+    modifier.expanded_from.hash(&mut hasher);
     modifier.source.hash(&mut hasher);
     if let Some(origin) = &modifier.origin {
         origin.source_id.hash(&mut hasher);

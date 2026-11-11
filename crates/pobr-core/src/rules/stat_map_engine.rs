@@ -2919,7 +2919,13 @@ mod tests {
         let names: Vec<&str> = items
             .iter()
             .map(|i| match i {
-                MappedItem::Modifier(m) => m.name.as_str(),
+                MappedItem::Modifier(m) => {
+                    assert_eq!(
+                        m.expanded_from,
+                        Some(crate::modifier::ModExpansion::AllElementalResistance)
+                    );
+                    m.name.as_str()
+                }
                 other => panic!("expected Modifier, got {other:?}"),
             })
             .collect();

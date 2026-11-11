@@ -8,11 +8,12 @@
 //! Periodic spirit attacks, maim and on-hit armour break are not simulated.
 use pobr_data::prelude::*;
 
+use crate::modifier::ModExpansion;
 use crate::{ModValue, Modifier};
 
 use super::Env;
 
-/// Numeric modifiers granted by a possession buff: (engine name, type, value).
+/// Possession stats: (engine name or game stat to expand, type, value).
 pub type SpiritStats = &'static [(&'static str, ModType, f64)];
 
 /// (Spirit name, index in `SPIRIT_FAMILY_STATS`, numeric modifiers, flags).
@@ -63,9 +64,7 @@ pub const SPIRIT_DEFINITIONS: &[SpiritDefinition] = &[
         1,
         &[
             ("DamageGainAsLightning", ModType::Base, 20.0),
-            ("FireResistance", ModType::Base, 30.0),
-            ("ColdResistance", ModType::Base, 30.0),
-            ("LightningResistance", ModType::Base, 30.0),
+            ("base_resist_all_elements_%", ModType::Base, 30.0),
         ],
         &[],
     ),
@@ -144,11 +143,17 @@ pub(super) fn apply(env: &mut Env) {
             modifier.source = Some("CharmSpirit".into());
             modifier
         };
-        output.extend(
-            stats
-                .iter()
-                .map(|(name, kind, value)| numeric(name, *kind, *value)),
-        );
+        for &(stat, kind, value) in stats {
+            if stat == "base_resist_all_elements_%" {
+                for name in ["FireResistance", "ColdResistance", "LightningResistance"] {
+                    let mut modifier = numeric(name, kind, value);
+                    modifier.expanded_from = Some(ModExpansion::AllElementalResistance);
+                    output.push(modifier);
+                }
+            } else {
+                output.push(numeric(stat, kind, value));
+            }
+        }
         output.extend(flags.iter().map(|name| flag(name)));
         if !families[family] {
             families[family] = true;

@@ -1184,6 +1184,28 @@ fn read_snapshot_names_the_queries_and_what_they_counted() {
     assert!(later.sites["Life"].contains(&"NAMED Life".to_string()));
 }
 
+#[test]
+fn read_snapshot_distinguishes_resistance_expansion_scopes() {
+    use pobr_core::modifier::ModExpansion;
+
+    let plain = Modifier::number("FireResistance", ModType::Base, 30.0);
+    let mut expanded = plain.clone();
+    expanded.expanded_from = Some(ModExpansion::AllElementalResistance);
+    for expanded_only in [false, true] {
+        let mut db = ModDb::new();
+        db.add_list([plain.clone(), expanded.clone()]);
+        db.track_reads();
+        let filtered = db.filtered(|modifier| modifier.expanded_from.is_some() == expanded_only);
+        assert_eq!(
+            filtered.sum(ModType::Base, &CalcConfig::new(), &[plain.name.clone()]),
+            30.0,
+        );
+        let reads = db.read_snapshot();
+        assert_eq!(reads.counted(&expanded), expanded_only);
+        assert_eq!(reads.counted(&plain), !expanded_only);
+    }
+}
+
 /// A reason names what is unmet as the queries check it: flags first, then
 /// the tags in order, then a scaling that comes to 0.
 #[test]

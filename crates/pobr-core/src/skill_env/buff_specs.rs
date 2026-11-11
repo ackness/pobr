@@ -10,6 +10,7 @@ use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::Modifier;
 use crate::calc::{BuffKind, BuffSpec, WarcrySpec};
+use crate::modifier::mark_resistance_expansions;
 use crate::rules::skill_stats::{self, BuffSkill};
 use crate::rules::stat_map_engine;
 use crate::skill_env::buff_stat_map::map_aura_buff_stat;
@@ -562,6 +563,7 @@ pub fn buff_skill_specs(
                     }
                     let mut mods = Vec::new();
                     for (stat, value) in totals {
+                        let start = mods.len();
                         for mapped in map_aura_buff_stat(stat) {
                             if value == 0.0 {
                                 continue;
@@ -576,6 +578,7 @@ pub fn buff_skill_specs(
                                     .with_origin(origin),
                             );
                         }
+                        mark_resistance_expansions(mods[start..].iter_mut());
                     }
                     // statmap buff domain's supplementary channel: the player-side
                     // allowlist's (Accuracy) GlobalEffect Buff/Aura payload (e.g. War

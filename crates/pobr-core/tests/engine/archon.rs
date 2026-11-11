@@ -23,6 +23,7 @@ fn invigorating_archon_scales_its_grants_but_not_energising_recharge() {
         "Archon Buffs also grant +20% to all Elemental Resistances",
         "50% reduced effect of Archon Buffs on you",
         "20% faster start of Energy Shield Recharge while affected by an Archon Buff",
+        "Modifiers to Fire Resistance also grant Cold and Lightning Resistance at 50% of their value",
         "+100 to maximum Energy Shield",
     ];
     let active = run(true, &lines);

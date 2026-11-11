@@ -296,6 +296,35 @@ fn spirit_stag_grants_20_percent_extra_lightning_and_30_elemental_resistance() {
     assert_eq!(session.output().lightning_resistance, 30.0);
     assert_eq!(session.output().action_rate, 2.6);
 }
+
+#[test]
+fn spirit_stag_resistance_is_not_shared_by_coal_stoker() {
+    use pobr_core::{CalcConfig, Modifier};
+    // SpiritOfTheStagPossessedPlayer grants base_resist_all_elements_% = 30.
+    for (active, expected) in [(false, 0.0), (true, 30.0)] {
+        let mut session = super::support::session(MinimalInput::default())
+            .with_config(CalcConfig::attack().with_mode_combat(true));
+        session.set_exporter_rules(true, Default::default());
+        session.add_modifiers([Modifier::number("CharmLimit", ModType::Base, 3.0)]);
+        session
+            .add_modifier_texts(&[
+                "Modifiers to Fire Resistance also grant Cold and Lightning Resistance at 50% of their value",
+            ])
+            .unwrap();
+        let item = charm(&["Possessed by Spirit Of The Stag for 20 seconds on use"]);
+        if active {
+            session.add_flask_charm("Charm 1", &item);
+        } else {
+            session.add_inactive_utility_properties("Charm 1", &item);
+        }
+        session.perform_minimal().unwrap();
+        assert_eq!(session.output().fire_resistance, expected);
+        assert_eq!(session.output().cold_resistance, expected);
+        assert_eq!(session.output().lightning_resistance, expected);
+        assert!(session.unsupported_modifier_texts().is_empty());
+    }
+}
+
 #[test]
 fn spirit_wolf_grants_30_percent_skill_speed_only_when_source_is_active() {
     assert_eq!(possession("Wolf", true, true).output().action_rate, 2.6);

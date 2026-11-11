@@ -73,6 +73,10 @@ pub fn expand(db: &ModDb, cfg: &CalcConfig, combat: bool) -> Vec<Modifier> {
                 expanded.name = StatId::new(*output);
                 expanded.mod_type = mod_type;
                 expanded.value = ModValue::Number(value * effect);
+                if input == "ArchonElementalResistance" {
+                    expanded.expanded_from =
+                        Some(crate::modifier::ModExpansion::AllElementalResistance);
+                }
                 expanded.tags.clear();
                 mods.push(expanded);
             }

@@ -516,6 +516,12 @@ impl ModTag {
     }
 }
 
+/// The scope of a stat expanded into separate modifier names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ModExpansion {
+    AllElementalResistance,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Modifier {
     pub name: ModName,
@@ -523,11 +529,48 @@ pub struct Modifier {
     pub value: ModValue,
     pub source: Option<String>,
     pub origin: Option<ModifierSource>,
+    /// Original scope survives source attribution and display-text changes.
+    pub expanded_from: Option<ModExpansion>,
     /// Rule provenance survives replacing an item's/gem's source origin.
     pub exporter_rule: Option<std::sync::Arc<pobr_data::source::ExporterRule>>,
     pub flags: ModFlags,
     pub keyword_flags: KeywordFlags,
     pub tags: Vec<ModTag>,
+}
+
+pub(crate) fn resistance_expansion<'a>(
+    names: impl Iterator<Item = &'a str> + Clone,
+) -> Option<ModExpansion> {
+    [
+        ["FireResistance", "FireResist"],
+        ["ColdResistance", "ColdResist"],
+        ["LightningResistance", "LightningResist"],
+    ]
+    .iter()
+    .all(|aliases| names.clone().any(|name| aliases.contains(&name)))
+    .then_some(ModExpansion::AllElementalResistance)
+}
+
+/// One actor's expansion can be split across several LIST wrappers.
+pub(crate) fn mark_resistance_expansions<'a>(modifiers: impl Iterator<Item = &'a mut Modifier>) {
+    let mut modifiers: Vec<_> = modifiers.collect();
+    if let Some(expansion) = resistance_expansion(modifiers.iter().map(|m| m.name.as_str())) {
+        for modifier in &mut modifiers {
+            modifier.expanded_from = Some(expansion);
+        }
+    }
+    let mut nested = std::collections::BTreeMap::<_, Vec<_>>::new();
+    for modifier in modifiers {
+        if let ModValue::NestedMods(mods) = &mut modifier.value {
+            nested
+                .entry(modifier.name.as_str())
+                .or_default()
+                .extend(mods.iter_mut());
+        }
+    }
+    for modifiers in nested.into_values() {
+        mark_resistance_expansions(modifiers.into_iter());
+    }
 }
 
 impl Modifier {
@@ -550,6 +593,7 @@ impl Modifier {
             value,
             source: None,
             origin: None,
+            expanded_from: None,
             exporter_rule: None,
             flags: ModFlags::NONE,
             keyword_flags: KeywordFlags::NONE,
