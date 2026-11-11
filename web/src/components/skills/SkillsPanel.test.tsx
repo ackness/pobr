@@ -139,6 +139,34 @@ it('labels triggered skills and resolves unique item source names through the ex
   expect(html).toContain('from item · 语言包中的暗金名');
 });
 
+it.each([
+  ['en-US', 'Triggered by Cast when Stunned', 'DPS is shown as 0. Average hit is still calculated.'],
+  ['zh-CN', '由 晕眩时施放 触发', 'DPS 显示为 0。平均击中伤害仍会计算。'],
+  ['zh-TW', '由 暈眩時施放 觸發', 'DPS 顯示為 0。仍會計算平均擊中傷害。'],
+] as const)('keeps zero damage and explains the meta trigger in the skill list and detail in %s', (lang, name, note) => {
+  const current = session();
+  const meta = { ...fire, skill_id: 'MetaCastWhenStunnedPlayer', name: 'Cast when Stunned',
+    name_zh_cn: '晕眩时施放', name_zh_tw: '暈眩時施放', active_effect_ids: ['MetaCastWhenStunnedPlayer'], tags: ['Meta'] };
+  current.socketGroups[0] = { enabled: true, main_active_skill: 2, gems: [
+    { skill_id: meta.skill_id, level: 20, quality: 0 }, { skill_id: fire.skill_id, level: 20, quality: 0 },
+  ] };
+  harness.metrics = { revision: current.socketGroupRevision, skills: [{
+    group_index: 0, active_skill_index: 2, skill_id: fire.skill_id, status: 'calculated', error: null, unsupported_modifiers: [],
+    metrics: { combined_dps: 0, hit_dps: 0, dot_dps: 0, average_hit: 123, action_rate: 0, mana_cost: 0, life_cost: 0, cooldown: 0 },
+    unmodelled_meta_trigger: { meta_gem_id: meta.skill_id, host_skill_id: fire.skill_id },
+  }] };
+  hooks.slots = [[fire, support, meta], [], false, false];
+  const html = render(current, false, lang);
+  const list = html.match(/class="skill-group is-main[^]*?class="skill-detail"/)![0];
+  expect(list).toContain('data-kind="damage">0<span class="sr-only"> DPS</span>');
+  expect(list).toContain(name);
+  expect(list).toContain(note);
+  const detail = html.slice(html.indexOf('class="skill-detail"'));
+  expect(detail).toContain(name);
+  expect(detail).toContain(note);
+  expect(detail).toContain('<strong>0</strong>');
+});
+
 it('keeps supported synthetic skills named even though they have no gem-catalog entry', () => {
   const current = session();
   current.socketGroups[0].gems = [{ skill_id: 'ThornsPlayer', level: 1, quality: 0 }];

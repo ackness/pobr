@@ -1,4 +1,4 @@
-import type { CalculateBuildResponse } from '../api/types';
+import type { CalculateBuildResponse, UnmodelledMetaTrigger } from '../api/types';
 import type { Route } from './routes';
 
 export type Severity = 'bad' | 'warn';
@@ -10,6 +10,7 @@ export type Finding =
   | { kind: 'resist'; severity: Severity; route: Route; element: 'Fire' | 'Cold' | 'Lightning' | 'Chaos'; value: number; missing: number }
   | { kind: 'hit-chance'; severity: Severity; route: Route; value: number }
   | { kind: 'net-regen'; severity: Severity; route: Route; value: number }
+  | { kind: 'unmodelled-meta-trigger'; severity: Severity; route: Route; trigger: UnmodelledMetaTrigger }
   | { kind: 'unsupported'; severity: Severity; route: Route; count: number };
 
 const ELEMENTS = ['Fire', 'Cold', 'Lightning'] as const;
@@ -27,6 +28,7 @@ export function deriveFindings(calc: CalculateBuildResponse | null, hasSkills: b
   const found: Finding[] = [];
 
   if (hasSkills && !calc.main_skill) found.push({ kind: 'no-main-skill', severity: 'bad', route: 'skills' });
+  if (calc.main_skill && calc.unmodelled_meta_trigger) found.push({ kind: 'unmodelled-meta-trigger', severity: 'warn', route: 'skills', trigger: calc.unmodelled_meta_trigger });
   if (calc.item_errors.length) found.push({ kind: 'item-errors', severity: 'bad', route: 'items', slots: calc.item_errors.map(issue => issue.slot) });
 
   const spirit = num('SpiritUnreserved');

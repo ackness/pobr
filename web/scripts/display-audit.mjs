@@ -254,7 +254,11 @@ function auditBuild(name, code) {
       if (why) add(`main skill name is ${why} [${lang}]`, `${out.main_skill.skill_id} → "${shown}"`);
     }
     const minionDps = (out.minions ?? []).reduce((sum, m) => sum + (m.dps || 0), 0);
-    if (!(out.main_skill.combined_dps > 0) && !(minionDps > 0) && !(out.full_dps?.dps > 0)) {
+    const trigger = out.unmodelled_meta_trigger;
+    if (trigger) {
+      const names = LANGS.map(lang => `${lang} "${skillDisplayName(trigger.meta_gem_id, lang, byId)}"`).join(', ');
+      add('0 DPS explained: unmodelled meta trigger', `${trigger.host_skill_id} ← ${trigger.meta_gem_id} (${names})`);
+    } else if (!(out.main_skill.combined_dps > 0) && !(minionDps > 0) && !(out.full_dps?.dps > 0)) {
       add('0 DPS (main, minions and full)', `${out.main_skill.skill_id} combined=${out.main_skill.combined_dps}`);
     }
   }

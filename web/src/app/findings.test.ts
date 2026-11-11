@@ -16,6 +16,15 @@ describe('deriveFindings', () => {
     expect(deriveFindings(null, true)).toEqual([]);
   });
 
+  it('explains a main skill whose meta gem has no Energy event rate model', () => {
+    const unmodelled_meta_trigger = { meta_gem_id: 'MetaCastOnDodgePlayer', host_skill_id: 'CometPlayer' };
+    expect(deriveFindings(calc({}, { unmodelled_meta_trigger }), true)).toEqual([
+      { kind: 'unmodelled-meta-trigger', severity: 'warn', route: 'skills', trigger: unmodelled_meta_trigger },
+    ]);
+    expect(kinds(calc({ CombinedDPS: 0 }))).toEqual([]);
+    expect(kinds(calc({}, { main_skill: null, unmodelled_meta_trigger }), false)).toEqual([]);
+  });
+
   it('flags only the elements that fall short of the resistance cap', () => {
     const found = deriveFindings(calc({ FireResist: 75, ColdResist: 60, LightningResist: -10, ChaosResist: 0 }), true);
     expect(found.map(item => item.kind === 'resist' ? [item.element, item.missing, item.severity] : null)).toEqual([

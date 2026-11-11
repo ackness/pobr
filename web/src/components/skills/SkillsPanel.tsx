@@ -33,6 +33,7 @@ import { mainMinion } from '../../lib/mainMinion';
 import './skills.css';
 import { useSpiritReservations } from '../../app/pages/skills/useSpiritReservations';
 import { useConsumedRequest } from '../../hooks/useConsumedRequest';
+import { EnergyTriggerNote } from '../config/EnergyTriggerNote';
 
 interface Props {
   session: BuildSession;
@@ -426,6 +427,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
           >
             ×
           </AppButton>
+          {dps?.kind === 'damage' && <EnergyTriggerNote trigger={dps.unmodelled_meta_trigger} catalog={byId} lang={lang} className="col-start-2 -col-end-1 row-start-4 mt-2" />}
         </div>
       </div>
     ), detail: isOpen && (
@@ -439,6 +441,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
             {source && <span className="skill-detail-tag">{source}</span>}
           </div>
           {dps?.kind === 'damage' && <div className="skill-detail-dps"><span>{tt('sidebar.combinedDps')}</span><strong>{formatStatValue(dps.dps, 'float2', lang)}</strong></div>}
+          {dps?.kind === 'damage' && <EnergyTriggerNote trigger={dps.unmodelled_meta_trigger} catalog={byId} lang={lang} />}
           {dps?.kind === 'minion' && <div className="skill-detail-dps"><span>{tt('skills.minionDps')}</span><strong>{formatStatValue(dps.dps, 'float2', lang)}</strong></div>}
           {dps?.kind === 'summoner' && <p className="skill-detail-dps">{tt('skills.summonerPending')}</p>}
           {active && <div className="skill-detail-controls">

@@ -45,6 +45,26 @@ it('puts the global selection explanation above the ranking and marks the curren
   expect(html.indexOf('Select a skill to use it for calculations across all pages.')).toBeLessThan(html.indexOf('class="ov-rank"'));
   expect(html).toContain('aria-pressed="true"'); expect(html).toContain('Current');
 });
+
+it.each([0, 200])('retains zero-DPS meta-trigger rows with finite bars when the top DPS is %s', top => {
+  h.skills = [
+    { group_index: 0, active_skill_index: 2, skill_id: 'CometPlayer', status: 'calculated',
+      metrics: { combined_dps: 0 }, unmodelled_meta_trigger: { meta_gem_id: 'MetaCastOnDodgePlayer', host_skill_id: 'CometPlayer' } },
+    { group_index: 1, active_skill_index: 2, skill_id: 'FireballPlayer', status: 'calculated',
+      metrics: { combined_dps: 0 }, unmodelled_meta_trigger: { meta_gem_id: 'MetaCastFireSpellOnHitPlayer', host_skill_id: 'FireballPlayer' } },
+    { group_index: 0, active_skill_index: 1, skill_id: 'SparkPlayer', status: 'calculated', metrics: { combined_dps: top } },
+  ] as SkillMetricsEntry[];
+  const ranking = render().match(/<ol class="ov-rank"[\s\S]*?<\/ol>/)![0];
+  expect(ranking.match(/DPS is shown as 0\. Average hit is still calculated\./g)).toHaveLength(2);
+  expect(ranking.match(/class="ov-rank-value">0<\/span>/g)).toHaveLength(2);
+  expect(ranking.match(/style="width:0%"/g)).toHaveLength(2);
+  expect(ranking.indexOf('Comet')).toBeLessThan(ranking.indexOf('Fireball'));
+  expect(ranking).not.toMatch(/NaN|Infinity/);
+  if (top > 0) {
+    expect(ranking.indexOf('Spark')).toBeLessThan(ranking.indexOf('Comet'));
+    expect(ranking).toContain('style="width:100%"');
+  } else expect(ranking).not.toContain('Spark');
+});
 it('explains that source analysis needs recalculating after a skill switch', () => {
   h.contribution = { version: 1, selection: '0:1', data: { baseline: {}, entries: [] } };
   const html = render();

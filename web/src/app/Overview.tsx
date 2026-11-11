@@ -2,7 +2,7 @@ import { EnergyTriggerNote } from '../components/config/EnergyTriggerNote';
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, ArrowRight, CircleAlert, CircleCheck, Download } from 'lucide-react';
 import { getBackend } from '../api/backend';
-import type { AttributionResponse, SkillMetricsEntry } from '../api/types';
+import type { AttributionResponse, GemCatalogEntry, SkillMetricsEntry } from '../api/types';
 import { Button } from '../components/ui/button';
 import type { BuildSession } from '../hooks/useBuildSession';
 import { useMainMinion } from '../hooks/useMainMinion';
@@ -13,6 +13,7 @@ import { bindT, damageTypeLabel, slotLabel, statNameLabel, type Lang } from '../
 import { contributionLabel, removalChange } from '../lib/sourceContributions';
 import { activeSkillEffects } from '../lib/skillSelection';
 import { skillDisplayName } from '../lib/skillNames';
+import { unmodelledMetaTriggerNote } from '../lib/triggerNotes';
 import { formatNumber, formatStatValue, statMap, formatStat } from '../lib/statDisplay';
 import { UnincludedModifiers } from '../components/shared/UnincludedModifiers';
 import { deriveFindings, type Finding } from './findings';
@@ -29,7 +30,7 @@ const MAX_HIT = ['Physical', 'Fire', 'Cold', 'Lightning', 'Chaos'] as const;
 const ATTRIBUTION_FIELDS = ['CombinedDPS', 'TotalEHP', 'Life'] as const;
 const int = (value: number) => formatStatValue(value, 'int');
 
-function describe(finding: Finding, lang: Lang): { title: string; detail: string } {
+function describe(finding: Finding, lang: Lang, catalog: ReadonlyMap<string, GemCatalogEntry>): { title: string; detail: string } {
   const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
   switch (finding.kind) {
     case 'no-main-skill': return { title: w('No calculated skill selected', '尚未选择计算技能', '尚未選擇計算技能'), detail: w('Choose a damaging skill in the side panel or on Skills.', '在侧栏或技能页选择一个造成伤害的技能。', '在側欄或技能頁選擇一個造成傷害的技能。') };
@@ -41,6 +42,7 @@ function describe(finding: Finding, lang: Lang): { title: string; detail: string
       : { title: w(`${name} resistance ${int(finding.value)}%`, `${name}抗性 ${int(finding.value)}%`, `${name}抗性 ${int(finding.value)}%`), detail: w(`${int(finding.missing)}% short of the cap.`, `距上限还差 ${int(finding.missing)}%。`, `距上限還差 ${int(finding.missing)}%。`) }; }
     case 'hit-chance': return { title: w(`Hit chance ${formatStatValue(finding.value, 'percent')}`, `命中率 ${formatStatValue(finding.value, 'percent')}`, `命中率 ${formatStatValue(finding.value, 'percent')}`), detail: w('Attacks miss; accuracy is costing damage.', '攻击会落空，命中不足在损失伤害。', '攻擊會落空，命中不足在損失傷害。') };
     case 'net-regen': return { title: w(`Net recovery is ${formatStatValue(finding.value, 'float2')}/s`, `净恢复为 ${formatStatValue(finding.value, 'float2')}/秒`, `淨恢復為 ${formatStatValue(finding.value, 'float2')}/秒`), detail: w('Your own costs and degeneration outpace recovery.', '自身消耗与持续损失超过恢复速度。', '自身消耗與持續損失超過恢復速度。') };
+    case 'unmodelled-meta-trigger': return { title: bindT(lang)('skills.unmodelledMetaTriggerTitle'), detail: unmodelledMetaTriggerNote(finding.trigger, lang, catalog) };
     case 'unsupported': return { title: `${bindT(lang)('calcs.unsupported')}${colon(lang)}${finding.count}`, detail: w('Their effect is missing from every number on this page.', '这些词缀的效果不在本页任何数值中。', '這些詞綴的效果不在本頁任何數值中。') };
   }
 }
@@ -86,7 +88,7 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit }:
   // Each effect's own damage; the calculated summoning skill counts its minion's, which the per-effect metrics don't carry.
   const isCalculated = (entry: SkillMetricsEntry) => main?.group_index === entry.group_index && main.active_skill_index === entry.active_skill_index;
   const damageOf = (entry: SkillMetricsEntry) => minion && isCalculated(entry) ? minion.minion.dps : entry.metrics?.combined_dps ?? 0;
-  const ranked = (skills ?? []).filter(entry => entry.status === 'calculated' && entry.metrics && damageOf(entry) > 0).sort((a, b) => damageOf(b) - damageOf(a)).slice(0, 8);
+  const ranked = (skills ?? []).filter(entry => entry.status === 'calculated' && entry.metrics && (damageOf(entry) > 0 || entry.unmodelled_meta_trigger)).sort((a, b) => damageOf(b) - damageOf(a)).slice(0, 8);
   const top = ranked[0] ? damageOf(ranked[0]) : 0;
   const chooseSkill = (entry: SkillMetricsEntry) => {
     if (!isCalculated(entry)) session.inspectSkill(entry.group_index, entry.active_skill_index, skillResult?.version ?? session.stateVersion);
@@ -171,6 +173,7 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit }:
         <dd><button type="button" onClick={() => focusStat(figure.id)}><AnimatedNumber value={figure.value} format={figure.format} /><span className="ov-source">{tt('overview.sources')}</span></button></dd>
         <small>{figure.sub}</small>
         {figure.tone === 'dps' && <EnergyTriggerNote calc={calc} groups={session.socketGroups} lang={lang} />}
+        {figure.tone === 'dps' && !minion && <EnergyTriggerNote trigger={calc?.unmodelled_meta_trigger} catalog={catalog} lang={lang} />}
       </div>)}
     </dl>
 
@@ -187,7 +190,7 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit }:
           <h2 id="ov-findings">{w('Needs attention', '需要关注', '需要關注')}</h2>
           {!calc ? <p className="ov-muted">{session.busy ? w('Calculating…', '计算中…', '計算中…') : w('The calculation is unavailable.', '当前计算不可用。', '目前計算無法使用。')}</p>
             : findings.length === 0 ? <p className="ov-ok"><CircleCheck />{w('Resistances, Spirit, attributes and accuracy all check out under this setup.', '在当前设定下，抗性、精魂、属性与命中均无明显问题。', '在目前設定下，抗性、精魂、屬性與命中均無明顯問題。')}</p>
-              : <ul className="ov-findings">{findings.map((finding, index) => { const text = describe(finding, lang); const Icon = finding.severity === 'bad' ? CircleAlert : AlertTriangle;
+              : <ul className="ov-findings">{findings.map((finding, index) => { const text = describe(finding, lang, catalog); const Icon = finding.severity === 'bad' ? CircleAlert : AlertTriangle;
                 return <li key={`${finding.kind}${index}`} className={`is-${finding.severity}`}><Icon aria-hidden="true" /><div><strong>{text.title}</strong><span>{text.detail}</span></div>
                   {(() => {
                   // A resistance shortfall is fixed in Upgrades with the goal already set to "resistances first".
@@ -204,8 +207,9 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit }:
               : w('No skill deals damage yet.', '暂时没有造成伤害的技能。', '暫時沒有造成傷害的技能。')}</p>
             : <ol className="ov-rank">{ranked.map(entry => { const current = isCalculated(entry); const damage = damageOf(entry);
               return <li key={`${entry.group_index}:${entry.active_skill_index}`}><button type="button" aria-pressed={current} disabled={skillsPending || !session.socketGroups[entry.group_index]?.enabled} onClick={() => chooseSkill(entry)}>
-                <span className="ov-rank-name">{skillName(entry.skill_id)}{current && <span className="ov-current"><CircleCheck aria-hidden="true" />{tt('overview.currentSkill')}</span>}<small>{w(`Group ${entry.group_index + 1} · Effect ${entry.active_skill_index}`, `技能组 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`, `技能組 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`)}{current && minion && ` · ${tt('skills.minionDps')}`}</small></span>
-                <span className="ov-bar"><span style={{ width: `${(damage / top) * 100}%` }} /></span>
+                <span className="ov-rank-name">{skillName(entry.skill_id)}{current && <span className="ov-current"><CircleCheck aria-hidden="true" />{tt('overview.currentSkill')}</span>}<small>{w(`Group ${entry.group_index + 1} · Effect ${entry.active_skill_index}`, `技能组 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`, `技能組 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`)}{current && minion && ` · ${tt('skills.minionDps')}`}</small>
+                  <EnergyTriggerNote trigger={entry.unmodelled_meta_trigger} catalog={catalog} lang={lang} /></span>
+                <span className="ov-bar"><span style={{ width: top > 0 ? `${(damage / top) * 100}%` : '0%' }} /></span>
                 <span className="ov-rank-value">{formatStatValue(damage, 'float2')}</span></button></li>; })}</ol>}
         </section>
       </div>

@@ -131,6 +131,7 @@ function Headline({ route, session, view, lang, onStatClick, changes, onNavigate
             : <strong className="rail-hero-value"><AnimatedNumber value={mainSkill.combined_dps} format={numberOf(mainSkill.combined_dps)} /></strong>}
           {chip && <span className="rail-chip" data-tone={chip.tone} role="status">{percentText(chip)}</span>}
         </div>
+        <EnergyTriggerNote trigger={calc?.unmodelled_meta_trigger} catalog={catalog} lang={lang} />
       </div>
     </>}
   </div>;

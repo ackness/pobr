@@ -1,14 +1,15 @@
-import type { SkillMetricsEntry } from '../../../api/types';
+import type { SkillMetricsEntry, UnmodelledMetaTrigger } from '../../../api/types';
 
 /**
  * What a socket group's selected skill does on its own. `damage` carries a figure, `none`
  * is a skill that calculates fine but deals no damage (a curse, a buff, a reservation), and
  * `unavailable` means no figure exists yet or the engine could not calculate that effect.
+ * An unmodelled meta trigger keeps its zero figure and the explanation attached to it.
  * A summoning skill deals its damage through minions: `minion` carries one minion's hit DPS
  * when it is the calculated skill, and `summoner` marks one whose minions are not calculated.
  */
 export type GroupDps =
-  | { kind: 'damage'; dps: number }
+  | { kind: 'damage'; dps: number; unmodelled_meta_trigger?: UnmodelledMetaTrigger }
   | { kind: 'minion'; dps: number }
   | { kind: 'summoner' }
   | { kind: 'none' }
@@ -37,6 +38,7 @@ export function groupDps(skills: readonly SkillMetricsEntry[], groups: readonly 
     if (minion && minion.group_index === index && minion.active_skill_index === effect && Number.isFinite(minion.dps))
       rows.set(index, { kind: 'minion', dps: minion.dps });
     else if (!metrics || !Number.isFinite(metrics.combined_dps)) rows.set(index, { kind: 'unavailable' });
+    else if (entry?.unmodelled_meta_trigger) rows.set(index, { kind: 'damage', dps: metrics.combined_dps, unmodelled_meta_trigger: entry.unmodelled_meta_trigger });
     else if (metrics.combined_dps > 0) rows.set(index, { kind: 'damage', dps: metrics.combined_dps });
     else rows.set(index, isSummoner(entry!.skill_id) ? { kind: 'summoner' } : { kind: 'none' });
   });
