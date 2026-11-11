@@ -433,6 +433,42 @@ fn calculate_build_reports_a_triggered_spell_at_the_rate_of_triggers() {
     assert!(!by_hand.reference.unwrap().at_own_rate_of_use);
 }
 
+#[test]
+fn calculate_build_compares_unmodelled_meta_triggers_at_their_own_rate() {
+    let xml = r#"<PathOfBuilding2>
+<Build level="90" className="Sorceress" ascendClassName="None" mainSocketGroup="1">
+  <PlayerStat stat="TotalDPS" value="277.98"/>
+  <PlayerStat stat="Speed" value="0.5"/>
+</Build>
+<Skills><Skill enabled="true" mainActiveSkill="2">
+  <Gem skillId="MetaCastOnDodgePlayer" level="20" quality="0" enabled="true"/>
+  <Gem skillId="CometPlayer" level="20" quality="0" enabled="true"/>
+</Skill></Skills>
+</PathOfBuilding2>"#;
+    let report = calculate_build(&CalculateBuildRequest {
+        code: encode_code(xml).unwrap(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    })
+    .unwrap();
+    assert_eq!(report.output.dps, 0.0);
+    assert_eq!(report.output.action_rate, 0.0);
+    assert!(report.output.energy_trigger.is_none());
+    assert!(
+        report
+            .unsupported_modifiers
+            .iter()
+            .any(|limit| limit.starts_with("MetaTrigger:MetaCastOnDodgePlayer:"))
+    );
+    let reference = report.reference.as_ref().expect("exported reference rows");
+    assert_eq!(reference.compared, 2);
+    assert_eq!(reference.agreeing, 2, "{:?}", reference.differing);
+    assert!(reference.differing.is_empty());
+    assert_eq!(json(&report)["reference"]["at_own_rate_of_use"], true);
+}
+
 /// A rain is reported at the hits its landing arrows give, and compared with
 /// the code's reference by the exporter's count: a hit whenever the enemy can
 /// be hit again.
