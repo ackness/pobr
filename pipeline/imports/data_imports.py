@@ -294,6 +294,8 @@ def unpack(archive, specification, destination):
                     "Expanded archive size mismatch")
             raw = pinned(package.read("manifest.json"), specification["manifest"])
             manifest = decode(raw)
+            require(isinstance(manifest, dict) and isinstance(manifest.get("files"), dict),
+                    "Invalid archive file inventory")
             require(set(names) == {"manifest.json", *manifest["files"]}, "Unlisted/missing archive file")
             for name, pin in manifest["files"].items():
                 write(destination / relative_path(name), pinned(package.read(name), pin))

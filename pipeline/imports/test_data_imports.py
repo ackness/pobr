@@ -10,6 +10,7 @@ import unittest
 import zipfile
 
 from pipeline.imports import data_imports as imports
+from pipeline.runtime import data_bundle as bundle
 
 
 def pin(raw):
@@ -146,15 +147,31 @@ class TransportTests(unittest.TestCase):
         self.assertEqual((self.root / "ok/a.json").read_bytes(), body)
         with self.assertRaisesRegex(ValueError, "Expanded archive size"):
             imports.unpack(raw.getvalue(), {**spec, "expanded_bytes": 1}, self.root / "size")
+        for document in ([], {}, {"files": None}, {"files": []}):
+            with self.subTest(manifest=document):
+                manifest = bundle.encoded(document)
+                raw = io.BytesIO()
+                with zipfile.ZipFile(raw, "w") as archive:
+                    archive.writestr("manifest.json", manifest)
+                spec = {"manifest": pin(manifest), "expanded_bytes": len(manifest)}
+                with self.assertRaisesRegex(ValueError, "Invalid archive file inventory"):
+                    imports.unpack(raw.getvalue(), spec, self.root / "invalid")
 
     def test_atomic_replacement_rejects_symlinks_without_changing_the_target(self):
         target = self.root / "asset.json"
         target.write_bytes(b"previous")
         link = self.root / "link.json"
         link.symlink_to(target)
-        with self.assertRaisesRegex(ValueError, "Unsafe atomic output path"):
-            imports.replace_atomically(link, b"new")
+        parent = self.root / "parent"
+        parent.symlink_to(self.root, target_is_directory=True)
+        for path in (link, parent / "asset.json", self.root / "missing/../asset.json"):
+            with self.subTest(path=path), self.assertRaisesRegex(ValueError, "Unsafe atomic output path"):
+                imports.replace_atomically(path, b"new")
         self.assertEqual(target.read_bytes(), b"previous")
+        self.assertFalse((self.root / "missing").exists())
+        self.assertEqual(list(self.root.glob(".asset.json.*")), [])
+        imports.replace_atomically(target, b"new")
+        self.assertEqual(target.read_bytes(), b"new")
 
 
 class ReleaseTransportTests(unittest.TestCase):

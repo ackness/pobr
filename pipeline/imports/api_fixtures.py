@@ -31,7 +31,8 @@ def prepare(lock_path, cache, offline=False, fetcher=None):
     require(type(spec.get("expanded_bytes")) is int and spec["expanded_bytes"] > 0,
             "Invalid test fixture expanded size")
     names = spec.get("files")
-    require(isinstance(names, list) and names and len(names) == len(set(names))
+    require(isinstance(names, list) and names and all(isinstance(n, str) for n in names)
+            and len(names) == len(set(names))
             and all(len(bundle.relative_path(n).parts) == 1 and n.endswith(".json") for n in names),
             "Invalid test fixture inventory")
     cache = Path(cache)

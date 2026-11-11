@@ -107,6 +107,13 @@ class ApiFixturesTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, message):
                     fixtures.prepare(self.lock_path, self.cache,
                                      fetcher=lambda _: self.fail("invalid fixtures fetched"))
+        for names in ([{}], [[]], [None], [42], ["catalog.json", "catalog.json"]):
+            with self.subTest(files=names):
+                self.lock["test_fixtures"] = {**original, "files": names}
+                self.lock_path.write_bytes(bundle.encoded(self.lock))
+                with self.assertRaisesRegex(ValueError, "Invalid test fixture inventory"):
+                    fixtures.prepare(self.lock_path, self.cache,
+                                     fetcher=lambda _: self.fail("invalid fixtures fetched"))
 
 
 if __name__ == "__main__":
