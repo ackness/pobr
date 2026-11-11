@@ -9,7 +9,7 @@ import { SidebarResizeHandle } from './SidebarResizeHandle';
 import { readSideWidth, writeSideWidth } from './sidebarWidth';
 import { TreePointSummary } from './TreePointSummary';
 import { jewelSocketNames } from './jewelSocketNames';
-import { defaultReportStat, distributeAttributeChoices, passivePointSummary } from './treePresentation';
+import { defaultReportStat, distributeAttributeChoices, passivePointSummary, treeHoverLines } from './treePresentation';
 import { ValueText } from '../shared/ValueText';
 import { classDisplayName } from '../../lib/nativeDisplayNames';
 import { useAppDialogs } from '../shared/AppDialogs';
@@ -699,9 +699,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
       setHoverName(null);
       return;
     }
-    const chosen = session.attributeChoices[String(hover.skill)];
-    const chosenLine = chosen ? [`→ ${tt(`tree.attr.${chosen}` as Parameters<typeof tt>[0])}`] : [];
-    const raw = [...(hover.stats ?? []), ...chosenLine].map(cleanLine);
+    const raw = (hover.stats ?? []).map(cleanLine);
     if (lang === 'en-US') {
       setHoverStats(raw);
       setHoverName(null);
@@ -1123,7 +1121,7 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
           <TreeTooltip
             node={hover}
             name={hoverName}
-            stats={hoverStats ?? []}
+            stats={treeHoverLines(hoverStats ?? [], session.attributeChoices[String(hover.skill)], lang)}
             pos={hoverPos}
             canvasRef={svgRef}
             onPointerEnter={keepHover}

@@ -1,5 +1,9 @@
 {
   "ui": {
+    "shell.pageError": "暫時無法顯示此頁面",
+    "shell.pageErrorBackup": "請先下載 BD 備份，再重新整理頁面。其他頁面仍可開啟。",
+    "shell.downloadBackup": "下載備份",
+    "shell.storageUnavailable": "瀏覽器儲存空間已滿或無法使用，請先下載完整備份。",
     "common.close": "關閉",
     "common.open": "開啟",
     "common.cancel": "取消",

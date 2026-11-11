@@ -121,7 +121,7 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit }:
 
   const openFinding = (finding: Finding) => {
     if (finding.kind === 'resist' && finding.element !== 'Chaos') {
-      setGoal({ ...goal, resistanceFirst: true, resistanceTarget: goal.resistanceTarget ?? 75 });
+      setGoal({ ...goal, resistanceFirst: true, resistanceTarget: finding.value + finding.missing });
       navigate('trade');
     } else if (finding.kind === 'net-regen') focusStat('TotalNetRegen');
     else if (finding.kind === 'unsupported') {

@@ -4,6 +4,11 @@ import type { CalculateBuildResponse, AttributeChoice, PassiveJewelState, Passiv
 import { bindT, messages, statNameLabel, type Lang } from '../../lib/i18n';
 import { formatNumber, statFormat } from '../../lib/statDisplay';
 
+/** The choice is already UI text; append it after translating the node's own stats. */
+export function treeHoverLines(stats: string[], choice: AttributeChoice | undefined, lang: Lang): string[] {
+  return choice ? [...stats, `→ ${bindT(lang)(`tree.attr.${choice}`)}`] : stats;
+}
+
 /** Gains are differences: percentage formats use percentage points, never relative percent changes. */
 export function powerGain(value: number | null, stat: string, lang: Lang): string {
   if (value === null) return '—';

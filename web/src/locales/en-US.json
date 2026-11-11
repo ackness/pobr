@@ -1,5 +1,9 @@
 {
   "ui": {
+    "shell.pageError": "This page could not be displayed",
+    "shell.pageErrorBackup": "Download a backup of your builds before reloading. You can still open other pages.",
+    "shell.downloadBackup": "Download backup",
+    "shell.storageUnavailable": "Browser storage is full or unavailable. Download a backup before leaving.",
     "common.close": "Close",
     "common.open": "Open",
     "common.cancel": "Cancel",

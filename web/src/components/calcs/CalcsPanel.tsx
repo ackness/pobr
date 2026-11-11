@@ -672,7 +672,7 @@ function FormulaSummary({ breakdown, stat, lang }: { breakdown: Breakdown; stat?
   const converted = formula.steps.some(step => step.op === 'converted' && step.operand !== 0);
   const targets = breakdown.sources?.filter(group => group.base_total !== 0 && /ConvertTo/.test(group.name)).map(group => statNameLabel(lang, group.name));
   return <div className="formula-conclusion"><p>{stat ? statNameLabel(lang, stat) + colon(lang) : ''}<span>{summary.split(/(\s+)/).map((part, index) => /\d/.test(part) ? <span className="formula-number" key={index}>{part}</span> : part)}</span> = <strong>{formatStat(stat ?? '', formula.value, lang)}{stat?.endsWith('DPS') ? ' DPS' : stat === 'Life' || stat === 'EnergyShield' ? words(lang, ' points', ' 点', ' 點') : ''}</strong></p>
-    {converted && <p className="breakdown-note">{targets?.length ? targets.join('，') : tt('calcs.conversionUnknown')}</p>}
+    {converted && <p className="breakdown-note">{targets?.length ? targets.join(lang === 'en-US' ? ', ' : '、') : tt('calcs.conversionUnknown')}</p>}
   </div>;
 }
 
@@ -702,7 +702,7 @@ function ResistanceView({ breakdown, stat, lang, values, related, onSelect }: { 
     const value = values?.get(id) ?? related?.[id]?.formula?.value ?? fallback[index];
     return <section key={id}><h4>{tt(labels[index])}</h4><strong className="mod-value">{value == null ? tt('calcs.missingValue') : formatStat(id, value, lang)}</strong></section>;
   })}</div>
-    {ids.map((id, index) => <details className="resistance-sources" key={id}><summary className="disclosure" data-disclosure-level="group">{tt(labels[index])}：{tt('calcs.source')}</summary>
+    {ids.map((id, index) => <details className="resistance-sources" key={id}><summary className="disclosure" data-disclosure-level="group">{tt(labels[index])}{colon(lang)}{tt('calcs.source')}</summary>
       {onSelect && <AppButton onClick={() => onSelect(id)}>{statNameLabel(lang, id)}</AppButton>}
       {source(id)?.mods.length ? <ModLines mods={source(id)!.mods} lang={lang} />
         : source(id)?.sources?.some(group => group.mods.length) ? source(id)!.sources!.filter(group => group.mods.length).map(group => <section key={group.name}><h5>{statNameLabel(lang, group.name)}</h5><ModLines mods={group.mods} lang={lang} measure={{ stat: group.name, unit: statFormat(group.name) }} /></section>)
@@ -813,7 +813,7 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
           <div className="mitigation-context"><MitigationView rows={breakdown.mitigation} lang={lang} />
             <aside><h4>{tt('calcs.enemyConditions')}</h4><ul>{breakdown.mitigation.map(row => <li key={row.damage_type}>
               <ConfigFieldLink field={row.resist === null ? 'enemyPhysicalReduction' : `enemy${row.damage_type}Resist`} lang={lang}>
-                {damageTypeLabel(lang, row.damage_type)}：{formatNumber(row.resist ?? row.reduction)}% {tt(row.resist === null ? 'calcs.mitigation.reduction' : 'calcs.mitigation.resist')}
+                {damageTypeLabel(lang, row.damage_type)}{colon(lang)}{formatNumber(row.resist ?? row.reduction)}% {tt(row.resist === null ? 'calcs.mitigation.reduction' : 'calcs.mitigation.resist')}
               </ConfigFieldLink>
             </li>)}</ul></aside>
           </div>

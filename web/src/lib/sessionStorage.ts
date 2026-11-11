@@ -20,3 +20,12 @@ export function uiStorageKey(key: string) {
 export const STORAGE: SessionStorageKeys = {
   workspace: uiStorageKey('pobr-build-state'), library: uiStorageKey('pobr-library'), notes: uiStorageKey('pobr-notes'),
 };
+
+/** Storage can be blocked at the property getter as well as at getItem/setItem. */
+export function readPreference(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+
+export function writePreference(key: string, value: string): void {
+  try { localStorage.setItem(key, value); } catch { /* Preferences still work in memory. */ }
+}

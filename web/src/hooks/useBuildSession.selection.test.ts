@@ -42,7 +42,12 @@ beforeEach(() => {
   vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null,
     setItem: (key: string, value: string) => storage.set(key, value) });
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+it('initializes notes when access to localStorage itself throws', () => {
+  vi.spyOn(globalThis, 'localStorage', 'get').mockImplementation(() => { throw new Error('Storage blocked'); });
+  expect(renderSession().notes).toBe('');
+});
 
 it('delayed highest-DPS metrics and their recalculation finish before the import summary freezes', async () => {
   const metrics = deferred<SkillMetricsResponse>(), recalculation = deferred<CalculateBuildResponse>();

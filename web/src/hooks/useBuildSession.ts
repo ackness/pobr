@@ -41,7 +41,7 @@ import type {
 } from '../api/types';
 import { highestDpsSkill } from '../lib/skillSelection';
 import { createId } from '../lib/createId';
-import { STORAGE } from '../lib/sessionStorage';
+import { readPreference, STORAGE } from '../lib/sessionStorage';
 
 export interface CharacterState {
   level: number;
@@ -729,7 +729,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const [calcError, setCalcError] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [notes, setNotesState] = useState<string>(
-    () => localStorage.getItem(STORAGE.notes) ?? '',
+    () => readPreference(STORAGE.notes) ?? '',
   );
 
   const notesRef = useRef(notes);

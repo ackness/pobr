@@ -27,6 +27,16 @@ describe('deriveFindings', () => {
     expect(kinds(calc({ FireResist: 78, FireResistOverCap: 12, ColdResist: 75, LightningResist: 75 }))).toEqual([]);
   });
 
+  it('reports the gap to a raised resistance cap', () => {
+    expect(deriveFindings(calc({ FireResist: 76, FireResistMax: 78 }), true)).toEqual([
+      { kind: 'resist', severity: 'warn', route: 'items', element: 'Fire', value: 76, missing: 2 },
+    ]);
+  });
+
+  it('does not report a gap at a reduced resistance cap', () => {
+    expect(kinds(calc({ FireResist: 70, FireResistMax: 70, FireResistOverCap: 0 }))).toEqual([]);
+  });
+
   it('reports negative chaos resistance but not zero', () => {
     expect(kinds(calc({ FireResist: 75, ColdResist: 75, LightningResist: 75, ChaosResist: 0 }))).toEqual([]);
     expect(kinds(calc({ FireResist: 75, ColdResist: 75, LightningResist: 75, ChaosResist: -30 }))).toEqual(['resist']);
