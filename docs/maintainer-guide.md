@@ -10,7 +10,7 @@
 [CLAUDE.md](../CLAUDE.md) 整篇导入本文，因此这里只保留跨主题、长期有效的规则。
 
 具体机制、输出字段和与 PoB2 的差异见下方专题文档，按需阅读。
-[AGENTS.md](../AGENTS.md) 为其他代理工具提供英文摘要，只列硬性规则并链接本文；两者不一致时以本文为准。
+[AGENTS.md](../AGENTS.md) 为其他代理工具提供英文摘要，列出硬性规则与常见环境报错并链接本文；两者不一致时以本文为准。
 
 ## 文档地图
 
@@ -35,6 +35,7 @@
 
 - 本地与 agent 统一经 mise 安装和执行环境；首次 `mise bootstrap --only packages,tools,task`，日常用 `mise run` / `mise exec --`。CI 可用最新稳定的原生安装 Action，读取同一份工具版本。开发命令是根 `mise.toml` 里的 mise task（`mise tasks` 查看），由 `devs/scripts/driver.sh` 实现。游戏 CLI（`apps/pobr-cli`，二进制 `pobr`）和 WASM 包只含游戏计算能力；新的开发命令加成 mise task，不加进 CLI 或 WASM 接口。
 - 每个 worktree 用**自己的 `./target`**。同一 worktree 的会话共用它，Cargo 命令一次一条、前台执行；不同 worktree **禁止**共享可写的 `CARGO_TARGET_DIR`（症状是长时间无输出；stderr 的 `Blocking waiting for file lock` 不要用 `| tail` 吞掉）。看到构建锁先检查已有进程，不叠加 Cargo 命令。
+- 新 worktree 与沙箱里反复出现的环境报错（缺数据或 Web fixtures、mise 信任目录只读、mise 固定的 Node 遮住全局 CLI、`check:pr` 先停在 Rust fmt）及处理见 [AGENTS.md 的 Common pitfalls](../AGENTS.md#common-pitfalls)，新的同类问题也记在那里。
 - 新 worktree 需要本地编译时，用 `mise run warm <已编译的 checkout>` 复制缓存：优先写时复制，否则做保留时间戳的整份复制（细则见[本地复用](development-workflow.md#本地复用)）。分析工具设 `POBR_BIN` / `POBR_CACHE_DIR` 复用那份 CLI、台账与 PoB2 结果（见[改动配方](recipes.md#working-in-a-new-worktree)）。
 - 新增构建缓存、大批构建或排查磁盘不足时，用 `mise run cache` 与 `mise exec -- df -h .` 确认占用和剩余空间。其他 worktree、全局工具与包存储需另计；按[存储决策](development-workflow.md#storage-decisions)复用和清理，不把清缓存当作环境准备或验证步骤。
 - 根 `Cargo.toml` 的 dev/test profile（第三方依赖 `opt-level = 3`、`debug = "line-tables-only"`、`incremental = false`）是有意的设置。不要为“统一”或“加速”改它，也不要自动 `cargo clean`、改 features / `RUSTFLAGS`：这些都会让缓存失效。原因与临时调试变量见[缓存与磁盘占用](development-workflow.md#缓存与磁盘占用)。
@@ -255,8 +256,9 @@ PoBR 主要计算静态构筑及选定条件下的结果，不追求还原游戏
 实现任何机制前按顺序查证：
 
 1. 游戏数据：`data/<版本>/base/` 的 stat、技能数据与常量，词条文本，官方 patch notes（`mise run lookup` 直接查）；
-2. `agent-docs/`（PoE2 0.5.0 机制中文资料）与 PoE2 Wiki / PoE2DB；
-3. vendored PoB2 Lua，用于交叉核对；结论不同时按第 1 项判断。
+2. PoE2 Wiki / PoE2DB；
+3. `agent-docs/`（PoE2 0.5.0 机制中文资料，版本可能落后于当前游戏版本）；
+4. vendored PoB2 Lua，用于交叉核对；结论不同时按第 1 项判断。
 
 `agent-docs/` 是开发输入资料，不是权威；与一手数据冲突时以可验证来源为准，并直接修正文档（保留来源说明）。PoB 公式多基于 PoE1，与 PoE2 有差异（例如护甲系数 `*5` vs `*10`），文档中已标注。
 
