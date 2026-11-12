@@ -235,7 +235,7 @@ pub fn skill_keyword_flags(types: pobr_data::skill::SkillTypes) -> KeywordFlags 
     ];
     BY_TYPE
         .iter()
-        .filter(|(ty, _)| types.intersects(*ty))
+        .filter(|(ty, _)| types.intersects(ty))
         .fold(KeywordFlags::NONE, |flags, (_, keyword)| flags | *keyword)
 }
 

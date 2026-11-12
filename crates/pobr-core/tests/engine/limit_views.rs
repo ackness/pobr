@@ -588,7 +588,7 @@ fn strike_targets_count_the_enemy_hit_plus_the_additional_targets_without_changi
     );
     // A Strike hits one enemy; "Non-Vaal Strike Skills target 1 additional
     // nearby Enemy" (game stat `melee_attack_number_of_spirit_strikes`) adds one.
-    let base = strike_session(strike, Vec::new());
+    let base = strike_session(strike.clone(), Vec::new());
     close(value(&base, "StrikeTargets"), 1.0, "strike");
     let parsed =
         super::support::parse_mod("Non-Vaal Strike Skills target 1 additional nearby Enemy")
@@ -634,7 +634,7 @@ fn ancestrally_boosted_strikes_target_two_additional_enemies_per_boost_effect() 
     let strike = SkillTypes::from_pob2_name("MeleeSingleTarget").unwrap();
     // Source presence does not select a boosted use without an explicit state.
     let available = strike_session(
-        strike,
+        strike.clone(),
         vec![
             Modifier::flag("Condition:AncestrallyBoosted"),
             targets.clone(),
@@ -646,7 +646,7 @@ fn ancestrally_boosted_strikes_target_two_additional_enemies_per_boost_effect() 
         "no automatic boost",
     );
     let boosted = strike_session_with_boost(
-        strike,
+        strike.clone(),
         vec![
             Modifier::flag("Condition:AncestrallyBoosted"),
             targets.clone(),
@@ -655,7 +655,7 @@ fn ancestrally_boosted_strikes_target_two_additional_enemies_per_boost_effect() 
     );
     close(value(&boosted, "StrikeTargets"), 3.0, "one boost effect");
     let doubled = strike_session_with_boost(
-        strike,
+        strike.clone(),
         vec![
             Modifier::flag("Condition:AncestrallyBoosted"),
             Modifier::number("Multiplier:AncestralBoostEffect", ModType::Base, 1.0),

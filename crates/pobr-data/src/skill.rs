@@ -1,157 +1,164 @@
 use std::ops::{BitOr, BitOrAssign};
 
-/// Installs a data package's `ActiveSkillType` table (`base/active_skill_types.json`)
-/// as the process-wide name table of [`SkillTypes::from_pob2_name`]; see
-/// [`crate::catalog::skill_types`].
+/// Missing engine type names in the installed package, in name order.
+pub use crate::skill_type_names::diagnostics as skill_type_diagnostics;
+/// Installs a package's name-to-runtime-bit mapping once per process.
 pub use crate::skill_type_names::install as install_skill_type_names;
 
-/// Bitmask word count (320 bits, covering PoB2's whole SkillType enum
-/// range — the current max id is 290, see `Global.lua`'s SkillType table;
-/// high ids like Companion=198 and Grenade=159 are all within range).
-const SKILL_TYPE_WORDS: usize = 5;
+// Retain the current package's five-word serialization and allocation-free masks.
+pub(crate) const LEGACY_WORDS: usize = 5;
 
-/// PoE2 skill-type bitmask (matches PoB2 `src/Data/Global.lua::SkillType`).
+/// Skill types in engine bit order. Named constants have stable engine bits;
+/// package row indices are translated by name when the table is installed.
+/// Additional words grow with the installed table, without a fixed capacity.
 ///
-/// Each constant corresponds to the bit for that PoB2 enum value
-/// (`bit(enum_value - 1)`). Less common types not listed here can be
-/// constructed with [`SkillTypes::from_pob2_index`].
-///
-/// Internally a `[u64; SKILL_TYPE_WORDS]` (320 bits) — the historical u64
-/// version couldn't hold types with id > 64 (Meta=122, Grenade=159,
-/// Companion=198, etc.; the old implementation silently mapped those to
-/// NONE). [`Debug`] output keeps the old newtype format
-/// (`SkillTypes(2)`) when the high words are all zero, so the
-/// precompiled-mods cache (`parsed_mods.json`, which stores tags as their
-/// Debug string) stays byte-identical for existing entries.
-#[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct SkillTypes([u64; SKILL_TYPE_WORDS]);
+/// Debug retains `SkillTypes(2)` for low-word masks and the historical five-word
+/// array for higher bits, preserving existing precompiled modifier cache bytes.
+#[derive(Clone, Default, PartialEq, Eq)]
+pub struct SkillTypes {
+    words: [u64; LEGACY_WORDS],
+    extra: Vec<u64>,
+}
 
 impl SkillTypes {
-    pub const NONE: Self = Self([0; SKILL_TYPE_WORDS]);
-    /// The highest type index (1-based) the bitmask holds.
-    pub const CAPACITY: u32 = (SKILL_TYPE_WORDS as u32) * 64;
-    /// PoB2 SkillType.Attack = 1
+    pub const NONE: Self = Self {
+        words: [0; LEGACY_WORDS],
+        extra: Vec::new(),
+    };
+    /// The type named `Attack`.
     pub const ATTACK: Self = Self::bit(0);
-    /// PoB2 SkillType.Spell = 2
+    /// The type named `Spell`.
     pub const SPELL: Self = Self::bit(1);
-    /// PoB2 SkillType.Projectile = 3
+    /// The type named `Projectile`.
     pub const PROJECTILE: Self = Self::bit(2);
-    /// PoB2 SkillType.Buff = 5
+    /// The type named `Buff`.
     pub const BUFF: Self = Self::bit(4);
-    /// PoB2 SkillType.Minion = 6
+    /// The type named `Minion`.
     pub const MINION: Self = Self::bit(5);
-    /// PoB2 SkillType.Area = 8
+    /// The type named `Area`.
     pub const AREA: Self = Self::bit(7);
-    /// PoB2 SkillType.Duration = 9
+    /// The type named `Duration`.
     pub const DURATION: Self = Self::bit(8);
-    /// PoB2 SkillType.HasReservation = 12
+    /// The type named `HasReservation`.
     pub const HAS_RESERVATION: Self = Self::bit(11);
-    /// PoB2 SkillType.ReservationBecomesCost = 13
+    /// The type named `ReservationBecomesCost`.
     pub const RESERVATION_BECOMES_COST: Self = Self::bit(12);
-    /// PoB2 SkillType.Chains = 19
+    /// The type named `Chains`.
     pub const CHAINS: Self = Self::bit(18);
-    /// PoB2 SkillType.Melee = 20
+    /// The type named `Melee`.
     pub const MELEE: Self = Self::bit(19);
-    /// PoB2 SkillType.Multicastable = 22 (can be repeated by Spell Echo)
+    /// The type named `Multicastable` (can be repeated by Spell Echo)
     pub const MULTICASTABLE: Self = Self::bit(21);
-    /// PoB2 SkillType.Triggerable = 31
+    /// The type named `Triggerable`.
     pub const TRIGGERABLE: Self = Self::bit(30);
-    /// PoB2 SkillType.Triggers = 32
+    /// The type named `Triggers`.
     pub const TRIGGERS: Self = Self::bit(31);
-    /// PoB2 SkillType.Trapped = 33 (a trap-throw skill)
+    /// The type named `Trapped` (a trap-throw skill)
     pub const TRAPPED: Self = Self::bit(32);
-    /// PoB2 SkillType.RemoteMined = 36 (a mine skill)
+    /// The type named `RemoteMined` (a mine skill)
     pub const REMOTE_MINED: Self = Self::bit(35);
-    /// PoB2 SkillType.Triggered = 37
+    /// The type named `Triggered`.
     pub const TRIGGERED: Self = Self::bit(36);
-    /// PoB2 SkillType.Aura = 39
+    /// The type named `Aura`.
     pub const AURA: Self = Self::bit(38);
-    /// PoB2 SkillType.Channel = 48
+    /// The type named `Channel`.
     pub const CHANNEL: Self = Self::bit(47);
-    /// PoB2 SkillType.Warcry = 63
+    /// The type named `Warcry`.
     pub const WARCRY: Self = Self::bit(62);
-    /// PoB2 SkillType.Herald = 52
+    /// The type named `Herald`.
     pub const HERALD: Self = Self::bit(51);
-    /// PoB2 SkillType.SummonsTotem = 25 (the scope for Ancestral Bond's
+    /// The type named `SummonsTotem` (the scope for Ancestral Bond's
     /// "Totems reserve N Spirit each" ExtraSpirit tag, plus a reserved slot
     /// for the future reservation loop)
     pub const SUMMONS_TOTEM: Self = Self::bit(24);
-    /// PoB2 SkillType.Banner = 89 (the scope for banner-domain mods like
+    /// The type named `Banner` (the scope for banner-domain mods like
     /// "Banner Skills have N% increased Aura Magnitudes")
     pub const BANNER: Self = Self::bit(88);
-    /// PoB2 SkillType.Meta = 122 (meta gems like Blasphemy / Spellslinger /
+    /// The type named `Meta` (meta gems like Blasphemy / Spellslinger /
     /// Archmage / Cast-on-X; the scope for "Meta Skills have N% increased
     /// Reservation Efficiency")
     pub const META: Self = Self::bit(121);
-    /// PoB2 SkillType.Persistent = 140 (sustained-reservation effects like
+    /// The type named `Persistent` (sustained-reservation effects like
     /// banner/herald/aura; "Persistent Buffs have N% less Reservation"
     /// (Tactician's "A Solid Plan") scopes itself with a Persistent+Buff
     /// AND of both tags)
     pub const PERSISTENT: Self = Self::bit(139);
-    /// PoB2 SkillType.Barrageable = 70 (the gate for Barrage buff's repeats
-    /// DPS multiplier, vendor CalcOffence.lua:962-976)
+    /// The type named `Barrageable` (the gate for Barrage buff's repeats
+    /// DPS multiplier)
     pub const BARRAGEABLE: Self = Self::bit(69);
 
     // Types the engine's own rules name (calc/rule code tests them by name).
-    // Like the constants above, an installed `ActiveSkillType` table must
-    // agree with each index (`skill_type_names::validate`).
-    /// PoB2 SkillType.Chaos = 42
+    /// The type named `Chaos`.
     pub const CHAOS: Self = Self::bit(41);
-    /// PoB2 SkillType.MeleeSingleTarget = 21
+    /// The type named `MeleeSingleTarget`.
     pub const MELEE_SINGLE_TARGET: Self = Self::bit(20);
-    /// PoB2 SkillType.ProjectileNumber = 62
+    /// The type named `ProjectileNumber`.
     pub const PROJECTILE_NUMBER: Self = Self::bit(61);
-    /// PoB2 SkillType.AppliesCurse = 69
+    /// The type named `AppliesCurse`.
     pub const APPLIES_CURSE: Self = Self::bit(68);
-    /// PoB2 SkillType.Slam = 93
+    /// The type named `Slam`.
     pub const SLAM: Self = Self::bit(92);
-    /// PoB2 SkillType.UsedByTotem = 96
+    /// The type named `UsedByTotem`.
     pub const USED_BY_TOTEM: Self = Self::bit(95);
-    /// PoB2 SkillType.TotemsAreBallistae = 114
+    /// The type named `TotemsAreBallistae`.
     pub const TOTEMS_ARE_BALLISTAE: Self = Self::bit(113);
-    /// PoB2 SkillType.UsableWhileMoving = 141
+    /// The type named `UsableWhileMoving`.
     pub const USABLE_WHILE_MOVING: Self = Self::bit(140);
-    /// PoB2 SkillType.GeneratesRemnants = 182
+    /// The type named `GeneratesRemnants`.
     pub const GENERATES_REMNANTS: Self = Self::bit(181);
-    /// PoB2 SkillType.CreatesCompanion = 219
+    /// The type named `CreatesCompanion`.
     pub const CREATES_COMPANION: Self = Self::bit(218);
-    /// PoB2 SkillType.UsedByProxy = 258
+    /// The type named `UsedByProxy`.
     pub const USED_BY_PROXY: Self = Self::bit(257);
-    /// PoB2 SkillType.ActiveBlock = 262
+    /// The type named `ActiveBlock`.
     pub const ACTIVE_BLOCK: Self = Self::bit(261);
-    /// PoB2 SkillType.Movement = 34
+    /// The type named `Movement`.
     pub const MOVEMENT: Self = Self::bit(33);
-    /// PoB2 SkillType.Vaal = 38
+    /// The type named `Vaal`.
     pub const VAAL: Self = Self::bit(37);
-    /// PoB2 SkillType.Physical = 27
+    /// The type named `Physical`.
     pub const PHYSICAL: Self = Self::bit(26);
-    /// PoB2 SkillType.Fire = 28
+    /// The type named `Fire`.
     pub const FIRE: Self = Self::bit(27);
-    /// PoB2 SkillType.Cold = 29
+    /// The type named `Cold`.
     pub const COLD: Self = Self::bit(28);
-    /// PoB2 SkillType.Lightning = 30
+    /// The type named `Lightning`.
     pub const LIGHTNING: Self = Self::bit(29);
-    /// PoB2 SkillType.Retaliation = 156
+    /// The type named `Retaliation`.
     pub const RETALIATION: Self = Self::bit(155);
-    /// PoB2 SkillType.SpecialAncestralBoost = 260
+    /// The type named `SpecialAncestralBoost`.
     pub const SPECIAL_ANCESTRAL_BOOST: Self = Self::bit(259);
-    /// PoB2 SkillType.NonWeaponAttack = 166
+    /// The type named `NonWeaponAttack`.
     pub const NON_WEAPON_ATTACK: Self = Self::bit(165);
-    /// PoB2 SkillType.Companion = 198
+    /// The type named `Companion`.
     pub const COMPANION: Self = Self::bit(197);
 
-    /// A mask with bit `index` (0-based) set (const-constructible).
+    /// Constructs a stable engine bit, independent of package row order.
     const fn bit(index: u32) -> Self {
-        let mut words = [0u64; SKILL_TYPE_WORDS];
+        let mut words = [0; LEGACY_WORDS];
         words[(index / 64) as usize] = 1u64 << (index % 64);
-        Self(words)
+        Self {
+            words,
+            extra: Vec::new(),
+        }
     }
 
-    /// The PoB2 enum value (1-based) of a single type; `None` unless exactly
-    /// one bit is set.
-    pub(crate) fn index(self) -> Option<u32> {
+    pub(crate) fn runtime_bit(index: u32) -> Self {
+        if index < (LEGACY_WORDS * 64) as u32 {
+            return Self::bit(index);
+        }
+        let mut result = Self::NONE;
+        result
+            .extra
+            .resize(index as usize / 64 + 1 - LEGACY_WORDS, 0);
+        result.extra[index as usize / 64 - LEGACY_WORDS] = 1 << (index % 64);
+        result
+    }
+
+    /// The single engine bit's 1-based index (not a package row index).
+    pub(crate) fn index(&self) -> Option<u32> {
         let mut found = None;
-        for (word, bits) in self.0.iter().enumerate() {
+        for (word, bits) in self.words.iter().chain(&self.extra).enumerate() {
             if *bits == 0 {
                 continue;
             }
@@ -163,112 +170,110 @@ impl SkillTypes {
         found
     }
 
-    /// Builds a `SkillTypes` from a PoB2 enum value (1-based), for types
-    /// that don't have a named constant yet. Out-of-range values (>320)
-    /// map to NONE (conservative).
+    /// Resolves a 1-based index in the installed package's ActiveSkillType table.
+    /// Zero and indices outside that table match nothing. Without a table, only
+    /// the historical indices of named engine constants are available.
     pub fn from_pob2_index(index: u32) -> Self {
-        if index == 0 || index > Self::CAPACITY {
-            Self::NONE
-        } else {
-            Self::bit(index - 1)
-        }
+        crate::skill_type_names::from_index(index)
     }
 
-    /// Builds from a type name: a row `Id` of the game's `ActiveSkillType`
-    /// table, which is also PoB2's `SkillType` enum (see
-    /// [`install_skill_type_names`]) — the **single entry
-    /// point** for the SkillType name→bit mapping, shared by both the
-    /// parser's tag side and the orchestration cfg side (data-driven per
-    /// A1: replaces the hand-written whitelist copies that used to live in
-    /// template.rs / special_mod.rs / conditions.rs). An unknown name
-    /// (outside vendor's enum) → `None`; the caller decides how to handle
-    /// the drop.
+    /// Resolves a type by name. Missing named engine types retain a reserved bit
+    /// so a rule naming one cannot become an unrestricted empty type filter.
+    /// No installed row is assigned that bit; the load diagnostic reports it.
+    /// Other unknown names return None. Before installation, named constants
+    /// are available, and other names require loading a data package first.
     pub fn from_pob2_name(name: &str) -> Option<Self> {
-        crate::skill_type_names::lookup(name).map(Self::from_pob2_index)
+        crate::skill_type_names::lookup(name)
     }
 
-    /// The names of the types set here, the inverse of
-    /// [`from_pob2_name`](Self::from_pob2_name), sorted by name. For
-    /// messages; a bit outside the name table is left out.
-    pub fn names(self) -> Vec<&'static str> {
-        crate::skill_type_names::table()
+    /// Installed names in this set, sorted by name.
+    pub fn names(&self) -> Vec<&'static str> {
+        crate::skill_type_names::table().names(self)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.words.iter().chain(&self.extra).all(|word| *word == 0)
+    }
+
+    /// Tests shared installed types; a missing named constant never matches.
+    pub fn intersects(&self, other: impl std::borrow::Borrow<Self>) -> bool {
+        let other = other.borrow();
+        let missing = crate::skill_type_names::missing_words();
+        self.words
             .iter()
-            .filter(|(_, id)| self.intersects(Self::from_pob2_index(*id)))
-            .map(|(name, _)| *name)
-            .collect()
+            .zip(other.words)
+            .enumerate()
+            .any(|(i, (a, b))| a & b & !missing[i] != 0)
+            || self.extra.iter().zip(&other.extra).any(|(a, b)| a & b != 0)
     }
 
-    pub fn is_empty(self) -> bool {
-        self.0 == [0; SKILL_TYPE_WORDS]
+    /// Tests that every requested type is installed and present in this set.
+    pub fn contains(&self, other: impl std::borrow::Borrow<Self>) -> bool {
+        let other = other.borrow();
+        let missing = crate::skill_type_names::missing_words();
+        self.words
+            .iter()
+            .zip(other.words)
+            .enumerate()
+            .all(|(i, (a, b))| a & b & !missing[i] == b)
+            && other
+                .extra
+                .iter()
+                .enumerate()
+                .all(|(i, b)| self.extra.get(i).copied().unwrap_or(0) & b == *b)
     }
 
-    pub fn intersects(self, other: Self) -> bool {
-        let mut i = 0;
-        while i < SKILL_TYPE_WORDS {
-            if self.0[i] & other.0[i] != 0 {
-                return true;
-            }
-            i += 1;
-        }
-        false
+    /// Low engine word, for legacy serialization only.
+    pub fn bits(&self) -> u64 {
+        self.words[0]
     }
 
-    pub fn contains(self, other: Self) -> bool {
-        let mut i = 0;
-        while i < SKILL_TYPE_WORDS {
-            if self.0[i] & other.0[i] != other.0[i] {
-                return false;
-            }
-            i += 1;
-        }
-        true
-    }
-
-    /// The low-64-bit window (types with id 1-64). For legacy-format
-    /// serialization / assertions only; high-id types (Meta, etc.) aren't
-    /// in this window — use [`Debug`] / [`SkillTypes::words`] for the full
-    /// bit field.
-    pub fn bits(self) -> u64 {
-        self.0[0]
-    }
-
-    /// The full bit-field word array (low word first).
-    pub fn words(self) -> [u64; SKILL_TYPE_WORDS] {
-        self.0
+    /// Full engine bit field, low word first; at least five words for compatibility.
+    pub fn words(&self) -> Vec<u64> {
+        self.words.iter().chain(&self.extra).copied().collect()
     }
 }
 
-/// Keeps the historical u64 newtype's Debug shape (`SkillTypes(2)`) when
-/// the high words are all zero — the precompiled-mods cache
-/// (`parsed_mods.json`) stores existing tags as their Debug string, and a
-/// format drift would spuriously invalidate the whole cache. Outputs the
-/// full word-array shape (`SkillTypes([lo, mid, hi])`) when a high word is
-/// non-zero.
 impl std::fmt::Debug for SkillTypes {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.0[1..] == [0; SKILL_TYPE_WORDS - 1] {
-            write!(f, "SkillTypes({})", self.0[0])
+        if self.words[1..]
+            .iter()
+            .chain(&self.extra)
+            .all(|word| *word == 0)
+        {
+            write!(f, "SkillTypes({})", self.words[0])
         } else {
-            write!(f, "SkillTypes({:?})", self.0)
+            write!(f, "SkillTypes({:?})", self.words())
+        }
+    }
+}
+
+impl std::hash::Hash for SkillTypes {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // Existing modifier keys hashed just the five-word array.
+        std::hash::Hash::hash(&self.words, state);
+        if !self.extra.is_empty() {
+            std::hash::Hash::hash(&self.extra, state);
         }
     }
 }
 
 impl BitOr for SkillTypes {
     type Output = Self;
-    fn bitor(self, rhs: Self) -> Self {
-        let mut words = self.0;
-        for (w, r) in words.iter_mut().zip(rhs.0) {
-            *w |= r;
-        }
-        Self(words)
+    fn bitor(mut self, rhs: Self) -> Self {
+        self |= rhs;
+        self
     }
 }
 
 impl BitOrAssign for SkillTypes {
     fn bitor_assign(&mut self, rhs: Self) {
-        for (w, r) in self.0.iter_mut().zip(rhs.0) {
-            *w |= r;
+        for (a, b) in self.words.iter_mut().zip(rhs.words) {
+            *a |= b;
+        }
+        self.extra.resize(self.extra.len().max(rhs.extra.len()), 0);
+        for (a, b) in self.extra.iter_mut().zip(rhs.extra) {
+            *a |= b;
         }
     }
 }

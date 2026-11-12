@@ -1,7 +1,6 @@
 //! `base/active_skill_types.json`: the game's ActiveSkillType rows, the
 //! skill type names parser rules, skill data and build codes use.
 
-use pobr_data::catalog::skill_types::ActiveSkillTypeDef;
 use pobr_data::skill::SkillTypes;
 use pobr_gamedata::{GameData, current_data_dir};
 
@@ -22,7 +21,10 @@ fn the_active_pack_table_installs_and_names_every_type() {
             row.id
         );
     }
-    assert_eq!(rows[0].id, "Attack");
+    assert_eq!(
+        SkillTypes::from_pob2_name("Attack"),
+        Some(SkillTypes::ATTACK)
+    );
 }
 
 #[test]
@@ -53,15 +55,58 @@ fn a_pack_without_the_table_is_refused_at_load() {
 }
 
 #[test]
-fn a_reordered_table_is_refused() {
-    let rows: Vec<ActiveSkillTypeDef> = ["Spell", "Attack"]
-        .iter()
-        .enumerate()
-        .map(|(i, id)| ActiveSkillTypeDef {
-            id: (*id).into(),
-            index: i as u32 + 1,
-        })
-        .collect();
-    let message = pobr_data::skill::install_skill_type_names(&rows).unwrap_err();
-    assert!(message.contains("\"Attack\""), "{message}");
+fn malformed_names_are_refused() {
+    use pobr_data::catalog::skill_types::ActiveSkillTypeDef;
+    for names in [["Attack", "Attack"], ["Attack", ""]] {
+        let rows: Vec<_> = names
+            .iter()
+            .enumerate()
+            .map(|(i, id)| ActiveSkillTypeDef {
+                id: (*id).into(),
+                index: i as u32 + 1,
+            })
+            .collect();
+        assert!(pobr_data::skill::install_skill_type_names(&rows).is_err());
+    }
+}
+
+// One installed package per process, including callers using GameData directly.
+#[test]
+fn missing_companion_is_a_ruleset_load_diagnostic() {
+    const CASE: &str = "POBR_GAMEDATA_MISSING_COMPANION";
+    if std::env::var_os(CASE).is_none() {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "load_active_skill_types::missing_companion_is_a_ruleset_load_diagnostic",
+            ])
+            .env(CASE, "1")
+            .status()
+            .unwrap();
+        assert!(status.success());
+        return;
+    }
+    let mut rows = GameData::new(current_data_dir())
+        .active_skill_types()
+        .unwrap();
+    rows.retain(|row| row.id != "Companion");
+    for (i, row) in rows.iter_mut().enumerate() {
+        row.index = i as u32 + 1;
+    }
+    let data = GameData::from_memory(std::collections::BTreeMap::from([(
+        "base/active_skill_types.json".into(),
+        serde_json::to_vec(&rows).unwrap(),
+    )]));
+    let ruleset = data
+        .load_ruleset()
+        .expect("missing named type must not reject the package");
+    assert_eq!(ruleset.degraded, data.skill_type_diagnostics().unwrap());
+    assert_eq!(
+        ruleset.degraded,
+        ["active_skill_types: missing engine type \"Companion\"; it matches no installed type"]
+    );
+    assert!(!SkillTypes::COMPANION.intersects(SkillTypes::COMPANION));
+    for row in rows {
+        assert!(!SkillTypes::from_pob2_index(row.index).intersects(SkillTypes::COMPANION));
+    }
 }

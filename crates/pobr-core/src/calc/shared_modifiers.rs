@@ -25,14 +25,14 @@ pub fn apply_companion_damage_to_player(env: &mut Env) {
     // A Companion modifier is scoped to Companion skills. Its other
     // conditions are the player's, so evaluate them as a Companion skill would.
     let mut companion_cfg = env.cfg.clone();
-    companion_cfg.skill_types |= companion;
+    companion_cfg.skill_types |= companion.clone();
 
     let mut copies: Vec<Modifier> = Vec::new();
     for outer in db.named("MinionModifier") {
         let for_companions = outer
             .tags
             .iter()
-            .any(|tag| matches!(tag, ModTag::SkillTypes(types) if types.intersects(companion)));
+            .any(|tag| matches!(tag, ModTag::SkillTypes(types) if types.intersects(&companion)));
         if !for_companions || outer.mod_type != ModType::List || !outer.matches(&companion_cfg) {
             continue;
         }

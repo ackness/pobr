@@ -654,7 +654,7 @@ mod tests {
             (SkillTypes::AURA | SkillTypes::REMOTE_MINED, 100.0),
             (SkillTypes::NONE, 100.0),
         ] {
-            let cfg = base.clone().with_skill_types(types);
+            let cfg = base.clone().with_skill_types(types.clone());
             let out = calc_skill_dot(&db, &enemy, &cfg, &SkillDotInputs::default());
             assert_eq!(out.skill_dot_instance, expected, "{types:?}");
         }

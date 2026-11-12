@@ -149,7 +149,7 @@ fn blackflame_covenant_converts_only_fire_spells_and_preserves_ignite_magnitude(
         "Ignite inflicted with Fire Spells deals Chaos Damage instead of Fire Damage",
     ];
     for (types, enabled) in [
-        (SkillTypes::SPELL | fire_type, true),
+        (SkillTypes::SPELL | fire_type.clone(), true),
         (SkillTypes::SPELL, false),
         (SkillTypes::ATTACK | fire_type, false),
     ] {

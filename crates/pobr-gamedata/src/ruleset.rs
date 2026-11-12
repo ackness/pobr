@@ -8,9 +8,8 @@
 //!
 //! Fields are `Option`: `None` means that domain hasn't been data-driven
 //! yet, or the data directory is missing that file — the consumer
-//! (pobr-build's `BuildData::load`) falls back to `Default` for `None`
-//! (the fallback is value-equal to the JSON, a migration invariant). Each
-//! phase-2 domain agent appends its own loading here, domain by domain.
+//! (pobr-build's `BuildData::load`) uses compatibility defaults for `None`. Values
+//! may differ from those defaults as the game changes.
 
 use std::collections::HashMap;
 
@@ -77,10 +76,11 @@ impl ConfigCatalog {
 ///
 /// A `None` field means the corresponding domain hasn't been data-driven
 /// yet (or the data directory is missing that file) — during the
-/// transition, consumers fall back to `Default` (value-equal to the
-/// hardcoded path).
+/// transition, consumers fall back to compatibility defaults.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct RuleSet {
+    /// Nonfatal data limitations for the caller to surface.
+    pub degraded: Vec<String>,
     /// Modifier-text parsing rules (forms/name_map/flag_phrases/tag_phrases…).
     pub parser_rules: Option<ParserRules>,
     /// Game constants consumed by mechanic formulas.
@@ -129,7 +129,7 @@ impl GameData {
     pub fn load_ruleset(&self) -> Result<RuleSet, LoadError> {
         self.snapshot_manifest()?;
         // The rules name skill types; install the pack's names before anyone compiles them.
-        self.install_skill_type_names()?;
+        let degraded = self.skill_type_diagnostics()?;
         let game_constants = match self.game_constants() {
             Ok(v) => Some(v),
             Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
@@ -219,6 +219,7 @@ impl GameData {
                 Some(entries)
             };
         Ok(RuleSet {
+            degraded,
             parser_rules: None,
             game_constants,
             character_constants,
@@ -349,54 +350,25 @@ mod tests {
         );
     }
 
-    /// The repo data directory: the game_constants domain is wired up
-    /// (Some), and value-equal to the Default fallback (a migration
-    /// invariant: both the injected and fallback paths produce the same output).
+    /// Aggregation must preserve the values returned by each domain loader.
+    /// Balance values belong to the package, independently of fallback defaults.
     #[test]
-    fn repo_data_ruleset_loads_game_constants_equal_to_default() {
+    fn ruleset_preserves_loaded_constant_domains() {
         let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
-        let loaded = ruleset
-            .game_constants
-            .expect("game_constants domain should be wired up");
+        assert!(ruleset.degraded.is_empty(), "{:?}", ruleset.degraded);
+        assert_eq!(ruleset.game_constants, Some(data.game_constants().unwrap()));
         assert_eq!(
-            loaded,
-            pobr_data::catalog::game_constants::GameConstantsDef::default(),
-            "JSON must equal the Default fallback value-for-value (migration invariant)",
+            ruleset.character_constants,
+            Some(data.character_constants().unwrap())
         );
-    }
-
-    /// The repo data directory: the character_constants domain is wired up
-    /// (Some), and value-equal to the Default fallback (a migration
-    /// invariant: both the injected and fallback paths produce the same output).
-    #[test]
-    fn repo_data_ruleset_loads_character_constants_equal_to_default() {
-        let data = GameData::new(crate::current_data_dir());
-        let ruleset = data.load_ruleset().unwrap();
-        let loaded = ruleset
-            .character_constants
-            .expect("character_constants domain should be wired up");
+        assert_eq!(ruleset.jewel_radii, Some(data.jewel_radii().unwrap()));
+        assert_eq!(ruleset.enemy_presets, Some(data.enemy_presets().unwrap()));
         assert_eq!(
-            loaded,
-            pobr_data::catalog::character_constants::CharacterConstantsDef::default(),
-            "JSON must equal the Default fallback value-for-value (migration invariant)",
-        );
-    }
-
-    /// The repo data directory: the jewel_radii domain is wired up (Some),
-    /// and value-equal to the Default fallback (a migration invariant:
-    /// both the injected and fallback paths produce the same output).
-    #[test]
-    fn repo_data_ruleset_loads_jewel_radii_equal_to_default() {
-        let data = GameData::new(crate::current_data_dir());
-        let ruleset = data.load_ruleset().unwrap();
-        let loaded = ruleset
-            .jewel_radii
-            .expect("jewel_radii domain should be wired up");
-        assert_eq!(
-            loaded,
-            pobr_data::catalog::jewel_radii::JewelRadiiDef::default(),
-            "JSON must equal the Default fallback value-for-value (migration invariant)",
+            ruleset.weapon_types,
+            Some(pobr_data::catalog::weapon_types::WeaponTypeTable(
+                data.weapon_types().unwrap()
+            ))
         );
     }
 
@@ -431,46 +403,15 @@ mod tests {
     }
 
     #[test]
-    fn repo_data_unarmed_keeps_source_precision_and_legacy_scion() {
+    fn ruleset_preserves_loaded_unarmed_rows() {
         let data = GameData::new(crate::current_data_dir());
         let loaded = data.load_ruleset().unwrap().unarmed_data.unwrap();
-        // Characters.WeaponSpeed=606ms; ordinary-unarmed.md specifies 1000/ms.
-        let druid = loaded.for_class("Druid").expect("target Druid");
-        assert_eq!(druid.attack_rate, 1000.0 / 606.0);
-        assert_eq!(
-            (druid.physical_min, druid.physical_max, druid.crit_chance),
-            (2.0, 6.0, 0.05)
+        assert_eq!(loaded.0, data.unarmed_data().unwrap());
+        assert!(
+            loaded.for_class("Scion").is_some(),
+            "legacy compatibility row"
         );
-        let marauder = loaded.for_class("Marauder").expect("target-only Marauder");
-        let scion = loaded
-            .for_class("Scion")
-            .expect("retained compatibility Scion");
-        assert_eq!(marauder.class_id, scion.class_id);
-        assert_eq!(
-            scion,
-            pobr_data::catalog::unarmed_data::UnarmedDataTable::default()
-                .for_class("Scion")
-                .unwrap()
-        );
-        assert_ne!(druid.attack_rate, scion.attack_rate);
-    }
-
-    /// The repo data directory: the weapon_types domain is wired up
-    /// (Some), and the **whole table** is value-equal to the Default
-    /// fallback (19 entries of vendor weaponTypeInfo including label; a
-    /// migration invariant).
-    #[test]
-    fn repo_data_ruleset_loads_weapon_types_equal_to_default() {
-        let data = GameData::new(crate::current_data_dir());
-        let ruleset = data.load_ruleset().unwrap();
-        let loaded = ruleset
-            .weapon_types
-            .expect("weapon_types domain should be wired up");
-        assert_eq!(
-            loaded,
-            pobr_data::catalog::weapon_types::WeaponTypeTable::default(),
-            "JSON must equal the Default fallback value-for-value (migration invariant)",
-        );
+        assert!(loaded.for_class("Druid").is_some(), "current source row");
     }
 
     /// The repo data directory: the config_catalog domain is wired up —
@@ -525,24 +466,6 @@ mod tests {
         assert!(
             unverified <= 54,
             "verified:false entry count {unverified} exceeds the handler budget of 54 (a DSL-splitting failure signal)"
-        );
-    }
-
-    /// The repo data directory: the enemy_presets domain is wired up
-    /// (Some), and the **whole table** is value-equal to the Default
-    /// fallback (including vendor-only mod groups/placeholder columns; a
-    /// migration invariant).
-    #[test]
-    fn repo_data_ruleset_loads_enemy_presets_equal_to_default() {
-        let data = GameData::new(crate::current_data_dir());
-        let ruleset = data.load_ruleset().unwrap();
-        let loaded = ruleset
-            .enemy_presets
-            .expect("enemy_presets domain should be wired up");
-        assert_eq!(
-            loaded,
-            pobr_data::catalog::enemy_presets::EnemyPresetsTable::default(),
-            "JSON must equal the Default fallback value-for-value (migration invariant)",
         );
     }
 }

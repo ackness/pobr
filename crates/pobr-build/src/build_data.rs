@@ -71,6 +71,8 @@ pub use pobr_core::skill_env::ResolvedCost;
 /// - `class_attributes`: `class name -> base attributes` (for deriving CharacterBase).
 #[derive(Debug, Clone)]
 pub struct BuildData {
+    /// Nonfatal package limitations, retained for callers to surface.
+    pub degraded: Vec<String>,
     /// Snapshot version for binding optional native packets; absent in text-only data.
     pub native_data_version: Option<String>,
     /// Passive node table, keyed by the numeric `skill` id.
@@ -535,7 +537,7 @@ impl BuildData {
         // Pin report provenance alongside the immutable data used by this build.
         data.identity()?;
         // Skill type names before anything that parses rules or skill data.
-        data.install_skill_type_names()?;
+        let degraded = data.skill_type_diagnostics()?;
         // A domain's file is released as soon as it is parsed (a data pack staged in memory to
         // release them; any other keeps its files): its bytes are not resident beside what
         // was parsed from them. Only files nothing reads after this load are released here.
@@ -830,6 +832,7 @@ impl BuildData {
         };
 
         Ok(Self {
+            degraded,
             native_data_version: data.identity()?.data_version.clone(),
             passive_nodes,
             versioned_passive_nodes,
@@ -871,6 +874,7 @@ impl BuildData {
     /// tests or the text-only path fallback.
     pub fn empty() -> Self {
         Self {
+            degraded: Vec::new(),
             native_data_version: None,
             passive_nodes: HashMap::new(),
             versioned_passive_nodes: HashMap::new(),
@@ -973,9 +977,61 @@ mod tests {
     fn loads_repo_data_domains() {
         let data = GameData::new(repo_version_dir());
         let bd = BuildData::load(&data).expect("load repo data");
+        assert!(bd.degraded.is_empty(), "{:?}", bd.degraded);
         assert!(!bd.passive_nodes.is_empty(), "passive nodes loaded");
         assert!(!bd.skill_gems.is_empty(), "skill gems loaded");
         assert!(!bd.class_attributes.is_empty(), "class attrs loaded");
+    }
+
+    #[test]
+    fn missing_companion_remains_a_build_load_diagnostic() {
+        const CASE: &str = "POBR_BUILD_MISSING_COMPANION";
+        if std::env::var_os(CASE).is_none() {
+            let status = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "build_data::tests::missing_companion_remains_a_build_load_diagnostic",
+                ])
+                .env(CASE, "1")
+                .status()
+                .unwrap();
+            assert!(status.success());
+            return;
+        }
+        let root = repo_version_dir();
+        let source = GameData::new(&root);
+        let mut manifest = source.manifest().unwrap();
+        let mut files: BTreeMap<String, Vec<u8>> = manifest
+            .files
+            .keys()
+            .filter(|name| !name.starts_with("i18n/"))
+            .map(|name| (name.clone(), std::fs::read(root.join(name)).unwrap()))
+            .collect();
+        let mut rows = source.active_skill_types().unwrap();
+        rows.retain(|row| row.id != "Companion");
+        for (i, row) in rows.iter_mut().enumerate() {
+            row.index = i as u32 + 1;
+        }
+        files.insert(
+            "base/active_skill_types.json".into(),
+            serde_json::to_vec(&rows).unwrap(),
+        );
+        // This synthetic package exercises loading, independently of snapshot seals.
+        manifest.schema_version = 2;
+        manifest.files.clear();
+        files.insert(
+            "manifest.json".into(),
+            serde_json::to_vec(&manifest).unwrap(),
+        );
+        let loaded = BuildData::load(&GameData::from_memory(files)).unwrap();
+        assert_eq!(
+            loaded.degraded,
+            ["active_skill_types: missing engine type \"Companion\"; it matches no installed type"]
+        );
+        assert!(
+            !pobr_data::skill::SkillTypes::COMPANION
+                .intersects(pobr_data::skill::SkillTypes::COMPANION)
+        );
     }
 
     #[test]

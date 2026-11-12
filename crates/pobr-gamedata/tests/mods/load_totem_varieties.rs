@@ -1,33 +1,38 @@
-//! Target totem rows include every matched GrantedEffect alias. Existing
-//! fallback rows retain their values; target-only aliases are not discarded.
+//! Totem rows retain their source identities and usable monster parameters.
 
-use pobr_data::catalog::totem_varieties::TotemVarietiesDef;
-use pobr_gamedata::{GameData, repo_data_root};
+use pobr_gamedata::{GameData, current_data_dir};
 
 #[test]
-fn target_rows_preserve_builtin_rows_and_include_source_aliases() {
-    let loaded = GameData::new(repo_data_root().join(pobr_gamedata::data_version()))
+fn target_rows_have_unique_effects_and_source_links() {
+    let loaded = GameData::new(current_data_dir())
         .totem_varieties()
         .expect("totem_varieties should load");
-    assert_eq!(loaded.totems.len(), 11);
+    assert!(!loaded.totems.is_empty());
     assert!(
         loaded
             .totems
             .windows(2)
             .all(|pair| pair[0].granted_effect < pair[1].granted_effect)
     );
-    for expected in TotemVarietiesDef::default().totems {
-        let actual = loaded
-            .totems
-            .iter()
-            .find(|row| row.granted_effect == expected.granted_effect)
-            .expect("every legacy effect remains source-bound");
-        assert_eq!(actual, &expected);
+    for row in &loaded.totems {
+        assert!(!row.granted_effect.is_empty());
+        assert!(!row.active_skill.is_empty());
+        assert!(row.monster_variety.starts_with("Metadata/Monsters/"));
+        assert!(row.life_multiplier > 0);
     }
-    let warrior = loaded
-        .totems
-        .iter()
-        .find(|t| t.granted_effect == "AncestralWarriorTotemPlayer")
-        .expect("Ancestral Warrior totem");
-    assert_eq!(warrior.life_multiplier, 120);
+    for effect in [
+        "ShockwaveTotemPlayer",
+        "SummonMetaTotemBallistaPlayer",
+        "AncestralWarriorTotemPlayer",
+        "SiegeBallistaPlayer",
+        "ArtilleryBallistaPlayer",
+        "DarkEffigyPlayer",
+        "SummonMetaTotemSpellTotemPlayer",
+        "MetaMortarCannonPlayer",
+    ] {
+        assert!(
+            loaded.totems.iter().any(|row| row.granted_effect == effect),
+            "missing {effect}"
+        );
+    }
 }

@@ -669,7 +669,8 @@ pub fn ingest_support_gem_with_ctx(
                     }
                     let modifier = modifier.with_origin(origin);
 
-                    let modifier = isolate_support_more(modifier, spec.supported_skill_types);
+                    let modifier =
+                        isolate_support_more(modifier, spec.supported_skill_types.clone());
 
                     ingest.modifiers.push(modifier);
                 }
@@ -688,9 +689,10 @@ pub fn ingest_support_gem_with_ctx(
             }
             let modifier = Modifier::number(ModName::from(name.as_str()), *mod_type, *value)
                 .with_origin(origin);
-            ingest
-                .modifiers
-                .push(isolate_support_more(modifier, spec.supported_skill_types));
+            ingest.modifiers.push(isolate_support_more(
+                modifier,
+                spec.supported_skill_types.clone(),
+            ));
         }
     }
 
@@ -704,9 +706,10 @@ pub fn ingest_support_gem_with_ctx(
             }
             let modifier = Modifier::number(ModName::from(name.as_str()), *mod_type, *value)
                 .with_origin(origin);
-            ingest
-                .modifiers
-                .push(isolate_support_more(modifier, spec.supported_skill_types));
+            ingest.modifiers.push(isolate_support_more(
+                modifier,
+                spec.supported_skill_types.clone(),
+            ));
         }
     }
 
