@@ -232,7 +232,8 @@ describe('saved-session validation', () => {
       .toEqual([{ slot: 'Flask 1', text: 'legacy', active: true }]);
     for (const active of ['false', 0, null, {}]) expect(parseState({ flasks: [{ ...flasks[0], active }] })).toBeNull();
     expect(parseState({ flasks: [flasks[0], flasks[0]] })).toBeNull();
-    expect(parseState({ flasks: [{ ...flasks[0], slot: 'Flask 3' }] })).toBeNull();
+    expect(parseState({ flasks: [{ ...flasks[0], slot: 'Flask 3' }] })?.state.flasks)
+      .toEqual([{ ...flasks[0], slot: 'Flask 3' }]);
   });
 
   test('equipment jewels survive old saves, tree edits and explicit removal', () => {
@@ -247,7 +248,8 @@ describe('saved-session validation', () => {
     expect(persisted.equipmentJewels).toEqual([jewel]);
     const cleared = parseState({ sourceBackfillComplete: true, equipmentJewels: [] })!.state;
     expect(toRequest(backfillFromDecoded(cleared, decoded)).equipment_jewels).toEqual([]);
-    expect(parseState({ equipmentJewels: [{ ...jewel, slot: 'Jewel 123' }] })).toBeNull();
+    expect(parseState({ equipmentJewels: [{ ...jewel, slot: 'Jewel 123' }] })?.state.equipmentJewels)
+      .toEqual([{ ...jewel, slot: 'Jewel 123' }]);
   });
 
   test.each([
@@ -261,11 +263,10 @@ describe('saved-session validation', () => {
     { socketGroups: [{ enabled: true, gems: [{ skill_id: 'IceNovaPlayer', level: 20, quality: -1 }] }] },
     { socketGroups: [{ enabled: true, gems: [{ skill_id: 'IceNovaPlayer', level: 20, quality: 0, stat_set_index: 0 }] }] },
     { items: [{ slot: 'ring1', text: {} }] },
-    { items: [{ slot: 'unknown', text: '' }] },
+    { items: [{ slot: 1, text: '' }] },
     { flasks: {} },
     { limbs: {} },
-    { limbs: [{ slot: 'Arm 1', text: '' }] },
-    { limbs: [{ slot: 'arm3', text: '' }] },
+    { limbs: [{ slot: null, text: '' }] },
     { jewels: [{ socket_node: '770', text: '' }] },
     { annotations: [] },
     { annotations: { note: {} } },
@@ -281,18 +282,42 @@ describe('saved-session validation', () => {
     { params: { custom_modifier_blocks: [{ title: 1, enabled: true, text: '+10 to maximum Life' }] } },
     { params: { custom_modifier_blocks: [{ title: 'Active', enabled: 'true', text: '+10 to maximum Life' }] } },
     { params: { custom_modifier_blocks: [{ title: 'Active', enabled: true, text: ['+10 to maximum Life'] }] } },
-    { params: { enemy_tier: 'invalid' } },
+    { params: { enemy_tier: 1 } },
     { weaponSwap: { active: 3, alternate_items: [], exclusive_nodes: [[], []] } },
   ])('rejects malformed nested state %j', patch => {
     expect(parseState(patch)).toBeNull();
   });
 
-  test('rejects an entire shared workspace when any stage is malformed', () => {
+  test('rejects a workspace with no readable stages', () => {
     const workspace = createWorkspace(saved);
     const malformed = structuredClone(workspace);
     (malformed.builds[0].stages[0].saved.state as unknown as Record<string, unknown>).jewels = {};
     expect(parseWorkspace(malformed, parseSaved)).toBeNull();
     expect(workspace.builds[0].stages[0].saved).toEqual(saved);
+  });
+
+  test('preserves future tier and slot strings for WASM validation without changing storage shape', () => {
+    const patch = { params: { config_inputs: {}, enemy_tier: 'apex' },
+      items: [{ slot: 'relic', text: 'Future item' }], flasks: [{ slot: 'Charm 4', text: 'Future charm', active: false }],
+      limbs: [{ slot: 'arm3', text: 'Future limb' }], equipmentJewels: [{ slot: 'Relic Socket', text: 'Future socket' }] };
+    const restored = parseState(patch)!;
+    expect(restored).not.toBeNull();
+    expect(restored.state).toMatchObject(patch);
+    expect(parseSaved(JSON.stringify(restored))).toEqual(restored);
+    expect(toRequest(restored.state)).toMatchObject({ enemy_tier: 'apex', items: patch.items, flasks: patch.flasks,
+      limbs: patch.limbs, equipment_jewels: patch.equipmentJewels });
+    expect(parseWorkspace(createWorkspace(restored), parseSaved)?.builds[0].stages[0].saved).toEqual(restored);
+  });
+
+  test.each([
+    { params: { config_inputs: {}, enemy_tier: 'apex' } },
+    { items: [{ slot: 'relic', text: 'Future item' }] },
+    { flasks: [{ slot: 'Charm 4', text: 'Future charm', active: false }] },
+    { limbs: [{ slot: 'arm3', text: 'Future limb' }] },
+    { equipmentJewels: [{ slot: 'Relic Socket', text: 'Future socket' }] },
+    { weaponSwap: { active: 1, alternate_items: [{ slot: 'weapon3', text: 'Future weapon' }], exclusive_nodes: [[], []] } },
+  ])('accepts each future enum independently: %j', patch => {
+    expect(parseState(patch)?.state).toMatchObject(patch);
   });
 });
 
@@ -383,7 +408,9 @@ describe('unresolved imported gem persistence', () => {
     expect(parseSaved(JSON.stringify(invalid))).toBeNull();
     const invalidWorkspace = structuredClone(workspace);
     invalidWorkspace.builds[0].stages[0].saved = invalid;
-    expect(parseWorkspace(invalidWorkspace, parseSaved)).toBeNull();
+    const restored = parseWorkspace(invalidWorkspace, parseSaved)!;
+    expect(restored.builds[0].stages.map(stage => stage.id)).toEqual(['edited-stage']);
+    expect(restored.builds[1]).toEqual(workspace.builds[1]);
   });
 
   test.each([
@@ -397,7 +424,9 @@ describe('unresolved imported gem persistence', () => {
     expect(parseSaved(JSON.stringify(invalid))).toBeNull();
     const invalidWorkspace = structuredClone(workspace);
     Object.assign(invalidWorkspace.builds[0].stages[0].saved.state, patch);
-    expect(parseWorkspace(invalidWorkspace, parseSaved)).toBeNull();
+    const restored = parseWorkspace(invalidWorkspace, parseSaved)!;
+    expect(restored.builds[0].stages.map(stage => stage.id)).toEqual(['edited-stage']);
+    expect(restored.builds[1]).toEqual(workspace.builds[1]);
   });
 
   test('keeps positive unresolved levels and uint32 gem metadata without adding game-level caps', () => {

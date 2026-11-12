@@ -147,34 +147,60 @@ export function removeWorkspaceStage(workspace: BuildWorkspace): BuildWorkspace 
   }) };
 }
 
-/** Reject malformed collections rather than silently dropping a player's stages. */
-export function parseWorkspace(raw: unknown, parseSession: (json: string) => SavedSession | null): BuildWorkspace | null {
+/** Isolate unreadable stages and builds so the rest of the library remains usable. */
+export function parseWorkspace(raw: unknown, parseSession: (json: string) => SavedSession | null,
+  onIsolated?: () => void): BuildWorkspace | null {
   try {
     const workspace = raw as BuildWorkspace;
     if (workspace.version !== 1 || !Array.isArray(workspace.builds) || !workspace.builds.length) return null;
     const ids = new Set<string>();
-    const validId = (id: unknown) => typeof id === 'string' && !!id && !ids.has(id) && !!ids.add(id);
+    let isolated = false;
+    const isolate = (...details: unknown[]) => {
+      isolated = true;
+      console.warn('Unreadable workspace entry isolated.', ...details);
+    };
     const builds: LocalBuild[] = [];
     for (const build of workspace.builds) {
-      if (!validId(build.id) || typeof build.name !== 'string' || !Array.isArray(build.stages) || !build.stages.length) return null;
+      if (!build || typeof build.id !== 'string' || !build.id || typeof build.name !== 'string' || !Array.isArray(build.stages) || !build.stages.length) {
+        isolate(build);
+        continue;
+      }
+      if (ids.has(build.id)) { isolate(build); continue; }
+      const buildIds = new Set([build.id]);
       const stages: BuildStage[] = [];
       for (const stage of build.stages) {
+        if (!stage || typeof stage.id !== 'string' || !stage.id) {
+          isolate(build.id, stage);
+          continue;
+        }
+        if (ids.has(stage.id) || buildIds.has(stage.id)) { isolate(build.id, stage); continue; }
         const saved = parseSession(JSON.stringify(stage.saved));
-        if (!validId(stage.id) || typeof stage.name !== 'string' || !saved || !stage.drafts || typeof stage.drafts !== 'object'
-          || Array.isArray(stage.drafts) || Object.values(stage.drafts).some(text => typeof text !== 'string')) return null;
+        if (typeof stage.name !== 'string' || !saved || !stage.drafts || typeof stage.drafts !== 'object'
+          || Array.isArray(stage.drafts) || Object.values(stage.drafts).some(text => typeof text !== 'string')) {
+          isolate(build.id, stage);
+          continue;
+        }
+        buildIds.add(stage.id);
         stages.push({ id: stage.id, name: stage.name, saved, drafts: stage.drafts });
       }
-      if (!stages.some(stage => stage.id === build.activeStage)) return null;
+      if (!stages.length) continue;
+      const activeStage = stages.find(stage => stage.id === build.activeStage)?.id ?? stages[0].id;
+      if (activeStage !== build.activeStage) isolate(build.id, build.activeStage);
       let baseline: LocalBuild['baseline'];
       if (build.baseline !== undefined) {
-        const saved = parseSession(JSON.stringify(build.baseline.saved));
-        if (!saved || !Number.isFinite(build.baseline.recordedAt) || build.baseline.recordedAt < 0 || Number.isNaN(new Date(build.baseline.recordedAt).getTime())) return null;
-        baseline = { saved, recordedAt: build.baseline.recordedAt };
+        const saved = build.baseline && parseSession(JSON.stringify(build.baseline.saved));
+        if (!saved || !Number.isFinite(build.baseline.recordedAt) || build.baseline.recordedAt < 0 || Number.isNaN(new Date(build.baseline.recordedAt).getTime())) {
+          isolate(build.id, build.baseline);
+        } else baseline = { saved, recordedAt: build.baseline.recordedAt };
       }
-      builds.push({ id: build.id, name: build.name, activeStage: build.activeStage, stages, ...(baseline ? { baseline } : {}) });
+      buildIds.forEach(id => ids.add(id));
+      builds.push({ id: build.id, name: build.name, activeStage, stages, ...(baseline ? { baseline } : {}) });
     }
-    if (!builds.some(build => build.id === workspace.activeBuild)) return null;
-    return { version: 1, activeBuild: workspace.activeBuild, builds };
+    if (!builds.length) return null;
+    const activeBuild = builds.find(build => build.id === workspace.activeBuild)?.id ?? builds[0].id;
+    if (activeBuild !== workspace.activeBuild) isolate(workspace.activeBuild);
+    if (isolated) onIsolated?.();
+    return { version: 1, activeBuild, builds };
   } catch { return null; }
 }
 

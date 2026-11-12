@@ -3,7 +3,7 @@ import { expect, test } from 'vitest';
 import type { TreeEditResponse } from '../../api/types';
 import { TreePointSummary } from './TreePointSummary';
 
-const current = { used: 119, max: 121, weapon: [13, 12] };
+const current = { used: 119, max: 121, weapon: [13, 12] as [number, number] };
 const render = (preview: TreeEditResponse | null) => renderToStaticMarkup(<TreePointSummary current={current} preview={preview} invalidReason="Disconnected path" lang="en-US" />);
 const preview = (used: number): TreeEditResponse => ({ valid: true, reason: null, result: {
   points_used: used, points_max: 121, weapon_points_used: [13, 12], weapon_points_max: 24,
@@ -34,4 +34,11 @@ test('the preview status stays available for live updates and clears when a prev
     expect(render(response)).toContain('<p class="tree-edit-preview" role="status" aria-live="polite" aria-atomic="true"></p>');
     expect(render(response)).not.toContain('Disconnected path');
   }
+});
+
+test('an unavailable engine budget renders as unknown until a preview supplies it', () => {
+  const renderUnknown = (preview: TreeEditResponse | null) => renderToStaticMarkup(<TreePointSummary
+    current={{ used: 0, max: null, weapon: [0, 0] }} preview={preview} invalidReason="" lang="en-US" />);
+  expect(renderUnknown(null)).toContain('Used 0 / — points');
+  expect(renderUnknown(preview(1))).toContain('Used 1 / 121 points');
 });

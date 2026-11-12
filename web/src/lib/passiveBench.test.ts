@@ -2,7 +2,7 @@
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { env } from 'node:process';
-import type { AttributeChoice, CalculateBuildRequest, CalculateBuildResponse, OptimizeVariantsResponse, PassiveNode, VariantInput } from '../api/types';
+import type { AttributeChoice, CalculateBuildRequest, CalculateBuildResponse, OptimizeVariantsResponse, PassiveJewelState, PassiveNode, VariantInput } from '../api/types';
 import { compareObjectiveStats, evaluateVariants, scoreOf, type Objective } from './optimize';
 import { connectedAllocation } from './passiveGraph';
 import { passivePlanningContext, planPassiveUpgrades, withTravelAttributes, type PassivePlan, type PassivePlanningContext } from './passivePlanner';
@@ -59,6 +59,7 @@ describe.skipIf(env.POBR_UPGRADE_BENCH !== '1')('real WASM passive planner verif
   let nodes: PassiveNode[];
   let allNodes: PassiveNode[];
   let calculate: (request: CalculateBuildRequest) => Record<string, number>;
+  let treeEffects: (request: CalculateBuildRequest) => PassiveJewelState;
   let version: string;
   let schema: number;
   let initializationMs: number;
@@ -84,6 +85,7 @@ describe.skipIf(env.POBR_UPGRADE_BENCH !== '1')('real WASM passive planner verif
       const response = JSON.parse(wasm.calculateBuildJson(JSON.stringify(request))) as CalculateBuildResponse;
       return Object.fromEntries(response.stats.map(stat => [stat.id, stat.value ?? 0]));
     };
+    treeEffects = request => (JSON.parse(wasm.calculateBuildJson(JSON.stringify(request))) as CalculateBuildResponse).tree_effects!;
     allNodes = JSON.parse(await readFile(new URL('base/passive_tree.json', data), 'utf8')) as PassiveNode[];
     nodes = neighborhood.map(id => allNodes.find(node => node.skill === id)!);
     expect(nodes.every(Boolean)).toBe(true);
@@ -104,7 +106,7 @@ describe.skipIf(env.POBR_UPGRADE_BENCH !== '1')('real WASM passive planner verif
         ...base, allocated_nodes: [...existing, 47555, 39886],
         attribute_choices: { ...base.attribute_choices, '47555': 'int', '39886': 'int' },
       };
-      const context = passivePlanningContext(nodes, request.allocated_nodes!, 'Sorceress');
+      const context = passivePlanningContext(nodes, request.allocated_nodes!, 'Sorceress', [], [], undefined, treeEffects(request));
       const points = mode === 'allocate' ? 3 : 1;
       const prepared = withTravelAttributes(request, nodes, travelChoice);
       const baseline = calculate(request);
@@ -165,7 +167,7 @@ describe.skipIf(env.POBR_UPGRADE_BENCH !== '1')('real WASM passive planner verif
         dps: result.predicted.dps, ehp: result.predicted.ehp, regretPercent: result.regretPercent, applyDpsDifference: applied.TotalDPS - selected.stats.TotalDPS,
         applyEhpDifference: applied.TotalEHP - selected.stats.TotalEHP }]);
     }
-    const broadContext = passivePlanningContext(allNodes, existing, 'Sorceress');
+    const broadContext = passivePlanningContext(allNodes, existing, 'Sorceress', [], [], undefined, treeEffects(base));
     const controller = new AbortController();
     const cancelled = await planPassiveUpgrades({ request: withTravelAttributes(base, allNodes, travelChoice), context: broadContext,
       points: 8, mode: 'allocate', objective, signal: controller.signal,

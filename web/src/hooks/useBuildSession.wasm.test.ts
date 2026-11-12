@@ -9,7 +9,9 @@ import { backfillFromDecoded, materialize, paramsFromDecoded, parseSaved, toRequ
 import { replaceUtility } from '../lib/utilityItems';
 import { tradeItemVariant } from '../lib/tradeOptimizer';
 import { switchWeapons } from '../lib/weaponSets';
-import { EXPECTED_SCHEMA_VERSION, type BuildJson, type CalculateBuildRequest, type CalculateBuildResponse, type LineUsageResponse, type SkillMetricsResponse } from '../api/types';
+import { buildPassiveGraph, classStartSkill, implicitClassStarts } from '../lib/passiveGraph';
+import { passivePointSummary, passivePointSummaryTarget } from '../components/tree/treePresentation';
+import { EXPECTED_SCHEMA_VERSION, type BuildJson, type CalculateBuildRequest, type CalculateBuildResponse, type LineUsageResponse, type PassiveNode, type SkillMetricsResponse, type TreeEditResponse } from '../api/types';
 
 const gem = (id: string) => `<Gem skillId="${id}" level="20" quality="0" enabled="true"/>`;
 const source = `<PathOfBuilding2>
@@ -48,6 +50,7 @@ describe.skipIf(env.POBR_WASM_CONTRACT !== '1')('real TS request to WASM weapon 
   let encode: (request: CalculateBuildRequest & { base_code?: string }) => string;
   let metrics: (request: CalculateBuildRequest) => SkillMetricsResponse;
   let usage: (request: CalculateBuildRequest) => LineUsageResponse;
+  let preview: (input: object) => TreeEditResponse;
   let state: SavedSession['state'];
 
   beforeAll(async () => {
@@ -65,6 +68,7 @@ describe.skipIf(env.POBR_WASM_CONTRACT !== '1')('real TS request to WASM weapon 
     encode = request => wasm.encodeBuildJson(JSON.stringify(request));
     metrics = request => JSON.parse(wasm.skillMetricsJson(JSON.stringify(request)));
     usage = request => JSON.parse(wasm.lineUsageJson(JSON.stringify(request)));
+    preview = input => JSON.parse(wasm.previewTreeEditJson(JSON.stringify(input)));
     const decoded = decode(code);
     state = {
       ...materialize(decoded), pobCode: code, character: decoded.character,
@@ -72,6 +76,20 @@ describe.skipIf(env.POBR_WASM_CONTRACT !== '1')('real TS request to WASM weapon 
       annotations: {}, params: { ...paramsFromDecoded(decoded), main_socket_group: decoded.main_socket_group ?? undefined },
     };
   }, 120_000);
+
+  test('an empty level-90 tree gets its current budget from an exclusive neighbor preview', async () => {
+    const request: CalculateBuildRequest = { character: { class_name: 'Witch', level: 90 }, allocated_nodes: [] };
+    const effects = calculate(request).tree_effects!;
+    const manifest = JSON.parse(await readFile(new URL('../../public/data/manifest.json', import.meta.url), 'utf8')) as { version: string };
+    const nodes = JSON.parse(await readFile(new URL(`../../public/data/${manifest.version}/base/passive_tree.json`, import.meta.url), 'utf8')) as PassiveNode[];
+    const root = classStartSkill(effects, 'Witch')!;
+    const target = passivePointSummaryTarget(nodes, new Set(), implicitClassStarts(effects), buildPassiveGraph(nodes).get(root) ?? []);
+    expect(target.node).not.toBeNull();
+    const response = preview({ request, ...target, action: 'allocate' });
+    expect(response.valid).toBe(true);
+    expect(response.result?.allocation.shared).toEqual([]);
+    expect(passivePointSummary(nodes, [], undefined, effects, response.result)).toEqual({ used: 0, max: 113, weapon: [0, 0] });
+  });
 
   test('equipped unselected utilities survive the real edit, save, reload, request and XML workflow', async () => {
     const xml = await readFile(new URL('../../../apps/pobr-wasm/tests/fixtures/utility-selection.xml', import.meta.url), 'utf8');

@@ -7,7 +7,12 @@ import { choose } from './treePage';
 
 const version = readFileSync(new URL('../../data/CURRENT', import.meta.url), 'utf8').trim();
 const nodes = JSON.parse(readFileSync(new URL(`../../data/${version}/base/passive_tree.json`, import.meta.url), 'utf8')) as PassiveNode[];
-const context = passivePlanningContext(nodes, [], 'Witch');
+const jewels = JSON.parse(readFileSync(new URL(`../../data/${version}/overlay/passive_jewels.json`, import.meta.url), 'utf8')) as { class_starts: Record<string, string> };
+// Same resolution as the engine's tree_effects.class_starts: the lowest node skill with that id.
+const classStarts = Object.fromEntries(Object.entries(jewels.class_starts).map(([name, id]) =>
+  [name, Math.min(...nodes.filter(node => node.id === id).map(node => node.skill))]));
+const treeEffects = { class_starts: classStarts, allocation_grants: [], nodes: {}, conquered: [], unresolved: [], rings: [], warnings: [] };
+const context = passivePlanningContext(nodes, [], 'Witch', [], [], undefined, treeEffects);
 const route = allocationPaths(context, context.allocated, 5).find(p => p.target > 10000 && context.byId.get(p.target)?.kind === 'notable')!;
 const target = context.byId.get(route.target)!;
 

@@ -116,10 +116,10 @@ export function convertedTreeState(state: BuildState, decoded: BuildJson, code: 
  * The library another tab (or an earlier visit) stored, or `null` when the text does not hold one
  * with ids to match by (a plain session from before libraries, or anything unreadable).
  */
-export function readStoredWorkspace(raw: string): BuildWorkspace | null {
+export function readStoredWorkspace(raw: string, onIsolated?: () => void): BuildWorkspace | null {
   try {
     const envelope = JSON.parse(raw);
-    return envelope.workspace === undefined ? null : parseWorkspace(envelope.workspace, parseSaved);
+    return envelope.workspace === undefined ? null : parseWorkspace(envelope.workspace, parseSaved, onIsolated);
   } catch { return null; }
 }
 
@@ -155,6 +155,8 @@ export interface BuildSession {
   dataVersion: string | null;
   workspace: BuildWorkspace | null;
   storageFailed: boolean;
+  /** Original unreadable entries remain in storage while recovered edits stay in memory. */
+  workspaceRecovery?: string | null;
   /** Set for a few seconds after another tab changed the library and this one followed. */
   syncNotice: SyncNotice | null;
   dismissSyncNotice: () => void;
@@ -452,9 +454,10 @@ export function parseSaved(json: string): SavedSession | null {
     const strings = (value: unknown): value is string[] => Array.isArray(value) && value.every(entry => typeof entry === 'string');
     const nodes = (value: unknown): value is number[] => Array.isArray(value) && value.every(uint);
     const textMap = (value: unknown) => record(value) && Object.values(value).every(entry => typeof entry === 'string');
-    const itemList = (value: unknown, slots: RegExp): value is SlotItemInput[] => Array.isArray(value)
-      && value.every(item => record(item) && typeof item.slot === 'string' && slots.test(item.slot) && typeof item.text === 'string');
-    const utilityList = (value: unknown): value is UtilitySlotInput[] => itemList(value, /^(Flask [12]|Charm [123])$/)
+    // WASM owns slot and enum validity; saved strings must survive a frontend rollback.
+    const itemList = (value: unknown): value is SlotItemInput[] => Array.isArray(value)
+      && value.every(item => record(item) && typeof item.slot === 'string' && typeof item.text === 'string');
+    const utilityList = (value: unknown): value is UtilitySlotInput[] => itemList(value)
       && new Set(value.map(item => item.slot)).size === value.length
       && value.every(item => !('active' in item) || typeof item.active === 'boolean');
     const parsed: unknown = JSON.parse(json);
@@ -465,7 +468,7 @@ export function parseSaved(json: string): SavedSession | null {
       || !optionalText(character.ascendancy_name) || !optionalIndex(character.level, 1)
       || Number(character.level ?? 1) > 100 || !optionalBool(state.sourceBackfillComplete) || !optionalText(state.pobCode) || !optionalText(state.treeVersion)
       || !nodes(state.allocatedNodes) || !Array.isArray(state.socketGroups)
-      || !itemList(state.items, /^(weapon[12]|helmet|bodyarmour|gloves|boots|amulet|ring[123]|belt)$/)) return null;
+      || !itemList(state.items)) return null;
     const socketGroups: SocketGroupInput[] = [];
     for (const group of state.socketGroups) {
       if (!record(group) || !Array.isArray(group.gems) || !optionalText(group.slot) || !optionalText(group.source)
@@ -509,13 +512,13 @@ export function parseSaved(json: string): SavedSession | null {
     const annotations = state.annotations ?? {};
     const attributeChoices = state.attributeChoices ?? {};
     const params = state.params ?? {};
-    if (!utilityList(flasks) || !itemList(limbs, /^(arm|leg)[12]$/)
+    if (!utilityList(flasks) || !itemList(limbs)
       || !Array.isArray(jewels) || !jewels.every(jewel => record(jewel) && uint(jewel.socket_node) && typeof jewel.text === 'string')
-      || equipmentJewels !== undefined && !itemList(equipmentJewels, /^(?!Jewel).*Socket/)
+      || equipmentJewels !== undefined && !itemList(equipmentJewels)
       || !textMap(annotations) || !record(attributeChoices)
       || !Object.entries(attributeChoices).every(([node, choice]) => /^\d+$/.test(node) && uint(Number(node)) && typeof choice === 'string' && ['str', 'dex', 'int'].includes(choice))
       || !record(params) || !optionalIndex(params.main_socket_group)
-      || params.enemy_tier != null && (typeof params.enemy_tier !== 'string' || !['none', 'boss', 'pinnacle', 'uber'].includes(params.enemy_tier))
+      || !optionalText(params.enemy_tier)
       || params.extra_modifiers != null && !strings(params.extra_modifiers)
       || params.custom_modifier_blocks !== undefined && (!Array.isArray(params.custom_modifier_blocks)
         || !params.custom_modifier_blocks.every(block => record(block) && typeof block.title === 'string'
@@ -710,6 +713,12 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   // Recreated from current class metadata on every boot; no cleanup metadata is persisted.
   const defaultStarterRef = useRef<SavedSession | null>(null);
   const [storageFailed, setStorageFailed] = useState(false);
+  const [workspaceRecovery, setWorkspaceRecovery] = useState<string | null>(null);
+  const recoveryBackupRef = useRef<string | null>(null);
+  const retainWorkspaceRecovery = useCallback((raw: string) => {
+    recoveryBackupRef.current ??= raw;
+    setWorkspaceRecovery(recoveryBackupRef.current);
+  }, []);
   const [bootMessage, setBootMessage] = useState<string | null>('初始化…');
   const [bootError, setBootError] = useState<string | null>(null);
   const [treeMeta, setTreeMeta] = useState<PassiveTreeMeta | null>(null);
@@ -756,25 +765,28 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       const stored = localStorage.getItem(STORAGE.workspace);
       if (stored !== null && stored !== syncedRef.current.raw) {
         // Another tab wrote since this one last read or wrote: keep what it changed.
-        const theirs = readStoredWorkspace(stored);
+        const theirs = readStoredWorkspace(stored, () => retainWorkspaceRecovery(stored));
         if (theirs) ({ workspace: write, conflicts } = mergeWorkspaces(syncedRef.current.library, next, theirs));
       }
     } catch { /* storage cannot be read: write as before */ }
     workspaceRef.current = write;
     setWorkspace(write);
-    try {
-      const raw = workspaceEnvelope(write);
-      localStorage.setItem(STORAGE.workspace, raw);
-      syncedRef.current = { raw, library: write };
-      setStorageFailed(false);
-    } catch { setStorageFailed(true); }
+    // Keep unreadable entries recoverable; never replace their only stored copy.
+    if (recoveryBackupRef.current === null) {
+      try {
+        const raw = workspaceEnvelope(write);
+        localStorage.setItem(STORAGE.workspace, raw);
+        syncedRef.current = { raw, library: write };
+        setStorageFailed(false);
+      } catch { setStorageFailed(true); }
+    }
     if (write !== next && !sameValue(libraryContent(write), libraryContent(next))) {
       const { viewChanged, kind } = mergeEffect(next, write, conflicts);
       announce(kind);
       // The stage on screen is not the stored one any more: show the stored one, after this edit is done.
       if (viewChanged) queueMicrotask(() => refreshViewRef.current(write));
     }
-  }, [announce]);
+  }, [announce, retainWorkspaceRecovery]);
   const saveToStorage = useCallback((next: BuildState, text: string) => {
     const saved: SavedSession = { version: 1, state: next, notes: text };
     persistWorkspace(updateWorkspaceStage(workspaceRef.current ?? createWorkspace(saved), saved, draftsRef.current));
@@ -956,12 +968,14 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         defaultStarterRef.current = defaultStarterSession(meta.classes[0]?.name ?? 'Warrior');
         setBootMessage(null);
         const raw = localStorage.getItem(STORAGE.workspace) ?? '';
-        const saved = parseSaved(raw);
-        if (raw && !saved) throw new Error('浏览器存档格式无效，原始数据已保留。请下载原始存档备份以便修复。');
-        if (saved) {
+        let saved: SavedSession | null = null;
+        if (raw) {
           const envelope = JSON.parse(raw);
-          const restored = envelope.workspace === undefined ? createWorkspace(saved) : parseWorkspace(envelope.workspace, parseSaved);
+          saved = parseSaved(raw);
+          const restored = envelope.workspace === undefined ? saved && createWorkspace(saved)
+            : parseWorkspace(envelope.workspace, parseSaved, () => retainWorkspaceRecovery(raw));
           if (!restored) throw new Error('浏览器工作区格式无效，原始数据已保留。请下载原始存档备份以便修复。');
+          saved = activeWorkspaceStage(restored).saved;
           workspaceRef.current = restored;
           setWorkspace(restored);
           syncedRef.current = { raw, library: restored };
@@ -969,21 +983,22 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
           setEditorDrafts(draftsRef.current);
         }
         if (saved) {
-          notesRef.current = saved.notes;
-          setNotesState(saved.notes);
-          if (saved.state.pobCode) {
+          const current = saved;
+          notesRef.current = current.notes;
+          setNotesState(current.notes);
+          if (current.state.pobCode) {
             // 等解码完成再 apply：旧会话的 XML config 需要回填后才能进首次计算。
             backend
-              .decodeBuild(saved.state.pobCode)
+              .decodeBuild(current.state.pobCode)
               .then((decoded) => {
                 if (cancelled) return;
                 setBuild(decoded);
-                apply(backfillFromDecoded(saved.state, decoded));
+                apply(backfillFromDecoded(current.state, decoded));
               })
-              .catch(() => !cancelled && apply(saved.state));
+              .catch(() => !cancelled && apply(current.state));
             return;
           }
-          apply(saved.state);
+          apply(current.state);
           return;
         }
         apply(defaultStarterRef.current.state);
@@ -1599,7 +1614,8 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       try { stored = localStorage.getItem(STORAGE.workspace); } catch { return; }
       const mine = workspaceRef.current;
       if (stored === null || !mine || stored === syncedRef.current.raw) return;
-      const theirs = readStoredWorkspace(stored);
+      const raw = stored;
+      const theirs = readStoredWorkspace(raw, () => retainWorkspaceRecovery(raw));
       if (!theirs) return;
       const { workspace: merged, conflicts } = mergeWorkspaces(syncedRef.current.library, mine, theirs);
       syncedRef.current = { raw: stored, library: merged };
@@ -1614,13 +1630,17 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
-  }, [announce, persistLibrary, persistWorkspace, showLibraryStage]);
+  }, [announce, persistLibrary, persistWorkspace, showLibraryStage, retainWorkspaceRecovery]);
 
   const importSession = useCallback((json: string, destination: ImportDestination = 'newBuild') => {
     const input = JSON.parse(json);
+    // Explicit file imports are atomic; recovery is reserved for stored workspaces.
+    let isolated = false;
+    const refusePartial = () => { isolated = true; };
     if (input.format === 'pobr-build' && input.version === 1) {
-      const imported = parseWorkspace({ version: 1, activeBuild: input.build?.id, builds: [input.build] }, parseSaved);
-      if (!imported || !workspaceRef.current) throw new Error('invalid multi-stage build file');
+      const imported = parseWorkspace({ version: 1, activeBuild: input.build?.id, builds: [input.build] }, parseSaved,
+        refusePartial);
+      if (!imported || isolated || !workspaceRef.current) throw new Error('invalid multi-stage build file');
       const source = imported.builds[0];
       const stages = source.stages.map(stage => ({ ...stage, id: createId() }));
       const build = { ...source, id: createId(), stages,
@@ -1630,16 +1650,15 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       restoreSession(stage.saved, stage.drafts);
       return;
     }
-    const saved = parseSaved(json);
-    if (!saved) throw new Error('invalid session file');
-    const envelope = JSON.parse(json);
-    if (envelope.workspace !== undefined) {
-      const restored = parseWorkspace(envelope.workspace, parseSaved);
-      if (!restored) throw new Error('invalid workspace file');
+    if (input.workspace !== undefined) {
+      const restored = parseWorkspace(input.workspace, parseSaved, refusePartial);
+      if (!restored || isolated) throw new Error('invalid workspace file');
       workspaceRef.current = restored;
       const stage = activeWorkspaceStage(restored);
       restoreSession(stage.saved, stage.drafts);
     } else {
+      const saved = parseSaved(json);
+      if (!saved) throw new Error('invalid session file');
       if (destination === 'newBuild' && workspaceRef.current) {
         workspaceRef.current = addWorkspaceBuild(workspaceRef.current,
           importedBuildName(saved.state.character, classNames, lang), saved, defaultStarterRef.current);
@@ -1830,7 +1849,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   return {
     saveComparisonBaseline, comparisonRevision, startBaselineComparison,
     treeVersion: state?.treeVersion,
-    dataVersion, workspace, storageFailed, syncNotice, dismissSyncNotice, applyComparedStage, selectStage, createLocalBuild, duplicateStage, duplicateBuild, removeBuild, removeStage, renameWorkspace, exportWorkspace, exportLocalBuild,
+    dataVersion, workspace, storageFailed, workspaceRecovery, syncNotice, dismissSyncNotice, applyComparedStage, selectStage, createLocalBuild, duplicateStage, duplicateBuild, removeBuild, removeStage, renameWorkspace, exportWorkspace, exportLocalBuild,
     activeWeaponSet: state?.weaponSwap?.active ?? 1,
     weaponSwap: state?.weaponSwap,
     setWeaponSet,

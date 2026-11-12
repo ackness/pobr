@@ -1,6 +1,7 @@
 import { OBJECTIVE_PRESETS } from '../../lib/optimize';
 import { formatComparisonDelta } from '../../lib/compare';
-import type { CalculateBuildResponse, AttributeChoice, PassiveJewelState, PassiveNode, WeaponSwap } from '../../api/types';
+import type { CalculateBuildResponse, AttributeChoice, PassiveClass, PassiveJewelState, PassiveNode, TreeAllocationMode, TreeEditResult, WeaponSwap } from '../../api/types';
+import { implicitClassStarts } from '../../lib/passiveGraph';
 import { bindT, messages, statNameLabel, type Lang } from '../../lib/i18n';
 import { formatNumber, statFormat } from '../../lib/statDisplay';
 
@@ -32,22 +33,57 @@ export function distributeAttributeChoices(ids: number[], previous: Record<strin
   return next;
 }
 
-/** Match the tree editor's ordinary-point budget: class/ascendancy starts are free and ascendancy is separate. */
-export function passivePointSummary(nodes: PassiveNode[], allocated: number[], level: number, swap?: WeaponSwap | null, effects?: PassiveJewelState) {
+/** Saved choices take precedence; class base attributes supply the default travel attribute. */
+export function defaultTravelAttribute(choices: Record<string, AttributeChoice>, characterClass?: PassiveClass): AttributeChoice {
+  const counts = { str: 0, dex: 0, int: 0 };
+  for (const choice of Object.values(choices)) counts[choice] += 1;
+  const attributes: AttributeChoice[] = ['str', 'dex', 'int'];
+  if (Object.values(counts).some(Boolean)) return attributes.sort((a, b) => counts[b] - counts[a])[0];
+  // Metadata can be absent in an older response. Use a neutral UI default then.
+  if (!characterClass) return 'dex';
+  const base = { str: characterClass.base_str, dex: characterClass.base_dex, int: characterClass.base_int };
+  // Hybrid classes keep a deterministic preference when base attributes tie.
+  return (['dex', 'int', 'str'] as AttributeChoice[]).sort((a, b) => base[b] - base[a])[0];
+}
+
+/** Empty trees probe a regular neighbor in a weapon set, leaving shared point grants untouched. */
+export function passivePointSummaryTarget(nodes: readonly PassiveNode[], allocated: ReadonlySet<number>,
+  starts: ReadonlySet<number>, neighbours: readonly number[], swap?: WeaponSwap | null): { node: number | null; mode: TreeAllocationMode } {
+  const existing = nodes.find(node => allocated.has(node.skill) && !starts.has(node.skill) && node.kind !== 'ascendancy_start');
+  if (existing) {
+    const set = swap?.exclusive_nodes.findIndex(ids => ids.includes(existing.skill)) ?? -1;
+    return { node: existing.skill, mode: (set + 1) as TreeAllocationMode };
+  }
+  if (allocated.size || swap?.exclusive_nodes.some(ids => ids.length)) return { node: null, mode: 0 };
+  const adjacent = new Set(neighbours);
+  const probe = nodes.find(node => adjacent.has(node.skill) && !starts.has(node.skill)
+    && node.kind === 'normal' && !node.ascendancy_id && !node.unlock_constraint);
+  return { node: probe?.skill ?? null, mode: 1 };
+}
+
+/** Budgets belong to the engine; an empty tree may borrow its budget from a weapon-only probe. */
+export function passivePointSummary(nodes: PassiveNode[], allocated: number[], swap?: WeaponSwap | null,
+  effects?: PassiveJewelState, current?: TreeEditResult | null) {
+  if (current && !current.added.length && !current.removed.length && !current.promoted.length) {
+    return { used: current.points_used, max: current.points_max, weapon: current.weapon_points_used };
+  }
   const byId = new Map(nodes.map(node => [node.skill, node]));
   const exclusive = swap?.exclusive_nodes ?? [[], []];
   const owned = new Set(exclusive.flat());
   const shared = [...new Set(allocated)].filter(id => !owned.has(id));
-  const known = [...new Set([...shared, ...exclusive.flat()])].every(id => byId.has(id));
-  const starts = new Set(Object.values(effects?.class_starts ?? {}));
+  const all = [...new Set([...shared, ...exclusive.flat()])];
+  // The engine grants ordinary points only from shared nodes. An exclusive-only
+  // probe therefore has the same maximum as an empty tree, even if its node grants points.
+  const emptyBudget = !all.length && current && !current.allocation.shared.length
+    && !current.removed.length && !current.promoted.length ? current.points_max : null;
+  const known = all.every(id => byId.has(id)) && (!all.length || Object.keys(effects?.class_starts ?? {}).length > 0);
+  const starts = implicitClassStarts(effects);
   const regular = shared.filter(id => {
     const node = byId.get(id)!;
-    return node && !node.ascendancy_id && !starts.has(id) && !['MARAUDER', 'RANGER', 'WITCH', 'DUELIST', 'SIX', 'TEMPLAR', 'SEVEN'].includes(node.name ?? '') && node.kind !== 'ascendancy_start';
+    return node && !node.ascendancy_id && !starts.has(id) && node.kind !== 'ascendancy_start';
   }).length;
-  const granted = shared.flatMap(id => byId.get(id)?.stats ?? []).reduce((sum, line) =>
-    sum + Number(/^Grants (\d+) Passive Skill Points?$/.exec(line)?.[1] ?? 0), 0);
   return { used: known ? regular + Math.max(exclusive[0].length, exclusive[1].length) : null,
-    max: Math.max(0, level - 1) + 24 + granted, weapon: exclusive.map(ids => ids.length) };
+    max: emptyBudget, weapon: exclusive.map(ids => ids.length) };
 }
 
 export function treeStatLabel(lang: Lang, stat: string): string {

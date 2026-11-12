@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import type { CalculateBuildRequest, CalculateBuildResponse, SkillMetricsResponse } from '../api/types';
+import type { CalculateBuildRequest, CalculateBuildResponse, PassiveTreeMeta, SkillMetricsResponse } from '../api/types';
 import { advanceImportReview } from '../app/importReview';
-import { defaultStarterSession } from '../lib/buildWorkspace';
+import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, workspaceEnvelope } from '../lib/buildWorkspace';
 import { useBuildSession } from './useBuildSession';
+import { STORAGE } from '../lib/sessionStorage';
 
 // Replay the real hook's state and callbacks; boot effects are unnecessary for importing a saved session.
 const harness = vi.hoisted(() => ({ calculate: vi.fn<(request: CalculateBuildRequest) => Promise<CalculateBuildResponse>>(),
@@ -10,11 +11,15 @@ const harness = vi.hoisted(() => ({ calculate: vi.fn<(request: CalculateBuildReq
 }));
 const hooks = await vi.hoisted(async () => {
   const { createHookHarness } = await import('../testing/hookHarness');
-  return createHookHarness({ separateCursors: true, refs: { reuse: 'nullish' }, callback: 'identity', effects: 'latest' });
+  return createHookHarness({ separateCursors: true, refs: { reuse: 'nullish' }, callback: 'identity', effects: 'collect' });
 });
 vi.mock('react', () => hooks.mockReact());
 vi.mock('../api/backend', () => ({ getBackend: async () => ({
   calculateBuild: harness.calculate, skillMetrics: harness.metrics,
+  init: async () => {}, gameLocales: async () => [], loadClassNames: async () => ({ classes: {}, ascendancies: {} }),
+  loadTreeMeta: async (): Promise<PassiveTreeMeta> => ({ tree: 'Default', classes: [
+    { name: 'Wayfarer', base_str: 30, base_dex: 7, base_int: 7 },
+  ] }),
 }) }));
 
 function deferred<T>() {
@@ -53,7 +58,7 @@ it('ignores storage events when access to localStorage becomes blocked', () => {
   const addEventListener = vi.fn(), removeEventListener = vi.fn();
   vi.stubGlobal('window', { addEventListener, removeEventListener });
   renderSession();
-  const cleanup = hooks.effect!();
+  const cleanup = hooks.effects.at(-1)!();
   const onStorage = addEventListener.mock.calls.find(([type]) => type === 'storage')![1];
   vi.spyOn(globalThis, 'localStorage', 'get').mockImplementation(() => { throw new Error('Storage blocked'); });
   expect(() => onStorage({ storageArea: null })).not.toThrow();
@@ -98,4 +103,83 @@ it('a rejected metrics request releases busy state so the completed calculation 
   metrics.reject(new Error('Metrics unavailable'));
   await vi.waitFor(() => expect(renderSession().busy).toBe(false));
   expect(advanceImportReview({ scope: null }, 'import:stage', renderSession())?.summary?.calc).toBe(initial);
+});
+
+it.each(['workspace', 'build'] as const)('refuses a %s file with an invalid inactive stage without changing the current workspace or library', async format => {
+  const saved = defaultStarterSession('Wayfarer');
+  saved.notes = 'Keep these notes';
+  harness.calculate.mockResolvedValue(initial);
+  renderSession().importSession(JSON.stringify(saved));
+  await vi.waitFor(() => expect(renderSession().calc).toBe(initial));
+  const current = renderSession();
+  const before = current.exportWorkspace();
+  const library = JSON.stringify(current.library);
+  localStorage.setItem(STORAGE.library, library);
+  const malformed = duplicateWorkspaceStage(structuredClone(current.workspace!), 'Valid active copy');
+  malformed.builds[0].stages[0].saved = structuredClone(malformed.builds[0].stages[0].saved);
+  malformed.builds[0].stages[0].saved.state.socketGroups = [
+    { enabled: true, gems: [{ skill_id: 'CometPlayer', level: 20, quality: -1 }] },
+  ];
+  const raw = format === 'workspace' ? JSON.stringify({ ...saved, workspace: malformed })
+    : JSON.stringify({ format: 'pobr-build', version: 1, build: malformed.builds[0] });
+  expect(() => renderSession().importSession(raw)).toThrow(format === 'workspace' ? 'invalid workspace file' : 'invalid multi-stage build file');
+  expect(renderSession().exportWorkspace()).toBe(before);
+  expect(renderSession().workspace).toBe(current.workspace);
+  expect(renderSession().notes).toBe(saved.notes);
+  expect(renderSession().workspaceRecovery).toBeNull();
+  expect(JSON.stringify(renderSession().library)).toBe(library);
+  expect(localStorage.getItem(STORAGE.workspace)).toBe(before);
+  expect(localStorage.getItem(STORAGE.library)).toBe(library);
+});
+
+it('boots into a valid stage when the active build and legacy current-session copy are invalid', async () => {
+  const saved = defaultStarterSession('Wayfarer');
+  saved.notes = 'Recovered on startup';
+  const valid = createWorkspace(saved);
+  const workspace = addWorkspaceBuild(valid, 'Broken', saved);
+  workspace.builds[1].stages[0].saved = null as never;
+  const raw = JSON.stringify({ version: 1, state: null, notes: '', workspace });
+  localStorage.setItem(STORAGE.workspace, raw);
+  vi.stubGlobal('window', { addEventListener: vi.fn(), removeEventListener: vi.fn() });
+  harness.calculate.mockResolvedValue(initial);
+  renderSession();
+  const cleanups = hooks.runEffects();
+  await vi.waitFor(() => expect(renderSession().calc).toBe(initial));
+  const restored = renderSession();
+  expect(restored.bootError).toBeNull();
+  expect(restored.character?.class_name).toBe('Wayfarer');
+  expect(restored.notes).toBe(saved.notes);
+  expect(restored.workspace?.activeBuild).toBe(valid.activeBuild);
+  expect(restored.workspace?.builds).toEqual(valid.builds);
+  expect(restored.workspaceRecovery).toBe(raw);
+  expect(localStorage.getItem(STORAGE.workspace)).toBe(raw);
+  restored.setNotes('Recovered edits');
+  expect(renderSession().notes).toBe('Recovered edits');
+  expect(localStorage.getItem(STORAGE.workspace)).toBe(raw);
+  expect(JSON.parse(renderSession().exportWorkspace()).notes).toBe('Recovered edits');
+  cleanups.forEach(cleanup => cleanup?.());
+});
+
+it('follows a merged active stage while preserving an unrelated unreadable entry', async () => {
+  vi.stubGlobal('window', { setTimeout, clearTimeout });
+  const saved = defaultStarterSession('Wayfarer');
+  const workspace = createWorkspace(saved);
+  harness.calculate.mockResolvedValue(initial);
+  renderSession().importSession(workspaceEnvelope(workspace));
+  await vi.waitFor(() => expect(renderSession().calc).toBe(initial));
+  const changed = structuredClone(renderSession().workspace!);
+  const stage = activeWorkspaceStage(changed);
+  stage.saved.state.character.level = 80;
+  const theirs = addWorkspaceBuild(changed, 'Unreadable', saved);
+  theirs.builds[1].stages[0].saved = null as never;
+  const raw = JSON.stringify({ version: 1, state: null, workspace: theirs });
+  localStorage.setItem(STORAGE.workspace, raw);
+  // This write discovers the other tab's change before its storage event arrives.
+  renderSession().setNotes(saved.notes);
+  await vi.waitFor(() => expect(renderSession().character?.level).toBe(80));
+  expect(renderSession().workspaceRecovery).toBe(raw);
+  expect(localStorage.getItem(STORAGE.workspace)).toBe(raw);
+  renderSession().setNotes('After following the other tab');
+  expect(activeWorkspaceStage(renderSession().workspace!).saved.state.character.level).toBe(80);
+  renderSession().dismissSyncNotice();
 });
