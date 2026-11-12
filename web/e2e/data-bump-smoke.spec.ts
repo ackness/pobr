@@ -73,6 +73,9 @@ test('after a data bump: import, skills and supports, crafting, passives, save a
   // 1. Import a real build code: it calculates and lands on the Overview with results.
   await importBuild(page, code);
   await settled(page);
+  // The header's data version comes from the active engine's dataInfo response.
+  const calculationVersion = await page.locator('.shell-brand-version').getAttribute('title');
+  expect(calculationVersion?.split(' · ')[1]).toBe(version);
   // This build is Chaos Inoculation (Life is always 1), so follow numbers that move with the
   // tree and the data: Energy Shield and the headline DPS.
   const energyShield = statValue(page, /^Energy Shield$/).first();

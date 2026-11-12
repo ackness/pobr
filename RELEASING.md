@@ -68,6 +68,15 @@ mise run data:bump ackness/repoe game/<patch>-<n> ackness/poe2-zh-cn-stats local
 按[维护者指南的 L2 / L3 规则](docs/maintainer-guide.md#parity-体系回归基准)逐行归因并接受数据变化；
 计算语义修复放在另一个引擎 PR。接受后的输出成为新锁的 L2 快照。
 
+新补丁（包括 1.0 上线）在本地准备好数据并完成上表迁移后，提交前运行一次组合验收：
+
+```sh
+mise run data:accept
+```
+
+四步必须全部 PASS；步骤、参数、环境准备与结果含义见[新补丁验收](docs/development-workflow.md#新补丁验收)。
+这不代替 L2 逐行归因或合并前的完整 CI。
+
 提交、推送并开 PR，然后在推送的分支上请求完整 CI：
 
 ```sh
@@ -129,6 +138,7 @@ gh pr create --title "chore: release v0.x.y" --body-file .cache/release-notes.md
 ```
 
 - 浏览器套件只在本地运行（`mise run ci` 不再接受 `--e2e`）；层级、回执与端口见[浏览器测试](docs/development-workflow.md#浏览器测试)。
+  发版带新游戏补丁时，先完成 [§2 的新补丁验收](#2-新游戏补丁pobr-改锁)；仍须运行完整的 `e2e release`。
 
 CHANGELOG 的一节用英文写，读者依次是 pobr.win 的玩家、使用 WASM 包／CLI／数据包的开发者；写读者看到的变化，不写实现过程：
 

@@ -96,6 +96,7 @@ PR gate 不运行 Clippy 或 Rust 测试，本地检查也不代替完整集成 
 mise run check:pr                             # Before pushing: changed areas, offline
 mise run check:pr --quick                     # While editing: fmt, cargo check, i18n, types, changed unit tests
 mise run e2e                                  # Browser: @smoke + specs mapped from the change (see below)
+mise run data:accept                           # New-patch acceptance (see 新补丁验收)
 mise run hooks:install                        # Opt in once per clone; shared by worktrees
 mise run targets                              # List current suites without compiling
 mise run verify build skills support_gating:: # Selected tests, fmt and Clippy
@@ -527,6 +528,20 @@ mise run snapshot:record                    # 同一份比较，审阅后重录�
 `POBR_OUTPUT_SNAPSHOT=<绝对路径>` 选择副本作比较或录制；默认是 `examples/output-snapshot.json`。
 `POBR_SNAPSHOT_LOCK=<绝对路径>` 指定报告所用的锁；实际数据身份仍须与它一致。
 `data:bump` 的自动报告、输出流与失败处理见 [RELEASING.md](../RELEASING.md#2-新游戏补丁pobr-改锁)。
+
+## 新补丁验收
+
+`mise run data:accept` 按顺序运行 `multi_version` 定向测试、L2 语料全部构筑的 CLI 计算、
+同一语料的 `audit:display --strict`，最后经 `mise run e2e smoke --grep data-bump-smoke.spec.ts`
+运行换数据冒烟。语料目录从 L2 快照读取，并包含目录中新加入的构筑；不读取 holdout。
+显示审计复用 E2E 的依赖、数据同步和 WASM 新鲜度检查，浏览器步骤再按需准备 dist。
+数据准备只使用本地缓存中的锁定归档；缺归档时会提示先运行 `mise run data:prepare` 后重试。
+新 worktree 的缓存准备见[本地复用](#本地复用)，缺浏览器时运行 `mise run setup:e2e`。
+
+各步骤失败后继续收集结果，最后打印含耗时的 PASS / FAIL / SKIP 表；任一步失败以非零状态退出。
+`--skip multi-version|corpus|display|e2e` 可重复，例如 `mise run data:accept --skip e2e`；
+有跳过时显示 INCOMPLETE，不算完整验收。命令不比较数值、不重录 L2，也不替代完整 CI 或发版的
+`e2e release`。采用新补丁（包括 1.0）时的执行位置见 [RELEASING.md](../RELEASING.md#2-新游戏补丁pobr-改锁)。
 
 ## 慢构建与按需报告
 
