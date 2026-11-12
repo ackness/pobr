@@ -168,7 +168,7 @@ tuned Titan His Scattering Calamity 的主技能在第一组，其他常驻技�
 
 ### 命名组与 XML 保留
 
-JSON/WASM 握手为 20（20 起 Web 初始化需要 `displayCatalogJson`）：`pobr_wasm::SCHEMA_VERSION` 与 Web `EXPECTED_SCHEMA_VERSION` 配对。
+JSON/WASM 握手为 21（20 起 Web 初始化需要 `displayCatalogJson`，21 起需要 `dataInfo`）：`pobr_wasm::SCHEMA_VERSION` 与 Web `EXPECTED_SCHEMA_VERSION` 配对。
 解码返回 config_sets／skill_sets 及活动 id，按 XML 稳定 id 选组，不把稀疏 id 当位置。
 `xml_merge::manage_named_set` 可新建、复制、重命名、删除，拒绝不存在 id 和删最后一组。
 旧平铺 Config／Skills 管理时包装为 Default，平铺 Skills 导出也包装。

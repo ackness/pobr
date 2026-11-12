@@ -69,7 +69,8 @@ test('archive preserves complete data, bindings and skill; hashes and size arith
   for (const [file, content] of Object.entries(data.files)) {
     assert.equal(content, readFileSync(join(root, 'web/public/data/1.2.3', file), 'utf8'));
   }
-  for (const file of ['pobr_wasm.d.ts', 'pobr_wasm_bg.wasm.d.ts', 'api-types.ts', 'generated/request.ts', 'skills/use-pobr-wasm/SKILL.md',
+  for (const file of ['pobr_wasm.d.ts', 'pobr_wasm_bg.wasm.d.ts', 'api-types.ts', 'generated/request.ts', 'generated/dataInfo.ts',
+    'skills/use-pobr-wasm/SKILL.md',
     'skills/use-pobr-wasm/references/api.md', 'skills/use-pobr-wasm/scripts/demo.mjs', 'example.mjs', 'LICENSE']) {
     assert.ok(readFileSync(join(packageRoot, file)).length);
   }

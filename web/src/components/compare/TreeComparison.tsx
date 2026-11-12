@@ -20,15 +20,16 @@ interface Props {
   before?: CalculateBuildResponse;
   after?: CalculateBuildResponse;
   dataVersion: string | null;
+  currentTreeVersion: string | null;
   meta: PassiveTreeMeta | null;
   lang: Lang;
 }
 
 export function TreeComparison(props: Props) {
-  const { a, b, dataVersion, lang } = props;
+  const { a, b, dataVersion, currentTreeVersion, lang } = props;
   const tt = bindT(lang);
-  const versionA = resolvedTreeVersion(a.treeVersion, dataVersion);
-  const versionB = resolvedTreeVersion(b.treeVersion, dataVersion);
+  const versionA = resolvedTreeVersion(a.treeVersion, currentTreeVersion);
+  const versionB = resolvedTreeVersion(b.treeVersion, currentTreeVersion);
   const key = JSON.stringify([versionA, versionB, dataVersion]);
   const [loaded, setLoaded] = useState<{ key: string; a?: PassiveNode[]; b?: PassiveNode[]; error?: string }>();
   useEffect(() => {

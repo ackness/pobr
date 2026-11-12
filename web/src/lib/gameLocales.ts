@@ -1,15 +1,7 @@
 import { gameTextFallback, SOURCE_LANG, type Lang } from '../locales';
 
 /** One locale the data pack declares (WASM `availableLocales()`). */
-export interface GameLocaleInfo {
-  code: string;
-  /** Fallbacks its `_meta.json` declares, in order. */
-  fallback: string[];
-  /** Itself, then the declared fallbacks followed through the other declared locales. */
-  chain: string[];
-  /** Whether its own pack publishes mod-line templates. */
-  templates: boolean;
-}
+export type GameLocaleInfo = import('../api/generated/dataInfo').LocaleInfo;
 
 let declared = new Map<string, GameLocaleInfo>();
 

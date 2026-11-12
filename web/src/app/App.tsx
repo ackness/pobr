@@ -1,3 +1,4 @@
+import { DataVersionNotice } from './DataVersionNotice';
 import { buildDisplayName, stageDisplayName } from '../lib/workspaceNames';
 import { Fragment, lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { LayoutDashboard, Library, Network, Gem, Swords, TrendingUp, Calculator, SlidersHorizontal, Columns2, Settings2, Menu, Undo2, Redo2, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Search, Check, LoaderCircle, Download, BookmarkPlus } from 'lucide-react';
@@ -231,6 +232,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
     <div className="shell-body" data-rail={railHidden || undefined} data-inspector={docked && inspect ? '' : undefined}>
       <div className="shell-rail">{rail}</div>
       <main id="shell-main" tabIndex={-1} className={`shell-main shell-page-${route}`} data-display-mode={pageDisplayMode(preferences, route)} ref={main} key={stageKey}>
+        <DataVersionNotice savedVersion={activeBuild?.stages.find(stage => stage.id === activeBuild.activeStage)?.saved.data_version} currentVersion={session.dataVersion} lang={lang} />
         {session.storageFailed && <div className="shell-alert" role="alert"><p>{t(lang, 'shell.storageUnavailable')}</p><BackupDownload lang={lang} exportWorkspace={session.exportWorkspace} /></div>}
         {session.workspaceRecovery && <div className="shell-alert" role="alert">
           <p>{t(lang, 'shell.workspaceRecovery')}</p>

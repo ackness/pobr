@@ -35,6 +35,16 @@ describe('local build workspace', () => {
     expect(parseSaved(workspaceEnvelope(workspace))).toEqual(saved);
   });
 
+  it('retains each stage data stamp while legacy saves still load', () => {
+    const original = { ...saved, data_version: '0.4.0' };
+    const workspace = updateWorkspaceStage(duplicateWorkspaceStage(createWorkspace(original), 'Current'),
+      { ...saved, data_version: '0.5.5.5' }, {});
+    const restored = parseWorkspace(JSON.parse(workspaceEnvelope(workspace)).workspace, parseSaved)!;
+    expect(restored.builds[0].stages.map(stage => stage.saved.data_version)).toEqual(['0.4.0', '0.5.5.5']);
+    expect(parseSaved(JSON.stringify(saved))?.data_version).toBeUndefined();
+    expect(parseSaved(JSON.stringify(original))?.data_version).toBe('0.4.0');
+  });
+
   it('keeps stage progress and editor drafts independent after copying', () => {
     const initial = updateWorkspaceStage(createWorkspace(saved), saved, { 'item:ring1': 'Unapplied item' });
     const firstId = activeWorkspaceStage(initial).id;
@@ -110,13 +120,15 @@ describe('comparison section application', () => {
   it('edits an inactive target without changing B or the active selection', () => {
     const workspace = duplicateWorkspaceStage(createWorkspace(saved), 'B');
     const [a, b] = workspace.builds[0].stages;
+    a.saved = parseSaved(JSON.stringify({ ...a.saved, data_version: '0.4.0' }))!;
+    b.saved = { ...b.saved, data_version: '0.3.0' };
     const ref = (stage: typeof a) => ({ buildId: workspace.activeBuild, stageId: stage.id, saved: stage.saved });
     const state = { ...a.saved.state, items: [{ slot: 'ring1', text: 'Copied' }] };
-    const next = replaceComparedStage(workspace, ref(a), ref(b), state)!;
+    const next = replaceComparedStage(workspace, ref(a), ref(b), state, '0.5.5.5')!;
     expect(next.activeBuild).toBe(workspace.activeBuild);
     expect(next.builds[0].activeStage).toBe(b.id);
     expect(next.builds[0].stages[1]).toBe(b);
-    expect(next.builds[0].stages[0].saved).toEqual({ ...a.saved, state });
+    expect(next.builds[0].stages[0].saved).toEqual({ ...a.saved, state, data_version: '0.5.5.5' });
     expect(a.saved.state.items).toEqual(saved.state.items);
   });
   it('rejects stale A or B, self-copy, missing stages and unapplied A drafts', () => {
@@ -221,8 +233,8 @@ describe('first successful import', () => {
   const reload = (workspace: ReturnType<typeof createWorkspace>) =>
     parseWorkspace(JSON.parse(workspaceEnvelope(workspace)).workspace, parseSaved)!;
 
-  it('replaces the default starter after reload, including multi-stage imports', () => {
-    const original = createWorkspace(blank), workspace = reload(original);
+  it.each([undefined, '0.5.5.5'])('replaces the default starter with stamp %s after reload, including multi-stage imports', data_version => {
+    const original = createWorkspace({ ...blank, data_version }), workspace = reload(original);
     expect(workspace.builds[0]).not.toBe(original.builds[0]);
     const imported = addWorkspaceBuild(workspace, 'Imported', saved, blank);
     expect(imported.builds).toHaveLength(1);

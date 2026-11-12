@@ -16,13 +16,15 @@ export type {
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 20;
+export const EXPECTED_SCHEMA_VERSION = 21;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
 // ---------------------------------------------------------------------------
 
-export type ApiErrorCode = 'not_initialized' | 'bad_request' | 'decode_error' | 'internal';
+export type { DataInfo } from './generated/dataInfo.js';
+
+export type ApiErrorCode = 'not_initialized' | 'bad_request' | 'decode_error' | 'internal' | 'unknown_tree_version' | 'tree_version_mismatch';
 
 /** wasm Err 侧 JSON：`{code, message, slot?}`。 */
 export interface ApiErrorJson {

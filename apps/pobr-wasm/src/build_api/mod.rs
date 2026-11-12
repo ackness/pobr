@@ -73,6 +73,8 @@ use crate::state;
 /// - `not_initialized` — game data hasn't been initialized; run the init flow first
 /// - `bad_request` — the request JSON is malformed / a field value is invalid (a client bug)
 /// - `decode_error` — PoB code / .build file decoding failed (bad user input)
+/// - `unknown_tree_version` — no PoBR tree label is registered for this game version
+/// - `tree_version_mismatch` — the imported compatibility label disagrees with PoBR's rule
 /// - `internal` — every other calculation/serialization error (the catch-all, `From<String>` lands here automatically)
 ///
 /// Note: a single equipment/jewel/flask's **text** failing to parse doesn't
@@ -133,6 +135,43 @@ impl From<String> for ApiError {
             slot: None,
         }
     }
+}
+
+impl From<pobr_gamedata::LoadError> for ApiError {
+    fn from(error: pobr_gamedata::LoadError) -> Self {
+        let code = match &error {
+            pobr_gamedata::LoadError::UnknownTreeVersion { .. } => "unknown_tree_version",
+            pobr_gamedata::LoadError::TreeVersionMismatch { .. } => "tree_version_mismatch",
+            _ => "internal",
+        };
+        Self {
+            code,
+            message: error.to_string(),
+            slot: None,
+        }
+    }
+}
+
+#[derive(Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct DataInfo {
+    pub data_version: String,
+    pub tree_version: String,
+    pub locales: Vec<crate::locales::LocaleInfo>,
+}
+
+/// The initialized pack's identity and PoBR-owned passive-tree label.
+pub fn data_info_json() -> Result<String, String> {
+    let read = || -> Result<DataInfo, ApiError> {
+        let game = state::game_data().map_err(ApiError::not_initialized)?;
+        Ok(DataInfo {
+            data_version: game.validate_manifest()?.poe_version,
+            tree_version: game.tree_version()?.to_string(),
+            locales: crate::locales::available_locales(),
+        })
+    };
+    let info = read().map_err(ApiError::into_json)?;
+    serde_json::to_string(&info).map_err(|e| ApiError::from(e.to_string()).into_json())
 }
 
 /// Stable equipment-slot id -> [`EquipmentSlot`] (the inverse of `EquipmentSlot::id()`).

@@ -8,7 +8,7 @@
       "+5% to [Resistances|Fire Resistance]"
     ],
     "native_stats": {
-      "data_version": "controlled-native-passive-0.5.5.5",
+      "data_version": "0.5.5.5",
       "tree_version": null,
       "node_id": 62518,
       "node_slug": "maximum_resistances1",

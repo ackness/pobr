@@ -134,9 +134,9 @@ describe('whole-build comparison', () => {
     expect(copySection(a, b, { kind: 'skill', index: 0 })).toBe(a);
   });
   test('resolves Default tree version against current data', () => {
-    expect(resolvedTreeVersion('Default', '0.5.5.4.2')).toBe('0_5');
-    expect(resolvedTreeVersion(undefined, '0.5.5.4.2')).toBe('0_5');
-    expect(resolvedTreeVersion('0_4', '0.5.5.4.2')).toBe('0_4');
+    expect(resolvedTreeVersion('Default', 'future_tree')).toBe('future_tree');
+    expect(resolvedTreeVersion(undefined, 'future_tree')).toBe('future_tree');
+    expect(resolvedTreeVersion('0_4', 'future_tree')).toBe('0_4');
   });
 });
 

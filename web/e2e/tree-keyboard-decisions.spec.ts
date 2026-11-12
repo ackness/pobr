@@ -110,7 +110,7 @@ async function pointerNode(page: Page, skill: number) {
 async function seeded(page: Page, patch: Partial<SavedSession['state']> = {}) {
   const allocatedNodes = shortestAllocationPath(graph, new Set(), witchRoot, socket.skill);
   const state: SavedSession['state'] = {
-    pobCode: null, treeVersion: `0_${version.split('.')[1]}`,
+    pobCode: null, treeVersion: JSON.parse((await replayBackend()).dataInfo()).tree_version,
     character: { level: 90, class_name: 'Witch', ascendancy_name: '' },
     allocatedNodes, attributeChoices: Object.fromEntries(nodes
       .filter(node => node.name === 'Attribute' && allocatedNodes.includes(node.skill)).map(node => [String(node.skill), 'int' as const])),

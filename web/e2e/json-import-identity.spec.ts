@@ -489,6 +489,8 @@ test('proper pobr-build file and confirmed workspace backup preserve all stages 
   const expected = structuredClone(shared.envelope);
   expected.state = sessionFile.state;
   expected.notes = sessionFile.notes;
+  // A legacy session import keeps its absent stamp in both stage and envelope.
+  delete expected.data_version;
   const expectedBuild = expected.workspace.builds.find(build => build.id === expected.workspace.activeBuild)!;
   expectedBuild.stages.find(stage => stage.id === expectedBuild.activeStage)!.saved = sessionFile;
   expect(replaced.envelope).toEqual(expected);

@@ -62,17 +62,17 @@ export function selectWorkspaceStage(workspace: BuildWorkspace, buildId: string,
 
 /** The same initial content is used for a fresh session and first-import cleanup. */
 export function defaultStarterSession(className: string): SavedSession {
-  return { version: 1, notes: '', state: {
+  return { version: 1, state: {
     pobCode: null, character: { level: 1, class_name: className, ascendancy_name: '' },
     allocatedNodes: [], attributeChoices: {}, socketGroups: [], items: [], flasks: [], limbs: [], jewels: [],
     annotations: {}, params: { config_inputs: {} },
-  } };
+  }, notes: '' };
 }
 
 /** Ignore object key order and the empty optional fields materialized on reload. */
 function starterContent(saved: SavedSession): string {
   const state = saved.state;
-  return JSON.stringify({ ...saved, state: { ...state,
+  return JSON.stringify({ ...saved, data_version: undefined, state: { ...state,
     treeVersion: state.treeVersion ?? null, weaponSwap: state.weaponSwap ?? null,
     equipmentJewels: state.equipmentJewels ?? [],
   } }, (_key, value) => value && typeof value === 'object' && !Array.isArray(value)
@@ -212,12 +212,14 @@ export interface StageSnapshot {
 
 /** Apply only to the exact snapshots inspected, retaining selection and every other stage. */
 export function replaceComparedStage(workspace: BuildWorkspace, a: StageSnapshot, b: StageSnapshot,
-  state: SavedSession['state']): BuildWorkspace | null {
+  state: SavedSession['state'], dataVersion?: string): BuildWorkspace | null {
   const find = (ref: StageSnapshot) => workspace.builds.find(build => build.id === ref.buildId)?.stages.find(stage => stage.id === ref.stageId);
   const target = find(a), source = find(b);
   if (!target || !source || target === source || target.saved !== a.saved || source.saved !== b.saved
     || Object.keys(target.drafts).length) return null;
   return { ...workspace, builds: workspace.builds.map(build => build.id !== a.buildId ? build : {
-    ...build, stages: build.stages.map(stage => stage !== target ? stage : { ...stage, saved: { ...stage.saved, state } }),
+    ...build, stages: build.stages.map(stage => stage !== target ? stage : { ...stage, saved: {
+      ...stage.saved, state, ...(dataVersion ? { data_version: dataVersion } : {}),
+    } }),
   }) };
 }

@@ -58,6 +58,9 @@ describe('engine RPC', () => {
       get dataVersion() {
         return version;
       },
+      get dataInfo() {
+        return version ? { data_version: version, tree_version: 'future_tree', locales: [] } : undefined;
+      },
       async init(onProgress) {
         onProgress?.('loading');
         version = '0.5';
@@ -69,6 +72,7 @@ describe('engine RPC', () => {
     await client.backend.init((message) => seen.push(message));
     expect(seen).toEqual(['loading', 'ready']);
     expect(client.backend.dataVersion).toBe('0.5');
+    expect(client.backend.dataInfo).toEqual({ data_version: '0.5', tree_version: 'future_tree', locales: [] });
   });
 
   it('answers calls in the order they arrive, each with its own result', async () => {

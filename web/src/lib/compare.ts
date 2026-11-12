@@ -89,8 +89,8 @@ export function comparisonStats(output: CalculateBuildResponse): DisplayStatValu
   ] : [])];
 }
 
-export function resolvedTreeVersion(version: string | null | undefined, dataVersion: string | null): string | null {
-  return version && version !== 'Default' ? version : dataVersion ? `0_${dataVersion.split('.')[1]}` : null;
+export function resolvedTreeVersion(version: string | null | undefined, currentTreeVersion: string | null): string | null {
+  return version && version !== 'Default' ? version : currentTreeVersion;
 }
 
 export async function compareBuilds(a: CalculateBuildRequest, b: CalculateBuildRequest, basis: ConfigBasis) {

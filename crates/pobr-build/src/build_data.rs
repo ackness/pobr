@@ -534,6 +534,7 @@ impl BuildData {
     /// return value rather than reloading the same version directory repeatedly.
     pub fn load(data: &GameData) -> Result<Self, LoadError> {
         data.validate_manifest()?;
+        data.tree_version()?;
         // Pin report provenance alongside the immutable data used by this build.
         data.identity()?;
         // Skill type names before anything that parses rules or skill data.

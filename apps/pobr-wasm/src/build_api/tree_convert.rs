@@ -1,4 +1,4 @@
-use super::{ApiError, encode::current_tree_version};
+use super::ApiError;
 use crate::state;
 use pobr_build::{active_selection, decode_pob_code, encode_pob_code, parse_build_sets};
 use serde::{Deserialize, Serialize};
@@ -42,7 +42,7 @@ fn preview(input: &str) -> Result<String, ApiError> {
         &xml,
         &data,
         &meta,
-        &current_tree_version().map_err(ApiError::not_initialized)?,
+        game.tree_version().map_err(ApiError::from)?,
         &indices,
     )
     .map_err(ApiError::bad_request)?;

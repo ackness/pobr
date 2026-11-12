@@ -1,11 +1,14 @@
 import { waitForPageTransition } from './navigation';
 import { deflateSync } from 'node:zlib';
+import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { comparisonWorkspace } from './fixtures/compare-workspace';
 import { busy, pageLink } from './shell';
 import { choose, compareStageA, compareStageB, compareTab } from './treePage';
 import { workspaceEnvelope } from '../src/lib/buildWorkspace';
 import { SMOKE } from './tags';
+
+const version = readFileSync(new URL('../../data/CURRENT', import.meta.url), 'utf8').trim();
 
 test('compare stages without mutation, share A config, and apply one item to inactive A only', SMOKE, async ({ page }, testInfo) => {
   await page.addInitScript(raw => { if (!localStorage.getItem('pobr-v2-build-state')) localStorage.setItem('pobr-v2-build-state', raw); }, workspaceEnvelope(comparisonWorkspace()));
@@ -43,8 +46,9 @@ test('compare stages without mutation, share A config, and apply one item to ina
   expect(copied.activeBuild).toBe(original.activeBuild);
   expect(copied.builds[0].activeStage).toBe('stage-b');
   expect(copied.builds[0].stages[1]).toEqual(original.builds[0].stages[1]);
+  // Applying an item is a save of A under the active data; unchanged B keeps its stamp.
   expect(copied.builds[0].stages[0]).toEqual({ ...original.builds[0].stages[0], saved: {
-    ...original.builds[0].stages[0].saved, state: { ...original.builds[0].stages[0].saved.state,
+    ...original.builds[0].stages[0].saved, data_version: version, state: { ...original.builds[0].stages[0].saved.state,
       items: original.builds[0].stages[1].saved.state.items, sourceBackfillComplete: true },
   } });
   await page.getByRole('heading', { name: 'Compare', exact: true }).scrollIntoViewIfNeeded();

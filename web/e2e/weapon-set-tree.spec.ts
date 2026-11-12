@@ -20,7 +20,7 @@ const child = nodes.filter(node => node.kind === 'normal' && node.name !== 'Attr
   && (one.connections?.includes(node.skill) || node.connections?.includes(one.skill)))
   .sort((a,b) => a.skill - b.skill)[0];
 const firstSet = [one.skill, child.skill].sort((a,b) => a - b);
-const code = deflateSync(`<PathOfBuilding2><Build level="80" className="Warrior"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_${version.split('.')[1]}"/></Tree><Skills/><Items/><Notes>Weapon tree round-trip</Notes></PathOfBuilding2>`).toString('base64url');
+const code = deflateSync(`<PathOfBuilding2><Build level="80" className="Warrior"/><Tree activeSpec="1"><Spec nodes="" treeVersion="Default"/></Tree><Skills/><Items/><Notes>Weapon tree round-trip</Notes></PathOfBuilding2>`).toString('base64url');
 const nav = (page: Page, name: string) => pageLink(page, name);
 const saved = (page: Page): Promise<SavedSession['state']> => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 const circle = (page: Page, node: PassiveNode) => page.locator(`circle[data-skill-id="${node.skill}"]`);
