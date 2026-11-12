@@ -8,9 +8,8 @@ use pobr_data::skill::SkillTypes;
 use crate::build::Build;
 use crate::build_data::BuildData;
 
-/// Main skill keyword + main weapon category → extra damage-scaling ModName
-/// (`GrenadeDamage`/`CrossbowDamage` etc). Makes skill/weapon-scoped damage boosts like
-/// `increased Grenade Damage` / `Damage with Crossbows` take effect.
+/// Main skill keyword + historical main-hand weapon names. Other weapon
+/// damage names are queried from each hand's bits in core's damage calculation.
 pub(crate) fn damage_keywords(
     build: &Build,
     data: &BuildData,
@@ -21,28 +20,13 @@ pub(crate) fn damage_keywords(
     if skill_types.iter().any(|t| t == "Grenade") {
         names.push("GrenadeDamage".to_string());
     }
-    // Main weapon category → weapon-type damage, for a skill attacking with it.
     if attacks_with_weapon(skill_types)
         && let Some(item) = build.items.get(&EquipmentSlot::Weapon1)
-        && let Some(def) = data.base_item(&item.base.to_string())
+        && let Some(base) = data.base_item(&item.base.to_string())
+        && let Some(row) = weapon_type_info(data, &base.item_class)
+        && row.uses_legacy_damage_keyword()
     {
-        // An allowlist mapping flag → damage ModName (an L4 code-side derivation): only
-        // covers weapon categories pobr already has a consumer for (equivalent per
-        // category to the old contains-based check). TODO(parity): vendor also has
-        // Sword/Axe/Claw/... flags, but pobr currently has no matching `<X>Damage`
-        // consumer chain, so those aren't derived.
-        let kw = weapon_type_info(data, &def.item_class).and_then(|w| match w.flag.as_str() {
-            "Crossbow" => Some("CrossbowDamage"),
-            "Bow" => Some("BowDamage"),
-            // vendor records the Quarterstaff's flag as "Staff" (label = Quarterstaff).
-            "Staff" => Some("QuarterstaffDamage"),
-            "Mace" => Some("MaceDamage"),
-            "Spear" => Some("SpearDamage"),
-            _ => None,
-        });
-        if let Some(k) = kw {
-            names.push(k.to_string());
-        }
+        names.push(row.damage_keyword());
     }
     names
 }
@@ -56,41 +40,17 @@ pub(crate) fn attacks_with_weapon(skill_types: &[String]) -> bool {
     skill_types.iter().any(|t| t == "Attack") && !skill_types.iter().any(|t| t == "NonWeaponAttack")
 }
 
-/// Looks up an entry in the injected weapon type table (`data.constants.weapon_types`,
-/// sourced from vendor's `data.weaponTypeInfo`) by GGG's `item_class`. The key-space
-/// mismatch (documented in the schema doc) is resolved here:
-///
-/// - GGG records the quarterstaff's item_class as `Warstaff`, but vendor's table key is
-///   `Staff` (`label = "Quarterstaff"`);
-/// - GGG's `Staff` (the staff base type, 17 entries in the repo data) has **no matching
-///   weapon type entry** in vendor's PoE2 base data — it must not be mismatched to the
-///   table key `Staff` (that's the quarterstaff), nor mapped to the legacy `Warstaff`
-///   entry; returns `None` (matching the old scattered predicates' behavior: staves
-///   aren't melee, have no Using*/damage keywords);
-/// - GGG's `FishingRod` → table key `Fishing Rod` (with a space).
+/// Resolve the equipment class through the table's shared compatibility aliases.
 pub(crate) fn weapon_type_info<'a>(
     data: &'a BuildData,
     item_class: &str,
 ) -> Option<&'a pobr_data::catalog::WeaponTypeDef> {
-    let key = match item_class {
-        "Warstaff" => "Staff",
-        "Staff" => return None,
-        "FishingRod" => "Fishing Rod",
-        other => other,
-    };
-    data.constants.weapon_types.get(key)
+    data.constants.weapon_types.get_by_item_class(item_class)
 }
 
-/// Main-hand weapon → cfg weapon bits (matching vendor's `getWeaponFlags`,
-/// `CalcActiveSkill.lua:274-309`; introduced in commit-2, permanent from the switch
-/// commit on): used so mod-side weapon-bit matching (mod.flags ⊆ cfg.flags subset
-/// match) can hit.
-///
-/// Derived from [`weapon_type_info`] and the same `weapon_types.json` table as
-/// [`weapon_type_conditions`]. Unlike grip conditions (which consider both hands),
-/// these per-skill matching bits describe the main-hand weapon source; the per-hand
-/// attack pass can replace them with its offhand bits. An empty main hand →
-/// vendor's `weaponData.type = "None"` → only the `Unarmed` bit.
+/// Main-hand weapon bits from the same row as the build's Using conditions.
+/// The per-hand attack pass substitutes the offhand row's bits when needed.
+/// Empty main hand is unarmed and has no generic weapon/grip/range bits.
 pub(crate) fn weapon_cfg_flags(build: &Build, data: &BuildData) -> ModFlags {
     let Some(item) = build.items.get(&EquipmentSlot::Weapon1) else {
         return ModFlags::weapon_flags("None", "Unarmed", true, true);
@@ -101,6 +61,22 @@ pub(crate) fn weapon_cfg_flags(build: &Build, data: &BuildData) -> ModFlags {
     weapon_type_info(data, &def.item_class)
         .map(|w| ModFlags::weapon_flags(&w.id, &w.flag, w.one_hand, w.melee))
         .unwrap_or(ModFlags::NONE)
+}
+
+/// Partial type-bit support is visible through the existing unsupported channel.
+pub(crate) fn weapon_support_limits(build: &Build, data: &BuildData) -> Vec<String> {
+    [EquipmentSlot::Weapon1, EquipmentSlot::Weapon2]
+        .into_iter()
+        .filter_map(|slot| {
+            let item = build.items.get(&slot)?;
+            let base = data.base_item(&item.base.to_string())?;
+            let info = weapon_type_info(data, &base.item_class)?;
+            ModFlags::weapon_type_bit(&info.flag).is_none().then(|| format!(
+                "Weapon {}: unsupported weapon flag {}; generic weapon classification and Using{} conditions remain available",
+                slot.id(), info.flag, info.flag
+            ))
+        })
+        .collect()
 }
 
 /// Whether the off-hand slot has a shield equipped (PoB2's `Condition:UsingShield`).
@@ -134,7 +110,7 @@ pub(crate) fn apply_condition_implications(mut cfg: CalcConfig) -> CalcConfig {
 /// not a weapon type and sets nothing. Whether a weapon is one- or two-handed
 /// and melee comes from the weapon type table (`weapon_types.json`),
 /// independently of `ModFlags::Weapon1H/2H` used by per-skill weapon matching.
-pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'static str> {
+pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<String> {
     let Some(item) = build.items.get(&EquipmentSlot::Weapon1) else {
         return Vec::new();
     };
@@ -145,9 +121,7 @@ pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'s
     // a one-handed dual-wield source, but a valid offhand still has conditions.
     let main = weapon_type_info(data, &def.item_class);
     let mut vars = Vec::new();
-    // The vendor considers both hands for Using* conditions. Only the subset of
-    // flag conditions consumed by PoBR is surfaced here; grip/melee comes from
-    // the table, not from an item-class string predicate.
+    // Both equipped hands supply conditions from the loaded rows.
     for info in [
         main,
         build.items.get(&EquipmentSlot::Weapon2).and_then(|off| {
@@ -159,34 +133,22 @@ pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'s
     .into_iter()
     .flatten()
     {
-        // The names the parser rules test for a weapon type. A Quarterstaff
-        // has two: "with Quarterstaves" modifiers test `UsingQuarterstaff`,
-        // "while wielding a Quarterstaff" ones test `UsingStaff`.
-        let categories: &[&'static str] = match info.flag.as_str() {
-            "Staff" => &["UsingQuarterstaff", "UsingStaff"],
-            "Mace" => &["UsingMace"],
-            "Crossbow" => &["UsingCrossbow"],
-            "Bow" => &["UsingBow"],
-            "Spear" => &["UsingSpear"],
-            "Dagger" => &["UsingDagger"],
-            _ => &[],
-        };
-        for &var in categories {
+        for var in info.conditions() {
             if !vars.contains(&var) {
                 vars.push(var);
             }
         }
         if info.melee {
-            if !vars.contains(&"UsingMeleeWeapon") {
-                vars.push("UsingMeleeWeapon");
+            if !vars.iter().any(|var| var == "UsingMeleeWeapon") {
+                vars.push("UsingMeleeWeapon".into());
             }
             let grip = if info.one_hand {
                 "UsingOneHandedMelee"
             } else {
                 "UsingTwoHandedMelee"
             };
-            if !vars.contains(&grip) {
-                vars.push(grip);
+            if !vars.iter().any(|var| var == grip) {
+                vars.push(grip.into());
             }
         }
     }
@@ -195,7 +157,7 @@ pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'s
     // Giant's Blood is settled after source injection, including keystones
     // granted by an item. Category/grip conditions above retain base identity.
     if pobr_core::skill_env::can_dual_wield(build, data, false) {
-        vars.push("DualWielding");
+        vars.push("DualWielding".into());
     }
     vars
 }
@@ -406,7 +368,7 @@ mod weapon_condition_tests {
         for (class, expected) in [
             ("Bow", vec!["UsingBow"]),
             ("Crossbow", vec!["UsingCrossbow"]),
-            ("Wand", vec![]),
+            ("Wand", vec!["UsingWand"]),
             (
                 "Warstaff",
                 vec![
@@ -417,10 +379,13 @@ mod weapon_condition_tests {
                 ],
             ),
             ("Staff", vec![]),
-            ("Talisman", vec!["UsingMeleeWeapon", "UsingTwoHandedMelee"]),
+            (
+                "Talisman",
+                vec!["UsingTalisman", "UsingMeleeWeapon", "UsingTwoHandedMelee"],
+            ),
             (
                 "FishingRod",
-                vec!["UsingMeleeWeapon", "UsingTwoHandedMelee"],
+                vec!["UsingFishing", "UsingMeleeWeapon", "UsingTwoHandedMelee"],
             ),
         ] {
             let build = equip(Build::new(), &mut data, EquipmentSlot::Weapon1, class);
@@ -428,14 +393,35 @@ mod weapon_condition_tests {
             let dual = equip(build, &mut data, EquipmentSlot::Weapon2, "Dagger");
             let conditions = weapon_type_conditions(&dual, &data);
             assert_eq!(
-                conditions.contains(&"DualWielding"),
+                conditions.iter().any(|var| var == "DualWielding"),
                 class == "Wand",
                 "{class}"
             );
             assert!(
-                conditions.contains(&"UsingDagger"),
+                conditions.iter().any(|var| var == "UsingDagger"),
                 "offhand category: {class}"
             );
+        }
+        // Only the historical names use the unscoped main-hand channel.
+        for (class, expected) in [
+            ("Spear", Some("SpearDamage")),
+            ("Crossbow", Some("CrossbowDamage")),
+            ("Bow", Some("BowDamage")),
+            ("One Hand Mace", Some("MaceDamage")),
+            ("Warstaff", Some("QuarterstaffDamage")),
+            ("One Hand Sword", None),
+            ("One Hand Axe", None),
+            ("Dagger", None),
+            ("Wand", None),
+        ] {
+            let build = equip(Build::new(), &mut data, EquipmentSlot::Weapon1, class);
+            let build = equip(build, &mut data, EquipmentSlot::Weapon2, "Claw");
+            assert_eq!(
+                damage_keywords(&build, &data, &["Attack".into()]),
+                expected.into_iter().collect::<Vec<_>>(),
+                "{class}",
+            );
+            assert!(damage_keywords(&build, &data, &["Spell".into()]).is_empty());
         }
         let main = equip(
             Build::new(),
@@ -455,6 +441,109 @@ mod weapon_condition_tests {
             ]
         );
         let swapped = equip(dual, &mut data, EquipmentSlot::Weapon2, "Bow");
-        assert!(!weapon_type_conditions(&swapped, &data).contains(&"DualWielding"));
+        assert!(
+            !weapon_type_conditions(&swapped, &data)
+                .iter()
+                .any(|var| var == "DualWielding")
+        );
+    }
+    /// A new row needs no Rust weapon-name entry for matching or classification.
+    #[test]
+    fn new_weapon_row_preserves_flags_and_applies_wielding_condition() {
+        use super::super::{DataOrchestratorOptions, calculate_with_data_session};
+        use pobr_data::catalog::WeaponTypeDef;
+        use pobr_gamedata::GameData;
+        use std::sync::Arc;
+
+        let game = GameData::new(pobr_gamedata::current_data_dir());
+        let mut data = BuildData::load(&game).unwrap();
+        let rapier: WeaponTypeDef =
+            serde_json::from_str(r#"{"id":"Rapier","flag":"Rapier","one_hand":true,"melee":true}"#)
+                .unwrap();
+        Arc::make_mut(&mut data.constants)
+            .weapon_types
+            .0
+            .push(rapier);
+        let build = equip(Build::new(), &mut data, EquipmentSlot::Weapon1, "Rapier");
+        let conditions = weapon_type_conditions(&build, &data);
+        assert!(conditions.iter().any(|name| name == "UsingRapier"));
+        assert!(conditions.iter().any(|name| name == "UsingOneHandedMelee"));
+        let flags = ModFlags::WEAPON | ModFlags::WEAPON_1H | ModFlags::WEAPON_MELEE;
+        assert_eq!(weapon_cfg_flags(&build, &data), flags);
+        let contribution = pobr_core::skill_env::weapon_item_contribution(
+            &build.items[&EquipmentSlot::Weapon1],
+            &data,
+        )
+        .unwrap();
+        assert_eq!(contribution.flags, flags);
+        assert!(damage_keywords(&build, &data, &["Attack".into()]).is_empty());
+        assert!(damage_keywords(&build, &data, &["Spell".into()]).is_empty());
+        assert!(super::super::diagnosis::condition_set_from_build(
+            "UsingRapier",
+            &data
+        ));
+
+        let doc = game.mod_parser_rules().unwrap().unwrap();
+        data.parser_rules = Some(Arc::new(
+            pobr_core::mod_parser::CompiledParserRules::compile_with_weapon_types(
+                &doc,
+                &[],
+                &data.constants.weapon_types,
+            )
+            .unwrap(),
+        ));
+        let options = DataOrchestratorOptions::default();
+        let baseline = calculate_with_data_session(&build, &data, &options).unwrap();
+        assert!(baseline.config().condition("UsingRapier"));
+        assert!(flags.is_subset_of(baseline.config().flags));
+        assert!(
+            baseline
+                .unsupported_modifier_texts()
+                .iter()
+                .any(|text| text.contains("unsupported weapon flag Rapier"))
+        );
+        let boosted = calculate_with_data_session(
+            &build,
+            &data,
+            &DataOrchestratorOptions {
+                extra_modifier_texts: vec!["+37 to maximum Life while wielding a Rapier".into()],
+                ..options
+            },
+        )
+        .unwrap();
+        assert_eq!(boosted.output().life, baseline.output().life + 37.0);
+        assert!(
+            !boosted
+                .unsupported_modifier_texts()
+                .iter()
+                .any(|text| text.contains("+37"))
+        );
+
+        let mixed = equip(build, &mut data, EquipmentSlot::Weapon2, "Dagger");
+        let unsupported = calculate_with_data_session(
+            &mixed,
+            &data,
+            &DataOrchestratorOptions {
+                extra_modifier_texts: vec!["37% increased Damage with Rapiers".into()],
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(
+            unsupported
+                .unsupported_modifier_texts()
+                .iter()
+                .any(|text| text.contains("Rapiers"))
+        );
+        let offhand_rapier = equip(mixed, &mut data, EquipmentSlot::Weapon1, "Dagger");
+        let offhand_rapier = equip(offhand_rapier, &mut data, EquipmentSlot::Weapon2, "Rapier");
+        let limits = weapon_support_limits(&offhand_rapier, &data);
+        assert_eq!(limits.len(), 1);
+        assert!(limits[0].contains("Weapon weapon2: unsupported weapon flag Rapier"));
+        assert!(
+            weapon_type_conditions(&offhand_rapier, &data)
+                .iter()
+                .any(|name| name == "UsingRapier")
+        );
     }
 }

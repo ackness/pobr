@@ -2597,3 +2597,157 @@ fn utility_followup_rules_preserve_game_amounts_and_distinguish_missing_models()
         assert_eq!(parsed.special_meta.unwrap().no_effect, no_effect, "{text}");
     }
 }
+
+/// Synthetic next-version rows extend the same parser vocabulary as equipment.
+#[test]
+fn weapon_rows_add_wielding_conditions_without_inventing_type_bits() {
+    use pobr_core::mod_parser::{CompiledParserRules, parse_mod_engine};
+    use pobr_data::catalog::WeaponTypeTable;
+    use pobr_data::catalog::parser_rules::{
+        FlagPhraseDef, ModParserRulesDoc, PreFlagDef, RuleEffectsDef, StatMapValue, TagTemplate,
+    };
+
+    let mut doc: ModParserRulesDoc = serde_json::from_str(
+        &std::fs::read_to_string(
+            crate::support::test_data_dir().join("overlay/mod_parser_rules.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let mut weapons = WeaponTypeTable::default();
+    weapons.0.push(
+        serde_json::from_str(r#"{"id":"Rapier","flag":"Rapier","one_hand":true,"melee":true}"#)
+            .unwrap(),
+    );
+    let rules = CompiledParserRules::compile_with_weapon_types(&doc, &[], &weapons).unwrap();
+    let text = "37% increased Damage while wielding a Rapier";
+    let parsed = parse_mod_engine(text, &rules);
+    assert!(parsed.is_complete(), "{text}: {parsed:?}");
+    assert_eq!(parsed.mods[0].name.as_str(), "Damage");
+    let mut db = ModDb::new();
+    db.add_list(parsed.mods);
+    for equipped in [false, true] {
+        let cfg = CalcConfig::default().with_condition("UsingRapier", equipped);
+        assert_eq!(
+            db.sum(ModType::Inc, &cfg, &[ModName::from("Damage")]),
+            if equipped { 37.0 } else { 0.0 },
+            "equipped={equipped}",
+        );
+    }
+    for text in [
+        "37% increased Damage with Rapiers",
+        "37% increased Rapier Damage",
+    ] {
+        assert!(!parse_mod_engine(text, &rules).is_complete(), "{text}");
+    }
+    // A frozen rule naming an unknown bit must not broaden to every hit.
+    doc.flag_phrases.push(FlagPhraseDef {
+        phrase: "with rapiers".into(),
+        effects: RuleEffectsDef {
+            flags: vec!["Hit".into(), "Rapier".into()],
+            ..Default::default()
+        },
+    });
+    let rules = CompiledParserRules::compile_with_weapon_types(&doc, &[], &weapons).unwrap();
+    let parsed = parse_mod_engine("37% increased Damage with Rapiers", &rules);
+    assert_eq!(parsed.status, ParseStatus::Unsupported);
+    assert!(parsed.mods.is_empty());
+    // Rejection must not depend on the flag having a weapon-table row.
+    let rules =
+        CompiledParserRules::compile_with_weapon_types(&doc, &[], &WeaponTypeTable::default())
+            .unwrap();
+    let parsed = parse_mod_engine("37% increased Damage with Rapiers", &rules);
+    assert_eq!(parsed.status, ParseStatus::Unsupported);
+    assert!(parsed.mods.is_empty());
+
+    doc.pre_flags.push(PreFlagDef {
+        pattern: "^rapier attacks deal ".into(),
+        literal: Some("rapier attacks deal ".into()),
+        anchored: true,
+        effects: RuleEffectsDef {
+            tags: vec![TagTemplate {
+                tag_type: "ModFlagOr".into(),
+                fields: [(
+                    "mod_flags".into(),
+                    StatMapValue::List(vec![StatMapValue::Text("Rapier".into())]),
+                )]
+                .into(),
+            }],
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+    let rules = CompiledParserRules::compile_with_weapon_types(&doc, &[], &weapons).unwrap();
+    let parsed = parse_mod_engine("Rapier Attacks deal 37% increased Damage", &rules);
+    assert_eq!(parsed.status, ParseStatus::Unsupported);
+    assert!(parsed.mods.is_empty());
+
+    // Existing type bits scope the new name to the correct hand.
+    let parsed = parse_mod_engine("37% increased Damage with Swords", &rules);
+    assert!(parsed.is_complete(), "{parsed:?}");
+    assert_eq!(parsed.mods[0].name.as_str(), "SwordDamage");
+    let mut db = ModDb::new();
+    db.add_list(parsed.mods);
+    for (bit, expected) in [(ModFlags::SWORD, 37.0), (ModFlags::AXE, 0.0)] {
+        let cfg = CalcConfig::default().with_flags(bit | ModFlags::HIT);
+        assert_eq!(
+            db.sum(ModType::Inc, &cfg, &[ModName::from("SwordDamage")]),
+            expected,
+        );
+    }
+    let parsed = parse_mod_engine("37% increased Damage with Quarterstaves", &rules);
+    assert!(parsed.is_complete(), "{parsed:?}");
+    assert_eq!(parsed.mods[0].name.as_str(), "QuarterstaffDamage");
+    for (text, name) in [
+        ("37% increased Damage with Spears", "SpearDamage"),
+        ("37% increased Damage with Crossbows", "CrossbowDamage"),
+        ("37% increased Damage with Bows", "BowDamage"),
+        ("37% increased Damage with Maces", "MaceDamage"),
+        ("37% increased Damage with Staves", "QuarterstaffDamage"),
+    ] {
+        let parsed = parse_mod_engine(text, &rules);
+        assert!(parsed.is_complete(), "{text}: {parsed:?}");
+        assert_eq!(parsed.mods[0].name.as_str(), name);
+        assert_eq!(parsed.mods[0].flags, ModFlags::NONE, "{text}");
+    }
+}
+
+#[test]
+fn weapon_aliases_do_not_capture_existing_non_weapon_scopes() {
+    use pobr_core::mod_parser::{CompiledParserRules, parse_mod_engine};
+    use pobr_data::catalog::WeaponTypeTable;
+    use pobr_data::catalog::parser_rules::ModParserRulesDoc;
+
+    let doc: ModParserRulesDoc = serde_json::from_str(
+        &std::fs::read_to_string(
+            crate::support::test_data_dir().join("overlay/mod_parser_rules.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let mut weapons = WeaponTypeTable::default();
+    weapons.0.push(
+        serde_json::from_str(
+            r#"{"id":"Spell","label":"Area","flag":"Sword","one_hand":true,"melee":true}"#,
+        )
+        .unwrap(),
+    );
+    weapons.0.push(
+        serde_json::from_str(
+            r#"{"id":"EmptyAlias","label":"","flag":"Axe","one_hand":true,"melee":true}"#,
+        )
+        .unwrap(),
+    );
+    let rules = CompiledParserRules::compile_with_weapon_types(&doc, &[], &weapons).unwrap();
+    for scope in ["Spell", "Area"] {
+        let text = format!("37% increased {scope} Damage");
+        let parsed = parse_mod_engine(&text, &rules);
+        assert!(parsed.is_complete(), "{text}: {parsed:?}");
+        assert_eq!(parsed.mods[0].name.as_str(), format!("{scope}Damage"));
+        assert_eq!(parsed.mods[0].flags, ModFlags::NONE);
+    }
+    let parsed = parse_mod_engine("37% increased Damage", &rules);
+    assert!(parsed.is_complete(), "{parsed:?}");
+    assert_eq!(parsed.mods[0].name.as_str(), "Damage");
+    assert_eq!(parsed.mods[0].flags, ModFlags::NONE);
+}

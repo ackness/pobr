@@ -819,9 +819,10 @@ impl BuildData {
         // are collected wholesale as Unsupported); compile failure still propagates as normal.
         let parser_rules = match data.mod_parser_rules()? {
             Some(doc) => Some(Arc::new(
-                pobr_core::mod_parser::CompiledParserRules::compile_with_special(
+                pobr_core::mod_parser::CompiledParserRules::compile_with_weapon_types(
                     &doc,
                     &special_entries,
+                    &constants.weapon_types,
                 )
                 .map_err(|e| LoadError::Overlay {
                     path: "overlay/mod_parser_rules.json".into(),

@@ -190,7 +190,11 @@ pub(crate) fn compile_parser_rules(data_dir: &Path) -> Result<CompiledParserRule
         .map_err(|e| format!("failed to load ruleset (special entries): {e}"))?
         .special_mods
         .unwrap_or_default();
-    CompiledParserRules::compile_with_special(&doc, &special_entries)
+    let weapon_types = pobr_data::catalog::WeaponTypeTable(
+        data.weapon_types()
+            .map_err(|e| format!("failed to load weapon_types.json: {e}"))?,
+    );
+    CompiledParserRules::compile_with_weapon_types(&doc, &special_entries, &weapon_types)
         .map_err(|e| format!("parser rule compilation failed: {e:?}"))
 }
 
