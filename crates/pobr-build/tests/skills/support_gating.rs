@@ -1964,7 +1964,7 @@ fn brutality_iii_ailment_destinations_preserve_scope_and_trace() {
     let data = load_build_data();
     let fire = SkillTypes::from_pob2_name("Fire").unwrap();
     for (types, covenant) in [
-        (SkillTypes::SPELL | fire, true),
+        (SkillTypes::SPELL | fire.clone(), true),
         (SkillTypes::SPELL, false),
         (SkillTypes::ATTACK | fire, false),
     ] {

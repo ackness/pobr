@@ -323,7 +323,7 @@ fn unadmitted_stats_types_and_dynamic_tags_fail_even_when_inactive() {
             ramp: vec![(1.0, 2.0)],
         }),
         Modifier::number("Damage", ModType::Inc, 10.0)
-            .with_tag(ModTag::SkillTypes(SkillTypes::from_pob2_index(198))),
+            .with_tag(ModTag::SkillTypes(SkillTypes::COMPANION)),
         Modifier::number("Damage", ModType::Inc, 10.0)
             .with_tag(ModTag::SlotName("Body Armour".into())),
         Modifier::number("Damage", ModType::Inc, 10.0).with_flags(ModFlags::DOT),

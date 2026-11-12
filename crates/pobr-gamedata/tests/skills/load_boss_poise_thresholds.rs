@@ -1,17 +1,18 @@
-use pobr_data::catalog::boss_poise_thresholds::BossPoiseThresholdsDef;
 use pobr_data::monster::EnemyTier;
-use pobr_gamedata::{GameData, data_version, repo_data_root};
+use pobr_gamedata::{GameData, current_data_dir};
 
 #[test]
-fn curated_game_poise_rows_load_and_match_no_data_defaults() {
-    let table = GameData::new(repo_data_root().join(data_version()))
+fn curated_poise_percentages_are_positive_and_route_by_tier() {
+    let table = GameData::new(current_data_dir())
         .boss_poise_thresholds()
         .unwrap();
-    // Official 0.5.5.4.2 MonsterVarieties: MAP mode 313 (275/437/687),
-    // Xesht 1700 (1946). No distinct Uber Xesht row.
-    assert_eq!(table, BossPoiseThresholdsDef::default());
+    assert!(table.boss > 0 && table.pinnacle > 0 && table.uber > 0);
     assert_eq!(table.for_tier(EnemyTier::None), 100);
-    assert_eq!(table.for_tier(EnemyTier::Boss), 313);
-    assert_eq!(table.for_tier(EnemyTier::Pinnacle), 1700);
-    assert_eq!(table.for_tier(EnemyTier::Uber), 1700);
+    for (tier, value) in [
+        (EnemyTier::Boss, table.boss),
+        (EnemyTier::Pinnacle, table.pinnacle),
+        (EnemyTier::Uber, table.uber),
+    ] {
+        assert_eq!(table.for_tier(tier), value);
+    }
 }

@@ -764,6 +764,13 @@ impl GameData {
         })
     }
 
+    /// Warnings for engine skill types absent from this package. Installation
+    /// succeeds in this case; callers should retain these load diagnostics.
+    pub fn skill_type_diagnostics(&self) -> Result<Vec<String>, LoadError> {
+        self.install_skill_type_names()?;
+        Ok(pobr_data::skill::skill_type_diagnostics().to_vec())
+    }
+
     /// Loads the active-skill display-name sidecar for a language
     /// (`active_skill_id -> localized name`).
     pub fn skill_names(

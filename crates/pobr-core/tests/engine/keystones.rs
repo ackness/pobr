@@ -116,10 +116,10 @@ fn resonance_rotates_configured_gains_once_and_preserves_capacities_and_minima()
 fn event_horizon_loses_three_percent_per_player_chaos_use_not_per_repeat_or_hit() {
     let chaos = SkillTypes::from_pob2_name("Chaos").unwrap();
     for (types, triggered, expected_life, expected_es) in [
-        (chaos, false, -30.0, -12.0),
+        (chaos.clone(), false, -30.0, -12.0),
         (SkillTypes::default(), false, 0.0, 0.0),
-        (chaos | SkillTypes::TRIGGERED, false, 0.0, 0.0),
-        (chaos, true, 0.0, 0.0),
+        (chaos.clone() | SkillTypes::TRIGGERED, false, 0.0, 0.0),
+        (chaos.clone(), true, 0.0, 0.0),
         (
             chaos | SkillTypes::from_pob2_name("UsedByTotem").unwrap(),
             false,

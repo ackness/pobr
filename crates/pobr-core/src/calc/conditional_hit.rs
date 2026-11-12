@@ -271,7 +271,7 @@ fn validate(
                                 | "ElementalDamage"
                         ) => {}
                 ModTag::SkillTypes(types)
-                    if (SkillTypes::ATTACK | SkillTypes::SPELL).contains(*types) => {}
+                    if (SkillTypes::ATTACK | SkillTypes::SPELL).contains(types) => {}
                 _ => return Err(ConditionalHitError::UnsupportedModifierTag { index }),
             }
         }

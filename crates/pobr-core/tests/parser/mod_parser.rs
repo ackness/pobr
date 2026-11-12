@@ -24,14 +24,14 @@ fn wildsurge_requires_the_whole_block_and_scopes_each_modifier() {
     let storm = SkillTypes::from_pob2_name("Storm").unwrap();
     let plant = SkillTypes::from_pob2_name("Plant").unwrap();
     for (types, applies) in [
-        (SkillTypes::SPELL | storm, true),
-        (SkillTypes::SPELL | plant, true),
-        (SkillTypes::SPELL | storm | plant, true),
+        (SkillTypes::SPELL | storm.clone(), true),
+        (SkillTypes::SPELL | plant.clone(), true),
+        (SkillTypes::SPELL | storm.clone() | plant.clone(), true),
         (SkillTypes::SPELL, false),
         (SkillTypes::ATTACK | plant, false),
         (storm, false),
     ] {
-        let cfg = CalcConfig::default().with_skill_types(types);
+        let cfg = CalcConfig::default().with_skill_types(types.clone());
         for (name, factor) in [("Damage", 1.5), ("Cost", 0.5), ("Duration", 0.25)] {
             assert_eq!(
                 db.more(&cfg, &[ModName::from(name)]),
@@ -1951,7 +1951,7 @@ fn a_bear_skills_conversion_is_for_bear_skills() {
     let bear = SkillTypes::from_pob2_name("Bear").unwrap();
     let modifier = &parsed.mods[0];
     assert!(
-        modifier.tags.contains(&ModTag::SkillTypes(bear)),
+        modifier.tags.contains(&ModTag::SkillTypes(bear.clone())),
         "{modifier:?}"
     );
 
