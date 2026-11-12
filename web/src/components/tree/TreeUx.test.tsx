@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, expect, test, vi } from 'vitest';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { messages } from '../../lib/i18n';
-import type { PassiveNode } from '../../api/types';
+import type { PassiveJewelState, PassiveNode } from '../../api/types';
 import type { PowerRow } from '../../lib/nodePower';
 import { TreeOptimizer, useTreeOptimizer } from './TreeOptimizer';
 import { NodePowerTable } from './NodePowerTable';
@@ -52,8 +52,10 @@ const searchTable = (value: string) => ui.inputs.find(input => input.type === 's
 const flushEffects = () => hooks.runEffects();
 const node = (skill: number, name: string, connections: number[], kind: PassiveNode['kind']): PassiveNode => ({ skill, id: String(skill), name, connections, kind, x: skill * 100, y: 0 });
 const nodes = [node(1, 'WITCH', [2], 'normal'), node(2, 'Power', [1], 'notable')];
+const effects: PassiveJewelState = { class_starts: { witch: 1 }, allocation_grants: [],
+  nodes: {}, conquered: [], unresolved: [], rings: [], warnings: [] };
 const session = { currentRequest: () => ({ allocated_nodes: [1] }), allocatedNodes: [1], stateVersion: 0,
-  character: { class_name: 'Witch' }, jewels: [], calc: {}, busy: false } as unknown as BuildSession;
+  character: { class_name: 'Witch' }, jewels: [], calc: { tree_effects: effects }, busy: false } as unknown as BuildSession;
 
 beforeEach(() => { hooks.reset(); ui.captureEffects = false; vi.clearAllMocks(); });
 

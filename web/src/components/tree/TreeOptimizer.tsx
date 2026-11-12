@@ -2,7 +2,7 @@ import { colon } from '../../app/text';
 import { DisclosureChevron } from '../shared/DisclosureChevron';
 import { formatNumber, formatStat } from '../../lib/statDisplay';
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
-import { treeStatLabel } from './treePresentation';
+import { defaultTravelAttribute, treeStatLabel } from './treePresentation';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppInput } from '../shared/controls';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
@@ -92,13 +92,10 @@ export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onLo
   const [mode, setMode] = useState<'allocate' | 'reallocate'>('allocate');
   const [points, setPoints] = useState(3);
   const { goal, setGoal } = useUpgradeGoal();
-  const [attribute, setAttribute] = useState<AttributeChoice>(() => {
-    const counts = { str: 0, dex: 0, int: 0 };
-    Object.values(session.attributeChoices).forEach(choice => { counts[choice] += 1; });
-    if (Object.values(counts).some(Boolean)) return (Object.keys(counts) as AttributeChoice[]).sort((a, b) => counts[b] - counts[a])[0];
-    return ['Sorceress', 'Witch', 'Templar', 'Druid'].includes(session.character?.class_name ?? '') ? 'int'
-      : ['Warrior', 'Marauder'].includes(session.character?.class_name ?? '') ? 'str' : 'dex';
-  });
+  const [attributeOverride, setAttribute] = useState<AttributeChoice | null>(null);
+  const attribute = useMemo(() => attributeOverride ?? defaultTravelAttribute(session.attributeChoices,
+    session.treeMeta?.classes.find(entry => entry.name === session.character?.class_name)),
+  [attributeOverride, session.attributeChoices, session.treeMeta, session.character?.class_name]);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   useJobBeacon(progress !== null);
   const [error, setError] = useState<string | null>(null);

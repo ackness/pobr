@@ -14,7 +14,7 @@ export function TreePointSummary({ current, preview, invalidReason, lang }: {
   const separator = colon(lang);
   return <>
     <span className="tree-count" role="status">
-      {text('tree.usedPoints').replace('{used}', used === null ? '—' : String(used)).replace('{max}', String(max))}
+      {text('tree.usedPoints').replace('{used}', used === null ? '—' : String(used)).replace('{max}', max === null ? '—' : String(max))}
       <span className="tree-count-change">{change !== null ? text('tree.pointChange').replace('{delta}', `${change >= 0 ? '+' : ''}${change}`) : ''}</span>
     </span>
     <p className="tree-edit-preview" role="status" aria-live="polite" aria-atomic="true">{preview && !result ? invalidReason : ''}</p>

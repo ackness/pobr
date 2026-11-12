@@ -2,27 +2,10 @@ import type { PassiveAllocationGrant, PassiveJewelState, PassiveNode } from '../
 
 export type PassiveGraph = Map<number, number[]>;
 
-const CLASS_START: Record<string, string> = {
-  Druid: 'TEMPLAR',
-  Templar: 'TEMPLAR',
-  Duelist: 'DUELIST',
-  Mercenary: 'DUELIST',
-  Huntress: 'RANGER',
-  Ranger: 'RANGER',
-  Marauder: 'MARAUDER',
-  Warrior: 'MARAUDER',
-  Monk: 'SIX',
-  Shadow: 'SIX',
-  Sorceress: 'WITCH',
-  Witch: 'WITCH',
-};
-
 /** Class starts are implicit regardless of the node kind in the current data pack. */
-export function implicitClassStarts(nodes: PassiveNode[], effects?: PassiveJewelState): Set<number> {
-  const names = new Set(Object.values(CLASS_START));
+export function implicitClassStarts(effects?: PassiveJewelState): Set<number> {
   return new Set([...Object.values(effects?.class_starts ?? {}),
-    ...(effects?.allocation_grants ?? []).flatMap(grant => grant.roots),
-    ...nodes.filter(node => names.has(node.name ?? '')).map(node => node.skill)]);
+    ...(effects?.allocation_grants ?? []).flatMap(grant => grant.roots)]);
 }
 
 /** GGG connections are one-way records; the passive tree is traversed as an undirected graph. */
@@ -46,10 +29,9 @@ export function buildPassiveGraph(nodes: PassiveNode[]): PassiveGraph {
   return graph;
 }
 
-export function classStartSkill(nodes: PassiveNode[], className?: string): number | null {
-  const startName = className ? CLASS_START[className] : undefined;
-  if (!startName) return null;
-  return nodes.find((node) => node.name === startName)?.skill ?? null;
+export function classStartSkill(effects: PassiveJewelState | undefined, className?: string): number | null {
+  // Older responses have no mapping; leave the root unknown instead of guessing by name.
+  return effects?.class_starts?.[className?.toLowerCase() ?? ''] ?? null;
 }
 
 /** Reach class starts first. Radius-only allocations never provide onward paths. */
@@ -155,7 +137,8 @@ export function reconcileJewelAllocation(
   remaining: number[] = allocated,
 ): number[] {
   if (!before?.allocation_grants.length || !after) return remaining;
-  const root = before.class_starts[className.toLowerCase()] ?? classStartSkill(nodes, className);
+  const root = classStartSkill(before, className);
+  if (root === null) return remaining;
   const graph = buildPassiveGraph(nodes);
   const previous = connectedAllocation(graph, new Set(allocated), root, before.allocation_grants);
   const reachable = connectedAllocation(graph, new Set(remaining), root, after.allocation_grants);

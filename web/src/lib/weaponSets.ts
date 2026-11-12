@@ -17,12 +17,13 @@ export function switchWeapons<T extends WeaponSetState>(state: T, target: 1 | 2)
   if (swap.active === target) return state;
   return {
     ...state,
-    items: [...state.items.filter(item => !isWeapon(item)), ...swap.alternate_items],
+    items: [...state.items.filter(item => !isWeapon(item)), ...swap.alternate_items.filter(isWeapon)],
     allocatedNodes: [...new Set([
       ...state.allocatedNodes.filter(node => !swap.exclusive_nodes[swap.active - 1].includes(node)),
       ...swap.exclusive_nodes[target - 1],
     ])],
-    weaponSwap: { ...swap, active: target, alternate_items: state.items.filter(isWeapon) },
+    // Unknown slots stay in their original field for WASM validation, never become shared equipment.
+    weaponSwap: { ...swap, active: target, alternate_items: [...state.items.filter(isWeapon), ...swap.alternate_items.filter(item => !isWeapon(item))] },
   };
 }
 
@@ -48,7 +49,7 @@ export function validWeaponSwap(value: unknown): WeaponSwap | undefined {
   if (!value || typeof value !== 'object') return undefined;
   const swap = value as WeaponSwap;
   if (![1, 2].includes(swap.active) || !Array.isArray(swap.alternate_items) ||
-      swap.alternate_items.some(item => !item || !isWeapon(item) || typeof item.text !== 'string') ||
+      swap.alternate_items.some(item => !item || typeof item.slot !== 'string' || typeof item.text !== 'string') ||
       !Array.isArray(swap.exclusive_nodes) || swap.exclusive_nodes.length !== 2 ||
       swap.exclusive_nodes.some(nodes => !Array.isArray(nodes) || nodes.some(node => !Number.isInteger(node) || node < 0 || node > 0xffffffff))) return undefined;
   return swap;

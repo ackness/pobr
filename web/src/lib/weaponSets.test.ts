@@ -38,6 +38,17 @@ test('older saves start with an empty second set and reject malformed swap data'
   expect(switchWeapons({ ...state, weaponSwap: undefined }, 2).items).toEqual([state.items[2]]);
   expect(validWeaponSwap({ active: 3 })).toBeUndefined();
   expect(validWeaponSwap(state.weaponSwap)).toBe(state.weaponSwap);
+  const future = { ...state.weaponSwap!, alternate_items: [{ slot: 'weapon3', text: 'Future weapon' }] };
+  expect(validWeaponSwap(future)).toBe(future);
+  expect(validWeaponSwap({ ...future, alternate_items: [{ slot: 3, text: 'Malformed slot' }] })).toBeUndefined();
+});
+test('swapping keeps unknown alternate slots available for engine validation across both swaps', () => {
+  const opaque = { slot: 'weapon3', text: 'Future weapon' };
+  const future = { ...state, weaponSwap: { ...state.weaponSwap!, alternate_items: [...state.weaponSwap!.alternate_items, opaque] } };
+  const second = switchWeapons(future, 2);
+  expect(second.weaponSwap?.alternate_items).toContainEqual(opaque);
+  expect(switchWeapons(second, 1).weaponSwap?.alternate_items).toEqual(future.weaponSwap.alternate_items);
+  expect(switchWeapons(second, 1).items).toEqual(switchWeapons(switchWeapons(state, 2), 1).items);
 });
 test('included and disabled alternate-set groups keep their enabled state without a Full DPS override', () => {
   const socketGroups = [

@@ -1,8 +1,8 @@
 import { expect, test } from 'vitest';
-import type { PassiveNode } from '../../api/types';
+import type { PassiveJewelState, PassiveNode, TreeEditResult } from '../../api/types';
 import { jewelSocketNames } from './jewelSocketNames';
 import { passiveNameKey } from './passiveNodeNames';
-import { defaultReportStat, distributeAttributeChoices, passivePointSummary, powerGain, treeHoverLines } from './treePresentation';
+import { defaultReportStat, defaultTravelAttribute, distributeAttributeChoices, passivePointSummary, passivePointSummaryTarget, powerGain, treeHoverLines } from './treePresentation';
 
 const node = (skill: number, patch: Partial<PassiveNode> = {}): PassiveNode => ({ skill, id: String(skill), kind: 'normal', ...patch });
 
@@ -30,14 +30,61 @@ test('attribute redistribution changes the chosen nodes, preserves other choices
   expect(ids).toEqual([30, 10, 20]);
 });
 
-test('ordinary points exclude starts and ascendancy, include the larger weapon set and account for granted passives', () => {
-  const nodes = [node(1, { name: 'WITCH' }), node(2), node(3, { kind: 'ascendancy_start', ascendancy_id: 'a' }),
+test('ordinary points exclude data-defined starts and read the budget from the engine', () => {
+  const nodes = [node(1, { name: 'NEW START' }), node(2), node(3, { kind: 'ascendancy_start', ascendancy_id: 'a' }),
     node(4, { ascendancy_id: 'a', stats: ['Grants 2 Passive Skill Points'] }), node(5), node(6), node(7)];
   const swap = { active: 1 as const, alternate_items: [], exclusive_nodes: [[5], [6, 7]] as [number[], number[]] };
-  expect(passivePointSummary(nodes, [1, 2, 3, 4, 5], 98, swap)).toEqual({ used: 3, max: 123, weapon: [1, 2] });
-  expect(passivePointSummary(nodes, [1, 2, 3, 4, 6, 7], 98, { ...swap, active: 2 }).used).toBe(3);
-  expect(passivePointSummary(nodes, [1, 999], 98).used).toBeNull();
-  expect(passivePointSummary(nodes, [], 1)).toEqual({ used: 0, max: 24, weapon: [0, 0] });
+  const effects: PassiveJewelState = { class_starts: { wayfarer: 1 }, allocation_grants: [],
+    nodes: {}, conquered: [], unresolved: [], rings: [], warnings: [] };
+  const current: TreeEditResult = { points_used: 3, points_max: 131, weapon_points_used: [1, 2], weapon_points_max: 32,
+    added: [], removed: [], promoted: [], path: [], allocation: { shared: [1, 2, 3, 4], exclusive: [[5], [6, 7]] } };
+  expect(passivePointSummary(nodes, [1, 2, 3, 4, 5], swap, effects, current)).toEqual({ used: 3, max: 131, weapon: [1, 2] });
+  expect(passivePointSummary(nodes, [1, 2, 3, 4, 6, 7], { ...swap, active: 2 }, effects)).toEqual({ used: 3, max: null, weapon: [1, 2] });
+  expect(passivePointSummary(nodes, [1, 999], undefined, effects).used).toBeNull();
+  expect(passivePointSummary(nodes, [1, 2]).used).toBeNull();
+  expect(passivePointSummary(nodes, [])).toEqual({ used: 0, max: null, weapon: [0, 0] });
+  expect(passivePointSummary(nodes, [], undefined, effects, { ...current, added: [2] }).max).toBeNull();
+});
+
+test('an empty tree reads its engine budget from a weapon-only neighbor preview without spending a point', () => {
+  const nodes = [node(1, { name: 'NEW START' }), node(2, { stats: ['Grants 9 Passive Skill Points'] })];
+  const starts = new Set([1]);
+  expect(passivePointSummaryTarget(nodes, new Set(), starts, [2])).toEqual({ node: 2, mode: 1 });
+  const probe: TreeEditResult = { points_used: 1, points_max: 113, weapon_points_used: [1, 0], weapon_points_max: 24,
+    added: [2], removed: [], promoted: [], path: [1, 2], allocation: { shared: [], exclusive: [[2], []] } };
+  expect(passivePointSummary(nodes, [], undefined, undefined, probe)).toEqual({ used: 0, max: 113, weapon: [0, 0] });
+  // A shared allocation can grant ordinary points, so its budget cannot stand in for an empty tree.
+  expect(passivePointSummary(nodes, [], undefined, undefined, {
+    ...probe, points_max: 122, allocation: { shared: [2], exclusive: [[], []] },
+  }).max).toBeNull();
+  expect(passivePointSummaryTarget(nodes, new Set(), starts, [])).toEqual({ node: null, mode: 1 });
+  expect(passivePointSummaryTarget(nodes, new Set([2]), starts, [2])).toEqual({ node: 2, mode: 0 });
+  expect(passivePointSummaryTarget(nodes, new Set([2]), starts, [2], {
+    active: 2, alternate_items: [], exclusive_nodes: [[], [2]],
+  })).toEqual({ node: 2, mode: 2 });
+  expect(passivePointSummaryTarget(nodes, new Set(), starts, [2], {
+    active: 1, alternate_items: [], exclusive_nodes: [[], [2]],
+  })).toEqual({ node: 2, mode: 2 });
+});
+
+test('a tree containing only implicit starts still probes a regular neighbor for its budget', () => {
+  const nodes = [node(1), node(2), node(3, { kind: 'ascendancy_start', ascendancy_id: 'future' })];
+  expect(passivePointSummaryTarget(nodes, new Set([1, 3]), new Set([1]), [2])).toEqual({ node: 2, mode: 1 });
+  const probe: TreeEditResult = { points_used: 1, points_max: 113, weapon_points_used: [1, 0], weapon_points_max: 24,
+    added: [2], removed: [], promoted: [], path: [1, 2], allocation: { shared: [1, 3], exclusive: [[2], []] } };
+  const effects: PassiveJewelState = { class_starts: { wayfarer: 1 }, allocation_grants: [],
+    nodes: {}, conquered: [], unresolved: [], rings: [], warnings: [] };
+  expect(passivePointSummary(nodes, [1, 3], undefined, effects, probe)).toEqual({ used: 0, max: 113, weapon: [0, 0] });
+});
+
+test('travel defaults follow new class base attributes and retain the majority of saved choices', () => {
+  const characterClass = { name: 'Wayfarer', base_str: 30, base_dex: 7, base_int: 7 };
+  expect(defaultTravelAttribute({}, characterClass)).toBe('str');
+  expect(defaultTravelAttribute({}, { ...characterClass, base_int: 40 })).toBe('int');
+  expect(defaultTravelAttribute({}, { ...characterClass, base_dex: 40 })).toBe('dex');
+  expect(defaultTravelAttribute({}, { ...characterClass, base_str: 11, base_int: 11 })).toBe('int');
+  expect(defaultTravelAttribute({ '1': 'int', '2': 'int', '3': 'str' }, characterClass)).toBe('int');
+  expect(defaultTravelAttribute({})).toBe('dex');
 });
 
 test('report gains retain signs, fractional per-point values and the selected stat unit', () => {
