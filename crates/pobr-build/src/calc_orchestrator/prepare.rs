@@ -253,7 +253,7 @@ pub(super) fn stage_build_cfg(
     let base_flags = base_cfg.flags;
     let mut cfg = base_cfg
         .with_flags(base_flags | main.skill_flags)
-        .with_skill_types(main.skill_type_bits)
+        .with_skill_types(main.skill_type_bits.clone())
         // Main skill's display name (matching vendor's `skillCfg.skillName`): the
         // matching semantics for the special channel's `SkillName` tag. Same source as
         // gem_level_category_matches (skill_name_from_id, lowercase).
@@ -322,7 +322,7 @@ pub(super) fn stage_build_cfg(
     // What the main skill is a skill of: "Damage with Warcries", "with Fire
     // Skills" and "Curse Skills" ask its types.
     cfg.keyword_flags =
-        cfg.keyword_flags | pobr_core::skill_env::skill_keyword_flags(main.skill_type_bits);
+        cfg.keyword_flags | pobr_core::skill_env::skill_keyword_flags(&main.skill_type_bits);
     // SkillStatMap's skill_can_fire_arrows -> skillFlags.arrow ->
     // CalcActiveSkill's KeywordFlag.Arrow. Use the selected stat set, since
     // secondary projectiles need not be arrows even when fired from a bow.

@@ -372,7 +372,7 @@ pub fn spawn_minions(
             let skill_types = data
                 .effect(&skill_id)
                 .map_or(SkillTypes::NONE, |e| e.skill_type_bits());
-            let mut group_minion_modifiers = session.minion_modifiers_for(skill_types);
+            let mut group_minion_modifiers = session.minion_modifiers_for(skill_types.clone());
             if let Some(item) = copied_item {
                 for text in crate::skill_env::item_text::weapon_mod_texts(item) {
                     let text = crate::skill_env::item_text::clean_item_text(text);

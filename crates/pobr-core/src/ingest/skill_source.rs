@@ -669,7 +669,7 @@ pub fn ingest_support_gem_with_ctx(
                     }
                     let modifier = modifier.with_origin(origin);
 
-                    let modifier = isolate_support_more(modifier, spec.supported_skill_types);
+                    let modifier = isolate_support_more(modifier, &spec.supported_skill_types);
 
                     ingest.modifiers.push(modifier);
                 }
@@ -690,7 +690,7 @@ pub fn ingest_support_gem_with_ctx(
                 .with_origin(origin);
             ingest
                 .modifiers
-                .push(isolate_support_more(modifier, spec.supported_skill_types));
+                .push(isolate_support_more(modifier, &spec.supported_skill_types));
         }
     }
 
@@ -706,7 +706,7 @@ pub fn ingest_support_gem_with_ctx(
                 .with_origin(origin);
             ingest
                 .modifiers
-                .push(isolate_support_more(modifier, spec.supported_skill_types));
+                .push(isolate_support_more(modifier, &spec.supported_skill_types));
         }
     }
 
@@ -714,9 +714,9 @@ pub fn ingest_support_gem_with_ctx(
 }
 
 /// Apply the optional type restriction without replacing existing modifier tags.
-fn isolate_support_more(modifier: Modifier, skill_types: SkillTypes) -> Modifier {
+fn isolate_support_more(modifier: Modifier, skill_types: &SkillTypes) -> Modifier {
     if modifier.mod_type == ModType::More && !skill_types.is_empty() {
-        modifier.with_tag(ModTag::SkillTypes(skill_types))
+        modifier.with_tag(ModTag::SkillTypes(skill_types.clone()))
     } else {
         modifier
     }

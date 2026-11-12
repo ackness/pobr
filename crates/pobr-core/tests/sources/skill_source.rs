@@ -646,12 +646,21 @@ fn skill_types_new_constants_correct_bits() {
     assert_eq!(SkillTypes::MELEE.bits(), 1 << 19); // PoB2 index 20
 }
 
-/// from_pob2_index maps correctly.
+/// Package row indices and names resolve to the same engine type.
 #[test]
 fn skill_types_from_pob2_index() {
-    assert_eq!(SkillTypes::from_pob2_index(1), SkillTypes::ATTACK);
-    assert_eq!(SkillTypes::from_pob2_index(2), SkillTypes::SPELL);
-    assert_eq!(SkillTypes::from_pob2_index(3), SkillTypes::PROJECTILE);
+    let rows: pobr_data::catalog::skill_types::ActiveSkillTypesDef = serde_json::from_slice(
+        &std::fs::read(crate::support::test_data_dir().join("base/active_skill_types.json"))
+            .unwrap(),
+    )
+    .unwrap();
+    crate::support::install_test_skill_types();
+    for row in rows {
+        assert_eq!(
+            Some(SkillTypes::from_pob2_index(row.index)),
+            SkillTypes::from_pob2_name(&row.id),
+        );
+    }
     assert_eq!(SkillTypes::from_pob2_index(0), SkillTypes::NONE);
 }
 
