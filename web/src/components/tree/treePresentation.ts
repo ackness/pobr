@@ -49,12 +49,15 @@ export function defaultTravelAttribute(choices: Record<string, AttributeChoice>,
 /** Empty trees probe a regular neighbor in a weapon set, leaving shared point grants untouched. */
 export function passivePointSummaryTarget(nodes: readonly PassiveNode[], allocated: ReadonlySet<number>,
   starts: ReadonlySet<number>, neighbours: readonly number[], swap?: WeaponSwap | null): { node: number | null; mode: TreeAllocationMode } {
-  const existing = nodes.find(node => allocated.has(node.skill) && !starts.has(node.skill) && node.kind !== 'ascendancy_start');
+  const owned = new Set([...allocated, ...(swap?.exclusive_nodes.flat() ?? [])]);
+  const existing = nodes.find(node => owned.has(node.skill) && !starts.has(node.skill) && node.kind !== 'ascendancy_start');
   if (existing) {
     const set = swap?.exclusive_nodes.findIndex(ids => ids.includes(existing.skill)) ?? -1;
     return { node: existing.skill, mode: (set + 1) as TreeAllocationMode };
   }
-  if (allocated.size || swap?.exclusive_nodes.some(ids => ids.length)) return { node: null, mode: 0 };
+  const byId = new Map(nodes.map(node => [node.skill, node]));
+  const onlyStarts = [...owned].every(id => starts.has(id) || byId.get(id)?.kind === 'ascendancy_start');
+  if (!onlyStarts || swap?.exclusive_nodes.some(ids => ids.length)) return { node: null, mode: 0 };
   const adjacent = new Set(neighbours);
   const probe = nodes.find(node => adjacent.has(node.skill) && !starts.has(node.skill)
     && node.kind === 'normal' && !node.ascendancy_id && !node.unlock_constraint);
@@ -74,10 +77,11 @@ export function passivePointSummary(nodes: PassiveNode[], allocated: number[], s
   const all = [...new Set([...shared, ...exclusive.flat()])];
   // The engine grants ordinary points only from shared nodes. An exclusive-only
   // probe therefore has the same maximum as an empty tree, even if its node grants points.
-  const emptyBudget = !all.length && current && !current.allocation.shared.length
+  const starts = implicitClassStarts(effects);
+  const onlyStarts = (ids: number[]) => ids.every(id => starts.has(id) || byId.get(id)?.kind === 'ascendancy_start');
+  const emptyBudget = onlyStarts(all) && current && onlyStarts(current.allocation.shared)
     && !current.removed.length && !current.promoted.length ? current.points_max : null;
   const known = all.every(id => byId.has(id)) && (!all.length || Object.keys(effects?.class_starts ?? {}).length > 0);
-  const starts = implicitClassStarts(effects);
   const regular = shared.filter(id => {
     const node = byId.get(id)!;
     return node && !node.ascendancy_id && !starts.has(id) && node.kind !== 'ascendancy_start';

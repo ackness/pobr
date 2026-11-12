@@ -117,10 +117,13 @@ export function convertedTreeState(state: BuildState, decoded: BuildJson, code: 
  * with ids to match by (a plain session from before libraries, or anything unreadable).
  */
 export function readStoredWorkspace(raw: string, onIsolated?: () => void): BuildWorkspace | null {
+  let workspace: BuildWorkspace | null = null;
   try {
     const envelope = JSON.parse(raw);
-    return envelope.workspace === undefined ? null : parseWorkspace(envelope.workspace, parseSaved, onIsolated);
-  } catch { return null; }
+    workspace = envelope.workspace === undefined ? null : parseWorkspace(envelope.workspace, parseSaved, onIsolated);
+  } catch { /* Preserve unreadable storage just like isolated entries. */ }
+  if (!workspace) onIsolated?.();
+  return workspace;
 }
 
 /** What this tab was told after keeping in step with a change another tab made. */
@@ -766,7 +769,11 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       if (stored !== null && stored !== syncedRef.current.raw) {
         // Another tab wrote since this one last read or wrote: keep what it changed.
         const theirs = readStoredWorkspace(stored, () => retainWorkspaceRecovery(stored));
-        if (theirs) ({ workspace: write, conflicts } = mergeWorkspaces(syncedRef.current.library, next, theirs));
+        if (theirs) {
+          ({ workspace: write, conflicts } = mergeWorkspaces(syncedRef.current.library, next, theirs));
+          // Recovery may pause the write below; this stored revision was still consumed.
+          syncedRef.current = { raw: stored, library: theirs };
+        }
       }
     } catch { /* storage cannot be read: write as before */ }
     workspaceRef.current = write;
@@ -965,7 +972,9 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
           .catch(() => {});
         if (cancelled) return;
         setTreeMeta(meta);
-        defaultStarterRef.current = defaultStarterSession(meta.classes[0]?.name ?? 'Warrior');
+        const starterClass = meta.classes[0]?.name;
+        if (!starterClass) throw new Error('No character classes available in the loaded data pack.');
+        defaultStarterRef.current = defaultStarterSession(starterClass);
         setBootMessage(null);
         const raw = localStorage.getItem(STORAGE.workspace) ?? '';
         let saved: SavedSession | null = null;
@@ -1012,7 +1021,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   }, []);
 
   /** Collect imported items by text and observed weapon-hand role; skill sets by name. */
-  const mergeImportedIntoLibrary = useCallback((decoded: BuildJson) => {
+  const mergeImportedIntoLibrary = useCallback((decoded: BuildJson, workspace: BuildWorkspace | null) => {
     const imported: LibraryItem[] = [
       ...[...decoded.items.equipped, ...(decoded.weapon_swap?.alternate_items ?? [])].map((it) => ({
         kind: 'item' as const,
@@ -1024,7 +1033,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         text: j.text,
         slot: undefined,
       })),
-    ].map(e => createLibraryItem(e.kind, e.text, e.slot, workspaceRef.current));
+    ].map(e => createLibraryItem(e.kind, e.text, e.slot, workspace));
 
     const setName = decoded.character.ascendancy_name || decoded.character.class_name;
     const skillSet: SkillSet | null = decoded.socket_groups.length
@@ -1078,7 +1087,6 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         const decoded = isBuildFile
           ? await backend.decodeBuildFile(code)
           : await backend.decodeBuild(code);
-        setBuild(decoded);
         // <Notes> 里可能带 PoBR 注释标记段：拆成总览笔记 + 局部注释。
         const { overview, annotations } = splitNotes(decoded.notes ?? '');
         const importedState: BuildState = {
@@ -1096,16 +1104,21 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
           // 这里就是它们唯一的入口（Config 页也因此能直接显示导入值）。
           params: { ...paramsFromDecoded(decoded), main_socket_group: decoded.main_socket_group ?? undefined },
         };
-        if (options.destination === 'newBuild' && workspaceRef.current) {
+        let nextWorkspace = workspaceRef.current;
+        if (options.destination === 'newBuild' && nextWorkspace) {
           const plannerName: string | undefined = decoded.planner_source ? JSON.parse(decoded.planner_source).name : undefined;
           const name = importedBuildName(decoded.character, classNames, lang, options.name, plannerName);
-          workspaceRef.current = addWorkspaceBuild(workspaceRef.current, name, { version: 1, state: importedState, notes: overview }, defaultStarterRef.current);
+          nextWorkspace = addWorkspaceBuild(nextWorkspace, name, { version: 1, state: importedState, notes: overview }, defaultStarterRef.current);
         }
-        mergeImportedIntoLibrary(decoded);
+        // Finish preparation before publishing any imported workspace or display state.
+        const nextState = switchWeapons(importedState, skillWeaponSet(importedState, importedState.params.main_socket_group));
+        mergeImportedIntoLibrary(decoded, nextWorkspace);
+        workspaceRef.current = nextWorkspace;
+        setBuild(decoded);
         // Do not persist imported notes into the stage being left behind.
         notesRef.current = overview;
         setNotesState(overview);
-        apply(importedState, { clean: true });
+        apply(nextState, { clean: true });
         return true;
       } catch (err) {
         setOperationError(formatApiError(err));
@@ -1618,7 +1631,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       const theirs = readStoredWorkspace(raw, () => retainWorkspaceRecovery(raw));
       if (!theirs) return;
       const { workspace: merged, conflicts } = mergeWorkspaces(syncedRef.current.library, mine, theirs);
-      syncedRef.current = { raw: stored, library: merged };
+      syncedRef.current = { raw: stored, library: theirs };
       if (sameValue(libraryContent(merged), libraryContent(mine))) return;
       const { viewChanged, kind } = mergeEffect(mine, merged, conflicts);
       workspaceRef.current = merged;

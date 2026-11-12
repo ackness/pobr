@@ -17,12 +17,13 @@ export function switchWeapons<T extends WeaponSetState>(state: T, target: 1 | 2)
   if (swap.active === target) return state;
   return {
     ...state,
-    items: [...state.items.filter(item => !isWeapon(item)), ...swap.alternate_items],
+    items: [...state.items.filter(item => !isWeapon(item)), ...swap.alternate_items.filter(isWeapon)],
     allocatedNodes: [...new Set([
       ...state.allocatedNodes.filter(node => !swap.exclusive_nodes[swap.active - 1].includes(node)),
       ...swap.exclusive_nodes[target - 1],
     ])],
-    weaponSwap: { ...swap, active: target, alternate_items: state.items.filter(isWeapon) },
+    // Unknown slots stay in their original field for WASM validation, never become shared equipment.
+    weaponSwap: { ...swap, active: target, alternate_items: [...state.items.filter(isWeapon), ...swap.alternate_items.filter(item => !isWeapon(item))] },
   };
 }
 

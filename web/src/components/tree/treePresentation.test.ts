@@ -62,6 +62,19 @@ test('an empty tree reads its engine budget from a weapon-only neighbor preview 
   expect(passivePointSummaryTarget(nodes, new Set([2]), starts, [2], {
     active: 2, alternate_items: [], exclusive_nodes: [[], [2]],
   })).toEqual({ node: 2, mode: 2 });
+  expect(passivePointSummaryTarget(nodes, new Set(), starts, [2], {
+    active: 1, alternate_items: [], exclusive_nodes: [[], [2]],
+  })).toEqual({ node: 2, mode: 2 });
+});
+
+test('a tree containing only implicit starts still probes a regular neighbor for its budget', () => {
+  const nodes = [node(1), node(2), node(3, { kind: 'ascendancy_start', ascendancy_id: 'future' })];
+  expect(passivePointSummaryTarget(nodes, new Set([1, 3]), new Set([1]), [2])).toEqual({ node: 2, mode: 1 });
+  const probe: TreeEditResult = { points_used: 1, points_max: 113, weapon_points_used: [1, 0], weapon_points_max: 24,
+    added: [2], removed: [], promoted: [], path: [1, 2], allocation: { shared: [1, 3], exclusive: [[2], []] } };
+  const effects: PassiveJewelState = { class_starts: { wayfarer: 1 }, allocation_grants: [],
+    nodes: {}, conquered: [], unresolved: [], rings: [], warnings: [] };
+  expect(passivePointSummary(nodes, [1, 3], undefined, effects, probe)).toEqual({ used: 0, max: 113, weapon: [0, 0] });
 });
 
 test('travel defaults follow new class base attributes and retain the majority of saved choices', () => {
