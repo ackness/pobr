@@ -335,11 +335,7 @@ fn export_build(
     let data = state::build_data().map_err(super::super::ApiError::not_initialized)?;
     let game = state::game_data().map_err(super::super::ApiError::not_initialized)?;
     let meta = game.passive_tree_meta().map_err(|e| e.to_string())?;
-    let manifest = game.manifest().map_err(|e| e.to_string())?;
-    let current = format!(
-        "0_{}",
-        manifest.poe_version.split('.').nth(1).unwrap_or_default()
-    );
+    let current = game.tree_version().map_err(super::super::ApiError::from)?;
     if build
         .tree
         .tree_version

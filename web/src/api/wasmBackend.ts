@@ -2,7 +2,7 @@ import { loadGemDescriptionIndex, type GemDescriptionIndex } from '../lib/gemDes
 import { GameTextLocalizer, type GameDisplayName } from '../lib/localizedGameText';
 import { nativeDisplayTexts, type DisplayText } from '../lib/nativeDisplayTexts';
 import { NativeNameIndex, nativeClassNames, nativeCraftBaseNames, nativeGemNames, type GemNameLink, type GemNameOverride } from '../lib/nativeDisplayNames';
-import { lineTemplateLocale, setGameLocales, type GameLocaleInfo } from '../lib/gameLocales';
+import { lineTemplateLocale, setGameLocales } from '../lib/gameLocales';
 import type { Lang } from '../lib/i18n';
 import type { UniqueEntry, UniqueDraft } from './uniques';
 import type { CraftingMetadata } from './itemCrafting';
@@ -43,6 +43,7 @@ import type { JewelBase, PobrBackend } from './backend';
 import type { EnemyPresets } from './enemyPresets';
 
 interface WasmModule {
+  dataInfo(): string;
   default: () => Promise<unknown>;
   /** 可选：旧构建产物没有该导出，按版本 0 处理（同样判为错配）。 */
   schemaVersion?(): number;
@@ -74,8 +75,6 @@ interface WasmModule {
   /** `translateLines` as JSON `[{text, origin}]` (origin of the translation library's supplement text, or null).
    * Optional: a WASM build older than the export lacks it, and its texts are then official. */
   translateLinesDetailed?(lang: string, linesJson: string): string;
-  /** The data pack's locales with their declared fallback chains (JSON `GameLocaleInfo[]`). */
-  availableLocales(): string;
   classifyItemLinesJson(text: string): string;
   runeCatalogJson(itemText: string): string;
   itemAugmentInfoJson(itemText: string): string;
@@ -152,7 +151,7 @@ export async function createWasmBackend(): Promise<PobrBackend> {
   }
 
   let manifest: DataManifest | null = null;
-  let loadedDataVersion: string | undefined;
+  let dataInfo: import('./types').DataInfo | undefined;
   const fetchedFiles = new Map<string, Promise<string>>();
   /** Staged bytes of the files in `readAgainAfterBoot`, by url, until they are first read as text. */
   const keptBytes = new Map<string, Uint8Array>();
@@ -185,12 +184,13 @@ export async function createWasmBackend(): Promise<PobrBackend> {
   let localesSynced = false;
   const syncGameLocales = () => {
     if (localesSynced || !wasm.isDataReady()) return;
-    setGameLocales(JSON.parse(wasm.availableLocales()) as GameLocaleInfo[]);
+    dataInfo = JSON.parse(wasm.dataInfo()) as import('./types').DataInfo;
+    setGameLocales(dataInfo.locales);
     localesSynced = true;
   };
 
   const doInit = async (onProgress?: (message: string) => void): Promise<void> => {
-    if (wasm.isDataReady()) return;
+    if (wasm.isDataReady()) { syncGameLocales(); return; }
     onProgress?.('加载数据清单…');
     manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
     const { version } = manifest;
@@ -210,7 +210,6 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     if (pack.verified) wasm.initStagedDataVerified();
     else wasm.initStagedData();
     for (const [rel, bytes] of pack.kept) keptBytes.set(`/data/${version}/${rel}`, bytes);
-    loadedDataVersion = version;
     localesSynced = false;
     syncGameLocales();
     onProgress?.('就绪');
@@ -275,8 +274,9 @@ export async function createWasmBackend(): Promise<PobrBackend> {
 
   const backend: PobrBackend = {
     get dataVersion() {
-      return loadedDataVersion;
+      return dataInfo?.data_version;
     },
+    get dataInfo() { return dataInfo; },
     init(onProgress) {
       // 失败后清掉缓存的 Promise，允许刷新/重试重新初始化。
       initPromise ??= doInit(onProgress).catch((err: unknown) => {
@@ -339,7 +339,8 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async loadPassiveTree(treeVersion) {
       await backend.init();
-      const currentTree = `0_${manifest!.version.split('.')[1]}`;
+      if (!manifest) manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
+      const currentTree = dataInfo!.tree_version;
       const rel = treeVersion && treeVersion !== currentTree && treeVersion !== 'Default'
         ? `base/passive_trees/${treeVersion}.json` : 'base/passive_tree.json';
       if (!manifest!.files.includes(rel)) throw new Error(`Passive tree ${treeVersion} is unavailable in the loaded data.`);
@@ -385,7 +386,8 @@ export async function createWasmBackend(): Promise<PobrBackend> {
       return mergeDetailed(pending.length ? await backend.translateLinesDetailed(pending, lang) : []);
     },
     async gameLocales() {
-      return wasm.isDataReady() ? JSON.parse(wasm.availableLocales()) as GameLocaleInfo[] : [];
+      syncGameLocales();
+      return dataInfo?.locales ?? [];
     },
     async classifyItemLines(text) {
       return JSON.parse(wasm.classifyItemLinesJson(text)) as ItemLineJson[];

@@ -14,10 +14,10 @@ vi.mock('/src/wasm/pkg/pobr_wasm.js', () => ({
   gemCatalogJson: () => JSON.stringify(state.gems),
   itemCraftingCatalogJson: () => JSON.stringify(state.crafting),
   isDataReady: () => true,
-  availableLocales: () => JSON.stringify([
+  dataInfo: () => JSON.stringify({ data_version: '1.0.0.1', tree_version: 'future_tree', locales: [
     { code: 'zh-CN', fallback: [], chain: ['zh-CN'], templates: true },
     { code: 'zh-TW', fallback: [], chain: ['zh-TW'], templates: false },
-  ]),
+  ] }),
   translateLines: (lang: string, raw: string) =>
     JSON.stringify((JSON.parse(raw) as string[]).map(() => lang === 'zh-CN' ? '旧译文' : 'wrong locale')),
   // Present only when a test turns it on, as in a WASM build that has the export.
@@ -28,6 +28,25 @@ vi.mock('/src/wasm/pkg/pobr_wasm.js', () => ({
 }));
 
 afterEach(() => { vi.unstubAllGlobals(); state.gems = []; state.crafting = { bases: [], mods: [] }; state.detailed = false; });
+
+test('passive tree loading uses the WASM label for a 1.0 pack and keeps historical labels', async () => {
+  const current = [{ skill: 1 }], historical = [{ skill: 2 }];
+  const files = { 'base/passive_tree.json': current, 'base/passive_trees/0_4.json': historical };
+  const fetch = vi.fn(async (url: string) => {
+    if (url === '/data/manifest.json') return new Response(JSON.stringify({ version: '1.0.0.1', files: Object.keys(files) }));
+    const file = url.replace('/data/1.0.0.1/', '') as keyof typeof files;
+    if (!(file in files)) throw new Error(`Unexpected fetch: ${url}`);
+    return new Response(JSON.stringify(files[file]));
+  });
+  vi.stubGlobal('fetch', fetch);
+  const backend = await createWasmBackend();
+  expect(await backend.loadPassiveTree('future_tree')).toEqual(current);
+  expect(await backend.loadPassiveTree('Default')).toEqual(current);
+  expect(await backend.loadPassiveTree('0_4')).toEqual(historical);
+  expect(backend.dataInfo).toMatchObject({ data_version: '1.0.0.1', tree_version: 'future_tree' });
+  await expect(backend.loadPassiveTree('unregistered')).rejects.toThrow('unavailable');
+  expect(fetch.mock.calls.some(([url]) => url.includes('0_0'))).toBe(false);
+});
 
 test('enemy presets use the pinned snapshot inventory and the shared file cache', async () => {
   const path = 'base/enemy_presets.json';

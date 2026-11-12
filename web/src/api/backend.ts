@@ -50,6 +50,7 @@ export interface PobrBackend {
   init(onProgress?: (message: string) => void): Promise<void>;
   /** Version of the game data successfully loaded into this backend. */
   readonly dataVersion?: string;
+  readonly dataInfo?: import('./types').DataInfo;
   decodeBuild(pobCode: string): Promise<BuildJson>;
   /**
    * 切到指定 loadout 后重新解码（成组切换天赋/装备/技能）。

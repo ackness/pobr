@@ -156,6 +156,7 @@ export interface BuildSession {
   startBaselineComparison: () => void;
   treeVersion?: string | null;
   dataVersion: string | null;
+  currentTreeVersion: string | null;
   workspace: BuildWorkspace | null;
   storageFailed: boolean;
   /** Original unreadable entries remain in storage while recovered edits stay in memory. */
@@ -440,6 +441,8 @@ function readStoredLibrary(raw: string | null): Library | null {
 export interface SavedSession {
   /** 存档格式版本（前向兼容闸门）。 */
   version: 1;
+  /** Game data used when this stage was saved; absent in legacy saves. */
+  data_version?: string;
   state: BuildState;
   notes: string;
 }
@@ -564,6 +567,8 @@ export function parseSaved(json: string): SavedSession | null {
         }),
       },
       notes: typeof parsed.notes === 'string' ? parsed.notes : '',
+      // Match the writer's field order: cross-tab change detection compares JSON.
+      ...(typeof parsed.data_version === 'string' ? { data_version: parsed.data_version } : {}),
     };
   } catch {
     return null;
@@ -711,6 +716,8 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const configContextActiveRef = useRef(configContextActive);
   configContextActiveRef.current = configContextActive;
   const [dataVersion, setDataVersion] = useState<string | null>(null);
+  const dataVersionRef = useRef<string | undefined>(undefined);
+  const [currentTreeVersion, setCurrentTreeVersion] = useState<string | null>(null);
   const [workspace, setWorkspace] = useState<BuildWorkspace | null>(null);
   const workspaceRef = useRef<BuildWorkspace | null>(null);
   // Recreated from current class metadata on every boot; no cleanup metadata is persisted.
@@ -794,11 +801,14 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       if (viewChanged) queueMicrotask(() => refreshViewRef.current(write));
     }
   }, [announce, retainWorkspaceRecovery]);
-  const saveToStorage = useCallback((next: BuildState, text: string) => {
-    const saved: SavedSession = { version: 1, state: next, notes: text };
+  const saveToStorage = useCallback((next: BuildState, text: string, preserveVersion = false) => {
+    const version = preserveVersion && workspaceRef.current
+      ? activeWorkspaceStage(workspaceRef.current).saved.data_version : dataVersionRef.current;
+    const saved: SavedSession = { version: 1, state: next, notes: text, ...(version ? { data_version: version } : {}) };
     persistWorkspace(updateWorkspaceStage(workspaceRef.current ?? createWorkspace(saved), saved, draftsRef.current));
   }, [persistWorkspace]);
   const setEditorDraft = useCallback((key: string, text: string | null) => {
+    if ((draftsRef.current[key] ?? null) === text) return;
     const next = { ...draftsRef.current };
     if (text === null) delete next[key];
     else next[key] = text;
@@ -927,7 +937,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         draftsRef.current = {};
         setEditorDrafts({});
       }
-      saveToStorage(next, notesRef.current);
+      saveToStorage(next, notesRef.current, opts?.auto);
       recalc(next);
       // Nothing selected: default to the highest-DPS skill, once. The choice is
       // then pinned like an explicit one, so later edits never move it.
@@ -965,7 +975,11 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         void Promise.resolve().then(() => backend.gameLocales()).then(setGameLocales)
           .catch((error: unknown) => console.warn('Game-text locales unavailable; using the interface fallbacks.', error));
         const meta = await backend.loadTreeMeta();
-        if (!cancelled) setDataVersion(backend.dataVersion ?? null);
+        if (!cancelled) {
+          dataVersionRef.current = backend.dataVersion;
+          setDataVersion(backend.dataVersion ?? null);
+          setCurrentTreeVersion(backend.dataInfo?.tree_version ?? null);
+        }
         backend
           .loadClassNames()
           .then((names) => !cancelled && setClassNames(names))
@@ -1002,12 +1016,12 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
               .then((decoded) => {
                 if (cancelled) return;
                 setBuild(decoded);
-                apply(backfillFromDecoded(current.state, decoded));
+                apply(backfillFromDecoded(current.state, decoded), { auto: true });
               })
-              .catch(() => !cancelled && apply(current.state));
+              .catch(() => !cancelled && apply(current.state, { auto: true }));
             return;
           }
-          apply(current.state);
+          apply(current.state, { auto: true });
           return;
         }
         apply(defaultStarterRef.current.state);
@@ -1108,7 +1122,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         if (options.destination === 'newBuild' && nextWorkspace) {
           const plannerName: string | undefined = decoded.planner_source ? JSON.parse(decoded.planner_source).name : undefined;
           const name = importedBuildName(decoded.character, classNames, lang, options.name, plannerName);
-          nextWorkspace = addWorkspaceBuild(nextWorkspace, name, { version: 1, state: importedState, notes: overview }, defaultStarterRef.current);
+          nextWorkspace = addWorkspaceBuild(nextWorkspace, name, { version: 1, state: importedState, notes: overview, data_version: dataVersionRef.current }, defaultStarterRef.current);
         }
         // Finish preparation before publishing any imported workspace or display state.
         const nextState = switchWeapons(importedState, skillWeaponSet(importedState, importedState.params.main_socket_group));
@@ -1516,7 +1530,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
 
   const exportSession = useCallback((): string => {
     if (!state) throw new Error('build not ready');
-    const saved: SavedSession = { version: 1, state, notes };
+    const saved: SavedSession = { version: 1, state, notes, data_version: dataVersionRef.current };
     return JSON.stringify(saved, null, 2);
   }, [state, notes]);
 
@@ -1566,6 +1580,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   }, [apply]);
 
   const restoreSession = useCallback((saved: SavedSession, drafts: Record<string, string>) => {
+    if (workspaceRef.current) workspaceRef.current = updateWorkspaceStage(workspaceRef.current, saved, drafts);
     setSocketGroupRevision(value => value + 1);
     setBuild(null);
     setCalculated(null);
@@ -1590,7 +1605,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         setBuild(decoded);
         if (stateRef.current !== restoredState) return;
         const restored = backfillFromDecoded(saved.state, decoded);
-        if (JSON.stringify(restored) !== JSON.stringify(saved.state)) apply(restored);
+        if (JSON.stringify(restored) !== JSON.stringify(saved.state)) apply(restored, { auto: true });
       }).catch(() => {});
     }
   }, [apply]);
@@ -1691,10 +1706,10 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
 
   const createLocalBuild = useCallback((name: string) => {
     if (!workspaceRef.current || !stateRef.current || busy || !name.trim()) return;
-    const saved: SavedSession = { version: 1, notes: '', state: {
+    const saved: SavedSession = { version: 1, state: {
       pobCode: null, character: { ...stateRef.current.character, level: 1 },
       allocatedNodes: [], attributeChoices: {}, socketGroups: [], items: [], flasks: [], limbs: [], jewels: [], annotations: {}, params: { config_inputs: {} },
-    } };
+    }, notes: '', data_version: dataVersionRef.current };
     workspaceRef.current = addWorkspaceBuild(workspaceRef.current, name, saved);
     restoreSession(saved, {});
   }, [busy, restoreSession]);
@@ -1739,7 +1754,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const saveComparisonBaseline = useCallback(() => {
     if (!workspaceRef.current || !stateRef.current || busy) return;
     const current = updateWorkspaceStage(workspaceRef.current,
-      { version: 1, state: stateRef.current, notes: notesRef.current }, draftsRef.current);
+      { version: 1, state: stateRef.current, notes: notesRef.current, data_version: dataVersionRef.current }, draftsRef.current);
     persistWorkspace(recordWorkspaceBaseline(current));
     startBaselineComparison();
   }, [busy, persistWorkspace, startBaselineComparison]);
@@ -1747,7 +1762,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const applyComparedStage = useCallback((a: StageSnapshot, b: StageSnapshot, nextState: BuildState) => {
     if (!workspaceRef.current || busy) return false;
     nextState = { ...switchWeapons(nextState, skillWeaponSet(nextState, nextState.params.main_socket_group)), sourceBackfillComplete: true };
-    const next = replaceComparedStage(workspaceRef.current, a, b, nextState);
+    const next = replaceComparedStage(workspaceRef.current, a, b, nextState, dataVersionRef.current);
     if (!next) return false;
     if (activeWorkspaceStage(workspaceRef.current).id === a.stageId) {
       setSocketGroupRevision(value => value + 1);
@@ -1862,7 +1877,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   return {
     saveComparisonBaseline, comparisonRevision, startBaselineComparison,
     treeVersion: state?.treeVersion,
-    dataVersion, workspace, storageFailed, workspaceRecovery, syncNotice, dismissSyncNotice, applyComparedStage, selectStage, createLocalBuild, duplicateStage, duplicateBuild, removeBuild, removeStage, renameWorkspace, exportWorkspace, exportLocalBuild,
+    dataVersion, currentTreeVersion, workspace, storageFailed, workspaceRecovery, syncNotice, dismissSyncNotice, applyComparedStage, selectStage, createLocalBuild, duplicateStage, duplicateBuild, removeBuild, removeStage, renameWorkspace, exportWorkspace, exportLocalBuild,
     activeWeaponSet: state?.weaponSwap?.active ?? 1,
     weaponSwap: state?.weaponSwap,
     setWeaponSet,

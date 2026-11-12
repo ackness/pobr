@@ -1,5 +1,6 @@
 {
   "ui": {
+    "shell.dataVersionChanged": "此階段儲存時使用的遊戲資料為 {saved}，目前按 {current} 計算。",
     "shell.pageError": "暫時無法顯示此頁面",
     "shell.pageErrorBackup": "請先下載 BD 備份，再重新整理頁面。其他頁面仍可開啟。",
     "shell.downloadBackup": "下載備份",

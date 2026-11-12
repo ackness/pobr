@@ -61,8 +61,7 @@ const JEWEL_TEMPLATE = 'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
 export function TreePanel(props: Props) {
   const { session, lang, active } = props;
   const conversion = useTreeConversion(session, lang, active);
-  const currentTree = session.dataVersion && /^\d+\.\d+/.test(session.dataVersion)
-    ? `0_${session.dataVersion.split('.')[1]}` : null;
+  const currentTree = session.currentTreeVersion;
   if (session.treeVersion && session.treeVersion !== 'Default' && currentTree && session.treeVersion !== currentTree) {
     if (!active) return null;
     const text = lang === 'en-US'

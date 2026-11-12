@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { BuildJson, CalculateBuildRequest, CalculateBuildResponse, PassiveTreeMeta, SkillMetricsResponse } from '../api/types';
 import { advanceImportReview } from '../app/importReview';
 import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, workspaceEnvelope } from '../lib/buildWorkspace';
-import { useBuildSession } from './useBuildSession';
+import { useBuildSession, type SavedSession } from './useBuildSession';
 import { STORAGE } from '../lib/sessionStorage';
 
 // Replay the real hook's state and callbacks; boot effects are unnecessary for importing a saved session.
@@ -20,6 +20,7 @@ vi.mock('../api/backend', () => ({ getBackend: async () => ({
   calculateBuild: harness.calculate, skillMetrics: harness.metrics,
   decodeBuild: harness.decode, decodeBuildFile: harness.decode,
   init: async () => {}, gameLocales: async () => [], loadClassNames: async () => ({ classes: {}, ascendancies: {} }),
+  dataVersion: '1.0.0.1', dataInfo: { data_version: '1.0.0.1', tree_version: 'future_tree', locales: [] },
   loadTreeMeta: harness.meta,
 }) }));
 
@@ -31,6 +32,17 @@ function deferred<T>() {
 function renderSession() {
   hooks.beginRender();
   return useBuildSession();
+}
+async function bootStoredSession(saved: SavedSession) {
+  localStorage.setItem(STORAGE.workspace, workspaceEnvelope(createWorkspace(saved)));
+  harness.calculate.mockResolvedValue(initial);
+  const addEventListener = vi.fn();
+  vi.stubGlobal('window', { addEventListener, removeEventListener: vi.fn(), setTimeout, clearTimeout });
+  renderSession();
+  const cleanups = hooks.runEffects();
+  await vi.waitFor(() => expect(renderSession().calc).toBe(initial));
+  const onStorage = addEventListener.mock.calls.find(([type]) => type === 'storage')![1];
+  return { cleanups, onStorage };
 }
 const result = (skill_id: string, value: number) => ({ main_skill: { skill_id }, stats: [{ id: 'CombinedDPS', value }] }) as CalculateBuildResponse;
 const initial = result('FireballPlayer', 100), selected = result('SparkPlayer', 900);
@@ -54,6 +66,110 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 it('initializes notes when access to localStorage itself throws', () => {
   vi.spyOn(globalThis, 'localStorage', 'get').mockImplementation(() => { throw new Error('Storage blocked'); });
   expect(renderSession().notes).toBe('');
+});
+
+it.each([undefined, '0.5.5.5'])('restoring preserves the stamp %s until an edit saves with the loaded data version', async data_version => {
+  const saved = { ...defaultStarterSession('Witch'), data_version };
+  const { cleanups } = await bootStoredSession(saved);
+  const restored = renderSession();
+  expect(restored.character?.class_name).toBe('Witch');
+  expect(restored.currentTreeVersion).toBe('future_tree');
+  expect(activeWorkspaceStage(restored.workspace!).saved.data_version).toBe(data_version);
+  const before = restored.exportWorkspace();
+  restored.setEditorDraft('item:ring1', null);
+  expect(renderSession().exportWorkspace()).toBe(before);
+  expect(localStorage.getItem(STORAGE.workspace)).toBe(before);
+  restored.setNotes('Edited with current data');
+  expect(JSON.parse(localStorage.getItem(STORAGE.workspace)!).data_version).toBe('1.0.0.1');
+  const exported = JSON.parse(renderSession().exportSession());
+  expect(exported.data_version).toBe('1.0.0.1');
+  expect(Object.keys(exported)).toEqual(['version', 'state', 'notes', 'data_version']);
+  cleanups.forEach(cleanup => cleanup?.());
+});
+
+it.each([undefined, '0.5.5.5'])('source backfill and automatic skill selection preserve the stamp %s', async data_version => {
+  const saved = { ...defaultStarterSession('Witch'), data_version };
+  saved.state.pobCode = 'source-without-selection';
+  saved.state.socketGroups = [{ enabled: true, gems: [{ skill_id: 'SparkPlayer', level: 20, quality: 0 }] }];
+  const decoded = { character: saved.state.character, tree: { allocated_nodes: [], tree_version: 'future_tree' },
+    config_inputs: { conditionFullLife: true }, items: { equipped: [] },
+    socket_groups: saved.state.socketGroups,
+  } as unknown as BuildJson;
+  harness.decode.mockResolvedValue(decoded);
+  harness.metrics.mockResolvedValue({ item_errors: [], skills: [{
+    group_index: 0, active_skill_index: 1, skill_id: 'SparkPlayer', status: 'calculated',
+    unsupported_modifiers: [], error: null,
+    metrics: { combined_dps: 900, hit_dps: 900, dot_dps: 0, average_hit: 900, action_rate: 1, mana_cost: 0, life_cost: 0, cooldown: 0 },
+  }] });
+  const { cleanups } = await bootStoredSession(saved);
+  await vi.waitFor(() => expect(renderSession().busy).toBe(false));
+  const stage = activeWorkspaceStage(renderSession().workspace!);
+  expect(stage.saved.state.treeVersion).toBe('future_tree');
+  expect(stage.saved.state.params.main_socket_group).toBe(0);
+  expect(stage.saved.state.params.config_inputs.conditionFullLife).toBe(true);
+  expect(stage.saved.data_version).toBe(data_version);
+  expect(JSON.parse(localStorage.getItem(STORAGE.workspace)!).data_version).toBe(data_version);
+  cleanups.forEach(cleanup => cleanup?.());
+});
+
+it.each(['workspace', 'build'] as const)('a %s file keeps mixed stage and baseline stamps through import, selection and export', async format => {
+  const { cleanups } = await bootStoredSession(defaultStarterSession('Witch'));
+  const legacy = { ...defaultStarterSession('Witch'), notes: 'Legacy stage' };
+  const old = { ...legacy, notes: 'Old stage', data_version: '0.4.0' };
+  const imported = duplicateWorkspaceStage(createWorkspace(legacy), 'Old');
+  activeWorkspaceStage(imported).saved = old;
+  imported.builds[0].baseline = { saved: old, recordedAt: 1000 };
+  const input = format === 'workspace' ? workspaceEnvelope(imported)
+    : JSON.stringify({ format: 'pobr-build', version: 1, build: imported.builds[0] });
+  renderSession().importSession(input);
+  await vi.waitFor(() => expect(renderSession().busy).toBe(false));
+  const versions = (build: typeof imported.builds[number]) => build.stages.map(stage => stage.saved.data_version);
+  let session = renderSession();
+  let build = session.workspace!.builds.find(build => build.id === session.workspace!.activeBuild)!;
+  expect(versions(build)).toEqual([undefined, '0.4.0']);
+  expect(build.baseline!.saved.data_version).toBe('0.4.0');
+  session.selectStage(build.id, build.stages[0].id);
+  await vi.waitFor(() => expect(renderSession().busy).toBe(false));
+  session = renderSession();
+  expect(JSON.parse(session.exportLocalBuild()).build.stages.map((stage: { saved: SavedSession }) => stage.saved.data_version))
+    .toEqual([undefined, '0.4.0']);
+  expect(activeWorkspaceStage(JSON.parse(session.exportWorkspace()).workspace).saved.data_version).toBeUndefined();
+  session.saveComparisonBaseline();
+  build = renderSession().workspace!.builds.find(entry => entry.id === build.id)!;
+  expect(versions(build)).toEqual(['1.0.0.1', '0.4.0']);
+  expect(build.baseline!.saved.data_version).toBe('1.0.0.1');
+  cleanups.forEach(cleanup => cleanup?.());
+});
+
+it.each([undefined, '0.4.0'])('a session file import preserves its data stamp %s instead of inheriting the replaced stage stamp', async dataVersion => {
+  const saved = { ...defaultStarterSession('Witch'), data_version: '0.5.5.5' };
+  const { cleanups } = await bootStoredSession(saved);
+  const imported = { ...saved, data_version: dataVersion, notes: 'Imported saved session' };
+  renderSession().importSession(JSON.stringify(imported), 'currentStage');
+  const envelope = JSON.parse(localStorage.getItem(STORAGE.workspace)!);
+  expect(envelope.data_version).toBe(dataVersion);
+  expect(activeWorkspaceStage(envelope.workspace).saved.data_version).toBe(dataVersion);
+  expect(renderSession().notes).toBe(imported.notes);
+  cleanups.forEach(cleanup => cleanup?.());
+});
+
+it.each([false, true])('a stamped stage stays unchanged when another tab adds a build (baseline saved: %s)', async baseline => {
+  const saved = { ...defaultStarterSession('Witch'), data_version: '1.0.0.1' };
+  const { cleanups, onStorage } = await bootStoredSession(saved);
+  if (baseline) renderSession().saveComparisonBaseline();
+  const current = renderSession();
+  const before = activeWorkspaceStage(current.workspace!);
+  const requests = harness.calculate.mock.calls.length;
+  const theirs = addWorkspaceBuild(current.workspace!, 'Made in another tab', saved);
+  localStorage.setItem(STORAGE.workspace, workspaceEnvelope(theirs));
+  onStorage({ storageArea: localStorage, key: STORAGE.workspace });
+  const synced = renderSession();
+  expect(synced.workspace!.builds).toHaveLength(2);
+  expect(activeWorkspaceStage(synced.workspace!)).toEqual(before);
+  expect(synced.syncNotice?.kind).toBe('updated');
+  expect(harness.calculate).toHaveBeenCalledTimes(requests);
+  synced.dismissSyncNotice();
+  cleanups.forEach(cleanup => cleanup?.());
 });
 
 it('refuses missing class metadata instead of creating a class not supplied by the data pack', async () => {

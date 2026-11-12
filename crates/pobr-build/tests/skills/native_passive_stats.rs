@@ -439,6 +439,17 @@ fn native_passive_loader_integrity_defaults_and_disk_memory_identity() {
     let disk = GameData::new(fixture());
     let memory = GameData::from_memory(pack());
     assert_eq!(disk.identity().unwrap(), memory.identity().unwrap());
+    assert_eq!(disk.tree_version().unwrap(), "0_5");
+    assert_eq!(
+        disk.identity().unwrap().data_version.as_deref(),
+        Some("0.5.5.5")
+    );
+    let production = GameData::new(pobr_gamedata::current_data_dir());
+    assert_ne!(
+        disk.identity().unwrap().sha256,
+        production.identity().unwrap().sha256
+    );
+    assert_eq!(disk.passive_tree_meta().unwrap().tree, "Controlled fixture");
     assert_eq!(
         BuildData::load(&disk).unwrap().passive_nodes,
         BuildData::load(&memory).unwrap().passive_nodes
@@ -538,11 +549,11 @@ fn native_passive_resealed_value_changes_identity_and_malformed_packet_fails_loa
     for (value, digest) in [
         (
             "7",
-            "1aeca49132263c0dbe1c4a81b98522298112131954d74dd40ef5b26d1e7c475d",
+            "eb867459cfb9fdcc980831ec20c34e4f8ee4e15e8c9cf1c93dd20cba78b972fc",
         ),
         (
             "\"malformed\"",
-            "cc9ab9ef81c0c24a4ab00db55811f769b9b0d2ad0208b1941509f59d6b802116",
+            "aad99bee9daaefef0eb3434fa2b4703d61954be2562a9f4e5e6525c5d6a7bf2b",
         ),
     ] {
         let mut files = pack();

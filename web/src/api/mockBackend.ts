@@ -46,6 +46,7 @@ function againstEnemy(result: CalculateBuildResponse, tier: keyof typeof TIER_DA
 export function createMockBackend(): PobrBackend {
   return {
     dataVersion: 'mock',
+    dataInfo: { data_version: 'mock', tree_version: '0_5', locales: [] },
     async init(onProgress) {
       onProgress?.('mock 后端就绪');
     },

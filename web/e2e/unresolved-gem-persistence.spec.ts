@@ -10,6 +10,7 @@ import type { BuildWorkspace } from '../src/lib/buildWorkspace';
 
 type Envelope = SavedSession & { workspace: BuildWorkspace };
 const cometCode = readFileSync(new URL('../../examples/demo-bd-test/builds/sorceress-stormweaver-comet/code.txt', import.meta.url), 'utf8').trim();
+const version = readFileSync(new URL('../../data/CURRENT', import.meta.url), 'utf8').trim();
 const hitDps = (page: Page) => playerHitDps(page);
 const mainSkill = (page: Page) => page.getByRole('combobox', { name: t('en-US', 'sidebar.mainSkill'), exact: true });
 
@@ -61,7 +62,8 @@ async function importComet(page: Page) {
   expect(imported.workspace.builds.some(build => build.id === starterId)).toBe(false);
   expect(imported.state.pobCode).toBe(cometCode);
   expect(imported.state.character).toEqual({ class_name: 'Sorceress', ascendancy_name: 'Stormweaver', level: 98 });
-  expect(activeSaved(imported)).toEqual({ version: imported.version, notes: imported.notes, state: imported.state });
+  expect(imported.data_version).toBe(version);
+  expect(activeSaved(imported)).toEqual({ version: imported.version, notes: imported.notes, state: imported.state, data_version: version });
   assertUnresolvedSlot(activeSaved(imported));
   return imported;
 }

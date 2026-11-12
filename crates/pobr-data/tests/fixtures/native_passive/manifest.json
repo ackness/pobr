@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "poe_version": "controlled-native-passive-0.5.5.5",
+  "poe_version": "0.5.5.5",
   "contract_version": 1,
   "languages": [],
   "domains": {
@@ -18,7 +18,7 @@
     "generated": []
   },
   "files": {
-    "base/passive_tree.json": "3e57646ab73ca84641ab114dfa6cec5797f7c3cee13cf036ea3947469f41d1ef",
+    "base/passive_tree.json": "75e9473a50a0147b06c49f64ac5dc9dc8fb4d6068f8f20c30bc78c5a5569fb72",
     "base/passive_tree_meta.json": "bfad76163eb1fffa529b30f4b4dc40af376c58ddadd5d74c6e51156c43ad5947",
     "base/skill_gems.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
     "base/granted_effects.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",

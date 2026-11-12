@@ -106,6 +106,7 @@ pub fn input_parsers() -> Rc<[Rc<LineParser>]> {
 
 /// One locale the data pack declares, as [`available_locales`] reports it.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[cfg_attr(test, derive(ts_rs::TS))]
 pub struct LocaleInfo {
     /// The locale code (`zh-CN`, ...).
     pub code: String,

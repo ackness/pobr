@@ -23,7 +23,7 @@ interface Call {
 
 type Reply =
   | { id: number; kind: 'progress'; message: string }
-  | { id: number; kind: 'value'; value: unknown; dataVersion?: string }
+  | { id: number; kind: 'value'; value: unknown; dataVersion?: string; dataInfo?: PobrBackend['dataInfo'] }
   | { id: number; kind: 'error'; name: string; message: string };
 
 /** Answered by the server itself, before the backend exists: has the worker started? */
@@ -53,7 +53,7 @@ export function serveBackend(backend: PobrBackend | Promise<PobrBackend>, endpoi
           ? [(message: string) => endpoint.postMessage({ id, kind: 'progress', message } satisfies Reply)]
           : args;
         const value = await (operation as (...a: unknown[]) => unknown).apply(target, callArgs);
-        endpoint.postMessage({ id, kind: 'value', value, dataVersion: target.dataVersion } satisfies Reply);
+        endpoint.postMessage({ id, kind: 'value', value, dataVersion: target.dataVersion, dataInfo: target.dataInfo } satisfies Reply);
       } catch (error) {
         const failure = error instanceof Error ? error : new Error(String(error));
         // `message` is kept as it is: API errors are JSON in it (see `parseApiError`).
@@ -74,6 +74,7 @@ export interface RpcClient {
 export function createRpcClient(endpoint: Endpoint): RpcClient {
   let nextId = 1;
   let dataVersion: string | undefined;
+  let dataInfo: PobrBackend['dataInfo'];
   const waiting = new Map<number, {
     resolve: (value: unknown) => void;
     reject: (error: Error) => void;
@@ -90,6 +91,7 @@ export function createRpcClient(endpoint: Endpoint): RpcClient {
     waiting.delete(reply.id);
     if (reply.kind === 'value') {
       if (reply.dataVersion !== undefined) dataVersion = reply.dataVersion;
+      if (reply.dataInfo !== undefined) dataInfo = reply.dataInfo;
       call.resolve(reply.value);
     } else {
       const error = new Error(reply.message);
@@ -114,6 +116,7 @@ export function createRpcClient(endpoint: Endpoint): RpcClient {
       // Not a thenable: the backend is returned from async functions and awaited.
       if (typeof property === 'symbol' || property === 'then') return undefined;
       if (property === 'dataVersion') return dataVersion;
+      if (property === 'dataInfo') return dataInfo;
       if (property === 'init') return (onProgress?: (message: string) => void) => send('init', [], onProgress).then(() => undefined);
       return (...args: unknown[]) => send(property, args);
     },

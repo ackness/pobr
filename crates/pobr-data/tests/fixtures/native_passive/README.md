@@ -2,7 +2,10 @@
 
 This is a **synthetic baseline containing one real selected passive fact**, not a
 production data pack or an old active dataset relabelled as a newer patch. The
-schema-3 version is `controlled-native-passive-0.5.5.5`. Empty item/gem/effect tables,
+schema-3 `poe_version` and native packet `data_version` are `0.5.5.5`, the game
+patch whose fact is exercised. The pack remains distinct from production by its
+sealed file inventory and `DataIdentity.sha256`; `passive_tree_meta.tree` names it
+`Controlled fixture`. Empty item/gem/effect tables,
 the zero-attribute `Fixture` class and a one-level monster table of ones
 (`base/monster_scaling.json`, required by every `BuildData` load; not game values)
 are controlled inputs. There are no parser

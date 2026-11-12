@@ -27,20 +27,6 @@ fn pob_slot_name(slot: EquipmentSlot) -> &'static str {
     }
 }
 
-/// The PoB2 tree tag for the data actually loaded into this instance.
-pub(super) fn current_tree_version() -> Result<String, String> {
-    let manifest = state::game_data()?
-        .manifest()
-        .map_err(|error| error.to_string())?;
-    let minor = manifest.poe_version.split('.').nth(1).ok_or_else(|| {
-        format!(
-            "cannot resolve passive tree version from {}",
-            manifest.poe_version
-        )
-    })?;
-    Ok(format!("0_{minor}"))
-}
-
 /// Edit state -> a PoB2 share code.
 ///
 /// The request shape is the same as [`CalculateBuildRequest`] (the web side
@@ -332,7 +318,11 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     let empty_choices = BTreeMap::new();
     let tree_version = match &req.tree_version {
         Some(version) => version.clone(),
-        None => current_tree_version()?,
+        None => state::game_data()
+            .map_err(super::ApiError::not_initialized)?
+            .tree_version()
+            .map_err(super::ApiError::from)?
+            .to_string(),
     };
     let xml = crate::xml_write::write_build_xml(&crate::xml_write::XmlInput {
         active_weapon_set,

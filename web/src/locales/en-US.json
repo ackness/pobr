@@ -7,6 +7,7 @@
     "shell.workspaceRecovery": "Some saved entries could not be opened. Automatic saving is paused to preserve the originals. Export your edits before leaving; download the original backup to recover the unreadable entries.",
     "shell.downloadOriginalBackup": "Download original backup",
     "shell.savingPaused": "Saving paused",
+    "shell.dataVersionChanged": "This stage was saved with game data {saved}. It is now calculated with {current}.",
     "common.close": "Close",
     "common.open": "Open",
     "common.cancel": "Cancel",

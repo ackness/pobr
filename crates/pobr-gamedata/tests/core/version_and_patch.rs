@@ -3,6 +3,81 @@
 
 use pobr_gamedata::{GameData, current_data_dir, data_version};
 
+fn tree_data(version: &str, compatibility: Option<&str>) -> GameData {
+    let mut files = std::collections::BTreeMap::from([(
+        "manifest.json".into(),
+        serde_json::to_vec(&serde_json::json!({
+            "schema_version": 2, "poe_version": version, "languages": [], "domains": []
+        }))
+        .unwrap(),
+    )]);
+    if let Some(label) = compatibility {
+        files.insert(
+            "overlay/passive_jewels.json".into(),
+            serde_json::to_vec(&serde_json::json!({ "tree_version": label })).unwrap(),
+        );
+    }
+    GameData::from_memory(files)
+}
+
+#[test]
+fn tree_labels_cover_all_shipped_trees() {
+    for (version, expected) in [
+        ("0.1.0", "0_1"),
+        ("0.2.0", "0_2"),
+        ("0.3.0", "0_3"),
+        ("0.4.0", "0_4"),
+        ("0.5.5.5", "0_5"),
+    ] {
+        assert_eq!(tree_data(version, None).tree_version().unwrap(), expected);
+        assert_eq!(
+            tree_data(version, Some(expected)).tree_version().unwrap(),
+            expected
+        );
+    }
+    let game = GameData::new(current_data_dir());
+    assert_eq!(
+        game.tree_version().unwrap(),
+        game.passive_jewels().unwrap().unwrap().tree_version
+    );
+    // Keep the explicit historical cases tied to the package inventory.
+    let known = ["0_1", "0_2", "0_3", "0_4", "0_5"];
+    for label in game.available_tree_versions() {
+        assert!(
+            known.contains(&label.as_str()),
+            "missing table regression for {label}"
+        );
+    }
+}
+
+#[test]
+fn unknown_game_versions_are_named_errors_even_with_a_compatibility_label() {
+    for version in ["1.0.0.1", "0.10.0", "0.50.1", "invalid"] {
+        for compatibility in [None, Some("0_5")] {
+            let error = tree_data(version, compatibility)
+                .tree_version()
+                .unwrap_err();
+            assert!(matches!(
+                error,
+                pobr_gamedata::LoadError::UnknownTreeVersion { .. }
+            ));
+            assert!(error.to_string().starts_with("unknown_tree_version:"));
+        }
+    }
+}
+
+#[test]
+fn compatibility_disagreement_is_reported() {
+    let error = tree_data("0.5.5.5", Some("0_4"))
+        .tree_version()
+        .unwrap_err();
+    assert!(matches!(
+        error,
+        pobr_gamedata::LoadError::TreeVersionMismatch { .. }
+    ));
+    assert!(error.to_string().starts_with("tree_version_mismatch:"));
+}
+
 /// Runtime version discovery: the environment override precedes `data/CURRENT`;
 /// `current_data_dir()` points at that version's directory.
 #[test]

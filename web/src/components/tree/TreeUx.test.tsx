@@ -12,6 +12,7 @@ import { PlannerResultsNotice } from './PlannerResultsNotice';
 import { TreeConversionControls, useTreeConversion } from './TreeConversionControls';
 import { JewelPassivePlanner, type JewelPassivePlannerState } from './JewelPassivePlanner';
 import { usePassiveNodeNames } from './passiveNodeNames';
+import { TreePanel } from './TreePanel';
 
 // Replay the real event handlers in the repository's node-only test environment.
 const ui = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[],
@@ -58,6 +59,16 @@ const session = { currentRequest: () => ({ allocated_nodes: [1] }), allocatedNod
   character: { class_name: 'Witch' }, jewels: [], calc: { tree_effects: effects }, busy: false } as unknown as BuildSession;
 
 beforeEach(() => { hooks.reset(); ui.captureEffects = false; vi.clearAllMocks(); });
+
+test('the historical-tree notice compares against the exported label for 1.0 data', () => {
+  const current = { ...session, dataVersion: '1.0.0.1', currentTreeVersion: 'future_tree', treeVersion: 'future_tree' };
+  // Inspect the branch before mounting the large editable canvas.
+  hooks.beginRender();
+  expect(TreePanel({ session: current, lang: 'en-US', active: true })!.props.className).not.toBe('ui-page tree-historical');
+  hooks.reset();
+  const historical = render(() => TreePanel({ session: { ...current, treeVersion: '0_5' }, lang: 'en-US', active: true })!);
+  expect(historical.html).toContain('This build uses passive tree 0_5');
+});
 
 test('report opens with an entry empty state, evaluates, locates a result and resets back to the entry', async () => {
   const focus = vi.fn();

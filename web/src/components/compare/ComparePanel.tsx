@@ -159,7 +159,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
     { key: tt('compare.mods'), before: pair.a.params.custom_modifier_blocks ?? pair.a.params.extra_modifiers,
       after: pair.b.params.custom_modifier_blocks ?? pair.b.params.extra_modifiers, action: { kind: 'modifiers' } as CopySection },
   ].filter(row => JSON.stringify(row.before) !== JSON.stringify(row.after)) : [];
-  const sameTree = !!pair && resolvedTreeVersion(pair.a.treeVersion, session.dataVersion) === resolvedTreeVersion(pair.b.treeVersion, session.dataVersion);
+  const sameTree = !!pair && resolvedTreeVersion(pair.a.treeVersion, session.currentTreeVersion) === resolvedTreeVersion(pair.b.treeVersion, session.currentTreeVersion);
   const treeChanges = pair ? treeDifferenceCount(pair.a, pair.b, sameTree) : 0;
   const counts: DiffCounts = {
     stats: value ? value.stats.filter(row => row.changed).length : 0,
@@ -259,7 +259,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
 
         <TabsPrimitive.Content value="tree" className="cmp-panel">
           <TreeComparison a={a.saved.state} b={b.saved.state} before={value?.before} after={value?.after}
-            dataVersion={session.dataVersion} meta={session.treeMeta} lang={lang} />
+            dataVersion={session.dataVersion} currentTreeVersion={session.currentTreeVersion} meta={session.treeMeta} lang={lang} />
         </TabsPrimitive.Content>
       </> : <div className="cmp-empty"><p>{tt(defaults.b ? 'compare.chooseB' : 'compare.noBaseline')}</p><p>{tt('compare.needStages')}</p>
         <div className="cmp-empty-actions">

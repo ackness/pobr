@@ -1,4 +1,4 @@
-//! Host-only generation and drift checking for the shared request DTOs.
+//! Host-only generation and drift checking for shared API DTOs.
 
 use std::path::PathBuf;
 
@@ -33,7 +33,10 @@ fn declarations() -> String {
         output.push_str(&declaration);
         output.push_str("\n\n");
     }
-    // Normalize trailing spaces and emit exactly one final newline.
+    normalize_declarations(output)
+}
+
+fn normalize_declarations(output: String) -> String {
     output
         .lines()
         .map(str::trim_end)
@@ -44,8 +47,28 @@ fn declarations() -> String {
         + "\n"
 }
 
+fn data_info_destination() -> PathBuf {
+    destination().with_file_name("dataInfo.ts")
+}
+
+fn data_info_declarations() -> String {
+    let config = Config::default();
+    normalize_declarations(format!(
+        "// Generated from Rust data-info DTOs by ts-rs. Do not edit manually.\n\
+         // Regenerate: cargo test -p pobr-wasm --lib export_typescript_contract -- --ignored\n\n\
+         export {}\n\nexport {}\n",
+        crate::locales::LocaleInfo::decl(&config),
+        super::DataInfo::decl(&config),
+    ))
+}
+
 #[test]
 fn typescript_contract_is_current() {
+    assert_eq!(
+        std::fs::read_to_string(data_info_destination()).expect("read generated data info types"),
+        data_info_declarations(),
+        "data info DTOs changed; run export_typescript_contract"
+    );
     assert_eq!(
         std::fs::read_to_string(destination()).expect("read generated request types"),
         declarations(),
@@ -59,4 +82,6 @@ fn export_typescript_contract() {
     let path = destination();
     std::fs::create_dir_all(path.parent().unwrap()).expect("create generated directory");
     std::fs::write(path, declarations()).expect("write generated request types");
+    std::fs::write(data_info_destination(), data_info_declarations())
+        .expect("write generated data info types");
 }

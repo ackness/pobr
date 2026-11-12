@@ -26,6 +26,7 @@ pub mod paths;
 pub mod ruleset;
 #[cfg(any(test, feature = "test-pins"))]
 pub mod test_pins;
+mod tree_version;
 
 use std::fmt;
 use std::fs;
@@ -57,9 +58,23 @@ pub enum LoadError {
     },
     /// An overlay merge failed (e.g. `skill_overrides.json` names a stat
     /// the consumer hasn't wired up).
-    Overlay { path: PathBuf, message: String },
+    Overlay {
+        path: PathBuf,
+        message: String,
+    },
     /// A snapshot contradicts its declared schema, inventory or file digests.
-    Integrity { path: PathBuf, message: String },
+    Integrity {
+        path: PathBuf,
+        message: String,
+    },
+    UnknownTreeVersion {
+        data_version: String,
+    },
+    TreeVersionMismatch {
+        data_version: String,
+        expected: &'static str,
+        actual: String,
+    },
 }
 
 impl fmt::Display for LoadError {
@@ -75,6 +90,18 @@ impl fmt::Display for LoadError {
             Self::Integrity { path, message } => {
                 write!(f, "invalid data snapshot {}: {message}", path.display())
             }
+            Self::UnknownTreeVersion { data_version } => write!(
+                f,
+                "unknown_tree_version: no passive-tree label is registered for game version {data_version}"
+            ),
+            Self::TreeVersionMismatch {
+                data_version,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "tree_version_mismatch: game version {data_version} maps to {expected}, but passive_jewels.json declares {actual}"
+            ),
         }
     }
 }
@@ -186,6 +213,7 @@ pub struct GameData {
     snapshot: std::sync::Arc<std::sync::OnceLock<Result<Option<DataManifest>, String>>>,
     /// Effective input-pack fingerprint, fixed on first request and shared by clones.
     identity: std::sync::Arc<std::sync::OnceLock<Result<DataIdentity, String>>>,
+    tree_version: std::sync::Arc<std::sync::OnceLock<&'static str>>,
     /// The caller has already compared every inventoried file with its manifest
     /// digest ([`Self::from_memory_prechecked`]), so validation skips that
     /// comparison.
@@ -200,6 +228,7 @@ impl GameData {
             files: None,
             snapshot: Default::default(),
             identity: Default::default(),
+            tree_version: Default::default(),
             prechecked: false,
         }
     }
@@ -228,6 +257,7 @@ impl GameData {
             ))),
             snapshot: Default::default(),
             identity: Default::default(),
+            tree_version: Default::default(),
             prechecked,
         }
     }
