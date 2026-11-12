@@ -245,8 +245,10 @@ impl ParseModRules {
             )
         })?;
         let special_entries = data.load_ruleset()?.special_mods.unwrap_or_default();
-        let rules = CompiledParserRules::compile_with_special(&doc, &special_entries)
-            .map_err(|e| CliError::ModParse(format!("parser rule compilation failed: {e:?}")))?;
+        let weapon_types = pobr_data::catalog::WeaponTypeTable(data.weapon_types()?);
+        let rules =
+            CompiledParserRules::compile_with_weapon_types(&doc, &special_entries, &weapon_types)
+                .map_err(|e| CliError::ModParse(format!("parser rule compilation failed: {e:?}")))?;
         Ok(Self {
             rules: std::sync::Arc::new(rules),
         })
@@ -453,44 +455,7 @@ fn anatomy_of(m: &Modifier) -> ModAnatomy {
 
 /// [`ModFlags`] bits -> name list (individual bits only, no masks).
 fn mod_flag_names(flags: ModFlags) -> Vec<String> {
-    const TABLE: &[(ModFlags, &str)] = &[
-        (ModFlags::ATTACK, "Attack"),
-        (ModFlags::SPELL, "Spell"),
-        (ModFlags::HIT, "Hit"),
-        (ModFlags::DOT, "Dot"),
-        (ModFlags::CAST, "Cast"),
-        (ModFlags::THORNS, "Thorns"),
-        (ModFlags::MELEE, "Melee"),
-        (ModFlags::AREA, "Area"),
-        (ModFlags::PROJECTILE, "Projectile"),
-        (ModFlags::AILMENT, "Ailment"),
-        (ModFlags::MELEE_HIT, "MeleeHit"),
-        (ModFlags::WEAPON, "Weapon"),
-        (ModFlags::AXE, "Axe"),
-        (ModFlags::BOW, "Bow"),
-        (ModFlags::CLAW, "Claw"),
-        (ModFlags::DAGGER, "Dagger"),
-        (ModFlags::MACE, "Mace"),
-        (ModFlags::STAFF, "Staff"),
-        (ModFlags::SWORD, "Sword"),
-        (ModFlags::WAND, "Wand"),
-        (ModFlags::UNARMED, "Unarmed"),
-        (ModFlags::CROSSBOW, "Crossbow"),
-        (ModFlags::FLAIL, "Flail"),
-        (ModFlags::SPEAR, "Spear"),
-        (ModFlags::WARSTAFF, "Warstaff"),
-        (ModFlags::TALISMAN, "Talisman"),
-        (ModFlags::FISHING, "Fishing"),
-        (ModFlags::WEAPON_MELEE, "WeaponMelee"),
-        (ModFlags::WEAPON_RANGED, "WeaponRanged"),
-        (ModFlags::WEAPON_1H, "Weapon1H"),
-        (ModFlags::WEAPON_2H, "Weapon2H"),
-    ];
-    TABLE
-        .iter()
-        .filter(|(bit, _)| flags.intersects(*bit))
-        .map(|(_, name)| (*name).to_string())
-        .collect()
+    flags.names()
 }
 
 /// [`KeywordFlags`] bits -> name list (with the `MatchAll` marker).

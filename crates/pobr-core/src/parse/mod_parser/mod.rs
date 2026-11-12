@@ -28,6 +28,7 @@ pub mod engine;
 pub mod forms;
 pub mod scan;
 pub mod template;
+mod weapons;
 
 // Re-export the shared parser output types from `outcome` (keeps the
 // caller-facing path `pobr_core::mod_parser::*` unchanged).

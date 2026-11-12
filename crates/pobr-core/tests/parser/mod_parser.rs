@@ -2597,3 +2597,74 @@ fn utility_followup_rules_preserve_game_amounts_and_distinguish_missing_models()
         assert_eq!(parsed.special_meta.unwrap().no_effect, no_effect, "{text}");
     }
 }
+
+/// Synthetic next-version rows extend the same parser vocabulary as equipment.
+#[test]
+fn weapon_rows_add_wielding_conditions_without_inventing_type_bits() {
+    use pobr_core::mod_parser::{CompiledParserRules, parse_mod_engine};
+    use pobr_data::catalog::WeaponTypeTable;
+    use pobr_data::catalog::parser_rules::{FlagPhraseDef, ModParserRulesDoc, RuleEffectsDef};
+
+    let mut doc: ModParserRulesDoc = serde_json::from_str(
+        &std::fs::read_to_string(
+            crate::support::test_data_dir().join("overlay/mod_parser_rules.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let mut weapons = WeaponTypeTable::default();
+    weapons.0.push(
+        serde_json::from_str(r#"{"id":"Rapier","flag":"Rapier","one_hand":true,"melee":true}"#)
+            .unwrap(),
+    );
+    let rules = CompiledParserRules::compile_with_weapon_types(&doc, &[], &weapons).unwrap();
+    let text = "37% increased Damage while wielding a Rapier";
+    let parsed = parse_mod_engine(text, &rules);
+    assert!(parsed.is_complete(), "{text}: {parsed:?}");
+    assert_eq!(parsed.mods[0].name.as_str(), "Damage");
+    let mut db = ModDb::new();
+    db.add_list(parsed.mods);
+    for equipped in [false, true] {
+        let cfg = CalcConfig::default().with_condition("UsingRapier", equipped);
+        assert_eq!(
+            db.sum(ModType::Inc, &cfg, &[ModName::from("Damage")]),
+            if equipped { 37.0 } else { 0.0 },
+            "equipped={equipped}",
+        );
+    }
+    for text in [
+        "37% increased Damage with Rapiers",
+        "37% increased Rapier Damage",
+    ] {
+        assert!(!parse_mod_engine(text, &rules).is_complete(), "{text}");
+    }
+    // A frozen rule naming an unknown bit must not broaden to every hit.
+    doc.flag_phrases.push(FlagPhraseDef {
+        phrase: "with rapiers".into(),
+        effects: RuleEffectsDef {
+            flags: vec!["Hit".into(), "Rapier".into()],
+            ..Default::default()
+        },
+    });
+    let rules = CompiledParserRules::compile_with_weapon_types(&doc, &[], &weapons).unwrap();
+    let parsed = parse_mod_engine("37% increased Damage with Rapiers", &rules);
+    assert_eq!(parsed.status, ParseStatus::Unsupported);
+    assert!(parsed.mods.is_empty());
+
+    // Existing type bits scope the new name to the correct hand.
+    let parsed = parse_mod_engine("37% increased Damage with Swords", &rules);
+    assert!(parsed.is_complete(), "{parsed:?}");
+    assert_eq!(parsed.mods[0].name.as_str(), "SwordDamage");
+    let mut db = ModDb::new();
+    db.add_list(parsed.mods);
+    for (bit, expected) in [(ModFlags::SWORD, 37.0), (ModFlags::AXE, 0.0)] {
+        let cfg = CalcConfig::default().with_flags(bit | ModFlags::HIT);
+        assert_eq!(
+            db.sum(ModType::Inc, &cfg, &[ModName::from("SwordDamage")]),
+            expected,
+        );
+    }
+    let parsed = parse_mod_engine("37% increased Damage with Quarterstaves", &rules);
+    assert!(parsed.is_complete(), "{parsed:?}");
+    assert_eq!(parsed.mods[0].name.as_str(), "QuarterstaffDamage");
+}

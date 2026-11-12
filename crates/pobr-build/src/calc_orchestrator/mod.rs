@@ -254,9 +254,15 @@ fn default_parser_rules()
                 .map_err(|e| format!("failed to load ruleset: {e}"))?
                 .special_mods
                 .unwrap_or_default();
-            pobr_core::mod_parser::CompiledParserRules::compile_with_special(&doc, &special)
-                .map(Arc::new)
-                .map_err(|e| format!("parser rule compilation failed: {e:?}"))
+            let weapons = pobr_data::catalog::WeaponTypeTable(
+                data.weapon_types()
+                    .map_err(|e| format!("failed to load weapon_types.json: {e}"))?,
+            );
+            pobr_core::mod_parser::CompiledParserRules::compile_with_weapon_types(
+                &doc, &special, &weapons,
+            )
+            .map(Arc::new)
+            .map_err(|e| format!("parser rule compilation failed: {e:?}"))
         })
         .clone()
         .map_err(BuildError::Parse)
@@ -748,6 +754,10 @@ fn calculate_prepared_with_context(
         ctx.weapons.off_hand_weapon.is_some(),
         main_weapon_active,
     )?;
+
+    for limit in conditions::weapon_support_limits(build, data) {
+        session.record_unsupported_modifier_text(limit);
+    }
 
     // 2a. Transcendent limbs: their lines are global modifiers.
     inject_limbs(&mut session, build, data)?;

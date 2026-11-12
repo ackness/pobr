@@ -362,3 +362,30 @@ fn min_max_type_more_stacks_with_generic_inc_more() {
     assert_eq!(phys.min, 150.0);
     assert_eq!(phys.max, 330.0);
 }
+
+#[test]
+fn weapon_damage_names_follow_each_pass_and_preserve_unarmed_damage() {
+    for (text, weapon) in [
+        ("100% increased Damage with Swords", ModFlags::SWORD),
+        ("100% increased Unarmed Damage", ModFlags::UNARMED),
+    ] {
+        let parsed = crate::support::parse_mod(text).unwrap();
+        assert!(parsed.is_complete(), "{text}: {parsed:?}");
+        let mut db = ModDb::new();
+        db.add_list(parsed.mods);
+        let matching = CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::HIT | weapon);
+        let other_hand = matching
+            .clone()
+            .with_flags(ModFlags::ATTACK | ModFlags::HIT | ModFlags::AXE);
+        assert_eq!(
+            calculate_minimal(&db, &matching, &base_input()).total_hit_avg,
+            300.0,
+            "{text}"
+        );
+        assert_eq!(
+            calculate_minimal(&db, &other_hand, &base_input()).total_hit_avg,
+            150.0,
+            "{text}"
+        );
+    }
+}
