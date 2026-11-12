@@ -163,7 +163,7 @@ test('sidebar multiplier formats use percentage-point deltas and pierce all-targ
 });
 
 import { compareTreeAllocations, treeAllocationTotals } from './compare';
-import type { PassiveNode } from '../api/types';
+import type { PassiveJewelState, PassiveNode } from '../api/types';
 
 const passive = (skill: number, patch: Partial<PassiveNode> = {}): PassiveNode => ({ skill, id: String(skill), kind: 'normal', x: skill * 100, y: 0, ...patch });
 
@@ -189,11 +189,14 @@ describe('tree comparison', () => {
     expect(result.unplacedB).toEqual([1]);
   });
   test('counts unique passive/ascendancy points without starts, separates saved choices and diagnoses unknown IDs', () => {
-    const nodes = [passive(1, { name: 'RANGER' }), passive(2, { name: 'Attribute', stats: ['+5 to any Attribute'] }),
+    const nodes = [passive(1, { name: 'NEW START' }), passive(2, { name: 'Attribute', stats: ['+5 to any Attribute'] }),
       passive(3, { ascendancy_id: 'Deadeye', kind: 'ascendancy_start' }), passive(4, { ascendancy_id: 'Deadeye' }),
       passive(5, { name: 'Attribute', stats: ['+5 to any Attribute'] }), passive(6, { kind: 'jewel_socket' })];
     const build = { ...state(), allocatedNodes: [1, 2, 2, 3, 4, 5, 6, 99], attributeChoices: { '2': 'int' as const, '100': 'str' as const } };
-    expect(treeAllocationTotals(build, nodes)).toEqual({ passive: 3, ascendancy: 1, unknown: [99], attributes: { str: 0, dex: 0, int: 1, unassigned: 1 } });
+    const effects: PassiveJewelState = { class_starts: { wayfarer: 1 }, allocation_grants: [],
+      nodes: {}, conquered: [], unresolved: [], rings: [], warnings: [] };
+    expect(treeAllocationTotals(build, nodes, effects)).toEqual({ passive: 3, ascendancy: 1, unknown: [99], attributes: { str: 0, dex: 0, int: 1, unassigned: 1 } });
+    expect(treeAllocationTotals(build, nodes).passive).toBeNull();
   });
 });
 

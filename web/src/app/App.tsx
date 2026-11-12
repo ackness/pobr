@@ -198,7 +198,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const inspector = inspect && <PageErrorBoundary key={inspect} lang={lang} exportWorkspace={session.exportWorkspace}><Suspense fallback={<div className="insp" role="status"><Skeleton className="h-6 w-1/2" /><Skeleton className="mt-4 h-40 w-full" /></div>}>
     <Inspector session={session} view={view} lang={lang} id={inspect} onClose={() => setInspect(null)} onNavigate={() => { skipInspectorRestore.current = !docked; setInspect(null); }} onOpenCalcs={focusStat} pinned={pinned.includes(inspect)} onTogglePin={() => togglePin(inspect)} /></Suspense></PageErrorBoundary>;
   const panelLoading = <div role="status" className="shell-panel-loading"><Skeleton className="h-12 w-2/3" /><Skeleton className="h-64 w-full" /><p>{t(lang, 'ui.loadingPanel')}</p></div>;
-  const saveState = session.storageFailed ? w('Save failed', '保存失败', '儲存失敗') : session.busy ? w('Calculating', '计算中', '計算中') : t(lang, 'shell.saved');
+  const saveState = session.workspaceRecovery ? t(lang, 'shell.savingPaused') : session.storageFailed ? w('Save failed', '保存失败', '儲存失敗') : session.busy ? w('Calculating', '计算中', '計算中') : t(lang, 'shell.saved');
   const rail = <ResultsRail route={route} session={session} view={view} lang={lang} onStatClick={inspectStat} onNavigate={navigate} pinned={pinned} onTogglePin={togglePin} />;
   const importNotice = reviewStage && reviewStage.scope === stageKey && <ImportReviewNotice route={route} lang={lang}
     summary={reviewStage.summary ?? { character: session.character, classNames: session.classNames, calc: null, failed: !!session.calcError }}
@@ -232,6 +232,11 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
       <div className="shell-rail">{rail}</div>
       <main id="shell-main" tabIndex={-1} className={`shell-main shell-page-${route}`} data-display-mode={pageDisplayMode(preferences, route)} ref={main} key={stageKey}>
         {session.storageFailed && <div className="shell-alert" role="alert"><p>{t(lang, 'shell.storageUnavailable')}</p><BackupDownload lang={lang} exportWorkspace={session.exportWorkspace} /></div>}
+        {session.workspaceRecovery && <div className="shell-alert" role="alert">
+          <p>{t(lang, 'shell.workspaceRecovery')}</p>
+          <Button onClick={() => download(session.workspaceRecovery!, 'pobr-original-workspace.json')}>{t(lang, 'shell.downloadOriginalBackup')}</Button>
+          <BackupDownload lang={lang} exportWorkspace={session.exportWorkspace} />
+        </div>}
         {preferencesFailed && <p className="shell-alert" role="alert">{w('Display preferences could not be saved on this device.', '显示偏好暂时无法保存到当前设备。', '顯示偏好暫時無法儲存至目前裝置。')}</p>}
         {session.syncNotice && <div className="shell-notice" role="status" data-sync={session.syncNotice.kind}><p>{syncMessage(session.syncNotice.kind, w)}</p><Button variant="ghost" onClick={session.dismissSyncNotice}>{w('Dismiss', '知道了', '知道了')}</Button></div>}
         {route !== 'build' && importNotice}

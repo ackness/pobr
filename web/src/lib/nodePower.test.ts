@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { PobrBackend } from '../api/backend';
-import type { PassiveNode } from '../api/types';
+import type { PassiveJewelState, PassiveNode } from '../api/types';
 import { passivePlanningContext, withTravelAttributes } from './passivePlanner';
 import { evaluateNodePower, filterPowerRows, powerCandidates, rankPowerRows, type PowerRow } from './nodePower';
 import type { EvaluateOptions, EvaluateResult } from './optimize';
@@ -14,7 +14,9 @@ const nodes: PassiveNode[] = [
   { skill: 6, id: 'asc', name: 'Start', kind: 'ascendancy_start', ascendancy_id: 'Witch1', connections: [7] },
   { skill: 7, id: 'asc-notable', name: 'Asc notable', kind: 'notable', ascendancy_id: 'Witch1', stats: ['Life'] },
 ];
-function candidates() { return powerCandidates(nodes, passivePlanningContext(nodes, [], 'Witch'), [], 'Witch1'); }
+const effects: PassiveJewelState = { class_starts: { witch: 1 }, allocation_grants: [],
+  nodes: {}, conquered: [], unresolved: [], rings: [], warnings: [] };
+function candidates() { return powerCandidates(nodes, passivePlanningContext(nodes, [], 'Witch', [], [], undefined, effects), [], 'Witch1'); }
 const probeImplementation: PobrBackend['nodePower'] = async (_request, _stat, _depth, ids) => ({ base: 100, entries: (ids ?? []).map((skill: number) => ({ skill, delta: 999, distance: 0 })) });
 const probe = vi.fn(probeImplementation);
 const evaluate = async (opts: EvaluateOptions): Promise<EvaluateResult> => ({ baseline: { Life: 100, Mana: 100 }, aborted: false,
@@ -34,7 +36,7 @@ describe('node power routes and ranking', () => {
     expect(filterPowerRows(rows, '', false).map(r => r.node.skill)).toEqual([3,4,5,7]);
     expect(filterPowerRows(rows, 'attribute', true).map(r => r.node.skill)).toEqual([2]);
     expect(filterPowerRows(rows, '3', false).map(r => r.node.skill)).toEqual([3]);
-    const allocated = powerCandidates(nodes, passivePlanningContext(nodes, [4], 'Witch'), [4]);
+    const allocated = powerCandidates(nodes, passivePlanningContext(nodes, [4], 'Witch', [], [], undefined, effects), [4]);
     expect(allocated.some(r => r.node.skill === 4)).toBe(false);
   });
 

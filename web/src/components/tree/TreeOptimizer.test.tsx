@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import type { PassiveNode } from '../../api/types';
+import type { PassiveJewelState, PassiveNode } from '../../api/types';
 import type { ObjectiveState } from '../shared/OptimizerControls';
 import { TreeOptimizer, useTreeOptimizer, type TreeOptimizerState } from './TreeOptimizer';
 
@@ -27,6 +27,8 @@ vi.mock('./PlannerResultsNotice', () => ({ PlannerResultsNotice: ({ children }: 
 
 const nodes = [{ skill: 1, id: '1', name: 'WITCH', connections: [2], kind: 'normal', x: 0, y: 0 },
   { skill: 2, id: '2', name: 'Minion power', connections: [1], kind: 'notable', x: 1, y: 1 }] as PassiveNode[];
+const effects: PassiveJewelState = { class_starts: { witch: 1, wayfarer: 1 }, allocation_grants: [],
+  nodes: {}, conquered: [], unresolved: [], rings: [], warnings: [] };
 let session: BuildSession;
 let planner: TreeOptimizerState;
 const focusPlanner = { nonce: 1 }, onPreview = vi.fn(), nodeLabel = () => 'Minion power';
@@ -49,7 +51,7 @@ beforeEach(() => {
   vi.useFakeTimers(); vi.stubGlobal('window', { setTimeout, clearTimeout });
   const request = { allocated_nodes: [1] };
   session = { currentRequest: () => request, allocatedNodes: [1], attributeChoices: {}, jewels: [],
-    character: { class_name: 'Witch' }, activeWeaponSet: 1, stateVersion: 1, calc: { stats: [] },
+    character: { class_name: 'Witch' }, activeWeaponSet: 1, stateVersion: 1, calc: { stats: [], tree_effects: effects },
   } as unknown as BuildSession;
   ui.plan.mockResolvedValue({ baseline: {}, plans: [], evaluated: 1, limited: false, unmodeled: 0, baselineUnsupported: [], excluded: [] });
 });
@@ -71,7 +73,7 @@ test.each(['dps', 'balanced', 'dpsPerMana'])('passes the resolved %s goal into b
 });
 
 test('a minion-only passive improvement shows its damage gain, baseline and per-minion note', async () => {
-  session.calc = { stats: [{ id: 'ActiveMinionLimit', value: 7 }], main_minion_index: 2,
+  session.calc = { stats: [{ id: 'ActiveMinionLimit', value: 7 }], tree_effects: effects, main_minion_index: 2,
     minions: [{ index: 2, name: 'Wolf' }] } as unknown as BuildSession['calc'];
   ui.plan.mockResolvedValue({ baseline: { TotalDPS: 0, CombinedDPS: 0, MainMinionDPS: 100 },
     plans: [{ allocate: [2], deallocate: [], target: 2, stats: { TotalDPS: 0, CombinedDPS: 0, MainMinionDPS: 150 } }],
@@ -82,4 +84,16 @@ test('a minion-only passive improvement shows its damage gain, baseline and per-
   expect(html).toMatch(/Minion hit DPS <b[^>]*>\+50.0%/);
   expect(html).toContain('Wolf · per minion · limit 7');
   expect(html).toContain('data-stat="MainMinionDPS">150');
+});
+
+test('a new class picks its strongest base attribute when metadata arrives and retains an explicit override', () => {
+  session.character = { level: 1, class_name: 'Wayfarer', ascendancy_name: '' };
+  render();
+  session.treeMeta = { tree: 'Default', classes: [{ name: 'Wayfarer', base_str: 30, base_dex: 7, base_int: 7 }] };
+  render();
+  expect(planner.attribute).toBe('str');
+  planner.setAttribute('int');
+  session.treeMeta = { tree: 'Default', classes: [{ name: 'Wayfarer', base_str: 7, base_dex: 40, base_int: 7 }] };
+  render();
+  expect(planner.attribute).toBe('int');
 });

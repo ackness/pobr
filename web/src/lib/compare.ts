@@ -5,7 +5,7 @@
 
 import { skillFormName } from './skillNames';
 import { hasPosition, isAttributeNode } from './treeGeometry';
-import { classStartSkill } from './passiveGraph';
+import { implicitClassStarts } from './passiveGraph';
 import { STAT_SECTIONS, formatStatValue, statFormat, type StatFormat, type Lang } from './statDisplay';
 import { t } from './i18n';
 import { switchWeapons } from './weaponSets';
@@ -245,9 +245,9 @@ export function compareTreeAllocations(a: StageState, b: StageState,
   return { nodes, unplacedA: missing(aa, byA), unplacedB: missing(bb, byB) };
 }
 
-export function treeAllocationTotals(state: StageState, nodes: import('../api/types').PassiveNode[]) {
+export function treeAllocationTotals(state: StageState, nodes: import('../api/types').PassiveNode[], effects?: import('../api/types').PassiveJewelState) {
   const byId = new Map(nodes.map(node => [node.skill, node]));
-  const starts = new Set(['Druid', 'Mercenary', 'Ranger', 'Warrior', 'Monk', 'Witch'].map(name => classStartSkill(nodes, name)));
+  const starts = implicitClassStarts(effects);
   const totals = { passive: 0, ascendancy: 0, unknown: [] as number[], attributes: { str: 0, dex: 0, int: 0, unassigned: 0 } };
   for (const id of new Set(state.allocatedNodes)) {
     const node = byId.get(id);
@@ -256,7 +256,8 @@ export function treeAllocationTotals(state: StageState, nodes: import('../api/ty
     if (node.ascendancy_id) totals.ascendancy++; else totals.passive++;
     if (isAttributeNode(node)) totals.attributes[state.attributeChoices[String(id)] ?? 'unassigned']++;
   }
-  return totals;
+  // A legacy response cannot distinguish ordinary nodes from class starts safely.
+  return { ...totals, passive: Object.keys(effects?.class_starts ?? {}).length ? totals.passive : null };
 }
 
 /** Stage order is the saved before/after order; never infer chronology from names. */

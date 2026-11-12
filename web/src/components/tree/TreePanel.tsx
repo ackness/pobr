@@ -9,7 +9,7 @@ import { SidebarResizeHandle } from './SidebarResizeHandle';
 import { readSideWidth, writeSideWidth } from './sidebarWidth';
 import { TreePointSummary } from './TreePointSummary';
 import { jewelSocketNames } from './jewelSocketNames';
-import { defaultReportStat, distributeAttributeChoices, passivePointSummary, treeHoverLines } from './treePresentation';
+import { defaultReportStat, distributeAttributeChoices, passivePointSummary, passivePointSummaryTarget, treeHoverLines } from './treePresentation';
 import { ValueText } from '../shared/ValueText';
 import { classDisplayName } from '../../lib/nativeDisplayNames';
 import { useAppDialogs } from '../shared/AppDialogs';
@@ -404,11 +404,11 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
    * 会让路径在飞升边界断裂；`buildPassiveGraph` 内部已跳过跨飞升的伪边。
    */
   const startSkill = useMemo(
-    () => treeEffects?.class_starts[session.character?.class_name.toLowerCase() ?? ''] ?? classStartSkill(nodes ?? [], session.character?.class_name),
-    [nodes, session.character?.class_name, treeEffects],
+    () => classStartSkill(treeEffects, session.character?.class_name),
+    [session.character?.class_name, treeEffects],
   );
 
-  const implicitStarts = useMemo(() => implicitClassStarts(nodes ?? [], treeEffects), [nodes, treeEffects]);
+  const implicitStarts = useMemo(() => implicitClassStarts(treeEffects), [treeEffects]);
   const graph = useMemo(() => {
     const allowed = new Set([startSkill, ...grants.flatMap(grant => grant.roots)]);
     return buildPassiveGraph((nodes ?? []).filter(node => !implicitStarts.has(node.skill) || allowed.has(node.skill)));
@@ -429,6 +429,10 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
   const selectedNode = selectedSkill === null ? null : byId.get(selectedSkill) ?? null;
   const selectedAllocated = selectedSkill !== null && allocated.has(selectedSkill);
   const editRequest = useMemo(() => session.currentRequest(), [session.currentRequest]);
+  const summaryTarget = useMemo(() => passivePointSummaryTarget(nodes ?? [], allocated, implicitStarts,
+    startSkill === null ? [] : graph.get(startSkill) ?? [], session.weaponSwap),
+  [nodes, allocated, implicitStarts, graph, startSkill, session.weaponSwap]);
+  const currentPoints = useTreeEditPreview(editRequest, summaryTarget.node, summaryTarget.mode, 'allocate');
   const selectedPreview = useTreeEditPreview(editRequest, selectedSkill, allocationMode,
     selectedAllocated ? 'refund' : 'allocate');
   const hoverPreview = useTreeEditPreview(editRequest, hover?.skill ?? null, allocationMode,
@@ -802,8 +806,8 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     svgRef.current?.focus({ preventScroll: true });
   };
   const pointSummary = useMemo(
-    () => passivePointSummary(nodes ?? [], session.allocatedNodes, session.character?.level ?? 1, session.weaponSwap, treeEffects),
-    [nodes, session.allocatedNodes, session.character?.level, session.weaponSwap, treeEffects],
+    () => passivePointSummary(nodes ?? [], session.allocatedNodes, session.weaponSwap, treeEffects, currentPoints?.result),
+    [nodes, session.allocatedNodes, session.weaponSwap, treeEffects, currentPoints],
   );
   useTreeLocation(focusNode, consumedLocation,
     focusNode?.node === undefined ? undefined : byId.get(focusNode.node), Boolean(view), focusNodeOnTree);

@@ -26,7 +26,7 @@ describe('passive graph', () => {
       allocation_grants: [{ source: 2, nodes: [], roots: [50459] }],
       nodes: {}, conquered: [], unresolved: [], rings: [], warnings: [],
     };
-    expect(implicitClassStarts(nodes, before)).toEqual(new Set([1, 50459]));
+    expect(implicitClassStarts(before)).toEqual(new Set([1, 50459]));
     const graph = buildPassiveGraph(nodes);
     const original = [2, 99]; // Preserve an unexplained imported island.
     expect(shortestAllocationPath(graph, new Set(original), 1, 13828, before.allocation_grants)).toEqual([13828]);
@@ -98,9 +98,16 @@ describe('passive graph', () => {
     expect([...connectedAllocation(graph, new Set([1, 2, 3]), 1)].sort()).toEqual([1, 2, 3]);
   });
 
-  it('maps current PoE2 classes to their shared start nodes', () => {
-    const nodes = [node(10, [], 'MARAUDER'), node(20, [], 'WITCH')];
-    expect(classStartSkill(nodes, 'Warrior')).toBe(10);
-    expect(classStartSkill(nodes, 'Sorceress')).toBe(20);
+  it('resolves new classes and shared starts by engine IDs regardless of node names', () => {
+    const effects: PassiveJewelState = { class_starts: { wayfarer: 10, oracle: 20, future: 20 },
+      allocation_grants: [{ source: 30, nodes: [], roots: [40] }],
+      nodes: {}, conquered: [], unresolved: [], rings: [], warnings: [] };
+    expect(classStartSkill(effects, 'Wayfarer')).toBe(10);
+    expect(classStartSkill(effects, 'Oracle')).toBe(20);
+    expect(classStartSkill(effects, 'Future')).toBe(20);
+    expect(implicitClassStarts(effects)).toEqual(new Set([10, 20, 40]));
+    expect(classStartSkill(undefined, 'Warrior')).toBeNull();
+    expect(classStartSkill({ ...effects, class_starts: undefined } as unknown as PassiveJewelState, 'Wayfarer')).toBeNull();
+    expect(implicitClassStarts()).toEqual(new Set());
   });
 });

@@ -59,7 +59,8 @@ function LoadedTreeComparison({ a, b, before, after, nodesA, nodesB, sameVersion
   const [hoverNodeName] = useLocalizedNames(useMemo(() => hoverNode ? passiveNameRequest(hoverNode) : [], [hoverNode]), lang);
   const hoverName = hoverNode?.name ? hoverNodeName : `#${hoverNode?.skill}`;
   const overlay = useMemo(() => compareTreeAllocations(a, b, nodesA, nodesB, sameVersion), [a, b, nodesA, nodesB, sameVersion]);
-  const totals = useMemo(() => [treeAllocationTotals(a, nodesA), treeAllocationTotals(b, nodesB)], [a, b, nodesA, nodesB]);
+  const totals = useMemo(() => [treeAllocationTotals(a, nodesA, before?.tree_effects), treeAllocationTotals(b, nodesB, after?.tree_effects)],
+    [a, b, nodesA, nodesB, before?.tree_effects, after?.tree_effects]);
   const visible = useMemo(() => {
     const asc = new Set<string>();
     for (const [state, nodes] of [[a, nodesA], [b, nodesB]] as const) {

@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import type { CalculateBuildRequest, PassiveNode } from '../api/types';
+import type { CalculateBuildRequest, PassiveJewelState, PassiveNode } from '../api/types';
 import { connectedAllocation } from './passiveGraph';
 import { scoreOf, type EvaluateOptions, type Objective } from './optimize';
-import { allocationPaths, passivePlanAllocation, passivePlanningContext, planPassiveUpgrades, uniquePassivePlans, refundableBranches, withTravelAttributes, type PassivePlanningContext } from './passivePlanner';
+import { allocationPaths, passivePlanAllocation, passivePlanningContext as planningContext, planPassiveUpgrades, uniquePassivePlans, refundableBranches, withTravelAttributes, type PassivePlanningContext } from './passivePlanner';
+
+// Synthetic engine metadata accompanies these synthetic trees.
+const effects: PassiveJewelState = { class_starts: { sorceress: 1, witch: 1 }, allocation_grants: [],
+  nodes: {}, conquered: [], unresolved: [], rings: [], warnings: [] };
+function passivePlanningContext(...args: Parameters<typeof planningContext>) {
+  args[6] ??= effects;
+  return planningContext(...args);
+}
 
 const node = (skill: number, connections: number[] = [], extra: Partial<PassiveNode> = {}): PassiveNode => ({
   skill, id: String(skill), name: skill === 1 ? 'WITCH' : `Node ${skill}`, kind: 'normal', connections, ...extra,
@@ -94,10 +102,19 @@ describe('passive upgrade planner', () => {
     const nodes = [node(1, [2, 10, 11]), node(2, [3]), node(3), node(8),
       node(10, [12], { name: 'RANGER' }), node(12), node(11, [13], { kind: 'mastery' }), node(13),
       node(20, [21], { ascendancy_id: 'Test' }), node(21, [], { ascendancy_id: 'Test' })];
-    const context = passivePlanningContext(nodes, [], 'Sorceress');
+    const context = passivePlanningContext(nodes, [], 'Sorceress', [], [], undefined,
+      { ...effects, class_starts: { ...effects.class_starts, ranger: 10 } });
     expect(allocationPaths(context, context.allocated, 1).map(plan => plan.allocate)).toEqual([[2]]);
     expect(allocationPaths(context, context.allocated, 2).map(plan => plan.allocate)).toEqual([[2], [2, 3]]);
     expect(allocationPaths(context, context.allocated, 8).some(plan => [8, 10, 11, 12, 13, 20, 21].includes(plan.target))).toBe(false);
+  });
+
+  it('does not invent routes when an older response has no class-start mapping', () => {
+    const nodes = [node(1, [2]), node(2, [3]), node(3)];
+    const context = planningContext(nodes, [2], 'Sorceress');
+    expect(context.root).toBeNull();
+    expect(context.canRefund).toBe(false);
+    expect(allocationPaths(context, context.allocated, 2)).toEqual([]);
   });
 
   it('enforces ascendancy and every prerequisite on gated main-tree nodes', () => {

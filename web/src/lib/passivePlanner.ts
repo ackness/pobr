@@ -40,9 +40,9 @@ export function passivePlanningContext(
   ascendancy?: string,
   treeEffects?: PassiveJewelState,
 ): PassivePlanningContext {
-  const root = treeEffects?.class_starts[className?.toLowerCase() ?? ''] ?? classStartSkill(nodes, className);
+  const root = classStartSkill(treeEffects, className);
   const grants = treeEffects?.allocation_grants ?? [];
-  const classStarts = implicitClassStarts(nodes, treeEffects);
+  const classStarts = implicitClassStarts(treeEffects);
   const roots = new Set([...(root === null ? [] : [root]), ...grants.flatMap(grant => grant.roots)]);
   const exclusive = new Set(exclusiveNodes);
   const allAllocated = new Set(allocated);
@@ -86,6 +86,7 @@ export function allocationPaths(
   allocated: ReadonlySet<number>,
   budget: number,
 ): PassivePlan[] {
+  if (context.root === null) return [];
   const eligible = (id: number) => !context.byId.get(id)?.unlock_constraint?.nodes
     .some(required => context.allocated.has(required) && !allocated.has(required));
   const graph = new Map([...context.graph].filter(([id]) => eligible(id))

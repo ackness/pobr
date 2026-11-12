@@ -62,15 +62,45 @@ describe('local build workspace', () => {
     expect(parseWorkspace(JSON.parse(workspaceEnvelope(workspace)).workspace, parseSaved)).toEqual(workspace);
   });
 
-  it('rejects duplicate IDs, missing active stages and malformed saves', () => {
+  it('isolates duplicate IDs, missing references and malformed saves', () => {
     const workspace = duplicateWorkspaceStage(createWorkspace(saved), 'Maps');
     const invalid = structuredClone(workspace);
     invalid.builds[0].stages[1].id = invalid.builds[0].stages[0].id;
-    expect(parseWorkspace(invalid, parseSaved)).toBeNull();
-    expect(parseWorkspace({ ...workspace, activeBuild: 'missing' }, parseSaved)).toBeNull();
+    expect(parseWorkspace(invalid, parseSaved)?.builds[0].stages).toEqual([workspace.builds[0].stages[0]]);
+    expect(parseWorkspace({ ...workspace, activeBuild: 'missing' }, parseSaved)?.activeBuild).toBe(workspace.activeBuild);
+    const missingStage = structuredClone(workspace);
+    missingStage.builds[0].activeStage = 'missing';
+    expect(parseWorkspace(missingStage, parseSaved)?.builds[0].activeStage).toBe(workspace.builds[0].stages[0].id);
     const broken = structuredClone(workspace);
     broken.builds[0].stages[0].saved = null as unknown as SavedSession;
-    expect(parseWorkspace(broken, parseSaved)).toBeNull();
+    expect(parseWorkspace(broken, parseSaved)?.builds[0].stages).toEqual([workspace.builds[0].stages[1]]);
+  });
+
+  it('isolates an invalid active build and retains the other builds, stages, notes and drafts', () => {
+    const workspace = addWorkspaceBuild(duplicateWorkspaceStage(createWorkspace(saved), 'Maps'), 'Broken', saved);
+    const broken = structuredClone(workspace);
+    broken.builds[1].stages[0].saved = null as unknown as SavedSession;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const onIsolated = vi.fn();
+    const restored = parseWorkspace(broken, parseSaved, onIsolated)!;
+    expect(restored).not.toBeNull();
+    expect(restored.builds).toEqual([workspace.builds[0]]);
+    expect(restored.activeBuild).toBe(workspace.builds[0].id);
+    expect(activeWorkspaceStage(restored)).toEqual(activeWorkspaceStage(selectWorkspaceStage(workspace, workspace.builds[0].id)));
+    expect(parseWorkspace(JSON.parse(workspaceEnvelope(restored)).workspace, parseSaved)).toEqual(restored);
+    expect(warn).toHaveBeenCalled();
+    expect(onIsolated).toHaveBeenCalledOnce();
+    warn.mockRestore();
+  });
+
+  it('isolates an invalid active stage and falls back within the same build', () => {
+    const workspace = duplicateWorkspaceStage(createWorkspace(saved), 'Maps');
+    const broken = structuredClone(workspace);
+    broken.builds[0].stages[1].saved = null as unknown as SavedSession;
+    const restored = parseWorkspace(broken, parseSaved)!;
+    expect(restored.builds[0].stages).toEqual([workspace.builds[0].stages[0]]);
+    expect(activeWorkspaceStage(restored).id).toBe(workspace.builds[0].stages[0].id);
+    expect(parseWorkspace({ ...broken, builds: [null] }, parseSaved)).toBeNull();
   });
 });
 
@@ -262,7 +292,7 @@ describe('comparison baseline persistence', () => {
     expect(again.builds[0].stages).toHaveLength(1);
   });
 
-  it('loads older workspaces with no baseline and rejects broken baseline payloads', () => {
+  it('loads older workspaces and isolates broken baselines without discarding their stages', () => {
     const old = createWorkspace(saved);
     const loaded = parseWorkspace(JSON.parse(workspaceEnvelope(old)).workspace, parseSaved)!;
     expect(loaded).toEqual(old);
@@ -270,9 +300,9 @@ describe('comparison baseline persistence', () => {
     expect(activeWorkspaceStage(loaded).saved).toEqual(saved);
     const bad = recordWorkspaceBaseline(old);
     bad.builds[0].baseline!.recordedAt = NaN;
-    expect(parseWorkspace(bad, parseSaved)).toBeNull();
+    expect(parseWorkspace(bad, parseSaved)).toEqual(old);
     bad.builds[0].baseline!.recordedAt = 1e20;
-    expect(parseWorkspace(bad, parseSaved)).toBeNull();
+    expect(parseWorkspace(bad, parseSaved)).toEqual(old);
   });
 });
 
