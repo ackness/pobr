@@ -23,7 +23,7 @@
 //! corpus diff=0 shape parity — special-channel wiring is deferred as a follow-up item, see
 //! report §2.4).
 
-use pobr_data::catalog::parser_rules::RuleEffectsDef;
+use pobr_data::catalog::parser_rules::{RuleEffectsDef, StatMapValue, TagTemplate};
 use pobr_data::prelude::ModType;
 
 use super::compiled::CompiledParserRules;
@@ -161,6 +161,9 @@ fn parse_mod_engine_impl(
                 // downstream per-skill cfg rolls out (same treatment as tag_phrase). The drop
                 // count is recorded in diag (A2 report).
                 diag.dropped_pre_flag_tags += effects_acc.absorb_pre_flag(payload, &_m.captures);
+                if effects_acc.unknown_flags {
+                    return unsupported(text);
+                }
                 work = rest;
             }
         }
@@ -187,6 +190,9 @@ fn parse_mod_engine_impl(
                     break;
                 }
                 let dropped = effects_acc.absorb_tag_phrase(&payload.effects, &m.captures);
+                if effects_acc.unknown_flags {
+                    return unsupported(text);
+                }
                 work = rest;
                 if dropped > 0 {
                     // A tag has a type pobr has no landing point for → conservatively mismatch
@@ -235,11 +241,7 @@ fn parse_mod_engine_impl(
     }
 
     // Unknown weapon bits must not disappear and turn a scoped line global.
-    if effects_acc
-        .unknown_flags
-        .iter()
-        .any(|flag| rules.weapon_types.0.iter().any(|row| &row.flag == flag))
-    {
+    if effects_acc.unknown_flags {
         return unsupported(text);
     }
 
@@ -380,7 +382,7 @@ fn parse_mod_engine_impl(
 #[derive(Default)]
 struct EffectsAccumulator {
     flags: ModFlags,
-    unknown_flags: Vec<String>,
+    unknown_flags: bool,
     keyword_flags: KeywordFlags,
     tags: Vec<ModTag>,
     add_to_minion: bool,
@@ -405,16 +407,15 @@ impl EffectsAccumulator {
     /// the **number of dropped tags** (>0 = a tag type pobr has no landing point for;
     /// surfaced in the A2 report).
     fn absorb_effects(&mut self, eff: &RuleEffectsDef, captures: &[String]) -> u16 {
-        self.unknown_flags.extend(
-            eff.flags
-                .iter()
-                .filter(|name| super::template::flag_bit(name).is_none())
-                .cloned(),
-        );
+        self.unknown_flags |= eff
+            .flags
+            .iter()
+            .any(|name| super::template::flag_bit(name).is_none());
         self.flags |= compile_flags(&eff.flags);
         self.keyword_flags = self.keyword_flags | compile_keyword_flags(&eff.keyword_flags);
         let mut dropped: u16 = 0;
         for tag in &eff.tags {
+            self.unknown_flags |= tag_has_unknown_flags(tag);
             match compile_tag(tag, captures) {
                 Some(t) => self.tags.push(t),
                 None => dropped += 1,
@@ -423,6 +424,7 @@ impl EffectsAccumulator {
         // minion wrapping directives.
         self.add_to_minion |= eff.add_to_minion;
         for tag in &eff.add_to_minion_tags {
+            self.unknown_flags |= tag_has_unknown_flags(tag);
             if let Some(t) = compile_tag(tag, captures) {
                 self.add_to_minion_tags.push(t);
             }
@@ -521,6 +523,12 @@ impl EffectsAccumulator {
         }
         mods
     }
+}
+
+fn tag_has_unknown_flags(tag: &TagTemplate) -> bool {
+    matches!(tag.fields.get("mod_flags"), Some(StatMapValue::List(flags))
+        if flags.iter().any(|flag| matches!(flag, StatMapValue::Text(name)
+            if super::template::flag_bit(name).is_none())))
 }
 
 /// Add an `Enemy` prefix to an enemy-side `Condition(var)` (vendor enemy-actor condition →

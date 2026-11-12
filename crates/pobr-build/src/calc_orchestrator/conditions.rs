@@ -8,9 +8,8 @@ use pobr_data::skill::SkillTypes;
 use crate::build::Build;
 use crate::build_data::BuildData;
 
-/// Main skill keyword + main weapon category → extra damage-scaling ModName
-/// (`GrenadeDamage`/`CrossbowDamage` etc). Makes skill/weapon-scoped damage boosts like
-/// `increased Grenade Damage` / `Damage with Crossbows` take effect.
+/// Main skill keyword + historical main-hand weapon names. Other weapon
+/// damage names are queried from each hand's bits in core's damage calculation.
 pub(crate) fn damage_keywords(
     build: &Build,
     data: &BuildData,
@@ -25,6 +24,7 @@ pub(crate) fn damage_keywords(
         && let Some(item) = build.items.get(&EquipmentSlot::Weapon1)
         && let Some(base) = data.base_item(&item.base.to_string())
         && let Some(row) = weapon_type_info(data, &base.item_class)
+        && row.uses_legacy_damage_keyword()
     {
         names.push(row.damage_keyword());
     }
@@ -402,6 +402,27 @@ mod weapon_condition_tests {
                 "offhand category: {class}"
             );
         }
+        // Only the historical names use the unscoped main-hand channel.
+        for (class, expected) in [
+            ("Spear", Some("SpearDamage")),
+            ("Crossbow", Some("CrossbowDamage")),
+            ("Bow", Some("BowDamage")),
+            ("One Hand Mace", Some("MaceDamage")),
+            ("Warstaff", Some("QuarterstaffDamage")),
+            ("One Hand Sword", None),
+            ("One Hand Axe", None),
+            ("Dagger", None),
+            ("Wand", None),
+        ] {
+            let build = equip(Build::new(), &mut data, EquipmentSlot::Weapon1, class);
+            let build = equip(build, &mut data, EquipmentSlot::Weapon2, "Claw");
+            assert_eq!(
+                damage_keywords(&build, &data, &["Attack".into()]),
+                expected.into_iter().collect::<Vec<_>>(),
+                "{class}",
+            );
+            assert!(damage_keywords(&build, &data, &["Spell".into()]).is_empty());
+        }
         let main = equip(
             Build::new(),
             &mut data,
@@ -455,10 +476,7 @@ mod weapon_condition_tests {
         )
         .unwrap();
         assert_eq!(contribution.flags, flags);
-        assert_eq!(
-            damage_keywords(&build, &data, &["Attack".into()]),
-            ["RapierDamage"]
-        );
+        assert!(damage_keywords(&build, &data, &["Attack".into()]).is_empty());
         assert!(damage_keywords(&build, &data, &["Spell".into()]).is_empty());
         assert!(super::super::diagnosis::condition_set_from_build(
             "UsingRapier",
@@ -516,6 +534,16 @@ mod weapon_condition_tests {
                 .unsupported_modifier_texts()
                 .iter()
                 .any(|text| text.contains("Rapiers"))
+        );
+        let offhand_rapier = equip(mixed, &mut data, EquipmentSlot::Weapon1, "Dagger");
+        let offhand_rapier = equip(offhand_rapier, &mut data, EquipmentSlot::Weapon2, "Rapier");
+        let limits = weapon_support_limits(&offhand_rapier, &data);
+        assert_eq!(limits.len(), 1);
+        assert!(limits[0].contains("Weapon weapon2: unsupported weapon flag Rapier"));
+        assert!(
+            weapon_type_conditions(&offhand_rapier, &data)
+                .iter()
+                .any(|name| name == "UsingRapier")
         );
     }
 }

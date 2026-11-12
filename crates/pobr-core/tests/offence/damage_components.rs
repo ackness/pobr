@@ -367,6 +367,14 @@ fn min_max_type_more_stacks_with_generic_inc_more() {
 fn weapon_damage_names_follow_each_pass_and_preserve_unarmed_damage() {
     for (text, weapon) in [
         ("100% increased Damage with Swords", ModFlags::SWORD),
+        ("100% increased Damage with Axes", ModFlags::AXE),
+        ("100% increased Damage with Claws", ModFlags::CLAW),
+        ("100% increased Damage with Daggers", ModFlags::DAGGER),
+        ("100% increased Damage with Flails", ModFlags::FLAIL),
+        ("100% increased Damage with Wands", ModFlags::WAND),
+        ("100% increased Damage with Talismans", ModFlags::TALISMAN),
+        ("100% increased Damage with Warstaves", ModFlags::WARSTAFF),
+        ("100% increased Damage with Fishing Rods", ModFlags::FISHING),
         ("100% increased Unarmed Damage", ModFlags::UNARMED),
     ] {
         let parsed = crate::support::parse_mod(text).unwrap();
@@ -374,9 +382,14 @@ fn weapon_damage_names_follow_each_pass_and_preserve_unarmed_damage() {
         let mut db = ModDb::new();
         db.add_list(parsed.mods);
         let matching = CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::HIT | weapon);
+        let other_weapon = if weapon == ModFlags::AXE {
+            ModFlags::SWORD
+        } else {
+            ModFlags::AXE
+        };
         let other_hand = matching
             .clone()
-            .with_flags(ModFlags::ATTACK | ModFlags::HIT | ModFlags::AXE);
+            .with_flags(ModFlags::ATTACK | ModFlags::HIT | other_weapon);
         assert_eq!(
             calculate_minimal(&db, &matching, &base_input()).total_hit_avg,
             300.0,

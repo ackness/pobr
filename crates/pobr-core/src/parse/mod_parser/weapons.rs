@@ -35,10 +35,29 @@ pub(super) fn with_weapon_words(
         words.sort_unstable();
         words.dedup();
         for word in words {
-            if word == "None" {
+            if word == "None" || word.trim().is_empty() {
                 continue;
             }
             let word = word.to_ascii_lowercase();
+            // Aliases must not claim another weapon's name or an existing
+            // non-weapon scope (for example, a label of "Spell").
+            if weapons.0.iter().any(|other| {
+                other.flag != row.flag
+                    && [
+                        Some(other.flag.as_str()),
+                        Some(other.id.as_str()),
+                        other.label.as_deref(),
+                    ]
+                    .into_iter()
+                    .flatten()
+                    .any(|alias| alias.eq_ignore_ascii_case(&word))
+            }) || doc
+                .flag_phrases
+                .iter()
+                .any(|entry| entry.phrase == word && !entry.effects.flags.contains(&row.flag))
+            {
+                continue;
+            }
             let plural = if let Some(stem) = word.strip_suffix("staff") {
                 format!("{stem}staves")
             } else {
