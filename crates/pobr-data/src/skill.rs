@@ -17,6 +17,7 @@ pub(crate) const LEGACY_WORDS: usize = 5;
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct SkillTypes {
     words: [u64; LEGACY_WORDS],
+    // Empty or ends in a nonzero word; construction and union preserve this.
     extra: Vec<u64>,
 }
 
@@ -242,6 +243,8 @@ impl std::fmt::Debug for SkillTypes {
             .all(|word| *word == 0)
         {
             write!(f, "SkillTypes({})", self.words[0])
+        } else if self.extra.is_empty() {
+            write!(f, "SkillTypes({:?})", self.words)
         } else {
             write!(f, "SkillTypes({:?})", self.words())
         }

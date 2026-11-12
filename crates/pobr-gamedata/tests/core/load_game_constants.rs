@@ -87,8 +87,8 @@ fn ailment_and_recharge_parameters_are_usable() {
             "positive parameter {value}"
         );
     }
-    assert!(c.game.shock_default_effect >= 0.0);
     assert!(c.game.shock_min_effect >= 0.0);
+    assert_eq!(c.game.shock_default_effect, c.game.shock_min_effect / 100.0);
 }
 
 #[test]

@@ -436,9 +436,7 @@ pub(crate) fn auras_on_minion(
             .cfg
             .clone()
             .with_skill_types(spec.skill_types.clone())
-            .with_keyword_flags(crate::skill_env::skill_keyword_flags(
-                spec.skill_types.clone(),
-            ));
+            .with_keyword_flags(crate::skill_env::skill_keyword_flags(&spec.skill_types));
         let inc = player.sum(ModType::Inc, &aura_cfg, &effect) + minion_inc;
         let more = player.more(&aura_cfg, &effect) * minion_more * spec.magnitude;
         let mag_mult = (1.0 + player.sum(ModType::Inc, &aura_cfg, &magnitude) / 100.0)
@@ -469,9 +467,7 @@ pub(crate) fn auras_on_minion(
                 .cfg
                 .clone()
                 .with_skill_types(spec.skill_types.clone())
-                .with_keyword_flags(crate::skill_env::skill_keyword_flags(
-                    spec.skill_types.clone(),
-                ));
+                .with_keyword_flags(crate::skill_env::skill_keyword_flags(&spec.skill_types));
             let effect = [ModName::from("BuffEffect")];
             let received = [ModName::from("BuffEffectOnSelf")];
             let inc = player.sum(ModType::Inc, &buff_cfg, &effect)
@@ -586,9 +582,7 @@ pub fn buff_pass(env: &mut Env) {
         let caster_cfg = match owner {
             Some(_) => super::perform::minion_cfg(env, caster)
                 .with_skill_types(spec.skill_types.clone())
-                .with_keyword_flags(crate::skill_env::skill_keyword_flags(
-                    spec.skill_types.clone(),
-                ))
+                .with_keyword_flags(crate::skill_env::skill_keyword_flags(&spec.skill_types))
                 .with_skill_name(Some(spec.name.to_lowercase())),
             None => env.cfg.clone(),
         };
@@ -606,9 +600,7 @@ pub fn buff_pass(env: &mut Env) {
                     .cfg
                     .clone()
                     .with_skill_types(spec.skill_types.clone())
-                    .with_keyword_flags(crate::skill_env::skill_keyword_flags(
-                        spec.skill_types.clone(),
-                    ));
+                    .with_keyword_flags(crate::skill_env::skill_keyword_flags(&spec.skill_types));
                 let names: Vec<ModName> = AURA_SELF_EFFECT_NAMES
                     .iter()
                     .map(|n| ModName::from(*n))
@@ -676,9 +668,7 @@ pub fn buff_pass(env: &mut Env) {
                     .cfg
                     .clone()
                     .with_skill_types(spec.skill_types.clone())
-                    .with_keyword_flags(crate::skill_env::skill_keyword_flags(
-                        spec.skill_types.clone(),
-                    ));
+                    .with_keyword_flags(crate::skill_env::skill_keyword_flags(&spec.skill_types));
                 let mut inc = env.player.mod_db.sum(ModType::Inc, &buff_cfg, &inc_names)
                     + spec.local_effect_inc;
                 let mut more = env.player.mod_db.more(&buff_cfg, &more_names)
@@ -1060,9 +1050,7 @@ pub(super) fn party_exports(env: &Env) -> Vec<super::session::BuffSpec> {
             .cfg
             .clone()
             .with_skill_types(spec.skill_types.clone())
-            .with_keyword_flags(crate::skill_env::skill_keyword_flags(
-                spec.skill_types.clone(),
-            ));
+            .with_keyword_flags(crate::skill_env::skill_keyword_flags(&spec.skill_types));
         let names: Vec<ModName> = if spec.kind == BuffKind::Aura {
             vec!["AuraEffect".into(), "BuffEffect".into()]
         } else if spec.is_mark {

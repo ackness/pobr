@@ -370,6 +370,23 @@ mod tests {
                 data.weapon_types().unwrap()
             ))
         );
+        // Current package values can equal defaults; a changed value must survive too.
+        let mut changed = data.game_constants().unwrap();
+        changed.game.armour_ratio += 1.0;
+        let changed_data = GameData::from_memory(std::collections::BTreeMap::from([
+            (
+                "base/active_skill_types.json".into(),
+                serde_json::to_vec(&data.active_skill_types().unwrap()).unwrap(),
+            ),
+            (
+                "base/game_constants.json".into(),
+                serde_json::to_vec(&changed).unwrap(),
+            ),
+        ]));
+        assert_eq!(
+            changed_data.load_ruleset().unwrap().game_constants,
+            Some(changed)
+        );
     }
 
     /// The repo data directory: the monster_scaling domain is wired up

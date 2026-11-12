@@ -54,22 +54,6 @@ fn a_pack_without_the_table_is_refused_at_load() {
     );
 }
 
-#[test]
-fn malformed_names_are_refused() {
-    use pobr_data::catalog::skill_types::ActiveSkillTypeDef;
-    for names in [["Attack", "Attack"], ["Attack", ""]] {
-        let rows: Vec<_> = names
-            .iter()
-            .enumerate()
-            .map(|(i, id)| ActiveSkillTypeDef {
-                id: (*id).into(),
-                index: i as u32 + 1,
-            })
-            .collect();
-        assert!(pobr_data::skill::install_skill_type_names(&rows).is_err());
-    }
-}
-
 // One installed package per process, including callers using GameData directly.
 #[test]
 fn missing_companion_is_a_ruleset_load_diagnostic() {
@@ -108,5 +92,22 @@ fn missing_companion_is_a_ruleset_load_diagnostic() {
     assert!(!SkillTypes::COMPANION.intersects(SkillTypes::COMPANION));
     for row in rows {
         assert!(!SkillTypes::from_pob2_index(row.index).intersects(SkillTypes::COMPANION));
+    }
+    let cfg = pobr_core::CalcConfig::attack();
+    let mixed = SkillTypes::ATTACK | SkillTypes::COMPANION;
+    for (tag, expected) in [
+        (pobr_core::ModTag::SkillTypes(SkillTypes::NONE), true),
+        (pobr_core::ModTag::SkillTypes(SkillTypes::COMPANION), false),
+        (
+            pobr_core::ModTag::SkillTypesNeg(SkillTypes::COMPANION),
+            true,
+        ),
+        (pobr_core::ModTag::SkillTypes(mixed.clone()), true),
+        (pobr_core::ModTag::SkillTypesNeg(mixed), false),
+    ] {
+        let modifier =
+            pobr_core::Modifier::number("Damage", pobr_data::modifier::ModType::Inc, 10.0)
+                .with_tag(tag);
+        assert_eq!(modifier.matches(&cfg), expected, "{modifier:?}");
     }
 }

@@ -275,9 +275,7 @@ pub fn apply_warcry_uptime(env: &mut Env) {
             .clone()
             .with_skill_types(spec.skill_types.clone())
             .with_flags(ModFlags::NONE)
-            .with_keyword_flags(crate::skill_env::skill_keyword_flags(
-                spec.skill_types.clone(),
-            ));
+            .with_keyword_flags(crate::skill_env::skill_keyword_flags(&spec.skill_types));
         let uptime = uptime_ratio(&env.player.mod_db, spec, &scope_cfg, &env.cfg, speed);
         // CalcOffence.lua:3510-3519 reads NumIntimidatingExerts from the
         // player (not the warcry's empowered attack count). Publish even a

@@ -419,6 +419,19 @@ mod runtime_table_regressions {
             assert_eq!(combined.names(), ["Attack", "NewType329"]);
             assert_eq!(combined.words().len(), 6);
             assert_eq!(SkillTypes::from_pob2_index(331), SkillTypes::NONE);
+            let high = SkillTypes::from_pob2_index(330);
+            let mut accumulated = SkillTypes::ATTACK;
+            accumulated |= high.clone();
+            accumulated |= SkillTypes::SPELL;
+            let reversed = high | SkillTypes::SPELL | SkillTypes::ATTACK;
+            assert_eq!(accumulated, reversed);
+            let hash = |bits: &SkillTypes| {
+                let mut hasher = std::hash::DefaultHasher::new();
+                bits.hash(&mut hasher);
+                hasher.finish()
+            };
+            assert_eq!(hash(&accumulated), hash(&reversed));
+            assert_eq!(format!("{accumulated:?}"), format!("{reversed:?}"));
         });
     }
 
@@ -435,6 +448,15 @@ mod runtime_table_regressions {
             assert!(SkillTypes::COMPANION.names().is_empty());
             assert!(!SkillTypes::COMPANION.intersects(SkillTypes::COMPANION));
             assert!(!SkillTypes::COMPANION.contains(SkillTypes::COMPANION));
+            assert!(!SkillTypes::COMPANION.is_empty());
+            let mixed = SkillTypes::ATTACK | SkillTypes::COMPANION;
+            assert!(mixed.intersects(SkillTypes::ATTACK));
+            assert!(!mixed.intersects(SkillTypes::SPELL));
+            assert!(!mixed.intersects(SkillTypes::COMPANION));
+            assert!(mixed.contains(SkillTypes::ATTACK));
+            assert!(!mixed.contains(&mixed));
+            assert!(!SkillTypes::ATTACK.contains(&mixed));
+            assert!(mixed.contains(SkillTypes::NONE));
             // A missing type is never NONE: an empty positive modifier tag is unrestricted.
             assert_eq!(
                 SkillTypes::from_pob2_name("Companion"),

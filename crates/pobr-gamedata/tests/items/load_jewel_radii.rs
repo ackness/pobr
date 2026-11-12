@@ -18,6 +18,15 @@ fn tree_versions_have_valid_bands_and_named_radii_resolve() {
             let colour = band.colour.strip_prefix("^x").expect("hex colour prefix");
             assert!(colour.len() == 6 && colour.bytes().all(|b| b.is_ascii_hexdigit()));
         }
+        let variables: Vec<_> = bands
+            .iter()
+            .filter(|band| band.label == "Variable")
+            .collect();
+        assert!(!variables.is_empty(), "{version}: variable bands");
+        assert!(
+            variables.iter().all(|band| band.inner > 0),
+            "ring interiors"
+        );
         let mut previous = 0;
         for (label, radius) in [
             ("Small", JewelRadius::Small),

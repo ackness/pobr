@@ -217,8 +217,11 @@ pub fn skill_type_flags(skill_types: &[String]) -> pobr_data::modifier::ModFlags
 /// Warcry when it has the Warcry type, and so on. Attack and Spell are damage
 /// flags ([`skill_type_flags`]); Hit, Arrow and Totem are set where the hit,
 /// the arrows and the totem are known.
-pub fn skill_keyword_flags(types: pobr_data::skill::SkillTypes) -> KeywordFlags {
+pub fn skill_keyword_flags(
+    types: impl std::borrow::Borrow<pobr_data::skill::SkillTypes>,
+) -> KeywordFlags {
     use pobr_data::skill::SkillTypes as T;
+    let types = types.borrow();
     const BY_TYPE: [(T, KeywordFlags); 12] = [
         (T::AURA, KeywordFlags::AURA),
         (T::APPLIES_CURSE, KeywordFlags::CURSE),
