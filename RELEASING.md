@@ -48,8 +48,11 @@ mise run data:bump ackness/repoe game/<patch>-<n> ackness/poe2-zh-cn-stats local
   重算快照 pin、运行身份与 `release_id`，写入 `pipeline/data.lock.json` 和 `data/CURRENT`，再运行 `data:prepare`。
   导入失败时恢复原来的锁和 `CURRENT`，以非零状态退出。
 - 标准输出是一份 `pobr-data-bump/v1` JSON：`before`／`after`（目标、快照、运行身份、`release_id`、
-  各包的 tag 与 SHA-256）、`identity_changed`，以及本地已导入旧快照时的成员差异。保存它，贴进 PR 描述。
+  各包的 tag 与 SHA-256）、`identity_changed`，以及本地已导入旧快照时的成员差异。安装后还会在 `outputs`
+  给出 L2 的逐构筑、逐 stat 差异，并在 stderr 打印带空归因栏的 Markdown 表格。保存 JSON 与表格，贴进 PR 描述。
   成员路径带版本目录，所以新补丁的成员差异会把每个文件都列成删除加新增；这时改看 owner receipt 里各成员的分类。
+- L2 报告失败只记 `outputs.status = "unavailable"` 和原因，不回滚已安装的锁；修好环境后运行
+  `mise run snapshot:report` 补报告。`--no-prepare` 不跑 L2。报告不替代提交前的快照验证。
 - `data:bump` 不提交、不推送，也不开 PR。
 
 同一个 PR 里迁移绑定游戏包或补丁的消费者，否则 PR 或完整 CI 会失败：
@@ -59,10 +62,11 @@ mise run data:bump ackness/repoe game/<patch>-<n> ackness/poe2-zh-cn-stats local
 | `crates/pobr-gamedata/tests/fixtures/repository-test-pins.json` | 任何新游戏包，包括同一补丁 | 按测试报出的实际值重绑该版本的 `game_manifest_sha256`，审阅变化的计数后更新 `pins`；只换语言不用改 |
 | `web/src/lib/configGameRelevance.json` | 新游戏包 | `mise exec -- python3 devs/scripts/config_relevance.py` |
 | `devs/ci/parse-coverage-baseline.json` | 新补丁，或覆盖率改变 | 按文件 `_meta.regen` 运行 `mise exec -- bash devs/scripts/regen-check.sh` 后更新 |
-| 示例 golden 的 `data_version`（如 `examples/demo-bd-test/panel-golden.json`） | 新补丁 | 改成新补丁号 |
+| `examples/output-snapshot.json` | 任何 `runtime_identity` 改变，包括只换语言 | 审阅并填写 L2 每行归因后，`mise run snapshot:record`；与锁一起提交，即使输出没有变化也重绑身份 |
+| `devs/reference-sources.json` 的 `pob2.data_version` 和 PoB2 golden（如 `examples/demo-bd-test/panel-golden.json`） | PoB2 跟上当前补丁时 | 核实 pin 的游戏版本，用对应 PoB2 重抓参考；落后期间保留旧身份，不给旧 golden 重贴新版本 |
 
-数值 golden 的重新抓取和计算语义修复按证据另行处理，不能降低基线换取通过
-（[维护者指南](docs/maintainer-guide.md#运行时数据与会话)）。
+按[维护者指南的 L2 / L3 规则](docs/maintainer-guide.md#parity-体系回归基准)逐行归因并接受数据变化；
+计算语义修复放在另一个引擎 PR。接受后的输出成为新锁的 L2 快照。
 
 提交、推送并开 PR，然后在推送的分支上请求完整 CI：
 
@@ -95,7 +99,7 @@ git switch -c chore/data-bump-locale-<patch>-<m> origin/master
 mise run data:bump ackness/poe2-zh-cn-stats locale/<patch>-<m>
 ```
 
-只换语言不需要重绑测试基线。
+只换语言不需要重绑游戏测试 pins；运行身份改变时仍按 §2 重录 L2。
 
 **只换游戏包。** RePoE 在同一补丁上发布 `game/<patch>-<n+1>`，只 bump 游戏 owner：
 

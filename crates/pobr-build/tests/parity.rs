@@ -2,12 +2,13 @@
 //!
 //! Two kinds of contract:
 //!   A) **Recorded PoB2 reference** — asserts externally recorded exact values
-//!      (PoB2 `player_stats` / oracle / self-snapshot) against the active data
-//!      version. A data update **re-records the reference values** from the
-//!      matching PoB2 version; data and tests are not tweaked to fit.
-//!   B) **Version-independent logic / smoke** — only asserts relations, ranges,
-//!      determinism, and import correctness; no recorded values; runs against the
-//!      active `data_version()` (or every ingested version).
+//!      (PoB2 `player_stats` / oracle) against the active data
+//!      version. L3 agreement gates follow the pinned reference's data version;
+//!      historical fixtures keep their recorded identity. See the maintainer guide.
+//!   B) **Logic / smoke and native L2 snapshot** — relations, ranges,
+//!      determinism, and import correctness run against the
+//!      active `data_version()` (or every ingested version). L2 separately
+//!      records native PoBR outputs under the exact runtime lock identity.
 //!
 //! Aggregated test binary: originally separate test files, merged into submodules
 //! (22→4) to cut the number of linked test binaries and speed up builds.
@@ -32,6 +33,8 @@ mod golden_canary;
 mod ninja_parity;
 #[path = "parity/pob2_parity.rs"]
 mod pob2_parity;
+#[path = "parity/reference_version.rs"]
+mod reference_version;
 #[path = "parity/skill_dot_golden.rs"]
 mod skill_dot_golden;
 #[path = "parity/stored_hand_output.rs"]
@@ -50,6 +53,8 @@ mod golden_regression;
 #[path = "parity/multi_version.rs"]
 // iterates every ingested version, proving calc is version-independent
 mod multi_version;
+#[path = "parity/output_snapshot.rs"]
+mod output_snapshot;
 #[path = "parity/reference_report.rs"]
 // import keeps every used item; dashboard against the stats a build code carries
 mod reference_report;

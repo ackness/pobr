@@ -65,7 +65,7 @@
 | 仅文档 | diff、链接与示例审阅；不运行产品构建，不额外创建固定 reviewer |
 
 - 需要本地测试时，用 `mise run targets` 查目标（不编译），再用 `--test <suite>` / `--lib` 限定编译。名称 filter 不会减少该测试目标的编译量；不固定串联 check → build → Clippy → test。
-- 行为修复保留回归断言和游戏依据，不降低 parity/吻合基线换取通过。用例可交接为未运行，但不能省略验证责任或虚报结果。
+- 行为修复保留回归断言和游戏依据；结果变化按 [Parity 体系](#parity-体系回归基准)区分引擎与数据轴。用例可交接为未运行，但不能省略验证责任或虚报结果。
 - 同一代码、依赖、工具链、features 和数据下的通过证据可复用。先修复并重跑失败的相关项，仅在影响范围改变时扩大验证。
 - 读码、review、`cargo check` 与运行时测试分别报告，不能互相冒充；通用 skill 的检查清单不覆盖本节。
 - **集中集成**：协调者先合并 worker 的变更与生成产物，再选一次批次验证，优先 `mise run ci <pushed-ref>`。`mise run gate` 保留为 warm checkout 上的显式本地方案，含额外 accuracy 报告；不要求与远端完整 CI 重复执行。修复后可用 `--only` 重跑本地失败步骤。
@@ -140,7 +140,7 @@ mise run audit:display [--release <tag>] <构筑集>  # 不开浏览器看网页
 
 ## 运行时数据与会话
 
-- 活动数据版本在运行时解析：`POBR_DATA_VERSION` → `POBR_DATA_ROOT/CURRENT`（默认仓库的 `data/`），都缺失时报错。普通测试按准备好的 CURRENT 取数据；固定历史对照必须显式绑定对应外部版本锁／manifest 与参考身份，不能给旧 golden 重贴当前版本。运行数据目录是忽略的临时物化物，不在 Git 保留多份完整快照；需要回滚或多版本实测时显式准备独立旧版锁。数据升级导致实际参考变化时，按证据选择 `examples/demo-bd-test/tools/recapture_golden.py`／`recapture_panel_golden.py`；parity 回退先排查引擎、来源和参考口径，不能降低基线换取通过。
+- 活动数据版本在运行时解析：`POBR_DATA_VERSION` → `POBR_DATA_ROOT/CURRENT`（默认仓库的 `data/`），都缺失时报错。普通测试按准备好的 CURRENT 取数据；固定历史对照必须显式绑定对应外部版本锁／manifest 与参考身份，不能给旧 golden 重贴当前版本。运行数据目录是忽略的临时物化物，不在 Git 保留多份完整快照；需要回滚或多版本实测时显式准备独立旧版锁。数据升级导致实际参考变化时，按证据选择 `examples/demo-bd-test/tools/recapture_golden.py`／`recapture_panel_golden.py`；结果变化的接受规则见 [Parity 体系](#parity-体系回归基准)。
 - schema 3 的 `manifest.json` 列出运行时文件与 SHA-256，未列的文件视为不存在；`patch/` 与 `overlay-common/` 是独立覆盖层。`GameData` 首次访问时验证并缓存不可变快照，替换磁盘数据后必须创建新实例。
 - `GameData::identity()` 用摘要标识快照、共享覆盖层与有效 patch，进入完整计算响应的 `provenance`（`engine_version`、`data_version`、`data_sha256`）。
 - `CalculationSession` / `Env` 只执行一次（再次 `perform` 返回 `AlreadyPerformed`）；构筑入口返回只读的 `CompletedCalculationSession`。重算创建新会话，避免再次应用资源转换。
@@ -194,15 +194,31 @@ mise run audit:display [--release <tag>] <构筑集>  # 不开浏览器看网页
 
 ## Parity 体系（回归基准）
 
-PoB2 对照是回归基准，不是真值。三层互补：
+验证分四层；PoB2 对照是参考，不是真值：
 
-1. `crates/pobr-build/tests/parity/ninja_parity.rs` 遍历 `examples/demo-bd-test/builds/*/`（真实 PoB2 构筑 + `meta.json` 的对照值），`parity_no_regression` 断言命中率不低于基线；防御 / 属性与 DPS 分列报告。
-2. golden / dual-run 套件（`tests/parity/` 的 golden 与 PoB2 对照，`tests/dualrun/` 的 statmap / config）固定中间值与配置含义，防止回归。
-3. `tools/pob2-oracle` 逐分量输出 PoB2 的计算分解，供 `compare` 与 `triage` 使用。
+| 层 | 证据 | 门禁 |
+| --- | --- | --- |
+| L1 机制 | 合成输入和按游戏规则推导的断言；golden / dual-run 固定中间值与配置含义 | 默认执行；仍读游戏数据的夹具尚需逐步去版本化 |
+| L2 输出快照 | [output_snapshot.rs](../crates/pobr-build/tests/parity/output_snapshot.rs) 计算 demo 与 tuned 语料的 PoBR 原生输出 | 默认 `output_snapshot_matches` 按下述格式精确比较；与当前锁身份不同先报“re-record under this lock”，不输出数值 diff |
+| L3 PoB2 | `ninja_parity` 的 EFFECTIVE / COMBAT 吻合率与 `reference_agreement_does_not_regress` 的分组构筑数、行数 | 固定 PoB2 与当前数据版本匹配时断言基线；不匹配时仍计算并打印报告，跳过吻合率断言 |
+| L4 线上反馈 | 未计入的词缀和机制、数据版本、玩家报告 | 提供修复线索，不作数值门禁 |
+
+**一个 PR 只动一个轴**：引擎（Rust 与自有规则）或数据锁。引擎 PR 不得意外改变结果；有意变化须在 PR 说明逐行列出并审阅后重录 L2。数据 PR 保持引擎不动，对 L2 每一行归因后接受，随锁更新快照：
+
+- `game changed`（游戏改了）：附补丁说明或数据差异证据；
+- `new content unsupported`（新内容不支持）：进入覆盖率报告并开后续任务；
+- `unexplained`（说不清）：开 issue 调查，不阻塞数据合并。
+
+`snapshot:report` 与 `data:bump` 只生成待填写的归因栏，不自动推断原因。归因与证据贴进 PR，不把临时报告存入仓库。triage 的 `engine` / `both` 指向引擎调查，`reference` 指向参考版本，`known` 指向已有解释；这些是定位线索，不等于游戏变化的证据。需持续保留的有意 PoB2 差异仍登记到 `known-differences.json`。同 PR 迁移数据派生的测试 pins、覆盖率基线和 L2 快照算数据轴。
+
+L2 的 [examples/output-snapshot.json](../examples/output-snapshot.json) 记录锁的 `runtime_identity`、录制时 workspace 应用版本 `engine_version`，以及 `demo-bd-test/builds/*/code.txt` 和 `reference-builds/tuned/builds/*/code.txt` 的输出；不读 holdout 或 PoB2 参考值。使用 `against_reference_enemy()`（Pinnacle 首领、EFFECTIVE、全部引擎模型和自有规则开启），按构筑码选定的主技能计算。录制前验证实际 `GameData::identity()` 与锁一致，避免其他数据目录或本地 patch 被贴上当前锁身份。应用发版不要求重录；`engine_version` 是录制来源，不是相等断言。
+
+稳定字段列表由测试的 `STATS` 维护：DPS 家族（`TotalDPS`、`CombinedDPS`、`WithDotDPS`、`TotalDotDPS`、Ignite / Poison / Bleed）、AverageDamage、ActionRate、CritChance / CritMultiplier；Life / EnergyShield / Mana / Spirit 及未保留资源；Armour / Evasion、四抗及上限、Block / SpellBlock / Evade / Deflect；TotalEHP 与五类 MaxHit；三资源的 RegenRecovery / NetRegen、Life / Mana LeechGainRate；Str / Dex / Int。另录主技能的 `MinionTotalDPS` / `MinionLife`（没有召唤物时为 0）。单位与 Calcs 显示 catalog 相同，概率为百分数。有限数按小数点后六位舍入（不是六位有效数字），负零归零；同一舍入区间内小于 `0.000001` 的变化可能不报告。无穷显式存为 `Infinity` / `-Infinity`；`NaN` 是计算错误，即使两边相同也拒绝验证、报告与录制。值用字符串避免 JSON 数字精度和无穷歧义；构筑与 stat 按键排序，增删也报告。重录和报告命令见[开发工作流](development-workflow.md#l2-输出快照命令)。
+
+L3 的版本对应关系由 [devs/reference-sources.json](../devs/reference-sources.json) 中 `pob2.data_version` 明确声明，指该 commit 验证过的游戏补丁号，精确匹配活动 `data_version()`；不由 commit 日期推断。更新 pin 时核实并同步该字段，PoB2 落后时保留旧值与旧 golden 身份。当前为 `0.5.5.5`，因此仍启用门禁。匹配时 COMBAT golden 还必须声明同一版本。恢复同版本参考后重新测量 L3；引擎 PR 不能为通过检查随意降低基线，只有游戏文本或数据证明参考有误时才按证据调整，在常量旁写明构筑、stat 与依据。L3 门禁防退步，不证明正确。`tools/pob2-oracle` 为 `compare` 与 `triage` 提供逐分量分解。
 
 - 与构筑码参考值比较的入口统一用 `DataOrchestratorOptions::reference_conditions()` = `against_reference_enemy()`（有效口径、Pinnacle 首领、引擎模型全开）+ `on_reference_basis()`（关掉导出工具没有的模型）。新增导出工具没有的**模型**时把开关加进 `on_reference_basis()`；单条**词条规则**用 `exporter` 字段，不逐构筑降基线。模型本身用游戏数值的测试验证，不靠参考值。
 - 语料：`examples/demo-bd-test/builds/`（2026-06 抓取，parity 门禁）；`examples/wasm-benchmark/builds/`（8 个）与 `examples/reference-builds/tuned/`（找差异、修引擎）；`examples/reference-builds/holdout/`（**只测量**：不对它运行 `triage` / `diagnose` / `compare`，不按它的差异挑选要修的内容）。`ninja-top10-2026-10-26/`、`batch-2026-10-27/` 等额外批次不在默认门禁里，见 [reference-builds](../examples/reference-builds/README.md)。
-- `reference_agreement_does_not_regress` 断言每组的吻合构筑数与行数不低于 `reference_report.rs` 记录的基线。改进了就上调基线；只有参考值被游戏数据证明有误时才下降，并在常量旁写明构筑、格子与依据。门禁防退步，不证明正确。
 - 依赖本地 vendor 的对照可能跳过，要如实记录，不能把跳过当作公式已验证。
 
 集成测试目标：`pobr-build` 是 `codec`、`dualrun`、`parity`、`skills`、`tree_convert`；`pobr-core` 是 `aggregation`、`ailments`、`defence`、`engine`、`golden`、`offence`、`parser`、`sources`。子目录里的文件是这些目标的模块，`--test` 用汇总目标名。参考口径的细节见 [diagnostics.md](diagnostics.md#参考口径导出工具规则与语料)。
