@@ -22,7 +22,7 @@ export const EXPECTED_SCHEMA_VERSION = 21;
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
 // ---------------------------------------------------------------------------
 
-export type { DataInfo } from './generated/dataInfo';
+export type { DataInfo } from './generated/dataInfo.js';
 
 export type ApiErrorCode = 'not_initialized' | 'bad_request' | 'decode_error' | 'internal' | 'unknown_tree_version' | 'tree_version_mismatch';
 
