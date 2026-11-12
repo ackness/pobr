@@ -169,7 +169,11 @@ pub fn inspect(data_dir: &Path) -> Result<ValidationReport, String> {
     if errors.is_empty()
         && let Some(doc) = &rules_doc
     {
-        match CompiledParserRules::compile_with_special(doc, &special_entries) {
+        let weapon_types = pobr_data::catalog::WeaponTypeTable(
+            data.weapon_types()
+                .map_err(|e| format!("failed to load weapon_types.json: {e}"))?,
+        );
+        match CompiledParserRules::compile_with_weapon_types(doc, &special_entries, &weapon_types) {
             Err(e) => errors.push(format!("{}: compile failed: {e}", rules_path.display())),
             Ok(rules) => {
                 for entry in &special_entries {
@@ -408,7 +412,11 @@ mod tests {
         let entry = |id: &str, value: i64| json!({"id":id,"pattern":"gain life","batch":"test","examples":["Gain Life"],"mods":[{"name":"MaximumLife","type":"BASE","value":value}]});
         write(
             "test/overlay/mod_parser_rules.json",
-            json!({"forms":[],"name_map":[],"flag_phrases":[],"pre_flags":[],"tag_phrases":[]}),
+            json!({"forms":[{"pattern":"^(%d+)%% increased","form":"INC"}],"name_map":[{"phrase":"damage","names":["Damage"]}],"flag_phrases":[],"pre_flags":[],"tag_phrases":[]}),
+        );
+        write(
+            "test/base/weapon_types.json",
+            json!([{"id":"Rapier","flag":"Rapier","one_hand":true,"melee":true}]),
         );
         write("test/generated/special_vendor.json", json!({"entries":[]}));
         write(
@@ -453,6 +461,18 @@ mod tests {
         assert_eq!(first.replaced_files, ["overlay-common/special_mods.json"]);
         assert_eq!(report.input_sha256.len(), 5);
         let rules = crate::parsed::compile_parser_rules(&data).unwrap();
+        assert_eq!(rules.weapon_types.0.len(), 1);
+        assert_eq!(rules.weapon_types.0[0].flag, "Rapier");
+        let parsed = pobr_core::mod_parser::parse_mod_engine(
+            "37% increased Damage while wielding a Rapier",
+            &rules,
+        );
+        assert!(parsed.is_complete(), "{parsed:?}");
+        assert!(
+            parsed.mods[0]
+                .tags
+                .contains(&pobr_core::ModTag::condition("UsingRapier", false))
+        );
         let parsed = pobr_core::mod_parser::parse_mod_engine("Gain [Life]", &rules);
         assert_eq!(parsed.mods[0].value.as_number(), Some(4.0));
         assert_eq!(parsed.special_meta.unwrap().entry_id, "shared");
@@ -532,12 +552,17 @@ mod tests {
             "missing special_vendor.json should be flagged: {err}"
         );
 
-        // With an (empty-entries) special_vendor.json present, the doc passes.
+        // The loaded weapon table is required by parser compilation too.
         std::fs::write(
             generated.join("special_vendor.json"),
             r#"{"_meta":{"schema":"special_mods/v1"},"entries":[]}"#,
         )
         .unwrap();
+        let base = tmp.join("base");
+        std::fs::create_dir_all(&base).unwrap();
+        std::fs::write(base.join("weapon_types.json"), "{}").unwrap();
+        assert!(check(&tmp).unwrap_err().contains("weapon_types.json"));
+        std::fs::write(base.join("weapon_types.json"), "[]").unwrap();
         assert!(check(&tmp).is_ok(), "clean doc should pass");
 
         // Unknown field: `forms[].from` (typo of `form`) is silently dropped by

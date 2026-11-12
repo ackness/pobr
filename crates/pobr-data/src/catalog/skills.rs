@@ -241,12 +241,14 @@ impl GrantedEffectDef {
     /// The skill's types as the bitset a calculation context carries; names
     /// outside the installed table are dropped.
     pub fn skill_type_bits(&self) -> crate::skill::SkillTypes {
-        *self.skill_type_set.get_or_init(|| {
-            self.skill_types
-                .iter()
-                .filter_map(|name| crate::skill::SkillTypes::from_pob2_name(name))
-                .fold(crate::skill::SkillTypes::NONE, |all, one| all | one)
-        })
+        self.skill_type_set
+            .get_or_init(|| {
+                self.skill_types
+                    .iter()
+                    .filter_map(|name| crate::skill::SkillTypes::from_pob2_name(name))
+                    .fold(crate::skill::SkillTypes::NONE, |all, one| all | one)
+            })
+            .clone()
     }
 
     /// Whether this is an attack skill (type names include `Attack`) — an

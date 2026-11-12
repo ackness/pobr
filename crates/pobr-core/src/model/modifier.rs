@@ -407,12 +407,12 @@ impl ModTag {
             }
             ModTag::DamageType(damage_type) => cfg.damage_type == Some(*damage_type),
             ModTag::SkillTypes(skill_types) => {
-                skill_types.is_empty() || skill_types.intersects(cfg.skill_types)
+                skill_types.is_empty() || skill_types.intersects(&cfg.skill_types)
             }
             // Negated: matching any bit against cfg means it does NOT apply
             // (vendor inverts neg; an empty bitset always applies, matching
             // vendor's `skillTypes[nil]=false → not false`).
-            ModTag::SkillTypesNeg(skill_types) => !skill_types.intersects(cfg.skill_types),
+            ModTag::SkillTypesNeg(skill_types) => !skill_types.intersects(&cfg.skill_types),
             // Named-skill restriction (vendor ModStore.lua:752-780): matches
             // if the main skill name hits any entry; no main skill name on
             // cfg → doesn't match (conservative).
@@ -432,7 +432,7 @@ impl ModTag {
         let actor_key =
             |actor: &Option<ActorRef>| actor.map_or(String::new(), |a| format!("{}.", a.key()));
         let bound = |upper: bool| if upper { "at most" } else { "at least" };
-        let type_names = |types: SkillTypes| {
+        let type_names = |types: &SkillTypes| {
             let names = types.names();
             if names.is_empty() {
                 format!("{types:?}")
@@ -489,7 +489,7 @@ impl ModTag {
                 Some(current) => format!("DamageType {damage_type:?} (the query is {current:?})"),
                 None => format!("DamageType {damage_type:?} (the query is of no one type)"),
             },
-            ModTag::SkillTypes(types) => format!("SkillType {}", type_names(*types)),
+            ModTag::SkillTypes(types) => format!("SkillType {}", type_names(types)),
             // The types of the list the skill has.
             ModTag::SkillTypesNeg(types) => {
                 let had: Vec<&str> = types
@@ -497,11 +497,11 @@ impl ModTag {
                     .into_iter()
                     .filter(|name| {
                         SkillTypes::from_pob2_name(name)
-                            .is_some_and(|bit| bit.intersects(cfg.skill_types))
+                            .is_some_and(|bit| bit.intersects(&cfg.skill_types))
                     })
                     .collect();
                 if had.is_empty() {
-                    format!("not SkillType {}", type_names(*types))
+                    format!("not SkillType {}", type_names(types))
                 } else {
                     format!("not SkillType {}", had.join(" or "))
                 }

@@ -344,7 +344,7 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
         .referenced
         .iter()
         .flat_map(|name| [name.to_string(), format!("Enemy{name}")])
-        .filter(|name| condition_set_from_build(name))
+        .filter(|name| condition_set_from_build(name, data))
         .collect();
     let condition_configs = variables
         .referenced

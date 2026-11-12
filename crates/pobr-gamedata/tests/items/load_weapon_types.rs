@@ -1,153 +1,54 @@
-//! `base/weapon_types.json` loading and value-by-value verification.
-//!
-//! pobr has no existing weapon-type Rust **data table** (only scattered
-//! predicates, see
-//! `pobr-build::calc_orchestrator::weapon_type_conditions`), so this table
-//! is asserted as a whole against vendor's source of truth
-//! `data.weaponTypeInfo`
-//! (`vendor/PathOfBuilding-PoE2/src/Modules/Data.lua:605-624`) with
-//! hardcoded values line by line; the calc conditions now consume its
-//! `one_hand` and `melee` predicates directly.
+//! Loaded weapon rows supply usable conditions and complete classification.
 
-use pobr_data::catalog::weapon_types::WeaponTypeDef;
-use pobr_gamedata::{GameData, repo_data_root};
+use pobr_data::catalog::WeaponTypeTable;
+use pobr_data::modifier::ModFlags;
+use pobr_gamedata::{GameData, current_data_dir};
 
-fn version() -> String {
-    pobr_gamedata::data_version()
-}
-
-fn game_data() -> GameData {
-    GameData::new(repo_data_root().join(version()))
-}
-
-fn load() -> Vec<WeaponTypeDef> {
-    game_data()
-        .weapon_types()
-        .expect("weapon_types should load")
-}
-
-fn find<'a>(table: &'a [WeaponTypeDef], id: &str) -> &'a WeaponTypeDef {
-    table
-        .iter()
-        .find(|w| w.id == id)
-        .unwrap_or_else(|| panic!("weapon type {id} should exist"))
-}
-
-/// The full table is value-equal to vendor's `data.weaponTypeInfo`
-/// (Modules/Data.lua:605-624, 19 entries).
-/// Tuple order: (id, one_hand, melee, flag, label).
 #[test]
-fn full_table_matches_vendor_weapon_type_info() {
-    // Hardcoded vendor values, corresponding line by line to Data.lua:606-624.
-    #[rustfmt::skip]
-    let expected: &[(&str, bool, bool, &str, Option<&str>)] = &[
-        ("None",                     true,  true,  "Unarmed",  None),                    // Data.lua:606
-        ("Bow",                      false, false, "Bow",      None),                    // Data.lua:607
-        ("Crossbow",                 false, false, "Crossbow", None),                    // Data.lua:608
-        ("Claw",                     true,  true,  "Claw",     None),                    // Data.lua:609
-        ("Dagger",                   true,  true,  "Dagger",   None),                    // Data.lua:610
-        ("Spear",                    true,  true,  "Spear",    None),                    // Data.lua:611
-        ("Flail",                    true,  true,  "Flail",    None),                    // Data.lua:612
-        ("Staff",                    false, true,  "Staff",    Some("Quarterstaff")),    // Data.lua:613
-        ("Warstaff",                 false, true,  "Warstaff", None),                    // Data.lua:614
-        ("Wand",                     true,  false, "Wand",     None),                    // Data.lua:615
-        ("One Hand Axe",             true,  true,  "Axe",      None),                    // Data.lua:616
-        ("One Hand Mace",            true,  true,  "Mace",     None),                    // Data.lua:617
-        ("One Hand Sword",           true,  true,  "Sword",    None),                    // Data.lua:618
-        ("Thrusting One Hand Sword", true,  true,  "Sword",    Some("One Hand Sword")),  // Data.lua:619
-        ("Fishing Rod",              false, true,  "Fishing",  None),                    // Data.lua:620
-        ("Two Hand Axe",             false, true,  "Axe",      None),                    // Data.lua:621
-        ("Two Hand Mace",            false, true,  "Mace",     None),                    // Data.lua:622
-        ("Two Hand Sword",           false, true,  "Sword",    None),                    // Data.lua:623
-        ("Talisman",                 false, true,  "Talisman", None),                    // Data.lua:624
-    ];
-
-    let table = load();
-    assert_eq!(
-        table.len(),
-        expected.len(),
-        "vendor weaponTypeInfo has 19 entries"
+fn every_weapon_row_has_conditions_and_generic_classification() {
+    let table = WeaponTypeTable(
+        GameData::new(current_data_dir())
+            .weapon_types()
+            .expect("weapon_types should load"),
     );
-    for (id, one_hand, melee, flag, label) in expected {
-        let w = find(&table, id);
-        assert_eq!(w.one_hand, *one_hand, "{id}.one_hand");
-        assert_eq!(w.melee, *melee, "{id}.melee");
-        assert_eq!(w.flag, *flag, "{id}.flag");
-        assert_eq!(w.label.as_deref(), *label, "{id}.label");
+    assert!(!table.0.is_empty());
+    let mut ids = std::collections::HashSet::new();
+    for row in &table.0 {
+        assert!(ids.insert(&row.id), "duplicate weapon id {}", row.id);
+        assert!(!row.flag.trim().is_empty(), "{} needs a flag", row.id);
+        assert!(row.conditions().contains(&format!("Using{}", row.flag)));
+        assert!(row.damage_keyword().ends_with("Damage"));
+        let flags = ModFlags::weapon_flags(&row.id, &row.flag, row.one_hand, row.melee);
+        if row.id == "None" {
+            assert!(!flags.intersects(ModFlags::WEAPON));
+            continue;
+        }
+        assert!(flags.intersects(ModFlags::WEAPON), "{}", row.id);
+        let (grip, other_grip) = if row.one_hand {
+            (ModFlags::WEAPON_1H, ModFlags::WEAPON_2H)
+        } else {
+            (ModFlags::WEAPON_2H, ModFlags::WEAPON_1H)
+        };
+        let (range, other_range) = if row.melee {
+            (ModFlags::WEAPON_MELEE, ModFlags::WEAPON_RANGED)
+        } else {
+            (ModFlags::WEAPON_RANGED, ModFlags::WEAPON_MELEE)
+        };
+        assert!(
+            flags.intersects(grip) && !flags.intersects(other_grip),
+            "{}",
+            row.id
+        );
+        assert!(
+            flags.intersects(range) && !flags.intersects(other_range),
+            "{}",
+            row.id
+        );
     }
 }
 
-/// The JSON is sorted by id (a stable diff, matching the base_items convention).
 #[test]
 fn sorted_by_id_for_stable_diffs() {
-    let table = load();
-    let mut sorted = table.clone();
-    sorted.sort_by(|a, b| a.id.cmp(&b.id));
-    assert_eq!(table, sorted, "weapon_types.json should be sorted by id");
-}
-
-/// The subset consistent with pobr's existing melee check: the melee
-/// classes matched by `matches!` in
-/// `pobr-build::calc_orchestrator::weapon_type_conditions` (Warstaff /
-/// 1H·2H Mace·Sword·Axe / Spear / Dagger / Claw / Flail) have
-/// `melee = true` in this table; casting implements/bows/crossbows (pobr's
-/// comment says "casting implements/bows/crossbows are non-melee") have
-/// `melee = false`.
-#[test]
-fn melee_subset_consistent_with_pobr_weapon_type_conditions() {
-    let table = load();
-    // pobr's melee `matches!` list (GGG item_class key space; the
-    // quarterstaff class is named Warstaff).
-    for id in [
-        "Warstaff",
-        "One Hand Mace",
-        "Two Hand Mace",
-        "One Hand Sword",
-        "Two Hand Sword",
-        "One Hand Axe",
-        "Two Hand Axe",
-        "Spear",
-        "Dagger",
-        "Claw",
-        "Flail",
-    ] {
-        assert!(
-            find(&table, id).melee,
-            "{id} should be melee (consistent with pobr's judgment)"
-        );
-    }
-    // pobr's non-melee: casting implements/bows/crossbows.
-    for id in ["Wand", "Bow", "Crossbow"] {
-        assert!(
-            !find(&table, id).melee,
-            "{id} should be ranged (consistent with pobr's judgment)"
-        );
-    }
-}
-
-/// Cases where the old class-string conditions differed from vendor;
-/// the calc conditions now use these table values.
-#[test]
-fn divergences_pinned_to_vendor_values() {
-    let table = load();
-    assert!(find(&table, "Talisman").melee, "vendor Data.lua:624");
-    assert!(find(&table, "Fishing Rod").melee, "vendor Data.lua:620");
-    assert!(!find(&table, "Bow").one_hand, "vendor Data.lua:607");
-    assert!(!find(&table, "Crossbow").one_hand, "vendor Data.lua:608");
-}
-
-/// A semantic spot check on unarmed (`None`) and the quarterstaff
-/// (`Staff`, label=Quarterstaff): unarmed counts as one-handed melee,
-/// flag=Unarmed (Data.lua:606); PoE2's quarterstaff base has
-/// `type = "Staff"` (Data/Bases/staff.lua:159-167, recorded by GGG's
-/// item_class as `Warstaff`).
-#[test]
-fn unarmed_and_quarterstaff_semantics() {
-    let table = load();
-    let none = find(&table, "None");
-    assert!(none.one_hand && none.melee);
-    assert_eq!(none.flag, "Unarmed");
-    let staff = find(&table, "Staff");
-    assert_eq!(staff.label.as_deref(), Some("Quarterstaff"));
-    assert!(!staff.one_hand && staff.melee);
+    let table = GameData::new(current_data_dir()).weapon_types().unwrap();
+    assert!(table.windows(2).all(|pair| pair[0].id < pair[1].id));
 }

@@ -3641,22 +3641,37 @@ fn weapon_type_conditions_match_vendor_type_info() {
             "Dagger",
             &["UsingDagger", "UsingMeleeWeapon", "UsingOneHandedMelee"],
         ),
-        ("Claw", &["UsingMeleeWeapon", "UsingOneHandedMelee"]),
-        ("Flail", &["UsingMeleeWeapon", "UsingOneHandedMelee"]),
+        (
+            "Claw",
+            &["UsingClaw", "UsingMeleeWeapon", "UsingOneHandedMelee"],
+        ),
+        (
+            "Flail",
+            &["UsingFlail", "UsingMeleeWeapon", "UsingOneHandedMelee"],
+        ),
         (
             "One Hand Sword",
-            &["UsingMeleeWeapon", "UsingOneHandedMelee"],
+            &["UsingSword", "UsingMeleeWeapon", "UsingOneHandedMelee"],
         ),
         (
             "Two Hand Sword",
-            &["UsingMeleeWeapon", "UsingTwoHandedMelee"],
+            &["UsingSword", "UsingMeleeWeapon", "UsingTwoHandedMelee"],
         ),
-        ("Two Hand Axe", &["UsingMeleeWeapon", "UsingTwoHandedMelee"]),
-        ("Talisman", &["UsingMeleeWeapon", "UsingTwoHandedMelee"]),
-        ("FishingRod", &["UsingMeleeWeapon", "UsingTwoHandedMelee"]),
+        (
+            "Two Hand Axe",
+            &["UsingAxe", "UsingMeleeWeapon", "UsingTwoHandedMelee"],
+        ),
+        (
+            "Talisman",
+            &["UsingTalisman", "UsingMeleeWeapon", "UsingTwoHandedMelee"],
+        ),
+        (
+            "FishingRod",
+            &["UsingFishing", "UsingMeleeWeapon", "UsingTwoHandedMelee"],
+        ),
         // GGG caster `Staff` has no matching vendor weapon type entry.
         ("Staff", &[]),
-        ("Wand", &[]),
+        ("Wand", &["UsingWand"]),
         ("Sceptre", &[]),
     ];
     for &(cls, expected) in cases {

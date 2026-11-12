@@ -23,7 +23,7 @@
 //! corpus diff=0 shape parity — special-channel wiring is deferred as a follow-up item, see
 //! report §2.4).
 
-use pobr_data::catalog::parser_rules::RuleEffectsDef;
+use pobr_data::catalog::parser_rules::{RuleEffectsDef, StatMapValue, TagTemplate};
 use pobr_data::prelude::ModType;
 
 use super::compiled::CompiledParserRules;
@@ -161,6 +161,9 @@ fn parse_mod_engine_impl(
                 // downstream per-skill cfg rolls out (same treatment as tag_phrase). The drop
                 // count is recorded in diag (A2 report).
                 diag.dropped_pre_flag_tags += effects_acc.absorb_pre_flag(payload, &_m.captures);
+                if effects_acc.unknown_flags {
+                    return unsupported(text);
+                }
                 work = rest;
             }
         }
@@ -187,6 +190,9 @@ fn parse_mod_engine_impl(
                     break;
                 }
                 let dropped = effects_acc.absorb_tag_phrase(&payload.effects, &m.captures);
+                if effects_acc.unknown_flags {
+                    return unsupported(text);
+                }
                 work = rest;
                 if dropped > 0 {
                     // A tag has a type pobr has no landing point for → conservatively mismatch
@@ -232,6 +238,11 @@ fn parse_mod_engine_impl(
             effects_acc.absorb_effects(eff, &[]);
             work = rest;
         }
+    }
+
+    // Unknown weapon bits must not disappear and turn a scoped line global.
+    if effects_acc.unknown_flags {
+        return unsupported(text);
     }
 
     // 8. Merge flags/kw/tags → Vec<Modifier>.
@@ -285,7 +296,13 @@ fn parse_mod_engine_impl(
         // into PoBR special names (C3 damage flag→special name / Speed flag→AttackSpeed,
         // CastSpeed), and attach the corresponding DamageType tag by final name (C5) +
         // reabsorb the flag/kw bits consumed by the special name.
-        let norm = normalize_pobr_name(&full_name, flags, keyword_flags, has_triggered);
+        let norm = normalize_pobr_name(
+            &full_name,
+            flags,
+            keyword_flags,
+            has_triggered,
+            &rules.weapon_types,
+        );
         let modv = match ty {
             ModType::Flag => ModValue::Bool(*value != 0.0),
             _ => ModValue::Number(*value),
@@ -308,7 +325,7 @@ fn parse_mod_engine_impl(
             m = m.with_tag(ModTag::DamageType(dt));
         }
         for cond in &norm.extra_conditions {
-            m = m.with_tag(ModTag::condition(*cond, false));
+            m = m.with_tag(ModTag::condition(cond.clone(), false));
         }
         if form_result.hand_attack_condition {
             // GRANTS/REMOVES local: the `{Hand}Attack` condition — pobr has no hand-placeholder
@@ -365,6 +382,7 @@ fn parse_mod_engine_impl(
 #[derive(Default)]
 struct EffectsAccumulator {
     flags: ModFlags,
+    unknown_flags: bool,
     keyword_flags: KeywordFlags,
     tags: Vec<ModTag>,
     add_to_minion: bool,
@@ -389,10 +407,15 @@ impl EffectsAccumulator {
     /// the **number of dropped tags** (>0 = a tag type pobr has no landing point for;
     /// surfaced in the A2 report).
     fn absorb_effects(&mut self, eff: &RuleEffectsDef, captures: &[String]) -> u16 {
+        self.unknown_flags |= eff
+            .flags
+            .iter()
+            .any(|name| super::template::flag_bit(name).is_none());
         self.flags |= compile_flags(&eff.flags);
         self.keyword_flags = self.keyword_flags | compile_keyword_flags(&eff.keyword_flags);
         let mut dropped: u16 = 0;
         for tag in &eff.tags {
+            self.unknown_flags |= tag_has_unknown_flags(tag);
             match compile_tag(tag, captures) {
                 Some(t) => self.tags.push(t),
                 None => dropped += 1,
@@ -401,6 +424,7 @@ impl EffectsAccumulator {
         // minion wrapping directives.
         self.add_to_minion |= eff.add_to_minion;
         for tag in &eff.add_to_minion_tags {
+            self.unknown_flags |= tag_has_unknown_flags(tag);
             if let Some(t) = compile_tag(tag, captures) {
                 self.add_to_minion_tags.push(t);
             }
@@ -501,6 +525,12 @@ impl EffectsAccumulator {
     }
 }
 
+fn tag_has_unknown_flags(tag: &TagTemplate) -> bool {
+    matches!(tag.fields.get("mod_flags"), Some(StatMapValue::List(flags))
+        if flags.iter().any(|flag| matches!(flag, StatMapValue::Text(name)
+            if super::template::flag_bit(name).is_none())))
+}
+
 /// Add an `Enemy` prefix to an enemy-side `Condition(var)` (vendor enemy-actor condition →
 /// pobr's naming convention; ones that already carry the prefix, like
 /// `EnemyInPresence`/`EnemyCursed`, aren't prefixed twice). Non-Condition tags pass through
@@ -528,7 +558,7 @@ struct NormalizedName {
     keyword_flags: KeywordFlags,
     damage_type: Option<pobr_data::prelude::DamageType>,
     /// Extra condition tags (C3 weapon scope on a non-damage name becomes `Condition(UsingX)`).
-    extra_conditions: Vec<&'static str>,
+    extra_conditions: Vec<String>,
 }
 
 /// .3 route-B engine normalization (C3 + C5): folds vendor's "generic name + flag" combinations
@@ -536,8 +566,8 @@ struct NormalizedName {
 /// DamageType tag based on the final name.
 ///
 /// - **C3 Damage family**: `Damage` + a weapon/scope flag → a special name (`SpellDamage` /
-///   `ProjectileDamage` / `AreaDamage` / `{Weapon}Damage`), clearing the consumed bit (legacy's
-///   special names never carry these flags).
+///   `ProjectileDamage` / `AreaDamage` / `{Weapon}Damage`). Historical unscoped
+///   names clear the consumed bits; other weapon names retain per-hand scope.
 /// - **C3 Speed family**: `Speed` + ATTACK → `AttackSpeed`, + CAST → `CastSpeed` (the
 ///   `Condition(UsingX)` implied by a weapon-attack combo is attached separately by
 ///   flag_phrases; the engine here conservatively only renames and clears the attack bit).
@@ -548,6 +578,7 @@ fn normalize_pobr_name(
     flags: ModFlags,
     kw: KeywordFlags,
     keep_spell: bool,
+    weapons: &pobr_data::catalog::WeaponTypeTable,
 ) -> NormalizedName {
     use pobr_data::prelude::DamageType;
 
@@ -577,19 +608,8 @@ fn normalize_pobr_name(
     // projectile > area > weapon (matches legacy's special-name mapping; in practice items have
     // at most one scope flag per line).
     if name == "Damage" {
-        // Weapon flags (with their accompanying HIT bit) → special name, clearing the weapon
-        // bit and the HIT bit.
-        const WEAPON_SPECIALS: &[(ModFlags, &str)] = &[
-            (ModFlags::SPEAR, "SpearDamage"),
-            (ModFlags::CROSSBOW, "CrossbowDamage"),
-            (ModFlags::BOW, "BowDamage"),
-            (ModFlags::MACE, "MaceDamage"),
-            // PoE2's quarterstaff bit is `Staff` (0x200000), not `Warstaff` — same fix as
-            // WEAPON_COND below (previously using WARSTAFF never matched Staff-flag
-            // quarterstaff entries, so QuarterstaffDamage was unreachable; switching to STAFF
-            // matches legacy's special-name mapping).
-            (ModFlags::STAFF, "QuarterstaffDamage"),
-        ];
+        // Weapon rows supply the name and whether compatibility requires
+        // consuming its type/Hit bits.
         if flags.intersects(ModFlags::SPELL) {
             out_name = "SpellDamage".to_string();
             // By default clear the scope SPELL bit (legacy's special name doesn't carry it);
@@ -598,11 +618,14 @@ fn normalize_pobr_name(
             if !keep_spell {
                 out_flags = out_flags.without(ModFlags::SPELL);
             }
-        } else if let Some((bit, special)) =
-            WEAPON_SPECIALS.iter().find(|(b, _)| flags.intersects(*b))
-        {
-            out_name = (*special).to_string();
-            out_flags = out_flags.without(*bit | ModFlags::HIT);
+        } else if let Some((row, bit)) = weapons.0.iter().find_map(|row| {
+            let bit = ModFlags::weapon_type_bit(&row.flag)?;
+            flags.intersects(bit).then_some((row, bit))
+        }) {
+            out_name = row.damage_keyword();
+            if row.uses_legacy_damage_keyword() {
+                out_flags = out_flags.without(bit | ModFlags::HIT);
+            }
         } else if flags.intersects(ModFlags::PROJECTILE) {
             out_name = "ProjectileDamage".to_string();
             out_flags = out_flags.without(ModFlags::PROJECTILE);
@@ -614,7 +637,7 @@ fn normalize_pobr_name(
 
     // C3 Speed family: generic name Speed + ATTACK/CAST → AttackSpeed/CastSpeed, clearing the
     // matching bit.
-    let mut extra_conditions: Vec<&'static str> = Vec::new();
+    let mut extra_conditions: Vec<String> = Vec::new();
     if name == "Speed" {
         if flags.intersects(ModFlags::ATTACK) {
             out_name = "AttackSpeed".to_string();
@@ -644,24 +667,17 @@ fn normalize_pobr_name(
                 "UsingTwoHandedMelee",
             ),
         ];
-        // Single weapon type → `Using<Type>`. PoE2's quarterstaff bit is `Staff` (0x200000);
-        // the old table wrongly used `WARSTAFF` (0x20000000) → quarterstaff-scoped global
-        // attack-speed/crit entries never got their condition attached and never matched.
-        const WEAPON_COND: &[(ModFlags, &str)] = &[
-            (ModFlags::SPEAR, "UsingSpear"),
-            (ModFlags::CROSSBOW, "UsingCrossbow"),
-            (ModFlags::BOW, "UsingBow"),
-            (ModFlags::MACE, "UsingMace"),
-            (ModFlags::STAFF, "UsingQuarterstaff"),
-        ];
         if let Some((_, cond)) = weapon_combo_cond
             .iter()
             .find(|(b, _)| b.is_subset_of(out_flags))
         {
-            extra_conditions.push(cond);
+            extra_conditions.push((*cond).to_string());
             out_flags = out_flags.without(ModFlags::HIT);
-        } else if let Some((_, cond)) = WEAPON_COND.iter().find(|(b, _)| out_flags.intersects(*b)) {
-            extra_conditions.push(cond);
+        } else if let Some(row) = weapons.0.iter().find(|row| {
+            row.uses_legacy_damage_keyword()
+                && ModFlags::weapon_type_bit(&row.flag).is_some_and(|bit| out_flags.intersects(bit))
+        }) {
+            extra_conditions.push(format!("Using{}", row.scope_name()));
             out_flags = out_flags.without(ModFlags::HIT);
         }
     }

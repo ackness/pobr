@@ -1,33 +1,11 @@
 //! Weapon type domain schema (`base/weapon_types.json`).
 //!
-//! Source table: PoB2's `data.weaponTypeInfo`
-//! (`vendor/PathOfBuilding-PoE2/src/Modules/Data.lua:605-624`, 19 entries).
-//! This table is a **line-for-line migration** (a migration invariant):
-//! field values match vendor exactly; discrepancies between pobr's existing
-//! scattered Rust judgments (see below) and vendor are only recorded, not
-//! fixed here.
+//! Rows supply weapon classification and the vocabulary used by conditions and
+//! modifier text. New flags work without a new engine bit; unknown type bits
+//! retain generic classification and are reported by the build orchestrator.
 //!
-//! Key-space note: `id` is the PoB base item's `type` name (vendor
-//! `Data/Bases/*.lua`'s `type` field), **not** GGG's `ItemClasses.Id`
-//! (pobr's `BaseItemDef::item_class`). The two mostly share names; known
-//! discrepancies:
-//! - PoE2's quarterstaff base has `type = "Staff"`, `subType = "Warstaff"`
-//!   (`Data/Bases/staff.lua:159-167`), corresponding to this table's
-//!   `id = "Staff"` (`label = "Quarterstaff"`); whereas GGG's item_class
-//!   records the quarterstaff as `Warstaff` and the caster staff as
-//!   `Staff`. This table's `id = "Warstaff"` entry currently has no base
-//!   item using it in vendor's data (a legacy entry — `subType` only shows
-//!   up as `Warstaff`).
-//! - Fishing rod: this table's `id = "Fishing Rod"` (with a space), GGG's
-//!   item_class is `FishingRod`.
-//!
-//! `pobr-build::calc_orchestrator::weapon_type_conditions` uses this table's
-//! `one_hand` / `melee` for grip conditions (including bow, crossbow,
-//! talisman and fishing rod). Per-skill `ModFlags` are separately derived
-//! from the selected weapon source; the two channels must not be conflated.
-//!
-//! Ranged derivation: vendor has no separate range field; ranged =
-//! `!melee`; deriving `ModFlags` bits from `flag` stays in code.
+//! The table's ids use the imported base type vocabulary. The legacy aliases
+//! between that vocabulary and item classes are resolved by `get_by_item_class`.
 
 use serde::{Deserialize, Serialize};
 
@@ -44,9 +22,9 @@ pub struct WeaponTypeDef {
     /// Whether it's melee (vendor's `melee`; ranged = `!melee`, vendor has
     /// no separate range field).
     pub melee: bool,
-    /// ModFlag name (vendor's `flag`, e.g. `Bow`/`Axe`/`Unarmed`) — the
-    /// weapon-type bit (a `ModFlags` extension bit) is derived from this;
-    /// the bit enum itself stays in code (L4).
+    /// Stable weapon flag (e.g. `Bow`/`Axe`/`Unarmed`), used for conditions
+    /// and damage vocabulary. Known flags also have a fixed `ModFlags` bit;
+    /// unknown flags keep generic classification without an invented type bit.
     pub flag: String,
     /// Display alias (vendor's `label`; defaults to displaying `id` when
     /// absent). Two known entries: `Staff` → `Quarterstaff`,
@@ -59,8 +37,8 @@ pub struct WeaponTypeDef {
 /// [`crate::catalog::RuntimeConstants`] injects).
 ///
 /// `#[serde(transparent)]`: the JSON shape matches
-/// `base/weapon_types.json` (an array). `Default` = the fallback full table
-/// (value-equal to the JSON, a migration invariant).
+/// `base/weapon_types.json` (an array). `Default` supplies a compatibility
+/// fallback for callers without game data; loaded rows are authoritative.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct WeaponTypeTable(pub Vec<WeaponTypeDef>);
@@ -72,30 +50,70 @@ impl Default for WeaponTypeTable {
 }
 
 impl WeaponTypeTable {
+    /// Resolve legacy base-type aliases once for all equipment consumers.
+    /// Caster staves have no weapon row; `Staff` denotes the quarterstaff.
+    pub fn get_by_item_class(&self, item_class: &str) -> Option<&WeaponTypeDef> {
+        self.get(match item_class {
+            "Warstaff" => "Staff",
+            "Staff" => return None,
+            "FishingRod" => "Fishing Rod",
+            other => other,
+        })
+    }
+
     /// Looks up an entry by weapon type name (the PoB base `type`, e.g.
     /// `One Hand Axe`); returns `None` for an unknown type. Key-space trap
     /// (see the module doc): GGG's `Warstaff` (the quarterstaff's
     /// item_class) corresponds to this table's `Staff`, and GGG's
-    /// `FishingRod` corresponds to `Fishing Rod` — mapping item_class to a
-    /// table key is the caller's job (the consumer side, see pobr-build's
-    /// `calc_orchestrator`).
+    /// `FishingRod` corresponds to `Fishing Rod`. Equipment consumers use
+    /// [`Self::get_by_item_class`] to resolve those aliases.
     pub fn get(&self, id: &str) -> Option<&WeaponTypeDef> {
         self.0.iter().find(|w| w.id == id)
     }
 }
 
 impl WeaponTypeDef {
-    /// The full-table fallback (the injection pipeline): the default value
-    /// [`crate::catalog::RuntimeConstants`] uses when there's no GameData /
-    /// the data directory is missing `base/weapon_types.json`.
-    ///
-    /// Migration invariant: value-equal to the JSON (locked by a
-    /// `pobr-gamedata` test). Values sourced from vendor's
-    /// `data.weaponTypeInfo` (`Data.lua:605-624`, all 19 entries copied
-    /// verbatim); pobr's old Rust side has no complete equivalent table
-    /// (scattered predicates instead — see the module doc's
-    /// TODO(parity) for the discrepancies), so this is a literal table with
-    /// sourcing docs.
+    /// The established scope spelling for this flag.
+    pub fn scope_name(&self) -> &str {
+        if self.flag == "Staff" {
+            "Quarterstaff"
+        } else {
+            &self.flag
+        }
+    }
+
+    /// Conditions follow the flag, with the historical Quarterstaff alias.
+    pub fn conditions(&self) -> Vec<String> {
+        let mut names = vec![format!("Using{}", self.scope_name())];
+        if self.scope_name() != self.flag {
+            names.push(format!("Using{}", self.flag));
+        }
+        names
+    }
+
+    /// Match the orchestration's condition vocabulary without allocating a list.
+    pub fn matches_condition(&self, condition: &str) -> bool {
+        condition
+            .strip_prefix("Using")
+            .is_some_and(|name| name == self.flag || name == self.scope_name())
+    }
+
+    /// These historical damage names did not carry a per-hand type bit. Keep
+    /// their main-hand keyword routing so existing calculations stay unchanged.
+    /// Other weapon names retain their type bits when normalized.
+    pub fn uses_legacy_damage_keyword(&self) -> bool {
+        matches!(
+            self.flag.as_str(),
+            "Spear" | "Crossbow" | "Bow" | "Mace" | "Staff"
+        )
+    }
+
+    /// Damage vocabulary keeps the existing Quarterstaff spelling.
+    pub fn damage_keyword(&self) -> String {
+        format!("{}Damage", self.scope_name())
+    }
+
+    /// Compatibility fallback for callers without `weapon_types.json`.
     pub fn default_table() -> Vec<Self> {
         /// Builds a single entry (see the struct field docs for `label`;
         /// only two entries have a non-empty one).
@@ -114,7 +132,7 @@ impl WeaponTypeDef {
                 label: label.map(str::to_string),
             }
         }
-        // Ascending by id (matches the JSON's sort order, so the Vec stays value-equal).
+        // Keep the fallback deterministic.
         vec![
             entry("Bow", false, false, "Bow", None),
             entry("Claw", true, true, "Claw", None),

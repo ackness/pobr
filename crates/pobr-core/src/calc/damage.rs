@@ -596,6 +596,18 @@ pub(crate) fn generic_scaling_names(cfg: &CalcConfig) -> Vec<ModName> {
     for kw in &cfg.damage_keywords {
         generic_names.push(ModName::from(kw.clone()));
     }
+    // Type-scoped names follow this pass's weapon bits, including unarmed.
+    // Legacy unscoped names remain on the orchestration's main-hand channel.
+    for row in &cfg.constants.weapon_types.0 {
+        if !row.uses_legacy_damage_keyword()
+            && ModFlags::weapon_type_bit(&row.flag).is_some_and(|bit| cfg.flags.intersects(bit))
+        {
+            let name = ModName::from(row.damage_keyword());
+            if !generic_names.contains(&name) {
+                generic_names.push(name);
+            }
+        }
+    }
     generic_names
 }
 

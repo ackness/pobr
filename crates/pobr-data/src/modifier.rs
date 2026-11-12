@@ -178,22 +178,13 @@ impl ModFlags {
         })
     }
 
-    /// Weapon entry → the full weapon bit set (a line-for-line match of
-    /// vendor's `CalcActiveSkill.lua:274-309 getWeaponFlags` main body):
-    /// - `flags = ModFlag[info.flag]` (the weapon-type bit; unknown flag → empty);
-    /// - when `type ~= "None"` (not unarmed), also OR in `Weapon` +
-    ///   `Weapon1H`/`Weapon2H` (`info.oneHand`) + `WeaponMelee`/`WeaponRanged`
-    ///   (`info.melee`).
-    ///
-    /// The arguments correspond to a `weapon_types.json` entry's fields
-    /// (`WeaponTypeDef`'s id/flag/one_hand/melee). The
-    /// `countsAsAll1H`/`asThoughUsing` branches aren't implemented;
-    /// `MeleeHit` isn't part of getWeaponFlags (vendor ORs it in separately
-    /// on the skill side, `:537`).
+    /// Weapon row → known type bit plus its generic weapon/grip/range bits.
+    /// Unknown flags have no type-specific bit: they retain the row's generic
+    /// bits, without borrowing another class's bit. Callers report this partial
+    /// support when `weapon_type_bit(flag)` is `None`.
+    /// Unarmed (`type_id == "None"`) has only its type bit.
     pub fn weapon_flags(type_id: &str, flag: &str, one_hand: bool, melee: bool) -> Self {
-        let Some(mut flags) = Self::weapon_type_bit(flag) else {
-            return Self::NONE;
-        };
+        let mut flags = Self::weapon_type_bit(flag).unwrap_or(Self::NONE);
         if type_id != "None" {
             flags |= Self::WEAPON;
             flags |= if one_hand {
@@ -633,10 +624,10 @@ mod modflags_pob2_tests {
             ModFlags::weapon_flags("None", "Unarmed", true, true),
             ModFlags::UNARMED
         );
-        // Unknown flag name → empty.
+        // Unknown flags retain the classification supplied by the row.
         assert_eq!(
-            ModFlags::weapon_flags("Sceptre", "Sceptre", true, false),
-            ModFlags::NONE
+            ModFlags::weapon_flags("Rapier", "Rapier", true, true),
+            ModFlags::WEAPON | ModFlags::WEAPON_1H | ModFlags::WEAPON_MELEE
         );
     }
 

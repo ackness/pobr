@@ -4,13 +4,11 @@
 //! One entry per row of the game table `ActiveSkillType`, in row order: the
 //! type's `Id` and its 1-based `index` (row + 1). PoB2's `SkillType` enum,
 //! which PoB build codes and the parser/special rule files name types by, is
-//! exactly this table (same names, `SkillType.<Id> = index`), so
-//! [`SkillTypes`](crate::skill::SkillTypes) bit `index - 1` is that type.
+//! exactly this table. Runtime bits are assigned by name at installation;
+//! row indices are package-local and can change between game versions.
 //!
-//! A data package that carries the file installs it once per process with
-//! [`install_skill_type_names`](crate::skill::install_skill_type_names); the
-//! loader refuses a table whose names disagree with the engine's named
-//! constants (`SkillTypes::ATTACK` = `Attack` = 1, …).
+//! A package installs its table once per process. Missing engine names produce
+//! diagnostics and keep their reserved bits unassigned to any package row.
 
 use serde::{Deserialize, Serialize};
 

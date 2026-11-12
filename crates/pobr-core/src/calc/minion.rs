@@ -443,7 +443,7 @@ impl MinionSkill {
 
     /// The skill's types as the bitset a calculation context carries.
     pub fn type_bits(&self) -> pobr_data::skill::SkillTypes {
-        self.skill_types
+        self.skill_types.clone()
     }
 }
 

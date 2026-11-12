@@ -533,13 +533,6 @@ pub(crate) fn read_from_build_structure(
 /// a spell instead of an attack), so its absence is not a lead.
 const SET_BY_THE_ORCHESTRATION: &[&str] = &[
     // `conditions::weapon_type_conditions` and the shield in the off hand.
-    "UsingQuarterstaff",
-    "UsingStaff",
-    "UsingMace",
-    "UsingCrossbow",
-    "UsingBow",
-    "UsingSpear",
-    "UsingDagger",
     "UsingMeleeWeapon",
     "UsingOneHandedMelee",
     "UsingTwoHandedMelee",
@@ -584,12 +577,21 @@ const SET_BY_THE_ORCHESTRATION: &[&str] = &[
 
 /// A condition determined from the build or by a calculation pass, rather
 /// than a missing input. Share the diagnosis registries with the line ledger.
-pub(crate) fn condition_set_from_build(condition: &str) -> bool {
-    SET_BY_THE_ORCHESTRATION.contains(&condition)
+pub(crate) fn condition_set_from_build(condition: &str, data: &BuildData) -> bool {
+    weapon_condition_from_data(condition, data)
+        || SET_BY_THE_ORCHESTRATION.contains(&condition)
         || pobr_core::calc::session::CONDITIONS_SET_BY_A_PASS.contains(&condition)
         // `condition_set_by_a_pass` also recognises the family emitted for
         // enabled buffs/auras, including each Herald's display name.
         || condition.starts_with("AffectedBy")
+}
+
+fn weapon_condition_from_data(condition: &str, data: &BuildData) -> bool {
+    data.constants
+        .weapon_types
+        .0
+        .iter()
+        .any(|row| row.matches_condition(condition))
 }
 
 /// The config option that sets `condition`, if one does: its own
@@ -661,7 +663,9 @@ pub(crate) fn multiplier_option_setting(
 fn group_unset_conditions(session: &CalculationSession, data: &BuildData) -> Vec<UnsetCondition> {
     let mut conditions: Vec<UnsetCondition> = Vec::new();
     for (condition, modifier) in session.unset_conditions() {
-        if SET_BY_THE_ORCHESTRATION.contains(&condition) {
+        if SET_BY_THE_ORCHESTRATION.contains(&condition)
+            || weapon_condition_from_data(condition, data)
+        {
             continue;
         }
         // Ordered by condition, so its modifiers arrive together.

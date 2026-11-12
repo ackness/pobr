@@ -285,6 +285,8 @@ fn splice_out(text: &str, start: usize, end: usize) -> String {
 /// All compiled parser rule tables plus their indices.
 #[derive(Debug)]
 pub struct CompiledParserRules {
+    /// Loaded weapon vocabulary, shared by text parsing and name normalization.
+    pub weapon_types: pobr_data::catalog::WeaponTypeTable,
     /// formList (pattern -> form id string).
     pub forms: PatternTable<String>,
     /// modNameList (plain -> names + effects).
@@ -426,12 +428,24 @@ impl CompiledParserRules {
         doc: &ModParserRulesDoc,
         special_defs: &[SpecialTemplateDef],
     ) -> Result<Self, CompileError> {
+        Self::compile_with_weapon_types(doc, special_defs, &Default::default())
+    }
+
+    /// Compile with the snapshot's weapon vocabulary. Existing phrases retain
+    /// their semantics; rows supply missing weapon words and conditions.
+    pub fn compile_with_weapon_types(
+        doc: &ModParserRulesDoc,
+        special_defs: &[SpecialTemplateDef],
+        weapon_types: &pobr_data::catalog::WeaponTypeTable,
+    ) -> Result<Self, CompileError> {
+        let doc = super::weapons::with_weapon_words(doc, weapon_types);
         let mut special_handlers = HandlerRegistry::new();
         register_special_handlers(&mut special_handlers)
             .map_err(|e| CompileError::Index(format!("special handler registration: {e}")))?;
         let special = SpecialModRules::compile(special_defs, &special_handlers)
             .map_err(|e| CompileError::Index(format!("special compile: {e}")))?;
         Ok(Self {
+            weapon_types: weapon_types.clone(),
             forms: compile_forms(&doc.forms)?,
             name_map: compile_name_map(&doc.name_map)?,
             flag_phrases: compile_flag_phrases(&doc.flag_phrases)?,
