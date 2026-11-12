@@ -56,8 +56,7 @@ fn discover_builds() -> Vec<PathBuf> {
 }
 
 fn load_data() -> BuildData {
-    // The main gate exercises current data. The historical COMBAT reference
-    // below keeps its explicitly declared data version until it is recaptured.
+    // Both modes calculate current data; historical references keep their own identity.
     let data = GameData::new(pobr_gamedata::current_data_dir());
     BuildData::load(&data).expect("load BuildData")
 }
@@ -90,12 +89,8 @@ fn panel_reference() -> &'static serde_json::Value {
     })
 }
 
-fn panel_golden_stats(dir: &Path, data: &BuildData) -> serde_json::Map<String, serde_json::Value> {
+fn panel_golden_stats(dir: &Path) -> serde_json::Map<String, serde_json::Value> {
     let panel = panel_reference();
-    assert_eq!(
-        panel["data_version"].as_str(),
-        data.native_data_version.as_deref()
-    );
     assert_eq!(panel["mode"], "COMBAT");
     let fixture = &panel["builds"][dir.file_name().unwrap().to_str().unwrap()];
     let text = std::fs::read_to_string(dir.join("meta.json")).expect("read fixture metadata");
@@ -492,20 +487,14 @@ fn compute_tallies_mode(
     verbose: bool,
     mode_effective: bool,
 ) -> (Tally, Tally, Tally, Tally, Vec<String>) {
-    let data = if mode_effective {
-        load_data()
-    } else {
-        let version = panel_reference()["data_version"]
-            .as_str()
-            .expect("panel data version");
-        let directory = pobr_gamedata::repo_data_root().join(version);
-        assert!(
-            directory.join("manifest.json").is_file(),
-            "prepare the panel reference data version"
+    let data = load_data();
+    if !mode_effective && super::reference_version::gates_current_data() {
+        assert_eq!(
+            panel_reference()["data_version"].as_str(),
+            data.native_data_version.as_deref(),
+            "recapture COMBAT references with the matching pinned PoB2"
         );
-        let game = GameData::new(directory);
-        BuildData::load(&game).expect("load the exact panel reference data")
-    };
+    }
     let builds = discover_builds();
     assert!(!builds.is_empty(), "no builds discovered");
 
@@ -528,7 +517,7 @@ fn compute_tallies_mode(
         let off_golden = if mode_effective {
             g.clone()
         } else {
-            panel_golden_stats(dir, &data)
+            panel_golden_stats(dir)
         };
         let (def_rows, off_rows, dot_rows) = (
             defensive_rows(&out, &g),
@@ -563,8 +552,7 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 }
 
 /// The recorded parity baseline (hit counts) — the regression gate's lower
-/// bound. **Only raise it once a change is confirmed to improve overall
-/// parity**, never lower it (prevents changes from silently regressing).
+/// bound. Version eligibility and baseline acceptance follow the maintainer guide.
 /// Corresponds to the ninja_parity output at the time of the commit.
 ///
 /// Re-recorded for column expansion:
@@ -1263,8 +1251,23 @@ const PANEL_OFF_HIT10: usize = 78;
 /// Regression gate: the aggregate hit count must not fall below the recorded baseline ([`BASELINE_*`]). CI gate, prevents changes from regressing parity.
 #[test]
 fn parity_no_regression() {
-    let (def_core, def, off, dot, failed) = compute_tallies(false);
+    let gates = super::reference_version::gates_current_data();
+    let (def_core, def, off, dot, failed) = compute_tallies(!gates);
     assert!(failed.is_empty(), "builds failed to parse/calc: {failed:?}");
+    if !gates {
+        super::reference_version::report(format_args!(
+            "L3 report: core {}/{}, defence {}/{}, offence {}/{}, DoT {}/{} @5%",
+            def_core.hit5,
+            def_core.total,
+            def.hit5,
+            def.total,
+            off.hit5,
+            off.total,
+            dot.hit5,
+            dot.total
+        ));
+        return;
+    }
     // One half of the owner's dual-metric ruling: the old 8-column subset must be >= 111 (guards against "column-expansion dilution" masking a regression).
     assert!(
         def_core.hit5 >= BASELINE_DEF_CORE_HIT5,
@@ -1313,8 +1316,16 @@ fn parity_no_regression() {
 fn panel_mode_no_regression() {
     // DoT remains guarded by the effective main gate; panel references cover
     // the same five offence columns as the original panel gate.
-    let (_, _, off, _dot, failed) = compute_tallies_mode(false, false);
+    let gates = super::reference_version::gates_current_data();
+    let (_, _, off, _dot, failed) = compute_tallies_mode(!gates, false);
     assert!(failed.is_empty(), "builds failed to parse/calc: {failed:?}");
+    if !gates {
+        super::reference_version::report(format_args!(
+            "L3 COMBAT report: offence {}/{} @5%, {}/{} @10%",
+            off.hit5, off.total, off.hit10, off.total
+        ));
+        return;
+    }
     assert!(
         off.hit5 >= PANEL_OFF_HIT5,
         "panel offensive @5% regressed: {} < baseline {PANEL_OFF_HIT5}",

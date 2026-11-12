@@ -2,7 +2,11 @@
 
 import hashlib
 import json
+import subprocess
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 from pipeline.imports import data_bump as bump
 from pipeline.imports import data_imports as imports
@@ -331,6 +335,57 @@ for _name in [n for n in vars(BuildDataTests) if n.startswith("test_")]:
     if _name not in vars(DataBumpTests):
         setattr(DataBumpTests, _name, None)
 del BuildDataTests
+
+
+class OutputReportTests(unittest.TestCase):
+    def test_report_runs_after_install_and_failure_does_not_restore_lock(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            lock, data = root / "lock.json", root / "data"
+            data.mkdir()
+            lock.write_text("old")
+            (data / "CURRENT").write_text("old")
+            events = []
+
+            def move(*args, **kwargs):
+                lock.write_text("new")
+                return {"identity_changed": True}
+
+            def install():
+                self.assertEqual(lock.read_text(), "new")
+                events.append("install")
+
+            def report():
+                events.append("report")
+                raise failure
+
+            with patch.object(bump, "bump", side_effect=move):
+                for failure in (subprocess.CalledProcessError(101, "snapshot:report"),
+                                RuntimeError("report failed")):
+                    with self.subTest(error=type(failure).__name__):
+                        events.clear()
+                        result = bump.adopt(lock, [], root / "cache", data, install=install, report=report)
+                        self.assertEqual(events, ["install", "report"])
+                        self.assertEqual(result["outputs"]["status"], "unavailable")
+                        self.assertEqual(lock.read_text(), "new")
+                        self.assertEqual((data / "CURRENT").read_text(), "old")
+                result = bump.adopt(lock, [], root / "cache", data, install=install,
+                                    report=lambda: {"differences": [{"build": "one", "stats": ["Life"],
+                                                                  "attribution": "", "reason": ""}]})
+                self.assertEqual(result["outputs"]["differences"][0]["attribution"], "")
+                result = bump.adopt(lock, [], root / "cache", data, report=report)
+                self.assertNotIn("outputs", result)  # --no-prepare has no new data to calculate.
+
+    def test_report_uses_installed_data_and_shared_snapshot_command(self):
+        def run(command, **kwargs):
+            self.assertEqual(command, ["bash", "devs/scripts/driver.sh", "snapshot:report"])
+            environment = kwargs["env"]
+            self.assertNotIn("POBR_DATA_VERSION", environment)
+            self.assertEqual(environment["POBR_DATA_ROOT"], "/tmp/new-data")
+            self.assertEqual(environment["POBR_SNAPSHOT_LOCK"], "/tmp/new-lock")
+            Path(environment["POBR_SNAPSHOT_REPORT"]).write_text('{"differences": []}')
+        with patch.dict("os.environ", {"POBR_DATA_VERSION": "old"}), patch.object(bump.subprocess, "run", side_effect=run):
+            self.assertEqual(bump.output_report(Path("/tmp/new-lock"), Path("/tmp/new-data")), {"differences": []})
 
 
 if __name__ == "__main__":
