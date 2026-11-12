@@ -512,6 +512,22 @@ rulesets 为空。发布这套 workflow 并确认首次真实 PR 运行后，再
 保留署名，说明原 PR 与替代 PR 的关系；squash 时确认 coauthor，手动关闭原 PR 并链接合入结果。
 不要重写对方提交，也不要把替代 PR 当成每个外部贡献的固定步骤。
 
+## L2 输出快照命令
+
+```bash
+mise run test build parity output_snapshot   # 默认验证；也包含在普通 parity / workspace test 中
+mise run snapshot:report                    # 对比当前锁的计算与已提交快照，打印待归因表格，不写快照
+mise run snapshot:record                    # 同一份比较，审阅后重录并打印 old → new
+```
+
+语料、字段、数字格式和接受规则见[维护者指南](maintainer-guide.md#parity-体系回归基准)。
+`POBR_SNAPSHOT_REPORT=<绝对路径>` 可让 report / record 另写 `pobr-output-diff/v1` JSON，
+其中 `differences` 每行含 `build`、单个元素的 `stats`、`before`、`after` 与空的 `attribution` / `reason`。
+`build` 是含语料目录的相对路径；将持久的有意差异转入 `known-differences.json` 时，按该登记表的目录名片段约定缩短 `build`。
+`POBR_OUTPUT_SNAPSHOT=<绝对路径>` 选择副本作比较或录制；默认是 `examples/output-snapshot.json`。
+`POBR_SNAPSHOT_LOCK=<绝对路径>` 指定报告所用的锁；实际数据身份仍须与它一致。
+`data:bump` 的自动报告、输出流与失败处理见 [RELEASING.md](../RELEASING.md#2-新游戏补丁pobr-改锁)。
+
 ## 慢构建与按需报告
 
 ```bash

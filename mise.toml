@@ -139,6 +139,14 @@ run = "bash devs/scripts/driver.sh skills:sweep"
 description = "Build codes against the reference values they carry: totals of every committed set, or `mise run accuracy <dir>` for one set's differences"
 run = "bash devs/scripts/driver.sh accuracy"
 
+[tasks."snapshot:record"]
+description = "Re-record native PoBR L2 outputs under the current data lock and print every changed stat"
+run = "bash devs/scripts/driver.sh snapshot:record"
+
+[tasks."snapshot:report"]
+description = "Report native PoBR L2 changes against the committed snapshot, with empty attribution cells"
+run = "bash devs/scripts/driver.sh snapshot:report"
+
 [tasks."builds:fetch"]
 description = "One poe.ninja build per ascendancy into a reference set: `mise run builds:fetch <set dir> [--pick first|last]`"
 run = "python3 devs/scripts/fetch-reference-builds.py"

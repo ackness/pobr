@@ -18,6 +18,7 @@ Bump both owners in one call when a new game patch changes the target.
 import argparse
 import io
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -242,7 +243,22 @@ def bump(lock_path, pairs, cache, shared, fetcher=None, asset=None, data_root=No
     return result
 
 
-def adopt(lock_path, pairs, cache, data_root, *, asset=None, fetcher=None, install=None):
+def output_report(lock_path, data_root):
+    """Use L2's calculation/formatting path; keep stdout's bump JSON machine readable."""
+    with tempfile.TemporaryDirectory(prefix="pobr-output-diff-") as temporary:
+        report = Path(temporary) / "report.json"
+        environment = {**os.environ, "POBR_DATA_ROOT": str(Path(data_root).resolve()),
+                       "POBR_SNAPSHOT_LOCK": str(Path(lock_path).resolve()),
+                       "POBR_OUTPUT_SNAPSHOT": str(ROOT / "examples/output-snapshot.json"),
+                       "POBR_SNAPSHOT_REPORT": str(report)}
+        # A shell override for the old patch must not redirect a freshly installed bump.
+        environment.pop("POBR_DATA_VERSION", None)
+        subprocess.run(["bash", "devs/scripts/driver.sh", "snapshot:report"], cwd=ROOT,
+                       env=environment, check=True, stdout=sys.stderr)
+        return bundle.decode(report.read_bytes())
+
+
+def adopt(lock_path, pairs, cache, data_root, *, asset=None, fetcher=None, install=None, report=None):
     """Bump, then install; a failed install restores the previous lock and CURRENT bytes."""
     lock_path, current = Path(lock_path), Path(data_root) / "CURRENT"
     previous = {path: regular(path) for path in (lock_path, current) if path.exists()}
@@ -256,6 +272,13 @@ def adopt(lock_path, pairs, cache, data_root, *, asset=None, fetcher=None, insta
                 replace_atomically(path, raw)
             print("data:bump: data:prepare failed; restored the previous lock and CURRENT", file=sys.stderr)
             raise
+        if report is not None:
+            try:
+                result["outputs"] = report()
+            except Exception as error:
+                # Calculation/report failures must not roll back an installed data lock.
+                result["outputs"] = {"status": "unavailable", "error": str(error)}
+                print(f"data:bump: L2 report unavailable: {error}; run mise run snapshot:report", file=sys.stderr)
     return result
 
 
@@ -276,7 +299,8 @@ def main():
                         "--install", str(args.data_root), "--cache", str(args.cache)],
                        cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
     result = adopt(args.lock, pairs, args.cache, args.data_root, asset=args.asset,
-                   install=None if args.no_prepare else install)
+                   install=None if args.no_prepare else install,
+                   report=lambda: output_report(args.lock, args.data_root))
     print(encoded(result).decode(), end="")
     if not args.no_prepare:
         print("data:prepare: installed the bumped lock", file=sys.stderr)

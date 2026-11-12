@@ -227,6 +227,17 @@ cmd_accuracy() {
     reference_report::reference_report -- --ignored --nocapture
 }
 
+cmd_snapshot() {
+  local mode="$1"
+  shift
+  if [[ $# -ne 0 ]]; then
+    echo "usage: mise run snapshot:<record|report>" >&2
+    return 2
+  fi
+  POBR_SNAPSHOT_MODE="$mode" cargo test -q -p pobr-build --test parity \
+    output_snapshot::snapshot_update -- --exact --ignored --nocapture
+}
+
 cmd_timings() {
   select_targets "$@" || return $?
   say "Compile only; Cargo writes target/cargo-timings/cargo-timing.html"
@@ -289,6 +300,8 @@ PoBR development commands (mise tasks; without mise run this script with the sam
   mise run gaps [--kind unique] [--limit N] Ranked game-text gaps across the worked builds
   mise run gap "<template or text>"        Stats, full sources, ledger fates and nearby rules for one line
   mise run accuracy [corpus dir]            Totals of every committed set, or one set's builds against their reference
+  mise run snapshot:report                  L2 changed stats with empty attribution cells
+  mise run snapshot:record                  Re-record L2 after reviewing intentional changes
   mise run builds:fetch <set dir> [--pick first|last]  One poe.ninja build per ascendancy into a reference set
   mise run build [-p <crate>]               Build application CLI by default
   mise run smoke                            Representative environment checks
@@ -542,6 +555,8 @@ case "${1:-}" in
   lookup)    shift; cmd_lookup "$@" ;;
   gaps|gap)  cmd_gaps "$@" ;;
   accuracy)  shift; cmd_accuracy "$@" ;;
+  snapshot:record) shift; cmd_snapshot record "$@" ;;
+  snapshot:report) shift; cmd_snapshot report "$@" ;;
   targets)   cmd_targets ;;
   cache)     shift; cmd_cache "$@" ;;
   ci)        shift; cmd_ci "$@" ;;

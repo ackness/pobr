@@ -79,8 +79,9 @@ merge and release mechanics: [development workflow](docs/development-workflow.md
   ([validation tiers](docs/maintainer-guide.md#验证分层)). Documentation needs
   diff/link review only. Changed behaviour needs regression assertions, which
   may be handed off unrun. Report what you inspected and actually ran; never
-  present review or `cargo check` as passing tests, and never lower a parity
-  baseline to make a test pass.
+  present review or `cargo check` as passing tests. Engine PRs must not change
+  results unexpectedly; data PRs attribute each L2 change before accepting it
+  ([L2/L3 policy](docs/maintainer-guide.md#parity-体系回归基准)).
 - **Before merging.** Rust, data or pipeline changes need a green
   `mise run ci <branch>`; PR gate omits Clippy and Rust tests. Run
   `mise run check:pr` before pushing ([local checks and hook](docs/development-workflow.md#日常命令)):
