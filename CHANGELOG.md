@@ -35,7 +35,7 @@ Saved workspaces can now open their readable builds when another entry is damage
 ### Internal
 
 - Removed the obsolete separate `support_display` input; gem descriptions use the game and locale packages. The package pins remain `game/0.5.5.5-3` and `locale/0.5.5.5-4`, with the same runtime identity. (#360)
-- Updated locale release instructions to review `expect.package` pins before publication, verify the immutable Release and then update PoBR's lock. (088010e0)
+- Updated locale release instructions to review `expect.package` pins before publication, verify the immutable Release and then update PoBR's lock. (#367)
 
 ## [0.0.50] - 2026-11-11
 
