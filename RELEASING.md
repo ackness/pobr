@@ -16,7 +16,7 @@ CI 与 release workflow 的机制见[开发工作流](docs/development-workflow.
 
 ## 1. 新游戏补丁：owner 先发布
 
-按顺序进行，前一步发布之后才能开始下一步：
+按顺序完成 owner 发布与核对，再到 PoBR 改锁：
 
 1. **RePoE 发布 `game/<patch>-<n>`。** 在 [ackness/repoe](https://github.com/ackness/repoe) 按它的
    [RELEASING.md](https://github.com/ackness/repoe/blob/master/RELEASING.md) 声明、构建并发布游戏包
@@ -24,11 +24,13 @@ CI 与 release workflow 的机制见[开发工作流](docs/development-workflow.
    `CONTRACT_VERSION`；需要新契约字段时，先在 PoBR 合并契约改动并打 `contract/<n>.<m>`，RePoE 再升级依赖
    （[数据契约版本](docs/data-architecture.md#31-数据契约版本)）。
 2. **翻译库发布 `locale/<patch>-<n>`。** 在 [ackness/poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats)
-   按它的 [RELEASING.md](https://github.com/ackness/poe2-zh-cn-stats/blob/main/RELEASING.md) 发布语言包。
+   按它的 [RELEASING.md](https://github.com/ackness/poe2-zh-cn-stats/blob/main/RELEASING.md)，先在配置 PR 中固定
+   `expect.package` 的 `bytes`、`sha256`，审阅合并并确认同一提交的 CI 通过后，再发布语言包。
    宝石说明译文随语言包 `display_texts.json` 的作用域发布，英文随游戏包发布
    （[数据架构](docs/data-architecture.md#3-发布与导入契约)）。
-3. **翻译库的 `published` PR。** 发布后在翻译库另开 PR，把该 Release 的附件 pin 写进配置的 `published`，
-   让它的 CI 持续下载并核对这个 Release；然后再到 PoBR 改锁。
+3. **核对语言 Release。** 翻译库 CI 按 `locale/<patch>-<n>` → `release/<patch>-<n>.json`
+   映射新 tag 的配置，下载 Release 的 zip 和 `SHA256SUMS`，与配置 pin 及重建的 zip 核对。
+   确认不可变 Release 通过核对后，再到 PoBR 改锁。
 
 ## 2. 新游戏补丁：PoBR 改锁
 
@@ -101,7 +103,8 @@ mise run ci-status --branch chore/data-bump-<patch>-<n>
 目标不变时 `data/CURRENT` 也不变，其余步骤同 §2：先 `data:prepare`，bump，迁移消费者，提交、开 PR、
 `mise run ci <分支>`、审阅身份差异、合并。
 
-**只换语言。** 翻译库发布新的 `locale/<patch>-<m>` 并照常补 `published` PR，游戏包不需要重新发布：
+**只换语言。** 翻译库按 [§1 的语言包发布与核对步骤](#1-新游戏补丁owner-先发布)发布并核对新的
+`locale/<patch>-<m>`，游戏包不需要重新发布：
 
 ```sh
 git switch -c chore/data-bump-locale-<patch>-<m> origin/master
