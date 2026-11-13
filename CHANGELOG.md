@@ -4,6 +4,39 @@ Notable changes to PoBR, the browser build planner at [pobr.win](https://pobr.wi
 
 Versions follow [SemVer](https://semver.org/). While the version is 0.0.x, any release may change behaviour; changes that need action from WASM, CLI or data consumers are listed under **Breaking changes**. How a release section is written: [RELEASING.md](RELEASING.md#4-发版上线).
 
+## [0.0.51] - 2026-11-13
+
+Saved workspaces can now open their readable builds when another entry is damaged, and stages show a notice when they were saved with a different game-data version. Passive-tree class starts and point budgets, skill types and weapon conditions now use the loaded catalogs. The WASM JSON schema version is now 21.
+
+### Breaking changes
+
+- The WASM JSON schema version is now 21 (was 20). WASM callers and frontends that check the handshake must expect 21 and use the matching engine build and contract, including the new `dataInfo()` export. (#365)
+
+### Added
+
+- Stages record the game-data version when created or edited and show a notice when it differs from the loaded data. Legacy saves still open, and viewing a stage leaves its saved data version unchanged. (#365)
+
+### Changed
+
+- Passive-tree class starts, default travel attributes and point budgets come from the engine and tree metadata. A point budget that cannot be determined shows as unavailable. (#363)
+- Weapon conditions follow the loaded weapon catalog. An unknown weapon flag keeps the generic one-handed/two-handed and melee/ranged properties and reports a diagnostic; unsupported type-specific damage remains diagnosed. (#362)
+
+### Fixed
+
+- An unreadable saved build, stage or baseline no longer prevents the rest of the workspace from opening. A recovery notice offers the original data for download and pauses automatic saving. Invalid imported workspace files are still rejected as a whole, preserving the current workspace. (#363)
+
+### For developers
+
+- Skill types map to engine bits by name, so reordered or larger tables retain their meaning. Missing named types are diagnosed and their scoped rules match no skills. (#361)
+- The new WASM `dataInfo()` export returns the loaded game-data version, passive-tree label and locales. The engine owns the tree-label mapping and rejects unknown game-version families or mismatched tree metadata before replacing active data. (#365)
+- Data bumps report per-build, per-stat output changes against a recorded PoBR snapshot. PoB2 reference gates run only when the reference game version matches the loaded data; otherwise they report the mismatch. (#364)
+- `mise run data:accept` runs multi-version smoke checks, corpus calculations, a strict display audit and the data-bump browser smoke test, then reports each result. (#366)
+
+### Internal
+
+- Removed the obsolete separate `support_display` input; gem descriptions use the game and locale packages. The package pins remain `game/0.5.5.5-3` and `locale/0.5.5.5-4`, with the same runtime identity. (#360)
+- Updated locale release instructions to review `expect.package` pins before publication, verify the immutable Release and then update PoBR's lock. (088010e0)
+
 ## [0.0.50] - 2026-11-11
 
 Skills triggered by a meta gem whose Energy source PoBR does not model (Cast on Dodge, Cast Fire Spell on Hit and similar) now show 0 action rate and 0 DPS instead of a number based on the spell's own rate of use, and the app says why. Minion configuration options such as Onslaught and Chaotic Might now change the minions, stats like Evasion and Block show as percentages, and a page that fails to render no longer blanks the whole app. Builds saved in v0.0.49 open unchanged, and the WASM JSON schema version is now 20.
@@ -276,6 +309,7 @@ pobr.win now calculates with game data 0.5.5.5 (was 0.5.5.4.2), imported from th
 
 Notes for 0.0.43 and earlier are on [GitHub Releases](https://github.com/ackness/pobr/releases).
 
+[0.0.51]: https://github.com/ackness/pobr/compare/v0.0.50...v0.0.51
 [0.0.50]: https://github.com/ackness/pobr/compare/v0.0.49...v0.0.50
 [0.0.49]: https://github.com/ackness/pobr/compare/v0.0.48...v0.0.49
 [0.0.48]: https://github.com/ackness/pobr/compare/v0.0.47...v0.0.48
