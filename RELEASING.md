@@ -160,7 +160,9 @@ build/prepare 都重新校验 bytes、SHA-256、manifest 和目标；不能只�
 (cd "$POBR_WT" && mise exec -- python3 -B -m pipeline.runtime.build_data \
   --lock "$REPLAY/data.lock.json" --cache "$REPLAY/cache" \
   --install "$REPLAY/data" --out "$REPLAY/old-prepared")
-POBR_DATA_ROOT="$REPLAY/data" POBR_SNAPSHOT_LOCK="$REPLAY/data.lock.json" \
+env -u POBR_DATA_VERSION \
+  POBR_DATA_ROOT="$REPLAY/data" POBR_SNAPSHOT_LOCK="$REPLAY/data.lock.json" \
+  POBR_OUTPUT_SNAPSHOT="$POBR_WT/examples/output-snapshot.json" \
   POBR_SNAPSHOT_REPORT="$REPLAY/old-l2.json" \
   mise -C "$POBR_WT" run snapshot:report
 ```
