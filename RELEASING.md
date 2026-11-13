@@ -122,6 +122,104 @@ mise run data:bump ackness/repoe game/<patch>-<n+1>
 
 任何新游戏包都要按 §2 的表重绑测试基线。
 
+## 已知目标的本地回放
+
+用已发布的 `poe2 / 0.5.5.5 / international` 验证三仓库的 build → staging → bump/install → L2，
+不采用新数据。游戏声明为 RePoE `release/0.5.5.5-3`，语言配置为翻译库 `release/0.5.5.5-4.json`；
+PoBR 起始锁须仍引用对应 Release。发布规则仍见 [§1](#1-新游戏补丁owner-先发布) 和两个 owner 的发布文档。
+
+每轮使用三个固定 revision 的干净 worktree，记录各自 `HEAD`、tree 与 mise 工具版本；新 worktree 先 `mise trust`。
+按[本地复用](docs/development-workflow.md#本地复用)复用编译缓存，各树保留自己的可写 target。
+下面的路径变量须改成这三个 worktree 的绝对路径；默认 release 输出必须尚不存在。不要复用已完成的回放目录。
+
+```sh
+set -eu
+REPOE_WT=/absolute/path/to/repoe-worktree
+LOCALE_WT=/absolute/path/to/locale-worktree
+POBR_WT=/absolute/path/to/pobr-worktree
+REPLAY=$(mktemp -d "${TMPDIR:-/tmp}/pobr-replay.XXXXXXXX")
+test ! -e "$REPOE_WT/.cache/release"
+test ! -e "$LOCALE_WT/.cache/release"
+mkdir "$REPLAY/data"
+cp "$POBR_WT/pipeline/data.lock.json" "$REPLAY/data.lock.json"
+cp "$POBR_WT/data/CURRENT" "$REPLAY/data/CURRENT"
+cp -R "$POBR_WT/data/overlay-common" "$REPLAY/data/overlay-common"
+```
+
+输入只从固定 Git 对象、不可变 Release 或已核对的同源缓存取得。下面的 `--fetch` 获取缺失的 owner 输入；
+PoBR prepare 默认下载缺失的锁定归档。也可普通复制已有缓存条目：RePoE 的 Release 输入放在
+`$REPOE_WT/.cache/release/inputs/downloads/<sha256>`，pin 来自所选声明的 `inputs.lock.json`；
+PoBR 的游戏／语言 ZIP 和 `test_fixtures` 归档放在 `--cache` 指定目录下的 `<sha256>`，pin 来自起始锁。
+build/prepare 都重新校验 bytes、SHA-256、manifest 和目标；不能只凭文件名认定缓存可信。
+准备好这三份 PoBR 归档后可给 prepare 加 `--offline`，但 publication preflight 仍读取远端元数据，
+所以整条流程不承诺离线。RePoE Python 环境按其 AGENTS 配置，已有 venv 可只读复用，不必同步环境。
+
+```sh
+(cd "$REPOE_WT" && mise run release:build -- --config release/0.5.5.5-3 --fetch --check)
+(cd "$LOCALE_WT" && mise run release:build -- --config release/0.5.5.5-4.json --fetch --check)
+(cd "$POBR_WT" && mise exec -- python3 -B -m pipeline.runtime.build_data \
+  --lock "$REPLAY/data.lock.json" --cache "$REPLAY/cache" \
+  --install "$REPLAY/data" --out "$REPLAY/old-prepared")
+POBR_DATA_ROOT="$REPLAY/data" POBR_SNAPSHOT_LOCK="$REPLAY/data.lock.json" \
+  POBR_SNAPSHOT_REPORT="$REPLAY/old-l2.json" \
+  mise -C "$POBR_WT" run snapshot:report
+```
+
+这四步须以 0 退出，旧快照须真正安装，才能把 bump 的成员与 L2 报告作为比较证据。接着分别运行公开发布 dry-run，
+保留完整日志和退出码；下面只接受退出码 1，仍须核对日志中的**全部拒绝原因**，任何额外错误都先停下排查：
+
+```sh
+if (cd "$REPOE_WT" && mise run release:publish -- \
+  --config release/0.5.5.5-3 --dry-run --reuse) >"$REPLAY/game-publish.log" 2>&1; then
+  cat "$REPLAY/game-publish.log"; echo "unexpected publish preflight success" >&2; exit 1
+else
+  status=$?; cat "$REPLAY/game-publish.log"; test "$status" -eq 1
+fi
+if (cd "$LOCALE_WT" && mise run release:publish -- \
+  --config release/0.5.5.5-4.json --dry-run --reuse) >"$REPLAY/locale-publish.log" 2>&1; then
+  cat "$REPLAY/locale-publish.log"; echo "unexpected publish preflight success" >&2; exit 1
+else
+  status=$?; cat "$REPLAY/locale-publish.log"; test "$status" -eq 1
+fi
+```
+
+这组历史配置会成功 staging，然后拒绝发布：游戏声明 `game/0.5.5.5-3`，下一序号已是 `-4`；
+语言声明 `locale/0.5.5.5-4`，下一序号已是 `-5`，且相同内容已发布（日志同时提示配置映射不符、无需重发）。
+远端状态改变或出现其他拒绝时，先解释差异，不能把任意 exit 1 当作预期结果。
+staging 成功不等于 publication preflight 通过；不修改历史声明来争取 exit 0，也不运行日志里打印的发布命令。
+
+将**本轮公开命令**产生的 ZIP、新 receipt 和 SHA256SUMS 普通复制到新镜像，保留原始绑定：
+
+```sh
+GAME_ASSETS="$REPOE_WT/.cache/release/publish/poe2-international-0.5.5.5-3/assets"
+LOCALE_ASSETS="$LOCALE_WT/.cache/release/publish/poe2-international-0.5.5.5-4/assets"
+GAME_MIRROR="$REPLAY/mirror/ackness/repoe/releases/download/local-n4/game-0.5.5.5"
+LOCALE_MIRROR="$REPLAY/mirror/ackness/poe2-zh-cn-stats/releases/download/local-n4/locale-0.5.5.5"
+mkdir -p "$GAME_MIRROR" "$LOCALE_MIRROR"
+cp "$GAME_ASSETS/pobr-game-0.5.5.5.zip" "$GAME_ASSETS/receipt.json" "$GAME_ASSETS/SHA256SUMS" "$GAME_MIRROR/"
+cp "$LOCALE_ASSETS/pobr-locale-0.5.5.5.zip" "$LOCALE_ASSETS/receipt.json" "$LOCALE_ASSETS/SHA256SUMS" "$LOCALE_MIRROR/"
+(cd "$GAME_MIRROR" && shasum -a 256 -c SHA256SUMS)
+(cd "$LOCALE_MIRROR" && shasum -a 256 -c SHA256SUMS)
+POBR_RELEASE_BASE_URL="file://$REPLAY/mirror" POBR_RELEASE_TRANSPORT=https \
+  POBR_DATA_ROOT="$REPLAY/data" mise -C "$POBR_WT" run data:bump -- \
+  repoe local-n4/game-0.5.5.5 locale local-n4/locale-0.5.5.5 \
+  --lock "$REPLAY/data.lock.json" --cache "$REPLAY/cache" --data-root "$REPLAY/data" \
+  >"$REPLAY/bump.json" 2>"$REPLAY/bump.log"
+cat "$REPLAY/bump.json" "$REPLAY/bump.log"
+mise -C "$POBR_WT" run data:check
+```
+
+镜像恰有上述两个目录、各三个附件；`local-n4/*` 只是在本地 URL/副本锁中使用的别名，不是真实 tag，
+不能给新构建配旧的已发布 receipt。`file://` 已在本地环境实测，其他环境先验证传输；必要时用只绑定
+`127.0.0.1` 的本地 HTTP 镜像替换 base URL。不上传附件。
+
+bump 须以 0 退出并实际安装；不可用 `--no-prepare` 代替回放。按 [§2](#2-新游戏补丁pobr-改锁) 检查完整身份／成员／
+`outputs` 结果，`outputs.status = "unavailable"` 仍须排查。保留 build 的 N3 汇总、receipt 中的详情／省略计数及有界值，
+按 [L2 命令](docs/development-workflow.md#l2-输出快照命令) 检查计算差异。这一已知内容回放应保持包字节、全部安装文件、
+runtime/release 身份与 L2 输出不变；新 receipt 如因生产者或路径不同而变化，要逐字段记录，不能重写证据。
+要验证重复性，在固定代码／工具／输入下完整跑两轮，分别重建、staging、安装，并比较 ZIP、receipt、SHA256SUMS、
+锁、安装文件、N3 与 L2。保留两轮目录；不改生产锁／默认数据，不运行真实 tag、push、Release 或部署。
+
 ## 4. 发版上线
 
 发版是一个单独的小 PR：升 `[workspace.package].version`，并在 [CHANGELOG.md](CHANGELOG.md) 顶部写本版一节。
