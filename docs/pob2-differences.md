@@ -29,9 +29,10 @@
 表中标“冻结”的是该队列的全部成员，它们以固定字节随游戏包发布，没有 RePoE producer 或缺固定输入。
 标“重放”的已有 RePoE adapter，但从固定的 `0.5.5.4.2` codec 或 prepared 政策重放 PoB2 解释，不在冻结队列中，退出同样按本表顺序。
 
-**顺序按对计算结果的影响排，不按文件大小。** parser 规则与 config 语义转为 PoBR 自有 Rust 规则；
-trade、暗金与基底类转为 RePoE 从客户端生成。客户端数值和稳定 ID 本身不证明单位、作用域或引擎映射，
-迁移时逐项核实这些证据并保留未知项诊断；每项单独评估，每一步保持门禁通过。
+**顺序按对计算结果的影响排，不按文件大小。** parser 规则与 config 语义归 PoBR；
+事实按可证客户端输入迁源，兼容成员按[已登记兼容来源](data-architecture.md#已登记兼容来源)维护。
+客户端数值和稳定 ID 本身不证明单位、作用域或引擎映射，迁移时逐项核实这些证据并保留未知项诊断；
+每项按具体维护问题单独评估，冻结成员数量不代表必须清零的开发欠账。
 
 | 顺序 | 输入（现状） | 对计算的影响 | 归属与退出 |
 | --- | --- | --- | --- |
@@ -44,7 +45,7 @@ trade、暗金与基底类转为 RePoE 从客户端生成。客户端数值和�
 | 7 | `base/weapon_types.json`（冻结，逐行迁自 PoB2） | 攻击技能的武器类型参数 | RePoE：从客户端 `WeaponTypes`／`ItemClasses` 生成 |
 | 8 | `overlay/trigger_configs.json`、`overlay/mirage_configs.json`（冻结）；`overlay/stat_set_labels.json` 与分支 codec、`overlay/skill_overrides.json` 未迁移的 prepared 解释、`overlay/gem_effects.json` 的历史显示顺序与 owner 兼容（重放） | 触发、幻影与分支选择相关的技能 | 触发与幻影：PoBR 自有规则。构筑码兼容需要的 PoB 编号保留为历史 codec；其余解释改由 RePoE 原生事实 |
 | 9 | `overlay/minions.json`、`overlay/spectres.json` 的目录成员、effect→variety aliases、限制与装备关系（重放） | 召唤物与幽魂的选择 | RePoE：需要独立依据；目录身份不能仅由 monster hash 反推，actor 数值已迁源 |
-| 10 | `overlay/uniques.json`（冻结） | 暗金的词缀归属、roll 与变体；导入的物品原文不经它 | RePoE：从客户端 `UniqueStashLayout`／`Words`／`Mods` 生成，再决定 `unique_relations.json` 是否进入游戏包 |
+| 10 | `overlay/uniques.json`（冻结） | 暗金的词缀归属、roll 与变体；导入的物品原文不经它 | RePoE：保留兼容模板，实际刷新时按[已登记兼容来源](data-architecture.md#已登记兼容来源)处理；客户端只验证可证连接，完整 `unique_relations.json` 采用另议 |
 | 11 | `overlay/passive_jewels.json`（冻结）；`base/jewel_radii.json` 的数值（重放） | 珠宝与范围珠宝 | RePoE：从客户端天赋与珠宝事实生成 |
 | 12 | 版本 overlay 的 `base/unarmed_data.json`、`overlay/catalysts.json`、`overlay/item_granted_skills.json`、`overlay/passive_jewel_slots.json`（冻结：已有 producer，缺固定输入） | 无：producer 重放的值与当前文件一致 | RePoE：把所需输入（player-context 归档或选表补充）发布为输入包 Release（`inputs/<patch>-<n>`）并声明对应 job |
 | 13 | `overlay/trade_catalog.json`、`overlay/trade_stat_map.json`（冻结） | 无：只用于交易与打造界面 | RePoE：从客户端 Mods／BaseItemTypes 与固定的交易站 stats 来源生成 |
