@@ -1,7 +1,7 @@
 import { loadGemDescriptionIndex, type GemDescriptionIndex } from '../lib/gemDescriptions';
 import { GameTextLocalizer, type GameDisplayName } from '../lib/localizedGameText';
 import { nativeDisplayTexts, type DisplayText } from '../lib/nativeDisplayTexts';
-import { NativeNameIndex, nativeClassNames, nativeCraftBaseNames, nativeGemNames, type GemNameLink, type GemNameOverride } from '../lib/nativeDisplayNames';
+import { NativeNameIndex, itemClassNames, nativeClassNames, nativeCraftBaseNames, nativeGemNames, type GemNameLink, type GemNameOverride } from '../lib/nativeDisplayNames';
 import { lineTemplateLocale, setGameLocales } from '../lib/gameLocales';
 import type { Lang } from '../lib/i18n';
 import type { UniqueEntry, UniqueDraft } from './uniques';
@@ -14,7 +14,7 @@ import type { CraftingMetadata } from './itemCrafting';
  */
 
 import { dataUrl, loadDataPack, type DataManifest } from './dataPack';
-import { fetchReleaseFile, validateRelease } from './runtimeRelease';
+import { fetchReleaseFile, validateRelease, type RuntimeRelease } from './runtimeRelease';
 import { nativeDigest } from './dataIntegrity';
 import { EXPECTED_SCHEMA_VERSION } from './types';
 import type {
@@ -124,6 +124,7 @@ function readAgainAfterBoot(rel: string): boolean {
       'overlay/trade_catalog.json',
       'overlay/config_options.json',
       'overlay/gem_effects.json',
+      'overlay/item_class_names.json',
     ].includes(rel);
 }
 
@@ -253,19 +254,21 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     const { version, files } = manifest;
     const optionalJson = async <T,>(path: string, fallback: T): Promise<T> =>
       files.includes(path) ? JSON.parse(await fetchVersionFile(version, path)) as T : fallback;
-    const [bases, cnBases, twBases, cnWords, catalogs] = await Promise.all([
+    const [bases, cnBases, twBases, cnWords, catalogs, classes] = await Promise.all([
       optionalJson<Array<{ id: string; name: string }>>('base/base_items.json', []),
       optionalJson<Record<string, string>>('i18n/zh-CN/base_items.json', {}),
       optionalJson<Record<string, string>>('i18n/zh-TW/base_items.json', {}),
       optionalJson<Record<string, string>>('i18n/zh-CN/words.json', {}),
       displayCatalogs(),
+      optionalJson<unknown>('overlay/item_class_names.json', undefined).then(value => value === undefined ? undefined
+        : itemClassNames(value, version, manifest!.schema === undefined ? undefined : (manifest as RuntimeRelease).target)),
     ]);
     const names: GameDisplayName[] = [
       ...Object.entries(cnWords).map(([name, name_zh_cn]) => ({ name, name_zh_cn })),
       ...bases.map(base => ({ name: base.name, name_zh_cn: cnBases[base.id], name_zh_tw: twBases[base.id] })),
       ...JSON.parse(wasm.gemCatalogJson()) as GemCatalogEntry[],
     ];
-    return { localizer: new GameTextLocalizer(names, catalogs), names: new NativeNameIndex(catalogs, bases) };
+    return { localizer: new GameTextLocalizer(names, catalogs), names: new NativeNameIndex(catalogs, bases, classes) };
   };
   const display = () => displayLocalizer ??= loadDisplayLocalizer().catch((error: unknown) => {
     displayLocalizer = undefined;

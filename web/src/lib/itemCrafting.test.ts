@@ -103,6 +103,8 @@ it('defaults to the selected equipped class, then a compatible empty-slot class'
 it('uses whole language-pack names and marks original names instead of showing partial substitutions', () => {
   expect(itemClassName('LifeFlask')).toBe('Life Flasks');
   expect(itemClassName('BodyArmour')).toBe('Body Armours');
+  expect(itemClassName('Body Armour', 'zh-CN')).toBe('胸甲');
+  expect(itemClassName('Body Armour', 'zh-TW')).toBe('胸甲');
   expect(itemClassLabel('LifeFlask', undefined, 'en-US')).toBe('Life Flask');
   expect(itemNameLabel('Body Armour', 'Body 护甲', 'zh-CN')).toBe('Body Armour（原名，暂无译名）');
   expect(itemNameLabel('Iron Ring', 'Iron Ring', 'zh-TW')).toBe('Iron Ring（原名，尚無譯名）');
@@ -110,4 +112,7 @@ it('uses whole language-pack names and marks original names instead of showing p
   expect(itemNameLabel('Iron Ring', undefined, 'en-US')).toBe('Iron Ring');
   expect(itemNameLabel('自制戒指', '自制戒指', 'zh-CN')).toBe('自制戒指');
   expect(itemClassLabel('BodyArmour', undefined, 'zh-CN')).toBe('胸甲');
+  expect(itemClassLabel('Body Armour', '来源甲', 'zh-TW')).toBe('来源甲');
+  expect(itemClassLabel('Body Armour', 'Body Armours', 'zh-TW')).toBe('胸甲');
+  expect(itemClassLabel('Body Armour', '来源甲', 'en-US')).toBe('Body Armour');
 });

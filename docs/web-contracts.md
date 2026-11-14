@@ -408,6 +408,13 @@ Vite 从根 Cargo workspace 元数据读取应用发布版本。后端成功初�
 无显示模板的词缀计为缺失并排除。普通物品不能加外延词缀；`affix_limit: 1` 的基底不能做成稀有。
 这是构造物品，不模拟通货或打造概率。
 
+制作类别的选项值与过滤保留 `ItemClasses.Id`。快照声明可选 `overlay/item_class_names.json` 时，
+名称按该成员的 ID 与英文原文精确连接语言包 `ItemClasses.Name`，仅替换显示标签。
+缺 ID、缺译、英文失配或空译文保留既有标签，不按英文扫描其他 ID 或经词条翻译兜回；
+有效整名译文优先于 Body Armour 的固定部位标签。旧包未声明成员时不额外请求，显示行为保持不变。
+成员的精简投影可以没有 `_meta`；存在的头部必须与可核对的运行目标一致，已声明的坏成员走加载错误。
+语言切换不保留其他语言或其他 ID 的异步结果，制作、存库和重开仍保留英文物品原文。
+
 `UniqueCatalog.tsx`／`uniqueCatalog.ts` 经 `uniqueCatalogJson` 浏览快照 `uniques.json`，
 按名／词条搜索，按位置／类别筛选，选择版本、变体、alternate、group 和数值（默认中值，可最小／中／最大）。
 `uniqueItemDraftJson` 用引擎解析器只写所选效果和数值，保留所选标题与变体名作来源。

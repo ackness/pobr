@@ -98,7 +98,8 @@ export function ItemCrafter({ session, lang, selectedSlot }: { session: BuildSes
   const rarities = base?.affix_limit === 1 ? ['NORMAL', 'MAGIC'] as const : ['NORMAL', 'MAGIC', 'RARE'] as const;
   const chosenRarity = rarity === 'RARE' && base?.affix_limit === 1 ? 'MAGIC' : rarity;
   const names = useLocalizedNames(bases.map(base => ({ kind: 'base' as const, name: base.name })), lang);
-  const classNames = useLocalizedNames(classes.map(name => ({ kind: 'itemClass' as const, name: itemClassName(name) })), lang);
+  const classRequests = useMemo(() => classes.map(id => ({ kind: 'itemClass' as const, id, name: itemClassName(id, lang) })), [classes, lang]);
+  const classNames = useLocalizedNames(classRequests, lang);
   const implicits = useLocalizedLines(base?.implicits ?? [], lang);
   const reset = () => { setItemClass(currentClass); setCreated(null); };
   if (error) return <p role="alert">{t('error')}</p>;
