@@ -38,7 +38,7 @@ PoBR 一侧的换数据、发版与回退步骤见 [RELEASING.md](../RELEASING.m
 | actor／常量／关系 | actor、怪物、图腾、玩家常量、Boss 数值与装备授予技能（[actor](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/docs/ordinary-actors.md#observed-three-root-ot-draft)） | 作用域与目录策展需要独立依据 |
 | 暗金 | RePoE 已投影关系候选（[暗金](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/docs/ordinary-uniques.md)） | 候选未进入游戏包，消费者未接入 |
 | PoB2 解释与 buff | 保留项按字段登记 | 按[冻结输入清单](pob2-differences.md#数据来源现状与退出顺序)的顺序退出 |
-| 语言／显示 | 简中与繁中接入，辅助说明与审核补译已接线（[翻译库](https://github.com/ackness/poe2-zh-cn-stats/tree/main/docs)；缺译统计 `mise run i18n:coverage`）；ItemClasses 采集与无目标诊断已完成 | 每种语言仍有 2 个技能 gem 名缺译（`mise run i18n:coverage`）；物品类别的目标英文证据、语言包投影与用户可见采用仍未完成，诊断产物不能代替正式输入；已接入国服词条行、宝石说明、召唤物名，不认证源客户端版本或数值等价 |
+| 语言／显示 | 简中与繁中接入，辅助说明与审核补译已接线（[翻译库](https://github.com/ackness/poe2-zh-cn-stats/tree/main/docs)；缺译统计 `mise run i18n:coverage`）；ItemClasses 采集与无目标诊断已完成，目标英文生成及繁中离线投影已有本地验证（[成员契约](data-architecture.md#item-class-names)） | 每种语言仍有 2 个技能 gem 名缺译（`mise run i18n:coverage`）；当前发布的游戏／语言包仍未包含物品类别新增文本，PoBR 尚未采用；后续需正式来源／输入固定、契约增量 tag、owner 发布、PoBR 改锁与消费者／UI 验收。国服未知来源及简中物品类别正式采用仍未完成；已接入的国服词条行、宝石说明、召唤物名不认证源客户端版本或数值等价 |
 | 玩家验收与性能 | 锁改变时完整 CI 跑 Web 冒烟；正式包继续用逐文件快照（[加载对比](wasm-package.md#web-data-load-comparison)） | 回滚需手动验证；真实玩家设备未测 |
 
 原料与采集记录在 [RePoE `sources/`](https://github.com/ackness/repoe/tree/master/sources) 与[翻译库 `sources/`](https://github.com/ackness/poe2-zh-cn-stats/tree/main/sources)；`pipeline/imports/sources.lock.json` 只保留 PoBR 消费范围的接受决定。
