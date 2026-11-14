@@ -1,7 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import { cleanLine, itemLines, linesToTranslate, localizeStructLine, localizedLines, useLocalizedNames } from './useLocalizedLines';
 import { itemDisplaySections } from '../lib/itemDisplay';
-import type { GameNameRequest } from '../lib/nativeDisplayNames';
+import { NativeNameIndex, type GameNameRequest } from '../lib/nativeDisplayNames';
 import type { Lang } from '../lib/i18n';
 
 const hooks = await vi.hoisted(async () => {
@@ -127,4 +127,36 @@ it('keys localized class names by id and language, keeping fallbacks on failed a
   expect(hooks.dirty).toBe(false);
   expect(render(second, 'zh-TW')).toEqual(['Same']);
   expect(render(second, 'en-US')).toEqual(['Same']);
+});
+
+it('separates legacy class names from explicit undefined, empty and wrong ids without changing requests', async () => {
+  hooks.reset();
+  backend.translateNames.mockReset();
+  const index = new NativeNameIndex([], [], { Ring: 'Rings' });
+  backend.translateNames.mockImplementation(async (requests: GameNameRequest[]) =>
+    index.split(requests, 'zh-CN').merge(['共享旧类别']));
+  const requests: GameNameRequest[][] = [
+    [{ kind: 'itemClass', name: 'Rings' }],
+    [{ kind: 'itemClass', id: undefined, name: 'Rings' }],
+    [{ kind: 'itemClass', id: '', name: 'Rings' }],
+    [{ kind: 'itemClass', id: 'Unknown', name: 'Rings' }],
+  ];
+  const render = (names: GameNameRequest[]) => {
+    hooks.beginRender();
+    const result = useLocalizedNames(names, 'zh-CN');
+    hooks.runEffects();
+    return result;
+  };
+  for (const [position, names] of requests.entries()) {
+    expect(render(names)).toEqual(['Rings']);
+    await vi.waitFor(() => expect(backend.translateNames).toHaveBeenCalledTimes(position + 1));
+    expect(backend.translateNames.mock.lastCall![0]).toBe(names);
+    await vi.waitFor(() => expect(render(names)).toEqual([position === 0 ? '共享旧类别' : 'Rings']));
+  }
+  expect(Object.hasOwn(requests[0][0], 'id')).toBe(false);
+  expect(Object.hasOwn(requests[1][0], 'id')).toBe(true);
+  expect(requests[1][0]).toStrictEqual({ kind: 'itemClass', id: undefined, name: 'Rings' });
+  expect(render(requests[0])).toEqual(['Rings']);
+  await vi.waitFor(() => expect(backend.translateNames).toHaveBeenCalledTimes(5));
+  await vi.waitFor(() => expect(render(requests[0])).toEqual(['共享旧类别']));
 });
