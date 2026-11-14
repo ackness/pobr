@@ -130,6 +130,22 @@ RePoE 发布 ───┐
     （`null` 表示"停在英文"，会挡住 zh-TW 回退到 zh-CN），也不写 `origins`（官方文本）。
     zh-CN 在现有文件里；zh-TW 是新文件 `i18n/zh-TW/display_texts.json`（`locale: "zh-TW"`，形状相同，已按 manifest
     `files` 读取），作用域还可以包括已有的 `MonsterVarieties.Name` 等。
+- <a id="item-class-names"></a>**物品类别名称（待 tag 的增量修订）。** 英文属于游戏 owner，译文属于语言 owner；这是可选的显示文本契约，
+  不改变既有数值成员。正式发布前按 [§3.1](#31-数据契约版本) 落实下一可用的 `contract/1.<m>` 并审核输入及新成员。
+  - 游戏包可带 `overlay/item_class_names.json`，在 snapshot manifest 的 overlay 域登记 `item_class_names`，
+    并列出实际成员及 SHA-256。`_meta` 必须含 `schema: "repoe-item-class-names/v1"`、`game`、`game_patch`、`realm`，
+    三项目标身份必须与游戏包及所选 facts manifest 相符。`scopes` 恰好只有 `ItemClasses.Name`，其值为稳定 Id 到英文 Name 原文的映射。
+    数据取自所选 facts 表 `ItemClasses` 的 `rows[].values.Id`／`Name`；`_row` 是物理行号，不能用作稳定键。
+  - 生成前校验全表，包括最后会因 Name 为空而跳过的行：Id 缺失、非字符串、空串、纯空白或重复均拒绝；
+    即使重复 Id 对应相同 Name 也拒绝。Name 缺失、`null` 或非字符串均拒绝。Name 为空串或纯空白时跳过，分别计数；
+    其余 Id 和 Name 原文保留，不 trim、不造别名。同名不同 Id 全部保留。输出按稳定键排序并确定性编码。
+  - provenance 由旁置生产收据固定：所选 facts manifest、表路径／字节数／SHA-256、原来源链及状态、历史 facts producer；
+    新生成器另记实际 commit／dirty、输入行数、输出项数及两类跳过计数。历史 producer 和来源状态不得改写为新生成器身份或升级为已接受。
+    成员本身无需嵌入整个输入锁。
+  - 旧包缺少该文件合法，行为保持不变。语言 owner 显式请求 `ItemClasses.Name` 时，必须读取目标游戏包中已由 manifest 声明并校验的实物成员；
+    只接受稳定 Id 存在且源英文与目标英文逐字相等的记录，不能把 Id 当英文，也不能用源表反造目标映射。
+    译文写入 `i18n/<locale>/display_texts.json` 的同名作用域，值为 `[目标英文原文, 译文原文]`，两者均保留原文。
+    新增成员或英文匹配不赋予来源发布资格，也不认证未知的源补丁／服别。
 - **寻址。** Release 产物按 `repository` + `tag` + `asset` 下载（匿名 HTTPS；私有仓库设
   `POBR_RELEASE_TRANSPORT=gh` 用 `gh` 的登录），按锁中的字节数与 SHA-256 校验后按内容缓存。
   已锁定的旧 `handoff/*` 产物继续按 40 位 commit SHA + 路径浅拉取；这些 tag 保活被钉住的 commit，不得删除或移动，
@@ -199,6 +215,10 @@ RePoE 发布 ───┐
   （没有说明），已有类型、字段和加载器对已有字节的解释都不变，所以 `CONTRACT_VERSION` 不加 1，与 1.1 新增
   `base/active_skill_types.json` 同类。`pobr-data` 没有新类型：引擎不读这个文件，RePoE 用 Python 的 release job
   生成它，adapter 不需要新的契约代码，可以继续固定在 `contract/1.1`。
+- **待 tag 的增量修订。** 可选文件 `overlay/item_class_names.json` 及语言作用域 `ItemClasses.Name`，定义见
+  [物品类别名称](#item-class-names)。旧包缺失时行为不变，`CONTRACT_VERSION` 保持 1；本修订仅定义显示成员，
+  无需新增 Rust DTO／API 或升级 adapter 的契约依赖。当前仅定义契约并准备本地候选，不预占未经核对的 `.m`，不创建 tag 或发布数据。
+  正式发布前须核对下一可用的 `contract/1.<m>`，在定义合并后落实不可变 tag，并审核所用输入及新成员的发布资格。
 - **RePoE 一侧。** `pobr-data-adapter` 与 release build 封存快照 manifest 时写入
   `"contract_version": <所依赖 pobr-data 的 CONTRACT_VERSION>`，数值取自依赖本身（例如由 adapter 读取
   `pobr_data::CONTRACT_VERSION` 输出），不手写；契约加 1 时先把依赖升到新的 `contract/<n>.0`，再重新生成并发布。
