@@ -12,17 +12,21 @@ fn monster_scaling() -> pobr_data::catalog::monster_scaling::MonsterScalingTable
     crate::support::test_monster_scaling()
 }
 
-fn player_with(base: ActorBaseStats, mods: Vec<Modifier>) -> Env {
+fn player_with_modifiers(base: ActorBaseStats, mods: Vec<Modifier>) -> Env {
     let mut actor = Actor::new(1, base);
     actor.mod_db.add_list(mods);
-    let mut env = Env::new(actor);
+    Env::new(actor)
+}
+
+fn player_with(base: ActorBaseStats, mods: Vec<Modifier>) -> Env {
+    let mut env = player_with_modifiers(base, mods);
     crate::support::add_game_tables(&mut env.cfg);
     env
 }
 
 #[test]
 fn sidebar_overcap_and_projectile_speed_use_the_existing_modifier_buckets() {
-    let mut env = player_with(
+    let mut env = player_with_modifiers(
         ActorBaseStats::default(),
         vec![
             Modifier::number("ChaosResistance", ModType::Base, 125.0),
@@ -136,7 +140,7 @@ fn perform_fills_block_chance() {
         life: 1000.0,
         ..ActorBaseStats::default()
     };
-    let mut env = player_with(
+    let mut env = player_with_modifiers(
         base,
         vec![
             // 95% block → first clamped by the default block chance cap of 50% (BaseBlockChanceMax).
@@ -149,7 +153,7 @@ fn perform_fills_block_chance() {
     assert_eq!(env.player.output.block_chance_max, 50.0);
 
     // Raising the cap mod moves it up too, still capped at the hard limit 90 (50 inherent + 50 from mods → cap 90).
-    let mut env = player_with(
+    let mut env = player_with_modifiers(
         ActorBaseStats {
             life: 1000.0,
             ..ActorBaseStats::default()
