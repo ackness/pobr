@@ -73,6 +73,10 @@ export type GameNameRequest =
    * the shown script, origin kept); without a record it stays English (no text path). */
   | { kind: 'monster'; id?: string | null; name: string };
 
+/** An explicit id field opts into strict resolution, including an empty or undefined id. */
+const itemClassIdRequest = (request: GameNameRequest): request is Extract<GameNameRequest, { kind: 'itemClass' }> =>
+  request.kind === 'itemClass' && Object.hasOwn(request, 'id');
+
 /** The supplement origin of a resolved name: the scope record's, or for a base line the first linked
  * id's that lists one (`null` = official). */
 function scopeOrigin(catalog: NativeDisplayTexts, scope: string, ids: readonly string[]): TextOrigin | null {
@@ -120,7 +124,7 @@ export class NativeNameIndex {
    * names it, `null` when it owns it but leaves it unresolved (show English), undefined when unowned. */
   resolveDetailed(request: GameNameRequest, lang: Lang): DisplayText | null | undefined {
     const catalog = this.catalogs.get(lang);
-    if (request.kind === 'itemClass' && this.itemClasses !== undefined) {
+    if (this.itemClasses !== undefined && itemClassIdRequest(request)) {
       if (lang === 'en-US') return undefined;
       const id = request.id;
       if (!id || !Object.hasOwn(this.itemClasses, id)) return null;
@@ -174,7 +178,7 @@ export class NativeNameIndex {
   } {
     const scoped = requests.map(request => this.resolveDetailed(request, lang));
     // A source-bound class never borrows a text-path translation, including supplements.
-    const textPath = requests.map((request, index) => !(request.kind === 'itemClass' && this.itemClasses !== undefined)
+    const textPath = requests.map((request, index) => !(this.itemClasses !== undefined && itemClassIdRequest(request))
       && (scoped[index] === undefined || (request.kind !== 'monster' && !!scoped[index]?.origin)));
     // A tree repeats names (many "Mana Regeneration" nodes): translate each once.
     const pending = [...new Set(requests.filter((_, index) => textPath[index]).map(request => request.name))];

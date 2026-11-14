@@ -112,7 +112,9 @@ it('uses whole language-pack names and marks original names instead of showing p
   expect(itemNameLabel('Iron Ring', undefined, 'en-US')).toBe('Iron Ring');
   expect(itemNameLabel('自制戒指', '自制戒指', 'zh-CN')).toBe('自制戒指');
   expect(itemClassLabel('BodyArmour', undefined, 'zh-CN')).toBe('胸甲');
-  expect(itemClassLabel('Body Armour', '来源甲', 'zh-TW')).toBe('来源甲');
+  expect(itemClassLabel('Body Armour', '护甲', 'zh-CN')).toBe('胸甲');
+  expect(itemClassLabel('Body Armour', '来源甲', 'zh-TW')).toBe('胸甲');
+  expect(itemClassLabel('Body Armour', '来源甲', 'zh-TW', true)).toBe('来源甲');
   expect(itemClassLabel('Body Armour', 'Body Armours', 'zh-TW')).toBe('胸甲');
   expect(itemClassLabel('Body Armour', '来源甲', 'en-US')).toBe('Body Armour');
 });

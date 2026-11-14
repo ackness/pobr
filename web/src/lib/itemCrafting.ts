@@ -28,9 +28,10 @@ export function itemNameLabel(original: string, translated: string | undefined, 
     ? translated : `${original}（${bindT(lang)('items.originalName')}）`;
 }
 
-export function itemClassLabel(original: string, translated: string | undefined, lang: Lang): string {
+/** Only the crafter opts into source-name priority; legacy catalogues keep their fixed UI terms. */
+export function itemClassLabel(original: string, translated: string | undefined, lang: Lang, preferTranslation = false): string {
   const shown = itemNameLabel(original, translated, lang);
-  if (lang !== 'en-US' && translated && shown === translated) return shown;
+  if (preferTranslation && lang !== 'en-US' && translated && shown === translated) return shown;
   const fixed = fixedItemClassLabel(original, lang);
   if (fixed) return fixed;
   return lang === 'en-US' ? original.replace(/([a-z])([A-Z])/g, '$1 $2') : shown;

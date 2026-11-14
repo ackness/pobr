@@ -108,7 +108,7 @@ export function ItemCrafter({ session, lang, selectedSlot }: { session: BuildSes
     <p>{t('hint')}</p>
     <div className="item-crafter-fields">
       <label>{t('itemClass')}<AppSelect ariaLabel={t('itemClass')} value={currentClass}
-        options={classes.map((value, i) => ({ value, label: itemClassLabel(value, classNames[i], lang) }))}
+        options={classes.map((value, i) => ({ value, label: itemClassLabel(value, classNames[i], lang, true) }))}
         onChange={value => { reset(); setItemClass(value); setBaseId(''); }} /></label>
       <label>{t('base')}<AppSelect ariaLabel={t('base')} value={base?.id ?? ''}
         options={bases.map((base, i) => ({ value: base.id, label: itemNameLabel(base.name, craftBaseDisplayName(base, lang, names[i] ?? base.name), lang), hint: `${t('requirement')} ${base.level}` }))}

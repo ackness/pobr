@@ -293,14 +293,26 @@ test('a present game class member blocks every text fallback on missing identity
     ['Rings', null], ['Rings', ''], ['Rings', ' \t']] as Array<[string | null, string | null] | undefined>) {
     const source = catalog({ 'ItemClasses.Name': { Other: ['Rings', '别的类别'], ...(pair ? { Ring: pair } : {}) } });
     const requests = [{ kind: 'itemClass' as const, id: 'Ring', name: 'Rings' },
-      { kind: 'itemClass' as const, id: 'Unknown', name: 'Rings' }, { kind: 'itemClass' as const, name: 'Rings' }];
+      { kind: 'itemClass' as const, id: 'Unknown', name: 'Rings' }, { kind: 'itemClass' as const, id: '', name: 'Rings' },
+      { kind: 'itemClass' as const, id: undefined, name: 'Rings' }];
     const { pending, merge } = new NativeNameIndex([source], [], english).split(requests, 'zh-CN');
     expect(pending).toEqual([]);
-    expect(merge(['must not be used'])).toEqual(['Rings', 'Rings', 'Rings']);
+    expect(merge(['must not be used'])).toEqual(['Rings', 'Rings', 'Rings', 'Rings']);
   }
   for (const sources of [[], [catalog({}, 'zh-TW')]]) {
     expect(new NativeNameIndex(sources, [], english).split([{ kind: 'itemClass', id: 'Ring', name: 'Rings' }], 'zh-CN').pending)
       .toEqual([]);
+  }
+});
+
+test('legacy item class requests without an id keep their scoped and text paths with a new game member', () => {
+  const request = { kind: 'itemClass' as const, name: 'Rings' };
+  for (const member of [undefined, { Ring: 'Rings' }]) {
+    const unowned = new NativeNameIndex([catalog({})], [], member).split([request], 'zh-CN');
+    expect(unowned.pending).toEqual(['Rings']);
+    expect(unowned.merge(['共享旧类别'])).toEqual(['共享旧类别']);
+    const scoped = new NativeNameIndex([catalog({ 'ItemClasses.Name': { Legacy: ['Rings', '旧类别'] } })], [], member);
+    expect(scoped.resolve(request, 'zh-CN')).toBe('旧类别');
   }
 });
 

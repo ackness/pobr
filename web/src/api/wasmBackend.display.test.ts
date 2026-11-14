@@ -5,6 +5,7 @@ import type { GemCatalogEntry } from './types';
 import { classDisplayName } from '../lib/nativeDisplayNames';
 import { gemDisplayName } from '../lib/skillNames';
 import { createHash } from 'node:crypto';
+import { itemClassLabel, itemClassName } from '../lib/itemCrafting';
 
 const state = vi.hoisted(() => ({ gems: [] as GemCatalogEntry[], crafting: { bases: [] as unknown[], mods: [] as unknown[] },
   detailed: false, ready: true }));
@@ -321,6 +322,24 @@ test('item class loading is optional, shares its request, and blocks old text tr
   expect(await backend.translateNames([request, { ...request, id: 'Unknown' }, { ...request, id: undefined }], 'zh-TW'))
     .toEqual(['Rings', 'Rings', 'Rings']);
   expect(await backend.translateNames([request], 'en-US')).toEqual(['Rings']);
+});
+
+test.each([false, true])('the legacy UniqueCatalog class caller preserves labels with member=%s', async present => {
+  const files: Record<string, unknown> = {
+    'i18n/zh-CN/display_texts.json': {
+      schema: 'pobr-native-display-texts/v1', game_patch: 'test', realm: 'international', locale: 'zh-CN',
+      catalog_sha256: 'a'.repeat(64), entries: { 'Body Armours': '护甲', Rings: '共享旧类别' }, scopes: {},
+    },
+  };
+  if (present) files['overlay/item_class_names.json'] = { scopes: { 'ItemClasses.Name': { Ring: 'Rings', 'Body Armour': 'Body Armours' } } };
+  vi.stubGlobal('fetch', async (url: string) => new Response(JSON.stringify(url === '/data/manifest.json'
+    ? { version: 'test', files: Object.keys(files) } : files[url.replace('/data/test/', '')])));
+  const backend = await createWasmBackend();
+  const classes = ['Body Armour', 'Ring'];
+  // Match UniqueCatalog's no-id request and its default shared formatter.
+  const translated = await backend.translateNames(classes.map(name => ({ kind: 'itemClass', name: itemClassName(name) })), 'zh-CN');
+  expect(translated).toEqual(['护甲', '共享旧类别']);
+  expect(classes.map((name, index) => itemClassLabel(name, translated[index], 'zh-CN'))).toEqual(['胸甲', '共享旧类别']);
 });
 
 test.each([null, { scopes: {} }, { scopes: { 'ItemClasses.Name': { Ring: '' } } }])(
