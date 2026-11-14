@@ -4,16 +4,20 @@ import { createWasmBackend } from './wasmBackend';
 import type { GemCatalogEntry } from './types';
 import { classDisplayName } from '../lib/nativeDisplayNames';
 import { gemDisplayName } from '../lib/skillNames';
+import { createHash } from 'node:crypto';
+import { itemClassLabel, itemClassName } from '../lib/itemCrafting';
 
 const state = vi.hoisted(() => ({ gems: [] as GemCatalogEntry[], crafting: { bases: [] as unknown[], mods: [] as unknown[] },
-  detailed: false }));
+  detailed: false, ready: true }));
 
 // Match the runtime import URL even when no local WASM package exists.
 vi.mock('/src/wasm/pkg/pobr_wasm.js', () => ({
   default: async () => {}, schemaVersion: () => EXPECTED_SCHEMA_VERSION,
   gemCatalogJson: () => JSON.stringify(state.gems),
   itemCraftingCatalogJson: () => JSON.stringify(state.crafting),
-  isDataReady: () => true,
+  isDataReady: () => state.ready,
+  stageDataBytes: () => {},
+  initStagedDataVerified: () => { state.ready = true; },
   dataInfo: () => JSON.stringify({ data_version: '1.0.0.1', tree_version: 'future_tree', locales: [
     { code: 'zh-CN', fallback: [], chain: ['zh-CN'], templates: true },
     { code: 'zh-TW', fallback: [], chain: ['zh-TW'], templates: false },
@@ -27,7 +31,7 @@ vi.mock('/src/wasm/pkg/pobr_wasm.js', () => ({
   },
 }));
 
-afterEach(() => { vi.unstubAllGlobals(); state.gems = []; state.crafting = { bases: [], mods: [] }; state.detailed = false; });
+afterEach(() => { vi.unstubAllGlobals(); state.gems = []; state.crafting = { bases: [], mods: [] }; state.detailed = false; state.ready = true; });
 
 test('passive tree loading uses the WASM label for a 1.0 pack and keeps historical labels', async () => {
   const current = [{ skill: 1 }], historical = [{ skill: 2 }];
@@ -284,4 +288,113 @@ test('gem descriptions load lazily, share in-flight work, project effects, and r
   expect(JSON.stringify(first)).not.toContain('discard me');
   expect(fetch.mock.calls.filter(([url]) => url.endsWith('gem_descriptions.json'))).toHaveLength(2);
   expect(await backend.gemDescriptions()).toBe(first);
+});
+
+test('item class loading is optional, shares its request, and blocks old text translations once declared', async () => {
+  const path = 'overlay/item_class_names.json';
+  const sidecar = {
+    schema: 'pobr-native-display-texts/v1', game_patch: 'test', realm: 'international', locale: 'zh-CN',
+    catalog_sha256: 'a'.repeat(64), entries: { Rings: 'wrong text path' },
+    scopes: { 'ItemClasses.Name': { Ring: ['Rings', '类别甲'], Other: ['Rings', '类别乙'] } },
+    origins: { scopes: { 'ItemClasses.Name': { Ring: 'agent' } } },
+  };
+  const files: Record<string, unknown> = { 'i18n/zh-CN/display_texts.json': sidecar };
+  const fetch = vi.fn(async (url: string) => {
+    if (url === '/data/manifest.json') return new Response(JSON.stringify({ version: 'test', files: Object.keys(files) }));
+    const file = url.replace('/data/test/', '');
+    if (!Object.hasOwn(files, file)) throw new Error(`Unexpected fetch: ${url}`);
+    return new Response(JSON.stringify(files[file]));
+  });
+  vi.stubGlobal('fetch', fetch);
+  const request = { kind: 'itemClass' as const, id: 'Ring', name: 'Rings' };
+  let backend = await createWasmBackend();
+  // Legacy whole-name matching cannot choose between these two translations.
+  expect(await backend.translateNames([request], 'zh-CN')).toEqual(['Rings']);
+  expect(fetch.mock.calls.some(([url]) => url.endsWith(path))).toBe(false);
+  files[path] = { scopes: { 'ItemClasses.Name': { Ring: 'Rings', Other: 'Rings' } } };
+  backend = await createWasmBackend();
+  const [first, second] = await Promise.all([
+    backend.translateNamesDetailed([request], 'zh-CN'), backend.translateNamesDetailed([request], 'zh-CN'),
+  ]);
+  expect(first).toEqual([{ text: '类别甲', origin: 'agent' }]);
+  expect(second).toEqual(first);
+  expect(fetch.mock.calls.filter(([url]) => url.endsWith(path))).toHaveLength(1);
+  expect(await backend.translateNames([request, { ...request, id: 'Unknown' }, { ...request, id: undefined }], 'zh-TW'))
+    .toEqual(['Rings', 'Rings', 'Rings']);
+  expect(await backend.translateNames([request], 'en-US')).toEqual(['Rings']);
+});
+
+test.each([false, true])('the legacy UniqueCatalog class caller preserves labels with member=%s', async present => {
+  const files: Record<string, unknown> = {
+    'i18n/zh-CN/display_texts.json': {
+      schema: 'pobr-native-display-texts/v1', game_patch: 'test', realm: 'international', locale: 'zh-CN',
+      catalog_sha256: 'a'.repeat(64), entries: { 'Body Armours': '护甲', Rings: '共享旧类别' }, scopes: {},
+    },
+  };
+  if (present) files['overlay/item_class_names.json'] = { scopes: { 'ItemClasses.Name': { Ring: 'Rings', 'Body Armour': 'Body Armours' } } };
+  vi.stubGlobal('fetch', async (url: string) => new Response(JSON.stringify(url === '/data/manifest.json'
+    ? { version: 'test', files: Object.keys(files) } : files[url.replace('/data/test/', '')])));
+  const backend = await createWasmBackend();
+  const classes = ['Body Armour', 'Ring'];
+  // Match UniqueCatalog's no-id request and its default shared formatter.
+  const translated = await backend.translateNames(classes.map(name => ({ kind: 'itemClass', name: itemClassName(name) })), 'zh-CN');
+  expect(translated).toEqual(['护甲', '共享旧类别']);
+  expect(classes.map((name, index) => itemClassLabel(name, translated[index], 'zh-CN'))).toEqual(['胸甲', '共享旧类别']);
+});
+
+test.each([null, { scopes: {} }, { scopes: { 'ItemClasses.Name': { Ring: '' } } }])(
+  'a declared invalid item class member rejects the name loader: %j', async member => {
+    const path = 'overlay/item_class_names.json';
+    vi.stubGlobal('fetch', async (url: string) => new Response(JSON.stringify(url === '/data/manifest.json'
+      ? { version: 'test', files: [path] } : member)));
+    const backend = await createWasmBackend();
+    await expect(backend.translateNames([{ kind: 'itemClass', id: 'Ring', name: 'Rings' }], 'zh-CN'))
+      .rejects.toThrow(/item class/i);
+  });
+
+test('item class fetch failures reject and can retry without becoming a legacy pack', async () => {
+  const path = 'overlay/item_class_names.json';
+  let fail = true;
+  const fetch = vi.fn(async (url: string) => {
+    if (url === '/data/manifest.json') return new Response(JSON.stringify({ version: 'test', files: [path] }));
+    return fail ? new Response('', { status: 503 })
+      : new Response(JSON.stringify({ scopes: { 'ItemClasses.Name': { Ring: 'Rings' } } }));
+  });
+  vi.stubGlobal('fetch', fetch);
+  const backend = await createWasmBackend();
+  const request = [{ kind: 'itemClass' as const, id: 'Ring', name: 'Rings' }];
+  await expect(backend.translateNames(request, 'zh-CN')).rejects.toThrow(/503/);
+  fail = false;
+  expect(await backend.translateNames(request, 'zh-CN')).toEqual(['Rings']);
+  expect(fetch.mock.calls.filter(([url]) => url.endsWith(path))).toHaveLength(2);
+});
+
+test('initialization rejects a declared item class member whose bytes fail its snapshot pin', async () => {
+  state.ready = false;
+  const path = 'overlay/item_class_names.json';
+  const raw = JSON.stringify({ scopes: { 'ItemClasses.Name': { Ring: 'Rings' } } });
+  const snapshot = { schema_version: 3, files: { [path]: createHash('sha256').update(raw).digest('hex') } };
+  vi.stubGlobal('fetch', async (url: string) => new Response(url === '/data/manifest.json'
+    ? JSON.stringify({ version: 'test', files: ['manifest.json', path] })
+    : url.endsWith('/manifest.json') ? JSON.stringify(snapshot) : `${raw} `));
+  await expect((await createWasmBackend()).init()).rejects.toThrow(`SHA-256 mismatch: ${path}`);
+});
+
+test('class name lookup reuses the pinned member bytes staged at initialization', async () => {
+  state.ready = false;
+  const path = 'overlay/item_class_names.json';
+  const contents: Record<string, string> = { [path]: JSON.stringify({ scopes: { 'ItemClasses.Name': { Ring: 'Rings' } } }) };
+  const sha = (raw: string) => createHash('sha256').update(raw).digest('hex');
+  contents['manifest.json'] = JSON.stringify({ schema_version: 3, files: { [path]: sha(contents[path]) } });
+  const fetch = vi.fn(async (url: string) => {
+    if (url === '/data/manifest.json') return new Response(JSON.stringify({ version: 'test', files: Object.keys(contents) }));
+    const file = url.replace('/data/test/', '');
+    if (file === path && state.ready) throw new Error('Do not refetch already verified item class names');
+    return new Response(contents[file]);
+  });
+  vi.stubGlobal('fetch', fetch);
+  const backend = await createWasmBackend();
+  await backend.init();
+  expect(await backend.translateNames([{ kind: 'itemClass', id: 'Ring', name: 'Rings' }], 'zh-CN')).toEqual(['Rings']);
+  expect(fetch.mock.calls.filter(([url]) => url.endsWith(path))).toHaveLength(1);
 });

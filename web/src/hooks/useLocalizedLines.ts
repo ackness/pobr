@@ -212,7 +212,10 @@ export function useLocalizedLines(lines: string[], lang: Lang): string[] {
 /** Names whose identity is known (passive node id, item base line) → display, batched like
  * `useLocalizedLines`. Until the backend answers, and on failure, the English name is shown. */
 export function useLocalizedNames(names: readonly GameNameRequest[], lang: Lang): string[] {
-  const key = useMemo(() => JSON.stringify(names), [names]);
+  // JSON omits undefined, but an own class id opts into strict resolution. Normalize only the key.
+  const key = useMemo(() => JSON.stringify(names.map(name =>
+    name.kind === 'itemClass' && Object.hasOwn(name, 'id') && name.id === undefined
+      ? { ...name, id: null } : name)), [names]);
   const [result, setResult] = useState<{ key: string; lang: Lang; values: string[] } | null>(null);
   useEffect(() => {
     if (lang === 'en-US' || names.length === 0) return;

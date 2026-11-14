@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import type { ClassNames, GemCatalogEntry, PassiveTreeMeta } from '../api/types';
-import { NativeNameIndex, classDisplayName, nativeClassNames, nativeGemNames } from './nativeDisplayNames';
+import { NativeNameIndex, classDisplayName, itemClassNames, nativeClassNames, nativeGemNames } from './nativeDisplayNames';
 import type { NativeDisplayTexts } from './nativeDisplayTexts';
 import { gemDisplayName, skillDisplayName } from './skillNames';
 
@@ -266,4 +266,78 @@ test('item class names use a unique current whole name, then the language-pack t
   expect(index.resolve({ kind: 'itemClass', name: 'Life Flasks' }, 'zh-TW')).toBeUndefined();
   source.scopes['ItemClasses.Name'].OtherFlask = ['Life Flasks', '冲突名称'];
   expect(index.resolve({ kind: 'itemClass', name: 'Life Flasks' }, 'zh-CN')).toBeNull();
+});
+
+test('game item classes resolve by native id and exact game English, including legacy weapon aliases', () => {
+  const english = { Staff: 'Staves', Warstaff: 'Quarterstaves', UtilityFlask: 'Charms', First: 'Same', Second: 'Same' };
+  const source = catalog({ 'ItemClasses.Name': { Staff: ['Staves', '甲杖'], Warstaff: ['Quarterstaves', '乙杖'],
+    UtilityFlask: ['Charms', '饰品甲'], First: ['Same', '同名甲'], Second: ['Same', '同名乙'] } });
+  source.origins = { scopes: { 'ItemClasses.Name': { Warstaff: 'human' } } };
+  const index = new NativeNameIndex([source], [], english);
+  const requests = Object.keys(english).map(id => ({ kind: 'itemClass' as const, id, name: id }));
+  const { pending, mergeDetailed } = index.split(requests, 'zh-CN');
+  expect(pending).toEqual([]);
+  expect(mergeDetailed([])).toEqual([
+    { text: '甲杖', origin: null }, { text: '乙杖', origin: 'human' }, { text: '饰品甲', origin: null },
+    { text: '同名甲', origin: null }, { text: '同名乙', origin: null },
+  ]);
+  expect(requests.map(request => request.id)).toEqual(Object.keys(english));
+  const en = index.split(requests, 'en-US');
+  expect(en.pending).toEqual([]);
+  expect(en.mergeDetailed([])).toEqual(requests.map(({ name }) => ({ text: name, origin: null })));
+});
+
+test('a present game class member blocks every text fallback on missing identity or translation', () => {
+  const english = { Ring: 'Rings' };
+  for (const pair of [undefined, ['Other', '旧名'], ['Rings ', '旧名'], [null, '旧名'],
+    ['Rings', null], ['Rings', ''], ['Rings', ' \t']] as Array<[string | null, string | null] | undefined>) {
+    const source = catalog({ 'ItemClasses.Name': { Other: ['Rings', '别的类别'], ...(pair ? { Ring: pair } : {}) } });
+    const requests = [{ kind: 'itemClass' as const, id: 'Ring', name: 'Rings' },
+      { kind: 'itemClass' as const, id: 'Unknown', name: 'Rings' }, { kind: 'itemClass' as const, id: '', name: 'Rings' },
+      { kind: 'itemClass' as const, id: undefined, name: 'Rings' }];
+    const { pending, merge } = new NativeNameIndex([source], [], english).split(requests, 'zh-CN');
+    expect(pending).toEqual([]);
+    expect(merge(['must not be used'])).toEqual(['Rings', 'Rings', 'Rings', 'Rings']);
+  }
+  for (const sources of [[], [catalog({}, 'zh-TW')]]) {
+    expect(new NativeNameIndex(sources, [], english).split([{ kind: 'itemClass', id: 'Ring', name: 'Rings' }], 'zh-CN').pending)
+      .toEqual([]);
+  }
+});
+
+test('legacy item class requests without an id keep their scoped and text paths with a new game member', () => {
+  const request = { kind: 'itemClass' as const, name: 'Rings' };
+  for (const member of [undefined, { Ring: 'Rings' }]) {
+    const unowned = new NativeNameIndex([catalog({})], [], member).split([request], 'zh-CN');
+    expect(unowned.pending).toEqual(['Rings']);
+    expect(unowned.merge(['共享旧类别'])).toEqual(['共享旧类别']);
+    const scoped = new NativeNameIndex([catalog({ 'ItemClasses.Name': { Legacy: ['Rings', '旧类别'] } })], [], member);
+    expect(scoped.resolve(request, 'zh-CN')).toBe('旧类别');
+  }
+});
+
+test('an absent game class member retains the legacy class name path even when the request has an id', () => {
+  const source = catalog({ 'ItemClasses.Name': { Legacy: ['Rings', '旧类别'] } });
+  const request = { kind: 'itemClass' as const, id: 'Ring', name: 'Rings' };
+  expect(new NativeNameIndex([source]).resolve(request, 'zh-CN')).toBe('旧类别');
+  const { pending, merge } = new NativeNameIndex([]).split([request], 'zh-CN');
+  expect(pending).toEqual(['Rings']);
+  expect(merge(['兼容译名'])).toEqual(['兼容译名']);
+});
+
+test('item class members accept compact scopes, preserve raw strings and validate optional metadata', () => {
+  const scopes = { 'ItemClasses.Name': { ' Ring ': ' Rings \r\n' } };
+  const target = { game: 'poe2' as const, game_patch: 'test', realm: 'international' as const };
+  expect(itemClassNames({ scopes }, 'test', target)).toEqual(scopes['ItemClasses.Name']);
+  expect(itemClassNames({ scopes, _meta: { ...target, schema: 'repoe-item-class-names/v1' } }, 'test', target))
+    .toEqual(scopes['ItemClasses.Name']);
+  for (const value of [null, {}, { scopes: {} }, { scopes: { ...scopes, Extra: {} } },
+    { scopes: { 'ItemClasses.Name': [] } }, ...['', ' ', null, 42].map(text => ({ scopes: { 'ItemClasses.Name': { Ring: text } } })),
+    ...['', ' \t'].map(id => ({ scopes: { 'ItemClasses.Name': { [id]: 'Rings' } } })),
+    ...[null, {}, { ...target, schema: 'wrong' }, { ...target, schema: 'repoe-item-class-names/v1', game_patch: 'other' },
+      { ...target, schema: 'repoe-item-class-names/v1', realm: 'china' }].map(_meta => ({ scopes, _meta }))]) {
+    expect(() => itemClassNames(value, 'test', target)).toThrow(/item class/i);
+  }
+  expect(() => itemClassNames({ scopes, _meta: { ...target, schema: 'repoe-item-class-names/v1', realm: ['international'] } }, 'test'))
+    .toThrow(/item class/i);
 });

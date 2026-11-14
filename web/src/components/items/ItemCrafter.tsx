@@ -98,7 +98,8 @@ export function ItemCrafter({ session, lang, selectedSlot }: { session: BuildSes
   const rarities = base?.affix_limit === 1 ? ['NORMAL', 'MAGIC'] as const : ['NORMAL', 'MAGIC', 'RARE'] as const;
   const chosenRarity = rarity === 'RARE' && base?.affix_limit === 1 ? 'MAGIC' : rarity;
   const names = useLocalizedNames(bases.map(base => ({ kind: 'base' as const, name: base.name })), lang);
-  const classNames = useLocalizedNames(classes.map(name => ({ kind: 'itemClass' as const, name: itemClassName(name) })), lang);
+  const classRequests = useMemo(() => classes.map(id => ({ kind: 'itemClass' as const, id, name: itemClassName(id, lang) })), [classes, lang]);
+  const classNames = useLocalizedNames(classRequests, lang);
   const implicits = useLocalizedLines(base?.implicits ?? [], lang);
   const reset = () => { setItemClass(currentClass); setCreated(null); };
   if (error) return <p role="alert">{t('error')}</p>;
@@ -107,7 +108,7 @@ export function ItemCrafter({ session, lang, selectedSlot }: { session: BuildSes
     <p>{t('hint')}</p>
     <div className="item-crafter-fields">
       <label>{t('itemClass')}<AppSelect ariaLabel={t('itemClass')} value={currentClass}
-        options={classes.map((value, i) => ({ value, label: itemClassLabel(value, classNames[i], lang) }))}
+        options={classes.map((value, i) => ({ value, label: itemClassLabel(value, classNames[i], lang, true) }))}
         onChange={value => { reset(); setItemClass(value); setBaseId(''); }} /></label>
       <label>{t('base')}<AppSelect ariaLabel={t('base')} value={base?.id ?? ''}
         options={bases.map((base, i) => ({ value: base.id, label: itemNameLabel(base.name, craftBaseDisplayName(base, lang, names[i] ?? base.name), lang), hint: `${t('requirement')} ${base.level}` }))}

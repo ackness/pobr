@@ -8,8 +8,11 @@ export function craftBaseDisplayName(base: CraftBase, lang: Lang, fallback: stri
   return (lang === 'en-US' ? undefined : base.displayNames?.[lang]) ?? fallback;
 }
 
-/** Whole-name aliases select existing language-pack rows, never translated fragments. */
-export const itemClassName = (name: string) => ({
+const fixedItemClassLabel = (name: string, lang: Lang) =>
+  name.replace(/\s/g, '') === 'BodyArmour' ? slotLabel(lang, 'bodyarmour') : undefined;
+
+/** Whole-name aliases select old language-pack rows; an existing UI term stays the display fallback. */
+export const itemClassName = (name: string, lang?: Lang) => (lang ? fixedItemClassLabel(name, lang) : undefined) ?? ({
   Amulet: 'Amulets', Belt: 'Belts', BodyArmour: 'Body Armours',
   Boots: 'Boots', Gloves: 'Gloves', Helmet: 'Helmets', Ring: 'Rings',
   LifeFlask: 'Life Flasks', ManaFlask: 'Mana Flasks', Charm: 'Charms',
@@ -25,9 +28,13 @@ export function itemNameLabel(original: string, translated: string | undefined, 
     ? translated : `${original}（${bindT(lang)('items.originalName')}）`;
 }
 
-export function itemClassLabel(original: string, translated: string | undefined, lang: Lang): string {
-  if (original.replace(/\s/g, '') === 'BodyArmour') return slotLabel(lang, 'bodyarmour');
-  return lang === 'en-US' ? original.replace(/([a-z])([A-Z])/g, '$1 $2') : itemNameLabel(original, translated, lang);
+/** Only the crafter opts into source-name priority; legacy catalogues keep their fixed UI terms. */
+export function itemClassLabel(original: string, translated: string | undefined, lang: Lang, preferTranslation = false): string {
+  const shown = itemNameLabel(original, translated, lang);
+  if (preferTranslation && lang !== 'en-US' && translated && shown === translated) return shown;
+  const fixed = fixedItemClassLabel(original, lang);
+  if (fixed) return fixed;
+  return lang === 'en-US' ? original.replace(/([a-z])([A-Z])/g, '$1 $2') : shown;
 }
 
 export function defaultCraftClass(catalog: CraftCatalog, slot: string | null | undefined, text?: string): string {

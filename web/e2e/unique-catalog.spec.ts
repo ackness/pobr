@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { lifeValue, settledText } from './upgradesPage';
+import { deflateSync } from 'node:zlib';
+import { installItemClassFixture } from './itemClassFixture';
 
 test('find a unique by modifier, choose a variant and rolls, then save and equip its preview', async ({ page }, testInfo) => {
   await page.route('**/api/import/wegame', route => route.fulfill({ json: {
@@ -53,3 +55,32 @@ test('find a unique by modifier, choose a variant and rolls, then save and equip
   await page.addStyleTag({ content: 'html { scrollbar-gutter: stable; }' });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+for (const member of [false, true]) {
+  test(`legacy Unique class labels retain fixed Body Armour and translated Ring with member=${member}`, async ({ page }) => {
+    if (member) await installItemClassFixture(page, {
+      scopes: { 'ItemClasses.Name': { Ring: 'Rings', 'Body Armour': 'Body Armours' } },
+    }, {});
+    const code = deflateSync('<PathOfBuilding2><Build level="85" className="Sorceress"/><Items/></PathOfBuilding2>').toString('base64url');
+    await page.goto('/build');
+    await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
+    await page.locator('.import-submit').click();
+    await openItemsAfterImport(page);
+    await page.getByRole('button', { name: 'Unique catalogue', exact: true }).click();
+    const classes = page.locator('.unique-catalogue .item-crafter-fields [role="combobox"]').first();
+    await classes.click();
+    await page.getByRole('option', { name: 'Body Armour', exact: true }).click();
+    await page.locator('.shell-settings-button').click();
+    await page.locator('.shell-settings').getByRole('combobox').first().click();
+    await page.getByRole('option', { name: '简体中文', exact: true }).click();
+    await page.locator('.shell-settings').getByRole('button', { name: '关闭', exact: true }).click();
+    await expect(classes).toHaveText('胸甲');
+    await classes.click();
+    // The option itself carries the unchanged legacy class value.
+    const ringOption = page.locator('[role="option"][data-value="Ring"]');
+    await expect(ringOption).toHaveText('戒指');
+    await ringOption.click();
+    await expect(classes).toHaveText('戒指');
+    await expect(page.locator('.unique-results .unique-result').first()).toBeVisible();
+  });
+}

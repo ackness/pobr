@@ -4,6 +4,7 @@ import { gameTextChain } from './gameLocales';
 import type { Lang } from './i18n';
 import { listedOrigin, type DisplayText, type NativeDisplayTexts, type TextOrigin } from './nativeDisplayTexts';
 import type { CraftingMetadata } from '../api/itemCrafting';
+import type { RuntimeRelease } from '../api/runtimeRelease';
 
 /** The same gem -> effect links consumed by GameData, including its overlay. */
 export interface GemNameLink { id: string; granted_effect_id?: string | null }
@@ -11,6 +12,28 @@ export interface GemNameOverride { gem_id: string; granted_effect_id: string }
 
 type Scope = NativeDisplayTexts['scopes'][string];
 const own = (scope: Scope, id: string) => Object.hasOwn(scope, id);
+const ITEM_CLASSES = 'ItemClasses.Name';
+const object = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+/** Runtime projection drops audit headers; when present, they must agree with the loaded target. */
+export function itemClassNames(value: unknown, version: string, target?: RuntimeRelease['target']): Record<string, string> {
+  const scopes = object(value) && object(value.scopes) ? value.scopes : null;
+  const names = scopes?.[ITEM_CLASSES];
+  if (!scopes || Object.keys(scopes).length !== 1 || !object(names)
+    || !Object.entries(names).every(([id, english]) => id.trim().length > 0 && typeof english === 'string' && english.trim().length > 0)) {
+    throw new Error('Invalid item class name shape');
+  }
+  if (object(value) && Object.hasOwn(value, '_meta')) {
+    const meta = value._meta;
+    if (!object(meta) || meta.schema !== 'repoe-item-class-names/v1' || meta.game !== 'poe2'
+      || meta.game_patch !== version || (meta.realm !== 'international' && meta.realm !== 'china')
+      || target && (meta.game !== target.game || meta.game_patch !== target.game_patch || meta.realm !== target.realm)) {
+      throw new Error('Invalid item class name target');
+    }
+  }
+  return names as Record<string, string>;
+}
 
 /** Only the exact source-owned base and its current English can supply a name. */
 export function nativeCraftBaseNames(data: CraftingMetadata, catalogs: readonly NativeDisplayTexts[]): CraftingMetadata {
@@ -43,12 +66,16 @@ export type GameNameRequest =
   | { kind: 'passive'; id: string; name: string }
   /** A line the item classifier or the item format marks as the base type. */
   | { kind: 'base'; name: string }
-  /** Whole class name selected from a language-pack alias, never modifier prose. */
-  | { kind: 'itemClass'; name: string }
+  /** Native ItemClasses.Id; name remains the legacy display fallback for old packs. */
+  | { kind: 'itemClass'; id?: string; name: string }
   /** A minion: its game MonsterVarieties Id (the WASM `monster_variety_id`) and English name. Only the
    * `MonsterVarieties.Name` scope names it, the first along the game-text chain that has the record (in
    * the shown script, origin kept); without a record it stays English (no text path). */
   | { kind: 'monster'; id?: string | null; name: string };
+
+/** An explicit id field opts into strict resolution, including an empty or undefined id. */
+const itemClassIdRequest = (request: GameNameRequest): request is Extract<GameNameRequest, { kind: 'itemClass' }> =>
+  request.kind === 'itemClass' && Object.hasOwn(request, 'id');
 
 /** The supplement origin of a resolved name: the scope record's, or for a base line the first linked
  * id's that lists one (`null` = official). */
@@ -75,7 +102,8 @@ export class NativeNameIndex {
   private readonly catalogs = new Map<Lang, NativeDisplayTexts>();
   private readonly baseIds = new Map<string, string[]>();
 
-  constructor(catalogs: readonly NativeDisplayTexts[], bases: readonly { id: string; name: string }[] = []) {
+  constructor(catalogs: readonly NativeDisplayTexts[], bases: readonly { id: string; name: string }[] = [],
+    private readonly itemClasses?: Readonly<Record<string, string>>) {
     for (const catalog of catalogs) {
       if (this.catalogs.has(catalog.locale)) throw new Error('Duplicate native display locale');
       this.catalogs.set(catalog.locale, catalog);
@@ -96,6 +124,13 @@ export class NativeNameIndex {
    * names it, `null` when it owns it but leaves it unresolved (show English), undefined when unowned. */
   resolveDetailed(request: GameNameRequest, lang: Lang): DisplayText | null | undefined {
     const catalog = this.catalogs.get(lang);
+    if (this.itemClasses !== undefined && itemClassIdRequest(request)) {
+      if (lang === 'en-US') return undefined;
+      const id = request.id;
+      if (!id || !Object.hasOwn(this.itemClasses, id)) return null;
+      const text = scopedName(catalog?.scopes[ITEM_CLASSES], id, this.itemClasses[id]);
+      return typeof text === 'string' ? { text, origin: scopeOrigin(catalog!, ITEM_CLASSES, [id]) } : null;
+    }
     if (request.kind === 'monster') {
       // Minion names were never translated by text; only an exact variety record names one. A locale
       // without its own record takes its chain's next one converted to its script, as other game
@@ -142,9 +177,9 @@ export class NativeNameIndex {
     mergeDetailed: (texts: readonly DisplayText[]) => DisplayText[];
   } {
     const scoped = requests.map(request => this.resolveDetailed(request, lang));
-    // Minion names have no text path.
-    const textPath = requests.map((request, index) => scoped[index] === undefined
-      || (request.kind !== 'monster' && !!scoped[index]?.origin));
+    // A source-bound class never borrows a text-path translation, including supplements.
+    const textPath = requests.map((request, index) => !(this.itemClasses !== undefined && itemClassIdRequest(request))
+      && (scoped[index] === undefined || (request.kind !== 'monster' && !!scoped[index]?.origin)));
     // A tree repeats names (many "Mana Regeneration" nodes): translate each once.
     const pending = [...new Set(requests.filter((_, index) => textPath[index]).map(request => request.name))];
     const mergeDetailed = (texts: readonly DisplayText[]) => {
@@ -153,7 +188,7 @@ export class NativeNameIndex {
         const english = { text: request.name, origin: null };
         const rendered = textPath[index] ? byName.get(request.name) ?? english : undefined;
         const record = scoped[index];
-        if (record === undefined) return rendered!;
+        if (record === undefined) return rendered ?? english;
         return record && rendered && rendered.origin === null && rendered.text !== request.name ? rendered : record ?? english;
       });
     };

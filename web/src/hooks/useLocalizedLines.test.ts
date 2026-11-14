@@ -1,6 +1,16 @@
-import { expect, it } from 'vitest';
-import { cleanLine, itemLines, linesToTranslate, localizeStructLine, localizedLines } from './useLocalizedLines';
+import { expect, it, vi } from 'vitest';
+import { cleanLine, itemLines, linesToTranslate, localizeStructLine, localizedLines, useLocalizedNames } from './useLocalizedLines';
 import { itemDisplaySections } from '../lib/itemDisplay';
+import { NativeNameIndex, type GameNameRequest } from '../lib/nativeDisplayNames';
+import type { Lang } from '../lib/i18n';
+
+const hooks = await vi.hoisted(async () => {
+  const { createHookHarness } = await import('../testing/hookHarness');
+  return createHookHarness({ memo: 'deps', effects: { comparison: 'objectIs', cleanup: 'previous' } });
+});
+const backend = vi.hoisted(() => ({ translateNames: vi.fn() }));
+vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
+vi.mock('../api/backend', () => ({ getBackend: async () => backend }));
 
 it.each([
   ['Armour', '护甲', '護甲'], ['Evasion', '闪避', '閃避'], ['Evasion Rating', '闪避值', '閃避值'],
@@ -88,4 +98,65 @@ it('merges a wrapped Bonded effect before whole-line and fallback translation, p
   expect(lines).toEqual([head, tail, lines[2], '+40 to maximum Life']);
   expect(linesToTranslate(['Bonded: +40 to maximum Life', '+50 to maximum Mana'], 'zh-CN').slice(0, 2))
     .toEqual(['Bonded: +40 to maximum Life', '+50 to maximum Mana']);
+});
+
+it('keys localized class names by id and language, keeping fallbacks on failed and superseded requests', async () => {
+  hooks.reset();
+  backend.translateNames.mockReset();
+  const calls: { resolve: (names: string[]) => void; reject: (error: Error) => void }[] = [];
+  backend.translateNames.mockImplementation(() => new Promise<string[]>((resolve, reject) => calls.push({ resolve, reject })));
+  const first: GameNameRequest[] = [{ kind: 'itemClass', id: 'First', name: 'Same' }];
+  const second: GameNameRequest[] = [{ kind: 'itemClass', id: 'Second', name: 'Same' }];
+  const render = (requests: GameNameRequest[], lang: Lang) => {
+    hooks.beginRender();
+    const result = useLocalizedNames(requests, lang);
+    hooks.runEffects();
+    return result;
+  };
+  expect(render(first, 'zh-CN')).toEqual(['Same']);
+  await vi.waitFor(() => expect(calls).toHaveLength(1));
+  calls[0].resolve(['类别甲']);
+  await vi.waitFor(() => expect(render(first, 'zh-CN')).toEqual(['类别甲']));
+  expect(render(second, 'zh-CN')).toEqual(['Same']);
+  await vi.waitFor(() => expect(calls).toHaveLength(2));
+  expect(render(second, 'zh-TW')).toEqual(['Same']);
+  await vi.waitFor(() => expect(calls).toHaveLength(3));
+  calls[2].reject(new Error('display member unavailable'));
+  calls[1].resolve(['must not appear in another language']);
+  await Promise.allSettled(backend.translateNames.mock.results.map(result => result.value));
+  expect(hooks.dirty).toBe(false);
+  expect(render(second, 'zh-TW')).toEqual(['Same']);
+  expect(render(second, 'en-US')).toEqual(['Same']);
+});
+
+it('separates legacy class names from explicit undefined, empty and wrong ids without changing requests', async () => {
+  hooks.reset();
+  backend.translateNames.mockReset();
+  const index = new NativeNameIndex([], [], { Ring: 'Rings' });
+  backend.translateNames.mockImplementation(async (requests: GameNameRequest[]) =>
+    index.split(requests, 'zh-CN').merge(['共享旧类别']));
+  const requests: GameNameRequest[][] = [
+    [{ kind: 'itemClass', name: 'Rings' }],
+    [{ kind: 'itemClass', id: undefined, name: 'Rings' }],
+    [{ kind: 'itemClass', id: '', name: 'Rings' }],
+    [{ kind: 'itemClass', id: 'Unknown', name: 'Rings' }],
+  ];
+  const render = (names: GameNameRequest[]) => {
+    hooks.beginRender();
+    const result = useLocalizedNames(names, 'zh-CN');
+    hooks.runEffects();
+    return result;
+  };
+  for (const [position, names] of requests.entries()) {
+    expect(render(names)).toEqual(['Rings']);
+    await vi.waitFor(() => expect(backend.translateNames).toHaveBeenCalledTimes(position + 1));
+    expect(backend.translateNames.mock.lastCall![0]).toBe(names);
+    await vi.waitFor(() => expect(render(names)).toEqual([position === 0 ? '共享旧类别' : 'Rings']));
+  }
+  expect(Object.hasOwn(requests[0][0], 'id')).toBe(false);
+  expect(Object.hasOwn(requests[1][0], 'id')).toBe(true);
+  expect(requests[1][0]).toStrictEqual({ kind: 'itemClass', id: undefined, name: 'Rings' });
+  expect(render(requests[0])).toEqual(['Rings']);
+  await vi.waitFor(() => expect(backend.translateNames).toHaveBeenCalledTimes(5));
+  await vi.waitFor(() => expect(render(requests[0])).toEqual(['共享旧类别']));
 });
