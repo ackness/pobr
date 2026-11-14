@@ -101,9 +101,11 @@ function scopedName(scope: Scope | undefined, id: string, english: string): stri
 export class NativeNameIndex {
   private readonly catalogs = new Map<Lang, NativeDisplayTexts>();
   private readonly baseIds = new Map<string, string[]>();
+  private readonly itemClasses?: Readonly<Record<string, string>>;
 
   constructor(catalogs: readonly NativeDisplayTexts[], bases: readonly { id: string; name: string }[] = [],
-    private readonly itemClasses?: Readonly<Record<string, string>>) {
+    itemClasses?: Readonly<Record<string, string>>) {
+    this.itemClasses = itemClasses;
     for (const catalog of catalogs) {
       if (this.catalogs.has(catalog.locale)) throw new Error('Duplicate native display locale');
       this.catalogs.set(catalog.locale, catalog);
