@@ -133,7 +133,8 @@ test('a new class member prevents stale, missing and wrong-id translations from 
   await expect(classes).toHaveText('Body Armour');
 });
 
-test('the official old pack keeps its fixed Body Armour label through actual name translation', async ({ page }) => {
+test('a pack without native class names keeps its fixed Body Armour label through actual name translation', async ({ page }) => {
+  await installItemClassFixture(page, undefined, {});
   await openClassCrafter(page);
   const classes = page.locator('.item-crafter-fields [role="combobox"]').first();
   await classes.click();

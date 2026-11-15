@@ -347,6 +347,26 @@ mod tests {
 
     use super::{apply_level_overrides, apply_stat_set_overrides};
 
+    #[test]
+    fn repository_stored_use_coverage_matches_game_manifest() {
+        let version_dir = crate::current_data_dir();
+        let levels = crate::GameData::new(&version_dir)
+            .granted_effect_levels()
+            .expect("load + merge granted_effect_levels");
+        let stored_uses = levels
+            .values()
+            .flatten()
+            .filter(|row| row.stored_uses.is_some())
+            .count();
+        // 0.5.5.8 adds MtxCentaurTransformationPlayer level 1 (StoredUses = 1).
+        // The manifest-bound fixture also retains the old 0.5.5.5 count.
+        crate::test_pins::assert_repository_pin(
+            &version_dir,
+            "skill_overrides.stored_uses_count",
+            stored_uses,
+        );
+    }
+
     /// Helper: builds a single override entry.
     fn entry(
         skill: &str,

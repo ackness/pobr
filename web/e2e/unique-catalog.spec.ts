@@ -58,9 +58,9 @@ test('find a unique by modifier, choose a variant and rolls, then save and equip
 
 for (const member of [false, true]) {
   test(`legacy Unique class labels retain fixed Body Armour and translated Ring with member=${member}`, async ({ page }) => {
-    if (member) await installItemClassFixture(page, {
+    await installItemClassFixture(page, member ? {
       scopes: { 'ItemClasses.Name': { Ring: 'Rings', 'Body Armour': 'Body Armours' } },
-    }, {});
+    } : undefined, {});
     const code = deflateSync('<PathOfBuilding2><Build level="85" className="Sorceress"/><Items/></PathOfBuilding2>').toString('base64url');
     await page.goto('/build');
     await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
