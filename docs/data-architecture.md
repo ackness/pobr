@@ -130,8 +130,8 @@ RePoE 发布 ───┐
     （`null` 表示"停在英文"，会挡住 zh-TW 回退到 zh-CN），也不写 `origins`（官方文本）。
     zh-CN 在现有文件里；zh-TW 是新文件 `i18n/zh-TW/display_texts.json`（`locale: "zh-TW"`，形状相同，已按 manifest
     `files` 读取），作用域还可以包括已有的 `MonsterVarieties.Name` 等。
-- <a id="item-class-names"></a>**物品类别名称（待 tag 的增量修订）。** 英文属于游戏 owner，译文属于语言 owner；这是可选的显示文本契约，
-  不改变既有数值成员。正式发布前按 [§3.1](#31-数据契约版本) 落实下一可用的 `contract/1.<m>` 并审核输入及新成员。
+- <a id="item-class-names"></a>**物品类别名称（契约 1.4）。** 英文属于游戏 owner，译文属于语言 owner；这是由 `contract/1.4` 固定的可选显示文本契约，
+  不改变既有数值成员。契约版本规则见 [§3.1](#31-数据契约版本)，输入及新成员仍须通过各 owner 的发布审核。
   - 游戏包可带 `overlay/item_class_names.json`，在 snapshot manifest 的 overlay 域登记 `item_class_names`，
     并列出实际成员及 SHA-256。`_meta` 必须含 `schema: "repoe-item-class-names/v1"`、`game`、`game_patch`、`realm`，
     三项目标身份必须与游戏包及所选 facts manifest 相符。`scopes` 恰好只有 `ItemClasses.Name`，其值为稳定 Id 到英文 Name 原文的映射。
@@ -215,10 +215,9 @@ RePoE 发布 ───┐
   （没有说明），已有类型、字段和加载器对已有字节的解释都不变，所以 `CONTRACT_VERSION` 不加 1，与 1.1 新增
   `base/active_skill_types.json` 同类。`pobr-data` 没有新类型：引擎不读这个文件，RePoE 用 Python 的 release job
   生成它，adapter 不需要新的契约代码，可以继续固定在 `contract/1.1`。
-- **待 tag 的增量修订。** 可选文件 `overlay/item_class_names.json` 及语言作用域 `ItemClasses.Name`，定义见
+  `contract/1.4`：可选文件 `overlay/item_class_names.json` 及语言作用域 `ItemClasses.Name`，定义见
   [物品类别名称](#item-class-names)。旧包缺失时行为不变，`CONTRACT_VERSION` 保持 1；本修订仅定义显示成员，
-  无需新增 Rust DTO／API 或升级 adapter 的契约依赖。当前仅定义契约并准备本地候选，不预占未经核对的 `.m`，不创建 tag 或发布数据。
-  正式发布前须核对下一可用的 `contract/1.<m>`，在定义合并后落实不可变 tag，并审核所用输入及新成员的发布资格。
+  无需新增 Rust DTO／API 或升级 adapter 的契约依赖，adapter 可以继续固定在 `contract/1.1`。
 - **RePoE 一侧。** `pobr-data-adapter` 与 release build 封存快照 manifest 时写入
   `"contract_version": <所依赖 pobr-data 的 CONTRACT_VERSION>`，数值取自依赖本身（例如由 adapter 读取
   `pobr_data::CONTRACT_VERSION` 输出），不手写；契约加 1 时先把依赖升到新的 `contract/<n>.0`，再重新生成并发布。

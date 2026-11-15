@@ -2,45 +2,45 @@
   "schema": "pobr-data-lock/v2",
   "target": {
     "game": "poe2",
-    "game_patch": "0.5.5.5",
+    "game_patch": "0.5.5.8",
     "realm": "international"
   },
   "locale": "zh-CN",
   "packages": {
     "game": {
       "repository": "ackness/repoe",
-      "tag": "game/0.5.5.5-3",
-      "asset": "pobr-game-0.5.5.5.zip",
-      "bytes": 4611967,
-      "sha256": "7f8d343b53bbbffa221b750c42fa71da4eda6fde909426c130a07d5b4dd4a7c9",
+      "tag": "game/0.5.5.8-1",
+      "asset": "pobr-game-0.5.5.8.zip",
+      "bytes": 4614107,
+      "sha256": "7dcb18ec41dff4deadfb3d9c9acfd128122c748ad1309d75bc301ccfecf0574a",
       "manifest": {
-        "bytes": 9073,
-        "sha256": "480e4b1ec62a1ce8e98b10b71fe3752e002b01c6a5e9c8188ea1dd89e95a0169"
+        "bytes": 9207,
+        "sha256": "093520ab2a27db510f0128798c1dbe90e4a65f7e5cf5118ba8585cd7cdb1fe8d"
       },
-      "expanded_bytes": 67114847,
+      "expanded_bytes": 67192673,
       "receipt": {
-        "bytes": 40692,
-        "sha256": "7533dab3ee4008686d985eab5de355cbb9d69fa46dc3148adbc32b632bf7eb6e"
+        "bytes": 107298,
+        "sha256": "9b5691ac3aadc4bea0b398250898afdc7c10544968f195f246859e2c35f0bda8"
       },
-      "producer_commit": "8e76b9a97e2427adcc9561c2fbd89778c497d828",
+      "producer_commit": "bdbc9571aca2b4ee88d885eb023f965b99e177fe",
       "contract_version": 1
     },
     "language": {
       "repository": "ackness/poe2-zh-cn-stats",
-      "tag": "locale/0.5.5.5-4",
-      "asset": "pobr-locale-0.5.5.5.zip",
-      "bytes": 8479677,
-      "sha256": "d0d7419903ab22bcc3040881ebf668e44cd20accf40fb711b1a61672f1635cbf",
+      "tag": "locale/0.5.5.8-1",
+      "asset": "pobr-locale-0.5.5.8.zip",
+      "bytes": 8473498,
+      "sha256": "2e63f82354b57e8f319f40cc17e99feb29e4bceb0df02a6ba3d7ec4631bf72b5",
       "manifest": {
-        "bytes": 2667,
-        "sha256": "8b6350df04231aeb4389b0c6b7d63134381c8300a43aee8930fbead49778e530"
+        "bytes": 2665,
+        "sha256": "d957e6a44eb683808e497763c603d0c65aa80854af98a9b941f4ba9556b5b643"
       },
-      "expanded_bytes": 8477445,
+      "expanded_bytes": 8471266,
       "receipt": {
-        "bytes": 9573,
-        "sha256": "1f4708d8ce255f4fe7eb495ed792d3d623ee60cf4521ed6d4f25fa0a1dbe69b5"
+        "bytes": 9862,
+        "sha256": "3386d3b4fa9b3a85774258f6d67eecef77edc1e7b98a3f93207373d452866dbf"
       },
-      "producer_commit": "a4b6712c8b2c4e773f658ead973711dde725e77f",
+      "producer_commit": "bb6f621596a0e0572f802dc5b1b27d88b3b9a246",
       "contract_version": null
     }
   },
@@ -68,7 +68,12 @@
       "stat_details.json",
       "tree.json",
       "tree_meta.json"
-    ]
+    ],
+    "target": {
+      "game": "poe2",
+      "game_patch": "0.5.5.5",
+      "realm": "international"
+    }
   },
   "shared_files": {
     "local_mods.json": {
@@ -81,9 +86,9 @@
     }
   },
   "snapshot_manifest": {
-    "bytes": 7176,
-    "sha256": "bf8fb4a4b5c3773bd13b3924173b3252379ac3fcaa58c431210e5f76e6977a10"
+    "bytes": 7307,
+    "sha256": "5aee7f25d8b5dffb381ccbb27f37ab82fae5a04ad59c81dff6fdeba9b0ef31c2"
   },
-  "runtime_identity": "8c119c2e2d9e41b0bd43696118b32944f81b3492cd712c9813aa7db9c22f30c9",
-  "release_id": "180932a10aa991941420358c820b5385d109fcf938640f81c243dc17c77f5fb5"
+  "runtime_identity": "2dd2637974f2ebe490a2fee1a2156843e043702b1d872a2ef1455fb58db419f2",
+  "release_id": "6e519a0f9a2c8fb1a6a2c4afe3fe5b26235b7e1f1dc5ab58ca52fb896c945af8"
 }

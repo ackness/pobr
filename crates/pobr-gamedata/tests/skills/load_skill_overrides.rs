@@ -80,7 +80,8 @@ fn merged_levels_match_historical_coverage() {
     assert_eq!(count(|r| r.mana_multiplier.is_some()), 542);
     assert_eq!(count(|r| r.spirit_reservation_flat.is_some()), 3166);
     assert_eq!(count(|r| r.reservation_multiplier.is_some()), 169);
-    assert_eq!(count(|r| r.stored_uses.is_some()), 6735);
+    // Exact stored-use coverage is bound to the game manifest by
+    // domains::skill_overrides::tests::repository_stored_use_coverage_matches_game_manifest.
     // level_requirement: PoE2's `.dat` has no such column (the real source
     // table isn't downloadable), so it's always None, and stored as such.
     assert_eq!(count(|r| r.level_requirement.is_some()), 0);
