@@ -4,6 +4,36 @@ Notable changes to PoBR, the browser build planner at [pobr.win](https://pobr.wi
 
 Versions follow [SemVer](https://semver.org/). While the version is 0.0.x, any release may change behaviour; changes that need action from WASM, CLI or data consumers are listed under **Breaking changes**. How a release section is written: [RELEASING.md](RELEASING.md#4-发版上线).
 
+## [0.0.52] - 2026-11-15
+
+PoBR now uses Path of Exile 2 international 0.5.5.8 data. ItemCrafter shows native item-class names in English, Simplified Chinese and Traditional Chinese while preserving the selected class and saved items. The WASM JSON schema version stays at 21.
+
+### Breaking changes
+
+- None.
+
+### Added
+
+- ItemCrafter uses the loaded game and locale catalogs for class labels. Switching languages keeps the selected class, draft text and saved item unchanged; older packs without the optional native class member retain their existing labels. (#374)
+
+### Fixed
+
+- The strict display audit starts correctly under Node's native TypeScript stripping mode. (#375)
+
+### Data
+
+- Updated the international data target to 0.5.5.8 with `game/0.5.5.8-1` and `locale/0.5.5.8-1`. Numeric outputs are unchanged for the 87 recorded regression builds. (#376)
+
+### For developers
+
+- The data contract accepts an optional native item-class member and ID-scoped translations while retaining compatibility with older packs. The data contract version stays at 1. (#371)
+- The fixed PoB2 reference still uses 0.5.5.5. With active 0.5.5.8 data, L3 reports continue but agreement assertions are skipped because the game versions differ. (#376)
+
+### Internal
+
+- Documented how to replay a known data target locally and clarified the current framework, data status and distinction between offline validation and adoption. (#369, #370, #373)
+- Pure modifier tests no longer depend on the active game-data package. (#372)
+
 ## [0.0.51] - 2026-11-13
 
 Saved workspaces can now open their readable builds when another entry is damaged, and stages show a notice when they were saved with a different game-data version. Passive-tree class starts and point budgets, skill types and weapon conditions now use the loaded catalogs. The WASM JSON schema version is now 21.
@@ -309,6 +339,7 @@ pobr.win now calculates with game data 0.5.5.5 (was 0.5.5.4.2), imported from th
 
 Notes for 0.0.43 and earlier are on [GitHub Releases](https://github.com/ackness/pobr/releases).
 
+[0.0.52]: https://github.com/ackness/pobr/compare/v0.0.51...v0.0.52
 [0.0.51]: https://github.com/ackness/pobr/compare/v0.0.50...v0.0.51
 [0.0.50]: https://github.com/ackness/pobr/compare/v0.0.49...v0.0.50
 [0.0.49]: https://github.com/ackness/pobr/compare/v0.0.48...v0.0.49
