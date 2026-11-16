@@ -4,6 +4,7 @@
 它们遵守的规则见[数据架构 §5](docs/data-architecture.md#5-更新采用与发布)，
 CI 与 release workflow 的机制见[开发工作流](docs/development-workflow.md#发布与部署)，
 当前锁与缺口见[数据现状](docs/data-status.md)。
+开始前可用 `mise run patch:status <patch>` 汇总三仓和线上元数据证据；范围与未知状态见[只读交接报告](docs/development-workflow.md#补丁交接状态只读)，它不代替本页的验证与发布步骤。
 
 换数据和上线是两个独立的 PR：
 
