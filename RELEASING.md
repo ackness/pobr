@@ -57,6 +57,10 @@ mise run data:bump ackness/repoe game/<patch>-<n> ackness/poe2-zh-cn-stats local
   `mise run snapshot:report` 补报告。`--no-prepare` 不跑 L2。报告不替代提交前的快照验证。
 - `data:bump` 不提交、不推送，也不开 PR。
 
+运行 `mise run data:migrate` 收集离线迁移报告与候选，再审阅并应用需要的变化；
+输出位置、状态与候选内容见[数据迁移报告](docs/development-workflow.md#数据迁移报告)。
+收集成功不代表接受，候选不会自动写入跟踪文件。
+
 同一个 PR 里迁移绑定游戏包或补丁的消费者，否则 PR 或完整 CI 会失败：
 
 | 文件 | 何时改 | 怎么改 |

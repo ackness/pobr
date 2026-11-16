@@ -96,6 +96,7 @@ PR gate 不运行 Clippy 或 Rust 测试，本地检查也不代替完整集成 
 mise run check:pr                             # Before pushing: changed areas, offline
 mise run check:pr --quick                     # While editing: fmt, cargo check, i18n, types, changed unit tests
 mise run e2e                                  # Browser: @smoke + specs mapped from the change (see below)
+mise run data:migrate                         # Offline migration candidates after data:bump
 mise run data:accept                           # New-patch acceptance (see 新补丁验收)
 mise run hooks:install                        # Opt in once per clone; shared by worktrees
 mise run targets                              # List current suites without compiling
@@ -528,6 +529,26 @@ mise run snapshot:record                    # 同一份比较，审阅后重录�
 `POBR_OUTPUT_SNAPSHOT=<绝对路径>` 选择副本作比较或录制；默认是 `examples/output-snapshot.json`。
 `POBR_SNAPSHOT_LOCK=<绝对路径>` 指定报告所用的锁；实际数据身份仍须与它一致。
 `data:bump` 的自动报告、输出流与失败处理见 [RELEASING.md](../RELEASING.md#2-新游戏补丁pobr-改锁)。
+
+## 数据迁移报告
+
+`mise run data:migrate` 在 `data:bump` 后、`data:accept` 前离线核对本地数据与当前锁，
+收集迁移候选，不修改已跟踪文件。默认写入新的 `.cache/data-migrate/<timestamp>-<id>/`；
+可用 `mise run data:migrate -- --out <path>` 指定本 worktree 的 `.cache/data-migrate/` 下尚不存在的直接子目录。
+可重复传入 `--skip pins`、`--skip coverage` 或 `--skip l2`，跳过任一项都会使结果不完整。
+
+报告目录包含 `report.json`、`inputs.json`、`README.md`、`measurements/` 和 `drafts/`：
+忽略的 Rust 集成测试采集器重算全部五类测试 pins，配置使用共享算法，解析覆盖率来自新的隔离预编译，
+L2 重算并比较，归因和原因留空（`measurements/l2.json` 与 `l2.md`）。
+`drafts/` 包含完整的 `repository-test-pins.json` fixture（只改当前版本）、`configGameRelevance.json`、
+保留 notes 的 `parse-coverage-baseline.json` 和候选 `output-snapshot.json`；覆盖率下降只保留测量，不生成基线草稿。
+
+退出码 0 只表示收集完成、可供审阅，不代表接受；覆盖率下降为 `REVIEW_REQUIRED` 并以非零退出，
+缺失、失败或跳过为 `INCOMPLETE` 并以非零退出。候选不会自动应用；树标签由人核实，
+不猜测，也不改写 PoB2 或参考身份。Cargo 固定使用本 worktree 的 `target/` 并离线运行，
+需要先安装锁定依赖；失败时查看 `logs/`。
+按[换数据步骤](../RELEASING.md#2-新游戏补丁pobr-改锁)审阅、归因并应用所需变化，
+仍须运行 `data:accept` 和完整 CI。
 
 ## 新补丁验收
 

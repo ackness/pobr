@@ -108,6 +108,16 @@ fn read_snapshot(path: &Path) -> Snapshot {
     snapshot
 }
 
+fn write_migration_snapshot(mode: &str, path: &Path, snapshot: &Snapshot) -> std::io::Result<()> {
+    if mode != "report" {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "POBR_MIGRATION_SNAPSHOT is only allowed in report mode",
+        ));
+    }
+    pobr_gamedata::test_pins::write_new_json(path, snapshot)
+}
+
 fn lock_identity() -> String {
     let path = std::env::var_os("POBR_SNAPSHOT_LOCK")
         .map_or_else(|| root().join("pipeline/data.lock.json"), PathBuf::from);
@@ -296,6 +306,17 @@ fn snapshot_update() {
     let path = snapshot_path();
     let mode = std::env::var("POBR_SNAPSHOT_MODE").expect("snapshot command mode");
     assert!(matches!(mode.as_str(), "record" | "report"));
+    let migration_snapshot = std::env::var_os("POBR_MIGRATION_SNAPSHOT").map(PathBuf::from);
+    assert!(
+        migration_snapshot.is_none() || mode == "report",
+        "POBR_MIGRATION_SNAPSHOT is only allowed in report mode"
+    );
+    if let Some(candidate) = &migration_snapshot {
+        assert!(
+            !candidate.exists(),
+            "POBR_MIGRATION_SNAPSHOT must be a fresh file"
+        );
+    }
     let before = if path.exists() {
         Some(read_snapshot(&path))
     } else {
@@ -333,6 +354,11 @@ fn snapshot_update() {
         std::fs::write(path, serde_json::to_string_pretty(&report).unwrap() + "\n")
             .expect("write diff report");
     }
+    if let Some(candidate) = migration_snapshot {
+        write_migration_snapshot(&mode, &candidate, &after).unwrap_or_else(|error| {
+            panic!("write migration snapshot {}: {error}", candidate.display())
+        });
+    }
     if mode == "record" {
         std::fs::write(&path, serde_json::to_string_pretty(&after).unwrap() + "\n")
             .expect("write snapshot");
@@ -342,6 +368,48 @@ fn snapshot_update() {
             path.display()
         );
     }
+}
+
+#[test]
+fn migration_snapshot_export_preserves_existing_files_and_requires_report_mode() {
+    let directory = std::env::temp_dir().join(format!(
+        "pobr-migration-snapshot-export-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir(&directory).expect("fresh test directory");
+    let candidate = directory.join("candidate.json");
+    let snapshot = Snapshot {
+        schema: SCHEMA.into(),
+        runtime_identity: "new-lock".into(),
+        engine_version: "test".into(),
+        builds: BTreeMap::from([(
+            "build".into(),
+            BTreeMap::from([("Life".into(), number(123.0))]),
+        )]),
+    };
+    assert_eq!(
+        write_migration_snapshot("record", &candidate, &snapshot)
+            .unwrap_err()
+            .kind(),
+        std::io::ErrorKind::InvalidInput
+    );
+    assert!(!candidate.exists());
+    write_migration_snapshot("report", &candidate, &snapshot).unwrap();
+    let bytes = std::fs::read(&candidate).unwrap();
+    let actual = read_snapshot(&candidate);
+    assert_eq!(actual.runtime_identity, snapshot.runtime_identity);
+    assert_eq!(actual.engine_version, snapshot.engine_version);
+    assert_eq!(actual.builds, snapshot.builds);
+    let mut changed = snapshot;
+    changed.runtime_identity = "different-lock".into();
+    assert_eq!(
+        write_migration_snapshot("report", &candidate, &changed)
+            .unwrap_err()
+            .kind(),
+        std::io::ErrorKind::AlreadyExists
+    );
+    assert_eq!(std::fs::read(&candidate).unwrap(), bytes);
+    std::fs::remove_dir_all(directory).unwrap();
 }
 
 #[test]
