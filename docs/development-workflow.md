@@ -112,6 +112,26 @@ mise run gate --only core,parity              # Rerun only the failed steps
 mise run warm <warm checkout>                 # New worktree: copy its target/debug (CoW, else cp -a)
 ```
 
+### 补丁交接状态（只读）
+
+`mise run patch:status [<patch>]` 汇总 RePoE → 翻译库 → PoBR → 部署的当前证据，不执行采集、构建、改锁、Git fetch、CI dispatch 或发布。
+默认调用 RePoE 的 `client:version` 实现观察官方 endpoint，选择其广告补丁号；观察不可用时回退到本地锁，并明确报告未知。显式 `<patch>` 不受广告版本改变影响。第一版只检查 `poe2 / international` 目标。
+
+```sh
+mise run patch:status 0.5.5.8
+mise run patch:status --offline --json
+mise run patch:status 0.5.5.8 --repoe /path/to/repoe --locale /path/to/poe2-zh-cn-stats
+```
+
+- `--pobr` 指定要检查的 PoBR checkout，默认是命令所在树；两个 owner 默认在 PoBR 主 checkout 的同级目录，也可显式指定。无需借用另一棵树的数据。
+- 在线读取明确仓库的远端 refs、Release 附件元数据、小型 `SHA256SUMS`/`receipt.json`、Actions 记录及两个生产站点的 `/data/manifest.json`。不下载 ZIP，不写下载缓存或报告文件；缺 `gh`、网络失败、缺少本地远端 Git 对象都报告 `unknown`，不隐式 fetch。重复检查末尾再读 refs，期间变化时要求重跑。
+- `ready` 仅表示该项描述的元数据/小型收据检查通过；`observed` 是范围受限的观察；`pending` 是确认尚未走完；`blocked` 是观测到不匹配/失败；`unknown` 是证据不足。首个未完成阶段给出下一步提示，**不是自动执行指令**。本地未发布候选及较新的未完成远端 tag 单列，不隐藏已核对的正式 Release。
+- 已发布游戏的契约使用 receipt 的 tag/commit/version，本地 adapter 当前依赖另列，不要求追到最高文档修订 tag。游戏/语言的附件及收据 pins 必须相互一致；producer 提交上的声明字节与包 pin 另作核对，本地脏/旧声明单列，不用于推翻正式发布证据。采用状态按远端 master 的锁读取，脏本地锁另列。CI 仅接受精确 SHA 和必需 jobs/steps；PoBR 的完整验证也识别 `pr.yml`/`release.yml` 中的 `Full gate`，不把 `PR gate` 当作完整 CI。
+- 应用 Release 的附件只核对必需名称及 uploaded 状态，不声称验证了它们的摘要/字节。上线状态绑定最高稳定 v0 tag 的锁和该 tag 的真实部署步骤；站点仅比较其公布的普通数据清单与锁的 `runtime_identity`。站点没有独立的应用版本 JSON 接口，因此不声称核对了页面版本、资源实际字节或浏览器行为。
+- `--json` 向 stdout 输出 `pobr-patch-status/v1`，含观察时间、目标、checkout/远端身份、所选包、分阶段证据和 `first_incomplete`/`next`；`attention` 单列未核验的较新 tag、本地/producer 声明等问题，不因旧的发布链完整而隐去它们。可重定向到忽略目录保存交接。`--offline` 禁止网络及官方观察，远端结论保留未知。报告正常生成退出 0（即使有未知/阻断项）；参数或无法选出目标时退出 2，不能用退出 0 当验收通过。
+
+该报告不替代 owner 发布资格检查（包括 D40）、ZIP 重现、L2 逐行归因、本地 `e2e release` 回执和发布后的严格显示审计。正式采用及上线仍按 [RELEASING.md](../RELEASING.md) 执行。
+
 基准和手动诊断按需编译，普通测试不编译 Criterion 或五个 WASM 诊断/fixture 生成目标：
 
 ```bash
