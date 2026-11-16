@@ -69,24 +69,7 @@ mod tests {
         crate::test_pins::assert_repository_pin(
             &data_dir(),
             "parser_rules.section_counts",
-            serde_json::json!({
-                "forms": doc.forms.len(),
-                "name_map": doc.name_map.len(),
-                "flag_phrases": doc.flag_phrases.len(),
-                "pre_flags": doc.pre_flags.len(),
-                "tag_phrases": doc.tag_phrases.len(),
-                "suffix_types": doc.suffix_types.len(),
-                "damage_types": doc.damage_types.len(),
-                "pen_types": doc.pen_types.len(),
-                "regen_types": doc.regen_types.len(),
-                "degen_types": doc.degen_types.len(),
-                "cost_types_map": doc.cost_types_map.len(),
-                "base_cost_types": doc.base_cost_types.len(),
-                "flag_types": doc.flag_types.len(),
-                "distinct_forms": forms.len(),
-                "unsupported": doc.unsupported,
-                "unsupported_pobr_extra": doc.unsupported_pobr_extra,
-            }),
+            crate::test_pins::parser_section_counts(&doc),
         );
         // Structural guard: a missing core form id means the extraction
         // channel is broken — it shouldn't drift with the data.
@@ -266,16 +249,7 @@ mod tests {
     #[test]
     fn handler_fallback_within_budget() {
         let doc = real_data().mod_parser_rules().unwrap().unwrap();
-        let handlers = doc
-            .pre_flags
-            .iter()
-            .filter(|e| e.handler_id.is_some())
-            .count()
-            + doc
-                .tag_phrases
-                .iter()
-                .filter(|e| e.handler_id.is_some())
-                .count();
+        let handlers = crate::test_pins::parser_handler_fallbacks(&doc);
         assert!(
             handlers <= 15,
             "handler fallbacks {handlers} exceed the blueprint budget of ≤15"

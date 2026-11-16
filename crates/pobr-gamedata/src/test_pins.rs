@@ -11,10 +11,105 @@
 //! Structural guards remain in the tests independently of either snapshot API.
 
 use std::collections::BTreeMap;
+use std::io::{self, Write};
 use std::path::Path;
 use std::sync::Mutex;
 
 use serde_json::Value;
+
+use pobr_data::catalog::{SkillLevelDef, parser_rules::ModParserRulesDoc};
+
+pub fn parser_section_counts(doc: &ModParserRulesDoc) -> Value {
+    let forms: std::collections::BTreeSet<&str> =
+        doc.forms.iter().map(|entry| entry.form.as_str()).collect();
+    serde_json::json!({
+        "forms": doc.forms.len(),
+        "name_map": doc.name_map.len(),
+        "flag_phrases": doc.flag_phrases.len(),
+        "pre_flags": doc.pre_flags.len(),
+        "tag_phrases": doc.tag_phrases.len(),
+        "suffix_types": doc.suffix_types.len(),
+        "damage_types": doc.damage_types.len(),
+        "pen_types": doc.pen_types.len(),
+        "regen_types": doc.regen_types.len(),
+        "degen_types": doc.degen_types.len(),
+        "cost_types_map": doc.cost_types_map.len(),
+        "base_cost_types": doc.base_cost_types.len(),
+        "flag_types": doc.flag_types.len(),
+        "distinct_forms": forms.len(),
+        "unsupported": doc.unsupported,
+        "unsupported_pobr_extra": doc.unsupported_pobr_extra,
+    })
+}
+
+pub fn parser_handler_fallbacks(doc: &ModParserRulesDoc) -> usize {
+    doc.pre_flags
+        .iter()
+        .filter(|entry| entry.handler_id.is_some())
+        .count()
+        + doc
+            .tag_phrases
+            .iter()
+            .filter(|entry| entry.handler_id.is_some())
+            .count()
+}
+
+pub fn stored_uses_count(levels: &BTreeMap<String, Vec<SkillLevelDef>>) -> usize {
+    levels
+        .values()
+        .flatten()
+        .filter(|row| row.stored_uses.is_some())
+        .count()
+}
+
+pub fn write_repository_migration_pins(
+    version_dir: &Path,
+    output: &Path,
+    pins: BTreeMap<String, Value>,
+) -> io::Result<()> {
+    if !output.is_absolute() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "POBR_MIGRATION_PINS must be an absolute fresh file path",
+        ));
+    }
+    let expected = [
+        "minions.raised_zombie",
+        "minions.spectre_cocoon3",
+        "parser_rules.handler_fallbacks",
+        "parser_rules.section_counts",
+        "skill_overrides.stored_uses_count",
+    ];
+    if !pins.keys().map(String::as_str).eq(expected) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "migration collection requires exactly the five repository pin families",
+        ));
+    }
+    let manifest: Value =
+        serde_json::from_slice(&std::fs::read(version_dir.join("manifest.json"))?)
+            .map_err(io::Error::other)?;
+    let version = manifest["poe_version"].as_str().ok_or_else(|| {
+        io::Error::new(io::ErrorKind::InvalidData, "missing manifest poe_version")
+    })?;
+    let collection = serde_json::json!({
+        "schema": "pobr-repository-pins/v1",
+        "data_version": version,
+        "game_manifest_sha256": game_manifest_sha256(&manifest),
+        "pins": pins,
+    });
+    write_new_json(output, &collection)
+}
+
+pub fn write_new_json(output: &Path, value: &impl serde::Serialize) -> io::Result<()> {
+    let mut bytes = serde_json::to_vec_pretty(value).map_err(io::Error::other)?;
+    bytes.push(b'\n');
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(output)?;
+    file.write_all(&bytes)
+}
 
 /// The bless-toggle environment variable: when `POBR_BLESS_PINS=1`,
 /// [`assert_pin`] writes the actual value back to the snapshot.
@@ -149,6 +244,117 @@ mod tests {
             "pins": {"a.count": 3}
         }});
         (dir, baseline)
+    }
+
+    fn migration_pins() -> BTreeMap<String, Value> {
+        BTreeMap::from([
+            (
+                "minions.raised_zombie".into(),
+                serde_json::json!({"life": 9, "damage": 8}),
+            ),
+            (
+                "minions.spectre_cocoon3".into(),
+                serde_json::json!({"life": 7, "armour": 6}),
+            ),
+            ("parser_rules.handler_fallbacks".into(), 5.into()),
+            (
+                "parser_rules.section_counts".into(),
+                serde_json::json!({"forms": 4}),
+            ),
+            ("skill_overrides.stored_uses_count".into(), 3.into()),
+        ])
+    }
+
+    #[test]
+    fn migration_export_uses_live_manifest_without_a_reviewed_baseline_and_never_overwrites() {
+        let (dir, _) = repository_fixture("migration-export");
+        let output = dir.join("collection.json");
+        let pins = migration_pins();
+        write_repository_migration_pins(&dir, &output, pins.clone()).unwrap();
+        let bytes = std::fs::read(&output).unwrap();
+        let actual: Value = serde_json::from_slice(&bytes).unwrap();
+        let manifest: Value =
+            serde_json::from_slice(&std::fs::read(dir.join("manifest.json")).unwrap()).unwrap();
+        assert_eq!(
+            actual,
+            serde_json::json!({
+                "schema": "pobr-repository-pins/v1",
+                "data_version": "fixture",
+                "game_manifest_sha256": game_manifest_sha256(&manifest),
+                "pins": pins,
+            })
+        );
+        assert_eq!(
+            write_repository_migration_pins(&dir, &output, migration_pins())
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::AlreadyExists
+        );
+        assert_eq!(std::fs::read(output).unwrap(), bytes);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn migration_export_rejects_relative_paths_and_incomplete_collections() {
+        let (dir, _) = repository_fixture("migration-invalid");
+        assert_eq!(
+            write_repository_migration_pins(&dir, Path::new("relative.json"), migration_pins())
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::InvalidInput
+        );
+        let output = dir.join("collection.json");
+        let mut pins = migration_pins();
+        pins.remove("parser_rules.handler_fallbacks");
+        assert_eq!(
+            write_repository_migration_pins(&dir, &output, pins)
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::InvalidInput
+        );
+        assert!(!output.exists());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn parser_measurements_count_distinct_forms_and_both_handler_sections() {
+        use pobr_data::catalog::parser_rules::{FormDef, PreFlagDef, TagPhraseDef};
+
+        let doc = ModParserRulesDoc {
+            forms: ["INC", "INC", "BASE"]
+                .into_iter()
+                .map(|form| FormDef {
+                    form: form.into(),
+                    ..Default::default()
+                })
+                .collect(),
+            pre_flags: vec![
+                PreFlagDef::default(),
+                PreFlagDef {
+                    handler_id: Some("pre".into()),
+                    ..Default::default()
+                },
+            ],
+            tag_phrases: vec![TagPhraseDef {
+                handler_id: Some("tag".into()),
+                ..Default::default()
+            }],
+            unsupported: vec!["external".into()],
+            unsupported_pobr_extra: vec!["local".into()],
+            ..Default::default()
+        };
+        let counts = parser_section_counts(&doc);
+        assert_eq!(counts["forms"], 3);
+        assert_eq!(counts["distinct_forms"], 2);
+        assert_eq!(counts["pre_flags"], 2);
+        assert_eq!(counts["tag_phrases"], 1);
+        assert_eq!(counts["name_map"], 0);
+        assert_eq!(counts["unsupported"], serde_json::json!(["external"]));
+        assert_eq!(
+            counts["unsupported_pobr_extra"],
+            serde_json::json!(["local"])
+        );
+        assert_eq!(parser_handler_fallbacks(&doc), 2);
     }
 
     #[test]
