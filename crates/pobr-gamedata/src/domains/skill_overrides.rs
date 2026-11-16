@@ -353,11 +353,7 @@ mod tests {
         let levels = crate::GameData::new(&version_dir)
             .granted_effect_levels()
             .expect("load + merge granted_effect_levels");
-        let stored_uses = levels
-            .values()
-            .flatten()
-            .filter(|row| row.stored_uses.is_some())
-            .count();
+        let stored_uses = crate::test_pins::stored_uses_count(&levels);
         // 0.5.5.8 adds MtxCentaurTransformationPlayer level 1 (StoredUses = 1).
         // The manifest-bound fixture also retains the old 0.5.5.5 count.
         crate::test_pins::assert_repository_pin(
@@ -403,6 +399,17 @@ mod tests {
                 level_requirement: None,
             })
             .collect()
+    }
+
+    #[test]
+    fn stored_use_measurement_counts_present_rows_including_zero_across_skills() {
+        let mut first = bare_rows();
+        first[0].stored_uses = Some(0);
+        let mut second = bare_rows();
+        second[0].stored_uses = Some(1);
+        second[1].stored_uses = Some(2);
+        let levels = BTreeMap::from([("first".into(), first), ("second".into(), second)]);
+        assert_eq!(crate::test_pins::stored_uses_count(&levels), 3);
     }
 
     fn doc(overrides: Vec<SkillOverrideEntry>) -> SkillOverridesDef {

@@ -48,6 +48,20 @@ fn zombie_build(gem_level: u32) -> Build {
 
 // A5: BuildData minion query API
 
+pub(super) fn raised_zombie_pin(data: &BuildData) -> serde_json::Value {
+    let zombie = data
+        .minion_def("RaisedZombie")
+        .expect("RaisedZombie is in the data pack");
+    serde_json::json!({ "life": zombie.life, "damage": zombie.damage })
+}
+
+pub(super) fn spectre_cocoon3_pin(data: &BuildData) -> serde_json::Value {
+    let spectre = data
+        .minion_def("Metadata/Monsters/LeagueAbyss/Lightless/Cocoon3Spectre")
+        .expect("Lightless Abomination is in the data pack (falls into spectres)");
+    serde_json::json!({ "life": spectre.life, "armour": spectre.armour })
+}
+
 #[test]
 fn build_data_minion_def_zombie() {
     let data = load_data();
@@ -58,7 +72,7 @@ fn build_data_minion_def_zombie() {
     pobr_gamedata::test_pins::assert_repository_pin(
         &repo_data_root().join(version()),
         "minions.raised_zombie",
-        serde_json::json!({ "life": zombie.life, "damage": zombie.damage }),
+        raised_zombie_pin(data),
     );
     assert!(zombie.base_damage_ignores_attack_speed);
 }
@@ -67,14 +81,11 @@ fn build_data_minion_def_zombie() {
 fn build_data_minion_def_spectre_falls_back() {
     let data = load_data();
     // spectre key = full metadata path (minions.json miss -> falls through to spectres.json)
-    let c = data
-        .minion_def("Metadata/Monsters/LeagueAbyss/Lightless/Cocoon3Spectre")
-        .expect("Lightless Abomination is in the data pack (falls into spectres)");
     // Values come from Spectres.lua and drift with balance patches (0.5.4b: life 3.0->2.2) -> blessed snapshot.
     pobr_gamedata::test_pins::assert_repository_pin(
         &repo_data_root().join(version()),
         "minions.spectre_cocoon3",
-        serde_json::json!({ "life": c.life, "armour": c.armour }),
+        spectre_cocoon3_pin(data),
     );
 }
 

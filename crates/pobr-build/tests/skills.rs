@@ -121,6 +121,8 @@ mod projectile_base;
 mod quarterstaff_conditions;
 #[path = "skills/rain.rs"]
 mod rain;
+#[path = "skills/repository_pins.rs"]
+mod repository_pins;
 #[path = "skills/runic_ward.rs"]
 mod runic_ward;
 #[path = "skills/shield_block.rs"]

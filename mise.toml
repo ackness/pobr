@@ -52,6 +52,10 @@ run = "python3 -m pipeline.imports.data_bump"
 description = "Accept a new patch: version smoke, L2 corpus computes, strict display audit and data-bump browser smoke (`--skip <step>` for partial runs)"
 run = "python3 devs/scripts/accept_data.py"
 
+[tasks."data:migrate"]
+description = "Collect fresh data migration measurements and review-only drafts; never apply or accept baselines"
+run = "python3 -I devs/scripts/data_migrate.py"
+
 [tasks."patch:status"]
 description = "Read-only cross-repository patch handoff evidence (`[patch] [--offline] [--json]`); never adopts or publishes"
 run = "python3 -B devs/scripts/patch_status.py"
