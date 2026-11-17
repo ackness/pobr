@@ -6,6 +6,7 @@
 //! domains resolve via `base/` first, falling back to the version root;
 //! overlay domains always resolve under `overlay/`).
 
+pub mod affix_display;
 pub mod base_player_mods;
 pub mod character_constants;
 pub mod enemy_presets;

@@ -10,11 +10,13 @@
 //! global; host tests just need to init once before calling, on the same thread.
 
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use pobr_build::BuildData;
 use pobr_gamedata::GameData;
+
+type SpecialAffixPools = BTreeMap<String, BTreeSet<String>>;
 
 thread_local! {
     /// The staging area for data files injected in batches (`relative path -> bytes`).
@@ -26,6 +28,8 @@ thread_local! {
     /// The affix-tier reverse-lookup index (lazily built; `Some(None)` = the
     /// data pack lacks pool data/templates, so tiers are left unlabeled).
     static TIER_INDEX: RefCell<Option<Option<Rc<pobr_item::TierIndex>>>> =
+        const { RefCell::new(None) };
+    static SPECIAL_AFFIX_POOLS: RefCell<Option<Result<SpecialAffixPools, String>>> =
         const { RefCell::new(None) };
     /// The entry-level response cache (see [`cached_response`]).
     static RESPONSE_CACHE: RefCell<ResponseCache> = RefCell::new(ResponseCache::default());
@@ -116,6 +120,7 @@ fn clear_data_caches() {
     crate::build_api::clear_snapshots();
     crate::locales::clear();
     TIER_INDEX.with_borrow_mut(|slot| *slot = None);
+    SPECIAL_AFFIX_POOLS.with_borrow_mut(|slot| *slot = None);
     RESPONSE_CACHE.with_borrow_mut(|c| {
         c.entries.clear();
         c.order.clear();
@@ -272,6 +277,19 @@ pub fn base_item_tags(base_name: &str) -> Option<(Vec<String>, u32)> {
     let data = build_data().ok()?;
     let def = data.base_items.get(base_name)?;
     Some((def.tags.clone(), def.mod_domain))
+}
+
+pub fn special_affix_ids(base_name: &str) -> Result<BTreeSet<String>, String> {
+    SPECIAL_AFFIX_POOLS.with_borrow_mut(|slot| {
+        slot.get_or_insert_with(|| {
+            game_data()?
+                .special_affix_pools()
+                .map_err(|error| format!("load special affix pools: {error}"))
+        })
+        .as_ref()
+        .map(|pools| pools.get(base_name).cloned().unwrap_or_default())
+        .map_err(Clone::clone)
+    })
 }
 
 #[cfg(test)]

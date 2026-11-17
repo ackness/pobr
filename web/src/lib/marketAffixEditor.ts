@@ -4,6 +4,8 @@ import { replacementAffixes } from './itemReplacement';
 import { cleanLineText } from './modifierText';
 import { normalizeTradeLine } from './trade';
 import { combinationLegal, type TradeAffix, type TradeBase, type TradeCatalog } from './tradeOptimizer';
+import { affixRollLines } from './affixTiers';
+export { affixRollLines, affixTier } from './affixTiers';
 
 export interface EditableAffix {
   key: string;
@@ -30,26 +32,10 @@ const clean = (line: string) => cleanLineText(line.replace(/\{[^}]*\}/g, ''))
 const signature = (line: string) => normalizeTradeLine(clean(line)).toLocaleLowerCase().replace(/\s+/g, ' ');
 const numbers = (line: string) => [...clean(line).matchAll(/-?\d+(?:\.\d+)?/g)].map(match => Number(match[0]));
 
-/** Keep exact midpoints (including fractions): this is an estimate, not an actual integer roll. */
-export function affixRollLines(mod: TradeAffix, roll = 0.5): string[] {
-  if (!mod.roll_lines) throw new Error('missing-ranges');
-  if (!Number.isFinite(roll) || roll < 0 || roll > 1) throw new Error('invalid-roll');
-  return mod.roll_lines.map(line => line.replace(/\((-?\d+(?:\.\d+)?)-(-?\d+(?:\.\d+)?)\)/g,
-    (_, low: string, high: string) => String(Number((Number(low) + (Number(high) - Number(low)) * roll).toFixed(4)))));
-}
-
 /** Full tier pool: the trade-search pool intentionally retains only its strongest tiers. */
 export function editableAffixPool(catalog: TradeCatalog, base: TradeBase): TradeAffix[] {
   return catalog.mods.filter(mod => mod.domain === base.domain && mod.roll_lines?.length === mod.lines.length
     && (mod.weights.find(([tag]) => base.tags.includes(tag))?.[1] ?? 0) > 0);
-}
-
-export function affixTier(mod: TradeAffix, pool: readonly TradeAffix[]): number {
-  const magnitude = (candidate: TradeAffix) => affixRollLines(candidate, 1).flatMap(numbers).reduce((sum, n) => sum + Math.abs(n), 0);
-  const family = pool.filter(candidate => candidate.group === mod.group && candidate.kind === mod.kind
-    && candidate.lines.map(signature).sort().join('\n') === mod.lines.map(signature).sort().join('\n'))
-    .sort((a, b) => b.level - a.level || magnitude(b) - magnitude(a) || b.id.localeCompare(a.id));
-  return family.findIndex(candidate => candidate.id === mod.id) + 1;
 }
 
 function matchesLine(value: string, mod: TradeAffix, lineIndex: number, aliases: AffixAliases): boolean {

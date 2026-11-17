@@ -104,6 +104,7 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
   const socketLabels = useMemo(() => jewelSocketNames(nodes, nodeNames, lang), [nodes, nodeNames, lang]);
   const [located, setLocated] = useState<{ nonce: number; node: number }>();
   const consumedLocation = useRef<number | undefined>(undefined);
+  const ascendancyFocus = useRef<string | null>(null);
   const [overlayReset, setOverlayReset] = useState(0);
   const planner = useTreeOptimizer({ session, lang, active, nodes,
     onLocate: node => setLocated({ node, nonce: Date.now() }),
@@ -127,13 +128,14 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
     session.activeLoadout, session.activeWeaponSet, session.socketGroupRevision,
     session.character?.class_name, session.character?.ascendancy_name]);
   return <TreeCanvas key={canvasContext} session={session} lang={lang} onJewelSearch={onJewelSearch}
-    consumedLocation={consumedLocation} socketLabels={socketLabels} onSearch={setNameSearch}
+    consumedLocation={consumedLocation} ascendancyFocus={ascendancyFocus} socketLabels={socketLabels} onSearch={setNameSearch}
     focusNode={located && located.nonce > (focusPlanner?.nonce ?? -1) ? located : focusPlanner?.node !== undefined ? focusPlanner : undefined} allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} nodeNames={nodeNames} error={error} plannedNodes={plannedNodes} planner={planner} conversion={conversion} overlayReset={overlayReset} />;
 }
 
 interface CanvasProps {
   focusNode?: { nonce: number; node?: number };
   consumedLocation: RefObject<number | undefined>;
+  ascendancyFocus: RefObject<string | null>;
   allocationMode: TreeAllocationMode;
   onAllocationMode: (mode: TreeAllocationMode) => void;
   session: BuildSession;
@@ -152,7 +154,7 @@ interface CanvasProps {
   overlayReset: number;
 }
 
-function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, socketLabels, onSearch, error, plannedNodes, planner, conversion, overlayReset }: CanvasProps) {
+function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, socketLabels, onSearch, error, plannedNodes, planner, conversion, overlayReset }: CanvasProps) {
   const tt = bindT(lang);
   /** Whether the planner / details column beside the canvas is shown. */
   const [sideOpen, setSideOpen] = useState(true);
@@ -728,7 +730,6 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     };
   }, [hover, lang]);
 
-  // 当前升华簇的包围盒（背景圆盘 + 自动聚焦用）。
   const ascExtent = useMemo((): ViewBox | null => {
     const cluster = placed.filter((n) => n.ascendancy_id === currentAscId);
     if (!currentAscId || cluster.length === 0) return null;
@@ -743,11 +744,17 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
     };
   }, [placed, currentAscId]);
 
-  // 切换升华 → 自动缩放定位到升华小盘（PoB2 语义：升华子树单独看）。
   useEffect(() => {
-    if (ascExtent) setViewBox(ascExtent);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentAscId]);
+    const selected = ascendancyFocus.current;
+    if (!selected) return;
+    if (selected !== session.character?.ascendancy_name) {
+      ascendancyFocus.current = null;
+      return;
+    }
+    if (!ascExtent) return;
+    ascendancyFocus.current = null;
+    setViewBox(ascExtent);
+  }, [ascendancyFocus, ascExtent, session.character?.ascendancy_name]);
 
   // Preview the full validated edit, including both weapon sets and dependent refunds.
   useEffect(() => {
@@ -1062,7 +1069,11 @@ function TreeCanvas({ focusNode, consumedLocation, allocationMode, onAllocationM
           <AppSelectControl
             value={session.character?.ascendancy_name ?? ''}
             disabled={session.busy}
-            onChange={(e) => session.setCharacter({ ascendancy_name: e.target.value })}
+            onChange={event => {
+              const nextAscendancy = event.target.value;
+              ascendancyFocus.current = nextAscendancy || null;
+              session.setCharacter({ ascendancy_name: nextAscendancy });
+            }}
           >
             <option value="">{tt('build.none')}</option>
             {(session.treeMeta?.classes ?? [])

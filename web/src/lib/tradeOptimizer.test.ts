@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { affixPool, basesForSlot, categoryAffixPool, categorySearchMods, referenceBase, combinationLegal, tradeItemVariant, optimizeTradeAffixes, type TradeAffix, type TradeBase, type TradeSearchMod } from './tradeOptimizer';
+import { affixPool, basesForSlot, categoryAffixPool, categoryAffixTiers, categorySearchMods, referenceBase, combinationLegal, tradeItemVariant, optimizeTradeAffixes, type TradeAffix, type TradeBase, type TradeSearchMod } from './tradeOptimizer';
 import { replaceUtility } from './utilityItems';
 import type { EvaluateOptions, EvaluateResult } from './optimize';
 import { scoreEquipment } from './equipmentScore';
@@ -46,6 +46,67 @@ describe('legal affix pool', () => {
     expect(combinationLegal([affix('a'), affix('b', 'suffix', 'a')])).toBe(false);
     expect(combinationLegal(['a', 'b', 'c', 'd'].map(id => affix(id)))).toBe(false);
   });
+});
+
+test('reference tiers retain stronger ineligible tiers without changing per-unit weights or query filters', async () => {
+  const weak = { ...affix('flat'), roll_lines: ['(5-10) flat'], level: 1 };
+  const strong = { ...weak, id: 'strong', lines: ['20 flat'], roll_lines: ['(15-20) flat'], level: 80,
+    stats: [{ ...weak.stats[0], line: '20 flat', value: 20 }] };
+  const catalog = { bases: [base], mods: [weak, strong] };
+  const pool = affixPool(catalog, base, 79);
+  const result = await optimizeTradeAffixes({ request: {}, slot: 'weapon2', base, pool,
+    tierPool: categoryAffixTiers(catalog, base.category), itemLevel: 79, objective, combinations: false,
+    evaluate: evaluator(text => 100 + Number(text.match(/(\d+) flat/)?.[1] ?? 0)),
+  });
+  expect(pool.map(mod => mod.id)).toEqual(['flat']);
+  expect(result.weighted[0]).toMatchObject({ id: 'explicit.flat', weight: 10, reference: {
+    modId: 'flat', source: 'ordinary', tier: 2,
+    tiers: [{ tier: 1, level: 80, lines: ['(15-20) flat'] }, { tier: 2, level: 1, lines: ['(5-10) flat'] }],
+  } });
+  expect(buildTradeQuery(result.weighted, { realm: 'intl', category: base.category }).query.stats[0].filters)
+    .toEqual([{ id: 'explicit.flat', value: { weight: 10 } }]);
+});
+
+test('special probe tiers are labeled only with an exact scoped catalog identity', async () => {
+  const native = { ...affix('special'), id: 'equipment:SpecialMod', roll_lines: ['(5-10) special'], weights: [['default', 0]] as [string, number][] };
+  const source: TradeSearchMod = { ...special, id: 'influence:SpecialMod', source: 'influence', lines: native.lines, stats: native.stats };
+  const result = await optimizeTradeAffixes({ request: {}, slot: 'weapon2', base, pool: [], searchMods: [source], searchTierPool: [source], specialTierPool: [native],
+    itemLevel: 80, objective, combinations: false, evaluate: evaluator(text => text.includes('special') ? 110 : 100) });
+  expect(result.weighted[0].reference).toMatchObject({ source: 'influence', tier: 1, modId: 'influence:SpecialMod' });
+});
+
+test('special reference tiers use the full source pool, not only item-level-eligible probes', async () => {
+  const weak = { ...affix('special'), id: 'equipment:SpecialMod1', roll_lines: ['(5-10) special'], level: 60, weights: [['default', 0]] as [string, number][] };
+  const strong = { ...weak, id: 'equipment:SpecialMod2', lines: ['20 special'], roll_lines: ['(15-20) special'], level: 85 };
+  const source: TradeSearchMod = { ...special, id: 'influence:SpecialMod1', source: 'influence', level: 60, lines: weak.lines, stats: weak.stats };
+  const higher = { ...source, id: 'influence:SpecialMod2', level: 85 };
+  const options = { request: {}, slot: 'weapon2', base, pool: [], searchMods: [source], specialTierPool: [weak, strong],
+    itemLevel: 80, objective, combinations: false, evaluate: evaluator(text => text.includes('special') ? 110 : 100) };
+  const known = await optimizeTradeAffixes({ ...options, searchTierPool: [source, higher] });
+  expect(known.weighted[0].reference).toMatchObject({ tier: 2, tiers: [{ tier: 1, level: 85 }, { tier: 2, level: 60 }] });
+  const unknown = await optimizeTradeAffixes(options);
+  expect(unknown.weighted[0].reference?.tier).toBeUndefined();
+  expect(unknown.weighted[0].reference?.tiers).toEqual([]);
+  const wrongDomain = await optimizeTradeAffixes({ ...options, searchTierPool: [source, higher],
+    specialTierPool: [weak, strong].map(mod => ({ ...mod, domain: 'jewel' })) });
+  expect(wrongDomain.weighted[0].reference?.tier).toBeUndefined();
+});
+
+test('natural modifiers selected through a special source keep their full ordinary tier ranking', async () => {
+  const native = { ...affix('critical'), id: 'equipment:Critical4', roll_lines: ['(5-10) critical'], level: 40 };
+  const stronger = { ...native, id: 'equipment:Critical5', lines: ['20 critical'], roll_lines: ['(15-20) critical'], level: 60 };
+  const source: TradeSearchMod = { ...special, id: 'essence:Critical4', source: 'essence', level: 40,
+    lines: native.lines, stats: native.stats.map(stat => ({ ...stat })) };
+  const options = { request: {}, slot: 'weapon2', base, pool: [native], searchMods: [source],
+    searchTierPool: [source], specialTierPool: [native, stronger], itemLevel: 40, objective, combinations: false,
+    evaluate: evaluator(text => text.includes('critical') ? 110 : 100) };
+  const result = await optimizeTradeAffixes({ ...options, tierPool: [native, stronger] });
+  expect(result.weighted).toHaveLength(1);
+  expect(result.weighted[0]).toMatchObject({ weight: 10, reference: { source: 'essence', modId: source.id, tier: 2,
+    tiers: [{ tier: 1, level: 60 }, { tier: 2, level: 40 }] } });
+  const unknown = await optimizeTradeAffixes(options);
+  expect(unknown.weighted[0].reference).toMatchObject({ source: 'essence', tiers: [] });
+  expect(unknown.weighted[0].reference?.tier).toBeUndefined();
 });
 
 test('special hybrid components get independent, deduplicated query weights and the actual crafted current minimum', async () => {

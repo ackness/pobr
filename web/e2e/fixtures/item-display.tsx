@@ -14,14 +14,14 @@ const lines: ItemLineJson[] = [
   { kind: 'enchant', text: '23% increased Elemental Damage with Attacks' },
   { kind: 'rune', text: 'Bow Attacks fire an additional Arrow' },
   { kind: 'rune', text: 'Gain 5% of Damage as Extra Damage of all Elements' },
-  { kind: 'explicit', text: 'Adds 12 to 228 Lightning Damage', affix: 'prefix', tier: 1, tier_total: 9 },
+  { kind: 'explicit', text: 'Adds 12 to 228 Lightning Damage', affix: 'prefix', tier: 1, tier_total: 9, modifier_sources: ['fractured'] },
   { kind: 'explicit', text: 'Adds 69 to 85 Cold Damage', affix: 'prefix', tier: 2, tier_total: 9 },
   { kind: 'explicit', text: '+4.92% to Critical Hit Chance' },
   { kind: 'explicit', text: '14% increased Attack Speed', affix: 'suffix', tier: 2, tier_total: 5 },
-  { kind: 'explicit', text: '+2 to Level of all Attack Skills' },
+  { kind: 'explicit', text: '+2 to Level of all Attack Skills', modifier_sources: ['crafted'] },
   { kind: 'explicit', text: 'Adds 65 to 106 Fire Damage', affix: 'prefix', tier: 2, tier_total: 9 },
 ];
-const text = 'Rarity: RARE\n' + lines.map(line => `${line.kind === 'enchant' || line.kind === 'rune' ? `{${line.kind}}` : ''}${line.text}`).join('\n');
+const text = 'Rarity: RARE\n' + lines.map(line => `${line.kind === 'enchant' || line.kind === 'rune' ? `{${line.kind}}` : ''}${(line.modifier_sources ?? []).map(source => `{${source}}`).join('')}${line.text}`).join('\n');
 const backend = await getBackend();
 const decode = backend.decodeBuild;
 backend.decodeBuild = async code => {
