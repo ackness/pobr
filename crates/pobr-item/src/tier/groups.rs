@@ -16,6 +16,19 @@ struct Candidate {
     fragment: Fragment,
 }
 
+struct Observation<'a> {
+    entry: &'a TemplateEntry,
+    captures: Vec<&'a str>,
+    values: Vec<Option<f64>>,
+    lines: BTreeSet<usize>,
+}
+
+struct MergedFamily<'a> {
+    group: &'a str,
+    generation_type: u32,
+    stats: Vec<ModStat>,
+}
+
 impl TierIndex {
     /// Matches complete groups of annotation-stripped explicit lines on one item.
     /// Results retain input order; incomplete, duplicate or competing groups
@@ -26,14 +39,14 @@ impl TierIndex {
         base_tags: &[String],
         mod_domain: u32,
     ) -> Vec<Option<TierInfo>> {
-        self.lookup_lines_with_allowed(lines, base_tags, mod_domain, &BTreeSet::new())
+        self.lookup_lines_with_allowed(lines, base_tags, mod_domain, &BTreeMap::new())
     }
 
     /// Extends the display pool with exact native IDs validated by the caller
     /// for this base's category. IDs bypass only natural spawn weights, never
     /// native domain, generation type, stat coverage or ambiguity checks.
     /// Natural matches rank only against the natural pool; nonnatural matches
-    /// rank only against admitted nonnatural IDs. Both pools retain native
+    /// rank separately within each admitted source. Both pools retain native
     /// group, stat set and prefix/suffix. No source or text aliases are inferred.
     /// Excessive search ambiguity conservatively leaves every line unknown.
     pub fn lookup_lines_with_allowed(
@@ -41,7 +54,7 @@ impl TierIndex {
         lines: &[&str],
         base_tags: &[String],
         mod_domain: u32,
-        allowed_ids: &BTreeSet<String>,
+        allowed_ids: &BTreeMap<String, BTreeSet<String>>,
     ) -> Vec<Option<TierInfo>> {
         self.lookup_groups(lines, base_tags, mod_domain, allowed_ids)
             .unwrap_or_else(|| vec![None; lines.len()])
@@ -52,7 +65,7 @@ impl TierIndex {
         lines: &[&str],
         base_tags: &[String],
         mod_domain: u32,
-        allowed_ids: &BTreeSet<String>,
+        allowed_ids: &BTreeMap<String, BTreeSet<String>>,
     ) -> Option<Vec<Option<TierInfo>>> {
         let tags = base_tags.iter().map(String::as_str).collect();
         let eligible: BTreeSet<usize> = self
@@ -62,7 +75,9 @@ impl TierIndex {
             .filter(|(_, modifier)| {
                 modifier.domain == mod_domain
                     && (spawn_weight_positive(&modifier.spawn_weights, &tags)
-                        || allowed_ids.contains(&modifier.id))
+                        || allowed_ids
+                            .get(&modifier.id)
+                            .is_some_and(|sources| !sources.is_empty()))
                     && modifier
                         .stats
                         .iter()
@@ -87,6 +102,7 @@ impl TierIndex {
         let parsed: Vec<_> = lines.iter().map(|line| tokenize(line)).collect();
         let mut budget = MAX_SEARCH_STEPS;
         let mut fragments: BTreeMap<usize, BTreeSet<Fragment>> = BTreeMap::new();
+        let mut observations = Vec::new();
         for (skeleton, entries) in &self.templates {
             for assignment in line_assignments(skeleton, &parsed, &mut budget)? {
                 let captures: Vec<_> = assignment
@@ -101,6 +117,12 @@ impl TierIndex {
                     let Some(values) = bind_captures(entry, &values) else {
                         continue;
                     };
+                    let observation = Observation {
+                        entry,
+                        captures: captures.clone(),
+                        values,
+                        lines: assignment.iter().copied().collect(),
+                    };
                     let Some(mod_indices) = entry
                         .stat_ids
                         .first()
@@ -111,74 +133,30 @@ impl TierIndex {
                     for &mod_index in mod_indices {
                         spend(&mut budget)?;
                         let modifier = &self.mods[mod_index];
-                        let Some(positions) = entry
-                            .stat_ids
-                            .iter()
-                            .map(|id| modifier.stats.iter().position(|stat| stat.stat_id == *id))
-                            .collect::<Option<BTreeSet<_>>>()
-                        else {
-                            continue;
-                        };
-                        if positions.len() != entry.stat_ids.len() {
-                            continue;
-                        }
-                        let stats: Vec<_> = positions
-                            .iter()
-                            .map(|&index| modifier.stats[index].clone())
-                            .collect();
-                        let matches = if let Some((descriptor, branch)) = &entry.descriptor {
-                            branches::matches(&stats, entry, descriptor, *branch, &captures)
-                        } else {
-                            values_in_range(&stats, &entry.stat_ids, &values)
-                        };
-                        if matches {
-                            fragments.entry(mod_index).or_default().insert(Fragment {
-                                lines: assignment.iter().copied().collect(),
-                                stats: positions,
-                                lookup_keys: entry
-                                    .lookup_key
-                                    .map(|(member, key)| (entry.stat_ids.clone(), member, key))
-                                    .into_iter()
-                                    .collect(),
-                            });
+                        if let Some(fragment) = matching_fragment(&modifier.stats, &observation) {
+                            fragments.entry(mod_index).or_default().insert(fragment);
                         }
                     }
+                    observations.push(observation);
                 }
             }
         }
         let mut candidates = BTreeSet::new();
         for (mod_index, parts) in fragments {
-            let mut pending = vec![Fragment::default()];
-            let mut visited = BTreeSet::new();
-            while let Some(current) = pending.pop() {
-                spend(&mut budget)?;
-                if !visited.insert(current.clone()) {
-                    continue;
-                }
-                let missing = (0..self.mods[mod_index].stats.len())
-                    .find(|index| !current.stats.contains(index));
-                let Some(missing) = missing else {
-                    candidates.insert(Candidate {
-                        mod_index,
-                        fragment: current,
-                    });
-                    continue;
-                };
-                for part in &parts {
-                    if part.stats.contains(&missing)
-                        && part.stats.is_disjoint(&current.stats)
-                        && part.lines.is_disjoint(&current.lines)
-                    {
-                        spend(&mut budget)?;
-                        let mut next = current.clone();
-                        next.lines.extend(&part.lines);
-                        next.stats.extend(&part.stats);
-                        next.lookup_keys.extend(part.lookup_keys.iter().cloned());
-                        pending.push(next);
-                    }
-                }
+            for fragment in
+                complete_fragments(self.mods[mod_index].stats.len(), &parts, &mut budget)?
+            {
+                candidates.insert(Candidate {
+                    mod_index,
+                    fragment,
+                });
             }
         }
+        let merged = if candidates.is_empty() {
+            BTreeSet::new()
+        } else {
+            self.merged_lines(&eligible, &observations, &mut budget)?
+        };
         let mut result = vec![None; lines.len()];
         for candidate in &candidates {
             let duplicate = candidate.fragment.lines.iter().any(|&index| {
@@ -192,10 +170,13 @@ impl TierIndex {
                     && (!candidate.fragment.lines.is_disjoint(&other.fragment.lines)
                         || self.mods[candidate.mod_index].group == self.mods[other.mod_index].group)
             });
-            if duplicate || competing {
+            if duplicate || competing || !candidate.fragment.lines.is_disjoint(&merged) {
                 continue;
             }
-            let info = self.group_tier(candidate.mod_index, &eligible, &natural)?;
+            let Some(info) = self.group_tier(candidate.mod_index, &eligible, &natural, allowed_ids)
+            else {
+                continue;
+            };
             for &index in &candidate.fragment.lines {
                 result[index] = Some(info.clone());
             }
@@ -203,43 +184,239 @@ impl TierIndex {
         Some(result)
     }
 
+    fn merged_lines(
+        &self,
+        eligible: &BTreeSet<usize>,
+        observations: &[Observation<'_>],
+        budget: &mut usize,
+    ) -> Option<BTreeSet<usize>> {
+        let visible: BTreeSet<_> = observations
+            .iter()
+            .filter(|observation| observation.entry.lookup_key.is_none())
+            .flat_map(|observation| {
+                observation
+                    .entry
+                    .slots
+                    .iter()
+                    .filter_map(|slot| match slot {
+                        Slot::Value(member) => observation.entry.stat_ids.get(*member),
+                        Slot::Literal(_) => None,
+                    })
+            })
+            .collect();
+        let mut families: BTreeMap<_, MergedFamily<'_>> = BTreeMap::new();
+        for &index in eligible {
+            let modifier = &self.mods[index];
+            if modifier
+                .stats
+                .iter()
+                .any(|stat| !visible.contains(&stat.stat_id))
+            {
+                continue;
+            }
+            let key = (
+                modifier.group.as_str(),
+                modifier.generation_type,
+                stat_key(modifier.stats.iter().map(|stat| stat.stat_id.as_str())),
+            );
+            let family = families.entry(key).or_insert_with(|| MergedFamily {
+                group: &modifier.group,
+                generation_type: modifier.generation_type,
+                stats: modifier.stats.clone(),
+            });
+            for stat in &modifier.stats {
+                let range = family
+                    .stats
+                    .iter_mut()
+                    .find(|range| range.stat_id == stat.stat_id)?;
+                range.min = range.min.min(stat.min);
+                range.max = range.max.max(stat.max);
+            }
+        }
+        let families: Vec<_> = families.into_values().collect();
+        let mut pending: Vec<_> = families
+            .iter()
+            .enumerate()
+            .map(|(index, family)| (vec![index], family.stats.clone()))
+            .collect();
+        let mut visited = BTreeSet::new();
+        let mut merged = BTreeSet::new();
+        while let Some((selected, stats)) = pending.pop() {
+            spend(budget)?;
+            if selected.len() >= 2 {
+                let mut parts = BTreeSet::new();
+                for observation in observations {
+                    spend(budget)?;
+                    if let Some(fragment) = matching_fragment(&stats, observation) {
+                        parts.insert(fragment);
+                    }
+                }
+                for fragment in complete_fragments(stats.len(), &parts, budget)? {
+                    merged.extend(fragment.lines);
+                }
+            }
+            for (index, family) in families.iter().enumerate() {
+                if selected
+                    .iter()
+                    .any(|&other| families[other].group == family.group)
+                    || selected
+                        .iter()
+                        .filter(|&&other| families[other].generation_type == family.generation_type)
+                        .count()
+                        >= 3
+                    || !family
+                        .stats
+                        .iter()
+                        .any(|stat| stats.iter().any(|current| current.stat_id == stat.stat_id))
+                {
+                    continue;
+                }
+                let mut next = selected.clone();
+                next.push(index);
+                next.sort_unstable();
+                if !visited.insert(next.clone()) {
+                    continue;
+                }
+                spend(budget)?;
+                let mut sum = stats.clone();
+                for stat in &family.stats {
+                    if let Some(current) = sum
+                        .iter_mut()
+                        .find(|current| current.stat_id == stat.stat_id)
+                    {
+                        current.min = current.min.checked_add(stat.min)?;
+                        current.max = current.max.checked_add(stat.max)?;
+                    } else {
+                        sum.push(stat.clone());
+                    }
+                }
+                pending.push((next, sum));
+            }
+        }
+        Some(merged)
+    }
+
     fn group_tier(
         &self,
         mod_index: usize,
         eligible: &BTreeSet<usize>,
         natural: &BTreeSet<usize>,
+        allowed_ids: &BTreeMap<String, BTreeSet<String>>,
     ) -> Option<TierInfo> {
         let modifier = &self.mods[mod_index];
         let key = stat_key(modifier.stats.iter().map(|stat| stat.stat_id.as_str()));
-        let mut ranked: Vec<usize> = self
-            .pools
-            .get(&key)?
-            .iter()
-            .copied()
-            .filter(|index| {
-                eligible.contains(index)
-                    && natural.contains(index) == natural.contains(&mod_index)
-                    && self.mods[*index].group == modifier.group
-                    && self.mods[*index].generation_type == modifier.generation_type
-            })
-            .collect();
-        ranked.sort_by_key(|&index| {
-            let modifier = &self.mods[index];
-            (
-                modifier.level,
-                stat_magnitude(&modifier.stats),
-                &modifier.id,
-            )
-        });
-        let position = ranked.iter().position(|&index| index == mod_index)?;
-        Some(TierInfo {
-            tier: (ranked.len() - position) as u32,
-            total: ranked.len() as u32,
-            is_prefix: modifier.generation_type == GENERATION_PREFIX,
-            affix_name: modifier.affix_name.clone(),
-            mod_id: modifier.id.clone(),
-        })
+        let sources: Vec<_> = if natural.contains(&mod_index) {
+            vec![None]
+        } else {
+            allowed_ids.get(&modifier.id)?.iter().map(Some).collect()
+        };
+        let mut verdict = None;
+        for source in sources {
+            let mut ranked: Vec<usize> = self
+                .pools
+                .get(&key)?
+                .iter()
+                .copied()
+                .filter(|index| {
+                    eligible.contains(index)
+                        && natural.contains(index) == natural.contains(&mod_index)
+                        && source.is_none_or(|source| {
+                            allowed_ids
+                                .get(&self.mods[*index].id)
+                                .is_some_and(|sources| sources.contains(source))
+                        })
+                        && self.mods[*index].group == modifier.group
+                        && self.mods[*index].generation_type == modifier.generation_type
+                })
+                .collect();
+            ranked.sort_by_key(|&index| {
+                let modifier = &self.mods[index];
+                (
+                    modifier.level,
+                    stat_magnitude(&modifier.stats),
+                    &modifier.id,
+                )
+            });
+            let position = ranked.iter().position(|&index| index == mod_index)?;
+            let info = TierInfo {
+                tier: (ranked.len() - position) as u32,
+                total: ranked.len() as u32,
+                is_prefix: modifier.generation_type == GENERATION_PREFIX,
+                affix_name: modifier.affix_name.clone(),
+                mod_id: modifier.id.clone(),
+            };
+            if verdict.as_ref().is_some_and(|previous| *previous != info) {
+                return None;
+            }
+            verdict = Some(info);
+        }
+        verdict
     }
+}
+
+fn matching_fragment(stats: &[ModStat], observation: &Observation<'_>) -> Option<Fragment> {
+    let entry = observation.entry;
+    let positions = entry
+        .stat_ids
+        .iter()
+        .map(|id| stats.iter().position(|stat| stat.stat_id == *id))
+        .collect::<Option<BTreeSet<_>>>()?;
+    if positions.len() != entry.stat_ids.len() {
+        return None;
+    }
+    let members: Vec<_> = positions
+        .iter()
+        .map(|&index| stats[index].clone())
+        .collect();
+    let matches = if let Some((descriptor, branch)) = &entry.descriptor {
+        branches::matches(&members, entry, descriptor, *branch, &observation.captures)
+    } else {
+        values_in_range(&members, &entry.stat_ids, &observation.values)
+    };
+    matches.then(|| Fragment {
+        lines: observation.lines.clone(),
+        stats: positions,
+        lookup_keys: entry
+            .lookup_key
+            .map(|(member, key)| (entry.stat_ids.clone(), member, key))
+            .into_iter()
+            .collect(),
+    })
+}
+
+fn complete_fragments(
+    count: usize,
+    parts: &BTreeSet<Fragment>,
+    budget: &mut usize,
+) -> Option<BTreeSet<Fragment>> {
+    let mut complete = BTreeSet::new();
+    let mut pending = vec![Fragment::default()];
+    let mut visited = BTreeSet::new();
+    while let Some(current) = pending.pop() {
+        spend(budget)?;
+        if !visited.insert(current.clone()) {
+            continue;
+        }
+        let missing = (0..count).find(|index| !current.stats.contains(index));
+        let Some(missing) = missing else {
+            complete.insert(current);
+            continue;
+        };
+        for part in parts {
+            if part.stats.contains(&missing)
+                && part.stats.is_disjoint(&current.stats)
+                && part.lines.is_disjoint(&current.lines)
+            {
+                spend(budget)?;
+                let mut next = current.clone();
+                next.lines.extend(&part.lines);
+                next.stats.extend(&part.stats);
+                next.lookup_keys.extend(part.lookup_keys.iter().cloned());
+                pending.push(next);
+            }
+        }
+    }
+    Some(complete)
 }
 
 fn spend(budget: &mut usize) -> Option<()> {

@@ -265,11 +265,17 @@ fn special_pool() -> Vec<ModDef> {
         .collect()
 }
 
+fn allowed_ids(ids: &[&str]) -> BTreeMap<String, BTreeSet<String>> {
+    ids.iter()
+        .map(|id| ((*id).into(), BTreeSet::from(["influence".into()])))
+        .collect()
+}
+
 #[test]
 fn allowed_native_ids_extend_only_the_display_pool_without_changing_tags() {
     let index = TierIndex::build(&special_pool(), &descriptions());
     let lines = ["+2 to Level of all Projectile Skills"];
-    let allowed = BTreeSet::from(["Special1".into(), "Special2".into()]);
+    let allowed = allowed_ids(&["Special1", "Special2"]);
     let results = index.lookup_lines_with_allowed(&lines, &tags(), 1, &allowed);
     let info = results[0].as_ref().unwrap();
     assert_eq!(info.mod_id, "Special2");
@@ -278,9 +284,10 @@ fn allowed_native_ids_extend_only_the_display_pool_without_changing_tags() {
     assert!(index.lookup(lines[0], &tags(), 1).is_none());
     assert_eq!(index.lookup_lines(&lines, &tags(), 1), vec![None]);
     for allowed in [
-        BTreeSet::new(),
-        BTreeSet::from(["influence:Special2".into()]),
-        BTreeSet::from(["unrelated".into()]),
+        BTreeMap::new(),
+        allowed_ids(&["influence:Special2"]),
+        allowed_ids(&["unrelated"]),
+        BTreeMap::from([("Special2".into(), BTreeSet::new())]),
     ] {
         assert_eq!(
             index.lookup_lines_with_allowed(&lines, &tags(), 1, &allowed),
@@ -297,7 +304,7 @@ fn allowed_native_ids_extend_only_the_display_pool_without_changing_tags() {
 fn allowed_ids_cannot_admit_other_generation_types_or_missing_mods() {
     let mut mods = special_pool();
     mods[1].generation_type = Some(3);
-    let allowed = BTreeSet::from(["Special2".into()]);
+    let allowed = allowed_ids(&["Special2"]);
     let index = TierIndex::build(&mods, &descriptions());
     assert_eq!(
         index.lookup_lines_with_allowed(
@@ -338,7 +345,7 @@ fn ordinary_and_allowed_candidates_with_the_same_text_never_choose_a_preference(
             &["+2 to Level of all Projectile Skills"],
             &tags(),
             1,
-            &BTreeSet::from(["Special2".into()])
+            &allowed_ids(&["Special2"])
         ),
         vec![None]
     );
@@ -356,7 +363,7 @@ fn stronger_allowed_affixes_never_demote_natural_tiers_or_enter_the_natural_pool
     ordinary.generation_type = Some(2);
     mods.push(ordinary);
     let index = TierIndex::build(&mods, &descriptions());
-    let allowed = BTreeSet::from(["Ordinary".into(), "Special1".into(), "Special2".into()]);
+    let allowed = allowed_ids(&["Ordinary", "Special1", "Special2"]);
     let ordinary = index.lookup_lines_with_allowed(
         &["+2 to Level of all Projectile Skills"],
         &tags(),
@@ -384,7 +391,7 @@ fn stronger_allowed_affixes_never_demote_natural_tiers_or_enter_the_natural_pool
 #[test]
 fn no_mods_no_descriptions_and_empty_inputs_degrade_without_data() {
     let lines = [EVASION_LINE, SHIELD_LINE];
-    let allowed = BTreeSet::from(["Hybrid4".into()]);
+    let allowed = allowed_ids(&["Hybrid4"]);
     for index in [
         TierIndex::default(),
         TierIndex::build(&[], &descriptions()),
@@ -396,4 +403,97 @@ fn no_mods_no_descriptions_and_empty_inputs_degrade_without_data() {
         );
         assert!(index.lookup_lines(&[], &tags(), 1).is_empty());
     }
+}
+
+#[test]
+fn special_tiers_never_mix_source_pools_with_the_same_native_group() {
+    let mut mods = special_pool();
+    let mut alloy = mods[1].clone();
+    alloy.id = "Alloy".into();
+    alloy.level = 3;
+    alloy.stats[0].min = 3;
+    alloy.stats[0].max = 3;
+    mods.push(alloy);
+    let index = TierIndex::build(&mods, &descriptions());
+    let mut allowed = allowed_ids(&["Special1", "Special2"]);
+    allowed.insert("Alloy".into(), BTreeSet::from(["alloy".into()]));
+    let result = index.lookup_lines_with_allowed(
+        &["+1 to Level of all Projectile Skills"],
+        &tags(),
+        1,
+        &allowed,
+    );
+    let info = result[0].as_ref().unwrap();
+    assert_eq!(info.mod_id, "Special1");
+    assert_eq!((info.tier, info.total), (2, 2));
+
+    allowed.get_mut("Special1").unwrap().insert("alloy".into());
+    let result = index.lookup_lines_with_allowed(
+        &["+1 to Level of all Projectile Skills"],
+        &tags(),
+        1,
+        &allowed,
+    );
+    assert_eq!(result[0].as_ref().unwrap().tier, 2);
+    allowed.get_mut("Alloy").unwrap().insert("influence".into());
+    assert_eq!(
+        index.lookup_lines_with_allowed(
+            &["+1 to Level of all Projectile Skills"],
+            &tags(),
+            1,
+            &allowed,
+        ),
+        vec![None]
+    );
+}
+
+#[test]
+fn merged_hybrid_and_independent_totals_never_claim_unique_native_identities() {
+    let mut descriptions = descriptions();
+    let scope = descriptions.scopes.get_mut("stat_descriptions").unwrap();
+    let defence = "local_evasion_and_energy_shield_+%";
+    let life = "base_maximum_life";
+    for (stat, template) in [
+        (defence, "{0}% increased Evasion and Energy Shield"),
+        (life, "{0:+d} to maximum Life"),
+    ] {
+        scope
+            .descriptors
+            .insert(stat.into(), descriptor(&[stat], template));
+    }
+    let mut mods = vec![
+        modifier(
+            "HybridLife",
+            "HybridLife",
+            &[(defence, 30, 30), (life, 26, 26)],
+        ),
+        modifier("DefenceLow", "Defence", &[(defence, 26, 26)]),
+        modifier("DefenceHigh", "Defence", &[(defence, 56, 56)]),
+        modifier("LifeLow", "Life", &[(life, 24, 24)]),
+        modifier("LifeHigh", "Life", &[(life, 50, 50)]),
+        modifier("Strength", "Strength", &[("additional_strength", 10, 10)]),
+    ];
+    let lines = [
+        "56% increased Evasion and Energy Shield",
+        "+50 to maximum Life",
+        "+10 to Strength",
+    ];
+    for _ in 0..2 {
+        let results = TierIndex::build(&mods, &descriptions).lookup_lines(&lines, &tags(), 1);
+        assert_eq!(results[..2], [None, None]);
+        assert_eq!(results[2].as_ref().unwrap().mod_id, "Strength");
+        mods.reverse();
+    }
+    mods.iter_mut()
+        .find(|modifier| modifier.id == "HybridLife")
+        .unwrap()
+        .stats
+        .push(ModStat {
+            stat_id: "hidden".into(),
+            min: 1,
+            max: 1,
+        });
+    let results = TierIndex::build(&mods, &descriptions).lookup_lines(&lines, &tags(), 1);
+    assert_eq!(results[0].as_ref().unwrap().mod_id, "DefenceHigh");
+    assert_eq!(results[1].as_ref().unwrap().mod_id, "LifeHigh");
 }
