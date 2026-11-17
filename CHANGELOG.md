@@ -4,6 +4,30 @@ Notable changes to PoBR, the browser build planner at [pobr.win](https://pobr.wi
 
 Versions follow [SemVer](https://semver.org/). While the version is 0.0.x, any release may change behaviour; changes that need action from WASM, CLI or data consumers are listed under **Breaking changes**. How a release section is written: [RELEASING.md](RELEASING.md#4-发版上线).
 
+## [0.0.53] - 2026-11-17
+
+Upgrades now show reference affix tiers, sources and roll ranges without requiring T1 items in trade searches. Item details recognise more hybrid affixes and show source labels from imported text, while the passive tree opens on the full tree instead of zooming into the ascendancy. The game data remains at 0.5.5.8 and the WASM JSON schema stays at 21.
+
+### Breaking changes
+
+- None.
+
+### Added
+
+- Expand an upgrade reference to see each tier's roll range and level requirement. Trade searches still use per-stat weights; the upgrade estimate uses a representative roll rather than calculating every tier. (#380)
+- Item details show labels for annotations such as crafted and fractured (locked), and use consistent colours for attributes and damage types across display modes. The saved item text is unchanged. (#380)
+
+### Fixed
+
+- Item details recognise complete hybrid affixes across multiple lines and rank special affixes in their own source pools. Ambiguous or out-of-range rolls stay unclassified. (#380)
+- The passive tree opens at the overview when loading or returning to the tab. Ascendancy focus and planner navigation still work when explicitly selected. (#380)
+
+### For developers
+
+- `mise run data:migrate` collects offline measurements and reviewable drafts for a data bump without applying or accepting new baselines. (#378)
+- `mise run patch:status` reports data releases, adoption, CI and deployment evidence without changing anything. Missing evidence is reported as unknown. (#379)
+- Item-line JSON adds the optional `modifier_sources` array. The WASM JSON schema and data contract versions are unchanged. (#380)
+
 ## [0.0.52] - 2026-11-15
 
 PoBR now uses Path of Exile 2 international 0.5.5.8 data. ItemCrafter shows native item-class names in English, Simplified Chinese and Traditional Chinese while preserving the selected class and saved items. The WASM JSON schema version stays at 21.
@@ -339,6 +363,7 @@ pobr.win now calculates with game data 0.5.5.5 (was 0.5.5.4.2), imported from th
 
 Notes for 0.0.43 and earlier are on [GitHub Releases](https://github.com/ackness/pobr/releases).
 
+[0.0.53]: https://github.com/ackness/pobr/compare/v0.0.52...v0.0.53
 [0.0.52]: https://github.com/ackness/pobr/compare/v0.0.51...v0.0.52
 [0.0.51]: https://github.com/ackness/pobr/compare/v0.0.50...v0.0.51
 [0.0.50]: https://github.com/ackness/pobr/compare/v0.0.49...v0.0.50
