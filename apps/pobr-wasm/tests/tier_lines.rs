@@ -230,19 +230,42 @@ fn hybrid_and_category_scoped_special_affixes_share_native_tiers() {
 }
 
 #[test]
+fn ambiguous_merged_defence_and_life_lines_have_no_tier_or_affix() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    let text = "\
+Rarity: RARE
+Display Fixture
+Runeforged Secured Wraps
+Item Level: 81
+56% increased Evasion and Energy Shield
++50 to maximum Life";
+    let lines = classified_lines(text);
+    for modifier in [
+        "56% increased Evasion and Energy Shield",
+        "+50 to maximum Life",
+    ] {
+        let line = lines.iter().find(|line| line["text"] == modifier).unwrap();
+        assert_eq!(line["kind"], "explicit", "{line}");
+        assert!(line.get("tier").is_none(), "{line}");
+        assert!(line.get("tier_total").is_none(), "{line}");
+        assert!(line.get("affix").is_none(), "{line}");
+    }
+}
+
+#[test]
 fn influence_ailment_duration_tiers_exclude_alloy_from_the_same_category() {
     pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
-    let text = "Rarity: RARE\nSource Fixture\nRuneforged Secured Wraps\nItem Level: 81\n10% increased Duration of Damaging Ailments";
-    let lines = classified_lines(text);
-    let duration = lines
-        .iter()
-        .find(|line| line["text"] == "10% increased Duration of Damaging Ailments")
-        .unwrap();
+    let modifier = "10% increased Duration of Damaging Ailments on Enemies";
+    let text = format!(
+        "Rarity: RARE\nSource Fixture\nRuneforged Secured Wraps\nItem Level: 81\n{modifier}"
+    );
+    let lines = classified_lines(&text);
+    let duration = lines.iter().find(|line| line["text"] == modifier).unwrap();
     assert_eq!(duration["kind"], "explicit");
     assert_eq!(duration["tier"], 2);
     assert_eq!(duration["tier_total"], 2);
     assert!(duration.get("modifier_sources").is_none());
-    assert_eq!(classified_lines(text), lines);
+    assert_eq!(classified_lines(&text), lines);
 }
 
 #[test]
