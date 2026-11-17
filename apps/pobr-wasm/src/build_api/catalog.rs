@@ -100,12 +100,12 @@ pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
         .map(|line| equipment_tier_line(&line.text))
         .collect();
     let tiers = if let Some((index, tags, domain, base_name)) = tier_ctx {
-        let allowed = state::special_affix_ids(&base_name)?;
+        let allowed_sources = state::special_affix_ids(&base_name)?;
         index.lookup_lines_with_allowed(
             &explicit.iter().map(String::as_str).collect::<Vec<_>>(),
             &tags,
             domain,
-            &allowed,
+            &allowed_sources,
         )
     } else {
         vec![None; explicit.len()]

@@ -16,7 +16,7 @@ use std::rc::Rc;
 use pobr_build::BuildData;
 use pobr_gamedata::GameData;
 
-type SpecialAffixPools = BTreeMap<String, BTreeSet<String>>;
+type SpecialAffixPools = BTreeMap<String, BTreeMap<String, BTreeSet<String>>>;
 
 thread_local! {
     /// The staging area for data files injected in batches (`relative path -> bytes`).
@@ -279,7 +279,7 @@ pub fn base_item_tags(base_name: &str) -> Option<(Vec<String>, u32)> {
     Some((def.tags.clone(), def.mod_domain))
 }
 
-pub fn special_affix_ids(base_name: &str) -> Result<BTreeSet<String>, String> {
+pub fn special_affix_ids(base_name: &str) -> Result<BTreeMap<String, BTreeSet<String>>, String> {
     SPECIAL_AFFIX_POOLS.with_borrow_mut(|slot| {
         slot.get_or_insert_with(|| {
             game_data()?

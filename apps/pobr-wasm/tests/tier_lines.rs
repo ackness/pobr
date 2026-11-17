@@ -230,6 +230,22 @@ fn hybrid_and_category_scoped_special_affixes_share_native_tiers() {
 }
 
 #[test]
+fn influence_ailment_duration_tiers_exclude_alloy_from_the_same_category() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    let text = "Rarity: RARE\nSource Fixture\nRuneforged Secured Wraps\nItem Level: 81\n10% increased Duration of Damaging Ailments";
+    let lines = classified_lines(text);
+    let duration = lines
+        .iter()
+        .find(|line| line["text"] == "10% increased Duration of Damaging Ailments")
+        .unwrap();
+    assert_eq!(duration["kind"], "explicit");
+    assert_eq!(duration["tier"], 2);
+    assert_eq!(duration["tier_total"], 2);
+    assert!(duration.get("modifier_sources").is_none());
+    assert_eq!(classified_lines(text), lines);
+}
+
+#[test]
 fn out_of_range_ring_damage_is_not_assigned_a_nearest_or_quality_adjusted_tier() {
     pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
     let text = "Rarity: RARE\nDisplay Fixture\nGold Ring\nItem Level: 79\nQuality: 20\nAdds 26 to 38 Cold damage to Attacks\n+43% to Cold Resistance";

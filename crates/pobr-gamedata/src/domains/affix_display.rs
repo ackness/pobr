@@ -4,6 +4,8 @@ use serde::Deserialize;
 
 use crate::{GameData, LoadError};
 
+type SpecialAffixPools = BTreeMap<String, BTreeMap<String, BTreeSet<String>>>;
+
 #[derive(Deserialize)]
 struct DisplayCatalog {
     #[serde(default)]
@@ -26,7 +28,7 @@ struct DisplayMod {
 }
 
 impl GameData {
-    pub fn special_affix_pools(&self) -> Result<BTreeMap<String, BTreeSet<String>>, LoadError> {
+    pub fn special_affix_pools(&self) -> Result<SpecialAffixPools, LoadError> {
         let catalog = match self
             .load_json_at::<DisplayCatalog>(self.overlay_path("trade_catalog.json"))
         {
@@ -36,7 +38,7 @@ impl GameData {
             }
             Err(error) => return Err(error),
         };
-        let mut categories: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+        let mut categories = SpecialAffixPools::new();
         for modifier in catalog.search_mods {
             if !matches!(
                 modifier.source.as_str(),
@@ -54,7 +56,9 @@ impl GameData {
                 categories
                     .entry(category)
                     .or_default()
-                    .insert(identifier.to_string());
+                    .entry(identifier.to_string())
+                    .or_default()
+                    .insert(source.to_string());
             }
         }
         let mut base_categories: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
@@ -145,8 +149,89 @@ mod tests {
             r#"{"bases":[{"name":"Gloves","category":"armour.gloves"},{"name":"Ring","category":"accessory.ring"}],"search_mods":[{"id":"influence:Special1","source":"influence","categories":["armour.gloves"]},{"id":"influence:WrongSource","source":"essence","categories":["armour.gloves"]},{"id":"unknown:Untrusted","source":"unknown","categories":["accessory.ring"]}]}"#,
         ));
         let pools = data.special_affix_pools().unwrap();
-        assert_eq!(pools["Gloves"], BTreeSet::from(["Special1".to_string()]));
+        assert_eq!(
+            pools["Gloves"],
+            BTreeMap::from([(
+                "Special1".to_string(),
+                BTreeSet::from(["influence".to_string()]),
+            )])
+        );
         assert!(!pools.contains_key("Ring"));
+    }
+
+    #[test]
+    fn different_sources_in_one_category_keep_their_native_id_associations() {
+        let catalog = json!({
+            "bases": [
+                { "name": "Gloves", "category": "armour.gloves" },
+                { "name": "Ring", "category": "accessory.ring" },
+            ],
+            "search_mods": [
+                { "id": "influence:Influence1", "source": "influence", "categories": ["armour.gloves"] },
+                { "id": "alloy:Alloy1", "source": "alloy", "categories": ["armour.gloves"] },
+                { "id": "influence:Ring1", "source": "influence", "categories": ["accessory.ring"] },
+            ],
+        })
+        .to_string();
+        let pools = game(Some(&catalog)).special_affix_pools().unwrap();
+        assert_eq!(
+            pools,
+            BTreeMap::from([
+                (
+                    "Gloves".to_string(),
+                    BTreeMap::from([
+                        ("Alloy1".to_string(), BTreeSet::from(["alloy".to_string()])),
+                        (
+                            "Influence1".to_string(),
+                            BTreeSet::from(["influence".to_string()]),
+                        ),
+                    ]),
+                ),
+                (
+                    "Ring".to_string(),
+                    BTreeMap::from([(
+                        "Ring1".to_string(),
+                        BTreeSet::from(["influence".to_string()]),
+                    )]),
+                ),
+            ])
+        );
+    }
+
+    #[test]
+    fn repeated_native_ids_preserve_all_sources_without_cross_category_leaks() {
+        let catalog = json!({
+            "bases": [
+                { "name": "Gloves", "category": "armour.gloves" },
+                { "name": "Ring", "category": "accessory.ring" },
+            ],
+            "search_mods": [
+                { "id": "influence:Shared1", "source": "influence", "categories": ["armour.gloves", "accessory.ring"] },
+                { "id": "alloy:Shared1", "source": "alloy", "categories": ["armour.gloves"] },
+                { "id": "influence:Shared1", "source": "influence", "categories": ["armour.gloves"] },
+            ],
+        })
+        .to_string();
+        let pools = game(Some(&catalog)).special_affix_pools().unwrap();
+        assert_eq!(
+            pools,
+            BTreeMap::from([
+                (
+                    "Gloves".to_string(),
+                    BTreeMap::from([(
+                        "Shared1".to_string(),
+                        BTreeSet::from(["alloy".to_string(), "influence".to_string()]),
+                    )]),
+                ),
+                (
+                    "Ring".to_string(),
+                    BTreeMap::from([(
+                        "Shared1".to_string(),
+                        BTreeSet::from(["influence".to_string()]),
+                    )]),
+                ),
+            ])
+        );
     }
 
     #[test]
@@ -168,7 +253,13 @@ mod tests {
         ));
         let pools = data.special_affix_pools().unwrap();
         assert!(!pools.contains_key("Ambiguous"));
-        assert_eq!(pools["Gloves"], BTreeSet::from(["Special1".to_string()]));
+        assert_eq!(
+            pools["Gloves"],
+            BTreeMap::from([(
+                "Special1".to_string(),
+                BTreeSet::from(["influence".to_string()]),
+            )])
+        );
     }
 
     #[test]
@@ -253,7 +344,10 @@ mod tests {
     fn releasing_other_domain_keeps_special_catalog_readable_twice() {
         let expected = BTreeMap::from([(
             "Gloves".to_string(),
-            BTreeSet::from(["Special1".to_string()]),
+            BTreeMap::from([(
+                "Special1".to_string(),
+                BTreeSet::from(["influence".to_string()]),
+            )]),
         )]);
         for prechecked in [false, true] {
             let data =
