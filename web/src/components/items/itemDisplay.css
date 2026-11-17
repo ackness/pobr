@@ -28,6 +28,23 @@
 .item-display [data-damage='fire'] { --item-number-color: var(--color-fire); }
 .item-display [data-damage='chaos'] { --item-number-color: var(--color-chaos); }
 .item-display [data-damage='physical'] { --item-number-color: var(--color-physical); }
+.item-display [data-attribute='fire'] { --item-number-color: var(--color-fire); }
+.item-display [data-attribute='cold'] { --item-number-color: var(--color-cold); }
+.item-display [data-attribute='lightning'] { --item-number-color: var(--color-lightning); }
+.item-display [data-attribute='chaos'] { --item-number-color: var(--color-chaos); }
+.item-display [data-attribute='physical'] { --item-number-color: var(--color-physical); }
+.item-display [data-attribute='life'] { --item-number-color: var(--color-life); }
+.item-display [data-attribute='mana'] { --item-number-color: var(--color-mana); }
+.item-display [data-attribute='es'] { --item-number-color: var(--color-es); }
+.item-display [data-attribute='defence'] { --item-number-color: var(--color-defence); }
+.item-display .item-affix-text { color: var(--item-number-color, var(--foreground)); }
+.item-display [data-source='fractured'] { --item-number-color: var(--accent-gold-bright); }
+.item-display [data-source='crafted'] { --item-number-color: var(--color-es); }
+.item-display [data-source='desecrated'] { --item-number-color: var(--color-chaos); }
+.item-modifier-sources { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .35rem; color: var(--muted-foreground); }
+.item-modifier-sources [data-modifier-source='fractured'] { color: var(--accent-gold-bright); border-color: var(--accent-gold-dim); }
+.item-modifier-sources [data-modifier-source='crafted'] { color: var(--color-es); }
+.item-modifier-sources [data-modifier-source='desecrated'] { color: var(--color-chaos); }
 .item-affix-tier { flex: none; min-width: 1.9rem; margin-left: auto; text-align: center; font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
 .item-affix-tier-unknown { color: var(--muted-foreground); }
 .item-affix-kind { flex: 0 0 4.5rem; color: var(--muted-foreground); font-size: var(--text-xs); overflow-wrap: anywhere; }

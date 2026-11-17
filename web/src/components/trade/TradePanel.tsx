@@ -21,14 +21,15 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useItemDisplayNames, useLocalizedLines } from '../../hooks/useLocalizedLines';
-import { lineText } from '../../lib/continuedLines';
+import { lineText, shownLines } from '../../lib/continuedLines';
 import { useSkillCatalog } from '../../hooks/useSkillName';
 import { activeSkillEffects } from '../../lib/skillSelection';
 import { skillDisplayName } from '../../lib/skillNames';
 import { bindT, slotLabel, statNameLabel, type Lang, type UiKey } from '../../lib/i18n';
 import { OBJECTIVE_PRESETS, scoreOf, type Objective } from '../../lib/optimize';
 import { REALM_DEFAULT_LEAGUE, REALM_LEAGUES, TRADE_CURRENCIES, buildTradeUrl, gemTradeUrl, loadTradeLeagues, type TradeCurrency, type TradePriceCap, type TradeRealm } from '../../lib/trade';
-import { affixPool, basesForSlot, categoryAffixPool, categorySearchMods, loadTradeCatalog, optimizeTradeAffixes, referenceBase, jewelSearchType, type JewelSearchType, type TradeCatalog } from '../../lib/tradeOptimizer';
+import { affixPool, basesForSlot, categoryAffixPool, categoryAffixTiers, categorySearchMods, loadTradeCatalog, optimizeTradeAffixes, referenceBase, jewelSearchType, type JewelSearchType, type TradeCatalog, type TradeAffixReference } from '../../lib/tradeOptimizer';
+import { Badge } from '../ui/badge';
 import { planGemUpgrades } from '../../lib/tradeMarket';
 import { AppSelect } from '../shared/AppSelect';
 import { CopyButton } from '../shared/CopyButton';
@@ -48,6 +49,24 @@ const leagueKey = (realm: TradeRealm) => `pobr-trade-league-${realm}`;
 const BUDGET_KEY = 'pobr-trade-budget';
 const CURRENCY_KEY = 'pobr-trade-currency';
 type SlotResult = PositionAnalysis;
+
+function AffixReference({ reference, lang }: { reference?: TradeAffixReference; lang: Lang }) {
+  const tt = bindT(lang);
+  const lines = reference?.tiers.flatMap(entry => entry.lines) ?? [];
+  const translated = useLocalizedLines(lines, lang);
+  let offset = 0;
+  return <div className="trade-affix-reference">
+    <span className="trade-affix-badges"><Badge variant="outline">{reference?.tier ? `T${reference.tier}` : tt('trade.unknownTier')}</Badge>
+      {reference?.source !== undefined && <Badge variant="secondary">{tt(`trade.source.${reference.source}` as UiKey)}</Badge>}</span>
+    {reference && reference.tiers.length > 0 && <details className="trade-affix-tiers"><summary className="disclosure">{tt('trade.viewTiers')}</summary>
+      <ul>{reference.tiers.map(entry => {
+        const rendered = shownLines(entry.lines, translated.slice(offset, offset + entry.lines.length));
+        offset += entry.lines.length;
+        return <li key={entry.tier}><b>T{entry.tier}</b><span>{rendered.join(' / ')}</span><small>{tt('trade.modLevel')} {entry.level}</small></li>;
+      })}</ul>
+    </details>}
+  </div>;
+}
 
 /** Local build analysis produces official search links; login and buying stay on the market. */
 export function TradePanel({ session, lang, active, focus, onSkills, onTree, initialItemText }: {
@@ -273,6 +292,9 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
               request, slot, base, pool: categoryAffixPool(catalog, base.category, itemLevel, request.character?.level, slot.startsWith('Jewel@') ? jewelSearchType(base) : undefined), itemLevel,
               searchMods: categorySearchMods(catalog, base.category, itemLevel, slot.startsWith('Jewel@') ? jewelSearchType(base) : undefined),
               objective, combinations: mode === 'all', combinationPool: affixPool(catalog, base, itemLevel),
+              tierPool: categoryAffixTiers(catalog, base.category, request.character?.level, slot.startsWith('Jewel@') ? jewelSearchType(base) : undefined),
+              specialTierPool: catalog.mods,
+              searchTierPool: categorySearchMods(catalog, base.category, Number.POSITIVE_INFINITY, slot.startsWith('Jewel@') ? jewelSearchType(base) : undefined),
               maxEvaluations: mode === 'all' ? 768 : undefined, beamWidth: 6, ...options,
             }) };
           }
@@ -460,7 +482,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
           {!hasScores ? <div className="trade-notice" role="status"><p>{tt('trade.noEquipmentScores')}</p><AppButton onClick={editGoal}>{tt('trade.adjustTarget')}</AppButton></div> : <div className="trade-score-table" role="table" aria-label={tt('trade.affixHeading')}>
             <div className="trade-score-row trade-score-labels" role="row"><span role="columnheader">{tt('trade.colLine')}</span><span role="columnheader">{tt('trade.priority')}</span><span role="columnheader">{ut('marginal')}</span></div>
             {weights.weighted.map((weight, index) => <div key={weight.id} className="trade-score-row" role="row">
-              <span className="trade-affix" role="cell"><span className="trade-rank">{String(index + 1).padStart(2, '0')}</span>{lineText(weight.line, localized[index])}</span>
+              <div className="trade-affix" role="cell"><span className="trade-rank">{String(index + 1).padStart(2, '0')}</span><div className="trade-affix-description">{lineText(weight.line, localized[index])}<AffixReference reference={weight.reference} lang={lang} /></div></div>
               <span className="trade-priority" role="cell"><span className="trade-bar"><span style={{ width: `${weight.gain / maxGain * 100}%` }} /></span><b>{Math.round(weight.gain / maxGain * 100)}</b></span>
               <span className="trade-gain" role="cell">+{formatNumber(weight.gainPercent, 1, 1)}%</span>
             </div>)}

@@ -152,6 +152,30 @@ test('usable scores show integer ranking scores, one-decimal gains and one equip
   expect(button('Open trade search').disabled).toBe(true);
 });
 
+test('affix priorities show reference tiers, source, every range and explicit unknown tiers', async () => {
+  await ready();
+  weights.weighted = [
+    { id: 'explicit.life', line: '+10 to maximum Life', value: 10, weight: 1, gain: 10, gainPercent: 1,
+      reference: { modId: 'equipment:Life1', source: 'ordinary', tier: 2,
+        tiers: [{ tier: 1, level: 85, lines: ['+(15-20) to maximum Life'] }, { tier: 2, level: 1, lines: ['+(5-10) to maximum Life'] }] } },
+    { id: 'explicit.speed', line: '10% increased Projectile Speed', value: 10, weight: 1, gain: 10, gainPercent: 1,
+      reference: { modId: 'influence:Speed', source: 'influence', tiers: [] } },
+  ];
+  ui.optimize.mockResolvedValue(weights);
+  await button('Analyze all positions').onClick!({} as never);
+  ui.buttons.find(props => props['data-slot-id'] === 'ring1')!.onClick!({} as never);
+  const html = render();
+  expect(html).toMatch(/trade-affix-badges.*?>T2<\/span>/);
+  expect(html).toContain(bindT('en-US')('trade.source.ordinary'));
+  expect(html).toContain(bindT('en-US')('trade.source.influence'));
+  expect(html).toContain('Tier unknown');
+  expect(html).toContain('View tiers and ranges');
+  expect(html).toContain('+(15-20) to maximum Life');
+  expect(html).toContain('+(5-10) to maximum Life');
+  expect(html).toContain('Modifier level 85');
+  expect(ui.optimize).toHaveBeenCalledWith(expect.objectContaining({ searchTierPool: [], tierPool: [], specialTierPool: [] }));
+});
+
 test('measures completed positions for ETA and hides resume until Stop is clicked', async () => {
   await ready();
   const first = deferred<TradeOptimization>(), second = deferred<TradeOptimization>();

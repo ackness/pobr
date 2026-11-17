@@ -82,6 +82,7 @@ export interface ItemLineJson {
   tier_total?: number;
   /** 词缀性质（与 tier 成对出现）。 */
   affix?: 'prefix' | 'suffix';
+  modifier_sources?: ('crafted' | 'fractured' | 'desecrated' | 'mutated' | 'custom')[];
 }
 
 export interface SocketJewelJson {

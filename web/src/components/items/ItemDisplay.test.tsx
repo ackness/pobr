@@ -79,3 +79,20 @@ it('comparison cards keep original text in collapsed advanced details', () => {
   expect(html).toContain('Unique ID: saved-id');
   expect(html).not.toContain('value="raw"');
 });
+
+it.each(['grouped', 'compact', 'game'] as const)('%s shows known crafting and locked sources without guessing missing ones', style => {
+  const sourced: ItemLineJson[] = [lines[0], lines[1],
+    { kind: 'explicit', text: '+74 to Evasion Rating', modifier_sources: ['fractured'] },
+    { kind: 'explicit', text: '+25 to maximum Energy Shield', modifier_sources: ['crafted'] },
+    { kind: 'explicit', text: '+43% to Cold Resistance', affix: 'suffix', tier: 1 },
+    { kind: 'explicit', text: 'Unknown effect' },
+  ];
+  const html = renderToStaticMarkup(<UiProvider lang="zh-CN" displayMode={style}>
+    <ItemDisplayContent text="Rarity: RARE\nItem\nBase" lang="zh-CN" lines={sourced} translated={sourced.map(line => line.text)} />
+  </UiProvider>);
+  expect(html).toContain('破裂 · 锁定');
+  expect(html).toContain('data-modifier-source="crafted"');
+  expect(html).toContain('data-attribute="cold"');
+  expect(html).toContain('不等于工艺词缀');
+  expect(html.match(/data-modifier-source=/g)).toHaveLength(2);
+});

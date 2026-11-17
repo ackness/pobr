@@ -4,7 +4,7 @@ import { getBackend } from '../../api/backend';
 import { itemLines, rarityOf, useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
 import { isContinuation } from '../../lib/continuedLines';
 import { t, type Lang } from '../../lib/i18n';
-import { itemDamageType, itemDisplaySections, itemValueParts, type DisplayItemLine } from '../../lib/itemDisplay';
+import { itemAttributeType, itemDamageType, itemDisplaySections, itemValueParts, type DisplayItemLine } from '../../lib/itemDisplay';
 import { useUi } from '../shared/UiContext';
 import { AppTooltip } from '../shared/controls';
 import { Badge } from '../ui/badge';
@@ -71,6 +71,15 @@ export function ItemDisplayContent({ text, lang, lines, translated, rawDetails =
   };
   const rarityLabel = ({ normal: w('Normal', '普通'), magic: w('Magic', '魔法'), rare: w('Rare', '稀有'), unique: w('Unique', '传奇', '傳奇'), relic: w('Relic', '遗珍', '遺珍') } as Record<string, string>)[rarity];
 
+  function sources(line: DisplayItemLine) {
+    const names = {
+      crafted: w('Crafted', '工艺', '工藝'), fractured: w('Fractured · locked', '破裂 · 锁定', '破裂 · 鎖定'),
+      desecrated: w('Desecrated', '亵渎', '褻瀆'), mutated: w('Mutated', '异化', '異化'), custom: w('Custom', '自定义', '自訂'),
+    };
+    return line.modifier_sources?.length ? <span className="item-modifier-sources">{line.modifier_sources.map(source =>
+      <Badge key={source} variant="outline" data-modifier-source={source}>{names[source]}</Badge>)}</span> : null;
+  }
+
   function tier(line: DisplayItemLine) {
     if (fixedAffixes || !hasTiers) return null;
     if (line.tier == null) return <span className="item-affix-tier item-affix-tier-unknown" aria-label={w('Tier not identified', '档位未识别', '階級未識別')}>—</span>;
@@ -82,9 +91,9 @@ export function ItemDisplayContent({ text, lang, lines, translated, rawDetails =
 
   function modifier(line: DisplayItemLine, showKind = false) {
     const kind = line.kind === 'explicit' && !fixedAffixes ? line.affix ?? 'explicit' : line.kind;
-    return <div className="item-affix-row item-line" data-affix={line.affix} data-kind={line.kind} data-damage={itemDamageType(line.original)} key={line.index}>
+    return <div className="item-affix-row item-line" data-affix={line.affix} data-kind={line.kind} data-damage={itemDamageType(line.original)} data-attribute={itemAttributeType(line.original)} data-source={line.modifier_sources?.[0]} key={line.index}>
       {showKind && <span className="item-affix-kind">{kind === 'explicit' && !fixedAffixes ? w('Unknown', '未分类', '未分類') : labels[kind as keyof typeof labels]}</span>}
-      <span className="item-affix-text"><ItemValues text={line.text} /></span>
+      <span className="item-affix-text"><ItemValues text={line.text} />{sources(line)}</span>
       {line.kind === 'explicit' && tier(line)}
     </div>;
   }
@@ -122,10 +131,10 @@ export function ItemDisplayContent({ text, lang, lines, translated, rawDetails =
         {style === 'compact' && model.explicit.length > 0 ? <table className="item-affix-table">
           <caption className="sr-only">{w('Equipment modifiers', '装备词缀', '裝備詞綴')}</caption>
           <thead><tr><th scope="col">{w('Type', '类型', '類型')}</th><th scope="col">{w('Modifier and values', '词缀与数值', '詞綴與數值')}</th>{hasTiers && <th scope="col">{w('Tier', '档位', '階級')}</th>}</tr></thead>
-          <tbody>{model.explicit.map(line => <tr className="item-line" key={line.index} data-affix={line.affix} data-damage={itemDamageType(line.original)}>
+          <tbody>{model.explicit.map(line => <tr className="item-line" key={line.index} data-affix={line.affix} data-kind={line.kind} data-damage={itemDamageType(line.original)} data-attribute={itemAttributeType(line.original)} data-source={line.modifier_sources?.[0]}>
             <td>{line.affix && !fixedAffixes ? <Badge variant={line.affix === 'prefix' ? 'secondary' : 'outline'}>{labels[line.affix]}</Badge>
               : <span className="item-unclassified">{labels.explicit}</span>}</td>
-            <td className="item-affix-text"><ItemValues text={line.text} /></td>{hasTiers && <td>{tier(line)}</td>}
+            <td className="item-affix-text"><ItemValues text={line.text} />{sources(line)}</td>{hasTiers && <td>{tier(line)}</td>}
           </tr>)}</tbody>
         </table> : <div className="item-affix-groups">
           {fixedAffixes ? group(otherLabel, model.explicit) : <>
@@ -135,6 +144,7 @@ export function ItemDisplayContent({ text, lang, lines, translated, rawDetails =
         </div>}
         {style !== 'game' && extras}
         {hasUnknownTiers && <p className="item-display-hint">{w('— means the tier was not identified.', '— 表示档位未识别。', '— 表示階級未識別。')}</p>}
+        {!fixedAffixes && model.other.length > 0 && <p className="item-display-hint">{w('Unclassified means the prefix, suffix or tier could not be verified. It does not mean the effect is unsupported or crafted. Source labels appear only when the imported text includes them.', '未分类表示未能核实前后缀或档位，不代表效果未生效，也不等于工艺词缀。来源标签只展示原文明确保留的标记。', '未分類表示未能核實前後綴或階級，不代表效果未生效，也不等於工藝詞綴。來源標籤只顯示原文明確保留的標記。')}</p>}
       </TabsContent>
       {!rawDetails && <TabsContent value="raw"><pre className="item-original-text">{text}</pre></TabsContent>}
     </Tabs>

@@ -42,6 +42,8 @@ struct ItemLineJson {
     text: String,
     /// `name` / `base` / `struct` / `implicit` / `explicit` / `enchant` / `rune` / `class_req`.
     kind: &'static str,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    modifier_sources: Vec<&'static str>,
     /// The affix tier (1 = strongest in its pool; only given for rare/magic/normal explicit lines with a reverse-lookup hit).
     #[serde(skip_serializing_if = "Option::is_none")]
     tier: Option<u32>,
@@ -67,6 +69,17 @@ fn display_line_kind_str(kind: pobr_item::DisplayLineKind) -> &'static str {
     }
 }
 
+fn modifier_source_str(source: pobr_item::draft::ModifierSource) -> &'static str {
+    use pobr_item::draft::ModifierSource;
+    match source {
+        ModifierSource::Crafted => "crafted",
+        ModifierSource::Fractured => "fractured",
+        ModifierSource::Desecrated => "desecrated",
+        ModifierSource::Mutated => "mutated",
+        ModifierSource::Custom => "custom",
+    }
+}
+
 /// Splits a PoB item text block into ordered display lines plus categories
 /// (the parsing itself doesn't need game data).
 ///
@@ -80,34 +93,74 @@ fn display_line_kind_str(kind: pobr_item::DisplayLineKind) -> &'static str {
 /// pool data / the lookup misses — this is a display enhancement, not a hard dependency).
 pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
     let tier_ctx = tier_context(text);
-    let lines: Vec<ItemLineJson> = pobr_item::classify_display_lines(text)
+    let classified = pobr_item::classify_display_lines(text);
+    let explicit: Vec<_> = classified
+        .iter()
+        .filter(|line| line.kind == pobr_item::DisplayLineKind::Explicit)
+        .map(|line| equipment_tier_line(&line.text))
+        .collect();
+    let tiers = if let Some((index, tags, domain, base_name)) = tier_ctx {
+        let allowed_sources = state::special_affix_ids(&base_name)?;
+        index.lookup_lines_with_allowed(
+            &explicit.iter().map(String::as_str).collect::<Vec<_>>(),
+            &tags,
+            domain,
+            &allowed_sources,
+        )
+    } else {
+        vec![None; explicit.len()]
+    };
+    let mut tiers = tiers.into_iter();
+    let lines: Vec<ItemLineJson> = classified
         .into_iter()
-        .map(|l| {
-            let tier = match (&tier_ctx, l.kind) {
-                (Some((index, tags, domain)), pobr_item::DisplayLineKind::Explicit) => {
-                    index.lookup(&l.text, tags, *domain)
-                }
-                _ => None,
-            };
+        .map(|line| {
+            let tier = (line.kind == pobr_item::DisplayLineKind::Explicit)
+                .then(|| tiers.next().flatten())
+                .flatten();
             ItemLineJson {
-                text: l.text,
-                kind: display_line_kind_str(l.kind),
-                tier: tier.as_ref().map(|t| t.tier),
-                tier_total: tier.as_ref().map(|t| t.total),
+                text: line.text,
+                kind: display_line_kind_str(line.kind),
+                modifier_sources: line
+                    .modifier_sources
+                    .into_iter()
+                    .map(modifier_source_str)
+                    .collect(),
+                tier: tier.as_ref().map(|tier| tier.tier),
+                tier_total: tier.as_ref().map(|tier| tier.total),
                 affix: tier
                     .as_ref()
-                    .map(|t| if t.is_prefix { "prefix" } else { "suffix" }),
+                    .map(|tier| if tier.is_prefix { "prefix" } else { "suffix" }),
             }
         })
         .collect();
     serde_json::to_string(&lines).map_err(|e| format!("serialize: {e}"))
 }
 
+fn equipment_tier_line(line: &str) -> String {
+    if let Some(value) = line
+        .strip_prefix("Projectiles move at ")
+        .and_then(|value| value.strip_suffix("% increased Speed"))
+        .filter(|value| {
+            !value.is_empty()
+                && value
+                    .bytes()
+                    .all(|byte| byte.is_ascii_digit() || byte == b'.')
+                && value.parse::<f64>().is_ok_and(|number| number.is_finite())
+        })
+    {
+        format!("{value}% increased Projectile Speed")
+    } else {
+        line.to_string()
+    }
+}
+
 /// The context needed for tier reverse lookup: (index, base tags, base mod_domain).
 ///
 /// Unique/relic items have fixed rolls with no tier concept, and an
 /// unrecognized base (a custom base name) is likewise omitted — better to skip than to be wrong.
-fn tier_context(text: &str) -> Option<(std::rc::Rc<pobr_item::TierIndex>, Vec<String>, u32)> {
+fn tier_context(
+    text: &str,
+) -> Option<(std::rc::Rc<pobr_item::TierIndex>, Vec<String>, u32, String)> {
     let draft = pobr_item::ItemDraft::parse(text).ok()?;
     if matches!(
         draft.header.rarity.to_ascii_uppercase().as_str(),
@@ -117,7 +170,7 @@ fn tier_context(text: &str) -> Option<(std::rc::Rc<pobr_item::TierIndex>, Vec<St
     }
     let index = state::tier_index()?;
     let (tags, domain) = state::base_item_tags(&draft.header.base_name)?;
-    Some((index, tags, domain))
+    Some((index, tags, domain, draft.header.base_name))
 }
 
 // gem_catalog_json (the gem picker's catalog for manual skill editing)

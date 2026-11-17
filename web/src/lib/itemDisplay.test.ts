@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import type { ItemLineJson } from '../api/types';
-import { itemDamageType, itemDisplaySections, itemValueParts } from './itemDisplay';
+import { itemAttributeType, itemDamageType, itemDisplaySections, itemValueParts } from './itemDisplay';
 
 it('uses only supplied affix identities, keeps multiline affixes and separates sources', () => {
   const lines: ItemLineJson[] = [
@@ -46,9 +46,29 @@ it.each([
 it('does not colour mixed damage or infer affixes from translated text', () => {
   expect(itemDamageType('Adds 69 to 85 Cold Damage')).toBe('cold');
   expect(itemDamageType('Gain Fire Damage as Extra Cold Damage')).toBeUndefined();
+  expect(itemDamageType('+14% to Fire and Chaos Resistances')).toBeUndefined();
+  expect(itemDamageType('Cold Damage cannot Ignite')).toBe('cold');
+  expect(itemDamageType('Cold Resistance is equal to Fire Resistance')).toBeUndefined();
   const result = itemDisplaySections([{ kind: 'explicit', text: 'Unknown modifier' }], ['附加 12 点闪电伤害']);
   expect(result.other[0]).toMatchObject({ original: 'Unknown modifier', text: '附加 12 点闪电伤害' });
   expect(result.prefixes).toHaveLength(0);
+});
+
+it.each([
+  ['+43% to Cold Resistance', 'cold'], ['Adds 26 to 38 Cold damage to Attacks', 'cold'],
+  ['+135 to maximum Life', 'life'], ['+116 to maximum Mana', 'mana'],
+  ['+25 to maximum Energy Shield', 'es'], ['+74 to Evasion Rating', 'defence'],
+  ['56% increased Evasion and Energy Shield', undefined],
+  ['+14% to Fire and Chaos Resistances', undefined], ['Unrecognised effect', undefined],
+])('uses conservative semantic colours for %s', (text, expected) => {
+  expect(itemAttributeType(text)).toBe(expected);
+});
+
+it('retains explicit source markers independently of prefix and tier recognition', () => {
+  const source: ItemLineJson = { kind: 'explicit', text: '+50 to maximum Life', modifier_sources: ['fractured', 'crafted'] };
+  expect(itemDisplaySections([source], ['+50 生命上限']).other[0]).toMatchObject({
+    modifier_sources: ['fractured', 'crafted'], original: source.text, text: '+50 生命上限',
+  });
 });
 
 it('formats known structural units while retaining unfamiliar socket formats and metadata', () => {

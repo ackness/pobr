@@ -79,6 +79,9 @@ test('all layouts retain unknown lines and fit a narrow viewport in light and da
       await expect(detail(page)).toContainText('+4.92%');
       await expect(detail(page)).toContainText('+2');
       await expect(detail(page).getByText('Unclassified', { exact: false }).first()).toBeVisible();
+      await expect(detail(page).locator('[data-modifier-source="fractured"]')).toHaveText('Fractured · locked');
+      await expect(detail(page).locator('[data-modifier-source="crafted"]')).toHaveText('Crafted');
+      await expect(detail(page).locator('[data-source="fractured"]')).toHaveAttribute('data-damage', 'lightning');
       const overflow = await detail(page).evaluate(root => {
         const right = root.getBoundingClientRect().right;
         return [...root.querySelectorAll('*')].some(el => el.getBoundingClientRect().width > 0 && el.getBoundingClientRect().right > right + 1);

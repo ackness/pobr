@@ -202,6 +202,13 @@ impl ItemDraft {
     /// non-metadata line is a mod line (annotations stripped, then bucketed).
     /// Unrecognized lines never error (lossless fallback into explicit).
     pub fn parse(raw: &str) -> Result<Self, DraftError> {
+        Self::parse_with_mod_positions(raw, |_| {})
+    }
+
+    fn parse_with_mod_positions(
+        raw: &str,
+        mut record_mod_position: impl FnMut(usize),
+    ) -> Result<Self, DraftError> {
         let lines: Vec<&str> = raw
             .lines()
             .map(str::trim)
@@ -298,6 +305,7 @@ impl ItemDraft {
                 annotations: ann,
                 bucket,
             });
+            record_mod_position(idx - 1);
         }
 
         Ok(draft)
@@ -322,11 +330,21 @@ pub enum DisplayLineKind {
     ClassReq,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModifierSource {
+    Crafted,
+    Fractured,
+    Desecrated,
+    Mutated,
+    Custom,
+}
+
 /// One display line: clean text plus its category.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DisplayLine {
     pub text: String,
     pub kind: DisplayLineKind,
+    pub modifier_sources: Vec<ModifierSource>,
 }
 
 /// Splits a PoB item text block into **ordered** display lines with
@@ -339,13 +357,13 @@ pub struct DisplayLine {
 /// lines vs. mod lines). Returns an empty list on parse failure (empty
 /// input); the caller falls back to undifferentiated rendering.
 pub fn classify_display_lines(raw: &str) -> Vec<DisplayLine> {
-    let Ok(draft) = ItemDraft::parse(raw) else {
+    let mut mod_positions = Vec::new();
+    let Ok(draft) =
+        ItemDraft::parse_with_mod_positions(raw, |position| mod_positions.push(position))
+    else {
         return Vec::new();
     };
-    // Mod-line queue (original order): its clean text is used to locate mod
-    // lines within the original line sequence.
-    let mut mods = draft.lines.iter();
-    let mut next_mod = mods.next();
+    let mut mods = mod_positions.into_iter().zip(draft.lines).peekable();
 
     let lines: Vec<&str> = raw
         .lines()
@@ -368,6 +386,7 @@ pub fn classify_display_lines(raw: &str) -> Vec<DisplayLine> {
         out.push(DisplayLine {
             text: lines[idx].to_string(),
             kind: DisplayLineKind::Name,
+            modifier_sources: Vec::new(),
         });
         name_done = true;
         idx += 1;
@@ -383,31 +402,41 @@ pub fn classify_display_lines(raw: &str) -> Vec<DisplayLine> {
             } else {
                 DisplayLineKind::Name
             },
+            modifier_sources: Vec::new(),
         });
         idx += 1;
     }
 
-    for &line in &lines[idx..] {
-        let (_, clean) = parse_mod_line(line);
-        // Mod line: matched against the queue in order by clean text
-        // (draft.lines is the authoritative mod-line classification from parse).
-        if let Some(m) = next_mod
-            && m.text == clean
-        {
+    for (position, &line) in lines.iter().enumerate().skip(idx) {
+        if let Some((_, mod_line)) = mods.next_if(|(mod_position, _)| *mod_position == position) {
             out.push(DisplayLine {
-                text: clean,
-                kind: bucket_to_display_kind(m.bucket),
+                text: mod_line.text,
+                kind: bucket_to_display_kind(mod_line.bucket),
+                modifier_sources: modifier_sources(&mod_line.annotations),
             });
-            next_mod = mods.next();
             continue;
         }
         // Everything else is a structural/state line, displayed as-is.
         out.push(DisplayLine {
             text: line.to_string(),
             kind: DisplayLineKind::Struct,
+            modifier_sources: Vec::new(),
         });
     }
     out
+}
+
+fn modifier_sources(annotations: &ModLineAnnotations) -> Vec<ModifierSource> {
+    [
+        (annotations.crafted, ModifierSource::Crafted),
+        (annotations.fractured, ModifierSource::Fractured),
+        (annotations.desecrated, ModifierSource::Desecrated),
+        (annotations.mutated, ModifierSource::Mutated),
+        (annotations.custom, ModifierSource::Custom),
+    ]
+    .into_iter()
+    .filter_map(|(present, source)| present.then_some(source))
+    .collect()
 }
 
 fn bucket_to_display_kind(bucket: LineBucket) -> DisplayLineKind {
@@ -792,6 +821,37 @@ Implicits: 1
             vec![Name, Struct, Struct, Implicit],
         );
         assert_eq!(out[0].text, "Sapphire Ring");
+    }
+
+    #[test]
+    fn classify_display_lines_keeps_modifier_sources_at_their_original_positions() {
+        let raw = "\
+Rarity: RARE
+Annotation Fixture
+Synthetic Base
+Crafted: true
+Implicits: 0
++40 to maximum Life
+{crafted}+40 to maximum Life
+Corrupted
+{fractured}Corrupted";
+        let lines = classify_display_lines(raw);
+        let kinds_and_sources: Vec<_> = lines[4..]
+            .iter()
+            .map(|line| (line.kind, line.modifier_sources.as_slice()))
+            .collect();
+        assert_eq!(
+            kinds_and_sources,
+            [
+                (DisplayLineKind::Explicit, &[][..]),
+                (DisplayLineKind::Explicit, &[ModifierSource::Crafted]),
+                (DisplayLineKind::Struct, &[]),
+                (DisplayLineKind::Explicit, &[ModifierSource::Fractured]),
+            ]
+        );
+        assert_eq!(lines[6].text, "Corrupted");
+        assert_eq!(lines[7].text, "Corrupted");
+        fixpoint(raw);
     }
 
     #[test]

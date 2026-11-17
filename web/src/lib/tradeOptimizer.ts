@@ -5,6 +5,7 @@ import type { CalculateBuildRequest, VariantInput } from '../api/types';
 import { compareObjectiveStats, evaluateVariants, feasibleOf, scoreOf, type EvaluateOptions, type EvaluateResult, type Objective } from './optimize';
 import { normalizeTradeLine, tradeQueryWeights, type TradeStatTemplate, type WeightedStat } from './trade';
 import { itemForAffixProbes, scoreEquipment, tradeStatRemovals, type EquipmentScore } from './equipmentScore';
+import { affixFamily } from './affixTiers';
 
 export interface TradeBase {
   name: string;
@@ -102,6 +103,13 @@ export function categoryAffixPool(catalog: TradeCatalog, category: string, itemL
     .flatMap(base => affixPool(catalog, base, itemLevel)).map(mod => [mod.id, mod])).values()];
 }
 
+export function categoryAffixTiers(catalog: TradeCatalog, category: string, maxLevel = 100, jewelType?: JewelSearchType): TradeAffix[] {
+  const bases = catalog.bases.filter(base => base.category === category && base.level <= maxLevel
+    && (!jewelType || jewelSearchType(base) === jewelType));
+  return catalog.mods.filter(mod => bases.some(base => mod.domain === base.domain
+    && (mod.weights.find(([tag]) => base.tags.includes(tag))?.[1] ?? 0) > 0));
+}
+
 /** PoB2 and GGG crafting categories apply independently of natural spawn weights. */
 export function categorySearchMods(catalog: TradeCatalog, category: string, itemLevel = 100, jewelType?: JewelSearchType): TradeSearchMod[] {
   return (catalog.search_mods ?? []).filter(mod => mod.categories.includes(category) && mod.level <= itemLevel
@@ -155,7 +163,7 @@ export interface TradeCombination {
 export interface TradeOptimization {
   situational?: SituationalAffix[];
   baseline: Record<string, number>;
-  weighted: (WeightedStat & { gain: number; gainPercent: number })[];
+  weighted: (WeightedStat & { gain: number; gainPercent: number; reference?: TradeAffixReference })[];
   combinations: TradeCombination[];
   evaluated: number;
   limited: boolean;
@@ -163,6 +171,13 @@ export interface TradeOptimization {
   unsupported: string[];
   currentItemScore: EquipmentScore | null;
   scoreWarnings: ('partial-current-score' | 'nonlinear' | 'base-dependent' | 'constraints-not-in-query'|'unmodeled-candidates')[];
+}
+
+export interface TradeAffixReference {
+  modId: string;
+  source: 'ordinary' | TradeSearchMod['source'];
+  tier?: number;
+  tiers: { tier: number; level: number; lines: string[] }[];
 }
 
 interface SearchOptions {
@@ -181,6 +196,9 @@ interface SearchOptions {
   beamWidth?: number;
   combinations?: boolean;
   combinationPool?: TradeAffix[];
+  tierPool?: TradeAffix[];
+  specialTierPool?: TradeAffix[];
+  searchTierPool?: TradeSearchMod[];
 }
 
 /** Whole-item evaluation preserves nonlinear interactions; beam pruning bounds browser work.
@@ -210,7 +228,29 @@ export async function optimizeTradeAffixes(options: SearchOptions): Promise<Trad
     return results;
   };
   // Weight each mapped stat independently, even if it belongs to a hybrid affix.
-  const templates = [...pool, ...(options.searchMods ?? [])].flatMap(mod => mod.stats);
+  const candidates = [...pool, ...(options.searchMods ?? [])];
+  const templates = candidates.flatMap(mod => mod.stats);
+  const templateSources = new Map(candidates.flatMap(mod => mod.stats.map(stat => [stat, mod] as const)));
+  const naturallyRollable = (mod: TradeAffix) => mod.domain === base.domain
+    && (mod.weights.find(([tag]) => base.tags.includes(tag))?.[1] ?? 0) > 0;
+  const ordinaryTierPool = options.tierPool?.filter(naturallyRollable);
+  const referenceOf = (stat: TradeStatTemplate): TradeAffixReference | undefined => {
+    const candidate = templateSources.get(stat);
+    if (!candidate) return;
+    const special = 'source' in candidate;
+    const specialIds = special ? new Set((options.searchTierPool ?? [])
+      .filter(entry => entry.source === candidate.source)
+      .map(entry => entry.id.slice(entry.id.indexOf(':') + 1))) : undefined;
+    const sourcePool = special ? options.specialTierPool?.filter(entry => entry.domain === base.domain
+      && specialIds?.has(entry.id.slice(entry.id.indexOf(':') + 1))) : undefined;
+    const mod = special ? sourcePool?.find(entry => entry.id.slice(entry.id.indexOf(':') + 1) === candidate.id.slice(candidate.id.indexOf(':') + 1)) : candidate;
+    const tierPool = mod && naturallyRollable(mod) ? ordinaryTierPool : sourcePool?.filter(entry => !naturallyRollable(entry));
+    const family = mod && tierPool?.some(entry => entry.id === mod.id) ? affixFamily(mod, tierPool) : [];
+    const position = mod ? family.findIndex(entry => entry.id === mod.id) : -1;
+    return { modId: candidate.id, source: special ? candidate.source : 'ordinary',
+      ...(position >= 0 ? { tier: position + 1 } : {}),
+      tiers: family.map((entry, index) => ({ tier: index + 1, level: entry.level, lines: entry.roll_lines ?? entry.lines })) };
+  };
   const probes = [...new Map([...templates].sort((a, b) => Math.abs(a.value) - Math.abs(b.value))
     .map(stat => [stat.id, stat])).values()];
   const currentText = slot.startsWith('Jewel@')
@@ -279,7 +319,7 @@ export async function optimizeTradeAffixes(options: SearchOptions): Promise<Trad
     if (unitGains.length === 2 && Math.abs(unitGains[0] - unitGains[1]) > Math.max(...unitGains.map(Math.abs), 1e-9) * 0.25) nonlinear = true;
     const gain = unitGains.reduce((sum, value) => sum + value, 0) / Math.max(unitGains.length, 1) * stat.value;
     if (!Number.isFinite(gain) || gain <= 0 || !stat.value) return [];
-    return [{ ...stat, weight: gain / stat.value * scale, gain,
+    return [{ ...stat, reference: referenceOf(stat), weight: gain / stat.value * scale, gain,
       gainPercent: gain / Math.max(Math.abs(scoreOf(baseline, objective)), 1) * 100 }];
   }).sort((a, b) => b.weight * b.value - a.weight * a.value));
   const situational = probes.flatMap((stat, index) => {

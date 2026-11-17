@@ -167,8 +167,16 @@ test('local affix scores work for empty slots and budget edits only update marke
   const table = page.locator('.trade-score-table');
   await expect(table).toBeVisible({ timeout: 90_000 });
   await expect(table).toContainText('maximum Life');
-  const originalScores = await table.innerText();
   const link = page.locator('.trade-market-link').first();
+  const originalUrl = await link.getAttribute('href');
+  const rangeDetails = table.getByRole('row').filter({ hasText: 'maximum Life' }).first().locator('.trade-affix-tiers');
+  await rangeDetails.getByText('View tiers and ranges', { exact: true }).click();
+  await expect(rangeDetails.getByText('T1', { exact: true })).toBeVisible();
+  await expect(rangeDetails.getByText('T2', { exact: true })).toBeVisible();
+  await expect(rangeDetails.getByText(/Modifier level/).first()).toBeVisible();
+  await expect(link).toHaveAttribute('href', originalUrl!);
+  await rangeDetails.getByText('View tiers and ranges', { exact: true }).click();
+  const originalScores = await table.innerText();
   const query = searchQuery((await link.getAttribute('href'))!);
   expect(query.query.filters.type_filters.filters.category.option).toBe('accessory.amulet');
   expect(query.query.filters.trade_filters.filters.price).toEqual({ max: 100 });

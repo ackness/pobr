@@ -58,6 +58,18 @@ export function itemValueParts(text: string): { text: string; numeric: boolean }
 
 /** Only an unambiguous damage type gets a semantic colour; mixed types remain neutral. */
 export function itemDamageType(original: string): string | undefined {
-  const types = ['Physical', 'Fire', 'Cold', 'Lightning', 'Chaos'].filter(type => new RegExp(`\\b${type} Damage\\b`, 'i').test(original));
+  if (!/\b(?:Damage|Resistances?)\b/i.test(original)) return;
+  const types = ['Physical', 'Fire', 'Cold', 'Lightning', 'Chaos'].filter(type => new RegExp(`\\b${type}\\b`, 'i').test(original));
   return types.length === 1 ? types[0].toLowerCase() : undefined;
+}
+
+export function itemAttributeType(original: string): string | undefined {
+  const damage = itemDamageType(original);
+  if (damage) return damage;
+  const patterns: [string, RegExp][] = [
+    ['life', /\b(?:Life|Life Regeneration)\b/i], ['mana', /\bMana\b/i],
+    ['es', /\bEnergy Shield\b/i], ['defence', /\b(?:Armour|Evasion(?: Rating)?)\b/i],
+  ];
+  const attributes = patterns.filter(([, pattern]) => pattern.test(original));
+  return attributes.length === 1 ? attributes[0][0] : undefined;
 }

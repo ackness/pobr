@@ -19,11 +19,10 @@
 //! Multiple matching mods remain unlabeled. Legacy templates without metadata
 //! keep the original matching behavior, including their unit limitations.
 //!
-//! The following remain outside the rollable pool or whole-line contract:
-//! - Essence/corrupted/exclusive affixes (spawn weight is all zero) — not in
-//!   the rollable pool, so unlabeled;
-//! - Cross-line hybrids (one mod rendered across multiple lines) — a single
-//!   line's stat set won't equal the mod's, so unlabeled.
+//! Whole-item lookup additionally requires complete, noncompeting line groups.
+//! Special affixes need caller-validated native IDs; natural spawn tags never
+//! change. The original single-line lookup still excludes cross-line hybrids
+//! and affixes that cannot spawn naturally on the base.
 
 use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
@@ -31,6 +30,7 @@ use std::sync::Arc;
 use pobr_data::catalog::stat_descriptions::{StatDescriptionsDef, StatDescriptor};
 
 mod branches;
+mod groups;
 use pobr_data::catalog::{ModDef, ModStat, SpawnWeight};
 
 /// GGG `Mods.GenerationType`: 1 = prefix, 2 = suffix (other generation types don't participate in tiering).
@@ -103,8 +103,9 @@ impl TierIndex {
 
     /// Builds the reverse-lookup index from the affix pool plus the StatDescriptions overlay.
     ///
-    /// Only collects affixes that are prefix/suffix, carry a group, and have
-    /// non-empty spawn_weights (i.e. the rollable pool); templates only use
+    /// Collects prefix/suffix affixes carrying a group and stats. Natural
+    /// lookup still requires positive spawn weight; whole-item lookup can
+    /// additionally admit caller-validated native IDs. Templates only use
     /// the root `stat_descriptions` scope (the equipment mod domain).
     pub fn build(mods: &[ModDef], descriptions: &StatDescriptionsDef) -> Self {
         let mut index = TierIndex::default();
@@ -117,7 +118,7 @@ impl TierIndex {
             if generation_type != GENERATION_PREFIX && generation_type != GENERATION_SUFFIX {
                 continue;
             }
-            if m.spawn_weights.is_empty() || m.stats.is_empty() {
+            if m.stats.is_empty() {
                 continue;
             }
             let key = stat_key(m.stats.iter().map(|s| s.stat_id.as_str()));
