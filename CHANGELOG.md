@@ -4,6 +4,40 @@ Notable changes to PoBR, the browser build planner at [pobr.win](https://pobr.wi
 
 Versions follow [SemVer](https://semver.org/). While the version is 0.0.x, any release may change behaviour; changes that need action from WASM, CLI or data consumers are listed under **Breaking changes**. How a release section is written: [RELEASING.md](RELEASING.md#4-发版上线).
 
+## [0.0.54] - 2026-11-18
+
+Equipment details now put innate modifiers, enchantments and socketed effects first, with responsive prefix and suffix columns and clearer catalyst tiers. This release also makes the build library, calculation details and comparison controls easier to use on small screens. Game data remains at 0.5.5.8 and the WASM JSON schema stays at 21.
+
+### Breaking changes
+
+- None.
+
+### Added
+
+- See imported modifier source markers and game tags alongside tier labels, including on catalyst-quality equipment. Use Game cards for a compact, game-inspired alternative to the default grouped details. (#382, #383)
+- Browse and preview compatible runes before changing a socket. Compare two editable stages and copy supported changes in either direction, with confirmation before overwriting data. (#383)
+
+### Changed
+
+- Find saved builds first in a populated library, open import directly from the navigation, and see what stage shares and workspace backups include. (#383)
+- Navigate directly from recovery warnings, skill groups and import receipts to the corresponding calculation details, full DPS or omitted modifiers. See separate passive budgets and distinguish trade weights from replacement calculations. (#383)
+
+### Fixed
+
+- Preserve catalyst quality and special modifier markers on WeGame imports. Resolve tiers for complete native affixes when the display values identify a unique roll, including when a named catalyst is present but modifier tags are absent. (#382, #383)
+- Keep result values legible at large font sizes on narrow screens, and show rounded recovery formulas with their raw values in the expanded calculation steps. (#383)
+- Open the import form from the results panel or command menu while the build library is already open. Reject invalid imported character levels before saving and keep the current stage export available when no source loadouts match. (#383)
+- Restore exactly the builds in a confirmed workspace backup when another tab saved changes during the import. (#383)
+
+### For developers
+
+- Add interface languages through message catalogs with checked keys and placeholders. Versioned game text continues to use its own locale data. (#383)
+- Start a local browser preview with `mise run web:preview` and optionally share it temporarily through a Cloudflare tunnel. (#383)
+
+### Internal
+
+- Verify that restoring a workspace backup advances the browser sync generation and preserves saved builds, stages and values. (#384)
+
 ## [0.0.53] - 2026-11-17
 
 Upgrades now show reference affix tiers, sources and roll ranges without requiring T1 items in trade searches. Item details recognise more hybrid affixes and show source labels from imported text, while the passive tree opens on the full tree instead of zooming into the ascendancy. The game data remains at 0.5.5.8 and the WASM JSON schema stays at 21.
@@ -363,6 +397,7 @@ pobr.win now calculates with game data 0.5.5.5 (was 0.5.5.4.2), imported from th
 
 Notes for 0.0.43 and earlier are on [GitHub Releases](https://github.com/ackness/pobr/releases).
 
+[0.0.54]: https://github.com/ackness/pobr/compare/v0.0.53...v0.0.54
 [0.0.53]: https://github.com/ackness/pobr/compare/v0.0.52...v0.0.53
 [0.0.52]: https://github.com/ackness/pobr/compare/v0.0.51...v0.0.52
 [0.0.51]: https://github.com/ackness/pobr/compare/v0.0.50...v0.0.51
