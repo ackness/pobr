@@ -24,7 +24,7 @@ function render(route: Route, {
   } as unknown as CalculateBuildResponse;
   const session = { calcParams: { main_socket_group: 0 }, socketGroups: groups, hasBuildContent: hasContent, calcMs: 77, dataVersion: '0.5.5.5' } as unknown as BuildSession;
   return renderToStaticMarkup(<UiProvider lang={lang}><TooltipProvider><ResultsRail route={route} session={session}
-    view={{ calc, previous: null, stale: false }} lang={lang} onStatClick={() => {}} onNavigate={() => {}} pinned={[]} onTogglePin={() => {}} /></TooltipProvider></UiProvider>);
+    view={{ calc, previous: null, stale: false }} lang={lang} onStatClick={() => {}} onNavigate={() => {}} onOpenImport={() => {}} pinned={[]} onTogglePin={() => {}} /></TooltipProvider></UiProvider>);
 }
 
 it('explains energy-trigger mapping beside the enemy tier only for a confirmed trigger', () => {
@@ -95,7 +95,7 @@ it('leads a summoner build with one minion\'s hit DPS and keeps the player\'s ow
   } as unknown as CalculateBuildResponse;
   const session = { calcParams: { main_socket_group: 0 }, socketGroups: [{ gems: [] }], calcMs: 77, dataVersion: '0.5.5.5' } as unknown as BuildSession;
   const html = renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider><ResultsRail route="skills" session={session}
-    view={{ calc, previous: null, stale: false }} lang="en-US" onStatClick={() => {}} onNavigate={() => {}} pinned={[]} onTogglePin={() => {}} /></TooltipProvider></UiProvider>);
+    view={{ calc, previous: null, stale: false }} lang="en-US" onStatClick={() => {}} onNavigate={() => {}} onOpenImport={() => {}} pinned={[]} onTogglePin={() => {}} /></TooltipProvider></UiProvider>);
   expect(html).toContain('<span class="rail-hero-label">Minion hit DPS</span>');
   expect(html).toMatch(/class="rail-hero-value is-link"[^>]*>[^<]*5,307/);
   expect(html).toContain('<span class="rail-hero-note">Wolf Companion · per minion · limit 7</span>');

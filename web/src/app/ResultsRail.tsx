@@ -163,7 +163,7 @@ function Minion({ lang, onStatClick, main }: Pick<Shared, 'lang' | 'onStatClick'
 }
 
 /** The numbers every edit changes. They stay on screen so cause and effect are never a page apart. */
-export function ResultsRail({ route, session, view, lang, onStatClick, onNavigate, pinned, onTogglePin }: Shared & { onNavigate: (route: Route) => void; pinned: readonly string[]; onTogglePin: (id: string) => void }) {
+export function ResultsRail({ route, session, view, lang, onStatClick, onNavigate, onOpenImport, pinned, onTogglePin }: Shared & { onNavigate: (route: Route) => void; onOpenImport: () => void; pinned: readonly string[]; onTogglePin: (id: string) => void }) {
   const tt = bindT(lang);
   const calc = view.calc;
   const values = useMemo(() => calc ? statMap(calc.stats) : null, [calc]);
@@ -181,7 +181,7 @@ export function ResultsRail({ route, session, view, lang, onStatClick, onNavigat
   const version = calculationVersion(lang, calc?.provenance?.data_version ?? session.dataVersion, calc?.provenance?.engine_version, session.calcMs);
   if (!session.hasBuildContent && session.socketGroups.length === 0) return <aside id="character-stats" className="shell-rail-content" aria-label={tt('shell.characterStats')}>
     <p className="rail-empty">{bindT(lang)('sidebar.emptyBuildHint')}</p>
-    <button type="button" className="rail-link" onClick={() => onNavigate('build')}>{bindT(lang)('sidebar.importCreate')}<ChevronRight /></button>
+    <button type="button" className="rail-link" onClick={onOpenImport}>{tt('sidebar.importCreate')}<ChevronRight /></button>
   </aside>;
   return <aside id="character-stats" className="shell-rail-content" data-stale={view.stale || undefined} aria-label={tt('shell.characterStats')}>
     <ComparisonBaseline session={session} lang={lang} onNavigate={onNavigate} />

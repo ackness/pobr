@@ -18,7 +18,7 @@ vi.mock('cmdk', () => {
 it('shows one calculated-skill command per skill, without duplicating identical groups', () => {
   const session = { socketGroups: ['Spark', 'Spark', 'Fireball'].map(skill_id => ({ enabled: true, gems: [{ skill_id }] })) } as BuildSession;
   const html = renderToStaticMarkup(<CommandPalette open onOpenChange={() => {}} session={session} view={{ calc: null, previous: null, stale: false }} lang="en-US"
-    pageLabel={route => route} onNavigate={() => {}} onInspect={() => {}} onSettings={() => {}} onToggleTheme={() => {}} themeLabel="Theme" />);
+    pageLabel={route => route} onNavigate={() => {}} onInspect={() => {}} onOpenImport={() => {}} onSettings={() => {}} onToggleTheme={() => {}} themeLabel="Theme" />);
   expect(html.match(/data-command="skill:/g)).toHaveLength(2);
   expect(html).toContain('1. Spark'); expect(html).not.toContain('2. Spark'); expect(html).toContain('3. Fireball');
 });
@@ -27,7 +27,7 @@ it('prefers an enabled duplicate and selects its original group index', () => {
   const updateParams = vi.fn();
   const session = { socketGroups: [false, true].map(enabled => ({ enabled, gems: [{ skill_id: 'Spark' }] })), updateParams } as unknown as BuildSession;
   const html = renderToStaticMarkup(<CommandPalette open onOpenChange={() => {}} session={session} view={{ calc: null, previous: null, stale: false }} lang="en-US"
-    pageLabel={route => route} onNavigate={() => {}} onInspect={() => {}} onSettings={() => {}} onToggleTheme={() => {}} themeLabel="Theme" />);
+    pageLabel={route => route} onNavigate={() => {}} onInspect={() => {}} onOpenImport={() => {}} onSettings={() => {}} onToggleTheme={() => {}} themeLabel="Theme" />);
   expect(html.match(/data-command="skill:/g)).toHaveLength(1);
   expect(html).toContain('2. Spark'); expect(html).not.toContain('1. Spark');
   commands.get('skill:1')!();

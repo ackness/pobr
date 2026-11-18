@@ -59,6 +59,22 @@ test('the empty results rail aligns its hint with the import action on the build
   const start = await action.evaluate(element => element.getBoundingClientRect().left + parseFloat(getComputedStyle(element).paddingLeft));
   expect((await hint.boundingBox())!.x).toBeCloseTo(start);
   expect(start - (await rail.boundingBox())!.x).toBeGreaterThanOrEqual(12);
+
+  const section = page.locator('details.bd-import');
+  const code = page.getByRole('textbox', { name: 'Build code', exact: true });
+  await section.locator('summary').click();
+  await expect(section).toHaveJSProperty('open', false);
+  await action.click();
+  await expect(section).toHaveJSProperty('open', true);
+  await expect(code).toBeFocused();
+
+  await section.locator('summary').click();
+  await page.keyboard.press('Control+k');
+  const palette = page.getByRole('dialog', { name: 'Search and commands' });
+  await palette.getByRole('option', { name: 'Import or manage builds', exact: true }).click();
+  await expect(palette).toHaveCount(0);
+  await expect(section).toHaveJSProperty('open', true);
+  await expect(code).toBeFocused();
 });
 
 test('the maximum text size keeps the preview number on one line on narrow screens', async ({ page }) => {

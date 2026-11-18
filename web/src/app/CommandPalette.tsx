@@ -16,11 +16,11 @@ import { SHORTCUT_ROUTES } from './shortcuts';
 export interface PaletteProps {
   open: boolean; onOpenChange: (open: boolean) => void; session: BuildSession; view: SettledCalc; lang: Lang;
   pageLabel: (route: Route) => string; onNavigate: (route: Route) => void; onInspect: (id: string) => void;
-  onSettings: () => void; onToggleTheme: () => void; themeLabel: string;
+  onOpenImport: () => void; onSettings: () => void; onToggleTheme: () => void; themeLabel: string;
 }
 
 /** ⌘K: jump to a page, open the calculation behind any stat, switch the main skill or the enemy, or run an action. */
-export function CommandPalette({ open, onOpenChange, session, view, lang, pageLabel, onNavigate, onInspect, onSettings, onToggleTheme, themeLabel }: PaletteProps) {
+export function CommandPalette({ open, onOpenChange, session, view, lang, pageLabel, onNavigate, onInspect, onOpenImport, onSettings, onToggleTheme, themeLabel }: PaletteProps) {
   const tt = bindT(lang);
   const catalog = useSkillCatalog();
   const [query, setQuery] = useState('');
@@ -42,7 +42,7 @@ export function CommandPalette({ open, onOpenChange, session, view, lang, pageLa
   const actions = [
     { id: 'undo', label: tt('palette.undo'), run: () => { if (session.canUndo) session.undoEdit(); } },
     { id: 'redo', label: tt('shell.redo'), run: () => { if (session.canRedo) session.redoEdit(); } },
-    { id: 'import', label: tt('palette.importAction'), run: () => onNavigate('build') },
+    { id: 'import', label: tt('palette.importAction'), run: onOpenImport },
     { id: 'theme', label: themeLabel, run: onToggleTheme },
     { id: 'settings', label: tt('settings.title'), run: onSettings },
   ].filter(action => match(action.label));

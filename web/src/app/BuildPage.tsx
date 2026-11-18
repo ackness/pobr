@@ -35,6 +35,7 @@ export function BuildPage({ session, lang, onImported, claimImportFocus, importN
   const build = workspace?.builds.find(entry => entry.id === workspace.activeBuild);
   const stage = build?.stages.find(entry => entry.id === build.activeStage);
   const hasPobSource = !!stage?.saved.state.pobCode;
+  const hasImportedLoadouts = hasPobSource && session.loadouts.length > 0;
   const currentBuildName = buildDisplayName(build, workspace?.builds.indexOf(build!) ?? 0, lang);
   const currentStageName = stageDisplayName(stage, build?.stages.indexOf(stage!) ?? 0, lang);
   const character = session.character!;
@@ -295,10 +296,12 @@ export function BuildPage({ session, lang, onImported, claimImportFocus, importN
 
       <h3 className="bd-subtitle">{tt('plannerFile.title')}</h3>
       <p className="bd-hint">{tt('plannerFile.hint')}</p>
-      {hasPobSource && <p className="bd-hint">{tt('plannerFile.loadoutHint')}</p>}
+      {hasImportedLoadouts && <p className="bd-hint">{tt('plannerFile.loadoutHint')}</p>}
+      {hasPobSource && session.build && !hasImportedLoadouts && <p className="bd-hint">{tt('plannerFile.noLoadouts')}</p>}
       <div className="bd-actions bd-actions-start"><Button variant="outline" disabled={session.busy || generating} onClick={() => exportPlanner(false)}>{tt('plannerFile.current')}</Button>
-        {hasPobSource && <Button variant="outline" disabled={session.busy || generating} onClick={() => exportPlanner(true)}>{tt('plannerFile.all')}</Button>}</div>
+        {hasImportedLoadouts && <Button variant="outline" disabled={session.busy || generating} onClick={() => exportPlanner(true)}>{tt('plannerFile.all')}</Button>}</div>
       {plannerFiles && <div aria-live="polite" className="bd-actions bd-actions-start">{plannerFiles.files.map(file => <Button key={file.filename} variant="ghost" onClick={() => download(file.content, file.filename)}>{file.filename}</Button>)}
+        {plannerFiles.files.length === 0 && plannerFiles.warnings.length === 0 && <p className="bd-hint">{tt('plannerFile.noFiles')}</p>}
         {plannerFiles.warnings.map(warning => <p className="bd-hint" key={warning}>{warning}</p>)}</div>}
 
       <h3 className="bd-subtitle">{text.backupTitle}</h3>

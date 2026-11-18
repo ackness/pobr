@@ -5,6 +5,7 @@ import { importInto, openBuild, openExport, openImport, selectStage, settled } f
 import { deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 import { SMOKE } from './tags';
+import { STORAGE } from '../src/lib/sessionStorage';
 
 const code = (level: number, nodes: string, notes: string) => deflateSync(`<PathOfBuilding2>
 <Build level="${level}" className="Ranger" ascendClassName="Deadeye"/>
@@ -89,9 +90,24 @@ test('independent builds and stages preserve passive routes and notes across rel
   expect(JSON.parse(readFileSync((await backup.path())!, 'utf8')).workspace.builds).toHaveLength(3);
   await editName(page, 'New build', 'Temporary');
   await page.locator('input[type=file]').setInputFiles((await backup.path())!);
+  await expect(page.getByRole('alertdialog')).toBeVisible();
+  // Model a tab saving while the confirm dialog is open, before its storage event arrives.
+  await page.evaluate(key => {
+    const stored = JSON.parse(localStorage.getItem(key)!);
+    const original = stored.workspace.builds[0];
+    stored.workspace.builds.push({
+      id: 'concurrent-build', name: 'Concurrent build', activeStage: 'concurrent-stage',
+      stages: [{ ...original.stages[0], id: 'concurrent-stage' }],
+    });
+    localStorage.setItem(key, JSON.stringify(stored));
+  }, STORAGE.workspace);
   await answerConfirm(page, true);
   await expect(page.locator('#ov-title')).toBeVisible();
-  expect((await snapshot(page)).workspace.builds).toHaveLength(3);
+  const restoredIds = restored.workspace.builds.map((build: { id: string }) => build.id);
+  expect((await snapshot(page)).workspace.builds.map((build: { id: string }) => build.id)).toEqual(restoredIds);
+  await page.reload();
+  await openBuild(page);
+  await expect(page.getByRole('group', { name: 'Saved builds', exact: true }).getByRole('button', { name: /Concurrent build|Temporary/ })).toHaveCount(0);
 });
 
 test('library shows saved builds before import and shares both current and recorded notes', async ({ page }) => {

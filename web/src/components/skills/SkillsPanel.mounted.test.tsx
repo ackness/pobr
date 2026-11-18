@@ -284,7 +284,7 @@ function textOf(node: HostNode): string {
 const idle = () => {};
 function rail(session: BuildSession) {
   return <ResultsRail session={session} view={{ calc: session.calc, previous: null, stale: false }} lang="en-US"
-    onNavigate={idle} onStatClick={idle} pinned={[]} onTogglePin={idle} />;
+    onNavigate={idle} onOpenImport={idle} onStatClick={idle} pinned={[]} onTogglePin={idle} />;
 }
 
 it('keeps the unavailable marking on the actual closed rail trigger and refreshes it after edits', async () => {

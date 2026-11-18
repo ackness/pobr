@@ -164,6 +164,11 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
     const commit = () => { if (next !== route) history.pushState(null, '', routePath(next)); setRoute(next); setMenuOpen(false); setStatsOpen(false); };
     if (next === route) commit(); else withViewTransition(commit);
   };
+  const openImport = () => {
+    setNotesFocusRequest(undefined);
+    setImportFocusRequest(value => value + 1);
+    navigate('build');
+  };
   const focusStat = (id: string) => { setCalcsFocus({ id }); setInspect(null); navigate('calcs'); };
   /** A number opens the calculation behind it beside the page you are on; the skill overview is a page of its own. */
   const inspectStat = (id: string) => { if (id === 'skill-metrics') focusStat(id); else { setStatsOpen(false); setInspect(id); } };
@@ -204,7 +209,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
     <Inspector session={session} view={view} lang={lang} id={inspect} onClose={() => setInspect(null)} onNavigate={() => { skipInspectorRestore.current = !docked; setInspect(null); }} onOpenCalcs={focusStat} pinned={pinned.includes(inspect)} onTogglePin={() => togglePin(inspect)} /></Suspense></PageErrorBoundary>;
   const panelLoading = <div role="status" className="shell-panel-loading"><Skeleton className="h-12 w-2/3" /><Skeleton className="h-64 w-full" /><p>{t(lang, 'ui.loadingPanel')}</p></div>;
   const saveState = session.workspaceRecovery ? t(lang, 'shell.savingPaused') : session.storageFailed ? tt('shell.saveFailed') : session.busy ? tt('shell.calculating') : t(lang, 'shell.saved');
-  const rail = <ResultsRail route={route} session={session} view={view} lang={lang} onStatClick={inspectStat} onNavigate={navigate} pinned={pinned} onTogglePin={togglePin} />;
+  const rail = <ResultsRail route={route} session={session} view={view} lang={lang} onStatClick={inspectStat} onNavigate={navigate} onOpenImport={openImport} pinned={pinned} onTogglePin={togglePin} />;
   const importNotice = reviewStage && reviewStage.scope === stageKey && <ImportReviewNotice route={route} lang={lang}
     summary={reviewStage.summary ?? { character: session.character, classNames: session.classNames, calc: null, failed: !!session.calcError, importSource: session.importSource }}
     modifierCount={view.calc?.unsupported_modifiers.length ?? 0}
@@ -253,7 +258,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
         {session.operationError && <div className="shell-alert" role="alert">{buildImportErrorMessage(session.operationError, lang)}</div>}
         <UiProvider lang={lang} displayMode={pageDisplayMode(preferences, route)}><div className="shell-page-content" data-page={route}>
           {route === 'overview' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><Overview session={session} view={view} lang={lang} navigate={navigate} focusStat={inspectStat}
-            onImport={() => { setImportFocusRequest(value => value + 1); navigate('build'); }} onSpirit={() => { setSpiritFocus(Date.now()); navigate('skills'); }} /></PageErrorBoundary>}
+            onImport={openImport} onSpirit={() => { setSpiritFocus(Date.now()); navigate('skills'); }} /></PageErrorBoundary>}
           {route === 'build' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><BuildPage session={session} lang={lang} claimImportFocus={claimImportFocus} notesFocusRequest={notesFocusRequest} importNotice={importNotice} onImported={() => { setReviewStage({ scope: null }); navigate('overview'); }} /></PageErrorBoundary>}
           {route === 'items' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({ slot, nonce: Date.now() }); navigate('trade'); }} /></PageErrorBoundary>}
           {route === 'config' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><ConfigPanel session={session} lang={lang} settledCalc={view.calc} /></PageErrorBoundary>}
@@ -269,7 +274,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
       {docked && inspector && <aside className="shell-inspector" aria-label={tt('inspector.title')}>{inspector}</aside>}
     </div>
     <Sheet open={!docked && inspect !== null} onOpenChange={open => { if (!open) setInspect(null); }}><SheetContent className="shell-inspector-sheet" showCloseButton={false} onCloseAutoFocus={event => { if (skipInspectorRestore.current) { event.preventDefault(); skipInspectorRestore.current = false; } }}><SheetHeader className="sr-only"><SheetTitle>{tt('inspector.title')}</SheetTitle><SheetDescription>{tt('inspector.description')}</SheetDescription></SheetHeader>{inspector}</SheetContent></Sheet>
-    <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} session={session} view={view} lang={lang} pageLabel={tabLabel} onNavigate={navigate} onInspect={inspectStat} onSettings={() => setSettingsOpen(true)}
+    <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} session={session} view={view} lang={lang} pageLabel={tabLabel} onNavigate={navigate} onOpenImport={openImport} onInspect={inspectStat} onSettings={() => setSettingsOpen(true)}
       onToggleTheme={() => onPreferences({ ...preferences, theme: document.documentElement.classList.contains('dark') ? 'light' : 'dark' })} themeLabel={document.documentElement.classList.contains('dark') ? tt('shell.lightTheme') : tt('shell.darkTheme')} />
     <ShortcutsDialog open={helpOpen} onOpenChange={setHelpOpen} lang={lang} pageLabel={tabLabel} />
     <GlobalPaste session={session} lang={lang} onImported={() => { setReviewStage({ scope: null }); navigate('overview'); }} />
