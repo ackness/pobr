@@ -4,7 +4,6 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import worker from './public/_worker.js';
 
 const cargoManifest = readFileSync(resolve(process.cwd(), '../Cargo.toml'), 'utf8');
 const appVersion = cargoManifest.match(/\[workspace\.package\]\s*\nversion\s*=\s*"([^"]+)"/)?.[1];
@@ -34,6 +33,7 @@ function importService(): Plugin {
           method: req.method, headers,
           ...(req.method === 'POST' ? { body: Buffer.concat(chunks) } : {}),
         });
+        const { default: worker } = await import('./public/_worker.js');
         const response = await worker.fetch(request, { ASSETS: { fetch: () => new Response('Not found', { status: 404 }) } });
         res.writeHead(response.status, Object.fromEntries(response.headers));
         res.end(await response.text());

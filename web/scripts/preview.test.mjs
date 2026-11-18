@@ -3,22 +3,27 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import worker from '../public/_worker.js';
 import { startPreview } from './preview.mjs';
 
 test('public preview serves built assets and SPA routes without loading the dev config or APIs', async t => {
   const root = await mkdtemp(join(tmpdir(), 'pobr-preview-'));
   t.after(() => rm(root, { recursive: true, force: true }));
+  const outDir = join(root, 'tunnel-output');
+  await mkdir(outDir);
   await mkdir(join(root, 'dist'));
   const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
   const html = '<!doctype html><title>PoBR preview fixture</title>';
   await Promise.all([
-    writeFile(join(root, 'dist/index.html'), html),
-    writeFile(join(root, 'dist/engine.wasm'), wasm),
+    writeFile(join(outDir, 'index.html'), html),
+    writeFile(join(outDir, 'engine.wasm'), wasm),
     writeFile(join(root, 'vite.config.mjs'), 'throw new Error("do not load the local Vite config");'),
-    writeFile(join(root, 'private.txt'), 'not a distributable asset'),
   ]);
-  const server = await startPreview(root, 0, { tunnel: true });
+  const server = await startPreview(root, 0, { outDir });
   t.after(() => server.close());
+  // A normal local rebuild may update dist while the tunnel is online.
+  await writeFile(join(root, 'dist/index.html'), '<title>Local preview</title>');
+  await writeFile(join(root, 'dist/private.txt'), 'local-only fixture');
   assert.equal(server.httpServer.address().address, '127.0.0.1');
   const base = `http://127.0.0.1:${server.httpServer.address().port}`;
   const route = await fetch(`${base}/items`, { headers: { accept: 'text/html' } });
@@ -41,9 +46,10 @@ test('public preview serves built assets and SPA routes without loading the dev 
 test('opt-in forwards only same-origin WeGame imports to the existing Worker', async t => {
   const root = await mkdtemp(join(tmpdir(), 'pobr-preview-wegame-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  await mkdir(join(root, 'dist'));
+  const outDir = join(root, 'tunnel-output');
+  await mkdir(outDir);
   let publicOrigin;
-  const server = await startPreview(root, 0, { tunnel: true, wegameOrigin: () => publicOrigin });
+  const server = await startPreview(root, 0, { outDir, wegame: { origin: () => publicOrigin, worker } });
   t.after(() => server.close());
   const base = `http://127.0.0.1:${server.httpServer.address().port}`;
   const fetchLocal = fetch;
