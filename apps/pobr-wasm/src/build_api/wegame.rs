@@ -3,7 +3,9 @@
 //! No networking here: the application supplies a versioned JSON bundle.
 
 use super::*;
+use pobr_item::ModLineAnnotations;
 use serde_json::Value;
+use std::cell::OnceCell;
 use std::collections::{BTreeSet, HashMap};
 
 #[derive(Deserialize)]
@@ -92,15 +94,77 @@ fn canonical(input: &str) -> String {
         .unwrap_or(line)
 }
 
+fn property_number(raw: &str) -> Option<u32> {
+    // The value may carry a trailing note ("20(最高等级)", "+20%"): the number leads.
+    let raw = raw.trim_start_matches('+');
+    let digits = raw.len() - raw.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+    raw[..digits].parse().ok()
+}
+
 fn property(item: &Value, property_type: u64) -> Option<u32> {
     array(item, "properties").iter().find_map(|p| {
         if p["type"].as_u64() != Some(property_type) {
             return None;
         }
-        // The value may carry a trailing note ("20(最高等级)", "+20%"): the number leads.
-        let raw = p["values"][0][0].as_str()?.trim_start_matches('+');
-        let digits = raw.len() - raw.trim_start_matches(|c: char| c.is_ascii_digit()).len();
-        raw[..digits].parse().ok()
+        property_number(p["values"][0][0].as_str()?)
+    })
+}
+
+type QualityLabels = OnceCell<BTreeMap<String, Option<String>>>;
+
+fn is_catalyst_quality(name: &str) -> bool {
+    name.starts_with("Quality (") && name.ends_with(" Modifiers)")
+}
+
+fn catalyst_quality_labels() -> BTreeMap<String, Option<String>> {
+    #[derive(Deserialize)]
+    struct DisplayTexts {
+        entries: BTreeMap<String, Option<String>>,
+    }
+
+    // Reverse only exact, unambiguous catalyst labels from the installed locale.
+    let mut labels = BTreeMap::new();
+    if let Ok(game) = state::game_data()
+        && let Ok(Some(catalog)) =
+            game.locale_file::<DisplayTexts>(WEGAME_LOCALE, "display_texts.json")
+    {
+        for (en, localized) in catalog.entries {
+            if let Some(localized) = localized {
+                let label = is_catalyst_quality(&en).then_some(en);
+                labels
+                    .entry(localized)
+                    .and_modify(|entry| *entry = None)
+                    .or_insert(label);
+            }
+        }
+        labels.retain(|_, en| en.is_some());
+    }
+    labels
+}
+
+fn quality_line(property: &Value, labels: &QualityLabels) -> Option<String> {
+    let name = clean(text(property, "name"));
+    let name = name.trim().trim_end_matches([':', '：']).trim_end();
+    let raw = property["values"][0][0].as_str()?;
+    if matches!(name, "" | "Quality" | "品质" | "品質") {
+        let value = property_number(raw)?;
+        return Some(format!("Quality: {value}"));
+    }
+    let catalyst = if is_catalyst_quality(name) {
+        Some(name)
+    } else if name.starts_with("品质") {
+        labels
+            .get_or_init(catalyst_quality_labels)
+            .get(name)
+            .and_then(Option::as_deref)
+    } else {
+        None
+    };
+    // The listed modifiers already include catalyst quality in their rolls.
+    // Retain the displayed value, using metadata for unidentified properties.
+    Some(match catalyst {
+        Some(name) => format!("{name}: {raw}"),
+        None => format!("Note: {name}: {raw}"),
     })
 }
 
@@ -113,17 +177,103 @@ fn rarity(value: u64) -> &'static str {
     }
 }
 
-fn mod_lines(item: &Value, field: &str) -> Vec<String> {
-    array(item, field)
-        .iter()
-        .flat_map(|m| {
-            let raw = m.as_str().unwrap_or_else(|| text(m, "description"));
-            raw.lines()
-                .filter(|line| !line.trim().is_empty())
-                .map(canonical)
-                .collect::<Vec<_>>()
-        })
-        .collect()
+const SPECIAL_MOD_FIELDS: [(&str, &str); 4] = [
+    ("craftedMods", "crafted"),
+    ("fracturedMods", "fractured"),
+    ("desecratedMods", "desecrated"),
+    ("mutatedMods", "mutated"),
+];
+
+struct ItemMod {
+    lines: Vec<String>,
+    flags: BTreeMap<&'static str, bool>,
+}
+
+impl ItemMod {
+    fn render_lines(self, field: &str) -> impl Iterator<Item = String> {
+        let prefix = ModLineAnnotations {
+            enchant: field == "enchantMods",
+            rune: field == "runeMods",
+            crafted: self.flags.get("crafted") == Some(&true),
+            fractured: self.flags.get("fractured") == Some(&true),
+            desecrated: self.flags.get("desecrated") == Some(&true),
+            mutated: self.flags.get("mutated") == Some(&true),
+            ..Default::default()
+        }
+        .render_prefix();
+        self.lines
+            .into_iter()
+            .map(move |line| format!("{prefix}{line}"))
+    }
+}
+
+fn item_mods<'a>(item: &'a Value, field: &str) -> impl Iterator<Item = ItemMod> + use<'a> {
+    array(item, field).iter().filter_map(|entry| {
+        let raw = entry.as_str().unwrap_or_else(|| text(entry, "description"));
+        let lines: Vec<_> = raw
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .map(canonical)
+            .collect();
+        if lines.is_empty() {
+            return None;
+        }
+        let flags = entry
+            .get("flags")
+            .filter(|f| f.is_object())
+            .unwrap_or(entry);
+        let flags = SPECIAL_MOD_FIELDS
+            .iter()
+            .filter_map(|&(_, flag)| Some((flag, flags[flag].as_bool()?)))
+            .collect();
+        Some(ItemMod { lines, flags })
+    })
+}
+
+fn explicit_mods(item: &Value) -> Vec<ItemMod> {
+    let mut mods: Vec<_> = item_mods(item, "explicitMods").collect();
+    let explicit_count = mods.len();
+    for (field, flag) in SPECIAL_MOD_FIELDS {
+        let earlier_count = mods.len();
+        let mut matched = BTreeSet::new();
+        for mut entry in item_mods(item, field) {
+            // Match whole descriptions one-to-one across lists. Different affixes
+            // may legitimately share individual lines or recur in the same list.
+            entry.flags.insert(flag, true);
+            let matches = |(index, existing): &(usize, &ItemMod)| {
+                !matched.contains(index)
+                    && existing.lines == entry.lines
+                    && entry.flags.iter().all(|(key, value)| {
+                        existing.flags.get(key).is_none_or(|other| other == value)
+                    })
+            };
+            let duplicate = mods[..earlier_count]
+                .iter()
+                .enumerate()
+                .filter(matches)
+                .find(|(_, existing)| {
+                    entry
+                        .flags
+                        .iter()
+                        .any(|(key, value)| *value && existing.flags.get(key) == Some(&true))
+                })
+                .or_else(|| {
+                    mods[..explicit_count]
+                        .iter()
+                        .enumerate()
+                        .filter(matches)
+                        .find(|(_, existing)| !existing.flags.values().any(|&present| present))
+                });
+            if let Some((index, _)) = duplicate {
+                matched.insert(index);
+                mods[index].flags.extend(entry.flags);
+            } else {
+                mods.push(entry);
+            }
+        }
+    }
+    mods
 }
 
 /// Utility recovery/charge properties are tooltip metadata, not modifiers.
@@ -176,7 +326,11 @@ fn requirement_lines(item: &Value) -> Vec<String> {
         .collect()
 }
 
-fn item_text(item: &Value, warnings: &mut BTreeSet<String>) -> Result<String, String> {
+fn item_text(
+    item: &Value,
+    warnings: &mut BTreeSet<String>,
+    quality_labels: &QualityLabels,
+) -> Result<String, String> {
     let base = canonical(if text(item, "baseType").is_empty() {
         text(item, "typeLine")
     } else {
@@ -209,8 +363,12 @@ fn item_text(item: &Value, warnings: &mut BTreeSet<String>) -> Result<String, St
         lines.push(format!("Item Level: {level}"));
     }
     lines.extend(requirement_lines(item));
-    if let Some(quality) = property(item, 6) {
-        lines.push(format!("Quality: {quality}"));
+    if let Some(line) = array(item, "properties")
+        .iter()
+        .filter(|p| p["type"].as_u64() == Some(6))
+        .find_map(|p| quality_line(p, quality_labels))
+    {
+        lines.push(line);
     }
     if base.ends_with(" Flask") || base.ends_with(" Charm") {
         for property in array(item, "properties") {
@@ -261,33 +419,29 @@ fn item_text(item: &Value, warnings: &mut BTreeSet<String>) -> Result<String, St
         lines.push("Corrupted".into());
     }
     lines.push("--------".into());
-    let implicit = mod_lines(item, "implicitMods");
+    let implicit: Vec<_> = item_mods(item, "implicitMods")
+        .flat_map(|entry| entry.render_lines("implicitMods"))
+        .collect();
     lines.push(format!("Implicits: {}", implicit.len()));
     lines.extend(implicit);
     lines.push("--------".into());
-    for field in [
-        "enchantMods",
-        "runeMods",
-        "explicitMods",
-        "craftedMods",
-        "fracturedMods",
+    for (field, mods) in [
+        ("enchantMods", item_mods(item, "enchantMods").collect()),
+        ("runeMods", item_mods(item, "runeMods").collect()),
+        ("explicitMods", explicit_mods(item)),
     ] {
-        for line in mod_lines(item, field) {
-            // Shaman bond lines require a separate class-only model. Do not
-            // turn the displayed conditional bonus into an unconditional mod.
-            if line.starts_with("羁绊")
-                || line.starts_with("Bonded:")
-                || line.contains("ShamanOnlyMods")
-            {
-                warnings.insert("Shaman-only rune bonuses were not applied.".into());
-                continue;
-            }
-            let prefix = match field {
-                "enchantMods" => "{enchant}",
-                "runeMods" => "{rune}",
-                _ => "",
-            };
-            lines.push(format!("{prefix}{line}"));
+        for mut entry in mods {
+            entry.lines.retain(|line| {
+                // Shaman bond lines require a separate class-only model.
+                let bonded = line.starts_with("羁绊")
+                    || line.starts_with("Bonded:")
+                    || line.contains("ShamanOnlyMods");
+                if bonded {
+                    warnings.insert("Shaman-only rune bonuses were not applied.".into());
+                }
+                !bonded
+            });
+            lines.extend(entry.render_lines(field));
         }
     }
     Ok(lines.join("\n"))
@@ -300,11 +454,12 @@ pub fn import_trade_items_json(input: &str) -> Result<String, String> {
     if items.len() > 100 {
         return Err("At most 100 trade items per import".into());
     }
+    let quality_labels = QualityLabels::new();
     let result: Vec<Value> = items
         .iter()
         .map(|item| {
             let mut warnings = BTreeSet::new();
-            match item_text(item, &mut warnings) {
+            match item_text(item, &mut warnings, &quality_labels) {
                 Ok(text) => serde_json::json!({ "text": text, "warnings": warnings }),
                 Err(error) => serde_json::json!({ "error": error }),
             }
@@ -488,6 +643,7 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
             }
         }
     }
+    let quality_labels = QualityLabels::new();
     let mut equipped = Vec::new();
     let mut flasks = Vec::new();
     let mut limbs = Vec::new();
@@ -500,7 +656,7 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
         } {
             alternate_items.push(super::super::request::SlotItemInput {
                 slot: slot.into(),
-                text: item_text(&item, &mut warnings)?,
+                text: item_text(&item, &mut warnings, &quality_labels)?,
             });
             continue;
         }
@@ -513,7 +669,7 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
         };
         let entry = SlotItemJson {
             slot,
-            text: item_text(&item, &mut warnings)?,
+            text: item_text(&item, &mut warnings, &quality_labels)?,
         };
         if entry.slot.starts_with("Flask ") || entry.slot.starts_with("Charm ") {
             flasks.push(UtilitySlotJson {
@@ -561,7 +717,7 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
         let item = serde_json::json!({"baseType":base, "name":text(jewel,"display_name"), "frameType":jewel["rarity"], "explicitMods":mods});
         socket_jewels.push(SocketJewelJson {
             socket_node: node.skill,
-            text: item_text(&item, &mut warnings)?,
+            text: item_text(&item, &mut warnings, &quality_labels)?,
         });
     }
     let names = gem_names(&data)?;

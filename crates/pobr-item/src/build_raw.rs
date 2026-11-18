@@ -53,7 +53,11 @@ impl ItemDraft {
             lines.push(format!("Catalyst: {name}"));
         }
         if let Some(q) = self.catalyst.quality {
-            lines.push(format!("CatalystQuality: {q}"));
+            if let Some(descriptor) = &self.catalyst.descriptor {
+                lines.push(format!("Quality ({descriptor} Modifiers): +{q}%"));
+            } else {
+                lines.push(format!("CatalystQuality: {q}"));
+            }
         }
         if let Some(t) = h.talisman_tier {
             lines.push(format!("Talisman Tier: {t}"));

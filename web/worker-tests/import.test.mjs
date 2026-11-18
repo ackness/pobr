@@ -6,7 +6,10 @@ import { Miniflare } from 'miniflare';
 const url = 'https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456';
 const payloads = {
   GetRoleInfo: { role: { level: 59, class_name: 'Deadeye', openid: 'private' } },
-  GetEquipments: { equipments: [{ baseType: 'Linen Belt', id: 'private' }] },
+  GetEquipments: { equipments: [{
+    baseType: 'Linen Belt', id: 'private',
+    desecratedMods: ['+10 to maximum Life'], mutatedMods: ['10% increased Damage'],
+  }] },
   GetTalentTree: { talent_tree: { hashes: [], quest_stats: [] } },
   GetJewels: { jewel_data: '[]' },
   GetSkills: { skills: [] },
@@ -52,7 +55,9 @@ for (const redirects of [false, true]) {
       assert.equal(body.format, 'wegame');
       assert.equal(body.version, 1);
       assert.deepEqual(body.role, { level: 59, class_name: 'Deadeye' });
-      assert.deepEqual(body.equipments, [{ baseType: 'Linen Belt' }]);
+      assert.deepEqual(body.equipments, [{
+        baseType: 'Linen Belt', desecratedMods: ['+10 to maximum Life'], mutatedMods: ['10% increased Damage'],
+      }]);
       assert.deepEqual(body.skills, []);
       assert.equal(JSON.stringify(body).includes('private'), false);
       assert.deepEqual(seen.sort(), Object.keys(payloads).sort());

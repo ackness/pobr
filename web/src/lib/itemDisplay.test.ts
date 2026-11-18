@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import type { ItemLineJson } from '../api/types';
-import { itemAttributeType, itemDamageType, itemDisplaySections, itemValueParts } from './itemDisplay';
+import { itemAttributeType, itemDamageType, itemDisplaySections, itemModTagLabel, itemValueParts } from './itemDisplay';
 
 it('uses only supplied affix identities, keeps multiline affixes and separates sources', () => {
   const lines: ItemLineJson[] = [
@@ -15,16 +15,20 @@ it('uses only supplied affix identities, keeps multiline affixes and separates s
     { kind: 'rune', text: 'Bow Attacks fire an additional Arrow' },
     { kind: 'explicit', text: 'Adds 12 to 228 Lightning Damage', affix: 'prefix', tier: 1 },
     { kind: 'explicit', text: 'Hybrid second line', affix: 'prefix', tier: 1 },
-    { kind: 'explicit', text: '14% increased Attack Speed', affix: 'suffix', tier: 2 },
     { kind: 'explicit', text: '+4.92% to Critical Hit Chance' },
+    { kind: 'explicit', text: '14% increased Attack Speed', affix: 'suffix', tier: 2 },
     { kind: 'explicit', text: 'Unknown effect: retain <all> & text' },
   ];
   const translated = lines.map(line => line.text === 'Item Level: 81' ? '物品等级: 81' : line.text);
   const result = itemDisplaySections(lines, translated);
   expect(result.properties).toEqual([{ label: '物品等级', value: '81', index: 6 }]);
-  expect(result.prefixes.map(line => line.text)).toEqual(['Adds 12 to 228 Lightning Damage', 'Hybrid second line']);
-  expect(result.suffixes).toHaveLength(1);
-  expect(result.other.map(line => line.text)).toEqual(['+4.92% to Critical Hit Chance', 'Unknown effect: retain <all> & text']);
+  expect(result.explicit.map(line => [line.text, line.affix, line.tier])).toEqual([
+    ['Adds 12 to 228 Lightning Damage', 'prefix', 1],
+    ['Hybrid second line', 'prefix', 1],
+    ['+4.92% to Critical Hit Chance', undefined, undefined],
+    ['14% increased Attack Speed', 'suffix', 2],
+    ['Unknown effect: retain <all> & text', undefined, undefined],
+  ]);
   expect(result.effects.map(line => line.kind)).toEqual(['enchant', 'implicit', 'rune']);
   expect(result.metadata.map(line => line.text)).toEqual(['Note: keep this note']);
   expect(result.runes[0].text).toBe('Rune: Perfect Iron Rune');
@@ -50,8 +54,9 @@ it('does not colour mixed damage or infer affixes from translated text', () => {
   expect(itemDamageType('Cold Damage cannot Ignite')).toBe('cold');
   expect(itemDamageType('Cold Resistance is equal to Fire Resistance')).toBeUndefined();
   const result = itemDisplaySections([{ kind: 'explicit', text: 'Unknown modifier' }], ['附加 12 点闪电伤害']);
-  expect(result.other[0]).toMatchObject({ original: 'Unknown modifier', text: '附加 12 点闪电伤害' });
-  expect(result.prefixes).toHaveLength(0);
+  expect(result.explicit[0]).toMatchObject({ original: 'Unknown modifier', text: '附加 12 点闪电伤害' });
+  expect(result.explicit[0].affix).toBeUndefined();
+  expect(result.explicit[0].mod_tags).toBeUndefined();
 });
 
 it.each([
@@ -64,17 +69,27 @@ it.each([
   expect(itemAttributeType(text)).toBe(expected);
 });
 
-it('retains explicit source markers independently of prefix and tier recognition', () => {
-  const source: ItemLineJson = { kind: 'explicit', text: '+50 to maximum Life', modifier_sources: ['fractured', 'crafted'] };
-  expect(itemDisplaySections([source], ['+50 生命上限']).other[0]).toMatchObject({
-    modifier_sources: ['fractured', 'crafted'], original: source.text, text: '+50 生命上限',
+it('retains explicit source markers and tags independently of prefix and tier recognition', () => {
+  const source: ItemLineJson = { kind: 'explicit', text: '+50 to maximum Life', modifier_sources: ['fractured', 'crafted'], mod_tags: ['life'] };
+  expect(itemDisplaySections([source], ['+50 生命上限']).explicit[0]).toMatchObject({
+    modifier_sources: ['fractured', 'crafted'], mod_tags: ['life'], original: source.text, text: '+50 生命上限',
   });
 });
 
+it.each([
+  ['en-US', 'Cold', 'Damage'], ['zh-CN', '冰霜', '伤害'], ['zh-TW', '冰冷', '傷害'],
+] as const)('localizes known modifier tags in %s and keeps unknown tags readable', (lang, cold, damage) => {
+  expect(itemModTagLabel('cold', lang)).toBe(cold);
+  expect(itemModTagLabel('damage', lang)).toBe(damage);
+  expect(itemModTagLabel('future_mod-tag', lang)).toBe('Future mod tag');
+});
+
 it('formats known structural units while retaining unfamiliar socket formats and metadata', () => {
-  const fields = ['LevelReq: 77', 'Dex: 163', 'Quality: 20', 'Sockets: S S', 'Sockets: R-G B', 'Armour: 0'];
+  const fields = ['LevelReq: 77', 'Dex: 163', 'Quality: 20', 'Quality (Cold Modifiers): +20%', 'Sockets: S S', 'Sockets: R-G B', 'Armour: 0'];
   const model = itemDisplaySections(fields.map(text => ({ kind: 'struct', text })), fields);
   expect(model.properties.map(({ label, value }) => [label, value])).toEqual([
-    ['Required level', '77'], ['Required Dexterity', '163'], ['Quality', '+20%'], ['Sockets', '2'], ['Sockets', 'R-G B'], ['Armour', '0'],
+    ['Required level', '77'], ['Required Dexterity', '163'], ['Quality', '+20%'], ['Quality (Cold Modifiers)', '+20%'],
+    ['Sockets', '2'], ['Sockets', 'R-G B'], ['Armour', '0'],
   ]);
+  expect(model.metadata).toEqual([]);
 });

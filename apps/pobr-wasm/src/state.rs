@@ -17,6 +17,10 @@ use pobr_build::BuildData;
 use pobr_gamedata::GameData;
 
 type SpecialAffixPools = BTreeMap<String, BTreeMap<String, BTreeSet<String>>>;
+pub(crate) type CatalystDisplayData = (
+    pobr_data::catalog::CatalystsDef,
+    pobr_data::catalog::ModScalabilityDef,
+);
 
 thread_local! {
     /// The staging area for data files injected in batches (`relative path -> bytes`).
@@ -30,6 +34,8 @@ thread_local! {
     static TIER_INDEX: RefCell<Option<Option<Rc<pobr_item::TierIndex>>>> =
         const { RefCell::new(None) };
     static SPECIAL_AFFIX_POOLS: RefCell<Option<Result<SpecialAffixPools, String>>> =
+        const { RefCell::new(None) };
+    static CATALYST_DISPLAY_DATA: RefCell<Option<Option<Rc<CatalystDisplayData>>>> =
         const { RefCell::new(None) };
     /// The entry-level response cache (see [`cached_response`]).
     static RESPONSE_CACHE: RefCell<ResponseCache> = RefCell::new(ResponseCache::default());
@@ -121,6 +127,7 @@ fn clear_data_caches() {
     crate::locales::clear();
     TIER_INDEX.with_borrow_mut(|slot| *slot = None);
     SPECIAL_AFFIX_POOLS.with_borrow_mut(|slot| *slot = None);
+    CATALYST_DISPLAY_DATA.with_borrow_mut(|slot| *slot = None);
     RESPONSE_CACHE.with_borrow_mut(|c| {
         c.entries.clear();
         c.order.clear();
@@ -277,6 +284,19 @@ pub fn base_item_tags(base_name: &str) -> Option<(Vec<String>, u32)> {
     let data = build_data().ok()?;
     let def = data.base_items.get(base_name)?;
     Some((def.tags.clone(), def.mod_domain))
+}
+
+pub(crate) fn catalyst_display_data() -> Option<Rc<CatalystDisplayData>> {
+    CATALYST_DISPLAY_DATA.with_borrow_mut(|slot| {
+        slot.get_or_insert_with(|| {
+            let game = game_data().ok()?;
+            Some(Rc::new((
+                game.catalysts().ok().flatten()?,
+                game.mod_scalability().ok().flatten()?,
+            )))
+        })
+        .clone()
+    })
 }
 
 pub fn special_affix_ids(base_name: &str) -> Result<BTreeMap<String, BTreeSet<String>>, String> {

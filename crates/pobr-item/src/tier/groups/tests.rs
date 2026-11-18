@@ -473,6 +473,7 @@ fn merged_hybrid_and_independent_totals_never_claim_unique_native_identities() {
         modifier("LifeHigh", "Life", &[(life, 50, 50)]),
         modifier("Strength", "Strength", &[("additional_strength", 10, 10)]),
     ];
+    mods.last_mut().unwrap().generation_type = Some(GENERATION_SUFFIX);
     let lines = [
         "56% increased Evasion and Energy Shield",
         "+50 to maximum Life",

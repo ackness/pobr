@@ -83,6 +83,8 @@ export interface ItemLineJson {
   /** 词缀性质（与 tier 成对出现）。 */
   affix?: 'prefix' | 'suffix';
   modifier_sources?: ('crafted' | 'fractured' | 'desecrated' | 'mutated' | 'custom')[];
+  /** Verified game modifier tags, using stable English IDs such as `cold`. */
+  mod_tags?: string[];
 }
 
 export interface SocketJewelJson {

@@ -122,6 +122,7 @@ export function localizeStructLine(line: string, lang: Lang): string | null {
 const BONDED = /^Bonded:\s*/;
 /** Sent once with a batch that has a `Bonded:` line: the pack's own rendering of the prefix. */
 const BONDED_PREFIX_PROBE = 'Bonded: {0}';
+const CATALYST_QUALITY = /^(Quality \([^)]+ Modifiers\)):\s*(.+)$/;
 
 /** What {@link useLocalizedLines} sends `translateLines` for `lines`: one entry per line, in order.
  * 符文命名行只送名称部分（"Rune: X" 整行不在词条模板里，X 是基底名可直译）。A blank line, or one
@@ -131,7 +132,10 @@ const BONDED_PREFIX_PROBE = 'Bonded: {0}';
  * pack has no whole-line translation of. */
 export function linesToTranslate(lines: readonly string[], lang: Lang): string[] {
   lines = mergeModifierContinuations(lines);
-  const sent = lines.map((l) => (!l || localizeStructLine(l, lang) ? '' : runeLineParts(l)?.name ?? l));
+  const sent = lines.map((line) => {
+    if (!line || localizeStructLine(line, lang)) return '';
+    return runeLineParts(line)?.name ?? line.match(CATALYST_QUALITY)?.[1] ?? line;
+  });
   const bonded = lines.filter((l, index) => sent[index] && BONDED.test(l));
   if (!bonded.length) return sent;
   return [...sent, ...bonded.flatMap((l) => ['', l.replace(BONDED, '')]), '', BONDED_PREFIX_PROBE];
@@ -160,6 +164,8 @@ export function localizedLines(lines: string[], lang: Lang, translated: readonly
     const struct = localizeStructLine(l, lang);
     if (struct) return struct;
     const out = translated[index];
+    const quality = l.match(CATALYST_QUALITY);
+    if (quality) return `${out || quality[1]}: ${quality[2]}`;
     const rune = runeLineParts(l);
     if (rune) {
       return `${RUNE_PREFIXES[rune.prefix][lang]}: ${lineText(rune.name, out)}`;

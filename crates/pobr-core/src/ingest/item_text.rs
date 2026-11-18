@@ -60,7 +60,7 @@ use regex::Regex;
 use std::sync::LazyLock;
 
 mod selection;
-use selection::ItemSelection;
+pub use selection::ItemSelection;
 
 /// The item text block's section separator line.
 const SECTION_SEPARATOR: &str = "--------";
@@ -508,9 +508,12 @@ fn is_metadata_line(line: &str) -> bool {
         "Item ID:",
         "Note:",
     ];
-    METADATA_PREFIXES
-        .iter()
-        .any(|prefix| line.starts_with(prefix))
+    line.strip_prefix("Quality (")
+        .and_then(|quality| quality.split_once(":"))
+        .is_some_and(|(kind, _)| kind.ends_with(" Modifiers)"))
+        || METADATA_PREFIXES
+            .iter()
+            .any(|prefix| line.starts_with(prefix))
 }
 
 /// What an item state line records for the calculation.
