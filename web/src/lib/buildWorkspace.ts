@@ -28,6 +28,8 @@ export interface BuildWorkspace {
   version: 1;
   activeBuild: string;
   builds: LocalBuild[];
+  /** A confirmed whole-workspace restore starts a new sync generation. */
+  restoreEpoch?: number;
 }
 
 export function activeWorkspaceStage(workspace: BuildWorkspace): BuildStage {
@@ -205,7 +207,9 @@ export function parseWorkspace(raw: unknown, parseSession: (json: string) => Sav
     const activeBuild = builds.find(build => build.id === workspace.activeBuild)?.id ?? builds[0].id;
     if (activeBuild !== workspace.activeBuild) isolate(workspace.activeBuild);
     if (isolated) onIsolated?.();
-    return { version: 1, activeBuild, builds };
+    const restoreEpoch = workspace.restoreEpoch;
+    return { version: 1, activeBuild, builds,
+      ...(typeof restoreEpoch === 'number' && Number.isSafeInteger(restoreEpoch) && restoreEpoch > 0 ? { restoreEpoch } : {}) };
   } catch { return null; }
 }
 

@@ -133,6 +133,7 @@ export interface SyncNotice {
 }
 
 const sameValue = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+const workspaceEpoch = (library: BuildWorkspace | null) => library?.restoreEpoch ?? 0;
 
 /** The library without which build and stage each tab has open: what another tab can have changed. */
 const libraryContent = (library: BuildWorkspace) =>
@@ -780,18 +781,25 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const persistWorkspace = useCallback((next: BuildWorkspace, replaceStored = false) => {
     let write = next;
     let conflicts: string[] = [];
+    const base = syncedRef.current.library;
+    let epoch = workspaceEpoch(base);
     try {
       const stored = localStorage.getItem(STORAGE.workspace);
       if (stored !== null && stored !== syncedRef.current.raw) {
-        // Ordinary edits merge concurrent writes. A confirmed backup restore replaces the library.
         const theirs = readStoredWorkspace(stored, () => retainWorkspaceRecovery(stored));
-        if (theirs) {
-          if (!replaceStored) ({ workspace: write, conflicts } = mergeWorkspaces(syncedRef.current.library, next, theirs));
+        if (theirs && workspaceEpoch(theirs) >= epoch) {
+          // Merge within one generation. An edit made before a restore can't revive its old workspace.
+          if (!replaceStored) {
+            if (workspaceEpoch(theirs) > epoch) write = theirs;
+            else ({ workspace: write, conflicts } = mergeWorkspaces(base, next, theirs));
+          }
+          epoch = workspaceEpoch(theirs);
           // Recovery may pause the write below; this stored revision was still consumed.
           syncedRef.current = { raw: stored, library: theirs };
         }
       }
     } catch { /* storage cannot be read: write as before */ }
+    if (replaceStored) write = { ...next, restoreEpoch: Math.max(Date.now(), epoch + 1) };
     workspaceRef.current = write;
     setWorkspace(write);
     // Keep unreadable entries recoverable; never replace their only stored copy.
@@ -803,11 +811,12 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         setStorageFailed(false);
       } catch { setStorageFailed(true); }
     }
-    if (write !== next && !sameValue(libraryContent(write), libraryContent(next))) {
+    if (!replaceStored && write !== next && (workspaceEpoch(write) !== workspaceEpoch(next)
+      || !sameValue(libraryContent(write), libraryContent(next)))) {
       const { viewChanged, kind } = mergeEffect(next, write, conflicts);
       announce(kind);
       // The stage on screen is not the stored one any more: show the stored one, after this edit is done.
-      if (viewChanged) queueMicrotask(() => refreshViewRef.current(write));
+      if (viewChanged || workspaceEpoch(write) !== workspaceEpoch(next)) queueMicrotask(() => refreshViewRef.current(write));
     }
   }, [announce, retainWorkspaceRecovery]);
   const saveToStorage = useCallback((next: BuildState, text: string, preserveVersion = false, replaceStored = false) => {
@@ -1657,14 +1666,22 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       const raw = stored;
       const theirs = readStoredWorkspace(raw, () => retainWorkspaceRecovery(raw));
       if (!theirs) return;
-      const { workspace: merged, conflicts } = mergeWorkspaces(syncedRef.current.library, mine, theirs);
+      const base = syncedRef.current.library;
+      const epoch = workspaceEpoch(theirs);
+      if (epoch < workspaceEpoch(base)) {
+        // A stale writer raced the restore; put the newer generation back.
+        persistWorkspace(mine);
+        return;
+      }
+      const replaced = epoch > workspaceEpoch(base);
+      const { workspace: merged, conflicts } = replaced ? { workspace: theirs, conflicts: [] } : mergeWorkspaces(base, mine, theirs);
       syncedRef.current = { raw: stored, library: theirs };
-      if (sameValue(libraryContent(merged), libraryContent(mine))) return;
+      if (!replaced && sameValue(libraryContent(merged), libraryContent(mine))) return;
       const { viewChanged, kind } = mergeEffect(mine, merged, conflicts);
       workspaceRef.current = merged;
       setWorkspace(merged);
       announce(kind);
-      if (viewChanged) showLibraryStage(merged);
+      if (replaced || viewChanged) showLibraryStage(merged);
       // Only what this tab alone holds needs writing back; the rest is what the other tab stored.
       else if (!sameValue(libraryContent(merged), libraryContent(theirs))) persistWorkspace(merged);
     };

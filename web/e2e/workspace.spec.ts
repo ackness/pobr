@@ -1,8 +1,10 @@
 import { buildAction, openBuildMenu } from './shell';
 import { expect, test, type Page } from '@playwright/test';
 import { deflateSync } from 'node:zlib';
-import { mainSkillPinned } from './buildLibrary';
+import { mainSkillPinned, openExport } from './buildLibrary';
 import { SMOKE } from './tags';
+import { answerConfirm } from './confirmDialog';
+import { STORAGE } from '../src/lib/sessionStorage';
 
 const code = deflateSync('<PathOfBuilding2><Build level="60" className="Witch" mainSocketGroup="1"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree><Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="FireballPlayer" level="12" quality="0" enabled="true"/></Skill></SkillSet></Skills><Items/><Config><Input name="enemyLevel" number="82"/><Input name="buffOnslaught" boolean="false"/></Config></PathOfBuilding2>').toString('base64url');
 const nav = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name, exact: true });
@@ -133,6 +135,43 @@ test('tabs of one browser follow each other and merge what a tab missed', SMOKE,
   await expect(notice(page)).toHaveAttribute('data-sync', 'updated');
   // The other tab follows the merged library; nothing either tab made is lost.
   await names(other, [...start, 'Made there', 'Made here too']);
+});
+
+test('a confirmed backup replaces the working library in both active and sleeping tabs', async ({ page, context }) => {
+  await importBuild(page);
+  await openBuilds(page);
+  await openExport(page);
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Back up local builds', exact: true }).click();
+  const backup = await (await download).path();
+  await page.locator('.bd-library').getByRole('button', { name: 'New build', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('After backup');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.locator('.shell-save-state')).toHaveText('Saved in this browser');
+
+  const active = await context.newPage();
+  const sleeping = await context.newPage();
+  await deafToStorage(sleeping);
+  const level = (tab: Page) => tab.getByLabel('Level', { exact: true });
+  await Promise.all([active.goto('/build'), sleeping.goto('/build')]);
+  await Promise.all([active, sleeping].map(tab => expect(level(tab)).toHaveValue('1', { timeout: 90_000 })));
+  await sleeping.evaluate(() => Reflect.set(window, 'deaf', true));
+  const stale = await sleeping.evaluate(key => localStorage.getItem(key)!, STORAGE.workspace);
+
+  await page.locator('input[type=file]').setInputFiles(backup!);
+  await answerConfirm(page, true);
+  await expect(page.locator('#ov-title')).toBeVisible();
+  await expect(level(active)).toHaveValue('60');
+  await expect(level(sleeping)).toHaveValue('1');
+  await level(sleeping).fill('75');
+  await expect(level(sleeping)).toHaveValue('60');
+  const savedBuilds = async () => (await state(page)).workspace.builds.map((build: { name: string }) => build.name);
+  expect(await savedBuilds()).toHaveLength(1);
+
+  // A write can arrive after another tab finished reading but before the restore was saved.
+  await sleeping.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key: STORAGE.workspace, raw: stale });
+  await expect.poll(savedBuilds).toHaveLength(1);
+  await expect(level(active)).toHaveValue('60');
 });
 
 test('tabs of one browser share the saved skill sets', async ({ page, context }) => {

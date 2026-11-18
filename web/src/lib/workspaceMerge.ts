@@ -85,7 +85,7 @@ export function mergeWorkspaces(base: BuildWorkspace | null, mine: BuildWorkspac
   const has = (id: string) => kept.some(build => build.id === id);
   return {
     workspace: {
-      version: 1,
+      ...theirs,
       activeBuild: has(mine.activeBuild) ? mine.activeBuild : has(theirs.activeBuild) ? theirs.activeBuild : kept[0].id,
       builds: kept,
     },
