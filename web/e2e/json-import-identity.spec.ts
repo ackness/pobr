@@ -473,6 +473,9 @@ test('proper pobr-build file and confirmed workspace backup preserve all stages 
   await page.locator('input[type=file]').setInputFiles({ name: 'pobr-workspace.json', mimeType: 'application/json', buffer: Buffer.from(backup) });
   await answerConfirm(page, true);
   await expect(page.locator('#ov-title')).toBeVisible();
+  const restoredEpoch = (await saved(page)).workspace.restoreEpoch;
+  expect(restoredEpoch).toBeGreaterThan(shared.envelope.workspace.restoreEpoch ?? 0);
+  shared.envelope.workspace.restoreEpoch = restoredEpoch;
   await expectRestored(page, shared);
   await openBuild(page);
   await selectStage(page, 'Original Frost Bomb');

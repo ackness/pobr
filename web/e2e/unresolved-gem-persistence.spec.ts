@@ -210,7 +210,10 @@ test('Comet all-stage sharing and workspace backup reimport preserve complete sa
   await expect(page.locator('#ov-title')).toBeVisible();
   await idle(page);
   await openBuild(page);
-  expect(await snapshot(page)).toEqual(beforeBackup);
+  const restored = await snapshot(page);
+  expect(restored.workspace.restoreEpoch).toBeGreaterThan(beforeBackup.workspace.restoreEpoch ?? 0);
+  beforeBackup.workspace.restoreEpoch = restored.workspace.restoreEpoch;
+  expect(restored).toEqual(beforeBackup);
   await page.reload();
   await ready(page);
   expect(await snapshot(page)).toEqual(beforeBackup);
