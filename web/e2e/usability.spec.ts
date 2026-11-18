@@ -53,7 +53,10 @@ test('failed code and file imports retain the editor and current build; a valid 
   await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
   await goTo(page, 'Items');
   await expect(page.locator('.paper-doll')).toBeVisible();
-  expect(await saved(page)).toEqual(before);
+  const restored = await saved(page);
+  expect(restored.workspace.restoreEpoch).toBeGreaterThan(before.workspace.restoreEpoch ?? 0);
+  before.workspace.restoreEpoch = restored.workspace.restoreEpoch;
+  expect(restored).toEqual(before);
 });
 
 test('share codes expire after edits and clipboard failure offers selectable text', async ({ page }) => {
