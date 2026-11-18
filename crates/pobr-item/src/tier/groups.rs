@@ -29,6 +29,12 @@ struct MergedFamily<'a> {
     stats: Vec<ModStat>,
 }
 
+struct MergedExplanation {
+    lines: BTreeSet<usize>,
+    prefixes: usize,
+    suffixes: usize,
+}
+
 impl TierIndex {
     /// Matches complete groups of annotation-stripped explicit lines on one item.
     /// Results retain input order; incomplete, duplicate or competing groups
@@ -152,25 +158,52 @@ impl TierIndex {
                 });
             }
         }
-        let merged = if candidates.is_empty() {
-            BTreeSet::new()
+        // Reserve slots for independent affixes before accepting a merged explanation.
+        // Only a unique, non-overlapping candidate with no merged alternative can reserve one.
+        let certain: Vec<_> = candidates
+            .iter()
+            .filter(|candidate| {
+                !candidate.fragment.lines.iter().any(|&index| {
+                    lines
+                        .iter()
+                        .enumerate()
+                        .any(|(other, line)| other != index && *line == lines[index])
+                }) && !candidates.iter().any(|other| {
+                    *candidate != other
+                        && (!candidate.fragment.lines.is_disjoint(&other.fragment.lines)
+                            || self.mods[candidate.mod_index].group
+                                == self.mods[other.mod_index].group)
+                })
+            })
+            .collect();
+        let explanations = if certain.is_empty() {
+            Vec::new()
         } else {
-            self.merged_lines(&eligible, &observations, &mut budget)?
+            self.merged_explanations(&eligible, &observations, &mut budget)?
         };
+        let mut possibly_merged = BTreeSet::new();
+        for explanation in &explanations {
+            possibly_merged.extend(explanation.lines.iter().copied());
+        }
+        let mut required = [0, 0];
+        if mod_domain == 1 {
+            for candidate in &certain {
+                if candidate.fragment.lines.is_disjoint(&possibly_merged) {
+                    let is_suffix =
+                        self.mods[candidate.mod_index].generation_type == GENERATION_SUFFIX;
+                    required[usize::from(is_suffix)] += 1;
+                }
+            }
+        }
+        let mut merged = BTreeSet::new();
+        for explanation in explanations {
+            if required[0] + explanation.prefixes <= 3 && required[1] + explanation.suffixes <= 3 {
+                merged.extend(explanation.lines);
+            }
+        }
         let mut result = vec![None; lines.len()];
-        for candidate in &candidates {
-            let duplicate = candidate.fragment.lines.iter().any(|&index| {
-                lines
-                    .iter()
-                    .enumerate()
-                    .any(|(other, line)| other != index && *line == lines[index])
-            });
-            let competing = candidates.iter().any(|other| {
-                candidate != other
-                    && (!candidate.fragment.lines.is_disjoint(&other.fragment.lines)
-                        || self.mods[candidate.mod_index].group == self.mods[other.mod_index].group)
-            });
-            if duplicate || competing || !candidate.fragment.lines.is_disjoint(&merged) {
+        for candidate in certain {
+            if !candidate.fragment.lines.is_disjoint(&merged) {
                 continue;
             }
             let Some(info) = self.group_tier(candidate.mod_index, &eligible, &natural, allowed_ids)
@@ -184,12 +217,12 @@ impl TierIndex {
         Some(result)
     }
 
-    fn merged_lines(
+    fn merged_explanations(
         &self,
         eligible: &BTreeSet<usize>,
         observations: &[Observation<'_>],
         budget: &mut usize,
-    ) -> Option<BTreeSet<usize>> {
+    ) -> Option<Vec<MergedExplanation>> {
         let visible: BTreeSet<_> = observations
             .iter()
             .filter(|observation| observation.entry.lookup_key.is_none())
@@ -240,7 +273,7 @@ impl TierIndex {
             .map(|(index, family)| (vec![index], family.stats.clone()))
             .collect();
         let mut visited = BTreeSet::new();
-        let mut merged = BTreeSet::new();
+        let mut explanations = Vec::new();
         while let Some((selected, stats)) = pending.pop() {
             spend(budget)?;
             if selected.len() >= 2 {
@@ -251,8 +284,16 @@ impl TierIndex {
                         parts.insert(fragment);
                     }
                 }
+                let prefixes = selected
+                    .iter()
+                    .filter(|&&index| families[index].generation_type == GENERATION_PREFIX)
+                    .count();
                 for fragment in complete_fragments(stats.len(), &parts, budget)? {
-                    merged.extend(fragment.lines);
+                    explanations.push(MergedExplanation {
+                        lines: fragment.lines,
+                        prefixes,
+                        suffixes: selected.len() - prefixes,
+                    });
                 }
             }
             for (index, family) in families.iter().enumerate() {
@@ -293,7 +334,7 @@ impl TierIndex {
                 pending.push((next, sum));
             }
         }
-        Some(merged)
+        Some(explanations)
     }
 
     fn group_tier(

@@ -4,7 +4,7 @@ import { getBackend } from '../../api/backend';
 import { itemLines, rarityOf, useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
 import { isContinuation } from '../../lib/continuedLines';
 import { t, type Lang } from '../../lib/i18n';
-import { itemAttributeType, itemDamageType, itemDisplaySections, itemValueParts, type DisplayItemLine } from '../../lib/itemDisplay';
+import { itemAttributeType, itemDamageType, itemDisplaySections, itemModTagLabel, itemValueParts, type DisplayItemLine } from '../../lib/itemDisplay';
 import { useUi } from '../shared/UiContext';
 import { AppTooltip } from '../shared/controls';
 import { Badge } from '../ui/badge';
@@ -58,56 +58,70 @@ export function ItemDisplayContent({ text, lang, lines, translated, rawDetails =
   const w = (en: string, cn: string, tw = cn) => lang === 'en-US' ? en : lang === 'zh-TW' ? tw : cn;
   const rarity = rarityOf(text);
   const fixedAffixes = rarity === 'unique' || rarity === 'relic';
-  const hasTiers = !fixedAffixes && model.explicit.some(line => line.tier != null);
-  const hasUnknownTiers = hasTiers && model.explicit.some(line => line.tier == null);
-  const prefixLabel = w('Prefixes', '前缀', '前綴');
-  const suffixLabel = w('Suffixes', '后缀', '後綴');
-  const otherLabel = fixedAffixes ? w('Modifiers', '词缀', '詞綴') : w('Unclassified modifiers', '未分类词缀', '未分類詞綴');
-  const labels = {
-    prefix: w('Prefix', '前缀', '前綴'), suffix: w('Suffix', '后缀', '後綴'),
+  const affixOf = (line: DisplayItemLine) => line.kind === 'explicit' && !fixedAffixes ? line.affix : undefined;
+  const tierOf = (line: DisplayItemLine) => line.kind === 'explicit' && !fixedAffixes ? line.tier : undefined;
+  const hasAffixes = model.explicit.some(affixOf);
+  const hasTiers = model.explicit.some(line => tierOf(line) != null);
+  const modifiersLabel = w('Modifiers', '词缀', '詞綴');
+  const affixLabels = { prefix: w('Prefix', '前缀', '前綴'), suffix: w('Suffix', '后缀', '後綴') };
+  const effectLabels: Partial<Record<ItemLineJson['kind'], string>> = {
     implicit: w('Implicit', '固有', '固定'), enchant: w('Enchant', '附魔'), rune: w('Rune', '符文'),
     class_req: w('Requirement', '需求'),
-    explicit: fixedAffixes ? w('Modifier', '词缀', '詞綴') : w('Unclassified', '未分类', '未分類'),
+  };
+  const sourceLabels = {
+    crafted: w('Crafted', '工艺', '工藝'), fractured: w('Fractured · locked', '破裂 · 锁定', '破裂 · 鎖定'),
+    desecrated: w('Desecrated', '亵渎', '褻瀆'), mutated: w('Mutated', '异化', '異化'), custom: w('Custom', '自定义', '自訂'),
   };
   const rarityLabel = ({ normal: w('Normal', '普通'), magic: w('Magic', '魔法'), rare: w('Rare', '稀有'), unique: w('Unique', '传奇', '傳奇'), relic: w('Relic', '遗珍', '遺珍') } as Record<string, string>)[rarity];
 
-  function sources(line: DisplayItemLine) {
-    const names = {
-      crafted: w('Crafted', '工艺', '工藝'), fractured: w('Fractured · locked', '破裂 · 锁定', '破裂 · 鎖定'),
-      desecrated: w('Desecrated', '亵渎', '褻瀆'), mutated: w('Mutated', '异化', '異化'), custom: w('Custom', '自定义', '自訂'),
+  function rowAttributes(line: DisplayItemLine) {
+    return {
+      'data-affix': affixOf(line), 'data-kind': line.kind, 'data-damage': itemDamageType(line.original),
+      'data-attribute': itemAttributeType(line.original), 'data-source': line.modifier_sources?.[0],
     };
-    return line.modifier_sources?.length ? <span className="item-modifier-sources">{line.modifier_sources.map(source =>
-      <Badge key={source} variant="outline" data-modifier-source={source}>{names[source]}</Badge>)}</span> : null;
   }
 
-  function tier(line: DisplayItemLine) {
-    if (fixedAffixes || !hasTiers) return null;
-    if (line.tier == null) return <span className="item-affix-tier item-affix-tier-unknown" aria-label={w('Tier not identified', '档位未识别', '階級未識別')}>—</span>;
+  function modifierText(line: DisplayItemLine) {
+    return <>
+      <ItemValues text={line.text} />
+      {line.modifier_sources?.length || line.mod_tags?.length ? <span className="item-modifier-meta">
+        {line.modifier_sources?.map(source =>
+          <Badge key={source} variant="outline" data-modifier-source={source}>{sourceLabels[source]}</Badge>)}
+        {Array.from(new Set(line.mod_tags), tag =>
+          <Badge key={`tag:${tag}`} variant="secondary" data-mod-tag={tag}>{itemModTagLabel(tag, lang)}</Badge>)}
+      </span> : null}
+    </>;
+  }
+
+  function affixBadge(line: DisplayItemLine) {
+    const affix = affixOf(line);
+    return affix ? <span className="item-affix-side">{affixLabels[affix]}</span> : null;
+  }
+
+  function tierBadge(line: DisplayItemLine) {
+    const tier = tierOf(line);
+    if (tier == null) return null;
     const total = line.tier_total == null ? '' : w(` · ${line.tier_total} tiers for this base`, ` · 该基底共 ${line.tier_total} 档`, ` · 此基底共 ${line.tier_total} 階`);
     return <AppTooltip content={w('T1 is the highest tier for this base.', 'T1 为该基底同类词缀的最高档。', 'T1 為此基底同類詞綴的最高階。') + total}>
-      <Badge variant="outline" tabIndex={0} className={`item-affix-tier${line.tier === 1 ? ' text-primary border-primary/30' : ''}`}>T{line.tier}</Badge>
+      <Badge variant="outline" tabIndex={0} className={`item-affix-tier${tier === 1 ? ' text-primary border-primary/30' : ''}`}>T{tier}</Badge>
     </AppTooltip>;
   }
 
-  function modifier(line: DisplayItemLine, showKind = false) {
-    const kind = line.kind === 'explicit' && !fixedAffixes ? line.affix ?? 'explicit' : line.kind;
-    return <div className="item-affix-row item-line" data-affix={line.affix} data-kind={line.kind} data-damage={itemDamageType(line.original)} data-attribute={itemAttributeType(line.original)} data-source={line.modifier_sources?.[0]} key={line.index}>
-      {showKind && <span className="item-affix-kind">{kind === 'explicit' && !fixedAffixes ? w('Unknown', '未分类', '未分類') : labels[kind as keyof typeof labels]}</span>}
-      <span className="item-affix-text"><ItemValues text={line.text} />{sources(line)}</span>
-      {line.kind === 'explicit' && tier(line)}
+  function modifier(line: DisplayItemLine) {
+    const effect = effectLabels[line.kind];
+    return <div className="item-affix-row item-line" {...rowAttributes(line)} key={line.index}>
+      {effect ? <span className="item-affix-kind">{effect}</span> : null}
+      <span className="item-affix-text">{modifierText(line)}</span>
+      {affixOf(line) || tierOf(line) != null ? <span className="item-affix-identity">
+        {affixBadge(line)}{tierBadge(line)}
+      </span> : null}
     </div>;
-  }
-
-  function group(label: string, groupLines: DisplayItemLine[]) {
-    return groupLines.length > 0 && <section className="item-affix-group" aria-label={label}>
-      <h5>{label}</h5>{groupLines.map(line => modifier(line, style === 'game'))}
-    </section>;
   }
 
   const extras = (model.effects.length > 0 || model.runes.length > 0) && <section className="item-extra-effects" aria-label={w('Additional effects', '附加效果')}>
     <h5>{w('Additional effects', '附加效果')}</h5>
     {model.runes.length > 0 && <ul className="item-socketed-runes">{model.runes.map(line => <li key={line.index}>{line.text}</li>)}</ul>}
-    <div className="item-effects-list">{model.effects.map(line => modifier(line, true))}</div>
+    <div className="item-effects-list">{model.effects.map(modifier)}</div>
   </section>;
 
   return <article className={`item-display rarity-${rarity}`} data-item-display={style} aria-label={model.name || w('Equipment details', '装备详情', '裝備詳情')}>
@@ -128,23 +142,22 @@ export function ItemDisplayContent({ text, lang, lines, translated, rawDetails =
       </TabsList>{hasTiers && <span className="item-tier-hint">{w('T1 is the highest tier', 'T1 为最高档', 'T1 為最高階')}</span>}</div>
       <TabsContent value="details" className="item-display-body">
         {style === 'game' && extras}
-        {style === 'compact' && model.explicit.length > 0 ? <table className="item-affix-table">
+        {model.explicit.length > 0 && (style === 'compact' ? <table className="item-affix-table">
           <caption className="sr-only">{w('Equipment modifiers', '装备词缀', '裝備詞綴')}</caption>
-          <thead><tr><th scope="col">{w('Type', '类型', '類型')}</th><th scope="col">{w('Modifier and values', '词缀与数值', '詞綴與數值')}</th>{hasTiers && <th scope="col">{w('Tier', '档位', '階級')}</th>}</tr></thead>
-          <tbody>{model.explicit.map(line => <tr className="item-line" key={line.index} data-affix={line.affix} data-kind={line.kind} data-damage={itemDamageType(line.original)} data-attribute={itemAttributeType(line.original)} data-source={line.modifier_sources?.[0]}>
-            <td>{line.affix && !fixedAffixes ? <Badge variant={line.affix === 'prefix' ? 'secondary' : 'outline'}>{labels[line.affix]}</Badge>
-              : <span className="item-unclassified">{labels.explicit}</span>}</td>
-            <td className="item-affix-text"><ItemValues text={line.text} />{sources(line)}</td>{hasTiers && <td>{tier(line)}</td>}
+          <thead><tr>
+            <th scope="col">{w('Modifier and values', '词缀与数值', '詞綴與數值')}</th>
+            {hasAffixes && <th className="item-affix-side-cell" scope="col">{w('Type', '类型', '類型')}</th>}
+            {hasTiers && <th className="item-affix-tier-cell" scope="col">{w('Tier', '档位', '階級')}</th>}
+          </tr></thead>
+          <tbody>{model.explicit.map(line => <tr className="item-line" key={line.index} {...rowAttributes(line)}>
+            <td className="item-affix-text">{modifierText(line)}</td>
+            {hasAffixes && <td className="item-affix-side-cell">{affixBadge(line)}</td>}
+            {hasTiers && <td className="item-affix-tier-cell">{tierBadge(line)}</td>}
           </tr>)}</tbody>
-        </table> : <div className="item-affix-groups">
-          {fixedAffixes ? group(otherLabel, model.explicit) : <>
-            {group(prefixLabel, model.prefixes)}{group(suffixLabel, model.suffixes)}
-            {group(otherLabel, model.other)}
-          </>}
-        </div>}
+        </table> : <section className="item-affix-group" aria-label={modifiersLabel}>
+          <h5>{modifiersLabel}</h5>{model.explicit.map(modifier)}
+        </section>)}
         {style !== 'game' && extras}
-        {hasUnknownTiers && <p className="item-display-hint">{w('— means the tier was not identified.', '— 表示档位未识别。', '— 表示階級未識別。')}</p>}
-        {!fixedAffixes && model.other.length > 0 && <p className="item-display-hint">{w('Unclassified means the prefix, suffix or tier could not be verified. It does not mean the effect is unsupported or crafted. Source labels appear only when the imported text includes them.', '未分类表示未能核实前后缀或档位，不代表效果未生效，也不等于工艺词缀。来源标签只展示原文明确保留的标记。', '未分類表示未能核實前後綴或階級，不代表效果未生效，也不等於工藝詞綴。來源標籤只顯示原文明確保留的標記。')}</p>}
       </TabsContent>
       {!rawDetails && <TabsContent value="raw"><pre className="item-original-text">{text}</pre></TabsContent>}
     </Tabs>

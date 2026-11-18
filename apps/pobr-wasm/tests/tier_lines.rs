@@ -253,6 +253,131 @@ Item Level: 81
 }
 
 #[test]
+fn only_active_native_lines_reserve_affix_slots() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    let text = "\
+Rarity: RARE
+Display Fixture
+Runeforged Secured Wraps
+Item Level: 81
+Variant: First
+Variant: Second
+Selected Variant: 1
+
+56% increased Evasion and Energy Shield
++50 to maximum Life";
+    let inactive = classified_lines(&format!("{text}\n{{variant:2}}+30 to maximum Mana"));
+    let custom = classified_lines(&format!("{text}\n{{custom}}+30 to maximum Mana"));
+    let expected = [
+        json!({"text": "56% increased Evasion and Energy Shield", "kind": "explicit"}),
+        json!({"text": "+50 to maximum Life", "kind": "explicit"}),
+    ];
+    assert_eq!(inactive[inactive.len() - 3..inactive.len() - 1], expected);
+    assert_eq!(custom[custom.len() - 3..custom.len() - 1], expected);
+    assert_eq!(
+        inactive.last().unwrap(),
+        &json!({"text": "+30 to maximum Mana", "kind": "explicit"})
+    );
+    assert_eq!(
+        custom.last().unwrap(),
+        &json!({"text": "+30 to maximum Mana", "kind": "explicit", "modifier_sources": ["custom"]})
+    );
+
+    // Without an explicit selection the last variant is active in the engine.
+    let selected =
+        format!("{text}\n{{variant:2}}+30 to maximum Mana").replace("Selected Variant: 1\n", "");
+    let selected = classified_lines(&selected);
+    assert_eq!(selected[selected.len() - 3]["tier"], 4);
+    assert_eq!(selected[selected.len() - 2]["tier"], 6);
+    assert_eq!(selected.last().unwrap()["affix"], "prefix");
+}
+
+fn assert_variant_rolls(headers: &str, rolls: [&str; 2], active: [bool; 2]) {
+    let header = RARE_ITEM.split_once("\n+190 to maximum Life").unwrap().0;
+    let values = ["+190 to maximum Life", "+34% to Cold Resistance"];
+    let text = format!(
+        "{header}\n{headers}\n{}{}\n{}{}",
+        rolls[0], values[0], rolls[1], values[1]
+    );
+    let reference = classified_lines(RARE_ITEM);
+    let lines = classified_lines(&text);
+    let explicit: Vec<_> = lines
+        .iter()
+        .filter(|line| line["kind"] == "explicit")
+        .collect();
+    assert_eq!(explicit.len(), 2, "{text}: {lines:?}");
+    for (index, value) in values.into_iter().enumerate() {
+        let expected = reference.iter().find(|line| line["text"] == value).unwrap();
+        assert!(expected.get("tier").is_some(), "{expected}");
+        if active[index] {
+            assert_eq!(explicit[index], expected, "{text}");
+        } else {
+            assert_eq!(
+                explicit[index],
+                &json!({"text": value, "kind": "explicit"}),
+                "{text}"
+            );
+        }
+    }
+    let item = pobr_core::item_text::parse_pob_xml_item(&text).unwrap();
+    let active_values: Vec<_> = values
+        .into_iter()
+        .zip(active)
+        .filter_map(|(value, active)| active.then_some(value))
+        .collect();
+    assert_eq!(item.modifier_texts, active_values, "{text}");
+}
+
+#[test]
+fn all_legacy_alt_slots_follow_their_enable_flag() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    for suffix in ["", " Two", " Three", " Four", " Five"] {
+        for enabled in [false, true] {
+            assert_variant_rolls(
+                &format!(
+                    "Variant: First\nVariant: Second\nSelected Variant: 1\nHas Alt Variant{suffix}: {enabled}\nSelected Alt Variant{suffix}: 2"
+                ),
+                ["{variant:1}", "{variant:2}"],
+                [true, enabled],
+            );
+        }
+    }
+}
+
+#[test]
+fn version_base_and_group_selection_match_calculation() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    for selected in [1, 2] {
+        let active = [selected == 1, selected == 2];
+        for (label, rolls) in [
+            ("Version", ["{version:1}", "{version:2}"]),
+            ("Base Variant", ["{base:1}", "{base:2}"]),
+        ] {
+            assert_variant_rolls(
+                &format!("{label}: First\n{label}: Second\nSelected {label}: {selected}"),
+                rolls,
+                active,
+            );
+        }
+        assert_variant_rolls(
+            &format!(
+                "Version: Current\nVariant: First\nVariant: Second\nSelected Variant Group: 1={selected}"
+            ),
+            [
+                "{version:1}{group:1}{variant:1}",
+                "{version:1}{group:1}{variant:2}",
+            ],
+            active,
+        );
+    }
+    assert_variant_rolls(
+        "Version: Current\nVariant: First\nVariant: Second\nSelected Variant: 1\nHas Alt Variant: true\nSelected Alt Variant: 2",
+        ["{variant:1}", "{variant:2}"],
+        [true, false],
+    );
+}
+
+#[test]
 fn influence_ailment_duration_tiers_exclude_alloy_from_the_same_category() {
     pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
     let modifier = "10% increased Duration of Damaging Ailments on Enemies";
@@ -266,6 +391,90 @@ fn influence_ailment_duration_tiers_exclude_alloy_from_the_same_category() {
     assert_eq!(duration["tier_total"], 2);
     assert!(duration.get("modifier_sources").is_none());
     assert_eq!(classified_lines(&text), lines);
+}
+
+#[test]
+fn tagged_catalyst_roll_uses_original_tier_and_keeps_display_values() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    let text = "\
+Rarity: RARE
+Display Fixture
+Gold Ring
+Item Level: 79
+Quality (Cold Modifiers): +20%
+Implicits: 0
+{tags:Damage,cold,damage,attack}{unrelated}Adds 26 to 38 Cold damage to Attacks";
+    let lines = classified_lines(text);
+    let line = lines.last().unwrap();
+    assert_eq!(line["text"], "Adds 26 to 38 Cold damage to Attacks");
+    assert_eq!(line["mod_tags"], json!(["attack", "cold", "damage"]));
+    assert_eq!(line["affix"], "prefix");
+    assert_eq!(line["tier"], 1);
+    let draft = pobr_item::ItemDraft::parse(text).unwrap();
+    assert_eq!(
+        draft,
+        pobr_item::ItemDraft::parse(&draft.build_raw()).unwrap()
+    );
+    let calc_item = pobr_core::ingest::item_text::parse_pob_xml_item(text).unwrap();
+    assert_eq!(
+        calc_item.modifier_texts,
+        ["Adds 26 to 38 Cold damage to Attacks"]
+    );
+    let unscalable = classified_lines(&text.replace("{unrelated}", "{unscalable}"));
+    assert!(unscalable.last().unwrap().get("tier").is_none());
+    let old = classified_lines(&text.replace("Quality (Cold Modifiers)", "Quality"));
+    assert!(old.last().unwrap().get("tier").is_none());
+}
+
+#[test]
+fn named_catalyst_requires_line_evidence_for_tier_lookup() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    let item =
+        "Rarity: RARE\nDisplay Fixture\nGold Ring\nItem Level: 79\nQuality (Cold Modifiers): +20%";
+    let roll = "Adds 24 to 36 Cold damage to Attacks";
+    let untagged = classified_lines(&format!("{item}\n{roll}"));
+    assert_eq!(
+        untagged.last().unwrap(),
+        &json!({"text": roll, "kind": "explicit"})
+    );
+
+    let tagged = classified_lines(&format!("{item}\n{{tags:cold}}{roll}"));
+    let cold = tagged.last().unwrap();
+    assert_eq!(cold["text"], roll);
+    assert_eq!(cold["mod_tags"], json!(["cold"]));
+    assert_eq!(cold["affix"], "prefix");
+    assert_eq!(cold["tier"], 2);
+
+    let unscalable = classified_lines(&format!("{item}\n{{unscalable}}{roll}"));
+    let raw = unscalable.last().unwrap();
+    assert_eq!(raw["text"], roll);
+    assert_eq!(raw["affix"], "prefix");
+    assert_eq!(raw["tier"], 1);
+}
+
+#[test]
+fn independent_prefix_rejects_a_merge_that_would_require_four_prefixes() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    let text = "\
+Rarity: RARE
+Display Fixture
+Noble Circlet
+Item Level: 79
++44 to maximum Energy Shield
+93% increased Energy Shield
++135 to maximum Life
++31% to Fire Resistance
++38% to Cold Resistance";
+    let lines = classified_lines(text);
+    for (value, tier) in [
+        ("+44 to maximum Energy Shield", 3),
+        ("93% increased Energy Shield", 1),
+        ("+135 to maximum Life", 2),
+    ] {
+        let line = lines.iter().find(|line| line["text"] == value).unwrap();
+        assert_eq!(line["affix"], "prefix", "{line}");
+        assert_eq!(line["tier"], tier, "{line}");
+    }
 }
 
 #[test]

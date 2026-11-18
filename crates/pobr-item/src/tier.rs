@@ -402,6 +402,58 @@ fn tokenize(text: &str) -> (String, Vec<&str>) {
     (skeleton, captures)
 }
 
+/// Recover integral display values for tier lookup when every captured slot
+/// has a known plain scaling rule. Accessory quality truncates positive rolls.
+/// The original imported line remains the source for display and calculation.
+pub fn unscale_catalyst_line(
+    line: &str,
+    quality: u32,
+    scalability: &pobr_data::catalog::ModScalabilityDef,
+) -> Option<String> {
+    let (_, captures) = tokenize(line);
+    if captures.is_empty() {
+        return None;
+    }
+    let replace = |values: &[String]| {
+        let mut result = String::new();
+        let mut cursor = 0;
+        for (capture, value) in captures.iter().zip(values) {
+            let position = capture.as_ptr() as usize - line.as_ptr() as usize;
+            result.push_str(&line[cursor..position]);
+            if capture.starts_with('+') {
+                result.push('+');
+            }
+            result.push_str(value);
+            cursor = position + capture.len();
+        }
+        result.push_str(&line[cursor..]);
+        result
+    };
+    let template = replace(&vec!["#".to_string(); captures.len()]);
+    let entry = &scalability.entries[scalability
+        .entries
+        .binary_search_by(|entry| entry.template.as_str().cmp(&template))
+        .ok()?];
+    if entry.slots.len() != captures.len()
+        || entry
+            .slots
+            .iter()
+            .any(|slot| !slot.is_scalable || !slot.formats.is_empty())
+    {
+        return None;
+    }
+    let multiplier = 100 + i128::from(quality);
+    let values = captures
+        .iter()
+        .map(|capture| {
+            let shown = i128::from(capture.parse::<u64>().ok()?);
+            let unscaled = (shown * 100 + multiplier - 1) / multiplier;
+            (unscaled * multiplier / 100 == shown).then(|| unscaled.to_string())
+        })
+        .collect::<Option<Vec<_>>>()?;
+    Some(replace(&values))
+}
+
 fn utf8_len(first_byte: u8) -> usize {
     match first_byte {
         b if b >= 0xF0 => 4,

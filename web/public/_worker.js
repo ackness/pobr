@@ -38,7 +38,7 @@ function itemFields(item, depth = 0) {
   if (!item || typeof item !== 'object' || depth > 8) throw new Error('Invalid WeGame item.');
   const keys = ['baseType', 'typeLine', 'name', 'frameType', 'ilvl', 'inventoryId', 'x',
     'properties', 'requirements', 'implicitMods', 'explicitMods', 'runeMods', 'enchantMods', 'craftedMods',
-    'fracturedMods', 'corrupted', 'support', 'socket', 'sockets'];
+    'fracturedMods', 'desecratedMods', 'mutatedMods', 'corrupted', 'support', 'socket', 'sockets'];
   const result = Object.fromEntries(keys.filter(k => k in item).map(k => [k, item[k]]));
   if (item.socketedItems) result.socketedItems = item.socketedItems.map(i => itemFields(i, depth + 1));
   return result;

@@ -8,6 +8,7 @@
 use std::collections::BTreeMap;
 
 use pobr_data::display_stat::{DisplayStatCategory, DisplayStatId, StatValueType};
+use pobr_item::draft::ModifierSource;
 use serde::Serialize;
 
 use crate::state;
@@ -44,6 +45,8 @@ struct ItemLineJson {
     kind: &'static str,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     modifier_sources: Vec<&'static str>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    mod_tags: Vec<String>,
     /// The affix tier (1 = strongest in its pool; only given for rare/magic/normal explicit lines with a reverse-lookup hit).
     #[serde(skip_serializing_if = "Option::is_none")]
     tier: Option<u32>,
@@ -69,8 +72,7 @@ fn display_line_kind_str(kind: pobr_item::DisplayLineKind) -> &'static str {
     }
 }
 
-fn modifier_source_str(source: pobr_item::draft::ModifierSource) -> &'static str {
-    use pobr_item::draft::ModifierSource;
+fn modifier_source_str(source: ModifierSource) -> &'static str {
     match source {
         ModifierSource::Crafted => "crafted",
         ModifierSource::Fractured => "fractured",
@@ -94,13 +96,43 @@ fn modifier_source_str(source: pobr_item::draft::ModifierSource) -> &'static str
 pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
     let tier_ctx = tier_context(text);
     let classified = pobr_item::classify_display_lines(text);
-    let explicit: Vec<_> = classified
+    let explicit = classified
         .iter()
-        .filter(|line| line.kind == pobr_item::DisplayLineKind::Explicit)
-        .map(|line| equipment_tier_line(&line.text))
-        .collect();
-    let tiers = if let Some((index, tags, domain, base_name)) = tier_ctx {
-        let allowed_sources = state::special_affix_ids(&base_name)?;
+        .filter(|line| line.kind == pobr_item::DisplayLineKind::Explicit);
+    let tiers = if let Some((index, tags, domain, draft)) = tier_ctx {
+        let allowed_sources = state::special_affix_ids(&draft.header.base_name)?;
+        let selection = pobr_core::ingest::item_text::ItemSelection::new(text);
+        let source_lines: Vec<_> = text.lines().collect();
+        let catalyst = display_catalyst(&draft.catalyst);
+        let has_catalyst_quality = draft.catalyst.descriptor.is_some()
+            && draft.catalyst.quality.is_some_and(|quality| quality > 0);
+        let explicit: Vec<_> = explicit
+            .map(|line| {
+                if line.modifier_sources.contains(&ModifierSource::Custom)
+                    || !selection.accepts(source_lines[line.source_line])
+                {
+                    return String::new();
+                }
+                let text = equipment_tier_line(&line.text);
+                if !has_catalyst_quality || line.unscalable {
+                    return text;
+                }
+                let Some((quality, tags, scalability)) = &catalyst else {
+                    return String::new();
+                };
+                if line.mod_tags.is_empty() {
+                    // Without the modifier's tags, even a value in the native
+                    // range could be the result of scaling a lower tier.
+                    return String::new();
+                }
+                if line.mod_tags.iter().any(|tag| tags.contains(tag)) {
+                    pobr_item::tier::unscale_catalyst_line(&text, *quality, &scalability.1)
+                        .unwrap_or_default()
+                } else {
+                    text
+                }
+            })
+            .collect();
         index.lookup_lines_with_allowed(
             &explicit.iter().map(String::as_str).collect::<Vec<_>>(),
             &tags,
@@ -108,7 +140,7 @@ pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
             &allowed_sources,
         )
     } else {
-        vec![None; explicit.len()]
+        vec![None; explicit.count()]
     };
     let mut tiers = tiers.into_iter();
     let lines: Vec<ItemLineJson> = classified
@@ -125,6 +157,7 @@ pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
                     .into_iter()
                     .map(modifier_source_str)
                     .collect(),
+                mod_tags: line.mod_tags,
                 tier: tier.as_ref().map(|tier| tier.tier),
                 tier_total: tier.as_ref().map(|tier| tier.total),
                 affix: tier
@@ -160,7 +193,12 @@ fn equipment_tier_line(line: &str) -> String {
 /// unrecognized base (a custom base name) is likewise omitted — better to skip than to be wrong.
 fn tier_context(
     text: &str,
-) -> Option<(std::rc::Rc<pobr_item::TierIndex>, Vec<String>, u32, String)> {
+) -> Option<(
+    std::rc::Rc<pobr_item::TierIndex>,
+    Vec<String>,
+    u32,
+    pobr_item::ItemDraft,
+)> {
     let draft = pobr_item::ItemDraft::parse(text).ok()?;
     if matches!(
         draft.header.rarity.to_ascii_uppercase().as_str(),
@@ -170,7 +208,21 @@ fn tier_context(
     }
     let index = state::tier_index()?;
     let (tags, domain) = state::base_item_tags(&draft.header.base_name)?;
-    Some((index, tags, domain, draft.header.base_name))
+    Some((index, tags, domain, draft))
+}
+
+fn display_catalyst(
+    catalyst: &pobr_item::draft::CatalystState,
+) -> Option<(u32, Vec<String>, std::rc::Rc<state::CatalystDisplayData>)> {
+    // The named quality property accompanies already scaled item text. PoB
+    // {range} entries with Catalyst/CatalystQuality may still be raw rolls.
+    let descriptor = catalyst.descriptor.as_deref()?;
+    let quality = catalyst.quality.filter(|&quality| quality > 0)?;
+    let data = state::catalyst_display_data()?;
+    let def = data.0.catalysts.iter().find(|def| {
+        def.descriptor == descriptor && catalyst.name.as_ref().is_none_or(|name| *name == def.name)
+    })?;
+    Some((quality, def.tags.clone(), data))
 }
 
 // gem_catalog_json (the gem picker's catalog for manual skill editing)

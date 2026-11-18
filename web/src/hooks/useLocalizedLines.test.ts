@@ -56,6 +56,13 @@ it('matches translations by position, so one line can be covered in one place an
   expect(localizedLines(['Rune: Iron Rune'], 'zh-CN', [''])).toEqual(['符文: Iron Rune']);
 });
 
+it('looks up the catalyst label without changing its quality value', () => {
+  const lines = ['Quality (Cold Modifiers): +20%'];
+  expect(linesToTranslate(lines, 'zh-CN')).toEqual(['Quality (Cold Modifiers)']);
+  expect(localizedLines(lines, 'zh-CN', ['品质（冰霜词缀）'])).toEqual(['品质（冰霜词缀）: +20%']);
+  expect(localizedLines(lines, 'zh-TW', [])).toEqual(lines);
+});
+
 it('returns the en-US lines themselves, so consumers memoizing on them do not recompute', () => {
   const lines = ['+5 to Strength', 'Item Level: 83'];
   expect(localizedLines(lines, 'en-US', [])).toBe(lines);

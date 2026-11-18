@@ -23,7 +23,7 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('.shell-calc-error')).toHaveCount(0);
   await pageLink(page, 'Items').click();
   await page.locator('.doll-cell[data-slot="weapon1"] button').click();
-  await expect(detail(page).locator('[data-affix="prefix"]')).toHaveCount(3);
+  await expect(detail(page).locator('[data-kind="explicit"]')).toHaveCount(6);
 });
 
 test('settings switch all item details immediately, persist and leave the build and editor intact', async ({ page }, testInfo) => {
@@ -68,26 +68,43 @@ test('settings switch all item details immediately, persist and leave the build 
   await expect(editor).toHaveValue('Unapplied equipment draft');
 });
 
-test('all layouts retain unknown lines and fit a narrow viewport in light and dark themes', async ({ page }) => {
+test('all layouts preserve modifier order and wrap tags on narrow screens in both themes', async ({ page }, testInfo) => {
   for (const theme of ['Light', 'Dark']) {
-    for (const label of ['Grouped details', 'Compact tables', 'Game cards']) {
+    for (const [mode, label] of [['grouped', 'Grouped details'], ['compact', 'Compact tables'], ['game', 'Game cards']]) {
       await openSettings(page);
       await page.getByRole('button', { name: theme, exact: true }).click();
       await page.locator('.display-mode-choice').filter({ hasText: label }).click();
       await closeSettings(page);
       await page.setViewportSize({ width: 390, height: 900 });
-      await expect(detail(page)).toContainText('+4.92%');
-      await expect(detail(page)).toContainText('+2');
-      await expect(detail(page).getByText('Unclassified', { exact: false }).first()).toBeVisible();
-      await expect(detail(page).locator('[data-modifier-source="fractured"]')).toHaveText('Fractured · locked');
-      await expect(detail(page).locator('[data-modifier-source="crafted"]')).toHaveText('Crafted');
-      await expect(detail(page).locator('[data-source="fractured"]')).toHaveAttribute('data-damage', 'lightning');
+      const quality = detail(page).locator('.item-properties > div').filter({ hasText: 'Quality (Cold Modifiers)' });
+      await expect(quality.locator('dd')).toHaveText('+20%');
+      const rows = detail(page).locator('[data-kind="explicit"]');
+      await expect(rows).toContainText([
+        'Adds 12 to 228 Lightning Damage', 'Adds 69 to 85 Cold Damage', '+4.92% to Critical Hit Chance',
+        '14% increased Attack Speed', '+2 to Level of all Attack Skills', 'Adds 65 to 106 Fire Damage',
+      ]);
+      if (mode !== 'compact') await expect(detail(page).getByRole('region', { name: 'Modifiers', exact: true }).locator('[data-kind="explicit"]')).toHaveCount(6);
+      await expect(detail(page).getByText('Unclassified', { exact: false })).toHaveCount(0);
+      const unknown = rows.nth(2);
+      await expect(unknown.locator('.item-affix-side, .item-affix-tier, [data-mod-tag]')).toHaveCount(0);
+      const cold = rows.nth(1);
+      await expect(cold).toHaveAttribute('data-affix', 'prefix');
+      await expect(cold.getByText('Prefix', { exact: true })).toBeVisible();
+      await expect(cold.getByText('T2', { exact: true })).toBeVisible();
+      const tags = cold.locator('[data-mod-tag]');
+      await expect(tags).toHaveText(['Cold', 'Damage', 'Elemental', 'Attack', 'Projectile', 'Future tag with a long label']);
+      expect(await tags.evaluateAll(elements => new Set(elements.map(el => el.getBoundingClientRect().top)).size)).toBeGreaterThan(1);
+      await expect(rows.nth(3)).toHaveAttribute('data-affix', 'suffix');
+      await expect(rows.nth(0).locator('[data-modifier-source="fractured"]')).toHaveText('Fractured · locked');
+      await expect(rows.nth(4).locator('[data-modifier-source="crafted"]')).toHaveText('Crafted');
+      await expect(rows.nth(0)).toHaveAttribute('data-damage', 'lightning');
       const overflow = await detail(page).evaluate(root => {
         const right = root.getBoundingClientRect().right;
         return [...root.querySelectorAll('*')].some(el => el.getBoundingClientRect().width > 0 && el.getBoundingClientRect().right > right + 1);
       });
       expect(overflow).toBe(false);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      if (theme === 'Dark') await cold.screenshot({ path: testInfo.outputPath(`narrow-${mode}-tags.png`) });
       await page.setViewportSize({ width: 1280, height: 900 });
     }
   }

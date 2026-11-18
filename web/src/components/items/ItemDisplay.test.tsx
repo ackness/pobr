@@ -17,11 +17,11 @@ const lines: ItemLineJson[] = [
   { kind: 'name', text: 'Woe Rain' }, { kind: 'base', text: 'Seeker Bow' },
   { kind: 'struct', text: 'Item Level: 81' },
   { kind: 'rune', text: 'Bow Attacks fire an additional Arrow' },
-  { kind: 'explicit', text: 'Adds 12 to 228 Lightning Damage', affix: 'prefix', tier: 1, tier_total: 9 },
-  { kind: 'explicit', text: '14% increased Attack Speed', affix: 'suffix', tier: 2, tier_total: 5 },
+  { kind: 'explicit', text: 'Adds 12 to 228 Lightning Damage', affix: 'prefix', tier: 1, tier_total: 9, mod_tags: ['lightning', 'damage'] },
   { kind: 'explicit', text: 'Unrecognised <effect> & retained text' },
+  { kind: 'explicit', text: '14% increased Attack Speed', affix: 'suffix', tier: 2, tier_total: 5 },
 ];
-it.each(['grouped', 'compact', 'game'] as const)('%s retains all modifiers, identifies sources and highlights values', style => {
+it.each(['grouped', 'compact', 'game'] as const)('%s keeps explicit modifiers in source order with verified row labels', style => {
   const html = renderToStaticMarkup(<UiProvider lang="en-US" displayMode={style}>
     <ItemDisplayContent text="Rarity: RARE\nWoe Rain\nSeeker Bow" lang="en-US" lines={lines} translated={lines.map(line => line.text)} />
   </UiProvider>);
@@ -29,22 +29,30 @@ it.each(['grouped', 'compact', 'game'] as const)('%s retains all modifiers, iden
   expect(html).toContain('Bow Attacks fire an additional Arrow');
   expect(html).toContain('data-affix="prefix"');
   expect(html).toContain('data-affix="suffix"');
-  expect(html).toContain('Unrecognised &lt;effect&gt; &amp; retained text');
-  expect(html).toContain('Unclassified');
+  expect(html).toContain('>Prefix<');
+  expect(html).toContain('>Suffix<');
+  expect(html).toContain('>T1<');
+  expect(html).toContain('>T2<');
+  const unknown = html.indexOf('Unrecognised &lt;effect&gt; &amp; retained text');
+  expect(unknown).toBeGreaterThan(html.indexOf('Lightning Damage'));
+  expect(unknown).toBeLessThan(html.indexOf('increased Attack Speed'));
+  expect(html).not.toMatch(/Prefixes|Suffixes|Unclassified|Tier not identified/);
+  expect(html.match(/data-mod-tag=/g)).toHaveLength(2);
   expect(html).toContain('<strong class="item-value">14%</strong>');
   expect(html).toContain('Original text');
   expect(html.includes('<table')).toBe(style === 'compact');
 });
 
-it('unique modifiers have no inferred prefix, suffix or missing-tier warning', () => {
-  const unique = lines.filter(line => line.kind !== 'explicit').concat({ kind: 'explicit', text: 'Special unique effect' });
+it.each(['UNIQUE', 'RELIC'] as const)('%s modifiers omit affix side and tier while retaining known tags', rarity => {
+  const fixed = lines.filter(line => line.kind !== 'explicit').concat({
+    kind: 'explicit', text: 'Special fixed effect', affix: 'prefix', tier: 1, mod_tags: ['damage'],
+  });
   const html = renderToStaticMarkup(<UiProvider lang="en-US" displayMode="compact">
-    <ItemDisplayContent text="Rarity: UNIQUE\nUnique item" lang="en-US" lines={unique} translated={unique.map(line => line.text)} />
+    <ItemDisplayContent text={`Rarity: ${rarity}\nFixed item`} lang="en-US" lines={fixed} translated={fixed.map(line => line.text)} />
   </UiProvider>);
-  expect(html).toContain('Special unique effect');
-  expect(html).not.toContain('Unclassified');
-  expect(html).not.toContain('Tier not identified');
-  expect(html).not.toContain('data-affix=');
+  expect(html).toContain('Special fixed effect');
+  expect(html).toContain('data-mod-tag="damage"');
+  expect(html).not.toMatch(/Unclassified|Tier not identified|data-affix=|>Type<|>Tier<|>T1</);
 });
 
 it('only classified base lines resolve by base identity; equal text elsewhere stays a text line', () => {
@@ -84,7 +92,7 @@ it.each(['grouped', 'compact', 'game'] as const)('%s shows known crafting and lo
   const sourced: ItemLineJson[] = [lines[0], lines[1],
     { kind: 'explicit', text: '+74 to Evasion Rating', modifier_sources: ['fractured'] },
     { kind: 'explicit', text: '+25 to maximum Energy Shield', modifier_sources: ['crafted'] },
-    { kind: 'explicit', text: '+43% to Cold Resistance', affix: 'suffix', tier: 1 },
+    { kind: 'explicit', text: '+43% to Cold Resistance', affix: 'suffix', tier: 1, mod_tags: ['cold', 'damage', 'future_mod_tag'] },
     { kind: 'explicit', text: 'Unknown effect' },
   ];
   const html = renderToStaticMarkup(<UiProvider lang="zh-CN" displayMode={style}>
@@ -93,6 +101,8 @@ it.each(['grouped', 'compact', 'game'] as const)('%s shows known crafting and lo
   expect(html).toContain('破裂 · 锁定');
   expect(html).toContain('data-modifier-source="crafted"');
   expect(html).toContain('data-attribute="cold"');
-  expect(html).toContain('不等于工艺词缀');
+  expect(html).toContain('data-mod-tag="cold">冰霜');
+  expect(html).toContain('data-mod-tag="damage">伤害');
+  expect(html).toContain('data-mod-tag="future_mod_tag">Future mod tag');
   expect(html.match(/data-modifier-source=/g)).toHaveLength(2);
 });

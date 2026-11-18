@@ -1,4 +1,4 @@
-//! Calculation-only item selections. Original text remains owned by the edit view.
+//! Selection rules for annotated item modifier lines.
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(super) fn annotation<'a>(line: &'a str, key: &str) -> Option<&'a str> {
@@ -16,8 +16,9 @@ fn ids(line: &str, key: &str) -> Option<BTreeSet<u32>> {
             .collect()
     })
 }
+/// Resolved selections shared by item calculation and affix tier lookup.
 #[derive(Default)]
-pub(super) struct ItemSelection {
+pub struct ItemSelection {
     variants: BTreeSet<u32>,
     version: u32,
     base: u32,
@@ -25,7 +26,8 @@ pub(super) struct ItemSelection {
     grouped: bool,
 }
 impl ItemSelection {
-    pub(super) fn new(raw: &str) -> Self {
+    /// Resolves the active variants, version, base and groups from raw item text.
+    pub fn new(raw: &str) -> Self {
         let lines: Vec<_> = raw.lines().map(str::trim).collect();
         let header = |key: &str| {
             lines
@@ -118,7 +120,8 @@ impl ItemSelection {
         out.groups.retain(|group, _| options.contains_key(group));
         out
     }
-    pub(super) fn accepts(&self, line: &str) -> bool {
+    /// Returns whether an original, annotated modifier line is active.
+    pub fn accepts(&self, line: &str) -> bool {
         if ids(line, "version").is_some_and(|v| !v.contains(&self.version))
             || ids(line, "base").is_some_and(|v| !v.contains(&self.base))
         {

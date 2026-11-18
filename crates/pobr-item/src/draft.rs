@@ -140,17 +140,13 @@ pub struct ItemStates {
     pub double_corrupted: bool,
 }
 
-/// Catalyst state (jewellery/belt quality, mirrors ParseRaw 524-530 / 676-683).
-///
-/// The draft layer doesn't hold `catalysts.json`, so it keeps the raw
-/// catalyst **name** (the `Catalyst: <name>` line) for fidelity
-/// round-tripping; resolving the name to a 1-based id is deferred to the
-/// calc consumer (RuleSet injection).
+/// Catalyst metadata from the clipboard or a PoB build.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CatalystState {
     /// The raw `Catalyst: <name>` value (e.g. `Carapace`).
     pub name: Option<String>,
-    /// The catalyst quality percentage (`CatalystQuality:` or `Quality (X Modifiers):`).
+    /// The descriptor in `Quality (<descriptor> Modifiers)` for already scaled rolls.
+    pub descriptor: Option<String>,
     pub quality: Option<u32>,
 }
 
@@ -345,6 +341,47 @@ pub struct DisplayLine {
     pub text: String,
     pub kind: DisplayLineKind,
     pub modifier_sources: Vec<ModifierSource>,
+    pub mod_tags: Vec<String>,
+    pub unscalable: bool,
+    /// Zero-based line index in the original item text, including blank lines.
+    pub source_line: usize,
+}
+
+impl DisplayLine {
+    fn structural(text: &str, kind: DisplayLineKind, source_line: usize) -> Self {
+        Self {
+            text: text.to_string(),
+            kind,
+            modifier_sources: Vec::new(),
+            mod_tags: Vec::new(),
+            unscalable: false,
+            source_line,
+        }
+    }
+}
+
+fn display_mod_tags(mut line: &str) -> Vec<String> {
+    let mut tags = Vec::new();
+    while let Some(tail) = line.trim_start().strip_prefix('{') {
+        let Some((annotation, rest)) = tail.split_once('}') else {
+            break;
+        };
+        if let Some(value) = annotation.strip_prefix("tags:") {
+            tags.extend(
+                value
+                    .split(',')
+                    .map(|tag| tag.trim().to_ascii_lowercase())
+                    .filter(|tag| {
+                        !tag.is_empty()
+                            && tag.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'_')
+                    }),
+            );
+        }
+        line = rest;
+    }
+    tags.sort_unstable();
+    tags.dedup();
+    tags
 }
 
 /// Splits a PoB item text block into **ordered** display lines with
@@ -365,16 +402,20 @@ pub fn classify_display_lines(raw: &str) -> Vec<DisplayLine> {
     };
     let mut mods = mod_positions.into_iter().zip(draft.lines).peekable();
 
-    let lines: Vec<&str> = raw
+    let lines: Vec<_> = raw
         .lines()
         .map(str::trim)
-        .filter(|l| !l.is_empty())
+        .enumerate()
+        .filter(|(_, line)| !line.is_empty())
         .collect();
     let mut out = Vec::new();
     let mut idx = 0;
 
     // The Rarity line isn't displayed (the frontend drops it too).
-    if lines.first().is_some_and(|l| l.starts_with("Rarity: ")) {
+    if lines
+        .first()
+        .is_some_and(|(_, line)| line.starts_with("Rarity: "))
+    {
         idx += 1;
     }
     let has_title = matches!(
@@ -382,46 +423,61 @@ pub fn classify_display_lines(raw: &str) -> Vec<DisplayLine> {
         "RARE" | "UNIQUE" | "RELIC"
     );
     let mut name_done = false;
-    if has_title && idx < lines.len() {
-        out.push(DisplayLine {
-            text: lines[idx].to_string(),
-            kind: DisplayLineKind::Name,
-            modifier_sources: Vec::new(),
-        });
+    if has_title && let Some(&(source_line, line)) = lines.get(idx) {
+        out.push(DisplayLine::structural(
+            line,
+            DisplayLineKind::Name,
+            source_line,
+        ));
         name_done = true;
         idx += 1;
     }
-    if idx < lines.len()
+    if let Some(&(source_line, line)) = lines.get(idx)
         && !draft.header.base_name.is_empty()
-        && lines[idx] == draft.header.base_name
+        && line == draft.header.base_name
     {
-        out.push(DisplayLine {
-            text: lines[idx].to_string(),
-            kind: if name_done {
+        out.push(DisplayLine::structural(
+            line,
+            if name_done {
                 DisplayLineKind::Base
             } else {
                 DisplayLineKind::Name
             },
-            modifier_sources: Vec::new(),
-        });
+            source_line,
+        ));
         idx += 1;
     }
 
-    for (position, &line) in lines.iter().enumerate().skip(idx) {
-        if let Some((_, mod_line)) = mods.next_if(|(mod_position, _)| *mod_position == position) {
+    for (position, &(source_line, line)) in lines.iter().enumerate().skip(idx) {
+        let selection_header = matches!(
+            line.split_once(':').map(|(key, _)| key),
+            Some(
+                "Version"
+                    | "Selected Version"
+                    | "Base Variant"
+                    | "Selected Base Variant"
+                    | "Selected Variant Group"
+            )
+        );
+        if let Some((_, mod_line)) = mods.next_if(|(mod_position, _)| *mod_position == position)
+            && !selection_header
+        {
             out.push(DisplayLine {
                 text: mod_line.text,
                 kind: bucket_to_display_kind(mod_line.bucket),
                 modifier_sources: modifier_sources(&mod_line.annotations),
+                mod_tags: display_mod_tags(line),
+                unscalable: mod_line.annotations.unscalable,
+                source_line,
             });
             continue;
         }
         // Everything else is a structural/state line, displayed as-is.
-        out.push(DisplayLine {
-            text: line.to_string(),
-            kind: DisplayLineKind::Struct,
-            modifier_sources: Vec::new(),
-        });
+        out.push(DisplayLine::structural(
+            line,
+            DisplayLineKind::Struct,
+            source_line,
+        ));
     }
     out
 }
@@ -505,9 +561,8 @@ fn apply_spec(
         "Selected Alt Variant Four" => set_alt(&mut draft.variant, 3, val),
         "Selected Alt Variant Five" => set_alt(&mut draft.variant, 4, val),
         "Crafted" => draft.crafted = true,
-        // Quality (X Modifiers): catalyst quality — recognized as metadata, not treated as explicit.
-        s if is_catalyst_quality_spec(s) => {
-            // `Quality (Defence Modifiers): +20%` -> the quality percentage.
+        s if catalyst_descriptor(s).is_some() => {
+            draft.catalyst.descriptor = catalyst_descriptor(s).map(str::to_owned);
             draft.catalyst.quality = parse_percent(val);
         }
         _ => return false,
@@ -560,9 +615,10 @@ fn is_spec_or_state_line(line: &str) -> bool {
     ) || split_spec_line(line).is_some()
 }
 
-/// Whether a spec key is the `Quality (X Modifiers)` catalyst-quality key.
-fn is_catalyst_quality_spec(spec: &str) -> bool {
-    spec.starts_with("Quality (") && spec.ends_with("Modifiers)")
+fn catalyst_descriptor(spec: &str) -> Option<&str> {
+    spec.strip_prefix("Quality (")?
+        .strip_suffix(" Modifiers)")
+        .filter(|descriptor| !descriptor.is_empty())
 }
 
 fn parse_u32(s: &str) -> Option<u32> {

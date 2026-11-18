@@ -364,6 +364,188 @@ fn trade_item_objects_preserve_rolls_and_isolate_bad_entries() {
 }
 
 #[test]
+fn trade_import_preserves_catalyst_quality_and_the_displayed_roll() {
+    init();
+    // The English name and type/value tuple are from poe.ninja's public itemData.
+    // The zh-CN name is in the pinned locale's display_texts.json.
+    let input: Vec<_> = [
+        "Quality (Cold Modifiers)",
+        "品质（冰霜词缀）",
+        "Unrecognized Quality",
+        "品质",
+        "Quality",
+        "",
+    ]
+    .into_iter()
+    .map(|name| {
+        json!({
+            "baseType":"Sapphire Ring", "name":"Synthetic Ring", "frameType":2,
+            "properties":[{"name":name,"type":6,"values":[["+20%",1]]}],
+            "explicitMods":["+24% to Cold Resistance"]
+        })
+    })
+    .collect();
+    let imported: Value = serde_json::from_str(
+        &pobr_wasm::import_trade_items_json(&json!(input).to_string()).unwrap(),
+    )
+    .unwrap();
+    for (entry, expected) in imported.as_array().unwrap().iter().zip([
+        "Quality (Cold Modifiers): +20%",
+        "Quality (Cold Modifiers): +20%",
+        "Note: Unrecognized Quality: +20%",
+        "Quality: 20",
+        "Quality: 20",
+        "Quality: 20",
+    ]) {
+        let text = entry["text"].as_str().unwrap();
+        assert!(text.lines().any(|line| line == expected), "{text}");
+        assert_eq!(text.lines().last(), Some("+24% to Cold Resistance"));
+        let draft = pobr_item::ItemDraft::parse(text).unwrap();
+        assert_eq!(
+            draft.catalyst.quality,
+            expected.starts_with("Quality (").then_some(20)
+        );
+        assert_eq!(draft.lines.len(), 1);
+        assert_eq!(draft.lines[0].text, "+24% to Cold Resistance");
+        if !expected.starts_with("Quality:") {
+            assert!(!text.lines().any(|line| line.starts_with("Quality:")));
+        }
+    }
+}
+
+#[test]
+fn structured_import_keeps_affix_sources_and_pairs_duplicate_descriptions() {
+    init();
+    let item = json!({
+        "baseType":"Linen Belt", "name":"Synthetic Belt", "frameType":2, "inventoryId":"Belt",
+        "implicitMods":[{"description":"+10 to maximum Mana"}],
+        "enchantMods":["+15 to Dexterity"],
+        "explicitMods":[
+            "+23 to Strength",
+            {"description":"+10 to maximum Mana\n+12 to maximum Life","flags":{"fractured":true,"mutated":true}},
+            {"description":"+15 to maximum Life","flags":{"desecrated":true}},
+            {"description":"+30% to Fire Resistance","flags":{"crafted":false}},
+            "+8 to Dexterity",
+            "+8 to Dexterity",
+            {"description":"+5 to maximum Life","flags":{"crafted":true}}
+        ],
+        "craftedMods":["+5 to maximum Life", "+17 to Intelligence"],
+        "fracturedMods":["+10 to maximum Mana\r\n+12 to maximum Life", "+8 to Dexterity"],
+        "desecratedMods":["+15 to maximum Life", {"description":"+10 to maximum Mana\n+40 to maximum Life", "flags":{"mutated":true}}],
+        "mutatedMods":["+10 to maximum Mana\n+12 to maximum Life", "+10 to maximum Mana\n+40 to maximum Life", "+16 to maximum Mana"]
+    });
+    let imported: Value = serde_json::from_str(
+        &pobr_wasm::import_trade_items_json(&json!([item.clone()]).to_string()).unwrap(),
+    )
+    .unwrap();
+    let text = imported[0]["text"].as_str().unwrap();
+    assert_eq!(
+        text.lines().skip(4).collect::<Vec<_>>(),
+        [
+            "--------",
+            "Implicits: 1",
+            "+10 to maximum Mana",
+            "--------",
+            "{enchant}+15 to Dexterity",
+            "+23 to Strength",
+            "{fractured}{mutated}+10 to maximum Mana",
+            "{fractured}{mutated}+12 to maximum Life",
+            "{desecrated}+15 to maximum Life",
+            "+30% to Fire Resistance",
+            "{fractured}+8 to Dexterity",
+            "+8 to Dexterity",
+            "{crafted}+5 to maximum Life",
+            "{crafted}+17 to Intelligence",
+            "{desecrated}{mutated}+10 to maximum Mana",
+            "{desecrated}{mutated}+40 to maximum Life",
+            "{mutated}+16 to maximum Mana",
+        ]
+    );
+    let parsed = pobr_core::item_text::parse_pob_xml_item(text).unwrap();
+    let applied: Vec<_> = parsed
+        .modifier_texts
+        .iter()
+        .chain(&parsed.enchant_texts)
+        .map(String::as_str)
+        .collect();
+    assert_eq!(
+        applied
+            .iter()
+            .filter(|line| **line == "+8 to Dexterity")
+            .count(),
+        2
+    );
+    for line in [
+        "+5 to maximum Life",
+        "+12 to maximum Life",
+        "+15 to maximum Life",
+        "+40 to maximum Life",
+    ] {
+        assert_eq!(
+            applied.iter().filter(|seen| **seen == line).count(),
+            1,
+            "{line}"
+        );
+    }
+
+    let mut share = fixture();
+    share["equipments"] = json!([item]);
+    let build: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_file_json(&share.to_string()).unwrap())
+            .unwrap();
+    assert_eq!(build["items"]["equipped"][0]["text"], text);
+}
+
+#[test]
+fn structured_import_uses_flags_to_disambiguate_same_text_affixes() {
+    init();
+    let item = json!({
+        "baseType":"Linen Belt", "name":"Synthetic Belt", "frameType":2, "inventoryId":"Belt",
+        "explicitMods":[
+            {"description":"+10 to Strength","flags":{"fractured":false}},
+            {"description":"+11 to Dexterity","flags":{"fractured":true}},
+            {"description":"+12 to Intelligence","flags":{"crafted":false}}
+        ],
+        "fracturedMods":["+10 to Strength", "+12 to Intelligence"],
+        "mutatedMods":[{"description":"+11 to Dexterity","flags":{"fractured":true}}]
+    });
+    let imported: Value = serde_json::from_str(
+        &pobr_wasm::import_trade_items_json(&json!([item.clone()]).to_string()).unwrap(),
+    )
+    .unwrap();
+    let text = imported[0]["text"].as_str().unwrap();
+    assert_eq!(
+        text.lines()
+            .skip_while(|line| *line != "Implicits: 0")
+            .skip(1)
+            .collect::<Vec<_>>(),
+        [
+            "--------",
+            "+10 to Strength",
+            "{fractured}{mutated}+11 to Dexterity",
+            "{fractured}+12 to Intelligence",
+            "{fractured}+10 to Strength",
+        ]
+    );
+    let parsed = pobr_core::item_text::parse_pob_xml_item(text).unwrap();
+    assert_eq!(
+        parsed.modifier_texts,
+        [
+            "+10 to Strength",
+            "+11 to Dexterity",
+            "+12 to Intelligence",
+            "+10 to Strength"
+        ]
+    );
+    let mut share = fixture();
+    share["equipments"] = json!([item]);
+    let build: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_file_json(&share.to_string()).unwrap())
+            .unwrap();
+    assert_eq!(build["items"]["equipped"][0]["text"], text);
+}
+
+#[test]
 fn magic_flasks_and_charms_use_one_canonical_name_and_preserve_real_effects() {
     init();
     let bases = [
