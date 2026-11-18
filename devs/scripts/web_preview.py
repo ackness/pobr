@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tarfile
@@ -37,6 +38,10 @@ def stage_tunnel_inputs(stage):
             raise Stop("cannot stage tracked public files and reference builds")
 
 
+def terminate(signum, _frame):
+    raise SystemExit(128 + signum)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=4173, help="loopback port (default: 4173)")
@@ -60,14 +65,17 @@ def main():
     inputs = Inputs(env=env)
     try:
         inputs.node_modules()
-        data = inputs.data()
-        inputs.wasm()
         command = ["node", "web/scripts/preview.mjs", str(args.port)]
         if args.tunnel:
+            inputs.install_locked_data()
+            inputs.wasm()
+            signal.signal(signal.SIGTERM, terminate)
             stage = Path(tempfile.mkdtemp(prefix="pobr-web-tunnel-"))
             stage_tunnel_inputs(stage)
             command.extend(["--tunnel", str(stage)])
         else:
+            data = inputs.data()
+            inputs.wasm()
             inputs.dist(data)
         if args.allow_wegame:
             command.append("--allow-wegame")

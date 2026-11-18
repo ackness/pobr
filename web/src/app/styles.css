@@ -1,8 +1,11 @@
 @layer theme, base, panels, components, utilities, app;
-@import "tailwindcss";
+@import "tailwindcss" source(none);
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "./control-consistency.css";
+
+@source "..";
+@source "../../index.html";
 
 @custom-variant dark (&:is(.dark *));
 

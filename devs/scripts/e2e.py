@@ -283,16 +283,19 @@ class Inputs:
                                                           "examples/demo-bd-test/builds"]),
                                   tree_digest(self.web, ["scripts/sync-data.mjs", "scripts/sync-build-references.mjs"])]).encode())
 
-    def data(self):
-        key = self.data_key()
-        if key and key == self.state.get("data") and (self.web / "public/data").is_dir():
-            return key
+    def install_locked_data(self):
         # The pinned install verifies every byte against the lock; offline it only reuses verified downloads.
         # (check-data.sh also demands a clean worktree, which an uncommitted change never has.)
         if not self.call([sys.executable, "-m", "pipeline.runtime.build_data", "--install", "data", "--offline"], quiet=True):
             raise Stop("data/ does not match pipeline/data.lock.json: run `mise run data:prepare`")
         if not self.call([sys.executable, "-m", "pipeline.imports.check_data_ownership"], quiet=True):
             raise Stop("data/ ownership check failed: run `mise run data:check` for details")
+
+    def data(self):
+        key = self.data_key()
+        if key and key == self.state.get("data") and (self.web / "public/data").is_dir():
+            return key
+        self.install_locked_data()
         key = self.data_key()
         if not key or not self.call(["pnpm", "sync-data"], cwd=self.web, quiet=True):
             raise Stop("syncing browser data failed: run `pnpm --dir web sync-data` for details")
