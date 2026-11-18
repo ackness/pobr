@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../api/backend';
 import type { Lang } from '../lib/i18n';
+import { legacyGameLocale } from '../lib/gameLocales';
 import { lineText, mergeModifierContinuations } from '../lib/continuedLines';
 import type { GameNameRequest } from '../lib/nativeDisplayNames';
 
@@ -45,6 +46,7 @@ const STRUCT_VALUES: Record<string, { 'zh-TW': string; 'zh-CN': string }> = {
   Medium: { 'zh-TW': '中型', 'zh-CN': '中型' },
   Large: { 'zh-TW': '大型', 'zh-CN': '大型' },
   Corrupted: { 'zh-TW': '已汙染', 'zh-CN': '已腐化' },
+  'Twice Corrupted': { 'zh-TW': '二次汙染', 'zh-CN': '二次腐化' },
   Mirrored: { 'zh-TW': '已複製', 'zh-CN': '已镜像' },
   Unidentified: { 'zh-TW': '未鑑定', 'zh-CN': '未鉴定' },
   Split: { 'zh-TW': '已分割', 'zh-CN': '已分割' },
@@ -108,13 +110,15 @@ export function useItemDisplayNames(texts: (string | undefined)[], lang: Lang): 
 
 /** 结构行本地化：`Item Level: 83` → `物品等级: 83`；非结构行返回 null。 */
 export function localizeStructLine(line: string, lang: Lang): string | null {
-  if (lang === 'en-US') return null;
-  if (STRUCT_VALUES[line]) return STRUCT_VALUES[line][lang];
+  const locale = legacyGameLocale(lang);
+  if (!locale) return null;
+  if (Object.hasOwn(STRUCT_VALUES, line)) return STRUCT_VALUES[line][locale];
   const m = line.match(/^([A-Za-z' ]+):\s*(.*)$/);
   if (!m) return null;
-  const entry = STRUCT_LINE_KEYS[m[1].trim()];
-  const value = STRUCT_VALUES[m[2]]?.[lang] ?? m[2];
-  return entry ? `${entry[lang]}: ${value}` : null;
+  const key = m[1].trim();
+  if (!Object.hasOwn(STRUCT_LINE_KEYS, key)) return null;
+  const value = Object.hasOwn(STRUCT_VALUES, m[2]) ? STRUCT_VALUES[m[2]][locale] : m[2];
+  return `${STRUCT_LINE_KEYS[key][locale]}: ${value}`;
 }
 
 /** A rune's `Bonded: <effect>` line. Whole effects come from the language pack;
@@ -157,6 +161,7 @@ export function localizedLines(lines: string[], lang: Lang, translated: readonly
   const merged = mergeModifierContinuations(lines);
   if (merged.some((line, index) => line !== lines[index])) lines = merged;
   if (lang === 'en-US') return lines;
+  const locale = legacyGameLocale(lang);
   let extra = lines.length;
   const prefix = translated.at(-1);
   return lines.map((l, index) => {
@@ -168,7 +173,10 @@ export function localizedLines(lines: string[], lang: Lang, translated: readonly
     if (quality) return `${out || quality[1]}: ${quality[2]}`;
     const rune = runeLineParts(l);
     if (rune) {
-      return `${RUNE_PREFIXES[rune.prefix][lang]}: ${lineText(rune.name, out)}`;
+      const name = lineText(rune.name, out);
+      if (!locale && name === rune.name) return l;
+      const prefix = locale ? RUNE_PREFIXES[rune.prefix][locale] : rune.prefix;
+      return `${prefix}: ${name}`;
     }
     if (BONDED.test(l)) {
       extra += 2;

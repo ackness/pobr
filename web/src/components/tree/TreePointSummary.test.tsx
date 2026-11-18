@@ -4,7 +4,7 @@ import type { TreeEditResponse } from '../../api/types';
 import { TreePointSummary } from './TreePointSummary';
 
 const current = { used: 119, max: 121, weapon: [13, 12] as [number, number] };
-const render = (preview: TreeEditResponse | null) => renderToStaticMarkup(<TreePointSummary current={current} preview={preview} invalidReason="Disconnected path" lang="en-US" />);
+const render = (preview: TreeEditResponse | null) => renderToStaticMarkup(<TreePointSummary current={current} preview={preview} ascendancy={8} invalidReason="Disconnected path" lang="en-US" />);
 const preview = (used: number): TreeEditResponse => ({ valid: true, reason: null, result: {
   points_used: used, points_max: 121, weapon_points_used: [13, 12], weapon_points_max: 24,
   added: [], removed: [], promoted: [], path: [], allocation: { shared: [], exclusive: [[], []] },
@@ -38,7 +38,19 @@ test('the preview status stays available for live updates and clears when a prev
 
 test('an unavailable engine budget renders as unknown until a preview supplies it', () => {
   const renderUnknown = (preview: TreeEditResponse | null) => renderToStaticMarkup(<TreePointSummary
-    current={{ used: 0, max: null, weapon: [0, 0] }} preview={preview} invalidReason="" lang="en-US" />);
+    current={{ used: 0, max: null, weapon: [0, 0] }} preview={preview} ascendancy={null} invalidReason="" lang="en-US" />);
   expect(renderUnknown(null)).toContain('Used 0 / — points');
+  expect(renderUnknown(null)).toContain('The current budget is unavailable.');
   expect(renderUnknown(preview(1))).toContain('Used 1 / 121 points');
+});
+
+test('shows the ordinary point excess beside the counter and leaves the source for verification', () => {
+  const html = render(preview(123));
+  const disclosure = html.indexOf('<details');
+  expect(html.slice(0, disclosure)).toContain('Used 123 / 121 points<strong class="tree-count-excess">Over budget by 2');
+  expect(html.slice(disclosure)).toContain('Any additional point sources still need verification.');
+  expect(html.slice(disclosure)).toContain('<dt>Weapon set 1</dt><dd>13</dd>');
+  expect(html.slice(disclosure)).toContain('<dt>Weapon set 2</dt><dd>12</dd>');
+  expect(html.slice(disclosure)).toContain('<dt>Ascendancy</dt><dd>8</dd>');
+  expect(render(null)).not.toContain('Over budget');
 });

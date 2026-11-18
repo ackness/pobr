@@ -21,7 +21,7 @@ import { useHeadlineDamage } from '../../hooks/useMainMinion';
 import type { Objective } from '../../lib/optimize';
 import { applySupportPlan, eligibleSupports, lineageAvailable, optimizeSupports, type SupportMetadata, type SupportOptimization } from '../../lib/supportOptimizer';
 import { ObjectiveEditor, OptimizerProgress, objectiveOf } from '../shared/OptimizerControls';
-import { words, colon } from '../../app/text';
+import { colon } from '../../app/text';
 
 interface Props {
   session: BuildSession;
@@ -263,7 +263,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
         Object.fromEntries([damage.stat, 'TotalEHP'].flatMap(id => result.baseline[id] === undefined ? [] : [[id, result.baseline[id]]])),
         Object.fromEntries([damage.stat, 'TotalEHP'].flatMap(id => plan.stats[id] === undefined ? [] : [[id, plan.stats[id]]])));
       const hover = preview ? {
-        onEnter: (event: { currentTarget: Element }) => preview.showChanges(`${words(lang, 'Supports: ', '辅助：', '輔助：')}${plan.supports.map(gem => gemName(gem.skill_id)).join(' + ')}`, changes, event.currentTarget),
+        onEnter: (event: { currentTarget: Element }) => preview.showChanges(tt('opt.previewSupports', { supports: plan.supports.map(gem => gemName(gem.skill_id)).join(' + ') }), changes, event.currentTarget),
         onLeave: preview.clear } : undefined;
       const equipped = group.gems.filter(gem => byId.get(gem.skill_id)?.is_support);
       const removed = equipped.filter(gem => !plan.supports.some(next => next.skill_id === gem.skill_id));
@@ -326,7 +326,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
         {errorBlock}
         {resultsBlock}
         <details className="gem-optimizer-settings" ref={settingsRef}>
-          <summary className="disclosure" data-disclosure-level="group">{words(lang, 'Goal, capacity and candidates', '目标、容量与候选宝石', '目標、容量與候選寶石')}</summary>
+          <summary className="disclosure" data-disclosure-level="group">{tt('opt.candidateSettings')}</summary>
           <div className="gem-optimizer-settings-body">
             {hint}
             {poolSummary}

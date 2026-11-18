@@ -27,7 +27,7 @@ for (const width of [390, 1440, 2560]) {
     await expect(current).toContainText('Current');
     const other = skills.locator('button[aria-pressed="false"]').first();
     await expect(other).toBeEnabled();
-    await page.locator('[aria-labelledby="ov-contribution"]').getByRole('button', { name: 'Source contributions', exact: true }).click();
+    await page.locator('[aria-labelledby="ov-contribution"]').getByRole('button', { name: 'Calculate removal impact', exact: true }).click();
     // These bare spell groups have no removable equipment or buffs affecting Combined DPS.
     await expect(page.locator('[aria-labelledby="ov-contribution"]')).toContainText('Nothing changes this number.');
     await other.click();
@@ -46,4 +46,54 @@ test('a first visit focuses import/create and keeps blank character stats out of
   await expect(empty).toBeVisible({ timeout: 90_000 });
   await expect(empty.getByRole('button', { name: 'Import or create a build', exact: true })).toBeFocused();
   await expect(page.locator('#character-stats .rail-row')).toHaveCount(0);
+});
+
+test('the empty results rail aligns its hint with the import action on the build page', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/build');
+  const rail = page.locator('.shell-rail #character-stats');
+  const hint = rail.locator('.rail-empty');
+  const action = rail.getByRole('button', { name: 'Import or create a build', exact: true });
+  await expect(hint).toBeVisible({ timeout: 90_000 });
+  await expect(action).toBeVisible();
+  const start = await action.evaluate(element => element.getBoundingClientRect().left + parseFloat(getComputedStyle(element).paddingLeft));
+  expect((await hint.boundingBox())!.x).toBeCloseTo(start);
+  expect(start - (await rail.boundingBox())!.x).toBeGreaterThanOrEqual(12);
+
+  const section = page.locator('details.bd-import');
+  const code = page.getByRole('textbox', { name: 'Build code', exact: true });
+  await section.locator('summary').click();
+  await expect(section).toHaveJSProperty('open', false);
+  await action.click();
+  await expect(section).toHaveJSProperty('open', true);
+  await expect(code).toBeFocused();
+
+  await section.locator('summary').click();
+  await page.keyboard.press('Control+k');
+  const palette = page.getByRole('dialog', { name: 'Search and commands' });
+  await palette.getByRole('option', { name: 'Import or manage builds', exact: true }).click();
+  await expect(palette).toHaveCount(0);
+  await expect(section).toHaveJSProperty('open', true);
+  await expect(code).toBeFocused();
+});
+
+test('the maximum text size keeps the preview number on one line on narrow screens', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(page.locator('.ov-empty')).toBeVisible({ timeout: 90_000 });
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('slider', { name: /Text size/ }).press('End');
+  await expect(page.locator('html')).toHaveCSS('font-size', '32px');
+  const number = page.locator('.shell-font-sample strong');
+  await expect(number).toHaveText('1,284.50');
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect.poll(() => number.evaluate(element => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const lines = range.getClientRects();
+      const row = element.parentElement!.getBoundingClientRect();
+      return lines.length === 1 && lines[0].left >= row.left && lines[0].right <= row.right + 1;
+    })).toBe(true);
+  }
 });

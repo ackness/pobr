@@ -52,6 +52,19 @@ pub struct TierInfo {
     pub mod_id: String,
 }
 
+/// The possible native rolls for one displayed modifier line.
+pub struct TierLine<'a> {
+    pub raw: &'a str,
+    pub unscaled: Option<&'a str>,
+}
+
+/// A complete affix match and whether this line needed catalyst reversal.
+#[derive(Clone)]
+pub struct TierMatch {
+    pub info: TierInfo,
+    pub requires_catalyst: bool,
+}
+
 /// A template slot: either a numeric capture position (mapped to the k-th
 /// stat) or a literal constant that must match exactly.
 #[derive(Debug, Clone, PartialEq)]
@@ -402,6 +415,12 @@ fn tokenize(text: &str) -> (String, Vec<&str>) {
     (skeleton, captures)
 }
 
+pub enum CatalystRoll {
+    Unscaled(String),
+    NoIntegralRoll,
+    Unsupported,
+}
+
 /// Recover integral display values for tier lookup when every captured slot
 /// has a known plain scaling rule. Accessory quality truncates positive rolls.
 /// The original imported line remains the source for display and calculation.
@@ -409,10 +428,10 @@ pub fn unscale_catalyst_line(
     line: &str,
     quality: u32,
     scalability: &pobr_data::catalog::ModScalabilityDef,
-) -> Option<String> {
-    let (_, captures) = tokenize(line);
+) -> CatalystRoll {
+    let (skeleton, captures) = tokenize(line);
     if captures.is_empty() {
-        return None;
+        return CatalystRoll::Unsupported;
     }
     let replace = |values: &[String]| {
         let mut result = String::new();
@@ -429,29 +448,41 @@ pub fn unscale_catalyst_line(
         result.push_str(&line[cursor..]);
         result
     };
-    let template = replace(&vec!["#".to_string(); captures.len()]);
-    let entry = &scalability.entries[scalability
-        .entries
-        .binary_search_by(|entry| entry.template.as_str().cmp(&template))
-        .ok()?];
+    let signed_template = replace(&vec!["#".to_string(); captures.len()]);
+    let find = |template: &str| {
+        scalability
+            .entries
+            .binary_search_by(|entry| entry.template.as_str().cmp(template))
+    };
+    let Ok(index) = find(&signed_template).or_else(|_| find(&skeleton)) else {
+        return CatalystRoll::Unsupported;
+    };
+    let entry = &scalability.entries[index];
     if entry.slots.len() != captures.len()
         || entry
             .slots
             .iter()
             .any(|slot| !slot.is_scalable || !slot.formats.is_empty())
     {
-        return None;
+        return CatalystRoll::Unsupported;
     }
-    let multiplier = 100 + i128::from(quality);
-    let values = captures
+    let Some(shown) = captures
         .iter()
-        .map(|capture| {
-            let shown = i128::from(capture.parse::<u64>().ok()?);
-            let unscaled = (shown * 100 + multiplier - 1) / multiplier;
-            (unscaled * multiplier / 100 == shown).then(|| unscaled.to_string())
-        })
-        .collect::<Option<Vec<_>>>()?;
-    Some(replace(&values))
+        .map(|capture| capture.parse::<u64>().ok())
+        .collect::<Option<Vec<_>>>()
+    else {
+        return CatalystRoll::Unsupported;
+    };
+    let multiplier = 100 + i128::from(quality);
+    let mut values = Vec::with_capacity(shown.len());
+    for shown in shown.into_iter().map(i128::from) {
+        let unscaled = (shown * 100 + multiplier - 1) / multiplier;
+        if unscaled * multiplier / 100 != shown {
+            return CatalystRoll::NoIntegralRoll;
+        }
+        values.push(unscaled.to_string());
+    }
+    CatalystRoll::Unscaled(replace(&values))
 }
 
 fn utf8_len(first_byte: u8) -> usize {

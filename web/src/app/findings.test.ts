@@ -73,7 +73,15 @@ describe('deriveFindings', () => {
   });
 
   it('warns when recovery is lower than the build’s own drain', () => {
-    expect(kinds(calc({ TotalNetRegen: -12 }))).toEqual(['net-regen']);
+    expect(deriveFindings(calc({ TotalNetRegen: -12 }), true)).toEqual([
+      { kind: 'net-regen', severity: 'warn', route: 'calcs', stat: 'TotalNetRegen', value: -12 },
+    ]);
     expect(kinds(calc({ TotalNetRegen: 0 }))).toEqual([]);
+  });
+
+  it('points to the resource deficit even when other recovery offsets it in the total', () => {
+    expect(deriveFindings(calc({ NetLifeRegen: 226.28, NetManaRegen: -249.04, NetWardRegen: 30, TotalNetRegen: 7.24 }), true)).toEqual([
+      { kind: 'net-regen', severity: 'warn', route: 'calcs', stat: 'NetManaRegen', value: -249.04 },
+    ]);
   });
 });

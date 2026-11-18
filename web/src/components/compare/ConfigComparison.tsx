@@ -25,7 +25,7 @@ function ModifierLines({ text, lang }: { text: string; lang: Lang }) {
   })}</>;
 }
 
-export function ConfigComparison({ rows, lang, applyButton }: { rows: Row[]; lang: Lang; applyButton: (section: CopySection) => ReactNode }) {
+export function ConfigComparison({ rows, lang, applyButton }: { rows: Row[]; lang: Lang; applyButton: (section: CopySection, title: string) => ReactNode }) {
   const tt = bindT(lang);
   const [loaded, setLoaded] = useState<{ options: ConfigOption[]; error?: boolean }>({ options: [] });
   useEffect(() => {
@@ -67,7 +67,7 @@ export function ConfigComparison({ rows, lang, applyButton }: { rows: Row[]; lan
       const rewards = option?.section === 'Quest Rewards' && option.input_type === 'check'
         ? stripConfigMarkup(option.tooltip ?? '').split(/\r?\n/).slice(1).filter(Boolean).map(line => labels[line] ?? line) : [];
       return <article className="compare-difference" key={row.key} data-config-key={row.key}>
-        <header><h4>{title}</h4>{applyButton(row.action)}</header>
+        <header><h4>{title}</h4>{applyButton(row.action, title)}</header>
         {rewards.length > 0 && <p>{rewards.join(' · ')}</p>}
         {known && <div className="compare-pair">{[row.before, row.after].map((value, index) => <div key={index}>
           <strong>{tt(index === 0 ? 'compare.before' : 'compare.after')}</strong><div className="cmp-config-value">{show(row, value)}</div>

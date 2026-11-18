@@ -28,7 +28,7 @@ test('find a unique by modifier, choose a variant and rolls, then save and equip
   await catalogue.getByRole('combobox', { name: 'Equipment slot', exact: true }).click();
   await page.getByRole('option', { name: 'Amulet', exact: true }).click();
   await catalogue.getByRole('button', { name: /^Astramentis/ }).click();
-  await expect(catalogue).toContainText('Rolls default to the midpoint');
+  await expect(catalogue).toContainText('Rolls start at the midpoint.');
   await catalogue.getByRole('combobox', { name: 'Variant', exact: true }).click();
   await page.getByRole('option', { name: 'Pre 0.2.0', exact: true }).click();
   await catalogue.getByRole('button', { name: 'All maximum rolls', exact: true }).click();

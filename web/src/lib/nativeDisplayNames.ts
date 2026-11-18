@@ -1,6 +1,6 @@
 import type { ClassNames, GemCatalogEntry, PassiveTreeMeta } from '../api/types';
 import { chineseScript, localizedName } from './chinese';
-import { gameTextChain } from './gameLocales';
+import { gameTextChain, legacyGameLocale } from './gameLocales';
 import type { Lang } from './i18n';
 import { listedOrigin, type DisplayText, type NativeDisplayTexts, type TextOrigin } from './nativeDisplayTexts';
 import type { CraftingMetadata } from '../api/itemCrafting';
@@ -270,8 +270,9 @@ export function classDisplayName(
 ): string {
   if (lang === 'en-US') return english;
   const groups = kind ? [kind] : ['ascendancies', 'classes'] as const;
+  const locale = legacyGameLocale(lang);
   for (const group of groups) {
-    const map = names.locales?.[lang]?.[group];
+    const map = locale && names.locales?.[locale]?.[group];
     if (map && Object.hasOwn(map, english)) return map[english] ?? english;
   }
   const legacy = groups.map(group => names[group][english]).find(Boolean);

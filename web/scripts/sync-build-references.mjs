@@ -3,9 +3,10 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
 // Reuse the reviewed public parity corpus; never read a player's local saves.
-export function syncBuildReferences() {
-  const source = fileURLToPath(new URL('../../examples/demo-bd-test/builds/', import.meta.url));
-  const destination = fileURLToPath(new URL('../public/build-references/', import.meta.url));
+export function syncBuildReferences({
+  source = fileURLToPath(new URL('../../examples/demo-bd-test/builds/', import.meta.url)),
+  destination = fileURLToPath(new URL('../public/build-references/', import.meta.url)),
+} = {}) {
   const references = readdirSync(source).sort().flatMap(id => {
     const dir = join(source, id);
     // Some legacy Python fixtures contain non-finite numeric stats. Preserve all

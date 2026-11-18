@@ -32,7 +32,8 @@ import { SwapGainCard } from './SwapGainCard';
 import { ItemContribution } from './ItemContribution';
 import { CopyButton } from '../shared/CopyButton';
 import { NoteEditor } from '../shared/NoteEditor';
-import { AppSelect, type AppSelectOption } from '../shared/AppSelect';
+import { AppSelect } from '../shared/AppSelect';
+import { RuneSocketPicker, type RuneChoice } from './RuneSocketPicker';
 import { ItemOptimizer } from './ItemOptimizer';
 import { PaperDoll } from './PaperDoll';
 import { ItemDisplay } from './ItemDisplay';
@@ -250,35 +251,22 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
     && (augmentInfo.sockets > 0 || augmentInfo.max_sockets > 0
       || (!augmentInfo.editable && !['unsupported_item_type', 'no_augment_sockets'].includes(augmentInfo.reason ?? '')));
 
-  const runeDisplayName = (entry: RuneCatalogEntry) =>
-    localizedName(lang, entry.name, entry.name_zh_cn, entry.name_zh_tw);
-  const existingRuneName = (name: string) => {
-    const entry = augmentInfo?.options.find(option => option.name === name);
-    return entry ? runeDisplayName(entry) : name || tt('items.emptySocket');
-  };
-
-  const runeEffectLines = useLocalizedLines(runeCatalog.flatMap(entry => entry.lines.map(cleanLine)), lang);
-  const runeHints = useMemo(() => {
-    const map = new Map<string, string>();
+  const runeLines = useMemo(() => (augmentInfo?.options ?? []).map(entry => entry.lines.map(cleanLine)), [augmentInfo]);
+  const runeEffectLines = useLocalizedLines(runeLines.flat(), lang);
+  const runeOptions = useMemo(() => {
+    const groups = { Rune: upgradeT(lang, 'augmentRune'), SoulCore: upgradeT(lang, 'augmentCore'), Idol: upgradeT(lang, 'augmentIdol') };
     let offset = 0;
-    for (const rune of runeCatalog) {
-      map.set(rune.name, shownLines(rune.lines.map(cleanLine), runeEffectLines.slice(offset, offset + rune.lines.length)).join(', '));
-      offset += rune.lines.length;
-    }
-    return map;
-  }, [runeCatalog, runeEffectLines]);
-  const runeOptions = useMemo<AppSelectOption[]>(() => {
-    const kindOf = (entry: RuneCatalogEntry) => entry.kind ?? (entry.is_soul_core ? 'SoulCore' : 'Rune');
-    const groupKeys = { Rune: 'augmentRune', SoulCore: 'augmentCore', Idol: 'augmentIdol' } as const;
-    return [
-      { value: '', label: tt('items.emptySocket') },
-      ...(['Rune', 'SoulCore', 'Idol'] as const).flatMap(kind => runeCatalog
-        .filter(entry => kindOf(entry) === kind)
-        .map(entry => ({ value: entry.name, label: runeDisplayName(entry),
-          group: upgradeT(lang, groupKeys[kind]), hint: runeHints.get(entry.name) || undefined }))),
-    ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runeCatalog, runeHints, lang]);
+    const options = (augmentInfo?.options ?? []).map((entry, index): RuneChoice => {
+      const lines = runeLines[index];
+      const effects = shownLines(lines, runeEffectLines.slice(offset, offset + lines.length));
+      offset += lines.length;
+      const label = localizedName(lang, entry.name, entry.name_zh_cn, entry.name_zh_tw);
+      const group = groups[entry.kind ?? (entry.is_soul_core ? 'SoulCore' : 'Rune')];
+      return { value: entry.name, label, group, effects,
+        searchText: [entry.name, entry.name_zh_cn, entry.name_zh_tw, group, ...lines, ...effects].join(' ').toLowerCase() };
+    });
+    return Object.values(groups).flatMap(group => options.filter(option => option.group === group));
+  }, [augmentInfo, runeLines, runeEffectLines, lang]);
 
   const runeAllowedAt = (index: number, name: string) => {
     if (!name) return true;
@@ -495,17 +483,19 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
               {showAugments && augmentInfo && (
                 <div className="rune-editor" role="group" aria-label={upgradeT(lang, 'augmentTitle')}>
                   <span className="rune-editor-title">{upgradeT(lang, 'augmentTitle')}</span>
-                  {Array.from({ length: augmentInfo.sockets }, (_, index) => (
-                    <AppSelect
-                      key={`${selected}:${selectedText}:${index}`}
-                      ariaLabel={`${upgradeT(lang, 'augmentSocket')} ${index + 1}`}
-                      value={augmentInfo.runes[index] ?? ''}
-                      placeholder={existingRuneName(augmentInfo.runes[index] ?? '')}
+                  {Array.from({ length: augmentInfo.sockets }, (_, index) => {
+                    const equipped = augmentInfo.runes[index] ?? '';
+                    const label = `${upgradeT(lang, 'augmentSocket')} ${index + 1}`;
+                    const empty = tt('items.emptySocket');
+                    const emptyChoice = { value: '', label: empty, effects: [], searchText: empty.toLowerCase() };
+                    return <RuneSocketPicker key={`${draftKey}:${selectedText}:${index}`}
+                      lang={lang} socket={label} destination={`${slotLabel(lang, selected)} · ${label}`}
+                      current={runeOptions.find(option => option.value === equipped)
+                        ?? { ...emptyChoice, value: equipped, label: equipped || empty }}
                       disabled={session.busy || runeBusy || !augmentInfo.editable}
-                      options={runeOptions.filter(option => runeAllowedAt(index, option.value))}
-                      onChange={value => resocketRune(index, value)}
-                    />
-                  ))}
+                      options={[emptyChoice, ...runeOptions.filter(option => runeAllowedAt(index, option.value))]}
+                      onApply={value => resocketRune(index, value)} />;
+                  })}
                   {!augmentInfo.editable ? (
                     <p className="items-hint">{upgradeT(lang, augmentInfo.reason === 'unknown_base'
                       ? 'unknownBase' : augmentInfo.reason === 'invalid_sockets' ? 'augmentInvalid' : 'augmentReadOnly')}</p>
@@ -720,25 +710,20 @@ function LibrarySection({
           actions={
             <>
               <CopyButton text={entry.text} lang={lang} />
-              <AppButton
-                disabled={session.busy || !canUse(entry)}
-                aria-describedby={!selectedSlot ? 'library-slot-hint' : undefined}
-                title={!selectedSlot ? tt('lib.selectSlotFirst') : !canUse(entry) ? tt('lib.wrongSlot') : ''}
-                onClick={() => {
-                  setExpandedId(entry.id);
-                  void compare(entry);
-                }}
-              >
-                {tt('lib.compare')}
-              </AppButton>
-              <AppButton
-                disabled={session.busy || !canUse(entry)}
-                aria-describedby={!selectedSlot ? 'library-slot-hint' : undefined}
-                title={!selectedSlot ? tt('lib.selectSlotFirst') : !canUse(entry) ? tt('lib.wrongSlot') : ''}
-                onClick={() => equip(entry)}
-              >
-                {tt('lib.equip')}
-              </AppButton>
+              {canUse(entry) && <>
+                <AppButton
+                  disabled={session.busy}
+                  onClick={() => {
+                    setExpandedId(entry.id);
+                    void compare(entry);
+                  }}
+                >
+                  {tt('lib.compare')}
+                </AppButton>
+                <AppButton disabled={session.busy} onClick={() => equip(entry)}>
+                  {tt('lib.equip')}
+                </AppButton>
+              </>}
               <AppButton
                 title={tt('lib.delete')}
                 onClick={() => session.removeLibraryItem(entry.id)}

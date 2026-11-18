@@ -1,3 +1,4 @@
+import { openImport } from './buildLibrary';
 import { expect, type Locator, type Page } from '@playwright/test';
 import { workspaceText } from '../src/lib/workspaceText';
 import { answerConfirm } from './confirmDialog';
@@ -63,6 +64,7 @@ export async function openBuilds(page: Page) {
 export async function importCode(page: Page, code: string, destination: 'newBuild' | 'currentStage' = 'newBuild', lang: Lang = 'en-US') {
   await openBuilds(page);
   const text = workspaceText(lang);
+  await openImport(page);
   const group = page.getByRole('group', { name: text.importDestination, exact: true });
   await group.getByRole('button').nth(destination === 'newBuild' ? 0 : 1).click();
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
@@ -76,7 +78,7 @@ export async function importCode(page: Page, code: string, destination: 'newBuil
 /** Generate the PoB share code of the open stage on the Build page. */
 export async function shareCode(page: Page) {
   await openBuilds(page);
-  const generate = page.getByRole('button', { name: 'Generate share code', exact: true });
+  const generate = page.getByRole('button', { name: 'Generate PoB code for this stage', exact: true });
   if (!(await generate.isVisible())) await page.locator('details.bd-export > summary').click();
   await generate.click();
   return page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();

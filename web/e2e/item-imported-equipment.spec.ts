@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
-import { choose, goTo } from './buildLibrary';
+import { goTo } from './buildLibrary';
 import { importBuild } from './skillsAndCalcs';
 import { setLanguage } from './treePage';
 
@@ -29,10 +29,27 @@ test('imported equipment has native bases, slot candidates and editable rune soc
   const body = page.locator('.doll-cell[data-slot="bodyarmour"] .doll-slot');
   await body.click();
   await expect(body).toHaveAttribute('aria-pressed', 'true');
-  const runes = page.locator('.rune-editor .app-select');
+  const runes = page.locator('.rune-editor .rune-socket');
   await expect(runes).toHaveCount(3);
-  await choose(page, runes.first().getByRole('combobox'), /^高级钢铁符文/);
-  await expect(page.locator('.item-detail')).toContainText('符文: ', { timeout: 30_000 });
+  const socket = runes.first().getByRole('combobox');
+  await expect(socket).toContainText('完美钢铁符文');
+  await socket.click();
+  const picker = page.getByRole('dialog', { name: '胸甲 · 插槽 1', exact: true });
+  await expect(picker).toContainText('当前增幅器');
+  const search = picker.getByRole('searchbox');
+  await expect(search).toBeFocused();
+  await search.fill('高级钢铁');
+  await picker.getByRole('radio', { name: /^高级钢铁符文/ }).check();
+  await expect(picker.locator('.rune-picker-preview')).toContainText('高级钢铁符文');
+  await picker.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(picker).toBeHidden();
+  await expect(socket).toContainText('完美钢铁符文');
+
+  await socket.click();
+  await search.fill('高级钢铁');
+  await picker.getByRole('radio', { name: /^高级钢铁符文/ }).check();
+  await picker.getByRole('button', { name: '替换增幅器', exact: true }).click();
+  await expect(socket).toContainText('高级钢铁符文', { timeout: 30_000 });
   await expect(page.locator('.rune-editor .calc-error')).toHaveCount(0);
 
   await page.locator('.socket-count-controls').getByRole('button', { name: '加孔', exact: true }).click();
@@ -79,4 +96,61 @@ Implicits: 0
   await page.setViewportSize({ width: 390, height: 900 });
   await expect(detail.locator('[data-mod-tag="cold"]')).toBeVisible();
   await detail.screenshot({ path: testInfo.outputPath('ring-modifiers.png') });
+});
+
+test('WeGame equipment places base, enchantment and socket effects above catalyst affixes', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.route('**/api/import/wegame', route => route.fulfill({ json: {
+    format: 'wegame', version: 1, role: { level: 81, class_name: 'Deadeye' },
+    equipments: [
+      { inventoryId: 'Ring', x: 0, baseType: 'Gold Ring', frameType: 2, name: 'Frost Whorl', ilvl: 79,
+        properties: [{ name: '品质（冰霜词缀）', type: 6, values: [['+20%', 1]] }],
+        implicitMods: ['9% increased Rarity of Items found'],
+        explicitMods: ['Adds 10 to 25 Physical Damage to Attacks', 'Adds 26 to 38 Cold damage to Attacks',
+          '+16% to all Elemental Resistances', '+43% to Cold Resistance', '+35% to Lightning Resistance'],
+        desecratedMods: ['30% increased Cold Damage'] },
+      { inventoryId: 'Gloves', baseType: 'Runeforged Secured Wraps', frameType: 2, name: 'Synthetic Wraps', ilvl: 81,
+        corrupted: true,
+        sockets: [{ type: 'rune' }], socketedItems: [{ socket: 0, baseType: 'Perfect Body Rune' }],
+        enchantMods: ['+1 to Maximum Frenzy Charges'], runeMods: ['+40 to maximum Life'],
+        implicitMods: ['+12 to maximum Mana'], explicitMods: ['+74 to Evasion Rating'] },
+    ],
+    talent_tree: { hashes: [], quest_stats: [] }, jewel_data: '[]', skills: [],
+  } }));
+  await importBuild(page, 'https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
+  await setLanguage(page, 'zh-CN');
+  await goTo(page, '装备', 'zh-CN');
+  const detail = page.locator('.item-detail .item-display');
+  await page.locator('.doll-cell[data-slot="ring1"] .doll-slot').click();
+  await expect(detail.locator('.item-extra-effects [data-kind="implicit"]')).toContainText('9%');
+  const prefixes = detail.locator('[data-affix-group="prefix"]');
+  const suffixes = detail.locator('[data-affix-group="suffix"]');
+  await expect(prefixes.locator('.item-affix-tier')).toHaveText(['T2', 'T1']);
+  await expect(prefixes.locator('[data-mod-tag="cold"]')).toHaveText('冰霜');
+  await expect(suffixes.locator('.item-affix-tier')).toHaveText(['T2', 'T3']);
+  await expect(detail.locator('.item-affix-remainder [data-kind="explicit"]')).toHaveCount(2);
+  await expect(detail.locator('.item-affix-remainder [data-modifier-source="desecrated"]')).toBeVisible();
+  await expect(detail.locator('.item-extra-effects + .item-affix-group')).toBeVisible();
+  await detail.screenshot({ path: testInfo.outputPath('wegame-ring-desktop.png') });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(suffixes.locator('[data-mod-tag="cold"]')).toBeVisible();
+  expect(await detail.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await detail.screenshot({ path: testInfo.outputPath('wegame-ring-mobile.png') });
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.locator('.doll-cell[data-slot="gloves"] .doll-slot').click();
+  await page.locator('.shell-settings-button').click();
+  await page.locator('.display-mode-choice').filter({ hasText: '游戏卡片' }).click();
+  await page.locator('.shell-settings').getByRole('button', { name: '关闭', exact: true }).click();
+  await expect(page.locator('.shell-settings')).toBeHidden();
+  const effects = detail.locator('.item-extra-effects');
+  await expect(detail).toHaveAttribute('data-item-display', 'game');
+  await expect(detail.locator('.item-display-badges')).toContainText('已腐化');
+  await expect(effects.locator('.item-socketed-runes li')).toHaveCount(1);
+  await expect(effects.locator('[data-kind]')).toHaveCount(3);
+  await expect(effects.locator('[data-kind="implicit"]')).toContainText('12');
+  await expect(effects.locator('[data-kind="enchant"]')).toContainText('+1');
+  await expect(effects.locator('[data-kind="rune"]')).toContainText('40');
+  await expect(detail.locator('.item-extra-effects + .item-affix-group')).toBeVisible();
+  await detail.screenshot({ path: testInfo.outputPath('wegame-gloves-game-card.png') });
 });

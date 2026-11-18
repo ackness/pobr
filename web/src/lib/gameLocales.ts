@@ -35,6 +35,12 @@ export function gameTextChain(lang: Lang): readonly string[] {
   return chain;
 }
 
+/** Select a supported column for the older, fixed-format item and class name tables. */
+export function legacyGameLocale(lang: Lang): 'zh-CN' | 'zh-TW' | undefined {
+  if (lang === 'zh-CN' || lang === 'zh-TW') return lang;
+  return gameTextChain(lang).find(code => code === 'zh-CN' || code === 'zh-TW');
+}
+
 /** The first locale in `lang`'s chain whose pack has mod-line templates, if any. */
 export function lineTemplateLocale(lang: Lang): string | undefined {
   return gameTextChain(lang).find(code => declared.get(code)?.templates);

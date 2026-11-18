@@ -15,20 +15,12 @@ vi.mock('react', () => {
 const renderShell = (route: Route, request = 0) => { harness.index = 0; return useImportFocus(route, request); };
 beforeEach(() => { harness.index = 0; harness.values = []; });
 
-it('consumes focus once per route entry, retaining consumption when the stage-keyed child remounts', () => {
-  const firstPage = renderShell('build');
-  expect(firstPage()).toBe(true);
-  // The shell survives a build/stage switch and hands the newly mounted page the same callback.
-  const remountedPage = renderShell('build');
-  expect(remountedPage).toBe(firstPage);
-  expect(remountedPage()).toBe(false);
-  expect(renderShell('skills')()).toBe(false);
-  expect(renderShell('build')()).toBe(true);
+it('leaves library navigation alone and consumes explicit import focus across remounts and revisits', () => {
   expect(renderShell('build')()).toBe(false);
-});
-
-it('allows an explicit topbar request to focus again while already on the library route', () => {
-  expect(renderShell('build')()).toBe(true);
+  expect(renderShell('overview', 1)()).toBe(false);
   expect(renderShell('build', 1)()).toBe(true);
   expect(renderShell('build', 1)()).toBe(false);
+  expect(renderShell('skills', 1)()).toBe(false);
+  expect(renderShell('build', 1)()).toBe(false);
+  expect(renderShell('build', 2)()).toBe(true);
 });

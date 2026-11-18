@@ -3,6 +3,7 @@ import { openItemsAfterImport } from './shell';
 import { choose, openBuild, openExport } from './buildLibrary';
 import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
+import { STORAGE } from '../src/lib/sessionStorage';
 
 const fixture = readFileSync(new URL('../../apps/pobr-wasm/tests/fixtures/pob2-planner.build', import.meta.url), 'utf8');
 
@@ -39,6 +40,47 @@ test('planner file import, reload and browser export preserve hints and keep gea
   expect(after.state.allocatedNodes).toEqual(before.state.allocatedNodes);
   expect(after.state.weaponSwap).toEqual(before.state.weaponSwap);
   expect(after.state.socketGroups).toEqual(before.state.socketGroups);
+});
+
+test('legacy planner level validation preserves the current save and allows level 100 to reload', async ({ page }) => {
+  await page.goto('/build');
+  const levelInput = page.getByLabel('Level', { exact: true });
+  await expect(levelInput).toBeEnabled({ timeout: 90_000 });
+  const saved = () => page.evaluate(key => localStorage.getItem(key), STORAGE.workspace);
+  const before = await saved();
+  const source = { name: '', ascendancy: 'Ranger1', passives: [{ id: 'melee18' }], skills: [], items: [] };
+  for (const level of [0, 101, 100]) {
+    source.name = `Writer fixture Lv.${level}`;
+    await page.locator('input[type=file]').setInputFiles({
+      name: `Level ${level}.build`, mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(source)),
+    });
+    if (level === 100) break;
+    await expect(page.locator('.shell-alert')).toHaveText('Character level must be a whole number from 1 to 100.');
+    expect(await saved()).toBe(before);
+  }
+  await expect(page.locator('#ov-title')).toBeVisible();
+  await page.reload();
+  await openBuild(page);
+  await expect(levelInput).toHaveValue('100', { timeout: 90_000 });
+});
+
+test('an unmatched PoB source offers only the current stage export', async ({ page }) => {
+  await page.goto('/build');
+  await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
+  const code = deflateSync(`<PathOfBuilding2><Build level="50" className="Ranger" ascendClassName="Deadeye"/>
+    <Tree activeSpec="1"><Spec title="A" nodes="3936" treeVersion="0_5"/></Tree>
+    <Skills activeSkillSet="1"><SkillSet id="1" title="Map"/><SkillSet id="2" title="Boss"/></Skills><Items/>
+    </PathOfBuilding2>`).toString('base64url');
+  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
+  await page.locator('.import-submit').click();
+  await expect(page.locator('#ov-title')).toBeVisible();
+  await openBuild(page);
+  await openExport(page);
+  await expect(page.getByText('The source has no matching PoB loadouts. You can still download the current stage.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Prepare this stage’s imported PoB loadouts (.build)', exact: true })).toHaveCount(0);
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download current .build', exact: true }).click();
+  expect((await download).suggestedFilename()).toMatch(/\.build$/);
 });
 
 test('all source loadouts provide separate downloadable files without switching the stage', async ({ page }) => {

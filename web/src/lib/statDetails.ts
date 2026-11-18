@@ -1,13 +1,13 @@
 import type { Breakdown, CalculateBuildResponse, DetailKind, DetailInput } from '../api/types';
 import { bindT, statNameLabel, type Lang } from './i18n';
-import { formatStatValue, formatStat } from './statDisplay';
+import { formatNumber, formatStatValue, formatStat } from './statDisplay';
 
 export function detailKind(calc: Pick<CalculateBuildResponse, 'breakdowns' | 'breakdown_descriptors'>, id: string): DetailKind {
   return calc.breakdown_descriptors?.[id] ?? (calc.breakdowns[id] ? 'steps' : 'none');
 }
 
 /** Formula ids are replaced at the display boundary, without evaluating formulas in JS. */
-export function detailFormula(formula: string, inputs: DetailInput[], lang: Lang, numeric = false): string {
+export function detailFormula(formula: string, inputs: DetailInput[], lang: Lang, numeric: boolean | 'rounded' = false): string {
   const ids = new Set(inputs.map(input => input.id));
   // Hide only the outer float-noise rounding; integer and inner rounding are meaningful.
   let display = formula.trim();
@@ -25,8 +25,13 @@ export function detailFormula(formula: string, inputs: DetailInput[], lang: Lang
       display = display.slice(6, comma).trim();
     }
   }
-  return display.replaceAll('*', '×').replaceAll('/', '÷')
-    .replace(/[A-Za-z][A-Za-z0-9]*/g, id => ids.has(id) ? numeric ? String(inputs.find(input => input.id === id)!.value ?? '∞') : detailInputLabel(id, inputs, lang) : id);
+  const formatted = display.replaceAll('*', '×').replaceAll('/', '÷').replace(/[A-Za-z][A-Za-z0-9]*/g, id => {
+    if (!ids.has(id)) return id;
+    if (!numeric) return detailInputLabel(id, inputs, lang);
+    const value = inputs.find(input => input.id === id)!.value;
+    return value === null ? '∞' : numeric === 'rounded' ? formatNumber(value) : String(value);
+  });
+  return numeric === 'rounded' ? formatted.replace(/\+\s*-/g, '− ').replaceAll(' - ', ' − ') : formatted;
 }
 
 export function detailInputLabel(id: string, inputs: DetailInput[], lang: Lang): string {

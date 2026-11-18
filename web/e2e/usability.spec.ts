@@ -59,7 +59,7 @@ test('failed code and file imports retain the editor and current build; a valid 
 test('share codes expire after edits and clipboard failure offers selectable text', async ({ page }) => {
   // Sharing sits under "Share & backup", which starts folded.
   await page.locator('details.bd-export > summary').click();
-  const generate = page.getByRole('button', { name: 'Generate share code', exact: true });
+  const generate = page.getByRole('button', { name: 'Generate PoB code for this stage', exact: true });
   await generate.click();
   const output = page.getByRole('textbox', { name: 'Share Code', exact: true });
   await expect(output).toBeVisible();
@@ -142,9 +142,7 @@ test('config drafts commit on Enter and reset restores imported values in the sa
   expect((await saved(page)).state.params.config_inputs.buffOnslaught).toBe(true);
 
   await search.fill('no-such-option-123');
-  await expect(page.locator('.search-empty')).toBeVisible();
-  // The notice for an empty search offers the full list instead of a "clear search" button.
-  await page.locator('.search-empty').getByRole('button', { name: 'All', exact: true }).click();
+  await page.locator('.search-empty').getByRole('button', { name: 'Clear search', exact: true }).click();
   await expect(search).toHaveValue('');
   await expect(page.locator('.config-section').first()).toBeVisible();
   await goTo(page, 'Calculations');
@@ -185,7 +183,7 @@ test('selects support keyboard selection, Escape and leaving the control', async
 
 test('gem filters activate by keyboard without adding a gem; Escape can be reopened', async ({ page }) => {
   await goTo(page, 'Skills');
-  const picker = page.getByPlaceholder('Add a skill group…');
+  const picker = page.getByPlaceholder('Search or browse gems…');
   await picker.fill('Spark');
   await expect(page.locator('.gem-picker-item').first()).toBeVisible();
   await picker.press('Tab');

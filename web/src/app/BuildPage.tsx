@@ -14,7 +14,6 @@ import { bindT, type Lang } from '../lib/i18n';
 import { hasPobColorCodes, parsePobColorText } from '../lib/pobColors';
 import { buildDisplayName, stageDisplayName } from '../lib/workspaceNames';
 import { workspaceText } from '../lib/workspaceText';
-import { words } from './text';
 import { classChangeMessage } from './classChange';
 import { download } from './BackupDownload';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem } from '../components/ui/dropdown-menu';
@@ -22,18 +21,21 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGro
 type Destination = 'newBuild' | 'currentStage';
 type Naming = 'newBuild' | 'copyStage' | 'renameBuild' | 'renameStage' | 'copyBuild';
 
-/**
- * Build and stage management with an always available import form.
- */
-export function BuildPage({ session, lang, onImported, claimImportFocus, importNotice }: { session: BuildSession; lang: Lang; onImported: () => void; claimImportFocus: () => boolean; importNotice?: React.ReactNode }) {
+const IMPORT_FORMATS_URL = 'https://github.com/ackness/pobr/blob/master/docs/import-formats.md';
+
+export function BuildPage({ session, lang, onImported, claimImportFocus, importNotice, notesFocusRequest }: {
+  session: BuildSession; lang: Lang; onImported: () => void; claimImportFocus: () => boolean;
+  importNotice?: React.ReactNode; notesFocusRequest?: number;
+}) {
   const tt = bindT(lang);
   const text = workspaceText(lang);
-  const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
   const dialogs = useAppDialogs(lang);
   const captureAction = useSessionAction(session);
   const workspace = session.workspace;
   const build = workspace?.builds.find(entry => entry.id === workspace.activeBuild);
   const stage = build?.stages.find(entry => entry.id === build.activeStage);
+  const hasPobSource = !!stage?.saved.state.pobCode;
+  const hasImportedLoadouts = hasPobSource && session.loadouts.length > 0;
   const currentBuildName = buildDisplayName(build, workspace?.builds.indexOf(build!) ?? 0, lang);
   const currentStageName = stageDisplayName(stage, build?.stages.indexOf(stage!) ?? 0, lang);
   const character = session.character!;
@@ -45,7 +47,24 @@ export function BuildPage({ session, lang, onImported, claimImportFocus, importN
   const [destination, setDestination] = useState<Destination>('newBuild');
   const [code, setCode] = useState('');
   const codeRef = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { if (claimImportFocus()) codeRef.current?.focus(); }, [claimImportFocus]);
+  const importRef = useRef<HTMLDetailsElement>(null);
+  // Keep the entry layout stable while the user edits the starter stage.
+  const [startsEmpty] = useState(session.isStarterWorkspace);
+  const didEnter = useRef(false);
+  const notesHeadingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    const requested = claimImportFocus();
+    const firstEntry = !didEnter.current;
+    didEnter.current = true;
+    if (notesFocusRequest || !(requested || firstEntry && startsEmpty)) return;
+    if (importRef.current) importRef.current.open = true;
+    codeRef.current?.focus();
+  }, [claimImportFocus, notesFocusRequest, startsEmpty]);
+  useEffect(() => {
+    if (!notesFocusRequest) return;
+    const frame = requestAnimationFrame(() => notesHeadingRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [notesFocusRequest]);
   const [importing, setImporting] = useState(false);
   const [recovery, setRecovery] = useState<'file' | 'source' | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -160,12 +179,7 @@ export function BuildPage({ session, lang, onImported, claimImportFocus, importN
   };
 
   const destinations: [Destination, string][] = [['newBuild', text.importNew], ['currentStage', text.importCurrent.replace('{stage}', currentStageName)]];
-  return <section className="bd" aria-labelledby="build-heading">
-    <header className="bd-head"><h1 id="build-heading">{w('Build library', 'BD 库', 'BD 庫')}</h1><p>{tt('ui.buildHint')}</p></header>
-
-
-    <div className="bd-library-import">
-    <section className="bd-sec bd-library" aria-labelledby="bd-library-title">
+  const librarySection = <section className="bd-sec bd-library" aria-labelledby="bd-library-title">
       <div className="bd-sec-head"><h2 id="bd-library-title" tabIndex={-1}>{text.libraryTitle}</h2>
         <div className="bd-actions"><Button variant="ghost" size="sm" disabled={session.busy} onClick={() => beginNaming('newBuild')}><Plus />{text.newBuild}</Button></div></div>
       {nameForm(['newBuild', 'renameBuild', 'copyBuild'])}
@@ -192,12 +206,15 @@ export function BuildPage({ session, lang, onImported, claimImportFocus, importN
             </DropdownMenu></li>;
         })}
       </ul>
-    </section>
+    </section>;
 
-    <section className="bd-sec bd-import" aria-labelledby="bd-import-title">
-      <h2 id="bd-import-title">{w('Import a build', '导入 BD', '匯入 BD')}</h2>
+  const importSection = <details className="bd-sec bd-import" ref={importRef} open={startsEmpty}
+    aria-labelledby="bd-import-title">
+      <summary className="disclosure" data-disclosure-level="group"><h2 id="bd-import-title">{tt('build.importTitle')}</h2></summary>
       <AppTextarea ref={codeRef} className="import-code" rows={4} spellCheck={false} disabled={importing} value={code} placeholder={tt('build.importPlaceholder')} aria-label={tt('build.code')}
-        aria-describedby={recovery ? 'bd-import-hint bd-import-recovery' : 'bd-import-hint'} onChange={event => { setCode(event.target.value); setRecovery(null); }} />
+        aria-describedby={`bd-paste-hint bd-import-hint${recovery ? ' bd-import-recovery' : ''}`} onChange={event => { setCode(event.target.value); setRecovery(null); }} />
+      <p className="bd-hint" id="bd-paste-hint">{tt('build.importHint')}{' '}
+        <a href={IMPORT_FORMATS_URL} target="_blank" rel="noreferrer">{tt('build.supportedFormats')}</a></p>
       <div className="bd-import-actions">
         <Button className="import-submit" onClick={doImport} disabled={session.busy || importing || !code.trim()}>
           {tt(importing ? 'build.importing' : 'build.importButton')}</Button>
@@ -205,15 +222,20 @@ export function BuildPage({ session, lang, onImported, claimImportFocus, importN
         <AppInput ref={fileRef} type="file" accept=".json,.build,.txt,application/json,text/plain" hidden aria-label={tt('save.import')}
           onChange={event => { const file = event.target.files?.[0]; if (file) void importFile(file); event.target.value = ''; }} />
         <div className="bd-segment segmented" role="group" aria-label={text.importDestination}>
-          <span>{text.importDestination}{lang === 'en-US' ? ':' : '：'}</span>
+          <span>{text.importDestination}{tt('format.colonTight')}</span>
           {destinations.map(([value, label]) => <button key={value} type="button" aria-pressed={destination === value} disabled={importing || session.busy} onClick={() => setDestination(value)}>{label}</button>)}
         </div>
       </div>
       <p className="bd-hint" id="bd-import-hint">{text.importFileHint}</p>
       {recovery && <p className="bd-hint" id="bd-import-recovery" role="status">{tt(recovery === 'file' ? 'build.importRecoveryFile' : 'build.importRecoverySource')}</p>}
       {fileError && <p className="bd-error" role="alert">{fileError}</p>}
-      {importNotice}
-    </section>
+    </details>;
+
+  return <section className="bd" aria-labelledby="build-heading">
+    <header className="bd-head"><h1 id="build-heading">{text.title}</h1><p>{tt('ui.buildHint')}</p></header>
+    {importNotice}
+    <div className="bd-library-import">
+      {startsEmpty ? <>{importSection}{librarySection}</> : <>{librarySection}{importSection}</>}
     </div>
 
     <section className="bd-sec" aria-labelledby="bd-stage-title">
@@ -224,9 +246,9 @@ export function BuildPage({ session, lang, onImported, claimImportFocus, importN
       {nameForm(['copyStage', 'renameStage'])}
       <ul className="bd-chips" role="group" aria-label={text.stagesTitle}>
         {build?.stages.map((entry, index) => <li key={entry.id}><button type="button" aria-pressed={entry.id === stage?.id} disabled={session.busy} onClick={() => session.selectStage(build.id, entry.id)}>
-          {stageDisplayName(entry, index, lang)}<small>Lv{entry.saved.state.character.level} · {entry.saved.state.allocatedNodes.length} {tt('build.passives')}</small></button></li>)}
+          {stageDisplayName(entry, index, lang)}<small>Lv{entry.saved.state.character.level} · {tt('build.savedNodes').replace('{count}', String(entry.saved.state.allocatedNodes.length))}</small></button></li>)}
       </ul>
-      {session.build && session.loadouts.length > 0 && <details className="bd-details"><summary className="disclosure" data-disclosure-level="group">{text.importedLoadouts}</summary>
+      {hasPobSource && session.loadouts.length > 0 && <details className="bd-details"><summary className="disclosure" data-disclosure-level="group">{text.importedLoadouts}</summary>
         <p className="bd-hint">{text.importedLoadoutsHint}</p>
         <div className="bd-inline">
           <label>{tt('loadout.switch')}<AppSelectControl aria-label={tt('loadout.switch')} value={session.activeLoadout ?? ''} disabled={session.busy} onChange={async event => {
@@ -254,7 +276,7 @@ export function BuildPage({ session, lang, onImported, claimImportFocus, importN
       </div>
       <p className="bd-hint">{tt('build.newHint')}</p>
 
-      <h3 className="bd-subtitle">{tt('tab.notes')}</h3>
+      <h3 className="bd-subtitle" id="bd-notes" ref={notesHeadingRef} tabIndex={-1}>{tt('tab.notes')}</h3>
       <AppTextarea className="notes-editor" rows={4} spellCheck={false} value={session.notes} placeholder={tt('notes.placeholder2')} aria-label={tt('tab.notes')} onChange={event => session.setNotes(event.target.value)} />
       {hasPobColorCodes(session.notes) && <div className="notes-preview" aria-label={tt('notes.preview')}><pre className="notes-preview-body">{parsePobColorText(session.notes).map((segment, index) => <span key={index} style={segment.color ? { color: segment.color } : undefined}>{segment.text}</span>)}</pre></div>}
     </section>
@@ -262,6 +284,7 @@ export function BuildPage({ session, lang, onImported, claimImportFocus, importN
     <details className="bd-sec bd-export"><summary className="disclosure" data-disclosure-level="section"><h2>{text.exportTitle}</h2></summary>
       <h3 className="bd-subtitle">{text.buildFileTitle}</h3>
       <p className="bd-hint">{text.shareHint}</p>
+      <p className="bd-hint">{build?.baseline ? text.shareWithBaseline : text.shareWithoutBaseline}</p>
       <div className="bd-actions bd-actions-start"><Button variant="outline" disabled={session.busy} onClick={() => download(session.exportLocalBuild(), 'pobr-build-stages.json')}>{text.share}</Button></div>
 
       <h3 className="bd-subtitle">{text.currentStageShare}</h3>
@@ -273,14 +296,17 @@ export function BuildPage({ session, lang, onImported, claimImportFocus, importN
 
       <h3 className="bd-subtitle">{tt('plannerFile.title')}</h3>
       <p className="bd-hint">{tt('plannerFile.hint')}</p>
+      {hasImportedLoadouts && <p className="bd-hint">{tt('plannerFile.loadoutHint')}</p>}
+      {hasPobSource && session.build && !hasImportedLoadouts && <p className="bd-hint">{tt('plannerFile.noLoadouts')}</p>}
       <div className="bd-actions bd-actions-start"><Button variant="outline" disabled={session.busy || generating} onClick={() => exportPlanner(false)}>{tt('plannerFile.current')}</Button>
-        <Button variant="outline" disabled={session.busy || generating} onClick={() => exportPlanner(true)}>{tt('plannerFile.all')}</Button></div>
+        {hasImportedLoadouts && <Button variant="outline" disabled={session.busy || generating} onClick={() => exportPlanner(true)}>{tt('plannerFile.all')}</Button>}</div>
       {plannerFiles && <div aria-live="polite" className="bd-actions bd-actions-start">{plannerFiles.files.map(file => <Button key={file.filename} variant="ghost" onClick={() => download(file.content, file.filename)}>{file.filename}</Button>)}
+        {plannerFiles.files.length === 0 && plannerFiles.warnings.length === 0 && <p className="bd-hint">{tt('plannerFile.noFiles')}</p>}
         {plannerFiles.warnings.map(warning => <p className="bd-hint" key={warning}>{warning}</p>)}</div>}
 
-      <h3 className="bd-subtitle">{text.backup}</h3>
+      <h3 className="bd-subtitle">{text.backupTitle}</h3>
       <p className="bd-hint">{text.backupHint}</p>
-      <div className="bd-actions bd-actions-start"><Button variant="outline" onClick={() => download(session.exportWorkspace(), 'pobr-workspace.json')} disabled={session.busy || importing}>{tt('save.export')}</Button></div>
+      <div className="bd-actions bd-actions-start"><Button variant="outline" onClick={() => download(session.exportWorkspace(), 'pobr-workspace.json')} disabled={session.busy || importing}>{text.backup}</Button></div>
     </details>
   </section>;
 }

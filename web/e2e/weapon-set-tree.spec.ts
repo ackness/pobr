@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { busy, openItemsAfterImport, pageLink } from './shell';
 import { choose, generateShareCode } from './treePage';
+import { openImport } from './buildLibrary';
 import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import type { PassiveNode } from '../src/api/types';
@@ -31,6 +32,7 @@ async function idle(page: Page) {
 }
 async function importCode(page: Page, source: string) {
   await page.locator('.shell-builds-button').click();
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(source);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);

@@ -8,19 +8,21 @@ import { addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage } from '../
 import { compareStats } from '../../lib/compare';
 
 // Replay the real picker and apply handlers without requiring a browser environment.
-const ui = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], selects: [] as ComponentProps<'select'>[] }));
+const ui = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], selects: [] as ComponentProps<'select'>[],
+  inputs: [] as ComponentProps<'input'>[], confirm: vi.fn() }));
 const hooks = await vi.hoisted(async () => {
   const { createHookHarness } = await import('../../testing/hookHarness');
   return createHookHarness({ functionalUpdates: false });
 });
 vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../../app/pages/navigate', () => ({ useNavigateToPage: () => vi.fn() }));
+vi.mock('../shared/AppDialogs', () => ({ useAppDialogs: () => ({ confirm: ui.confirm }) }));
 vi.mock('../../hooks/useSkillName', () => ({ useSkillCatalog: () => new Map() }));
 vi.mock('../ui/button', () => ({ Button: (props: ComponentProps<'button'>) => { ui.buttons.push(props); return <button {...props} />; } }));
 vi.mock('./TreeComparison', () => ({ TreeComparison: () => null }));
 vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { ui.buttons.push(props); return <button {...props} />; },
-  AppInput: (props: ComponentProps<'input'>) => <input {...props} />,
+  AppInput: (props: ComponentProps<'input'>) => { ui.inputs.push(props); return <input {...props} />; },
   AppSelectControl: (props: ComponentProps<'select'>) => { ui.selects.push(props); return <select {...props} />; },
 }));
 
@@ -31,10 +33,10 @@ const saved = (): SavedSession => ({ version: 1, notes: '', state: {
   socketGroups: [{ enabled: true, gems: [{ skill_id: 'SparkPlayer', level: 5, quality: 0 }] }],
 } });
 const render = (session: BuildSession, lang: Lang = 'en-US') => {
-  hooks.beginRender(); ui.buttons = []; ui.selects = [];
+  hooks.beginRender(); ui.buttons = []; ui.selects = []; ui.inputs = [];
   return renderToStaticMarkup(<ComparePanel session={session} lang={lang} />);
 };
-beforeEach(() => hooks.reset());
+beforeEach(() => { hooks.reset(); ui.confirm.mockReset(); });
 
 test('an unrelated build leaves B unselected until the player chooses it', () => {
   const workspace = addWorkspaceBuild(createWorkspace(saved()), 'Imported', saved());
@@ -96,6 +98,34 @@ test.each([
   expect(b.saved.state.params.enemy_tier).toBe('none');
 });
 
+test('only copying over saved content requires confirmation, with the actual source and target', async () => {
+  const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Target');
+  const [a, b] = workspace.builds[0].stages;
+  a.name = 'Starter';
+  b.saved = { ...saved(), state: { ...saved().state, items: [{ slot: 'ring1', text: 'B ring' }, { slot: 'ring2', text: 'New ring' }] } };
+  hooks.slots = [a.id, b.id, 'own', true, '', 'items', {
+    key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
+    value: { stats: [], before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
+  }];
+  const applyComparedStage = vi.fn(() => true);
+  const session = { workspace, applyComparedStage } as unknown as BuildSession;
+  const html = render(session);
+  expect(html).toContain('A · Target stage');
+  expect(html).toContain('B · Candidate stage');
+  const copies = ui.buttons.filter(button => button.className === 'cmp-copy');
+  expect(copies).toHaveLength(2);
+  expect(copies[0].children).toMatch(/Copy from .+Target to .+Starter/);
+  ui.confirm.mockResolvedValue(false);
+  copies[0].onClick!({} as never);
+  await Promise.resolve();
+  expect(ui.confirm).toHaveBeenCalledWith(expect.stringMatching(/Copy Ring 1 from .+Target to .+Starter/), 'Copy and save', undefined);
+  expect(applyComparedStage).not.toHaveBeenCalled();
+  copies[1].onClick!({} as never);
+  expect(ui.confirm).toHaveBeenCalledTimes(1);
+  expect(applyComparedStage).toHaveBeenCalledWith(expect.objectContaining({ stageId: a.id }), expect.objectContaining({ stageId: b.id }),
+    expect.objectContaining({ items: [{ slot: 'ring1', text: 'A ring' }, { slot: 'ring2', text: 'New ring' }] }));
+});
+
 test('a baseline opens as A with current B, stays immutable, and can be swapped or replaced by any stage', () => {
   const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Later');
   const build = workspace.builds[0];
@@ -103,6 +133,8 @@ test('a baseline opens as A with current B, stays immutable, and can be swapped 
   const session = { workspace, dataVersion: '0.5', applyComparedStage: vi.fn() } as unknown as BuildSession;
   const html = render(session);
   expect(html).toContain('Baseline (');
+  expect(html).toContain('Read-only comparison with a saved baseline snapshot.');
+  expect(html).toContain('A · Saved snapshot');
   expect(html).toContain('Change: after − before (B − A).');
   expect(ui.selects.find(select => select['aria-label'] === 'A: Before')!.value).toBe(`baseline:${build.id}`);
   expect(ui.selects.find(select => select['aria-label'] === 'B: After')!.value).toBe(build.activeStage);
@@ -142,6 +174,26 @@ test('table changes are after minus before and lower costs are coloured as impro
   expect(html).toContain('B: After');
   expect(html.match(/<thead>/g)).toHaveLength(1);
   expect(html).toMatch(/class="cmp-bar"><div class="cmp-stages"[^]*?<\/div><\/div><div class="cmp-context"/);
+});
+
+test('unrounded values explain why rounded before and after values do not match the displayed delta', () => {
+  const workspace = duplicateWorkspaceStage(createWorkspace(saved()), 'Later');
+  const [a, b] = workspace.builds[0].stages;
+  const stats = compareStats([{ id: 'TotalEHP', value: 72364.375 }, { id: 'Mana', value: 853.625 }],
+    [{ id: 'TotalEHP', value: 72048.625 }, { id: 'Mana', value: 849.375 }]);
+  hooks.slots = [a.id, b.id, 'own', true, '', 'stats', {
+    key: JSON.stringify([a.saved.state, b.saved.state, 'own']),
+    value: { stats, before: { unsupported_modifiers: [], item_errors: [] }, after: { unsupported_modifiers: [], item_errors: [] } },
+  }];
+  const session = { workspace } as unknown as BuildSession;
+  const rounded = render(session);
+  expect(rounded).toContain('Changes use unrounded values');
+  expect(rounded).toMatch(/data-stat="TotalEHP"[^]*?>72,364<[^]*?>72,049<[^]*?>-316</);
+  expect(rounded).toMatch(/data-stat="Mana"[^]*?>854<[^]*?>849<[^]*?>-4</);
+  ui.inputs[1].onChange!({ target: { checked: true } } as never);
+  const unrounded = render(session);
+  expect(unrounded).toMatch(/data-stat="TotalEHP"[^]*?>72364\.375<[^]*?>72048\.625<[^]*?>-315\.75</);
+  expect(unrounded).toMatch(/data-stat="Mana"[^]*?>853\.625<[^]*?>849\.375<[^]*?>-4\.25</);
 });
 
 test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('table shows catalog percentages outside the preferred sections in %s', lang => {

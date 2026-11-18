@@ -10,7 +10,7 @@ const LINK_ERRORS = {
 
 /** Import errors keep stable keys until rendered in the selected UI language. */
 export function buildImportErrorMessage(message: string, lang: Lang): string {
-  return Object.values(LINK_ERRORS).includes(message as typeof LINK_ERRORS[keyof typeof LINK_ERRORS])
+  return message === 'build.invalidLevel' || Object.values(LINK_ERRORS).includes(message as typeof LINK_ERRORS[keyof typeof LINK_ERRORS])
     ? t(lang, message as UiKey) : message;
 }
 

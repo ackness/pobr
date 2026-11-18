@@ -1,10 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 import { answerConfirm } from './confirmDialog';
 import { buildAction, pageLink } from './shell';
-import { importInto, openBuild, openExport, selectStage, settled } from './buildLibrary';
+import { importInto, openBuild, openExport, openImport, selectStage, settled } from './buildLibrary';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 import { SMOKE } from './tags';
+import { STORAGE } from '../src/lib/sessionStorage';
 
 const code = (level: number, nodes: string, notes: string) => deflateSync(`<PathOfBuilding2>
 <Build level="${level}" className="Ranger" ascendClassName="Deadeye"/>
@@ -67,7 +68,7 @@ test('independent builds and stages preserve passive routes and notes across rel
 
   await openExport(page);
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Share this build · all stages', exact: true }).click();
+  await page.getByRole('button', { name: 'Download this build (all stages)', exact: true }).click();
   const download = await downloadPromise;
   const shared = JSON.parse(readFileSync((await download.path())!, 'utf8'));
   expect(shared.build.stages).toHaveLength(2);
@@ -84,14 +85,64 @@ test('independent builds and stages preserve passive routes and notes across rel
   await openBuild(page);
   await openExport(page);
   const backupPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download backup', exact: true }).click();
+  await page.getByRole('button', { name: 'Back up local builds', exact: true }).click();
   const backup = await backupPromise;
   expect(JSON.parse(readFileSync((await backup.path())!, 'utf8')).workspace.builds).toHaveLength(3);
   await editName(page, 'New build', 'Temporary');
   await page.locator('input[type=file]').setInputFiles((await backup.path())!);
+  await expect(page.getByRole('alertdialog')).toBeVisible();
+  // Model a tab saving while the confirm dialog is open, before its storage event arrives.
+  await page.evaluate(key => {
+    const stored = JSON.parse(localStorage.getItem(key)!);
+    const original = stored.workspace.builds[0];
+    stored.workspace.builds.push({
+      id: 'concurrent-build', name: 'Concurrent build', activeStage: 'concurrent-stage',
+      stages: [{ ...original.stages[0], id: 'concurrent-stage' }],
+    });
+    localStorage.setItem(key, JSON.stringify(stored));
+  }, STORAGE.workspace);
   await answerConfirm(page, true);
   await expect(page.locator('#ov-title')).toBeVisible();
-  expect((await snapshot(page)).workspace.builds).toHaveLength(3);
+  const restoredIds = restored.workspace.builds.map((build: { id: string }) => build.id);
+  expect((await snapshot(page)).workspace.builds.map((build: { id: string }) => build.id)).toEqual(restoredIds);
+  await page.reload();
+  await openBuild(page);
+  await expect(page.getByRole('group', { name: 'Saved builds', exact: true }).getByRole('button', { name: /Concurrent build|Temporary/ })).toHaveCount(0);
+});
+
+test('library shows saved builds before import and shares both current and recorded notes', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/build');
+  await ready(page);
+  const field = page.getByRole('textbox', { name: 'Build code', exact: true });
+  await expect(field).toBeFocused();
+  await importCode(page, code(80, '1,2', 'Baseline notes'));
+  const details = page.locator('details.bd-import');
+  await expect(details).toHaveJSProperty('open', false);
+  await expect(field).toBeHidden();
+  const saved = await page.locator('#bd-library-title').boundingBox();
+  const disclosure = await details.locator('summary').boundingBox();
+  expect(saved!.y).toBeLessThan(disclosure!.y);
+  await openImport(page);
+  await field.fill('Text to keep while collapsed');
+  await details.locator('summary').click();
+  await expect(field).toBeHidden();
+  await openImport(page);
+  await expect(field).toHaveValue('Text to keep while collapsed');
+  await details.locator('summary').click();
+
+  await openExport(page);
+  await expect(page.getByText('No comparison baseline has been recorded for this build.')).toBeVisible();
+  await page.locator('.shell-baseline-button').click();
+  await settled(page);
+  await page.getByRole('textbox', { name: 'Notes', exact: true }).fill('Current notes');
+  await expect(page.getByText('Includes the recorded comparison baseline and its notes from the time it was saved.')).toBeVisible();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download this build (all stages)', exact: true }).click();
+  const file = await downloadPromise;
+  const shared = JSON.parse(readFileSync((await file.path())!, 'utf8'));
+  expect(shared.build.baseline.saved.notes).toBe('Baseline notes');
+  expect(shared.build.stages[0].saved.notes).toBe('Current notes');
 });
 
 test('stage switching preserves unapplied item drafts and fits a narrow viewport', async ({ page }) => {
@@ -167,8 +218,10 @@ test('malformed shared files leave the active stage and browser save untouched',
   const before = await snapshot(page);
   const invalid = { version: 1, notes: 'Invalid import', state: { ...before.state,
     flasks: {}, socketGroups: [{ enabled: true, gems: [null] }], params: { config_inputs: {} } } };
-  await page.locator('input[type=file]').setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(invalid)) });
-  await expect(page.getByRole('alert').first()).toBeVisible();
+  await openImport(page);
+  const imports = page.locator('.bd-import');
+  await imports.locator('input[type=file]').setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(invalid)) });
+  await expect(imports.getByRole('alert')).toBeVisible();
   expect(await snapshot(page)).toEqual(before);
   await page.reload();
   await ready(page);
@@ -191,7 +244,7 @@ test('imported skill forms and historical tree versions survive editing, reload 
   expect(restored.state.treeVersion).toBe('0_1');
   expect(restored.state.socketGroups[0].gems[0].stat_set_index).toBe(2);
   await openExport(page);
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
+  await page.getByRole('button', { name: 'Generate PoB code for this stage', exact: true }).click();
   const shared = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
   const xml = inflateSync(Buffer.from(shared, 'base64url')).toString('utf8');
   expect(xml).toContain('treeVersion="0_1"');
@@ -216,7 +269,7 @@ test('planning catalogs stay on the initialized snapshot after a deployment', as
   });
   await pageLink(page, 'Skills').click();
   await expect(page.getByRole('heading', { name: 'Skills', exact: true })).toBeVisible();
-  await expect(page.getByPlaceholder('Add a skill group…')).toBeEnabled();
+  await expect(page.getByPlaceholder('Search or browse gems…')).toBeEnabled();
   await pageLink(page, 'Upgrades').click();
   await expect(page.getByRole('heading', { name: 'Upgrades', exact: true })).toBeVisible();
   expect(manifestReads).toBe(0);

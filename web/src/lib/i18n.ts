@@ -1,21 +1,28 @@
-import { CONFIG_LABEL_ZH, CONFIG_LABEL_ZH_TW } from './configLabels';
+import { configLabelTranslation } from './configLabels';
 /** UI copy only (src/locales/<lang>.json). Game names and modifier text use the versioned localization data. */
 
-import { STAT_SECTIONS } from './statDisplay';
+import { STAT_SECTIONS, statRowLabel } from './statDisplay';
 import { lookup, messages, translated, type Lang, type Messages } from '../locales';
 
 export { LANGS, isLang, lookup, messages, translated, type Lang } from '../locales';
 
 export type UiKey = keyof Messages['ui'];
+type MessageValues = Readonly<Record<string, string | number>>;
+
+/** Replace named placeholders once, without interpreting text inside the inserted values. */
+export function formatMessage(template: string, values: MessageValues): string {
+  return template.replace(/\{(\w+)\}/g, (match, key: string) => Object.hasOwn(values, key) ? String(values[key]) : match);
+}
 
 /** 取 UI 文案。 */
-export function t(lang: Lang, key: UiKey): string {
-  return messages(lang, 'ui')[key];
+export function t(lang: Lang, key: UiKey, values?: MessageValues): string {
+  const template = messages(lang, 'ui')[key];
+  return values ? formatMessage(template, values) : template;
 }
 
 /** 组件便捷绑定：`const tt = bindT(lang)`。 */
-export function bindT(lang: Lang): (key: UiKey) => string {
-  return (key) => t(lang, key);
+export function bindT(lang: Lang): (key: UiKey, values?: MessageValues) => string {
+  return (key, values) => t(lang, key, values);
 }
 
 /** Localize existing progress messages at the UI boundary; unknown diagnostics
@@ -25,8 +32,7 @@ export function bootMessageLabel(lang: Lang, message: string): string {
   if (exact) return exact;
   const progress = /^加载游戏数据 (\d+)\/(\d+)…$/.exec(message);
   if (progress) {
-    const prefix = lang === 'en-US' ? 'Loading game data' : lang === 'zh-TW' ? '載入遊戲資料' : '加载游戏数据';
-    return `${prefix} ${progress[1]}/${progress[2]}…`;
+    return t(lang, 'boot.loadingGameData', { loaded: progress[1], total: progress[2] });
   }
   return message;
 }
@@ -55,13 +61,11 @@ export function grantedSourceLabel(
   if (!source) return null;
   const [kind, , detail] = source.split(':');
   if (kind === 'Item') {
-    const prefix =
-      lang === 'en-US' ? 'from item' : lang === 'zh-TW' ? '裝備附贈' : '装备附赠';
     const name = detail?.split(',')[0]?.trim();
-    return name ? `${prefix} · ${name}` : prefix;
+    return name ? t(lang, 'granted.fromNamedItem', { name }) : t(lang, 'granted.fromItem');
   }
   if (kind === 'Tree') {
-    return lang === 'en-US' ? 'from tree' : lang === 'zh-TW' ? '天賦附贈' : '天赋附赠';
+    return t(lang, 'granted.fromTree');
   }
   return source;
 }
@@ -94,8 +98,7 @@ export function originLabel(lang: Lang, source: string): string {
     return [slotLabel(lang, id), ...suffix.map(part => affixKind[part] ? originKindLabel(lang, affixKind[part]) : part)].join(' · ');
   }
   if (kind === 'config' && id) {
-    const label = lang === 'zh-CN' ? CONFIG_LABEL_ZH[id] : lang === 'zh-TW' ? CONFIG_LABEL_ZH_TW[id] : undefined;
-    return label ?? source;
+    return configLabelTranslation(lang, id) ?? source;
   }
   if (kind === 'flask' && id) return [slotLabel(lang, id), ...suffix].join(' · ');
   if ((kind === 'node' || kind === 'jewel') && id) {
@@ -118,22 +121,19 @@ export function statNameLabel(lang: Lang, id: string): string {
     const [, kind, slot, field] = utility;
     const label = lookup(lang, 'detail', `UtilityField${field}`);
     if (label) {
-      const name = lang === 'en-US' ? kind : kind === 'Flask' ? (lang === 'zh-TW' ? '藥劑' : '药剂') : (lang === 'zh-TW' ? '護符' : '护符');
-      return `${name} ${slot} · ${label}`;
+      return t(lang, kind === 'Flask' ? 'stat.flaskMetric' : 'stat.charmMetric', { slot, label });
     }
   }
   const skillContribution = /^SkillGroup(\d+)Effect(\d+)DPS$/.exec(id);
   if (skillContribution) {
     const [, group, effect] = skillContribution;
-    if (lang === 'zh-TW') return `技能組 ${group} · 效果 ${effect} DPS`;
-    if (lang === 'zh-CN') return `技能组 ${group} · 效果 ${effect} DPS`;
-    return `Skill group ${group} · effect ${effect} DPS`;
+    return t(lang, 'stat.skillContribution', { group, effect });
   }
   const fromMods = lookup(lang, 'modName', id);
   if (fromMods) return fromMods;
   for (const section of STAT_SECTIONS) {
     const row = section.rows.find((r) => r.id === id);
-    if (row) return row.label[lang];
+    if (row) return statRowLabel(lang, row.id);
   }
   // statExtra only translates: English keeps reading detail, then the ID.
   const extra = translated(lang, 'statExtra', id);

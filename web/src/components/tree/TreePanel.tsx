@@ -24,7 +24,7 @@ import { useTreeEditPreview } from '../../hooks/useTreeEditPreview';
 import { treeAllocationRequest } from '../../lib/weaponSets';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { cleanLine, useItemDisplayNames } from '../../hooks/useLocalizedLines';
-import { bindT, type Lang } from '../../lib/i18n';
+import { bindT, t, type Lang } from '../../lib/i18n';
 import {
   allocationAccess,
   buildPassiveGraph,
@@ -43,7 +43,7 @@ import './tree.css';
 import { NodePowerTable } from './NodePowerTable';
 import { useTreeLocation } from './useTreeLocation';
 import { plannedEdgeClass } from './plannedRoute';
-import { words, colon } from '../../app/text';
+import { colon } from '../../app/text';
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { passiveNodeMatches, passiveNodeName, translatePassiveCard, usePassiveNodeNames, type PassiveNodeNames } from './passiveNodeNames';
 
@@ -64,11 +64,7 @@ export function TreePanel(props: Props) {
   const currentTree = session.currentTreeVersion;
   if (session.treeVersion && session.treeVersion !== 'Default' && currentTree && session.treeVersion !== currentTree) {
     if (!active) return null;
-    const text = lang === 'en-US'
-      ? `This build uses passive tree ${session.treeVersion}. Calculation and export preserve that version. Interactive tree editing and route planning are unavailable for historical trees.`
-      : lang === 'zh-TW'
-        ? `此角色使用 ${session.treeVersion} 天賦樹。計算與匯出會保留該版本，歷史天賦樹暫不支援互動編輯和路線規劃。`
-        : `此角色使用 ${session.treeVersion} 天赋树。计算与导出会保留该版本，历史天赋树暂不支持交互编辑和路线规划。`;
+    const text = t(lang, 'tree.historicalVersion', { version: session.treeVersion });
     return <section className="ui-page tree-historical"><p role="status">{bindT(lang)('tree.invalidImport')}</p><TreeConversionControls session={session} conversion={conversion} /><p>{text}</p></section>;
   }
   // The conversion controls sit in the canvas toolbar, not above the page.
@@ -111,7 +107,7 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
     onRun: () => setOverlayReset(value => value + 1),
     nodeLabel: skill => {
       const node = byId.get(skill);
-      return socketLabels.get(skill) ?? (node ? passiveNodeName(node, nodeNames) : words(lang, 'Passive', '天赋', '天賦'));
+      return socketLabels.get(skill) ?? (node ? passiveNodeName(node, nodeNames) : t(lang, 'tree.passive'));
     },
     onPreview: setPlannedNodes, focusPlanner: focusPlanner?.node === undefined ? focusPlanner : undefined });
   useEffect(() => {
@@ -815,6 +811,14 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     () => passivePointSummary(nodes ?? [], session.allocatedNodes, session.weaponSwap, treeEffects, currentPoints?.result),
     [nodes, session.allocatedNodes, session.weaponSwap, treeEffects, currentPoints],
   );
+  const ascendancyPoints = useMemo(() => {
+    const shared = previewResult?.allocation.shared ?? [...allocated].filter(id => !owner.has(id));
+    if (shared.some(id => !byId.has(id))) return null;
+    return shared.filter(id => {
+      const node = byId.get(id);
+      return node?.ascendancy_id && node.kind !== 'ascendancy_start' && !implicitStarts.has(id);
+    }).length;
+  }, [previewResult, allocated, owner, byId, implicitStarts]);
   useTreeLocation(focusNode, consumedLocation,
     focusNode?.node === undefined ? undefined : byId.get(focusNode.node), Boolean(view), focusNodeOnTree);
   if (error) return <div className="calc-error">{error}</div>;
@@ -1092,7 +1096,8 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
   const resetEl = (
     <AppButton onClick={() => setViewBox(null)}>{tt('tree.reset')}</AppButton>
   );
-  const countEl = <TreePointSummary current={pointSummary} preview={preview} invalidReason={isImportProblem(preview?.reason) ? '' : treeEditError(preview?.reason ?? null, lang)} lang={lang} />;
+  const countEl = <TreePointSummary current={pointSummary} preview={preview} ascendancy={ascendancyPoints}
+    invalidReason={isImportProblem(preview?.reason) ? '' : treeEditError(preview?.reason ?? null, lang)} lang={lang} />;
   const canvasEl = (
     // Drag moves and ends are handled on the canvas: once the shield covers the SVG, or if the captured
     // node is removed mid-drag, the next pointer events reach the shield instead of the SVG.
@@ -1267,6 +1272,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
       );
   const attrEl = (
     <div className="attr-distribute" role="group" aria-label={tt('tree.attrDistribute')}>
+        <h3 className="tree-attributes-heading">{tt('tree.attributesHeading')}</h3>
         {allocatedAttrNodes.length > 0 && (
         <>
           <span className="attr-distribute-title">
@@ -1301,7 +1307,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
           <span className="attr-distribute-rest">
             {tt('tree.attrUnassigned')}{colon(lang)}{allocatedAttrNodes.length - attrCounts.str - attrCounts.dex - attrCounts.int}
           </span>
-          <details className="tree-shortcuts"><summary className="disclosure">{words(lang, 'Keyboard shortcuts', '快捷键', '快捷鍵')}</summary><p className="tree-hint">{tt('tree.attrHotkeys')}</p></details>
+          <details className="tree-shortcuts"><summary className="disclosure">{tt('tree.keyboardShortcuts')}</summary><p className="tree-hint">{tt('tree.attrHotkeys')}</p></details>
         </>
         )}
           <span className="attr-quest" role="group" aria-label={tt('tree.questAttr')}>
@@ -1496,8 +1502,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     <section ref={panelRef} className="ui-page tree-panel" aria-labelledby="tree-heading" style={{ '--tree-side-preference': `${sideWidth}rem` } as React.CSSProperties} data-side={sideOpen ? 'open' : 'closed'} onKeyDown={onPanelKeyDown}>
       <h2 id="tree-heading" className="sr-only">{tt('tree.title')}</h2>
       <div className="tree-stage">
-        {canvasEl}
-        <div ref={trackBarBottom} className="tree-bar tree-bar-top" role="group" aria-label={words(lang, 'Find and allocate', '查找与加点', '尋找與加點')}>
+        <div ref={trackBarBottom} className="tree-bar tree-bar-top" role="group" aria-label={tt('tree.findAndAllocate')}>
           {searchEl}
           {modeEl}
           {heatEl}
@@ -1508,7 +1513,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
         </AppButton>
         {(importProblem || disconnectedImport) && <p className="tree-edit-error tree-import-notice" role="status">{tt(importProblem ? 'tree.invalidImport' : 'tree.disconnectedImport')}</p>}
         {editError && !isImportProblem(editError) && <p className="tree-edit-error" role="alert">{treeEditError(editError, lang)}</p>}
-        <div className="tree-bar tree-bar-view" role="group" aria-label={words(lang, 'View and build', '视图与 BD', '檢視與 BD')}>
+        <div className="tree-bar tree-bar-view" role="group" aria-label={tt('tree.viewAndBuild')}>
           <TreeRefundNotice receipt={refundReceipt} session={session} lang={lang} onUndo={() => { session.undoTree(); setRefundReceipt(null); }} />
           {countEl}
           {classEl}
@@ -1517,12 +1522,13 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
           {resetEl}
           {conversion}
         </div>
+        {canvasEl}
       </div>
       {sideOpen && <SidebarResizeHandle panelRef={panelRef} width={sideWidth} label={tt('tree.resizeSidebar')} onCommit={commitSideWidth} />}
       <aside id="tree-side" className="tree-side" hidden={!sideOpen} aria-label={tt('tree.editOptions')}>
         <div className="tree-edit-tools" ref={toolsRef} tabIndex={-1}>
           {toolsBody}
-          <details className="tree-legend-help"><summary className="disclosure">{words(lang, 'Colors and weapon sets', '颜色与武器组', '顏色與武器組')}</summary><p className="tree-hint">{tt('tree.weaponRules')}</p></details>
+          <details className="tree-legend-help"><summary className="disclosure">{tt('tree.weaponLegend')}</summary><p className="tree-hint">{tt('tree.weaponRules')}</p></details>
         </div>
       </aside>
     </section>

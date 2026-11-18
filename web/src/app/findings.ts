@@ -2,6 +2,9 @@ import type { CalculateBuildResponse, UnmodelledMetaTrigger } from '../api/types
 import type { Route } from './routes';
 
 export type Severity = 'bad' | 'warn';
+
+const RESOURCE_RECOVERY_STATS = ['NetLifeRegen', 'NetManaRegen', 'NetEnergyShieldRegen', 'NetWardRegen'] as const;
+type RecoveryStat = typeof RESOURCE_RECOVERY_STATS[number] | 'TotalNetRegen';
 export type Finding =
   | { kind: 'no-main-skill'; severity: Severity; route: Route }
   | { kind: 'item-errors'; severity: Severity; route: Route; slots: string[] }
@@ -9,7 +12,7 @@ export type Finding =
   | { kind: 'attribute'; severity: Severity; route: Route; attribute: 'Str' | 'Dex' | 'Int'; have: number; need: number }
   | { kind: 'resist'; severity: Severity; route: Route; element: 'Fire' | 'Cold' | 'Lightning' | 'Chaos'; value: number; missing: number }
   | { kind: 'hit-chance'; severity: Severity; route: Route; value: number }
-  | { kind: 'net-regen'; severity: Severity; route: Route; value: number }
+  | { kind: 'net-regen'; severity: Severity; route: Route; stat: RecoveryStat; value: number }
   | { kind: 'unmodelled-meta-trigger'; severity: Severity; route: Route; trigger: UnmodelledMetaTrigger }
   | { kind: 'unsupported'; severity: Severity; route: Route; count: number };
 
@@ -47,8 +50,15 @@ export function deriveFindings(calc: CalculateBuildResponse | null, hasSkills: b
 
   const hit = num('HitChance');
   if (hit !== null && hit > 0 && hit < 95) found.push({ kind: 'hit-chance', severity: hit < 80 ? 'bad' : 'warn', route: 'items', value: hit });
+  for (const stat of RESOURCE_RECOVERY_STATS) {
+    const value = num(stat);
+    if (value !== null && value < 0) found.push({ kind: 'net-regen', severity: 'warn', route: 'calcs', stat, value });
+  }
+  // Older results can provide just the total; keep a link to the available calculation.
   const net = num('TotalNetRegen');
-  if (net !== null && net < 0) found.push({ kind: 'net-regen', severity: 'warn', route: 'calcs', value: net });
+  if (net !== null && net < 0 && !found.some(finding => finding.kind === 'net-regen')) {
+    found.push({ kind: 'net-regen', severity: 'warn', route: 'calcs', stat: 'TotalNetRegen', value: net });
+  }
   if (calc.unsupported_modifiers.length) found.push({ kind: 'unsupported', severity: 'warn', route: 'calcs', count: calc.unsupported_modifiers.length });
 
   return found.sort((a, b) => Number(b.severity === 'bad') - Number(a.severity === 'bad'));

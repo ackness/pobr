@@ -200,6 +200,8 @@
     .shell-root .calcs-page.calcs-workspace .calcs-metric-browser { position: static; max-height: none; padding: 0; border: 0; }
     .shell-root .calcs-page.calcs-workspace .calcs-metric-list { max-height: 22rem; }
     .shell-root .calcs-page.calcs-workspace .calcs-back-to-list { display: inline-flex; }
+    .shell-root .calcs-page.calcs-workspace .calcs-explorer[data-detail-open] .calcs-metric-browser,
+    .shell-root .calcs-page.calcs-workspace .calcs-explorer:not([data-detail-open]) .calcs-detail-pane { display: none; }
     .shell-root .calcs-page.calcs-workspace .ledger-row { grid-template-columns: minmax(0, 1fr); gap: .2rem; }
     .shell-root .calcs-page.calcs-workspace .ledger-extra li { grid-template-columns: minmax(0, 1fr); }
   }

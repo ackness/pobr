@@ -1,3 +1,4 @@
+import { openImport } from './buildLibrary';
 import { expect, type Locator, type Page } from '@playwright/test';
 import { bdLibraryButton, busy, pageLink } from './shell';
 
@@ -5,7 +6,7 @@ import { bdLibraryButton, busy, pageLink } from './shell';
 export async function importBuild(page: Page, code: string) {
   await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
-  await expect(page.getByRole('textbox', { name: 'Build code', exact: true })).toBeFocused();
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
@@ -50,7 +51,7 @@ export async function shareCode(page: Page): Promise<string> {
   const block = page.locator('details.bd-export');
   await expect(block).toBeVisible();
   if (!(await block.evaluate(element => (element as HTMLDetailsElement).open))) await block.locator('summary').click();
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
+  await page.getByRole('button', { name: 'Generate PoB code for this stage', exact: true }).click();
   const output = page.getByRole('textbox', { name: 'Share Code', exact: true });
   await expect(output).toBeVisible();
   return output.inputValue();

@@ -1,5 +1,5 @@
 import { configCopy } from './configCopy';
-import type { Lang } from './i18n';
+import { fallbackChain, SOURCE_LANG, translated, type Lang } from '../locales';
 import type { ConfigOption } from '../api/types';
 import helpTranslations from './configHelp.zh-CN.json' with { type: 'json' };
 
@@ -22,20 +22,24 @@ const CADIRO_OPTIONS: Record<string, Record<string, string>> = {
   'zh-TW': { 'Unspecified arrow': '未指定箭矢', 'Crescendo Arrow': '強鳴箭', 'Splinter Arrow': '斷片箭', 'Reversing Arrow': '迴轉箭', 'Diamond Arrow': '鑽石箭', 'Covetous Arrow': '貪婪箭', 'Blunt Arrow': '重擊箭' },
   'zh-CN': { 'Unspecified arrow': '未指定箭矢', 'Crescendo Arrow': '渐强箭', 'Splinter Arrow': '裂片箭', 'Reversing Arrow': '回转箭', 'Diamond Arrow': '金刚箭', 'Covetous Arrow': '贪婪箭', 'Blunt Arrow': '钝击箭' },
 };
-export function configListOptionLabel(lang: string, text: string): string | undefined {
-  if (lang !== 'zh-CN' && lang !== 'zh-TW') return undefined;
+function legacyConfigLocale(lang: Lang): 'zh-CN' | 'zh-TW' | undefined {
+  for (const locale of fallbackChain(lang)) {
+    if (locale === SOURCE_LANG) return undefined;
+    if (locale === 'zh-CN' || locale === 'zh-TW') return locale;
+  }
+  return undefined;
+}
+
+export function configListOptionLabel(lang: Lang, text: string): string | undefined {
+  const locale = legacyConfigLocale(lang);
+  if (!locale) return undefined;
   const clean = stripConfigMarkup(text);
-  const explicit = CADIRO_OPTIONS[lang]?.[clean];
+  const explicit = CADIRO_OPTIONS[locale]?.[clean];
   if (explicit) return explicit;
   if (/^[\d.+−%-]+$/.test(clean)) return clean;
   const label = LIST_OPTION_ZH[clean];
-  return label ? configCopy(label, lang) : undefined;
+  return label ? configCopy(label, locale) : undefined;
 }
-const CADIRO_HELP: Record<string, string> = {
-  'zh-TW': '僅選定弓箭技能的一支箭矢；未指定時不加成。強鳴箭額外連鎖 6 次，每次已發生的連鎖增加 60% 傷害（使用「技能已連鎖次數」設定）；斷片箭裂化至 6 個目標；迴轉箭穿透所有目標並可返回；鑽石箭必定暴擊，暴擊傷害加成增加 60%；貪婪箭僅在其擊殺時增加 600% 掉落稀有度；重擊箭增加 600% 暈眩累積。不假設機率平均、返回的額外擊中或實際掉落結果。',
-  'zh-CN': '仅选择当前弓箭技能的一支箭矢；未指定时无加成。渐强箭额外连锁 6 次，每次已发生的连锁提高 60% 伤害（使用「技能已连锁次数」设置）；裂片箭分裂至 6 个目标；回转箭贯穿所有目标并可归返；金刚箭必定暴击，暴击伤害加成提高 60%；贪婪箭仅在其击败敌人时提高 600% 掉落稀有度；钝击箭提高 600% 晕眩积蓄。不假设概率平均、归返的额外命中或实际掉落结果。',
-};
-
 const CONFIG_LABEL_TW_OVERRIDES: Record<string, string> = {
   conditionAffectedByArchon: '正受到統治者增益影響？',
   conditionFinality: '你目前擁有終極（無法獲得連擊）？',
@@ -51,49 +55,15 @@ const CONFIG_LABEL_TW_OVERRIDES: Record<string, string> = {
   conditionMinionsOnConsecratedGround: '你的召喚物位於奉獻地面？',
 };
 
-const CONSECRATED_GROUND_HELP: Record<string, string> = {
-  'zh-TW': '僅明確指定的角色視為位於奉獻地面：每秒回復 5% 最大生命，且減少 50% 身上的詛咒效果。不因裝備或啟用護符而假設位於其地面，也不計入你製造的地面效果詞綴。',
-  'zh-CN': '仅明确指定的角色视为位于奉献地面：每秒回复 5% 最大生命，并减少 50% 身上的诅咒效果。不会因装备或启用护符而假设位于其地面，也不计入你创建的地面效果词缀。',
-};
-
-const BEIRA_GROUND_HELP: Record<string, string> = {
-  "zh-TW": "明確指定敵人已因點燃地面累積至少 50% 易燃而受到點燃。裝備或啟用護符不代表已點燃；以目前最大生命作為製造地面時的快照。一般點燃僅取最強來源，多重點燃的跨來源疊加另列且不加入總傷害。不自動估算使用頻率、積累時間、到期或覆蓋率。",
-  "zh-CN": "明确指定敌人已因燃烧地面积累至少 50% 易燃而受到点燃。装备或启用护符不代表已点燃；以当前最大生命作为创建地面时的快照。普通点燃仅取最强来源，多重点燃的跨来源叠加另列且不加入总伤害。不自动估算使用频率、积累时间、到期或覆盖率。"
-};
-
-// 易爆 / 无常 are retained game names; these event controls are application copy.
-const VOLATILITY_HELP: Record<string, Record<string, string>> = {
-  volatilityExplosionQuantity: {
-    'zh-TW': '明確指定你身上單次爆炸的易爆整數層數；未設定或 0 表示停用。受遊戲層數上限限制（預設 200，Controlled Chaos 為 30）。預期重新獲得層數為爆炸層數乘以機率。此快照不賦予層數、不套用易爆增益或計算傷害。',
-    'zh-CN': '明确指定你身上单次爆炸的无常整数层数；未设置或 0 表示停用。受游戏层数上限限制（默认 200，Controlled Chaos 为 30）。预期重新获得层数为爆炸层数乘以几率。此快照不赋予层数、不应用无常增益或计算伤害。',
-  },
-  volatilityExplosionsPerSecond: {
-    'zh-TW': '可選填與指定層數相符、每秒符合條件的爆炸次數；未設定或 0 不估算每秒重新獲得量。重設的四秒計時器與攻擊速度無法確定此頻率。重新獲得的層數不排定後續爆炸，亦不推算循環連鎖或平均覆蓋率。',
-    'zh-CN': '可选填与指定层数相符、每秒符合条件的爆炸次数；未设置或 0 不估算每秒重新获得量。重置的四秒计时器与攻击速度无法确定此频率。重新获得的层数不安排后续爆炸，也不推算循环连锁或平均覆盖率。',
-  },
-};
-
-export function configTooltip(lang: string, variable: string, fallback?: string): string | undefined {
-  // Finality: TW keyword 終極, CN retained stat_lines 绝杀; help is app copy.
-  if (variable === 'conditionFinality') {
-    if (lang === 'zh-TW') return '明確指定目前擁有終極，只禁止此連擊獲取視圖的累積。不推算增益持續時間、跳過打擊或終擊暴擊加成。每次事件從空計數開始，要求其他技能以同一綁定武器成功造成符合條件的擊中。不推算事件頻率或自動消耗連擊。';
-    if (lang === 'zh-CN') return '明确指定当前拥有绝杀，只禁止此连击获取视图的积累。不推算增益持续时间、跳过打击或终击暴击加成。每次事件从空计数开始，要求其他技能以同一绑定武器成功造成符合条件的命中。不推算事件频率或自动消耗连击。';
-  }
-  if (['remnantPickupsPerSecond', 'createdRemnantPickupsPerSecond', 'remnantPickupMissingMana'].includes(variable)) {
-    if (lang === 'zh-TW') return '收集頻率須明確填寫，未填或 0 不產生每秒速率。你的收集次數用於魔力回復；你製造的痕跡被收集次數只用於其固有效果次數。重複賦予效果不增加收集者的魔力回復或增益幅度。回復值為潛在上限，可指定每次收集前缺少的魔力；0 或滿魔力時不回復。未模擬魔力消耗、持續覆蓋或收集時機。';
-    if (lang === 'zh-CN') return '收集频率须明确填写，未填或 0 不产生每秒速率。你的收集次数用于魔力回复；你创建的残迹被收集次数只用于其固有效果次数。重复赋予效果不增加收集者的魔力回复或增益幅度。回复值为潜在上限，可指定每次收集前缺失的魔力；0 或满魔力时不回复。不模拟魔力消耗、持续覆盖或收集时机。';
-  }
-  if (VOLATILITY_HELP[variable]) return VOLATILITY_HELP[variable][lang] ?? fallback;
-  if (variable === 'cadiroArrow') return CADIRO_HELP[lang] ?? fallback;
-  if (variable === 'conditionOnConsecratedGround' || variable === 'conditionMinionsOnConsecratedGround') {
-    return CONSECRATED_GROUND_HELP[lang] ?? fallback;
-  }
-  if (variable === 'conditionBeiraIgniteActive') {
-    return BEIRA_GROUND_HELP[lang] ?? fallback;
-  }
-  if (fallback && (lang === 'zh-CN' || lang === 'zh-TW')) {
+export function configTooltip(lang: Lang, variable: string, fallback?: string): string | undefined {
+  // Specialized explanations are authored app copy; English still displays the engine's text.
+  const copy = translated(lang, 'configHelp', variable);
+  if (copy) return copy;
+  const locale = legacyConfigLocale(lang);
+  if (!locale) return fallback;
+  if (fallback) {
     const translated = (helpTranslations as Record<string, string>)[stripConfigMarkup(fallback)];
-    if (translated) return configCopy(translated, lang);
+    if (translated) return configCopy(translated, locale);
   }
   return fallback;
 }
@@ -813,10 +783,13 @@ export const CONFIG_LABEL_ZH_TW: Record<string, string> = {
   ...CONFIG_LABEL_TW_OVERRIDES,
 };
 
+export function configLabelTranslation(lang: Lang, variable: string): string | undefined {
+  const locale = legacyConfigLocale(lang);
+  return locale === 'zh-TW' ? CONFIG_LABEL_ZH_TW[variable] : locale === 'zh-CN' ? CONFIG_LABEL_ZH[variable] : undefined;
+}
+
 export function configLabel(lang: Lang, option: Pick<ConfigOption, 'var' | 'label'>): string {
   const variable = option.var;
   const fallback = option.label ?? variable;
-  if (lang === 'zh-TW') return CONFIG_LABEL_ZH_TW[variable] ?? stripConfigMarkup(fallback);
-  if (lang === 'zh-CN') return CONFIG_LABEL_ZH[variable] ?? stripConfigMarkup(fallback);
-  return stripConfigMarkup(fallback);
+  return configLabelTranslation(lang, variable) ?? stripConfigMarkup(fallback);
 }

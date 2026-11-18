@@ -9,7 +9,7 @@ import type { TreeEditResult } from '../api/types';
  * 防止乱序返回覆盖新状态。所有后端交互经 `api/backend`。
  */
 
-import { recordWorkspaceBaseline, activeWorkspaceStage, addWorkspaceBuild, appendImportedBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, duplicateWorkspaceBuild, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
+import { recordWorkspaceBaseline, activeWorkspaceStage, addWorkspaceBuild, appendImportedBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, duplicateWorkspaceBuild, isStarterWorkspace, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
 import { mergeLibraries, mergeWorkspaces } from '../lib/workspaceMerge';
 import { formatApiError } from '../api/error';
 import { resolveBuildInput } from '../api/import';
@@ -133,6 +133,7 @@ export interface SyncNotice {
 }
 
 const sameValue = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+const workspaceEpoch = (library: BuildWorkspace | null) => library?.restoreEpoch ?? 0;
 
 /** The library without which build and stage each tab has open: what another tab can have changed. */
 const libraryContent = (library: BuildWorkspace) =>
@@ -224,6 +225,10 @@ export interface BuildSession {
   /** 从导出的 JSON 恢复会话；非法输入抛错。 */
   importSession: (json: string, destination?: ImportDestination) => void;
   importCode: (code: string, options?: ImportOptions) => Promise<boolean>;
+  /** Source of the last successful import, for the transient review notice only. */
+  importSource: 'wegame' | null;
+  /** Whether the library holds only the untouched default stage. */
+  isStarterWorkspace: boolean;
   /** 切到指定 loadout（成组换天赋/装备/技能）；会覆盖本地编辑。 */
   switchLoadout: (sel: SetSelection) => Promise<void>;
   /** 当前 build 的 loadout 清单（导入后可用；手搓 build 为空）。 */
@@ -447,6 +452,10 @@ export interface SavedSession {
   notes: string;
 }
 
+function isCharacterLevel(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 100;
+}
+
 /** 解析并校验存档信封（导入文件 / localStorage 共用）；非法返回 null。 */
 export function parseSaved(json: string): SavedSession | null {
   try {
@@ -471,8 +480,8 @@ export function parseSaved(json: string): SavedSession | null {
     const state = parsed.state;
     const character = state.character;
     if (!record(character) || typeof character.class_name !== 'string'
-      || !optionalText(character.ascendancy_name) || !optionalIndex(character.level, 1)
-      || Number(character.level ?? 1) > 100 || !optionalBool(state.sourceBackfillComplete) || !optionalText(state.pobCode) || !optionalText(state.treeVersion)
+      || !optionalText(character.ascendancy_name) || !isCharacterLevel(character.level ?? 1)
+      || !optionalBool(state.sourceBackfillComplete) || !optionalText(state.pobCode) || !optionalText(state.treeVersion)
       || !nodes(state.allocatedNodes) || !Array.isArray(state.socketGroups)
       || !itemList(state.items)) return null;
     const socketGroups: SocketGroupInput[] = [];
@@ -734,6 +743,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const [treeMeta, setTreeMeta] = useState<PassiveTreeMeta | null>(null);
   const [classNames, setClassNames] = useState<ClassNames>({ classes: {}, ascendancies: {} });
   const [build, setBuild] = useState<BuildJson | null>(null);
+  const [importSource, setImportSource] = useState<BuildSession['importSource']>(null);
   const [state, setState] = useState<BuildState | null>(null);
   const buildRef = useRef(build);
   buildRef.current = build;
@@ -768,21 +778,28 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     setSyncNotice({ kind, id: Date.now() });
     noticeTimer.current = window.setTimeout(() => setSyncNotice(null), 10_000);
   }, []);
-  const persistWorkspace = useCallback((next: BuildWorkspace) => {
+  const persistWorkspace = useCallback((next: BuildWorkspace, replaceStored = false) => {
     let write = next;
     let conflicts: string[] = [];
+    const base = syncedRef.current.library;
+    let epoch = workspaceEpoch(base);
     try {
       const stored = localStorage.getItem(STORAGE.workspace);
       if (stored !== null && stored !== syncedRef.current.raw) {
-        // Another tab wrote since this one last read or wrote: keep what it changed.
         const theirs = readStoredWorkspace(stored, () => retainWorkspaceRecovery(stored));
-        if (theirs) {
-          ({ workspace: write, conflicts } = mergeWorkspaces(syncedRef.current.library, next, theirs));
+        if (theirs && workspaceEpoch(theirs) >= epoch) {
+          // Merge within one generation. An edit made before a restore can't revive its old workspace.
+          if (!replaceStored) {
+            if (workspaceEpoch(theirs) > epoch) write = theirs;
+            else ({ workspace: write, conflicts } = mergeWorkspaces(base, next, theirs));
+          }
+          epoch = workspaceEpoch(theirs);
           // Recovery may pause the write below; this stored revision was still consumed.
           syncedRef.current = { raw: stored, library: theirs };
         }
       }
     } catch { /* storage cannot be read: write as before */ }
+    if (replaceStored) write = { ...next, restoreEpoch: Math.max(Date.now(), epoch + 1) };
     workspaceRef.current = write;
     setWorkspace(write);
     // Keep unreadable entries recoverable; never replace their only stored copy.
@@ -794,18 +811,19 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         setStorageFailed(false);
       } catch { setStorageFailed(true); }
     }
-    if (write !== next && !sameValue(libraryContent(write), libraryContent(next))) {
+    if (!replaceStored && write !== next && (workspaceEpoch(write) !== workspaceEpoch(next)
+      || !sameValue(libraryContent(write), libraryContent(next)))) {
       const { viewChanged, kind } = mergeEffect(next, write, conflicts);
       announce(kind);
       // The stage on screen is not the stored one any more: show the stored one, after this edit is done.
-      if (viewChanged) queueMicrotask(() => refreshViewRef.current(write));
+      if (viewChanged || workspaceEpoch(write) !== workspaceEpoch(next)) queueMicrotask(() => refreshViewRef.current(write));
     }
   }, [announce, retainWorkspaceRecovery]);
-  const saveToStorage = useCallback((next: BuildState, text: string, preserveVersion = false) => {
+  const saveToStorage = useCallback((next: BuildState, text: string, preserveVersion = false, replaceStored = false) => {
     const version = preserveVersion && workspaceRef.current
       ? activeWorkspaceStage(workspaceRef.current).saved.data_version : dataVersionRef.current;
     const saved: SavedSession = { version: 1, state: next, notes: text, ...(version ? { data_version: version } : {}) };
-    persistWorkspace(updateWorkspaceStage(workspaceRef.current ?? createWorkspace(saved), saved, draftsRef.current));
+    persistWorkspace(updateWorkspaceStage(workspaceRef.current ?? createWorkspace(saved), saved, draftsRef.current), replaceStored);
   }, [persistWorkspace]);
   const setEditorDraft = useCallback((key: string, text: string | null) => {
     if ((draftsRef.current[key] ?? null) === text) return;
@@ -905,7 +923,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
 
   /** 应用新状态并触发重算 + 自动保存到浏览器。 */
   const apply = useCallback(
-    (next: BuildState, opts?: { clean?: boolean; treeEdit?: boolean; undo?: boolean; auto?: boolean }) => {
+    (next: BuildState, opts?: { clean?: boolean; treeEdit?: boolean; undo?: boolean; auto?: boolean; replaceStored?: boolean }) => {
       const previous = stateRef.current;
       if (opts?.clean) { editHistory.current = []; redoHistory.current = []; }
       else if (!opts?.undo && !opts?.auto && previous) {
@@ -937,7 +955,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         draftsRef.current = {};
         setEditorDrafts({});
       }
-      saveToStorage(next, notesRef.current, opts?.auto);
+      saveToStorage(next, notesRef.current, opts?.auto, opts?.replaceStored);
       recalc(next);
       // Nothing selected: default to the highest-DPS skill, once. The choice is
       // then pinned like an explicit one, so later edits never move it.
@@ -1101,6 +1119,8 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         const decoded = isBuildFile
           ? await backend.decodeBuildFile(code)
           : await backend.decodeBuild(code);
+        if (!isCharacterLevel(decoded.character.level)) throw new Error('build.invalidLevel');
+        const source = isBuildFile && JSON.parse(code).format === 'wegame' ? 'wegame' : null;
         // <Notes> 里可能带 PoBR 注释标记段：拆成总览笔记 + 局部注释。
         const { overview, annotations } = splitNotes(decoded.notes ?? '');
         const importedState: BuildState = {
@@ -1129,6 +1149,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         mergeImportedIntoLibrary(decoded, nextWorkspace);
         workspaceRef.current = nextWorkspace;
         setBuild(decoded);
+        setImportSource(source);
         // Do not persist imported notes into the stage being left behind.
         notesRef.current = overview;
         setNotesState(overview);
@@ -1579,7 +1600,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     }
   }, [apply]);
 
-  const restoreSession = useCallback((saved: SavedSession, drafts: Record<string, string>) => {
+  const restoreSession = useCallback((saved: SavedSession, drafts: Record<string, string>, replaceStored = false) => {
     if (workspaceRef.current) workspaceRef.current = updateWorkspaceStage(workspaceRef.current, saved, drafts);
     setSocketGroupRevision(value => value + 1);
     setBuild(null);
@@ -1593,7 +1614,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     editHistory.current = [];
     redoHistory.current = [];
     treeHistory.current = [];
-    apply(saved.state, { auto: true });
+    apply(saved.state, { auto: true, replaceStored });
     // Decode only display/export metadata. A delayed response must never replace
     // a newer stage or edits made while it was loading.
     const restoredState = stateRef.current;
@@ -1645,14 +1666,22 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       const raw = stored;
       const theirs = readStoredWorkspace(raw, () => retainWorkspaceRecovery(raw));
       if (!theirs) return;
-      const { workspace: merged, conflicts } = mergeWorkspaces(syncedRef.current.library, mine, theirs);
+      const base = syncedRef.current.library;
+      const epoch = workspaceEpoch(theirs);
+      if (epoch < workspaceEpoch(base)) {
+        // A stale writer raced the restore; put the newer generation back.
+        persistWorkspace(mine);
+        return;
+      }
+      const replaced = epoch > workspaceEpoch(base);
+      const { workspace: merged, conflicts } = replaced ? { workspace: theirs, conflicts: [] } : mergeWorkspaces(base, mine, theirs);
       syncedRef.current = { raw: stored, library: theirs };
-      if (sameValue(libraryContent(merged), libraryContent(mine))) return;
+      if (!replaced && sameValue(libraryContent(merged), libraryContent(mine))) return;
       const { viewChanged, kind } = mergeEffect(mine, merged, conflicts);
       workspaceRef.current = merged;
       setWorkspace(merged);
       announce(kind);
-      if (viewChanged) showLibraryStage(merged);
+      if (replaced || viewChanged) showLibraryStage(merged);
       // Only what this tab alone holds needs writing back; the rest is what the other tab stored.
       else if (!sameValue(libraryContent(merged), libraryContent(theirs))) persistWorkspace(merged);
     };
@@ -1676,6 +1705,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       workspaceRef.current = appendImportedBuild(workspaceRef.current, build, defaultStarterRef.current);
       const stage = activeWorkspaceStage(workspaceRef.current);
       restoreSession(stage.saved, stage.drafts);
+      setImportSource(null);
       return;
     }
     if (input.workspace !== undefined) {
@@ -1683,7 +1713,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       if (!restored || isolated) throw new Error('invalid workspace file');
       workspaceRef.current = restored;
       const stage = activeWorkspaceStage(restored);
-      restoreSession(stage.saved, stage.drafts);
+      restoreSession(stage.saved, stage.drafts, true);
     } else {
       const saved = parseSaved(json);
       if (!saved) throw new Error('invalid session file');
@@ -1693,6 +1723,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       }
       restoreSession(saved, {});
     }
+    setImportSource(null);
   }, [restoreSession, classNames, lang]);
 
   const selectStage = useCallback((buildId: string, stageId?: string) => {
@@ -1913,6 +1944,8 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     exportBuildFiles,
     importSession,
     importCode,
+    importSource,
+    isStarterWorkspace: !workspace || isStarterWorkspace(workspace, defaultStarterRef.current),
     switchLoadout,
     manageLoadout,
     changeNamedSet,

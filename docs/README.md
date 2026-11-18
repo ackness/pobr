@@ -11,7 +11,7 @@
 | --- | --- |
 | 了解功能、导入自己的 BD | [项目介绍（中文）](../README.zh-CN.md) / [English](../README.md) |
 | 在本地运行 Web 应用 | [Web 安装与使用（中文）](../web/README.zh-CN.md) / [English](../web/README.md) |
-| 了解不同导入格式保留什么 | [导入格式](import-formats.md)、[WeGame 分享链接](wegame-import.md) |
+| 粘贴分享码、从文件导入或把 BD 迁到另一台设备 | [导入和分享格式](import-formats.md)、[本地 BD 库备份范围](web-contracts.md#web-build-workspace)、[WeGame 分享链接](wegame-import.md) |
 | 理解换装、市集与珠宝搜索 | [Web 功能约定](web-contracts.md#upgrade-guidance)、[市集词缀](trade-special-affixes.md)、[珠宝搜索](jewel-search.md) |
 | 查看界面与示例输入 | [截图与来源](screenshots/README.md) |
 | 报告问题或贡献改动 | [贡献指南](../CONTRIBUTING.md)、[安全报告](../SECURITY.md) |

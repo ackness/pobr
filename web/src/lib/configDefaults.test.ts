@@ -54,7 +54,7 @@ test('Beira ground requires an explicit established Ignite and defaults off', ()
   expect(CONFIG_LABEL_ZH[option.var]).toContain('点燃');
   const words = JSON.parse(readFileSync(new URL(`../../../data/${version}/i18n/zh-CN/words.json`, import.meta.url), 'utf8'));
   expect(CONFIG_LABEL_ZH[option.var]).toContain(words["Beira's Anguish"]);
-  for (const lang of ['zh-TW', 'zh-CN']) {
+  for (const lang of ['zh-TW', 'zh-CN'] as const) {
     expect(configTooltip(lang, option.var, option.tooltip)).toContain('50%');
     expect(configTooltip(lang, option.var, option.tooltip)).toContain('最大生命');
   }

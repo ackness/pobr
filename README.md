@@ -36,7 +36,7 @@ interface. They illustrate the app, not a recommended build.
 
 - **Compare an item before buying.** Paste a complete item copied from the market
   and see its effect on damage per second (DPS), effective hit pool (EHP) and
-  resistances across compatible equipment slots.
+  resistances across compatible equipped slots and allocated jewel sockets.
 - **Find support combinations for your skill.** Compare evaluated gem sets,
   exclude supports you do not want to use, and preview level or quality upgrades.
 - **Plan your next passive points.** Explore connected routes that include travel
@@ -50,9 +50,10 @@ interface. They illustrate the app, not a recommended build.
 
 1. [Open the web app](https://pobr.win), then choose **Build library** in the top
    bar, or **Import or create a build** on the empty Overview.
-2. Paste a **PoB2 build code** or a **WeGame PoE2 share link** and import it.
-   You can also import supported build-share links, an in-game planner or
-   China-client `.build` file, or start a new character.
+2. Open **Import a build** and paste a **PoB2 build code** or a supported share
+   link such as **WeGame PoE2** or a poe.ninja build-share page. Use **Import from
+   file** for a game planner or older China-client `.build` file, or a PoBR save
+   or backup. You can also start a new character.
 3. Check your main skill, combat configuration and unsupported effects, then use
    **Upgrades**, **Skills** or **Tree** to compare changes.
 
@@ -66,10 +67,12 @@ destination only when you want to replace that stage. Tabs on the same origin
 coordinate library changes. **`pobr.win` and `pobr-web.pages.dev` keep separate
 local saves**; use a file to move builds between them.
 
-Share a build with all its stages as JSON, or export a PoB2 build code. Download
-a workspace backup to keep every build, stage and unapplied editor draft or move
-devices. Restoring that backup replaces the whole local collection after
-confirmation, so back up your current workspace before restoring another one.
+**Download this build (all stages)** includes stage notes and any recorded
+comparison baseline, which can contain older notes. A PoB2 code carries only the
+current stage and its imported PoB loadouts. **Back up local builds** includes
+all builds, stages, baselines and unapplied drafts. Restoring it replaces your
+local build library after confirmation. Keep your item, jewel and reusable skill
+template libraries separately when moving devices.
 
 Import formats carry different information: an in-game planner file does not
 contain a complete equipped character. [See what each format preserves](docs/import-formats.md).

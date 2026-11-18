@@ -98,9 +98,13 @@ test('modified filtering excludes defaults, composes with search and follows res
   await page.getByRole('radio', { name: /^Modified/ }).click();
   await expect(page.locator('#config-conditionEnemyShocked')).toBeChecked();
   await search.fill('no-such-condition');
-  await page.locator('.search-empty').getByRole('button', { name: 'All', exact: true }).click();
-  await expect(search).toHaveValue('');
+  const noResults = page.locator('.search-empty');
+  await noResults.getByRole('button', { name: 'All', exact: true }).click();
   await expect(page.getByRole('radio', { name: 'All', exact: true })).toBeChecked();
+  await expect(search).toHaveValue('no-such-condition');
+  await noResults.getByRole('button', { name: 'Clear search', exact: true }).click();
+  await expect(search).toHaveValue('');
+  await expect(noResults).toHaveCount(0);
   expect((await saved(page)).params.config_inputs).toMatchObject({ buffOnslaught: false, conditionEnemyShocked: true });
 });
 

@@ -1,11 +1,13 @@
 import type { CraftingMetadata } from '../api/itemCrafting';
 import { basesForSlot, type TradeBase, type TradeCatalog } from './tradeOptimizer';
 import { bindT, slotLabel, type Lang } from './i18n';
+import { legacyGameLocale } from './gameLocales';
 
 export interface CraftBase extends TradeBase { id: string; itemClass: string; displayNames?: CraftingMetadata['bases'][number]['display_names'] }
 export interface CraftCatalog extends TradeCatalog { bases: CraftBase[]; missingMods: number }
 export function craftBaseDisplayName(base: CraftBase, lang: Lang, fallback: string): string {
-  return (lang === 'en-US' ? undefined : base.displayNames?.[lang]) ?? fallback;
+  const locale = legacyGameLocale(lang);
+  return (locale && base.displayNames?.[locale]) ?? fallback;
 }
 
 const fixedItemClassLabel = (name: string, lang: Lang) =>

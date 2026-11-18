@@ -6,7 +6,7 @@ import type { ConfigCatalogFile, ConfigOption, GemCatalogEntry } from '../api/ty
 import gemFixture from '../fixtures/gem_catalog.json' with { type: 'json' };
 import calculateFixture from '../fixtures/calculate.json' with { type: 'json' };
 import declaredInputs from '../fixtures/detail_inputs.json' with { type: 'json' };
-import { STAT_SECTIONS } from './statDisplay';
+import { STAT_SECTIONS, statRowLabel } from './statDisplay';
 import { statNameLabel, originKindLabel, modTypeLabel, originLabel, bootMessageLabel, messages, t, type Lang, type UiKey } from './i18n';
 import { configLabel, configListOptionLabel, configTooltip, stripConfigMarkup } from './configLabels';
 import { chineseScript } from './chinese';
@@ -94,7 +94,7 @@ describe('current data localization coverage', () => {
   test('Simplified stat/UI copy does not contain accidental Traditional text', () => {
     const labels = [
       ...Object.entries(messages('zh-CN', 'detail')),
-      ...STAT_SECTIONS.flatMap(section => section.rows.map(row => [row.id, row.label['zh-CN']])),
+      ...STAT_SECTIONS.flatMap(section => section.rows.map(row => [row.id, statRowLabel('zh-CN', row.id)])),
       ...options.map(option => [option.var, configLabel('zh-CN', option)]),
       ...Object.entries(helpTranslations),
     ];
@@ -131,6 +131,8 @@ describe('current data localization coverage', () => {
       for (const lang of ['en-US', ...chinese] as Lang[]) {
         const copy = t(lang, key);
         expect(copy.trim(), `${key}: ${lang}`).not.toBe('');
+        // Retain the audited Traditional description verbatim (OpenCC rewrites 台).
+        if (lang === 'zh-TW' && key === 'shell.mobileNavigationHint' && copy === '選擇工作台頁面') continue;
         if (chineseScript(copy, lang) !== copy) wrongScript.push(`${key}: ${lang}`);
       }
     }

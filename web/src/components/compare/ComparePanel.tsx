@@ -1,6 +1,8 @@
 import { encounterTierLabel } from '../../lib/configEncounter';
 import { buildDisplayName, stageDisplayName } from '../../lib/workspaceNames';
 import { AppButton, AppInput, AppSelectControl } from '../shared/controls';
+import { useAppDialogs } from '../shared/AppDialogs';
+import { useSessionAction } from '../shared/useSessionAction';
 import { Tabs as TabsPrimitive } from 'radix-ui';
 import { useEffect, useMemo, useState } from 'react';
 import type { BuildSession } from '../../hooks/useBuildSession';
@@ -12,11 +14,11 @@ import { compareBuilds, comparisonGemForm, hasComparisonSource, isPercentageStat
 import { bindT, slotLabel, statCategoryLabel, statNameLabel, t, type Lang } from '../../lib/i18n';
 import { activeSkillEffects } from '../../lib/skillSelection';
 import { skillDisplayName } from '../../lib/skillNames';
-import { displayStatDefinition, formatNumber, STAT_SECTIONS, statFormat, formatStatValue, type StatSectionDef } from '../../lib/statDisplay';
+import { displayStatDefinition, formatNumber, STAT_SECTIONS, statFormat, formatStatValue, type StatFormat, statRowLabel, statSectionLabel } from '../../lib/statDisplay';
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { PageHeader } from '../shared/PageHeader';
 import { Button } from '../ui/button';
-import { words, colon } from '../../app/text';
+import { colon } from '../../app/text';
 import { useNavigateToPage } from '../../app/pages/navigate';
 import { COMPARE_TABS, defaultCompareTab, deltaTone, headlineDeltas, signedPercent, summaryLine, treeDifferenceCount, type CompareTab, type DiffCounts } from '../../app/pages/compare/summary';
 import './compare.css';
@@ -28,9 +30,26 @@ import { baselineTime } from '../../lib/comparisonBaseline';
 import { headlineDpsStat, mainMinion, minionDpsNote } from '../../lib/mainMinion';
 import { useLocalizedNames } from '../../hooks/useLocalizedLines';
 
+function formatComparisonValue(value: number, format: StatFormat, lang: Lang, unrounded: boolean) {
+  if (!unrounded) return formatStatValue(value, format, lang);
+  if (format === 'modifier' || format === 'chanceMultiplier') {
+    const percent = (value - 1) * 100;
+    return `${format === 'modifier' && percent >= 0 ? '+' : ''}${percent}%`;
+  }
+  return `${value}${format === 'percent' ? '%' : ''}`;
+}
+
+function comparisonDelta(delta: number | null, format: StatFormat, lang: Lang, unrounded: boolean) {
+  if (!unrounded || delta === null) return formatComparisonDelta(delta, format, lang);
+  const value = format === 'modifier' || format === 'chanceMultiplier' ? delta * 100 : delta;
+  return `${value > 0 ? '+' : ''}${value}${isPercentageStat(format) ? t(lang, 'compare.pointUnit') : ''}`;
+}
+
 export function ComparePanel({ session, lang }: { session: BuildSession; lang: Lang }) {
   const goTo = useNavigateToPage();
   const tt = bindT(lang);
+  const dialogs = useAppDialogs(lang);
+  const captureAction = useSessionAction(session);
   const catalog = useSkillCatalog();
   const entries = useMemo(() => session.workspace?.builds.flatMap((build, buildIndex) => build.stages.map((stage, stageIndex) => ({
     buildId: build.id, stageId: stage.id, saved: stage.saved, drafts: stage.drafts,
@@ -62,41 +81,58 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
       .catch(error => { if (!cancelled) setResult({ key, error: formatApiError(error) }); });
     return () => { cancelled = true; };
   }, [key]);
+  const [unrounded, setUnrounded] = useState(false);
   const current = result?.key === key ? result : null;
   const loading = !current;
   const value = current?.value;
   const drafts = !!a && Object.keys(a.drafts).length > 0;
-  const canApply = !!value && !loading && !session.busy && a !== b && !drafts && a !== baseline && b !== baseline;
-  const apply = (section: CopySection) => {
+  const readOnly = !!baseline && (a === baseline || b === baseline);
+  const canApply = !!value && !session.busy && a !== b && !drafts && !readOnly;
+  const copyLabel = (template: string, title = '') => template.replace(/\{(source|target|section)\}/g, (_, token) =>
+    token === 'section' ? title : (token === 'source' ? b : a)?.label ?? '');
+  const apply = async (section: CopySection, title: string, trigger: HTMLElement) => {
     if (!a || !b || !canApply || !hasComparisonSource(b.saved.state, section)) return;
+    const replacesMainSkill = section.kind === 'skill' && b.saved.state.params.main_socket_group === section.index
+      && a.saved.state.params.main_socket_group !== section.index;
+    if (hasComparisonSource(a.saved.state, section) || replacesMainSkill) {
+      const valid = captureAction();
+      const message = copyLabel(tt('compare.confirmCopy'), title);
+      const detail = replacesMainSkill ? ` ${tt('compare.confirmMainSkill')}` : '';
+      if (!await dialogs.confirm(message + detail, tt('compare.confirmAction'), trigger) || !valid()) return;
+    }
     const next = copySection(a.saved.state, b.saved.state, section);
-    setMessage(session.applyComparedStage(a, b, next) ? tt('compare.applied') : tt('compare.stale'));
+    setMessage(session.applyComparedStage(a, b, next) ? copyLabel(tt('compare.applied')) : tt('compare.stale'));
   };
-  const applyButton = (section: CopySection, append = false) => {
-    if (baseline && (a === baseline || b === baseline)) return null;
+  const applyButton = (section: CopySection, title: string) => {
+    if (readOnly) return null;
     const hasSource = !!b && hasComparisonSource(b.saved.state, section);
-    return <AppButton type="button" disabled={!canApply || !hasSource}
-      onClick={() => apply(section)}>{tt(!hasSource ? 'compare.emptySource' : append ? 'compare.append' : 'compare.apply')}</AppButton>;
+    const append = section.kind === 'skill' && !!a && section.index >= a.saved.state.socketGroups.length;
+    return <AppButton type="button" className="cmp-copy" disabled={!canApply || !hasSource}
+      onClick={event => void apply(section, title, event.currentTarget)}>{copyLabel(tt(!hasSource ? 'compare.emptySource' : append ? 'compare.append' : 'compare.apply'))}</AppButton>;
   };
   const sections = useMemo(() => {
-    const ordered: StatSectionDef[] = [{ title: { 'en-US': t('en-US', 'sidebar.mainSkill'), 'zh-TW': t('zh-TW', 'sidebar.mainSkill'), 'zh-CN': t('zh-CN', 'sidebar.mainSkill') },
+    type Section = { title: string; rows: { id: string; label: string }[] };
+    const ordered: Section[] = [{ title: t(lang, 'sidebar.mainSkill'),
       rows: ([['MainMinionDPS', 'sidebar.minionHitDps'], ['MainSkillHitDPS', 'sidebar.hitDps'], ['MainSkillDotDPS', 'sidebar.dotDps'], ['MainSkillCombinedDPS', 'sidebar.combinedDps']] as const)
-        .map(([id, label]) => ({ id, label: { 'en-US': t('en-US', label), 'zh-TW': t('zh-TW', label), 'zh-CN': t('zh-CN', label) } })),
-    }, ...STAT_SECTIONS];
+        .map(([id, label]) => ({ id, label: t(lang, label) })),
+    }, ...STAT_SECTIONS.map(section => ({
+      title: statSectionLabel(lang, section),
+      rows: section.rows.map(({ id }) => ({ id, label: statRowLabel(lang, id) })),
+    }))];
     const listed = new Set(ordered.flatMap(section => section.rows.map(row => row.id)));
-    const extra = new Map<string, StatSectionDef>();
+    const extra = new Map<string, Section>();
     for (const row of value?.stats ?? []) {
       if (listed.has(row.id)) continue;
       const category = displayStatDefinition(row.id)?.category ?? 'Other';
       let section = extra.get(category);
       if (!section) {
-        section = { title: { 'en-US': statCategoryLabel('en-US', category), 'zh-CN': statCategoryLabel('zh-CN', category), 'zh-TW': statCategoryLabel('zh-TW', category) }, rows: [] };
+        section = { title: statCategoryLabel(lang, category), rows: [] };
         extra.set(category, section);
       }
-      section.rows.push({ id: row.id, label: { 'en-US': statNameLabel('en-US', row.id), 'zh-CN': statNameLabel('zh-CN', row.id), 'zh-TW': statNameLabel('zh-TW', row.id) } });
+      section.rows.push({ id: row.id, label: statNameLabel(lang, row.id) });
     }
     return { list: [...ordered, ...extra.values()], appended: new Set([...extra.values()].flatMap(section => section.rows.map(row => row.id))) };
-  }, [value]);
+  }, [value, lang]);
   const absent = tt('compare.notSet');
   const skill = (group: SocketGroupInput | undefined, main: boolean, other: SocketGroupInput | undefined) => {
     if (!group) return <p>{absent}</p>;
@@ -119,7 +155,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
   };
   const textRow = (id: string, title: string, before: string | undefined, after: string | undefined, section: CopySection) => {
     return <article className="compare-difference" key={id} data-item={id}>
-      <header><h4>{title}</h4>{applyButton(section)}</header>
+      <header><h4>{title}</h4>{applyButton(section, title)}</header>
       <div className="compare-pair">{[before, after].map((text, index) => <div key={index}>
         <strong>{tt(index === 0 ? 'compare.before' : 'compare.after')}</strong>
         {text ? <ItemDisplay rawDetails text={text} lang={lang} /> : <p>{absent}</p>}
@@ -166,34 +202,41 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
     items: itemChanges.length + weaponChanges.length, skills: skillChanges.length, config: configChanges.length, tree: treeChanges ?? 0,
   };
   const activeTab: CompareTab = tab ?? (value ? defaultCompareTab(counts) : 'stats');
-  const tabLabel: Record<CompareTab, string> = { stats: words(lang, 'Stats', '属性', '屬性'), items: tt('tab.items'), skills: tt('tab.skills'), config: tt('tab.config'), tree: tt('tab.tree') };
+  const tabLabel: Record<CompareTab, string> = { stats: tt('compare.stats'), items: tt('tab.items'), skills: tt('tab.skills'), config: tt('tab.config'), tree: tt('tab.tree') };
   const minionOutput = mainMinion(value?.after) ? value?.after : value?.before;
   const headlines = value ? headlineDeltas(value.stats, headlineDpsStat(minionOutput)) : [];
   const minion = mainMinion(minionOutput);
   const [minionName] = useLocalizedNames(minion ? [{ kind: 'monster', id: minion.monster_variety_id, name: minion.name }] : [], lang);
   return <section className="compare-panel" aria-labelledby="compare-heading">
-    <PageHeader id="compare-heading" title={tt('compare.title')} description={tt('compare.hint')} />
+    <PageHeader id="compare-heading" title={tt('compare.title')} description={tt(readOnly ? 'compare.readOnly' : a && b && a !== b ? 'compare.editable' : 'compare.hint')} />
     <TabsPrimitive.Root className="cmp-root" value={activeTab} onValueChange={next => setTab(next as CompareTab)}>
       <div className="cmp-bar">
         {stagePickers}
       </div>
       <div className="cmp-context">
-        <div className="cmp-identities">{([['A', a], ['B', b]] as const).map(([side, entry]) => entry && <small key={side}>{side} · {identity(entry)}</small>)}</div>
-        <label className="cmp-config-basis">{tt('compare.basis')}
-          <AppSelectControl aria-label={tt('compare.basis')} value={basis} onChange={event => setBasis(event.target.value as ConfigBasis)}>
-            <option value="own">{tt('compare.own')}</option><option value="a">{tt('compare.useA')}</option>
-          </AppSelectControl>
-        </label>
-        <p className="cmp-note">{tt('compare.direction')}</p>
-        {baseline && <p className="cmp-note">{tt('compare.baselineHint')}</p>}
+        <div className="cmp-identities">{([['A', a], ['B', b]] as const).map(([side, entry]) => {
+          if (!entry) return null;
+          const role = entry === baseline ? tt('compare.snapshot')
+            : readOnly || a === b ? tt('compare.stageRole') : tt(side === 'A' ? 'compare.target' : 'compare.candidate');
+          return <small key={side}><strong>{side} · {role}</strong> · {identity(entry)}</small>;
+        })}</div>
+        <div className="cmp-config-basis">
+          <label>{tt('compare.basis')}
+            <AppSelectControl aria-label={tt('compare.basis')} aria-describedby="compare-basis-scope" value={basis} onChange={event => setBasis(event.target.value as ConfigBasis)}>
+              <option value="own">{tt('compare.own')}</option><option value="a">{tt('compare.useA')}</option>
+            </AppSelectControl>
+          </label>
+          <small id="compare-basis-scope">{tt('compare.basisScope')}</small>
+        </div>
+        {a && b && <p className="cmp-note">{tt('compare.direction')}</p>}
         {a && b && <div className="cmp-summary" role="status">
           {loading ? <span>{tt('compare.calculating')}</span> : <>
-            {headlines.map(line => <span className="cmp-headline" key={line.id} data-tone={line.tone}>{statDefs.get(line.id)?.label[lang] ?? statNameLabel(lang, line.id)} <b>{signedPercent(line.percent)}</b></span>)}
+            {headlines.map(line => <span className="cmp-headline" key={line.id} data-tone={line.tone}>{statDefs.get(line.id)?.label ?? statNameLabel(lang, line.id)} <b>{signedPercent(line.percent)}</b></span>)}
             <span className="cmp-sentence">{summaryLine(lang, counts)}{treeChanges === null && ` ${tt('compare.treeMismatch')}`}</span></>}
         </div>}
         {minion && <p className="cmp-note">{minionDpsNote(lang, minionName ?? minion.name, minionOutput?.stats.find(stat => stat.id === 'ActiveMinionLimit')?.value)}</p>}
         {a && b && <>
-          <TabsPrimitive.List className="cmp-tablist segmented" aria-label={words(lang, 'Comparison sections', '对比分区', '比較分區')}>
+          <TabsPrimitive.List className="cmp-tablist segmented" aria-label={tt('compare.sections')}>
             {COMPARE_TABS.map(id => <TabsPrimitive.Trigger key={id} value={id} className="cmp-tab">
               {tabLabel[id]}<span className="cmp-count" data-zero={counts[id] === 0 || (id === 'stats' && !value) || undefined}>{id === 'stats' && !value ? '…' : id === 'tree' && treeChanges === null ? '≠' : counts[id]}</span>
             </TabsPrimitive.Trigger>)}
@@ -210,21 +253,30 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
           {value && <article className="compare-summary cmp-stats">
             <h3 className="sr-only">{tt('compare.summary')}</h3>
             <div className="cmp-toolbar">
-              <label className="cmp-toggle"><AppInput type="checkbox" checked={changedOnly} onChange={event => setChangedOnly(event.target.checked)} /> {tt('compare.changed')}</label>
-              <p className="cmp-note">{tt('compare.percentHint')}</p>
+              <div className="cmp-toggles">
+                <label className="cmp-toggle"><AppInput type="checkbox" checked={changedOnly} onChange={event => setChangedOnly(event.target.checked)} /> {tt('compare.changed')}</label>
+                <label className="cmp-toggle"><AppInput type="checkbox" checked={unrounded} onChange={event => setUnrounded(event.target.checked)} /> {tt('compare.showPrecision')}</label>
+              </div>
+              <p className="cmp-note">{tt('compare.precisionHint')} {tt('compare.percentHint')}</p>
             </div>
-            {!(changedOnly && counts.stats === 0) && <div className="compare-table-wrap"><table><thead><tr><th scope="col">{tt('compare.summary')}</th><th scope="col">{tt('compare.before')}</th><th scope="col">{tt('compare.after')}</th><th scope="col">{tt('compare.delta')}</th><th scope="col">{tt('compare.percent')}</th></tr></thead>
+            {!(changedOnly && counts.stats === 0) && <div className="compare-table-wrap" data-unrounded={unrounded || undefined}><table><thead><tr><th scope="col">{tt('compare.summary')}</th><th scope="col">{tt('compare.before')}</th><th scope="col">{tt('compare.after')}</th><th scope="col">{tt('compare.delta')}</th><th scope="col">{tt('compare.percent')}</th></tr></thead>
             {sections.list.map(section => {
               const rows = section.rows.map(def => ({ def, row: comparedStats.get(def.id) }))
                 // Stats outside the preferred sections appear only when they carry a value.
                 .filter(({ def, row }) => row && (!changedOnly || row.changed)
                   && (row.changed || !sections.appended.has(def.id) || [row.before, row.after].some(number => typeof number === 'number' && number !== 0)));
               if (!rows.length) return null;
-              return <tbody key={section.rows[0].id}><tr className="cmp-section-row"><th scope="rowgroup" colSpan={5}>{section.title[lang]}</th></tr>{rows.map(({ def, row: maybe }) => { const row = maybe!; const tone = deltaTone(row.id, row.delta); const format = statFormat(row.id); return <tr key={row.id} data-stat={row.id}>
-                  <th scope="row">{def.label[lang]}</th>{[row.before, row.after].map((number, i) => <td key={i} data-label={i === 0 ? 'A' : 'B'}>{typeof number === 'number' && Number.isFinite(number) ? formatStatValue(number, format, lang) : number === Infinity ? '∞' : number === -Infinity ? '−∞' : <span role="img" aria-label={tt('compare.unavailable')}>—</span>}</td>)}
-                  <td className="cmp-delta" data-tone={tone} data-label={tt(isPercentageStat(format) ? 'compare.points' : 'compare.delta')} aria-label={isPercentageStat(format) ? `${tt('compare.points')}${colon(lang)}${formatComparisonDelta(row.delta, format, lang)}` : undefined}>{formatComparisonDelta(row.delta, format, lang)}</td>
+              return <tbody key={section.rows[0].id}><tr className="cmp-section-row"><th scope="rowgroup" colSpan={5}>{section.title}</th></tr>{rows.map(({ def, row: maybe }) => {
+                const row = maybe!;
+                const tone = deltaTone(row.id, row.delta);
+                const format = statFormat(row.id);
+                const delta = comparisonDelta(row.delta, format, lang, unrounded);
+                return <tr key={row.id} data-stat={row.id}>
+                  <th scope="row">{def.label}</th>{[row.before, row.after].map((number, i) => <td key={i} data-label={i === 0 ? 'A' : 'B'}>{typeof number === 'number' && Number.isFinite(number) ? formatComparisonValue(number, format, lang, unrounded) : number === Infinity ? '∞' : number === -Infinity ? '−∞' : <span role="img" aria-label={tt('compare.unavailable')}>—</span>}</td>)}
+                  <td className="cmp-delta" data-tone={tone} data-label={tt(isPercentageStat(format) ? 'compare.points' : 'compare.delta')} aria-label={isPercentageStat(format) ? `${tt('compare.points')}${colon(lang)}${delta}` : undefined}>{delta}</td>
                   <td className="cmp-delta" data-tone={tone} data-label={tt('compare.percent')}>{row.percent === null ? '—' : `${row.percent > 0 ? '+' : ''}${formatNumber(row.percent, 1, 1)}%`}</td>
-                </tr>; })}</tbody>;
+                </tr>;
+              })}</tbody>;
             })}</table></div>}
             {changedOnly && counts.stats === 0 && <p className="cmp-none">{tt('compare.none')}</p>}
             <p className="cmp-note">{session.dataVersion ? tt('compare.basisHint').replace('{value}', session.dataVersion) : tt('compare.basisHint').replace(/\s*[(（]\{value\}[)）]/, '')}</p>
@@ -244,10 +296,13 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
 
         <TabsPrimitive.Content value="skills" className="cmp-panel">
           <h3 className="sr-only">{tt('tab.skills')}</h3>
-          {skillChanges.map(row => <article className="compare-difference" key={row.index}>
-            <header><h4>{tt('compare.group')} {row.index + 1}</h4>{row.before?.source || row.after?.source ? <p>{tt('compare.granted')}</p> : (JSON.stringify(row.before) !== JSON.stringify(row.after) || row.mainB) && applyButton({ kind: 'skill', index: row.index }, row.index >= a.saved.state.socketGroups.length)}</header>
-            <div className="compare-pair"><div><strong>A</strong>{skill(row.before, row.mainA, row.after)}</div><div><strong>B</strong>{skill(row.after, row.mainB, row.before)}</div></div>
-          </article>)}
+          {skillChanges.map(row => {
+            const title = `${tt('compare.group')} ${row.index + 1}`;
+            return <article className="compare-difference" key={row.index}>
+              <header><h4>{title}</h4>{row.before?.source || row.after?.source ? <p>{tt('compare.granted')}</p> : (JSON.stringify(row.before) !== JSON.stringify(row.after) || row.mainB) && applyButton({ kind: 'skill', index: row.index }, title)}</header>
+              <div className="compare-pair"><div><strong>A</strong>{skill(row.before, row.mainA, row.after)}</div><div><strong>B</strong>{skill(row.after, row.mainB, row.before)}</div></div>
+            </article>;
+          })}
           {!counts.skills && <p className="cmp-none">{tt('compare.none')}</p>}
         </TabsPrimitive.Content>
 
@@ -264,7 +319,7 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
       </> : <div className="cmp-empty"><p>{tt(defaults.b ? 'compare.chooseB' : 'compare.noBaseline')}</p><p>{tt('compare.needStages')}</p>
         <div className="cmp-empty-actions">
           <Button onClick={session.saveComparisonBaseline} disabled={session.busy}>{tt('compare.saveBaseline')}</Button>
-          <Button variant="outline" onClick={() => goTo('build')}>{words(lang, 'Open Build library', '前往 BD 库', '前往 BD 庫')}</Button>
+          <Button variant="outline" onClick={() => goTo('build')}>{tt('compare.openLibrary')}</Button>
         </div></div>}
     </TabsPrimitive.Root>
   </section>;

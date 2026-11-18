@@ -41,8 +41,8 @@ setup 检查 Git、make、C 编译器；macOS 的 Apple SDK/Command Line Tools �
 
 | 工作 | 入口与自动准备 |
 | --- | --- |
-| Web 日常开发/测试 | `mise run web <命令>`，例如 `mise run web test <文件>` |
-| Web 界面文字 | `mise run i18n:check`：`web/src/locales/` 每种已登记语言的键集须与 `en-US.json` 一致、`{占位符}` 相同；PR、完整 CI 与 gate 的 Web 步骤都运行。新语言未译完时本地用 `node web/scripts/check-locales.mjs --allow-missing` |
+| Web 日常开发/测试 | `mise run web <命令>`，例如 `mise run web test <文件>`；手动验收用 [`mise run web:preview`](#web-本地预览与临时分享) |
+| Web 界面文字 | 新增界面语言时，将 `web/src/locales/en-US.json` 复制为 `<语言代码>.json`，翻译各键并设置 `language.name`。在同目录的 `index.ts` 登记后，语言选择器和类型随之更新。`mise run i18n:check` 核对各语言的键集、`{占位符}` 和回退配置。未译完时可在本机用 `mise exec -- node web/scripts/check-locales.mjs --allow-missing`。PR、完整 CI 和 gate 的 Web 步骤均执行检查。界面可在 `language.fallback` 设置回退，游戏文本使用数据包及 `language.gameTextFallback`。 |
 | 独立数据 | `mise run data:prepare`按`pipeline/data.lock.json`临时导入固定owner输入；`data:check`离线检查；原料采集、导出与领域生产在owner仓库 |
 | PoB2 对照、triage、词条审计 | 对应任务依赖 `setup:oracle`，自动准备固定 LuaJIT commit 与固定 vendor；重复运行复用缓存 |
 | 浏览器回归 | `mise run e2e [smoke\|affected\|default\|release]`（见[浏览器测试](#浏览器测试)）：先检查并按需重建 WASM、同步数据与 dist；缺浏览器时提示 `mise run setup:e2e`（安装 lockfile 对应的 Playwright 浏览器与系统依赖） |
@@ -440,6 +440,25 @@ mise run full                             # 显式本地 Rust 全量检查，不
 需要多版本实测时，按明确的旧版本锁另行准备并保持 CURRENT。`runtime` 作业从已准备的快照组出精简发行包，由同次 WASM 消费；
 不把来源大表打进 `web-dist`，也不把完整快照存回 PoBR Git；见[构建数据](../pipeline/runtime/build-data.md)与
 [运行时数据组合封存](../pipeline/runtime/runtime-bundle.md)。
+
+## Web 本地预览与临时分享
+
+在要验收的 PoBR worktree 根目录运行。新 worktree 先执行 `mise trust`、`mise run data:prepare` 和 `mise run setup`。
+
+```bash
+mise run web:preview                                   # http://127.0.0.1:4173，含本地 Pages Worker API
+mise run web:preview --port 4180 --tunnel              # 临时公网地址，需要 PATH 中有 cloudflared
+mise run web:preview --port 4180 --tunnel --allow-wegame # 额外允许 WeGame 分享链接导入
+```
+
+任务复用[浏览器测试](#浏览器测试)的构建检查，按需准备锁定数据和真实 WASM，不需要安装或运行 Playwright。本地模式复用 Web `dist`。
+本地监听只绑定 `127.0.0.1`，端口占用时停止，不会改用别的端口。
+
+`--tunnel` 通过 Cloudflare Quick Tunnel 分享构建，`cloudflared` 会打印随机的 `https://…trycloudflare.com` 地址。链接没有访问控制，只发给需要测试的人。默认只提供静态资源，支持粘贴 PoB 构筑码、导入本地文件、计算和查看装备。
+如需测试 WeGame 分享链接，额外传入 `--allow-wegame`。它只接通该地址的同源 `POST /api/import/wegame`，沿用正式 Worker 的分享链接校验和响应裁剪，不转发 Cookie 或凭据，也不缓存响应。市集和托管构筑链接仍请在本地模式或正式站点测试。
+公网模式为每次隧道独立构建，读取当前源码、锁定数据，以及 `HEAD` 的静态资源和公开参考构筑。本地补丁、未提交的 `web/public/` 文件和旧的生成目录不会进入这次构建。分享前检查当前源码，避免把私有数据、凭据或构筑嵌入代码。新地址是不同的浏览器站点，不会读取其他地址的本地存档。
+
+测试完在启动终端按 `Ctrl+C`，预览和隧道会一起停止。重启会分配新地址。这个任务不打 tag、不上传 Release，也不能代替发布验收。
 
 ## Agent 提交、review 与合并
 

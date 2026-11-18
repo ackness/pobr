@@ -70,6 +70,12 @@ test.each([
   expect(detailFormula(formula, [], 'en-US')).toBe(expected);
 });
 
+test('rounds an additive recovery expression for display without changing the exact inputs', () => {
+  const inputs = [{ id: 'NetLifeRegen', value: 226.27720000000002 }, { id: 'NetManaRegen', value: -249.03519999999997 }];
+  expect(detailFormula('NetLifeRegen + NetManaRegen', inputs, 'en-US', 'rounded')).toBe('226.28 − 249.04');
+  expect(detailFormula('NetLifeRegen + NetManaRegen', inputs, 'en-US', true)).toBe('226.27720000000002 + -249.03519999999997');
+});
+
 test('primary inputs only gain a main-skill prefix when a secondary pass is present', () => {
   const primary = { id: 'PrimaryHitChance', value: 1 };
   expect(detailInputLabel(primary.id, [primary], 'zh-CN')).toBe('命中率');

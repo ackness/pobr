@@ -91,7 +91,7 @@ export function passivePointSummary(nodes: PassiveNode[], allocated: number[], s
 }
 
 export function treeStatLabel(lang: Lang, stat: string): string {
-  return stat === 'TotalDPS' ? { 'en-US': 'Hit DPS', 'zh-CN': '击中 DPS', 'zh-TW': '擊中 DPS' }[lang] : statNameLabel(lang, stat);
+  return stat === 'TotalDPS' ? bindT(lang)('sidebar.hitDps') : statNameLabel(lang, stat);
 }
 
 /** Missing and unbounded outputs are not zero changes. */
@@ -107,7 +107,7 @@ export function refundDelta(before: CalculateBuildResponse | null, after: Calcul
   const baseline = before!.stats.find(stat => stat.id === 'CombinedDPS')!.value!;
   const absolute = formatComparisonDelta(delta, 'float2', lang);
   const percent = `${delta >= 0 ? '+' : ''}${formatNumber(delta / baseline * 100, 1)}`;
-  return baseline > 0 ? `${absolute}${lang === 'en-US' ? ` (${percent}%)` : `（${percent}%）`}` : absolute;
+  return baseline > 0 ? bindT(lang)('format.parenthetical', { label: absolute, detail: `${percent}%` }) : absolute;
 }
 
 /** The report follows the player's current optimization goal until they choose a report metric. */

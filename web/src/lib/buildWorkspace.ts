@@ -28,6 +28,8 @@ export interface BuildWorkspace {
   version: 1;
   activeBuild: string;
   builds: LocalBuild[];
+  /** A confirmed whole-workspace restore starts a new sync generation. */
+  restoreEpoch?: number;
 }
 
 export function activeWorkspaceStage(workspace: BuildWorkspace): BuildStage {
@@ -80,12 +82,17 @@ function starterContent(saved: SavedSession): string {
 }
 
 /** Identify the sole, unnamed default by content, including after a reload. */
-export function appendImportedBuild(workspace: BuildWorkspace, build: LocalBuild, defaultStarter?: SavedSession | null): BuildWorkspace {
-  const starter = workspace.builds[0], stage = starter.stages[0];
-  const replaceStarter = !!defaultStarter && workspace.builds.length === 1 && starter.name === ''
-    && !starter.baseline && starter.stages.length === 1 && stage.name === '' && Object.keys(stage.drafts).length === 0
+export function isStarterWorkspace(workspace: BuildWorkspace, defaultStarter?: SavedSession | null): boolean {
+  if (!defaultStarter || workspace.builds.length !== 1) return false;
+  const starter = workspace.builds[0];
+  if (starter.name || starter.baseline || starter.stages.length !== 1) return false;
+  const stage = starter.stages[0];
+  return stage.name === '' && Object.keys(stage.drafts).length === 0
     && starterContent(stage.saved) === starterContent(defaultStarter);
-  return { ...workspace, activeBuild: build.id, builds: [...(replaceStarter ? [] : workspace.builds), build] };
+}
+
+export function appendImportedBuild(workspace: BuildWorkspace, build: LocalBuild, defaultStarter?: SavedSession | null): BuildWorkspace {
+  return { ...workspace, activeBuild: build.id, builds: [...(isStarterWorkspace(workspace, defaultStarter) ? [] : workspace.builds), build] };
 }
 
 export function addWorkspaceBuild(workspace: BuildWorkspace, name: string, saved: SavedSession, defaultStarter?: SavedSession | null): BuildWorkspace {
@@ -200,7 +207,9 @@ export function parseWorkspace(raw: unknown, parseSession: (json: string) => Sav
     const activeBuild = builds.find(build => build.id === workspace.activeBuild)?.id ?? builds[0].id;
     if (activeBuild !== workspace.activeBuild) isolate(workspace.activeBuild);
     if (isolated) onIsolated?.();
-    return { version: 1, activeBuild, builds };
+    const restoreEpoch = workspace.restoreEpoch;
+    return { version: 1, activeBuild, builds,
+      ...(typeof restoreEpoch === 'number' && Number.isSafeInteger(restoreEpoch) && restoreEpoch > 0 ? { restoreEpoch } : {}) };
   } catch { return null; }
 }
 

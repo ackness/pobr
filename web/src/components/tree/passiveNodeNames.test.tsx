@@ -26,12 +26,13 @@ const translations = {
   'zh-TW': names('zh-TW', [[node, '無休仲裁者'], [{ ...node, name: 'Devoted Protector' }, '獻身衛士']]),
   'en-US': names('en-US', []),
 };
+const translationFor = (lang: Lang) => (translations as Partial<Record<Lang, ReadonlyMap<string, string>>>)[lang];
 
 beforeEach(() => {
   ui.effects = [];
   ui.backend = { translateLines: vi.fn(async lines => lines), loadPassiveTree: vi.fn(async () => [node]) };
   translate.mockReset().mockImplementation((requests, lang) => requests.map(request =>
-    request.kind === 'passive' ? translations[lang].get(passiveNameKey(request)) ?? request.name : request.name));
+    request.kind === 'passive' ? translationFor(lang)?.get(passiveNameKey(request)) ?? request.name : request.name));
 });
 
 test.each(['zh-CN', 'zh-TW', 'en-US'] as const)('searches display names, original names, IDs and English modifiers in %s', lang => {
