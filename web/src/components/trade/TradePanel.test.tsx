@@ -212,7 +212,7 @@ test('measures completed positions for ETA and hides resume until Stop is clicke
   expect(render()).toContain('Reanalyze all positions');
 });
 
-test('slot hand-off focuses step 4 and retains the current goal and baseline item', async () => {
+test('slot hand-off focuses slot analysis and retains the current goal and baseline item', async () => {
   focus = { slot: 'ring2', nonce: 12 };
   ui.goal.preset = 'ehp';
   render();
@@ -230,15 +230,15 @@ test('slot hand-off focuses step 4 and retains the current goal and baseline ite
   expect(ui.focus).toHaveBeenCalledTimes(calls);
 });
 
-test('separates balanced score from Combined DPS, keeps the four steps in order and sends a result to trade', async () => {
+test('keeps upgrade entry actions ahead of the shared goal and preserves slot priority metrics', async () => {
   await ready();
   weights.combinations = [{ mods: [], text: 'Reference', score: 150, stats: { Life: 200, CombinedDPS: 180.6, TotalDPS: 11, TotalEHP: 100 } }];
   ui.optimize.mockResolvedValue(weights);
   await button('Analyze all positions').onClick!({} as never);
   const html = render();
-  expect(html.indexOf('id="up-goal"')).toBeLessThan(html.indexOf('id="up-method"'));
-  expect(html.indexOf('id="up-method"')).toBeLessThan(html.indexOf('id="up-gain"'));
-  expect(html.indexOf('id="up-gain"')).toBeLessThan(html.indexOf('id="up-market"'));
+  expect(html.indexOf('Paste item to compare')).toBeLessThan(html.indexOf('id="up-goal"'));
+  expect(html.indexOf('Find upgrades by slot')).toBeLessThan(html.indexOf('id="up-goal"'));
+  expect(html.indexOf('id="up-goal"')).toBeLessThan(html.indexOf('id="up-market"'));
   expect(html).toContain('<th>Balanced score</th><th>Combined DPS</th><th>Effective HP</th>');
   expect(html).toContain('+34.4%'); expect(html).toContain('+80.6%');
   const result = ui.buttons.find(props => props.className === 'trade-priority-position')!;

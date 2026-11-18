@@ -68,7 +68,7 @@ test('Calcs selects an available resource without eager skill overview or attrib
   expect(html).not.toContain('Choose a metric to inspect its calculation.');
   expect(html).toContain('aria-controls="calcs-detail"');
   expect(html).toContain('data-detail-kind="steps"');
-  expect(html).toContain('Metrics &amp; details');
+  expect(html).toContain('>Metrics</button>');
   expect(html).not.toContain('id="skill-metrics-heading"');
   expect(html).not.toContain('id="attribution-heading"');
 });
@@ -185,6 +185,16 @@ test('derived sections show readable formulas and stat-specific input units', ()
   expect(html).toContain('减免后平均击中伤害 × 命中率');
   expect(html).not.toContain('round(');
   for (const value of ['100%', '22.4%', '20%']) expect(html).toContain(`<td>${value}</td>`);
+});
+
+test('resource recovery rounds the summary and preserves exact inputs in the steps', () => {
+  const breakdown: Breakdown = { ...empty, kind: 'derived', derived: {
+    formula: 'Recovery - Cost', inputs: [{ id: 'Recovery', value: 83 }, { id: 'Cost', value: 332.0352 }], context: [],
+  } };
+  const html = renderToStaticMarkup(<BreakdownTable breakdown={breakdown} stat="NetManaRegen" lang="en-US"
+    values={new Map([['NetManaRegen', -249.0352]])} />);
+  expect(html).toContain('83 − 332.04 ≈ -249.04');
+  expect(html).toContain('<p class="derived-formula">83 - 332.0352</p>');
 });
 
 test.each([[5000, 5000], [0, 5000], [5000, 0]])('zero DPS components with positive overall damage do not show the minion notice (%s / %s)', (combined, total) => {
@@ -321,7 +331,7 @@ test('resource formula summary preserves operation order and reports missing con
   expect(html.replace(/<[^>]*>/g, '')).toContain('(((100 ×0.5) +10) ×1.3)');
   expect(html).toContain('78 points');
   expect(html).toContain('Conversion destination is not returned');
-  expect(html).toContain('<details class="formula-steps"><summary class="disclosure">How it&#x27;s calculated</summary>');
+  expect(html).toContain('<details class="formula-steps"><summary class="disclosure">Show formula steps</summary>');
   const converted = renderToStaticMarkup(<BreakdownTable breakdown={{ ...breakdown, sources: ['LifeConvertToEnergyShield', 'LifeConvertToMana'].map(name => ({ ...empty, name, base_total: 50, more_precision: null })) }} stat="Life" lang="en-US" />);
   expect(converted).toContain('<p class="breakdown-note">LifeConvertToEnergyShield, LifeConvertToMana</p>');
 });

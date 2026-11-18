@@ -55,6 +55,7 @@ vi.mock('./UniqueCatalog', () => ({ UniqueCatalog: () => null }));
 vi.mock('./ItemOptimizer', () => ({ ItemOptimizer: () => null }));
 vi.mock('./ItemContribution', () => ({ ItemContribution: () => null }));
 vi.mock('./ItemDisplay', () => ({ ItemDisplay: () => null }));
+vi.mock('./RuneSocketPicker', () => ({ RuneSocketPicker: ({ socket }: { socket: string }) => <button role="combobox" aria-label={socket} /> }));
 vi.mock('../shared/CopyButton', () => ({ CopyButton: () => <button>Copy</button> }));
 vi.mock('../shared/NoteEditor', () => ({ NoteEditor: () => null }));
 vi.mock('../shared/WeaponSetControl', () => ({ WeaponSetControl: () => null }));
@@ -103,12 +104,12 @@ it('offers trade search in item details and hands off the inspected slot without
   expect(current.setItems).not.toHaveBeenCalled();
 });
 
-it('explains disabled library actions and enables matching items after choosing a slot', () => {
+it('shows one library slot cue and only renders replacement actions for compatible items', () => {
   const current = session();
-  expect(render(current)).toContain('id="library-slot-hint" class="items-hint">Select an equipment slot first');
-  expect(button('Compare').disabled).toBe(true);
-  expect(button('Equip').disabled).toBe(true);
-  expect(button('Equip')['aria-describedby']).toBe('library-slot-hint');
+  const html = render(current);
+  expect(html.match(/Select an equipment slot first/g)).toHaveLength(1);
+  expect(html).toContain('Victory Ring');
+  expect(harness.buttons.some(props => props.children === 'Compare' || props.children === 'Equip')).toBe(false);
   button('Ring 1').onClick!({} as never);
   expect(render(current)).not.toContain('id="library-slot-hint"');
   expect(button('Equip').disabled).toBe(false);

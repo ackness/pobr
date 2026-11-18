@@ -1,3 +1,4 @@
+import { openImport } from './buildLibrary';
 import { t } from '../src/lib/i18n';
 import { expect, test } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
@@ -30,6 +31,7 @@ Implicits: 0</Item>
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
   for (const nodes of ['', '47316']) {
+    await openImport(page);
     await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code(nodes));
     await page.locator('.import-submit').click();
     await openItemsAfterImport(page);
@@ -48,7 +50,7 @@ Implicits: 0</Item>
     if (nodes) expect(goring).toBeUndefined();
     else expect(goring).toBeGreaterThan(0);
     expect(sum.value.min).toBeCloseTo(97 * life + (goring ?? 0), 3);
-    await expect(page.locator('.trade-minimum')).toContainText('Minimum ranking score in this search');
+    await expect(page.locator('.trade-minimum')).toContainText('Minimum market weight total for this search');
     if (!nodes) await openLibrary(page);
   }
   await page.locator('.trade-position').filter({ hasText: /^Main Hand/ }).click();
@@ -397,6 +399,7 @@ Small Passive Skills in Radius also grant 2% increased Spell Damage</Item><ItemS
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
   for (const nodes of ['2491,9583,47316', '2491']) {
+    await openImport(page);
     await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code(nodes));
     await page.locator('.import-submit').click();
     await openItemsAfterImport(page);

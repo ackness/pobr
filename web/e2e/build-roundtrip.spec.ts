@@ -1,7 +1,7 @@
 import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport, pageLink, statValue, playerHitDps } from './shell';
-import { openBuild, openExport, openLoadouts, stableText } from './buildLibrary';
+import { openImport, openBuild, openExport, openLoadouts, stableText } from './buildLibrary';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 
@@ -28,6 +28,7 @@ const loadoutValue = (page: Page) => page.locator('details.bd-details select');
 
 async function importCode(page: Page, code: string) {
   await openBuild(page);
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -124,7 +125,7 @@ test('an imported trigger group retains its main active skill through edits, rel
 
   await openBuild(page);
   await openExport(page);
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
+  await page.getByRole('button', { name: 'Generate PoB code for this stage', exact: true }).click();
   const code = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
   expect(inflateSync(Buffer.from(code, 'base64url')).toString('utf8')).toContain('mainActiveSkill="3"');
   await importCode(page, code);
@@ -178,7 +179,7 @@ test('switch, reload, edit and share preserve the selected loadout and global fi
 
   await openBuild(page);
   await openExport(page);
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
+  await page.getByRole('button', { name: 'Generate PoB code for this stage', exact: true }).click();
   const code = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
   const exported = inflateSync(Buffer.from(code, 'base64url')).toString('utf8');
   expect(exported).toContain('<Spec title="A" nodes="1,2" treeVersion="0_5"/>');

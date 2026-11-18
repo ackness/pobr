@@ -14,7 +14,7 @@ import {
   scoreOf,
   type Objective,
 } from '../../lib/optimize';
-import { formatNumber, formatStatValue, statFormat, STAT_SECTIONS, formatStat } from '../../lib/statDisplay';
+import { formatNumber, formatStatValue, statFormat, STAT_SECTIONS, statRowLabel, formatStat } from '../../lib/statDisplay';
 import { AppSelect } from './AppSelect';
 import type { DamageHeadline } from '../../lib/mainMinion';
 import { tradeAnalysisText } from '../../lib/tradeAnalysisText';
@@ -65,7 +65,7 @@ export function objectiveOf(state: ObjectiveState, baseline?: Record<string, num
 export function statLabel(id: string, lang: Lang): string {
   for (const section of STAT_SECTIONS) {
     const row = section.rows.find((r) => r.id === id);
-    if (row) return row.label[lang];
+    if (row) return statRowLabel(lang, row.id);
   }
   return id;
 }
@@ -145,7 +145,7 @@ export function ObjectiveEditor({ value, onChange, lang, disabled, constraintsOn
           {baseline && <p className="opt-hint">{tt('tree.constraintBaseline').replace('{stat}', nameOf(value.cStat)).replace('{value}', current === undefined ? '—' : `${formatStat(value.cStat, current, lang)}${statFormat(value.cStat) === 'percent' ? '' : ` ${unit}`}`)}</p>}
           {baseline && value.cMin !== '' && <p className="opt-hint">{tt('tree.constraintActive').replace('{stat}', nameOf(value.cStat)).replace('{value}', `${value.cMin} ${unit}`)}</p>}
           <label>
-            {tt('opt.max')}{baseline ? lang === 'en-US' ? ` (${unit})` : `（${unit}）` : ''}
+            {baseline ? tt('format.parenthetical', { label: tt('opt.max'), detail: unit }) : tt('opt.max')}
             <AppInput
               type="number"
               step="any"

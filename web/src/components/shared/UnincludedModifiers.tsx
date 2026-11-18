@@ -5,7 +5,6 @@ import { bindT, slotLabel, type Lang } from '../../lib/i18n';
 import { unsupportedLine } from '../../lib/diagnosticText';
 import { isContinuation } from '../../lib/continuedLines';
 import { ModifierText } from '../calcs/ModifierText';
-import { words } from '../../app/text';
 import { passiveNameRequest, usePassiveNodesBySkill } from '../tree/passiveNodeNames';
 
 /** Keep each source's adjacent lines together for whole-description translation. */
@@ -33,7 +32,7 @@ function UnincludedGroup({ group, lang }: { group: ReturnType<typeof unincludedG
   const nodeName = node && !node.name ? '' : names[0];
   const itemTexts = useMemo(() => [group.item?.text], [group.item?.text]);
   const itemNames = useItemDisplayNames(itemTexts, lang);
-  const source = group.item ? `${itemNames[0]} · ${slotLabel(lang, group.item.slot)}` : group.node === null ? group.source ?? words(lang, 'Source unavailable', '未提供来源', '未提供來源') : nodeName ?? words(lang, 'Passive tree (name unavailable)', '天赋树（缺少名称）', '天賦樹（缺少名稱）');
+  const source = group.item ? `${itemNames[0]} · ${slotLabel(lang, group.item.slot)}` : group.node === null ? group.source ?? tt('calcs.sourceUnavailable') : nodeName ?? tt('calcs.passiveNameUnavailable');
   return <li>{source && <h5>{source}{lang !== 'en-US' && /[A-Za-z]{3}/.test(source) && <small className="modifier-fallback">{tt('calcs.untranslated')}</small>}</h5>}<ul className="unincluded-lines">{group.lines.map((line, index) => isContinuation(line, translated[index]) ? null : <li key={index}>
     <ModifierText raw={line} translated={translated[index]} lang={lang} rawDetails={false} />
   </li>)}</ul></li>;

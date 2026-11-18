@@ -1,11 +1,12 @@
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { SwapGainCard } from '../items/SwapGainCard';
-import { formatNumber } from '../../lib/statDisplay';
+import { formatNumber, formatStat } from '../../lib/statDisplay';
+import { useNavigateToPage } from '../../app/pages/navigate';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
 import { usePreview } from '../shared/PreviewContext';
 import { changesFromRecords } from '../../app/preview/fromRecords';
-import { words, colon } from '../../app/text';
+import { colon } from '../../app/text';
 import { itemNameLabel } from '../../lib/itemCrafting';
 import { craftT } from '../../lib/itemCraftingText';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -14,9 +15,9 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
 import { isContinuation } from '../../lib/continuedLines';
 import { compareReplacementPositions, pasteNotStarted, replacementAffixes, type ReplacementReport } from '../../lib/itemReplacement';
-import { compareObjectiveStats, feasibleOf, type Objective } from '../../lib/optimize';
+import { compareObjectiveStats, feasibleOf, minimumDeficit, type Objective } from '../../lib/optimize';
 import type { TradeCatalog } from '../../lib/tradeOptimizer';
-import { slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
+import { slotLabel, statNameLabel, t, type Lang } from '../../lib/i18n';
 import { useHeadlineDamage } from '../../hooks/useMainMinion';
 import type { DamageHeadline } from '../../lib/mainMinion';
 import { upgradeT } from '../../lib/upgradeText';
@@ -50,6 +51,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   damage?: DamageHeadline;
 }) {
   const ut = (key: Parameters<typeof upgradeT>[1]) => upgradeT(lang, key);
+  const goTo = useNavigateToPage();
   const defaultDamage = useHeadlineDamage(session.calc, lang);
   const damage = providedDamage ?? defaultDamage;
   const [saved, setSaved] = useState(false);
@@ -147,12 +149,12 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
       if (current()) setSnapshot({ report: next, key: nextKey, request, input, objective, catalog,
         dataVersion: session.dataVersion, treeVersion: session.treeVersion, augmentPlans: plans });
     } catch (error) {
-      if (current()) { setSnapshot(null); setAffixDirty(false); setError(errorText(error instanceof Error ? error.message : 'invalid-item')); }
+      if (current()) { setSnapshot(null); setAffixDirty(false); setError(error instanceof Error ? error.message : 'invalid-item'); }
     } finally {
       if (controller.current === abort) { setBusy(false); controller.current = null; }
     }
   }, [active, session.currentRequest, session.activeWeaponSet, session.dataVersion, session.treeVersion,
-    session.busy, objective, catalog, allocatedJewelSockets, errorText, stop, candidate?.kind]);
+    session.busy, objective, catalog, allocatedJewelSockets, stop, candidate?.kind]);
   // Only an explicit paste owns a debounce; returning to this page never restarts work.
   useEffect(() => {
     if (!active || pendingPaste === null || session.busy || !catalog) return;
@@ -203,8 +205,8 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     ?? selected?.variant.jewels?.find(jewel => `Jewel@${jewel.socket_node}` === selected.slot)?.text ?? applied?.text ?? text;
   return <section className="upgrade-item-check ui-card" aria-labelledby="replacement-heading">
     {candidate ? <header><h3 id="replacement-heading">{craftT(lang, 'preview')}</h3><p>{craftT(lang, 'previewHint')}</p></header> : <header className="replacement-heading"><div>
-      <h3 id="replacement-heading">{words(lang, 'Paste an item to compare it', '粘贴物品来对比', '貼上物品來比較')}</h3><p>{ut('checkHint')}</p></div><div className="replacement-context">
-      <AppButton className="replacement-goal" onClick={onEditGoal}>{ut('comparisonGoal')}{colon(lang)}{goalLabel}{lang === 'en-US' ? ` (${ut('changeGoal')})` : `（${ut('changeGoal')}）`}</AppButton></div></header>}
+      <h3 id="replacement-heading">{ut('pasteAction')}</h3><p>{ut('checkHint')}</p></div><div className="replacement-context">
+      <AppButton className="replacement-goal" onClick={onEditGoal}>{t(lang, 'format.parenthetical', { label: `${ut('comparisonGoal')}${colon(lang)}${goalLabel}`, detail: ut('changeGoal') })}</AppButton></div></header>}
     <div className="replacement-input"><label htmlFor="replacement-text">{ut('itemText')}</label>
       <AppTextarea readOnly={!!candidate} ref={inputRef} id="replacement-text" rows={report ? 3 : 5} value={text} placeholder={ut('pastePlaceholder')}
         onChange={event => { if (candidate || !latest.current.active) return; stop(); setApplied(null); setSnapshot(null); setChosenSlot(null); setAffixDirty(false); setAugmentPlans({}); setText(event.target.value); }}
@@ -212,15 +214,20 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
           event.preventDefault(); stop(); setApplied(null); setSnapshot(null); setAugmentPlans({}); setChosenSlot(null); setAffixDirty(false); setText(copied); setPendingPaste({ input: copied }); }} />
       <div className="replacement-actions"><AppButton className={`replacement-compare ${actionClassName}`} disabled={!active || busy || affixDirty || session.busy || !catalog || !text.trim()} onClick={() => void run(text, augmentPlans, chosenSlot ?? undefined)}>
         {busy ? ut('comparingPositions') : candidate ? craftT(lang, 'compareEquipped') : ut('compare')}</AppButton>
-        {busy && <AppButton onClick={stop}>{ut('cancelCompare')}</AppButton>}
-        {!candidate && <span>{ut('autoPositions')}</span>}</div>
+        {busy && <AppButton onClick={stop}>{ut('cancelCompare')}</AppButton>}</div>
       {!candidate && <p className="replacement-copy-links"><a href="/userscripts/pobr-market-copy.user.js" target="_blank" rel="noreferrer">{ut('copyScript')}</a>
         <a href="/userscripts/index.html" target="_blank" rel="noreferrer">{ut('copyScriptHelp')}</a></p>}
     </div>
     {candidate && <div className="replacement-actions"><AppButton disabled={busy || session.busy || affixDirty || saved || !active} onClick={() => {
       session.saveLibraryItem(candidate.kind, candidateText, selected?.slot.startsWith('Jewel@') ? undefined : selected?.slot); setSaved(true);
     }}>{craftT(lang, saved ? 'saved' : 'save')}</AppButton></div>}
-    {error && <p role="alert" className="trade-error">{error}</p>}
+    {error && <div className="trade-notice trade-error">
+      <p role="alert">{errorText(error)}</p>
+      {!candidate && error === 'no-compatible-slot' && <div className="replacement-actions">
+        <AppButton onClick={() => goTo('items')}>{ut('emptyEquipment')}</AppButton>
+        <AppButton onClick={() => goTo('tree')}>{ut('allocateSocket')}</AppButton>
+      </div>}
+    </div>}
     {active && applied && !session.busy && applied.weaponSet === session.activeWeaponSet && appliedText === applied.text && <p role="status" className="trade-notice replacement-applied">
       {ut('applied')} · {applied.name} · {positionLabel(applied.slot)}
     </p>}
@@ -255,11 +262,20 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
             <span className={(row.stats.TotalEHP ?? 0) < (report.baseline.TotalEHP ?? 0) ? 'delta-neg' : ''}>{statNameLabel(lang, 'TotalEHP')} {deltaText((row.stats.TotalEHP ?? 0) - (report.baseline.TotalEHP ?? 0))}</span>
           </AppButton>)}
         </div>
-        <div className="replacement-verdict"><span className="trade-section-label">{ut('replacementOutcome')}</span>
-        <strong className={selected.unsupported.length || selected.augments.limitWarning ? '' : compareObjectiveStats(selected.stats, report.baseline, objective) < 0 ? 'delta-pos' : 'delta-neg'}>
-          {selected.augments.limitWarning ? ut('augmentUnverified') : selected.unsupported.length ? ut('partialReplacement') : ut(compareObjectiveStats(selected.stats, report.baseline, objective) < 0 ? 'better' : 'worse')}</strong>
-        {(selected.stats[damage.stat] ?? 0) < (report.baseline[damage.stat] ?? 0) && <p className="delta-neg">{words(lang, '{stat} decreases after this replacement', '替换后{stat}降低', '替換後{stat}降低').replace('{stat}', damage.label)}</p>}
-        {!feasibleOf(selected.stats, objective) && <p className="delta-neg">{ut('constraintFail')}</p>}
+        <div className="replacement-verdict"><span className="trade-section-label">{ut('replacementOutcome')} · {positionLabel(selected.slot)}</span>
+          <strong className={selected.unsupported.length || selected.augments.limitWarning ? '' : compareObjectiveStats(selected.stats, report.baseline, objective) < 0 ? 'delta-pos' : 'delta-neg'}>
+            {selected.augments.limitWarning ? ut('augmentUnverified') : selected.unsupported.length ? ut('partialReplacement') : ut(compareObjectiveStats(selected.stats, report.baseline, objective) < 0 ? 'better' : 'worse')}</strong>
+          {(selected.stats[damage.stat] ?? 0) < (report.baseline[damage.stat] ?? 0) && <p className="delta-neg">{ut('damageDecrease').replace('{stat}', () => damage.label)}</p>}
+          {objective.constraints.length > 0 && <ul className="replacement-constraints" aria-label={ut('statLimits')}>
+            {objective.constraints.map((constraint, index) => <li key={`${constraint.stat}:${index}`}>
+              {statNameLabel(lang, constraint.stat)} {[
+                constraint.min === undefined ? '' : `≥ ${formatStat(constraint.stat, constraint.min, lang)}`,
+                constraint.max === undefined ? '' : `≤ ${formatStat(constraint.stat, constraint.max, lang)}`,
+              ].filter(Boolean).join(' · ')}
+            </li>)}
+          </ul>}
+          {!feasibleOf(selected.stats, objective) && <p className="delta-neg">{ut('constraintFail')}</p>}
+          {!!objective.softMinimums?.length && <p className="replacement-resistance">{ut('resistancePriority').replace('{target}', () => formatNumber(objective.softMinimums![0].min))} · {ut('resistanceGap')}{colon(lang)}{formatNumber(minimumDeficit(report.baseline, objective))} → {formatNumber(minimumDeficit(selected.stats, objective))}</p>}
         </div>
         <SwapGainCard before={Object.entries(report.baseline).map(([id, value]) => ({ id, value }))}
           after={Object.entries(selected.stats).map(([id, value]) => ({ id, value }))} lang={lang} damage={damage} />

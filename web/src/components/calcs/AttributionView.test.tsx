@@ -37,7 +37,7 @@ it('requests combined DPS, then shows removal losses, gains and unique source la
   expect(html).not.toContain('Skill group Skill group');
   expect(html).toContain('>-2,290,002<span class="delta-pct"> (-96.1%)');
   expect(html).toContain('>+20<span class="delta-pct"> (20.0%)');
-  expect(html).toContain('totals can exceed 100%');
+  expect(html).toContain('total more than 100%');
 });
 
 it('distinguishes a changed calculated skill from a build edit', async () => {

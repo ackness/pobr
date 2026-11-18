@@ -54,7 +54,7 @@ import { SkillFormControls } from '../skills/SkillFormControls';
 import { SkillMetricsTable } from './SkillMetricsTable';
 import { useNavigateToPage } from '../../app/pages/navigate';
 import { LedgerView } from '../../app/pages/calcs/LedgerView';
-import { words, colon } from '../../app/text';
+import { colon } from '../../app/text';
 import { cleanLineText } from '../../lib/modifierText';
 import { passiveNameRequest, usePassiveNodesBySkill } from '../tree/passiveNodeNames';
 
@@ -638,7 +638,7 @@ function ModifierRows({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
   }), [mods, nodes]);
   const names = useLocalizedNames(nameRequests, lang);
   const source = (mod: BreakdownMod, index: number) => {
-    if (mod.origin_id === 'campaign.resistance_penalty') return words(lang, 'Campaign resistance penalty', '剧情抗性惩罚', '劇情抗性懲罰');
+    if (mod.origin_id === 'campaign.resistance_penalty') return tt('calcs.campaignResistancePenalty');
     const label = mod.origin_kind ? originKindLabel(lang, mod.origin_kind) : sourceGroupLabel(lang, 'other');
     return [label, names[index], mod.slot ? slotLabel(lang, mod.slot) : null].filter(Boolean).join(' · ');
   };
@@ -671,8 +671,8 @@ function FormulaSummary({ breakdown, stat, lang }: { breakdown: Breakdown; stat?
   }, '');
   const converted = formula.steps.some(step => step.op === 'converted' && step.operand !== 0);
   const targets = breakdown.sources?.filter(group => group.base_total !== 0 && /ConvertTo/.test(group.name)).map(group => statNameLabel(lang, group.name));
-  return <div className="formula-conclusion"><p>{stat ? statNameLabel(lang, stat) + colon(lang) : ''}<span>{summary.split(/(\s+)/).map((part, index) => /\d/.test(part) ? <span className="formula-number" key={index}>{part}</span> : part)}</span> = <strong>{formatStat(stat ?? '', formula.value, lang)}{stat?.endsWith('DPS') ? ' DPS' : stat === 'Life' || stat === 'EnergyShield' ? words(lang, ' points', ' 点', ' 點') : ''}</strong></p>
-    {converted && <p className="breakdown-note">{targets?.length ? targets.join(lang === 'en-US' ? ', ' : '、') : tt('calcs.conversionUnknown')}</p>}
+  return <div className="formula-conclusion"><p>{stat ? statNameLabel(lang, stat) + colon(lang) : ''}<span>{summary.split(/(\s+)/).map((part, index) => /\d/.test(part) ? <span className="formula-number" key={index}>{part}</span> : part)}</span> = <strong>{formatStat(stat ?? '', formula.value, lang)}{stat?.endsWith('DPS') ? ' DPS' : stat === 'Life' || stat === 'EnergyShield' ? tt('calcs.points') : ''}</strong></p>
+    {converted && <p className="breakdown-note">{targets?.length ? targets.join(tt('format.listSeparator')) : tt('calcs.conversionUnknown')}</p>}
   </div>;
 }
 
@@ -681,9 +681,9 @@ function DamageChainView({ breakdown, lang }: { breakdown: Breakdown; lang: Lang
   const chain = damageChain(breakdown);
   const missing = chain.filter(link => link.value === undefined);
   return <section className="damage-chain"><h4>{tt('calcs.damageChain')}</h4><ol>{chain.filter(link => link.value !== undefined).map(link => <li key={link.key}>
-    <span>{tt(link.key)}</span><strong>{link.unit === 'multiplier' ? '×' : ''}{link.stat ? formatStat(link.stat, link.value!, lang) : formatNumber(link.value!)}{link.unit === 'rate' ? words(lang, ' /s', ' 次/秒', ' 次/秒') : link.unit === 'percent' && !link.stat ? '%' : link.unit === 'dps' ? ' DPS' : ''}</strong>
+    <span>{tt(link.key)}</span><strong>{link.unit === 'multiplier' ? '×' : ''}{link.stat ? formatStat(link.stat, link.value!, lang) : formatNumber(link.value!)}{link.unit === 'rate' ? tt('calcs.perSecond') : link.unit === 'percent' && !link.stat ? '%' : link.unit === 'dps' ? ' DPS' : ''}</strong>
   </li>)}</ol>
-    {missing.length > 0 && <p className="breakdown-note">{tt('calcs.chainMissing').replace('{links}', missing.map(link => tt(link.key)).join(lang === 'en-US' ? ', ' : '、'))}</p>}
+    {missing.length > 0 && <p className="breakdown-note">{tt('calcs.chainMissing').replace('{links}', missing.map(link => tt(link.key)).join(tt('format.listSeparator')))}</p>}
   </section>;
 }
 
@@ -717,6 +717,7 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
   const tt = bindT(lang);
   if (breakdown.derived) {
     const derived = breakdown.derived;
+    const roundRecovery = stat !== undefined && ['TotalNetRegen', 'NetLifeRegen', 'NetManaRegen', 'NetEnergyShieldRegen', 'NetWardRegen'].includes(stat);
     const sourceHints = derived.context.filter(input => input.id.startsWith('EnergyNeeds'));
     const context = derived.context.filter(input => !input.id.startsWith('EnergyNeeds'));
     const inputValue = (input: { id: string; value: number | null }) =>
@@ -726,8 +727,11 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
       <h4 className="breakdown-heading">{calcsLabel(lang, 'derived')}</h4>
       <p className="breakdown-note">{tt('calcs.derivedHint')}</p>
       {sourceHints.map(hint => <p className="breakdown-note" key={hint.id}>{statNameLabel(lang, hint.id)}</p>)}
-      <p className="formula-conclusion">{detailFormula(derived.formula, derived.inputs, lang, true)}{stat && values?.has(stat) ? ` = ${formatStat(stat, values.get(stat) ?? null, lang)}` : ''}</p>
-      <details className="formula-steps"><summary className="disclosure">{tt('calcs.formula')}</summary><p className="derived-formula">{detailFormula(derived.formula, derived.inputs, lang)}</p></details>
+      <p className="formula-conclusion">{detailFormula(derived.formula, derived.inputs, lang, roundRecovery ? 'rounded' : true)}{stat && values?.has(stat) ? ` ${roundRecovery ? '≈' : '='} ${formatStat(stat, values.get(stat) ?? null, lang)}` : ''}</p>
+      <details className="formula-steps"><summary className="disclosure">{tt('calcs.formulaSteps')}</summary>
+        <p className="derived-formula">{detailFormula(derived.formula, derived.inputs, lang)}</p>
+        {roundRecovery && <p className="derived-formula">{detailFormula(derived.formula, derived.inputs, lang, true)}</p>}
+      </details>
       <table className="breakdown-table"><caption>{tt('calcs.inputs')}</caption><tbody>
         {derived.inputs.map(input => <tr key={input.id}><th scope="row">{detailInputLabel(input.id, derived.inputs, lang)}</th><td>{inputValue(input)}</td></tr>)}
       </tbody></table>
@@ -772,7 +776,7 @@ export function BreakdownTable({ breakdown, lang, stat, unboundedStacks = false,
         <>
           <h4 className="breakdown-heading">{calcsLabel(lang, 'steps')}</h4>
           <p className="breakdown-note">{tt('calcs.stepsHint')}</p>
-          <details className="formula-steps"><summary className="disclosure">{tt('calcs.formula')}</summary>
+          <details className="formula-steps"><summary className="disclosure">{tt('calcs.formulaSteps')}</summary>
           <div className="breakdown-scroll"><table className="breakdown-formula" aria-label={tt('calcs.formula')}>
             <tbody>
               {breakdown.formula.steps.map((step, i) => (
@@ -845,7 +849,7 @@ export function FullDpsView({ calc, lang }: { calc: CalculateBuildResponse | nul
   const full = calc?.full_dps;
   const goTo = useNavigateToPage();
   return <section className="full-dps-view" aria-labelledby="full-dps-heading">
-    <h3 id="full-dps-heading">{calcsLabel(lang, 'fullDps')}</h3>
+    <h3 id="full-dps-heading" tabIndex={-1}>{calcsLabel(lang, 'fullDps')}</h3>
     {full && full.skills.length > 0 ? <>
       <p className="calcs-hint">{tt('skills.fullDpsHint')}</p>
       <div className="breakdown-summary">
@@ -1017,7 +1021,7 @@ export function AttributionView({ session, lang }: { session: BuildSession; lang
                       return (
                         <td key={f} className={delta > 0 ? 'delta-pos' : delta < 0 ? 'delta-neg' : ''}>
                           {delta === 0 ? '—' : `${delta > 0 ? '+' : '-'}${formatStat(f, Math.abs(delta), lang)}`}
-                          {Math.abs(pct) >= 0.05 && <span className="delta-pct">{lang === 'en-US' ? ' (' : '（'}{formatNumber(pct, 1, 1)}%{lang === 'en-US' ? ')' : '）'}</span>}
+                          {Math.abs(pct) >= 0.05 && <span className="delta-pct">{tt('format.parentheticalSuffix', { detail: `${formatNumber(pct, 1, 1)}%` })}</span>}
                         </td>
                       );
                     })}
@@ -1049,7 +1053,7 @@ export function followedActorKey(calc: CalculateBuildResponse | null): string | 
 }
 
 function openingMinion(calc: CalculateBuildResponse | null, focus: Props['focus']): MinionOutput | undefined {
-  if (focus && focus.id !== 'skill-metrics' && !/^Minion:/.test(focus.id)) return undefined;
+  if (focus && focus.id !== 'skill-metrics' && focus.id !== 'full-dps' && !/^Minion:/.test(focus.id)) return undefined;
   return mainMinion(calc);
 }
 
@@ -1057,6 +1061,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
   const tt = bindT(lang);
   const skillName = useSkillName(lang);
   const [view, setView] = useState('metrics');
+  const [showDetail, setShowDetail] = useState(false);
   const [category, setCategory] = useState('all');
   const [commonOnly, setCommonOnly] = useState(true);
   const calc = session.calcError ? null : session.calc ?? settledCalc ?? null;
@@ -1128,21 +1133,22 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
   // 挂载，scrollIntoView 再次触发，页面整体错位。
   useEffect(() => {
     if (!focus) return;
-    const overview = focus.id === 'skill-metrics';
+    const targetView = focus.id === 'skill-metrics' ? 'skills' : focus.id === 'full-dps' ? 'full-dps' : 'metrics';
     const minionFocus = /^Minion:(\d+):(.+)$/.exec(focus.id);
     const stat = minionFocus?.[2] ?? focus.id;
-    setView(overview ? 'skills' : 'metrics');
+    setView(targetView);
+    setShowDetail(targetView === 'metrics');
     setCategory('all');
     setCommonOnly(false);
     setQuery('');
-    if (!overview) {
+    if (targetView === 'metrics') {
       const minion = minionFocus && calc?.minions?.find(row => row.index === Number(minionFocus[1]));
       actorChosen.current = true;
       setActor(minion ? actorKey(minion) : 'player');
       setOpen(stat);
     }
     const frame = requestAnimationFrame(() => {
-      const target = document.getElementById(overview ? 'skill-metrics-heading' : 'calcs-detail-heading');
+      const target = document.getElementById(targetView === 'skills' ? 'skill-metrics-heading' : targetView === 'full-dps' ? 'full-dps-heading' : 'calcs-detail-heading');
       target?.focus({ preventScroll: true });
       target?.scrollIntoView({ block: 'start', behavior: 'smooth' });
       onFocusConsumed?.();
@@ -1232,7 +1238,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
     ['skills', tt('calcs.skillMetrics')],
     ['full-dps', calcsLabel(lang, 'fullDps')],
     ['attribution', tt('calcs.attribution')],
-    ['ledger', words(lang, 'Modifier ledger', '词缀账本', '詞綴帳本')],
+    ['ledger', tt('calcs.modifierLedger')],
   ] as const;
   const visibleSections = sections.filter(section => category === 'all' || category === section.category)
     .map(section => ({ ...section, names: commonOnly && !query.trim() && category === 'all'
@@ -1245,7 +1251,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
         {tabs.map(([value, label]) => <TabsTrigger key={value} className="calcs-view-tab" value={value}>{label}</TabsTrigger>)}
       </TabsList>
       <TabsContent className="min-w-0 w-full" value="metrics">
-        {!calc ? <p className="calcs-hint" role={session.calcError ? 'alert' : 'status'}>{session.calcError || calcsLabel(lang, 'noCalc')}</p> : <div className="calcs-explorer">
+        {!calc ? <p className="calcs-hint" role={session.calcError ? 'alert' : 'status'}>{session.calcError || calcsLabel(lang, 'noCalc')}</p> : <div className="calcs-explorer" data-detail-open={showDetail || undefined}>
           <div className="calcs-metric-browser" id="calcs-metric-browser" tabIndex={-1}>
             <div className="calcs-context-bar" aria-label={calcsLabel(lang, 'context')}>
               {actorPicker || <strong>{actorLabel}</strong>}
@@ -1253,9 +1259,9 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
               {session.busy && <span role="status">{calcsLabel(lang, 'stale')}</span>}
             </div>
             <div className="calcs-filters">
-              <div className="calcs-metric-scope segmented" role="group" aria-label={words(lang, 'Metric list', '指标范围', '指標範圍')}>
-                <AppButton aria-pressed={commonOnly && !query.trim() && category === 'all'} onClick={() => { setCommonOnly(true); setQuery(''); setCategory('all'); }}>{words(lang, 'Common', '常用指标', '常用指標')}</AppButton>
-                <AppButton aria-pressed={!commonOnly || !!query.trim() || category !== 'all'} onClick={() => setCommonOnly(false)}>{words(lang, 'All metrics', '全部指标', '全部指標')}</AppButton>
+              <div className="calcs-metric-scope segmented" role="group" aria-label={tt('calcs.metricScope')}>
+                <AppButton aria-pressed={commonOnly && !query.trim() && category === 'all'} onClick={() => { setCommonOnly(true); setQuery(''); setCategory('all'); }}>{tt('calcs.commonMetrics')}</AppButton>
+                <AppButton aria-pressed={!commonOnly || !!query.trim() || category !== 'all'} onClick={() => setCommonOnly(false)}>{tt('calcs.allMetrics')}</AppButton>
               </div>
               <AppInput className="calcs-search" type="search" placeholder={tt('calcs.search')} aria-label={tt('calcs.search')}
                 value={query} onChange={event => setQuery(event.target.value)} />
@@ -1276,11 +1282,11 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
                 <h3 className="calcs-section-title">{statCategoryLabel(lang, section.category)}</h3>
                 {section.names.map(name => <AppButton key={name} id={`breakdown-${name}`} className="calcs-metric-row h-auto min-h-11 w-full justify-between whitespace-normal border-transparent bg-transparent text-left aria-pressed:border-ring aria-pressed:bg-accent aria-pressed:text-accent-foreground"
                   aria-pressed={open === name} aria-controls="calcs-detail" data-detail-kind={detailKind(scope!, name)}
-                  onClick={() => { setOpen(name); requestAnimationFrame(() => {
-                    const heading = document.getElementById('calcs-detail-heading');
-                    heading?.focus({ preventScroll: true });
-                    if (window.matchMedia('(max-width: 760px)').matches) heading?.scrollIntoView({ block: 'start' });
-                  }); }}>
+                  onClick={() => {
+                    setOpen(name);
+                    setShowDetail(true);
+                    requestAnimationFrame(() => detailHeading.current?.focus());
+                  }}>
                   <span>{statNameLabel(lang, name)}</span>
                   <strong>{metricValue(name)}</strong>
                 </AppButton>)}
@@ -1289,7 +1295,14 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
           </div>
           <section id="calcs-detail" className="calcs-detail-pane" data-empty={!open || undefined} aria-labelledby="calcs-detail-heading">
             <div className="calcs-detail-header">
-              <AppButton className="calcs-back-to-list hidden max-[760px]:inline-flex" onClick={() => { const browser = document.getElementById('calcs-metric-browser'); browser?.focus(); browser?.scrollIntoView({ block: 'start' }); }}>{calcsLabel(lang, 'back')}</AppButton>
+              <AppButton className="calcs-back-to-list" onClick={() => {
+                setShowDetail(false);
+                requestAnimationFrame(() => {
+                  const browser = document.getElementById('calcs-metric-browser');
+                  const selected = open && document.getElementById(`breakdown-${open}`);
+                  (selected || browser)?.focus();
+                });
+              }}>{calcsLabel(lang, 'back')}</AppButton>
               {open && <p className="calcs-eyebrow">{actorLabel}</p>}
               <h3 id="calcs-detail-heading" ref={detailHeading} tabIndex={-1}>{open ? statNameLabel(lang, open) : calcsLabel(lang, 'choose')}</h3>
               {open && <div className="calcs-detail-value"><strong>{metricValue(open)}</strong></div>}

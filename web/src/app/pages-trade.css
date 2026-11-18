@@ -1,4 +1,4 @@
-/* Upgrades: goal, method, equipment analysis, then trade verification. */
+/* Upgrades: shared calculation inputs, slot analysis and whole-item trials. */
 @layer app {
   .shell-root .trade-page { display: block; min-width: 0; }
   .shell-root .trade-page :is(h2, h3, h4, h5, p, ol, ul) { margin: 0; }
@@ -7,13 +7,11 @@
   .shell-root .trade-page .delta-neg { color: var(--color-negative); }
   .shell-root .trade-page .trade-section-label { display: block; margin: 0 0 .25rem; font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-foreground); }
   .shell-root .trade-page .trade-field-label { display: block; margin: 0 0 .4rem; font-size: var(--text-xs); color: var(--muted-foreground); }
-  .shell-root .trade-page .trade-local-badge { padding: .2rem .65rem; border-color: var(--border); color: var(--muted-foreground); }
 
-  /* Steps: a small numbered label, then the work. */
+  .shell-root .trade-page .upgrade-entry-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 1.5rem; }
   .shell-root .trade-page .up-step { min-width: 0; }
-  .shell-root .trade-page .up-step + .up-step { margin-top: 2.25rem; padding-top: 1.75rem; border-top: 1px solid var(--border); }
-  .shell-root .trade-page .up-title { display: flex; align-items: center; gap: .6rem; margin: 0 0 1.1rem; font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-foreground); }
-  .shell-root .trade-page .up-num { display: grid; place-items: center; flex: none; width: 1.35rem; height: 1.35rem; border: 1px solid var(--input); border-radius: 50%; font-size: .6875rem; letter-spacing: 0; font-variant-numeric: tabular-nums; color: var(--foreground); }
+  .shell-root .trade-page .up-step + .up-step { margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+  .shell-root .trade-page .up-title { margin: 0 0 .8rem; font-size: var(--text-base); font-weight: 600; }
 
   /* Controls that open a result are primary (gold); everything else stays an outline. */
   .shell-root .trade-page .trade-primary { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: var(--control-height); padding: .45rem 1rem; border: 1px solid var(--primary); border-radius: var(--radius-2xl); background: var(--primary); color: var(--primary-foreground); font-size: var(--text-sm); font-weight: 600; white-space: normal; text-decoration: none; }
@@ -28,7 +26,7 @@
   .shell-root .trade-page summary { cursor: pointer; }
   .shell-root .trade-page .ui-card { padding: 0; border: 0; border-radius: 0; background: none; }
 
-  /* ── 1 · Goal ───────────────────────────────────────────────────────────── */
+  /* Calculation goal and context. */
   .shell-root .trade-page .upgrade-evaluation { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 1.1rem 2.5rem; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
   .shell-root .trade-page .upgrade-evaluation > * { margin: 0; min-width: 0; }
   .shell-root .trade-page .trade-objectives { flex: 1 0 100%; }
@@ -50,20 +48,10 @@
   .shell-root .trade-page .upgrade-goal-details summary { color: var(--primary); }
   .shell-root .trade-page .upgrade-goal-details .opt-controls { margin: .75rem 0 0; }
 
-  /* ── 2 · Improvement method ─────────────────────────────────────────── */
-  .shell-root .trade-page .upgrade-paths { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0; border-block: 1px solid var(--border); }
-  .shell-root .trade-page .upgrade-paths > button { position: relative; display: grid; grid-template-columns: 1.6rem minmax(0, 1fr) auto; align-items: center; justify-content: stretch; gap: .1rem .8rem; height: auto; margin: 0; padding: 1rem 1rem 1rem 0; border: 0; border-radius: 0; background: transparent; text-align: left; white-space: normal; transition: background var(--dur-fast) linear; }
-  .shell-root .trade-page .upgrade-paths > button + button { padding-left: 1.25rem; border-left: 1px solid var(--border); }
-  .shell-root .trade-page .upgrade-paths > button:hover:not(:disabled) { background: color-mix(in srgb, var(--muted) 60%, transparent); }
-  .shell-root .trade-page .upgrade-paths > button:disabled { opacity: .5; }
-  .shell-root .trade-page .upgrade-paths > button::after { content: '→'; grid-column: 3; grid-row: 1 / span 2; align-self: center; color: var(--muted-foreground); transition: transform var(--dur) var(--ease-out); }
-  .shell-root .trade-page .upgrade-paths > button:hover:not(:disabled)::after { transform: translateX(3px); color: var(--primary); }
-  .shell-root .trade-page .upgrade-paths svg { grid-row: 1 / span 2; width: 1.35rem; height: 1.35rem; color: var(--muted-foreground); }
-  .shell-root .trade-page .upgrade-paths strong { grid-column: 2; font-size: var(--text-base); font-weight: 600; color: var(--foreground); }
-  .shell-root .trade-page .upgrade-paths span { display: block; grid-column: 2; font-size: var(--text-xs); line-height: 1.55; color: var(--muted-foreground); }
-  .shell-root .trade-page .upgrade-shared-goal { margin: .6rem 0 0; font-size: var(--text-xs); line-height: 1.6; color: var(--muted-foreground); }
+  .shell-root .trade-page .upgrade-paths { display: flex; flex-wrap: wrap; gap: .4rem; margin: .75rem 0 0; }
+  .shell-root .trade-page .upgrade-paths > button { display: inline-flex; height: auto; padding: .35rem .6rem; font-size: var(--text-xs); white-space: normal; }
 
-  .shell-root .trade-page .trade-overview-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; margin: 1.5rem 0 0; padding: 0; border: 0; border-radius: 0; background: none; }
+  .shell-root .trade-page .trade-overview-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin: 0 0 1rem; padding: 0; border: 0; border-radius: 0; background: none; }
   .shell-root .trade-page .trade-overview-toolbar > div { flex: 1 1 18rem; min-width: 0; }
   .shell-root .trade-page .trade-overview-toolbar h3 { margin: 0 0 .2rem; font-size: var(--text-base); font-weight: 600; }
   .shell-root .trade-page .trade-overview-toolbar p { font-size: var(--text-sm); line-height: 1.55; color: var(--muted-foreground); }
@@ -85,13 +73,10 @@
   .shell-root .trade-page .trade-priority-list > li { border: 0; border-top: 1px solid var(--border); border-radius: 0; background: none; }
   .shell-root .trade-page .trade-priority-position { display: flex; align-items: center; justify-content: flex-start; gap: .75rem; width: 100%; height: auto; padding: .7rem .25rem .15rem; border: 0; border-radius: .3rem; background: transparent; text-align: left; white-space: normal; }
   .shell-root .trade-page .trade-priority-position:hover { background: color-mix(in srgb, var(--muted) 60%, transparent); }
-  .shell-root .trade-page .trade-rank { flex: 0 0 1.4rem; font-family: inherit; font-size: var(--text-xs); font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
-  .shell-root .trade-page .trade-score-row:nth-child(-n+4) .trade-rank { color: var(--muted-foreground); }
   .shell-root .trade-page .trade-position-symbol { flex: 0 0 2rem; width: 2rem; height: 2rem; color: var(--muted-foreground); }
   .shell-root .trade-page .trade-position-symbol svg { width: 1.35rem; height: 1.35rem; }
 
-  .shell-root .trade-page .upgrade-paths > button[aria-pressed='true'] strong { color: var(--primary); }
-  .shell-root .trade-page .up-step[tabindex] { scroll-margin-top: 1rem; }
+  .shell-root .trade-page :is(.up-step[tabindex], .up-paste, .trade-workspace) { scroll-margin-top: 1rem; }
   .shell-root .trade-page .trade-progress-controls { display: flex; align-items: center; gap: 1rem; margin-top: .5rem; }
   .shell-root .trade-page .trade-progress > span { display: block; line-height: 1.65; }
   .shell-root .trade-page .trade-priority-table-wrap { max-width: 100%; overflow-x: auto; margin-top: .75rem; }
@@ -104,14 +89,14 @@
   .shell-root .trade-page .trade-priority-table th small { display: block; max-width: 24rem; margin-top: .2rem; font-size: var(--text-xs); color: var(--muted-foreground); overflow-wrap: anywhere; }
   .shell-root .trade-page .trade-priority-table td { font-variant-numeric: tabular-nums; white-space: nowrap; }
   .shell-root .trade-page .trade-priority-table .trade-priority-position { display: inline-flex; gap: 0; width: auto; margin: 0; padding: .4rem .75rem; border: 1px solid var(--input); border-radius: var(--radius-2xl); font-size: var(--text-sm); }
-  .shell-root .trade-page .trade-market-context { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; font-size: var(--text-sm); }
-  .shell-root .trade-page .trade-market-context p { flex: 1 0 100%; color: var(--muted-foreground); overflow-wrap: anywhere; }
+  .shell-root .trade-page .trade-market-context { display: flex; flex-wrap: wrap; gap: .25rem 1rem; margin: 0 0 .75rem; font-size: var(--text-sm); }
+  .shell-root .trade-page .trade-market-context p { color: var(--muted-foreground); overflow-wrap: anywhere; }
   .shell-root .trade-page .trade-search-pending { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1.5rem; margin-bottom: 1.5rem; }
   .shell-root .trade-page .trade-search-pending p { flex: 1 1 20rem; font-size: var(--text-sm); color: var(--muted-foreground); }
-  .shell-root .trade-page .up-market > .trade-search-card { margin: 0 0 1.5rem; padding: 0 0 1.25rem; border-top: 0; border-bottom: 1px solid var(--border); }
-  .shell-root .trade-page .up-paste { margin-top: 1.75rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+  .shell-root .trade-page .trade-analysis > .trade-search-card { margin: 0 0 1.5rem; padding: 0 0 1rem; border-top: 0; border-bottom: 1px solid var(--border); }
+  .shell-root .trade-page .up-paste { margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
 
-  /* ── 4 · Trade verification ─────────────────────────────────────────────────────── */
+  /* Market filters and weighted search. */
   .shell-root .trade-page .trade-market { margin: 1.5rem 0; border-block: 1px solid var(--border); }
   .shell-root .trade-page .trade-market > summary { display: flex; flex-wrap: wrap; align-items: baseline; padding: .75rem 0; }
   .shell-root .trade-page .trade-market > summary span { font-weight: 600; }
@@ -137,7 +122,7 @@
   .shell-root .trade-page .trade-position > span:nth-child(2) { display: flex; flex-direction: column; gap: .05rem; min-width: 0; }
   .shell-root .trade-page .trade-position strong { font-size: var(--text-sm); font-weight: 550; }
   .shell-root .trade-page .trade-position small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs); color: var(--muted-foreground); }
-  .shell-root .trade-page .trade-position-done { flex: 0 0 auto; max-width: 5rem; margin-left: auto; font-size: var(--text-xs); line-height: 1.4; color: var(--color-positive); }
+  .shell-root .trade-page .trade-position-done { flex: 0 0 auto; max-width: 5rem; margin-left: auto; font-size: var(--text-xs); line-height: 1.4; color: var(--muted-foreground); }
   .shell-root .trade-page .trade-text-button { display: block; margin: .6rem 0 0; padding: .25rem .5rem; border: 0; background: transparent; font-size: var(--text-xs); color: var(--muted-foreground); }
 
   .shell-root .trade-page .trade-analysis { min-width: 0; padding: 0; }
@@ -173,15 +158,16 @@
 
   .shell-root .trade-page .trade-results-heading h4 { font-size: var(--text-base); font-weight: 600; }
   .shell-root .trade-page .trade-results-heading p { margin-top: .15rem; font-size: var(--text-xs); color: var(--muted-foreground); }
-  .shell-root .trade-page .trade-count { font-size: var(--text-xs); color: var(--muted-foreground); }
-  .shell-root .trade-page .trade-score-table { overflow-x: auto; }
-  .shell-root .trade-page .trade-score-row { display: grid; grid-template-columns: minmax(14rem, 1fr) 8.5rem 5.5rem; gap: 1rem; align-items: center; min-width: 34rem; padding: .6rem 0; border-bottom: 1px solid var(--border); font-size: var(--text-sm); }
+  .shell-root .trade-page .trade-weight-heading { flex-wrap: wrap; }
+  .shell-root .trade-page .trade-score-table { position: relative; }
+  .shell-root .trade-page .trade-score-row { display: grid; grid-template-columns: minmax(0, 1fr) 8.5rem 7rem; gap: 1rem; align-items: center; min-width: 0; padding: .6rem 0; border-bottom: 1px solid var(--border); font-size: var(--text-sm); }
   .shell-root .trade-page .trade-score-labels { padding-block: .3rem; border-bottom: 1px solid var(--border); font-size: var(--text-xs); color: var(--muted-foreground); }
   .shell-root .trade-page .trade-affix { display: flex; align-items: baseline; gap: .75rem; overflow-wrap: anywhere; }
   .shell-root .trade-page .trade-bar { height: .35rem; border-radius: 999px; background: var(--muted); }
   .shell-root .trade-page .trade-bar > span, .shell-root .trade-page .trade-score-row:nth-child(-n+4) .trade-bar > span { background: var(--primary); opacity: .8; }
   .shell-root .trade-page .trade-priority b { width: 1.8rem; font-weight: 450; font-size: var(--text-xs); color: var(--muted-foreground); }
-  .shell-root .trade-page .trade-score-row .trade-gain { font-variant-numeric: tabular-nums; font-weight: 560; }
+  .shell-root .trade-page .trade-score-row .trade-gain { color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .shell-root .trade-page .trade-score-row :is(.trade-gain, .trade-priority) > small { display: none; }
   .shell-root .trade-page .trade-weight { font-family: inherit; font-size: var(--text-xs); font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
   .shell-root .trade-page .trade-situational { margin: 1.25rem 0 0; padding: 1rem 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
   .shell-root .trade-page .trade-situational h4 { font-size: var(--text-base); font-weight: 600; }
@@ -253,6 +239,9 @@
   .shell-root .trade-page .replacement-verdict { display: grid; gap: .3rem; margin: 0 0 1rem; }
   .shell-root .trade-page .replacement-verdict > strong { font-size: var(--text-lg); font-weight: 600; }
   .shell-root .trade-page .replacement-verdict > p { margin: 0; font-size: var(--text-sm); }
+  .shell-root .trade-page .replacement-constraints, .shell-root .trade-page .replacement-resistance { color: var(--muted-foreground); }
+  .shell-root .trade-page .replacement-verdict .replacement-constraints { display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
+  .shell-root .trade-page .trade-error .replacement-actions { margin-top: .5rem; }
   .shell-root .trade-page .replacement-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0 0 1.25rem; border-block: 1px solid var(--border); }
   .shell-root .trade-page .replacement-metric { display: flex; flex-direction: column; gap: .2rem; min-width: 0; padding: .9rem 1.25rem .9rem 0; border: 0; border-radius: 0; background: none; font-variant-numeric: tabular-nums; }
   .shell-root .trade-page .replacement-metric + .replacement-metric { padding-left: 1.25rem; border-left: 1px solid var(--border); }
@@ -301,9 +290,12 @@
     .shell-root .trade-page .trade-position:nth-child(2) { border-top: 0; }
   }
   @container shell-container (max-width: 44rem) {
-    .shell-root .trade-page .upgrade-paths { grid-template-columns: minmax(0, 1fr); }
-    .shell-root .trade-page .upgrade-paths > button, .shell-root .trade-page .upgrade-paths > button + button { padding: .8rem 0; }
-    .shell-root .trade-page .upgrade-paths > button + button { border-left: 0; border-top: 1px solid var(--border); }
+    .shell-root .trade-page .trade-score-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem 1rem; }
+    .shell-root .trade-page .trade-score-labels { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); }
+    .shell-root .trade-page .trade-score-row .trade-affix { grid-column: 1 / -1; }
+    .shell-root .trade-page .trade-score-row :is(.trade-gain, .trade-priority) { display: flex; justify-content: space-between; align-items: baseline; gap: .25rem; font-size: var(--text-xs); }
+    .shell-root .trade-page .trade-score-row :is(.trade-gain, .trade-priority) > small { display: inline; font-size: inherit; text-align: start; }
+    .shell-root .trade-page .trade-score-row .trade-bar { display: none; }
     .shell-root .trade-page .trade-skill-context { grid-template-columns: minmax(0, 1fr); }
     .shell-root .trade-page .replacement-metrics, .shell-root .trade-page .equipment-plan .replacement-metrics { grid-template-columns: minmax(0, 1fr); }
     .shell-root .trade-page .replacement-metric + .replacement-metric { padding-left: 0; border-left: 0; border-top: 1px solid var(--border); }
@@ -314,5 +306,4 @@
     .shell-root .trade-page .upgrade-replacement-result :is(th, td) { padding-inline: .3rem; font-size: var(--text-xs); }
     .shell-root .trade-page .upgrade-replacement-result :is(th, td):first-child { white-space: normal; overflow-wrap: anywhere; }
   }
-  @media (prefers-reduced-motion: reduce) { .shell-root .trade-page .upgrade-paths > button::after { transition: none; } .shell-root .trade-page .upgrade-paths > button:hover:not(:disabled)::after { transform: none; } }
 }

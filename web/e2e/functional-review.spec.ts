@@ -207,15 +207,15 @@ test('importing a build with no notes and starting a new character clear previou
 test('changing the selected skill hides stale attribution until a new calculation completes', async ({ page }) => {
   await start(page, emptyNotes);
   await goTo(page, 'Calculations');
-  await page.getByRole('tab', { name: 'Source contributions', exact: true }).click();
-  await page.getByRole('button', { name: 'Source contributions', exact: true }).click();
+  await page.getByRole('tab', { name: 'Removal impact', exact: true }).click();
+  await page.getByRole('button', { name: 'Calculate removal impact', exact: true }).click();
   await expect(page.locator('.attribution-table')).toBeVisible();
   await choose(page, inspected(page), /Fireball.*Group 2/);
   await expect(page.locator('.attribution-table')).toHaveCount(0);
   // The skill overview recalculates at the same time and shows its own status.
-  await expect(page.getByRole('region', { name: 'Source contributions', exact: true }).getByRole('status'))
+  await expect(page.getByRole('region', { name: 'Removal impact', exact: true }).getByRole('status'))
     .toContainText('Calculated skill changed; run the analysis again');
-  await page.getByRole('button', { name: 'Source contributions', exact: true }).click();
+  await page.getByRole('button', { name: 'Calculate removal impact', exact: true }).click();
   await expect(page.locator('.attribution-table')).toBeVisible();
   await expect(page.locator('.attribution-table')).toContainText('Skill group 2 · Fireball');
 });
@@ -232,12 +232,8 @@ test('library utilities equip into utility slots and incompatible equipment cann
   expect((await saved(page)).items.some((item: { slot: string }) => item.slot === 'Flask 1')).toBe(false);
   await library.getByRole('checkbox', { name: /Current slot only/ }).uncheck();
   const amulet = library.locator('.library-row').filter({ hasText: 'Spirit Choker' });
-  // A disabled button is named by the reason it cannot be used, so find it by its text.
-  for (const action of ['Equip', 'Compare']) {
-    const button = amulet.getByRole('button').filter({ hasText: new RegExp(`^${action}$`) });
-    await expect(button).toBeDisabled();
-    await expect(button).toHaveAccessibleName('Select a compatible equipment position first');
-  }
+  await expect(amulet.first()).toBeVisible();
+  await expect(amulet.getByRole('button', { name: /^(Equip|Compare)$/ })).toHaveCount(0);
 });
 
 test('attribution identifies the whole removed group when its selected active gem is not first', async ({ page }) => {
@@ -252,8 +248,8 @@ test('attribution identifies the whole removed group when its selected active ge
   await expect(inspected(page)).toContainText('Fireball');
   const before = await saved(page);
   await goTo(page, 'Calculations');
-  await page.getByRole('tab', { name: 'Source contributions', exact: true }).click();
-  await page.getByRole('button', { name: 'Source contributions', exact: true }).click();
+  await page.getByRole('tab', { name: 'Removal impact', exact: true }).click();
+  await page.getByRole('button', { name: 'Calculate removal impact', exact: true }).click();
   const group = page.locator('.attribution-table tbody tr').filter({ hasText: 'Skill group' });
   await expect(group).toHaveCount(1);
   await expect(group.locator('td').first()).toContainText('Spark');

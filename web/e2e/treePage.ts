@@ -22,7 +22,7 @@ export async function generateShareCode(page: Page): Promise<string> {
   await waitForPageTransition(page);
   const exportSection = page.locator('details.bd-export');
   if (!await exportSection.evaluate(element => (element as HTMLDetailsElement).open)) await exportSection.locator(':scope > summary').click();
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
+  await page.getByRole('button', { name: 'Generate PoB code for this stage', exact: true }).click();
   const code = page.getByRole('textbox', { name: 'Share Code', exact: true });
   await expect(code).not.toHaveValue('');
   return code.inputValue();

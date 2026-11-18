@@ -6,10 +6,8 @@ import type { AttributionResponse, CalculateBuildResponse, SkillMetricsEntry } f
 import { Overview } from './Overview';
 const h = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], skills: null as SkillMetricsEntry[] | null,
   contribution: null as { version: number; selection: string; data: AttributionResponse } | null,
-  details: { open: false, scrollIntoView: vi.fn(), querySelector: vi.fn() }, summaryFocus: vi.fn(),
 }));
 vi.mock('react', async original => ({ ...await original<typeof import('react')>(),
-  useRef: () => ({ current: h.details }),
   useEffect: () => {},
   useState: (initial: unknown) => [initial === null && h.skills ? { version: 2, skills: h.skills } : initial, () => {}],
 }));
@@ -22,7 +20,7 @@ const baseSession = { socketGroups: [{ enabled: true, gems: [] }, { enabled: tru
   classNames: { classes: {}, ascendancies: {} }, calcParams: { main_socket_group: 1 }, stateVersion: 2,
   inspectSkill: vi.fn(), updateParams: vi.fn(), setSocketGroups: vi.fn(),
 } as unknown as BuildSession;
-const calc = { stats: [{ id: 'TotalNetRegen', value: -5 }, { id: 'SpiritUnreserved', value: -10 }],
+const calc = { stats: [{ id: 'NetManaRegen', value: -249.04 }, { id: 'TotalNetRegen', value: -5 }, { id: 'SpiritUnreserved', value: -10 }],
   unsupported_modifiers: ['Some modifier'], item_errors: [], main_skill: { skill_id: 'Fireball', group_index: 1, active_skill_index: 1, combined_dps: 200 },
 } as unknown as CalculateBuildResponse;
 const focusStat = vi.fn(), onSpirit = vi.fn(), navigate = vi.fn();
@@ -31,11 +29,12 @@ function render() {
   return renderToStaticMarkup(<Overview session={baseSession} view={{ calc, previous: null, stale: false }} lang="en-US" focusStat={focusStat} onSpirit={onSpirit} navigate={navigate} />);
 }
 function click(label: string) { h.buttons.find(button => renderToStaticMarkup(<>{button.children}</>).includes(label))!.onClick!({} as never); }
-beforeEach(() => { vi.clearAllMocks(); h.skills = null; h.contribution = null; h.details.open = false; h.details.querySelector.mockReturnValue({ focus: h.summaryFocus }); });
+beforeEach(() => { vi.clearAllMocks(); h.skills = null; h.contribution = null; });
 it('takes recovery, modifiers, and Spirit to the actual problem', () => {
-  render();
-  click('View recovery'); expect(focusStat).toHaveBeenCalledWith('TotalNetRegen');
-  click('View modifiers'); expect(h.details.open).toBe(true); expect(h.summaryFocus).toHaveBeenCalledOnce(); expect(h.details.scrollIntoView).toHaveBeenCalledOnce();
+  const html = render();
+  click('View recovery'); expect(focusStat).toHaveBeenCalledWith('NetManaRegen');
+  expect(html.match(/id="ov-unincluded"/g)).toHaveLength(1);
+  expect(html).toContain('Some modifier');
   click('View skills'); expect(onSpirit).toHaveBeenCalledOnce();
   expect(navigate).not.toHaveBeenCalled();
 });

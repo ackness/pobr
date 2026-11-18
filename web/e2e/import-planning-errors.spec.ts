@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { pageLink, statValue } from './shell';
 import { headlineDps } from './skillsAndCalcs';
-import { displayedRail, goTo, importInto, mainSkillPinned, openBuild, openSupportSettings, settled } from './buildLibrary';
+import { displayedRail, goTo, importInto, mainSkillPinned, openBuild, openImport, openSupportSettings, settled } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
 import type { AttributeChoice, CalculateBuildRequest, CalculateBuildResponse, PassiveNode } from '../src/api/types';
@@ -10,7 +10,7 @@ import type { SavedSession } from '../src/hooks/useBuildSession';
 import type { BuildWorkspace } from '../src/lib/buildWorkspace';
 import { bindT, type Lang } from '../src/lib/i18n';
 import { buildPassiveGraph, shortestAllocationPath } from '../src/lib/passiveGraph';
-import { formatStatValue, STAT_SECTIONS, statFormat } from '../src/lib/statDisplay';
+import { formatStatValue, STAT_SECTIONS, statFormat, statRowLabel } from '../src/lib/statDisplay';
 import { workspaceText } from '../src/lib/workspaceText';
 import * as wasmReplay from '../src/wasm/pkg/pobr_wasm.js';
 import { matrixCell } from './tags';
@@ -110,6 +110,7 @@ async function start(page: Page, lang: Lang = 'en-US') {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await page.addInitScript(lang => localStorage.setItem('pobr-lang', lang), lang);
   await page.goto('/build');
+  await openImport(page);
   await expect(page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true })).toBeEnabled({ timeout: 90_000 });
   await settled(page);
 }
@@ -278,7 +279,7 @@ async function exactApply(page: Page, card: Locator, planner: Planner, before: C
     const row = STAT_SECTIONS.flatMap(section => section.rows).find(row => row.id === id);
     const value = expectedResult.stats.find(stat => stat.id === id)!.value;
     // Combined DPS is the headline figure above the rows.
-    const shown = row ? statValue(page, new RegExp(`^${row.label[lang]}$`)).first()
+    const shown = row ? statValue(page, new RegExp(`^${statRowLabel(lang, row.id)}$`)).first()
       : page.locator(`.rail-headline [data-stat="${id}"] .rail-hero-value`).first();
     await expect(shown).toHaveText(formatStatValue(value, statFormat(id)));
   }
@@ -451,6 +452,7 @@ test('strict saved-file rejection stays local and external decoder rejection als
   await configure(page);
   const before = await capture(page);
   await openBuild(page);
+  await openImport(page);
   const damaged = { version: 1, notes: 'Saved identity wins over valid legacy collections', state: null, passives: [], items: [], skills: [] };
   await page.locator('input[type=file]').setInputFiles({ name: 'damaged-saved-session.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(damaged)) });
   await expect(page.getByRole('alert').last()).toBeVisible();
@@ -460,6 +462,7 @@ test('strict saved-file rejection stays local and external decoder rejection als
   await complete(page);
   const receipt = await routeResults(page).innerText();
   await openBuild(page);
+  await openImport(page);
   await page.locator('input[type=file]').setInputFiles({ name: 'unrecognized-external.build', mimeType: 'application/json', buffer: Buffer.from('{}') });
   await expect(page.getByRole('alert').last()).toBeVisible();
   expect(await capture(page)).toEqual(before);

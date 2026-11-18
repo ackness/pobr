@@ -16,6 +16,13 @@ struct Candidate {
     fragment: Fragment,
 }
 
+struct ParsedLine<'a> {
+    index: usize,
+    skeleton: String,
+    captures: Vec<&'a str>,
+    unscaled: bool,
+}
+
 struct Observation<'a> {
     entry: &'a TemplateEntry,
     captures: Vec<&'a str>,
@@ -62,17 +69,41 @@ impl TierIndex {
         mod_domain: u32,
         allowed_ids: &BTreeMap<String, BTreeSet<String>>,
     ) -> Vec<Option<TierInfo>> {
-        self.lookup_groups(lines, base_tags, mod_domain, allowed_ids)
+        let lines = lines
+            .iter()
+            .map(|&raw| TierLine {
+                raw,
+                unscaled: None,
+            })
+            .collect::<Vec<_>>();
+        self.lookup_line_rolls(&lines, base_tags, mod_domain, allowed_ids, None)
+            .into_iter()
+            .map(|matched| matched.map(|matched| matched.info))
+            .collect()
+    }
+
+    /// Test both interpretations in the same whole-item candidate search.
+    /// An item level limits natural rolls without changing the published tier scale.
+    pub fn lookup_line_rolls(
+        &self,
+        lines: &[TierLine<'_>],
+        base_tags: &[String],
+        mod_domain: u32,
+        allowed_ids: &BTreeMap<String, BTreeSet<String>>,
+        item_level: Option<u32>,
+    ) -> Vec<Option<TierMatch>> {
+        self.lookup_groups(lines, base_tags, mod_domain, allowed_ids, item_level)
             .unwrap_or_else(|| vec![None; lines.len()])
     }
 
     fn lookup_groups(
         &self,
-        lines: &[&str],
+        lines: &[TierLine<'_>],
         base_tags: &[String],
         mod_domain: u32,
         allowed_ids: &BTreeMap<String, BTreeSet<String>>,
-    ) -> Option<Vec<Option<TierInfo>>> {
+        item_level: Option<u32>,
+    ) -> Option<Vec<Option<TierMatch>>> {
         let tags = base_tags.iter().map(String::as_str).collect();
         let eligible: BTreeSet<usize> = self
             .mods
@@ -99,21 +130,53 @@ impl TierIndex {
             .copied()
             .filter(|&index| spawn_weight_positive(&self.mods[index].spawn_weights, &tags))
             .collect();
+        let matchable: BTreeSet<_> = eligible
+            .iter()
+            .copied()
+            .filter(|&index| {
+                let modifier = &self.mods[index];
+                item_level.is_none_or(|level| modifier.level <= level)
+                    || allowed_ids.contains_key(&modifier.id)
+            })
+            .collect();
         let mut by_stat: BTreeMap<&str, Vec<usize>> = BTreeMap::new();
-        for &mod_index in &eligible {
+        for &mod_index in &matchable {
             for stat in &self.mods[mod_index].stats {
                 by_stat.entry(&stat.stat_id).or_default().push(mod_index);
             }
         }
-        let parsed: Vec<_> = lines.iter().map(|line| tokenize(line)).collect();
+        let parsed: Vec<_> = lines
+            .iter()
+            .enumerate()
+            .flat_map(|(index, line)| {
+                [(line.raw, false)]
+                    .into_iter()
+                    .chain(
+                        line.unscaled
+                            .filter(|&raw| raw != line.raw)
+                            .map(|raw| (raw, true)),
+                    )
+                    .filter(|(text, _)| !text.is_empty())
+                    .map(move |(text, unscaled)| {
+                        let (skeleton, captures) = tokenize(text);
+                        ParsedLine {
+                            index,
+                            skeleton,
+                            captures,
+                            unscaled,
+                        }
+                    })
+            })
+            .collect();
         let mut budget = MAX_SEARCH_STEPS;
         let mut fragments: BTreeMap<usize, BTreeSet<Fragment>> = BTreeMap::new();
+        let mut raw_matches = BTreeSet::new();
         let mut observations = Vec::new();
         for (skeleton, entries) in &self.templates {
             for assignment in line_assignments(skeleton, &parsed, &mut budget)? {
                 let captures: Vec<_> = assignment
                     .iter()
-                    .flat_map(|&index| parsed[index].1.iter().copied())
+                    .flat_map(|line| line.captures.iter().copied())
                     .collect();
                 let values = captures
                     .iter()
@@ -127,7 +190,7 @@ impl TierIndex {
                         entry,
                         captures: captures.clone(),
                         values,
-                        lines: assignment.iter().copied().collect(),
+                        lines: assignment.iter().map(|line| line.index).collect(),
                     };
                     let Some(mod_indices) = entry
                         .stat_ids
@@ -140,6 +203,10 @@ impl TierIndex {
                         spend(&mut budget)?;
                         let modifier = &self.mods[mod_index];
                         if let Some(fragment) = matching_fragment(&modifier.stats, &observation) {
+                            raw_matches.extend(assignment.iter().filter_map(|line| {
+                                (!line.unscaled && lines[line.index].unscaled.is_some())
+                                    .then_some((mod_index, line.index))
+                            }));
                             fragments.entry(mod_index).or_default().insert(fragment);
                         }
                     }
@@ -167,7 +234,7 @@ impl TierIndex {
                     lines
                         .iter()
                         .enumerate()
-                        .any(|(other, line)| other != index && *line == lines[index])
+                        .any(|(other, line)| other != index && line.raw == lines[index].raw)
                 }) && !candidates.iter().any(|other| {
                     *candidate != other
                         && (!candidate.fragment.lines.is_disjoint(&other.fragment.lines)
@@ -179,7 +246,7 @@ impl TierIndex {
         let explanations = if certain.is_empty() {
             Vec::new()
         } else {
-            self.merged_explanations(&eligible, &observations, &mut budget)?
+            self.merged_explanations(&matchable, &observations, &mut budget)?
         };
         let mut possibly_merged = BTreeSet::new();
         for explanation in &explanations {
@@ -211,7 +278,11 @@ impl TierIndex {
                 continue;
             };
             for &index in &candidate.fragment.lines {
-                result[index] = Some(info.clone());
+                result[index] = Some(TierMatch {
+                    info: info.clone(),
+                    requires_catalyst: lines[index].unscaled.is_some()
+                        && !raw_matches.contains(&(candidate.mod_index, index)),
+                });
             }
         }
         Some(result)
@@ -465,29 +536,24 @@ fn spend(budget: &mut usize) -> Option<()> {
     Some(())
 }
 
-fn line_assignments(
+fn line_assignments<'a, 'text>(
     skeleton: &str,
-    parsed: &[(String, Vec<&str>)],
+    parsed: &'a [ParsedLine<'text>],
     budget: &mut usize,
-) -> Option<Vec<Vec<usize>>> {
-    let mut assignments = vec![Vec::new()];
+) -> Option<Vec<Vec<&'a ParsedLine<'text>>>> {
+    let mut assignments: Vec<Vec<&ParsedLine<'text>>> = vec![Vec::new()];
     for part in skeleton.split('\n') {
-        let choices: Vec<_> = parsed
-            .iter()
-            .enumerate()
-            .filter(|(_, line)| line.0 == part)
-            .map(|(index, _)| index)
-            .collect();
+        let choices: Vec<_> = parsed.iter().filter(|line| line.skeleton == part).collect();
         if choices.is_empty() {
             return Some(Vec::new());
         }
         let mut next = Vec::new();
         for assignment in assignments {
-            for &index in &choices {
-                if !assignment.contains(&index) {
+            for &line in &choices {
+                if assignment.iter().all(|other| other.index != line.index) {
                     spend(budget)?;
                     let mut assignment = assignment.clone();
-                    assignment.push(index);
+                    assignment.push(line);
                     next.push(assignment);
                 }
             }

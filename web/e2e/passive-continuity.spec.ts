@@ -1,3 +1,4 @@
+import { openImport } from './buildLibrary';
 import { headlineDps } from './skillsAndCalcs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -540,6 +541,7 @@ test('historical tree replacement discards current-tree receipts and exposes no 
   await page.locator('.shell-builds-button').click();
   // Synthetic PoB document only; decoding/calculation/version rejection remain real.
   const historical = deflateSync('<PathOfBuilding2><Build level="80" className="Witch"/><Tree activeSpec="1"><Spec nodes="770" treeVersion="0_1"/></Tree><Skills/><Items/></PathOfBuilding2>').toString('base64url');
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(historical);
   await page.locator('.import-submit').click();
   await expect.poll(async () => (await saved(page)).treeVersion).toBe('0_1');

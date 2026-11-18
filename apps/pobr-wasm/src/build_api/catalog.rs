@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 
 use pobr_data::display_stat::{DisplayStatCategory, DisplayStatId, StatValueType};
 use pobr_item::draft::ModifierSource;
+use pobr_item::tier::{CatalystRoll, TierLine, unscale_catalyst_line};
 use serde::Serialize;
 
 use crate::state;
@@ -99,45 +100,76 @@ pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
     let explicit = classified
         .iter()
         .filter(|line| line.kind == pobr_item::DisplayLineKind::Explicit);
+    let mut inferred_tag = None;
     let tiers = if let Some((index, tags, domain, draft)) = tier_ctx {
         let allowed_sources = state::special_affix_ids(&draft.header.base_name)?;
         let selection = pobr_core::ingest::item_text::ItemSelection::new(text);
         let source_lines: Vec<_> = text.lines().collect();
         let catalyst = display_catalyst(&draft.catalyst);
+        inferred_tag = catalyst
+            .as_ref()
+            .and_then(|(_, tags, _)| match tags.as_slice() {
+                [tag] => Some(tag.clone()),
+                _ => None,
+            });
         let has_catalyst_quality = draft.catalyst.descriptor.is_some()
             && draft.catalyst.quality.is_some_and(|quality| quality > 0);
         let explicit: Vec<_> = explicit
             .map(|line| {
+                let absent = (String::new(), None);
                 if line.modifier_sources.contains(&ModifierSource::Custom)
                     || !selection.accepts(source_lines[line.source_line])
                 {
-                    return String::new();
+                    return absent;
                 }
                 let text = equipment_tier_line(&line.text);
                 if !has_catalyst_quality || line.unscalable {
-                    return text;
+                    return (text, None);
                 }
-                let Some((quality, tags, scalability)) = &catalyst else {
-                    return String::new();
+                let Some((quality, catalyst_tags, scalability)) = &catalyst else {
+                    return absent;
                 };
-                if line.mod_tags.is_empty() {
-                    // Without the modifier's tags, even a value in the native
-                    // range could be the result of scaling a lower tier.
-                    return String::new();
+                if !line.mod_tags.is_empty() {
+                    return if !line.mod_tags.iter().any(|tag| catalyst_tags.contains(tag)) {
+                        (text, None)
+                    } else if let CatalystRoll::Unscaled(unscaled) =
+                        unscale_catalyst_line(&text, *quality, &scalability.1)
+                    {
+                        (unscaled, None)
+                    } else {
+                        absent
+                    };
                 }
-                if line.mod_tags.iter().any(|tag| tags.contains(tag)) {
-                    pobr_item::tier::unscale_catalyst_line(&text, *quality, &scalability.1)
-                        .unwrap_or_default()
-                } else {
-                    text
+                if line.modifier_sources.iter().any(|source| {
+                    matches!(
+                        source,
+                        ModifierSource::Crafted
+                            | ModifierSource::Desecrated
+                            | ModifierSource::Mutated
+                    )
+                }) {
+                    return absent;
+                }
+                match unscale_catalyst_line(&text, *quality, &scalability.1) {
+                    CatalystRoll::Unscaled(unscaled) => (text, Some(unscaled)),
+                    CatalystRoll::NoIntegralRoll => (text, None),
+                    CatalystRoll::Unsupported => absent,
                 }
             })
             .collect();
-        index.lookup_lines_with_allowed(
-            &explicit.iter().map(String::as_str).collect::<Vec<_>>(),
+        let rolls = explicit
+            .iter()
+            .map(|(raw, unscaled)| TierLine {
+                raw,
+                unscaled: unscaled.as_deref(),
+            })
+            .collect::<Vec<_>>();
+        index.lookup_line_rolls(
+            &rolls,
             &tags,
             domain,
             &allowed_sources,
+            catalyst.and(draft.header.item_level),
         )
     } else {
         vec![None; explicit.count()]
@@ -145,10 +177,18 @@ pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
     let mut tiers = tiers.into_iter();
     let lines: Vec<ItemLineJson> = classified
         .into_iter()
-        .map(|line| {
-            let tier = (line.kind == pobr_item::DisplayLineKind::Explicit)
+        .map(|mut line| {
+            let matched = (line.kind == pobr_item::DisplayLineKind::Explicit)
                 .then(|| tiers.next().flatten())
                 .flatten();
+            if let Some(tag) = &inferred_tag
+                && matched
+                    .as_ref()
+                    .is_some_and(|matched| matched.requires_catalyst)
+            {
+                line.mod_tags.push(tag.clone());
+            }
+            let tier = matched.map(|matched| matched.info);
             ItemLineJson {
                 text: line.text,
                 kind: display_line_kind_str(line.kind),

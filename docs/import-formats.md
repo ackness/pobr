@@ -5,8 +5,9 @@ PoBR 把不同来源的角色方案（BD）转换为同一个 `Build`。各格�
 本文说明各格式读到了什么、缺少什么，以及导入器怎样报告问题。
 
 导入器把跳过的物品和无模型栏位写入 `ImportReport`，把计算不能应用的词条保留在
-`unsupported_modifier_texts`（Web 响应为 `unsupported_modifiers`）。WeGame 的额外提示写入
-笔记，以 `[import]` 开头。存档与导出规则见[构筑模型](build-model.md)。
+`unsupported_modifier_texts`（Web 响应为 `unsupported_modifiers`）。WeGame 导入时跳过的内容，
+如无法识别的宝石或珠宝孔，会在 BD 库的「笔记」中以 `[import]` 标明。导入回执可跳到笔记和
+概览的未计入词缀清单，分别核对未导入的内容与已保留但未参与计算的词缀。
 
 <a id="where-each-format-is-decided"></a>
 ## 怎样识别格式
@@ -21,9 +22,14 @@ PoBR 把不同来源的角色方案（BD）转换为同一个 `Build`。各格�
 | 旧国服 `.build` | 有 `items`，且 `passives`、`items`、`skills` 都是数组 | `build_api/decode.rs` |
 | PoBR 单阶段存档、全部阶段文件、工作区备份 | 由存档加载器校验版本及 `state`／`workspace` 等结构 | 从文件导入，不交给 `.build` 解码器猜测 |
 
+### 在 BD 库选择入口
+
+- **粘贴**：PoB2 代码、下表支持的分享链接，或 `.build`／WeGame JSON 的正文。
+- **从文件导入**：游戏内规划器或旧国服 `.build`、PoBR 单阶段存档、全部阶段文件或工作区备份。也可以选含 PoB2 代码的文本文件。
+
 分享链接支持 `pobb.in`、`poe.ninja/poe2/pob`、`pastebin.com`、`rentry.co`、
-`poe2db.tw/pob` 和 `maxroll.gg/poe2/pob`。poe.ninja 的角色页面没有可直接读取的构筑码；
-导入器会报 `ninja_profile`，提示改用 `/pob/` 分享链接或复制构筑码。
+`poe2db.tw/pob`、`maxroll.gg/poe2/pob` 和 WeGame。poe.ninja 的**角色页**没有可直接读取的构筑码；
+请改用 `/pob/` 分享链接或复制构筑码。下载和备份的内容见 [Web 存档契约](web-contracts.md#web-build-workspace)。
 
 无关 JSON、缺少数组或数组类型错误的旧 `.build` 会在修改当前 BD、阶段或物品库前失败。
 数组可以为空。PoBR 存档和备份请使用“从文件导入”。
@@ -58,8 +64,8 @@ PoBR 把不同来源的角色方案（BD）转换为同一个 `Build`。各格�
   找不到有效插槽时报告问题，不放入该珠宝。
 - 羁绊（`Bonded`）符文行依赖特定职业，导入器不应用，并在笔记中说明。
 - 任务奖励按文本读取；`N Broken Boss Faces` 是进度计数，标为未建模，不作为普通词条。
-- 来源没有主技能、命名技能集和技能武器组绑定。解码器先取第一组，并写入提醒。
-  用户应在技能页确认主技能与武器组。曾核对的一个真实分享首组是默认 Bow Shot，并非主要输出技能。
+- WeGame 分享不指定计算技能，也不提供命名技能集或技能武器组绑定。Web 首次计算后会在已启用、可计算的技能中
+  选综合 DPS 最高项；没有可计算技能就不选。可到「概览 → 技能伤害」改选，到「技能 → 对应技能组 → 技能武器组」核对绑定。
 
 完整的请求边界和限制见 [WeGame 导入](wegame-import.md)。
 

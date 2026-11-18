@@ -1,3 +1,4 @@
+import { openImport } from './buildLibrary';
 import { expect, test, type Page } from '@playwright/test';
 import { busy, openItemsAfterImport, pageLink } from './shell';
 import { choose, generateShareCode } from './treePage';
@@ -19,6 +20,7 @@ async function idle(page: Page) {
 }
 async function importCode(page: Page, value: string) {
   await page.locator('.shell-builds-button').click();
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(value);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);

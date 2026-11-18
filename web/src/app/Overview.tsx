@@ -1,5 +1,5 @@
 import { EnergyTriggerNote } from '../components/config/EnergyTriggerNote';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertTriangle, ArrowRight, CircleAlert, CircleCheck, Download } from 'lucide-react';
 import { getBackend } from '../api/backend';
 import type { AttributionResponse, GemCatalogEntry, SkillMetricsEntry } from '../api/types';
@@ -9,12 +9,12 @@ import { useMainMinion } from '../hooks/useMainMinion';
 import { useSkillCatalog } from '../hooks/useSkillName';
 import { headlineDpsStat, minionDpsNote } from '../lib/mainMinion';
 import { classDisplayName } from '../lib/nativeDisplayNames';
-import { bindT, damageTypeLabel, slotLabel, statNameLabel, type Lang } from '../lib/i18n';
+import { bindT, damageTypeLabel, enemyTierLabel, grantedSourceLabel, slotLabel, statNameLabel, type Lang } from '../lib/i18n';
 import { contributionLabel, removalChange } from '../lib/sourceContributions';
 import { activeSkillEffects } from '../lib/skillSelection';
 import { skillDisplayName } from '../lib/skillNames';
 import { unmodelledMetaTriggerNote } from '../lib/triggerNotes';
-import { formatNumber, formatStatValue, statMap, formatStat } from '../lib/statDisplay';
+import { formatNumber, formatStatValue, statMap, formatStat, statRowLabel } from '../lib/statDisplay';
 import { UnincludedModifiers } from '../components/shared/UnincludedModifiers';
 import { deriveFindings, type Finding } from './findings';
 import { AnimatedNumber } from './motion/AnimatedNumber';
@@ -22,8 +22,9 @@ import { useCancellableJob } from './jobs/useCancellableJob';
 import { useUpgradeGoal } from '../hooks/useUpgradeGoal';
 import type { SettledCalc } from './motion/useSettledCalc';
 import type { Route } from './routes';
-import { words, colon } from './text';
+import { colon } from './text';
 import { calculatedSkillKey } from './calculatedSkill';
+import { resolveEnemyTier } from './enemy';
 import { requestSkillMetrics } from './pages/skills/useSkillMetrics';
 
 const MAX_HIT = ['Physical', 'Fire', 'Cold', 'Lightning', 'Chaos'] as const;
@@ -31,26 +32,28 @@ const ATTRIBUTION_FIELDS = ['CombinedDPS', 'TotalEHP', 'Life'] as const;
 const int = (value: number) => formatStatValue(value, 'int');
 
 function describe(finding: Finding, lang: Lang, catalog: ReadonlyMap<string, GemCatalogEntry>): { title: string; detail: string } {
-  const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
+  const tt = bindT(lang);
   switch (finding.kind) {
-    case 'no-main-skill': return { title: w('No calculated skill selected', '尚未选择计算技能', '尚未選擇計算技能'), detail: w('Choose a damaging skill in the side panel or on Skills.', '在侧栏或技能页选择一个造成伤害的技能。', '在側欄或技能頁選擇一個造成傷害的技能。') };
-    case 'item-errors': return { title: w(`${finding.slots.length} item(s) could not be read`, `${finding.slots.length} 件装备无法解析`, `${finding.slots.length} 件裝備無法解析`), detail: finding.slots.map(slot => slotLabel(lang, slot)).join(' · ') };
-    case 'spirit': return { title: w(`Spirit is over-committed by ${int(-finding.value)}`, `精魂超额保留 ${int(-finding.value)}`, `精魂超額保留 ${int(-finding.value)}`), detail: w('Reservations exceed your Spirit; the calculation does not switch skills off for you.', '技能保留总量超过精魂上限；计算不会替你关闭技能。', '技能保留總量超過精魂上限；計算不會替你關閉技能。') };
-    case 'attribute': { const name = statNameLabel(lang, finding.attribute); return { title: w(`${name} ${int(finding.have)} of ${int(finding.need)} required`, `${name}不足：${int(finding.have)} / 需要 ${int(finding.need)}`, `${name}不足：${int(finding.have)} / 需要 ${int(finding.need)}`), detail: w('Some gear or a gem cannot be used at this attribute level.', '有装备或宝石的属性需求未满足。', '有裝備或寶石的屬性需求未滿足。') }; }
+    case 'no-main-skill': return { title: tt('overview.noSkillTitle'), detail: tt('overview.noSkillDetail') };
+    case 'item-errors': return { title: tt('overview.unreadableItems', { count: finding.slots.length }), detail: finding.slots.map(slot => slotLabel(lang, slot)).join(' · ') };
+    case 'spirit': return { title: tt('overview.spiritOvercommit', { amount: int(-finding.value) }), detail: tt('overview.spiritDetail') };
+    case 'attribute': { const name = statNameLabel(lang, finding.attribute); return { title: tt('overview.attributeShortfall', { attribute: name, have: int(finding.have), need: int(finding.need) }), detail: tt('overview.attributeDetail') }; }
     case 'resist': { const name = damageTypeLabel(lang, finding.element); return finding.element === 'Chaos'
-      ? { title: w(`${name} resistance is ${int(finding.value)}%`, `${name}抗性为 ${int(finding.value)}%`, `${name}抗性為 ${int(finding.value)}%`), detail: w('Negative resistance increases damage taken from this type.', '负抗性会增加该类型的承受伤害。', '負抗性會增加該類型的承受傷害。') }
-      : { title: w(`${name} resistance ${int(finding.value)}%`, `${name}抗性 ${int(finding.value)}%`, `${name}抗性 ${int(finding.value)}%`), detail: w(`${int(finding.missing)}% short of the cap.`, `距上限还差 ${int(finding.missing)}%。`, `距上限還差 ${int(finding.missing)}%。`) }; }
-    case 'hit-chance': return { title: w(`Hit chance ${formatStatValue(finding.value, 'percent')}`, `命中率 ${formatStatValue(finding.value, 'percent')}`, `命中率 ${formatStatValue(finding.value, 'percent')}`), detail: w('Attacks miss; accuracy is costing damage.', '攻击会落空，命中不足在损失伤害。', '攻擊會落空，命中不足在損失傷害。') };
-    case 'net-regen': return { title: w(`Net recovery is ${formatStatValue(finding.value, 'float2')}/s`, `净恢复为 ${formatStatValue(finding.value, 'float2')}/秒`, `淨恢復為 ${formatStatValue(finding.value, 'float2')}/秒`), detail: w('Your own costs and degeneration outpace recovery.', '自身消耗与持续损失超过恢复速度。', '自身消耗與持續損失超過恢復速度。') };
+      ? { title: tt('overview.negativeResistance', { type: name, value: int(finding.value) }), detail: tt('overview.negativeResistanceDetail') }
+      : { title: tt('overview.lowResistance', { type: name, value: int(finding.value) }), detail: tt('overview.resistanceShortfall', { missing: int(finding.missing) }) }; }
+    case 'hit-chance': return { title: tt('overview.lowHitChance', { value: formatStatValue(finding.value, 'percent') }), detail: tt('overview.lowHitChanceDetail') };
+    case 'net-regen': return {
+      title: `${statNameLabel(lang, finding.stat)}${colon(lang)}${formatStatValue(finding.value, 'float2', lang).replace(/^-/, '−')}`,
+      detail: tt('overview.recoveryDeficit'),
+    };
     case 'unmodelled-meta-trigger': return { title: bindT(lang)('skills.unmodelledMetaTriggerTitle'), detail: unmodelledMetaTriggerNote(finding.trigger, lang, catalog) };
-    case 'unsupported': return { title: `${bindT(lang)('calcs.unsupported')}${colon(lang)}${finding.count}`, detail: w('Their effect is missing from every number on this page.', '这些词缀的效果不在本页任何数值中。', '這些詞綴的效果不在本頁任何數值中。') };
+    case 'unsupported': return { title: `${tt('calcs.unsupported')}${colon(lang)}${finding.count}`, detail: tt('overview.unsupportedDetail') };
   }
 }
 
-export function Overview({ session, view, lang, navigate, focusStat, onSpirit }: { session: BuildSession; view: SettledCalc; lang: Lang; navigate: (route: Route) => void; focusStat: (id: string) => void; onSpirit?: () => void }) {
-  const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
+export function Overview({ session, view, lang, navigate, focusStat, onSpirit, onImport }: { session: BuildSession; view: SettledCalc; lang: Lang; navigate: (route: Route) => void; focusStat: (id: string) => void; onSpirit?: () => void; onImport?: () => void }) {
   const tt = bindT(lang);
-  const modifierDetails = useRef<HTMLDetailsElement>(null);
+  const enemy = resolveEnemyTier(session.calcParams.enemy_tier, session.calcParams.config_inputs);
   const selection = calculatedSkillKey(session);
   const catalog = useSkillCatalog();
   const { goal, setGoal } = useUpgradeGoal();
@@ -90,6 +93,17 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit }:
   const damageOf = (entry: SkillMetricsEntry) => minion && isCalculated(entry) ? minion.minion.dps : entry.metrics?.combined_dps ?? 0;
   const ranked = (skills ?? []).filter(entry => entry.status === 'calculated' && entry.metrics && (damageOf(entry) > 0 || entry.unmodelled_meta_trigger)).sort((a, b) => damageOf(b) - damageOf(a)).slice(0, 8);
   const top = ranked[0] ? damageOf(ranked[0]) : 0;
+  const skillContext = (entry: SkillMetricsEntry) => {
+    const group = session.socketGroups[entry.group_index];
+    const repeated = ranked.some(other => other !== entry && other.skill_id === entry.skill_id);
+    const supports = repeated ? group?.gems.filter(gem => gem.enabled !== false && catalog.get(gem.skill_id)?.is_support).slice(0, 2).map(gem => skillName(gem.skill_id)) ?? [] : [];
+    const source = group?.source ? grantedSourceLabel(lang, group.source) : '';
+    const weapon = group?.weapon_set ? `${tt('weapons.set')} ${group.weapon_set}` : '';
+    const groupNumber = tt('overview.skillGroup').replace('{index}', String(entry.group_index + 1));
+    const effect = ranked.some(other => other !== entry && other.group_index === entry.group_index && other.skill_id === entry.skill_id)
+      ? tt('overview.skillEffect').replace('{index}', String(entry.active_skill_index)) : '';
+    return [source, weapon, ...supports, groupNumber, effect].filter(Boolean).join(' · ');
+  };
   const chooseSkill = (entry: SkillMetricsEntry) => {
     if (!isCalculated(entry)) session.inspectSkill(entry.group_index, entry.active_skill_index, skillResult?.version ?? session.stateVersion);
   };
@@ -125,23 +139,16 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit }:
     if (finding.kind === 'resist' && finding.element !== 'Chaos') {
       setGoal({ ...goal, resistanceFirst: true, resistanceTarget: finding.value + finding.missing });
       navigate('trade');
-    } else if (finding.kind === 'net-regen') focusStat('TotalNetRegen');
-    else if (finding.kind === 'unsupported') {
-      const details = modifierDetails.current;
-      if (details) {
-        details.open = true;
-        details.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        details.querySelector('summary')?.focus();
-      }
-    } else if (finding.kind === 'spirit' && onSpirit) onSpirit();
+    } else if (finding.kind === 'net-regen') focusStat(finding.stat);
+    else if (finding.kind === 'spirit' && onSpirit) onSpirit();
     else navigate(finding.route);
   };
 
   if (session.socketGroups.length === 0 && !session.hasBuildContent) {
     return <section className="ov ov-empty" aria-labelledby="ov-title">
-      <h1 id="ov-title">{w('Import a build to see what it can do', '导入一套 BD，看看它的真实表现', '匯入一套 BD，看看它的真實表現')}</h1>
-      <p>{w('Paste a PoB2 code, open a game planner or China-server file, or start from a class. You will get damage, survivability, and what is holding the build back.', '粘贴 PoB2 代码或分享链接，或打开游戏规划器 / 国服文件，也可以从职业开始。你会看到伤害、生存，以及拖后腿的地方。', '貼上 PoB2 代碼或分享連結，或開啟遊戲規劃器 / 國服檔案，也可以從職業開始。你會看到傷害、生存，以及拖後腿的地方。')}</p>
-      <Button autoFocus onClick={() => navigate('build')}><Download />{w('Import or create a build', '导入或创建 BD', '匯入或建立 BD')}</Button>
+      <h1 id="ov-title">{tt('overview.importTitle')}</h1>
+      <p>{tt('overview.importHint')}</p>
+      <Button autoFocus onClick={onImport ?? (() => navigate('build'))}><Download />{tt('sidebar.importCreate')}</Button>
     </section>;
   }
 
@@ -155,22 +162,24 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit }:
   const figures = [
     minion
       ? { id: `Minion:${minion.minion.index}:TotalDPS`, label: tt('sidebar.minionHitDps'), value: minion.minion.dps, format: dash(n => formatStatValue(n, 'float2')), sub: minionDpsNote(lang, minion.name, value('ActiveMinionLimit')), tone: 'dps' }
-      : { id: 'CombinedDPS', label: tt('sidebar.combinedDps'), value: main?.combined_dps ?? null, format: dash(n => formatStatValue(n, 'float2')), sub: main ? skillName(main.skill_id) : w('No calculated skill', '未选择计算技能', '未選擇計算技能'), tone: 'dps' },
-    { id: 'TotalEHP', label: w('Effective HP', '有效生命', '有效生命'), value: value('TotalEHP'), format: dash(int), sub: weakest ? tt('overview.weakestHit').replace('{type}', damageTypeLabel(lang, weakest[0])).replace('{value}', int(weakest[1])) : '', tone: 'ehp' },
-    { id: 'Life', label: w('Life', '生命', '生命'), value: value('Life'), format: dash(int), sub: `${lifeAndShield}${w('ES', '护盾', '護盾')} ${int(value('EnergyShield') ?? 0)} · ${w('Mana', '魔力', '魔力')} ${int(value('Mana') ?? 0)}`, tone: 'life' },
+      : { id: 'CombinedDPS', label: tt('sidebar.combinedDps'), value: main?.combined_dps ?? null, format: dash(n => formatStatValue(n, 'float2')), sub: main ? skillName(main.skill_id) : tt('overview.noSkill'), tone: 'dps' },
+    { id: 'TotalEHP', label: statRowLabel(lang, 'TotalEHP'), value: value('TotalEHP'), format: dash(int), sub: weakest ? tt('overview.weakestHit').replace('{type}', damageTypeLabel(lang, weakest[0])).replace('{value}', int(weakest[1])) : '', tone: 'ehp' },
+    { id: 'Life', label: statRowLabel(lang, 'Life'), value: value('Life'), format: dash(int), sub: `${lifeAndShield}${tt('overview.shield')} ${int(value('EnergyShield') ?? 0)} · ${statRowLabel(lang, 'Mana')} ${int(value('Mana') ?? 0)}`, tone: 'life' },
     { id: 'SpiritUnreserved', label: spiritOver ? tt('overview.spiritOver') : statNameLabel(lang, 'SpiritUnreserved'), value: spiritOver ? -spiritFree : spiritFree, format: dash(int), sub: spirit === null ? '' : tt('overview.spiritLimit').replace('{value}', int(spirit)), tone: spiritOver ? 'bad' : 'plain' },
   ];
 
   return <section className="ov" data-stale={view.stale || undefined} aria-labelledby="ov-title">
     <header className="ov-head">
-      <div><h1 id="ov-title">{build?.name || w('Untitled build', '未命名 BD', '未命名 BD')}</h1>
-        <p>{[classLabel, session.character && `${w('Level', '等级', '等級')} ${session.character.level}`, stage?.name].filter(Boolean).join(' · ')}</p></div>
+      <div><h1 id="ov-title">{build?.name || tt('overview.untitledBuild')}</h1>
+        <p>{[classLabel, session.character && `${tt('build.level')} ${session.character.level}`, stage?.name, enemyTierLabel(lang, enemy)].filter(Boolean).join(' · ')}</p></div>
     </header>
 
     <dl className="ov-figures" aria-busy={session.busy}>
       {figures.map(figure => <div key={figure.id} className={`ov-figure is-${figure.tone}`}>
         <dt>{figure.label}</dt>
-        <dd><button type="button" onClick={() => focusStat(figure.id)}><AnimatedNumber value={figure.value} format={figure.format} /><span className="ov-source">{tt('overview.sources')}</span></button></dd>
+        <dd><button type="button" aria-label={`${figure.label}${colon(lang)}${figure.format(figure.value)} · ${tt('overview.viewCalculation')}`} onClick={() => focusStat(figure.id)}>
+          <AnimatedNumber value={figure.value} format={figure.format} /><span className="ov-source">{tt('overview.sources')}</span>
+        </button></dd>
         <small>{figure.sub}</small>
         {figure.tone === 'dps' && <EnergyTriggerNote calc={calc} groups={session.socketGroups} lang={lang} />}
         {figure.tone === 'dps' && !minion && <EnergyTriggerNote trigger={calc?.unmodelled_meta_trigger} catalog={catalog} lang={lang} />}
@@ -187,27 +196,40 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit }:
     <div className="ov-cols">
       <div className="ov-col">
         <section className="ov-sec" aria-labelledby="ov-findings">
-          <h2 id="ov-findings">{w('Needs attention', '需要关注', '需要關注')}</h2>
-          {!calc ? <p className="ov-muted">{session.busy ? w('Calculating…', '计算中…', '計算中…') : w('The calculation is unavailable.', '当前计算不可用。', '目前計算無法使用。')}</p>
-            : findings.length === 0 ? <p className="ov-ok"><CircleCheck />{w('Resistances, Spirit, attributes and accuracy all check out under this setup.', '在当前设定下，抗性、精魂、属性与命中均无明显问题。', '在目前設定下，抗性、精魂、屬性與命中均無明顯問題。')}</p>
-              : <ul className="ov-findings">{findings.map((finding, index) => { const text = describe(finding, lang, catalog); const Icon = finding.severity === 'bad' ? CircleAlert : AlertTriangle;
-                return <li key={`${finding.kind}${index}`} className={`is-${finding.severity}`}><Icon aria-hidden="true" /><div><strong>{text.title}</strong><span>{text.detail}</span></div>
-                  {(() => {
-                  // A resistance shortfall is fixed in Upgrades with the goal already set to "resistances first".
-                  const fixResist = finding.kind === 'resist' && finding.element !== 'Chaos';
-                  return <Button variant="ghost" size="sm" onClick={() => openFinding(finding)}>
-                    {fixResist ? w('Fix in Upgrades', '到提升页补抗性', '到提升頁補抗性') : finding.kind === 'net-regen' ? w('View recovery', '查看恢复', '查看恢復') : finding.kind === 'unsupported' ? w('View modifiers', '查看词缀', '查看詞綴') : finding.route === 'items' ? w('View equipment', '查看装备', '查看裝備') : finding.route === 'skills' ? w('View skills', '查看技能', '查看技能') : w('View settings', '查看配置', '查看設定')}<ArrowRight /></Button>; })()}</li>; })}</ul>}
+          <h2 id="ov-findings">{tt('overview.findings')}</h2>
+          {!calc ? <p className="ov-muted">{session.busy ? tt('build.calculating') : tt('overview.calculationUnavailable')}</p>
+            : findings.length === 0 ? <p className="ov-ok"><CircleCheck />{tt('overview.allClear')}</p>
+              : <ul className="ov-findings">{findings.map((finding, index) => {
+                const text = describe(finding, lang, catalog);
+                const Icon = finding.severity === 'bad' ? CircleAlert : AlertTriangle;
+                if (finding.kind === 'unsupported') return <li key={finding.kind} className="is-warn ov-finding-modifiers">
+                  <Icon aria-hidden="true" />
+                  <details className="ov-details">
+                    <summary id="ov-unincluded" className="disclosure">{text.title}</summary>
+                    <UnincludedModifiers lines={calc.unsupported_modifiers} lang={lang} items={session.items} />
+                  </details>
+                </li>;
+                const action = finding.kind === 'resist' && finding.element !== 'Chaos' ? tt('overview.fixInUpgrades')
+                  : finding.kind === 'net-regen' ? tt('overview.viewRecovery')
+                  : finding.route === 'items' ? tt('overview.viewEquipment')
+                  : finding.route === 'skills' ? tt('overview.viewSkills')
+                  : tt('overview.viewConfig');
+                return <li key={`${finding.kind}${index}`} className={`is-${finding.severity}`}>
+                  <Icon aria-hidden="true" /><div><strong>{text.title}</strong><span>{text.detail}</span></div>
+                  <Button variant="ghost" size="sm" onClick={() => openFinding(finding)}>{action}<ArrowRight /></Button>
+                </li>;
+              })}</ul>}
         </section>
 
         <section className="ov-sec" aria-labelledby="ov-skills" aria-busy={skillsPending}>
-          <h2 id="ov-skills">{w('Skill damage', '技能伤害', '技能傷害')}</h2>
+          <h2 id="ov-skills">{tt('overview.skillDamage')}</h2>
           <p className="ov-hint ov-skill-instruction">{tt('overview.selectSkillHint')}</p>
-          {ranked.length === 0 ? <p className="ov-muted" role="status">{skillsPending ? w('Calculating…', '计算中…', '計算中…')
-            : session.calcError || (hasSkills && !skills) ? w('The calculation is unavailable.', '当前计算不可用。', '目前計算無法使用。')
-              : w('No skill deals damage yet.', '暂时没有造成伤害的技能。', '暫時沒有造成傷害的技能。')}</p>
+          {ranked.length === 0 ? <p className="ov-muted" role="status">{skillsPending ? tt('build.calculating')
+            : session.calcError || (hasSkills && !skills) ? tt('overview.calculationUnavailable')
+              : tt('overview.noDamage')}</p>
             : <ol className="ov-rank">{ranked.map(entry => { const current = isCalculated(entry); const damage = damageOf(entry);
               return <li key={`${entry.group_index}:${entry.active_skill_index}`}><button type="button" aria-pressed={current} disabled={skillsPending || !session.socketGroups[entry.group_index]?.enabled} onClick={() => chooseSkill(entry)}>
-                <span className="ov-rank-name">{skillName(entry.skill_id)}{current && <span className="ov-current"><CircleCheck aria-hidden="true" />{tt('overview.currentSkill')}</span>}<small>{w(`Group ${entry.group_index + 1} · Effect ${entry.active_skill_index}`, `技能组 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`, `技能組 ${entry.group_index + 1} · 效果 ${entry.active_skill_index}`)}{current && minion && ` · ${tt('skills.minionDps')}`}</small>
+                <span className="ov-rank-name">{skillName(entry.skill_id)}{current && <span className="ov-current"><CircleCheck aria-hidden="true" />{tt('overview.currentSkill')}</span>}<small>{skillContext(entry)}{current && minion && ` · ${tt('skills.minionDps')}`}</small>
                   <EnergyTriggerNote trigger={entry.unmodelled_meta_trigger} catalog={catalog} lang={lang} /></span>
                 <span className="ov-bar"><span style={{ width: top > 0 ? `${(damage / top) * 100}%` : '0%' }} /></span>
                 <span className="ov-rank-value">{formatStatValue(damage, 'float2')}</span></button></li>; })}</ol>}
@@ -216,31 +238,29 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit }:
 
       <div className="ov-col">
         <section className="ov-sec" aria-labelledby="ov-contribution">
-          <div className="ov-sec-head"><h2 id="ov-contribution">{tt('calcs.attribution')}</h2>
-            <div className="ov-toggle segmented" role="group" aria-label={w('Measure', '指标', '指標')}>{ATTRIBUTION_FIELDS.map(id => <button key={id} type="button" aria-pressed={field === id} onClick={() => setField(id)}>{statNameLabel(lang, statFor(id))}</button>)}</div></div>
+          <div className="ov-sec-head"><h2 id="ov-contribution">{tt('overview.removalImpact')}</h2>
+            <div className="ov-toggle segmented" role="group" aria-label={tt('overview.measure')}>{ATTRIBUTION_FIELDS.map(id => <button key={id} type="button" aria-pressed={field === id} onClick={() => setField(id)}>{statNameLabel(lang, statFor(id))}</button>)}</div></div>
           <p className="ov-hint">{tt('calcs.attributionHint')}</p>
           {!contribution || contribution.version !== session.stateVersion
-            ? <div className="ov-compute"><p className="ov-muted">{contribution ? contribution.selection !== selection ? tt('overview.skillAnalysisChanged') : w('The build changed since this was measured.', 'BD 已变化，结果已过期。', 'BD 已變化，結果已過期。') : w('See how removing each item or skill group changes the result.', '查看移除每件装备或技能组后，数值会如何变化。', '查看移除每件裝備或技能組後，數值會如何變化。')}</p>
-              <div className="ov-compute-actions"><Button variant="outline" disabled={contributionBusy || !calc} onClick={computeContribution}>{contributionBusy ? w('Measuring…', '计算中…', '計算中…') : contribution ? w('Measure again', '重新计算', '重新計算') : tt('calcs.runAttribution')}</Button>
-                {contributionBusy && <Button variant="ghost" onClick={job.cancel}>{w('Cancel', '取消', '取消')}</Button>}</div>{job.error && <p className="ov-muted" role="alert">{job.error}</p>}</div>
-            : entries.length === 0 ? <p className="ov-muted">{w('Nothing changes this number.', '没有任何来源影响该数值。', '沒有任何來源影響該數值。')}</p>
+            ? <div className="ov-compute">
+              {contribution && <p className="ov-muted">{contribution.selection !== selection ? tt('overview.skillAnalysisChanged') : tt('overview.contributionStale')}</p>}
+              <div className="ov-compute-actions"><Button variant="outline" disabled={contributionBusy || !calc} onClick={computeContribution}>{contributionBusy ? tt('overview.measuring') : contribution ? tt('overview.measureAgain') : tt('calcs.runAttribution')}</Button>
+                {contributionBusy && <Button variant="ghost" onClick={job.cancel}>{tt('common.cancel')}</Button>}</div>{job.error && <p className="ov-muted" role="alert">{job.error}</p>}</div>
+            : entries.length === 0 ? <p className="ov-muted">{tt('overview.contributionEmpty')}</p>
               : <ol className="ov-rank ov-contrib">{entries.map(({ entry, delta }) => <li key={`${entry.kind}:${entry.id}`}><div>
                 <span className="ov-rank-name">{entry.kind === 'socket_group' ? groupName(Number(entry.id)) : contributionLabel(lang, entry.kind, entry.id)}</span>
                 <span className="ov-bar" data-sign={removalChange(delta) < 0 ? 'neg' : 'pos'}><span style={{ width: `${(Math.abs(delta) / biggest) * 100}%` }} /></span>
-                <span className="ov-rank-value">{tt(delta > 0 ? 'calcs.removalLoss' : 'calcs.removalGain').replace('{value}', formatStat(fieldStat, Math.abs(delta), lang))}{baseline > 0 && <em>{lang === 'en-US' ? ' (' : '（'}{formatNumber((Math.abs(delta) / baseline) * 100, 1, 1)}%{lang === 'en-US' ? ')' : '）'}</em>}</span></div></li>)}</ol>}
+                <span className="ov-rank-value">{tt(delta > 0 ? 'calcs.removalLoss' : 'calcs.removalGain').replace('{value}', formatStat(fieldStat, Math.abs(delta), lang))}{baseline > 0 && <em>{tt('format.parentheticalSuffix', { detail: `${formatNumber((Math.abs(delta) / baseline) * 100, 1, 1)}%` })}</em>}</span></div></li>)}</ol>}
         </section>
 
         <section className="ov-sec" aria-labelledby="ov-trust">
-          <h2 id="ov-trust">{w('Calculation coverage', '计算覆盖', '計算涵蓋範圍')}</h2>
+          <h2 id="ov-trust">{tt('overview.coverage')}</h2>
           <dl className="ov-facts">
-            <div><dt>{tt('calcs.unsupported')}</dt><dd className={calc?.unsupported_modifiers.length ? 'is-warn' : undefined}>{calc ? calc.unsupported_modifiers.length : '—'}</dd></div>
-            <div><dt>{w('Items that failed to parse', '无法解析的装备', '無法解析的裝備')}</dt><dd className={calc?.item_errors.length ? 'is-bad' : undefined}>{calc ? calc.item_errors.length : '—'}</dd></div>
-            <div><dt>{w('Game data', '游戏数据', '遊戲資料')}</dt><dd>{calc?.provenance?.data_version ?? session.dataVersion ?? '—'}</dd></div>
-            {calc?.provenance?.engine_version && <div><dt>{w('Engine', '计算引擎', '計算引擎')}</dt><dd>{calc.provenance.engine_version}</dd></div>}
+            <div><dt>{tt('overview.unreadableItemsCount')}</dt><dd className={calc?.item_errors.length ? 'is-bad' : undefined}>{calc ? calc.item_errors.length : '—'}</dd></div>
+            <div><dt>{tt('overview.dataVersion')}</dt><dd>{calc?.provenance?.data_version ?? session.dataVersion ?? '—'}</dd></div>
+            {calc?.provenance?.engine_version && <div><dt>{tt('overview.engineVersion')}</dt><dd>{calc.provenance.engine_version}</dd></div>}
           </dl>
-          {calc && calc.unsupported_modifiers.length > 0 && <details ref={modifierDetails} className="ov-details"><summary className="disclosure">{w('Show the modifiers', '查看这些词缀', '查看這些詞綴')}</summary>
-            <UnincludedModifiers lines={calc.unsupported_modifiers} lang={lang} items={session.items} /></details>}
-          <p className="ov-hint">{w('Results reflect modeled effects. Review the uncalculated effects above.', '数值仅反映已支持的效果。未计算的内容见上方明细。', '數值僅反映已支援的效果。未計算的內容見上方明細。')}</p>
+          <p className="ov-hint">{tt('overview.modeledEffects')}</p>
         </section>
       </div>
     </div>

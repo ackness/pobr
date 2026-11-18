@@ -1,6 +1,5 @@
 import type { StatComparison } from '../../../lib/compare';
-import type { Lang } from '../../../lib/i18n';
-import { words } from '../../text';
+import { t, type Lang } from '../../../lib/i18n';
 import { statPolarity } from '../../motion/statPolarity';
 
 export { signedPercent } from '../../../lib/statDisplay';
@@ -30,26 +29,20 @@ export function deltaTone(id: string, delta: number | null): DeltaTone {
   return polarity === 0 ? 'neutral' : delta * polarity > 0 ? 'better' : 'worse';
 }
 
-const NOUNS: Record<CompareTab, [string, string, string, string]> = {
-  stats: ['stat', 'stats', '项属性', '項屬性'],
-  items: ['item', 'items', '件装备', '件裝備'],
-  skills: ['skill group', 'skill groups', '个技能组', '個技能組'],
-  config: ['setting', 'settings', '项配置', '項配置'],
-  tree: ['passive node', 'passive nodes', '个天赋节点', '個天賦節點'],
-};
-
-/** "3 stats", "1 skill group", "3 项属性". Chinese counts need no plural. */
+/** Preserve the original singular/other wording while keeping the whole phrase translatable. */
 export function countPhrase(lang: Lang, tab: CompareTab, count: number): string {
-  const [one, many, cn, tw] = NOUNS[tab];
-  return lang === 'en-US' ? `${count} ${count === 1 ? one : many}` : `${count} ${lang === 'zh-TW' ? tw : cn}`;
+  return t(lang, `compare.count.${tab}.${count === 1 ? 'one' : 'other'}`, { count });
 }
 
 /** One line: what B changes relative to A. Parts with no change are left out. */
 export function summaryLine(lang: Lang, counts: DiffCounts): string {
   const parts = COMPARE_TABS.filter(tab => counts[tab] > 0).map(tab => countPhrase(lang, tab, counts[tab]));
-  if (!parts.length) return words(lang, 'A and B are identical.', 'A 与 B 完全相同。', 'A 與 B 完全相同。');
-  const list = lang === 'en-US' ? (parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0]) : parts.join('、');
-  return words(lang, `B changes ${list}.`, `B 相对 A 有 ${list}不同。`, `B 相對 A 有 ${list}不同。`);
+  if (!parts.length) return t(lang, 'compare.identical');
+  const list = parts.length === 1 ? parts[0] : t(lang, 'compare.summaryJoin', {
+    first: parts.slice(0, -1).join(t(lang, 'format.listSeparator')),
+    last: parts[parts.length - 1],
+  });
+  return t(lang, 'compare.changeSummary', { changes: list });
 }
 
 export interface Headline { id: string; percent: number; tone: DeltaTone }

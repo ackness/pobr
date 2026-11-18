@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { buildAction, pageLink } from './shell';
 import { headlineDps } from './skillsAndCalcs';
-import { displayedRail, goTo, importInto, openBuild, openSupportSettings, selectStage, settled } from './buildLibrary';
+import { displayedRail, goTo, importInto, openBuild, openImport, openSupportSettings, selectStage, settled } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
 import type { BuildJson, CalculateBuildRequest, CalculateBuildResponse, PassiveNode } from '../src/api/types';
@@ -107,11 +107,13 @@ async function start(page: Page, lang: Lang = 'en-US') {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await page.addInitScript(lang => localStorage.setItem('pobr-lang', lang), lang);
   await page.goto('/build');
+  await openImport(page);
   await expect(page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true })).toBeEnabled({ timeout: 90_000 });
   await settled(page);
 }
 
 async function importSource(page: Page, source: string, lang: Lang = 'en-US') {
+  await openImport(page);
   await page.getByRole('textbox', { name: bindT(lang)('build.code'), exact: true }).fill(source);
   await page.locator('.import-submit').click();
   // An import lands on the Overview; follow it to the Items page and come back to the Build page afterwards.
@@ -231,6 +233,7 @@ test('external JSON files reject while malformed PoBR files retain their origina
   test.setTimeout(300_000);
   await frostWorkspace(page);
   const before = await capture(page);
+  await openImport(page);
   for (const input of [{}, { version: 1 }, { passives: [], items: [] }]) {
     await page.locator('input[type=file]').setInputFiles({ name: 'unsupported.build', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(input)) });
     await expect(page.getByRole('alert')).toBeVisible();
@@ -356,6 +359,7 @@ async function checkDecodedImport(page: Page, source: string) {
 test('committed legacy .build keeps real character, passives, equipment and gems through file import and reload', async ({ page }) => {
   await frostWorkspace(page);
   const before = await saved(page);
+  await openImport(page);
   await page.locator('input[type=file]').setInputFiles({ name: '召唤奥黛丽黑本.build', mimeType: 'application/json', buffer: Buffer.from(legacyBuild) });
   await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
   await settled(page);
@@ -461,6 +465,7 @@ test('proper pobr-build file and confirmed workspace backup preserve all stages 
   const backup = JSON.stringify(shared.envelope);
   await editName(page, workspaceText('en-US').newBuild, 'Temporary before backup restore');
   const temporary = await capture(page);
+  await openImport(page);
   await page.locator('input[type=file]').setInputFiles({ name: 'pobr-workspace.json', mimeType: 'application/json', buffer: Buffer.from(backup) });
   await answerConfirm(page, false);
   await settled(page);

@@ -8,7 +8,6 @@ import { bindT, type Lang } from '../../lib/i18n';
 import { detailKind, detailEmptyKey } from '../../lib/statDetails';
 import { statMap, metricMeaning, formatStat } from '../../lib/statDisplay';
 import type { SettledCalc } from '../motion/useSettledCalc';
-import { words } from '../text';
 import { parseStatId, statLabel } from './statId';
 import { useStatBreakdown } from './useStatBreakdown';
 
@@ -18,7 +17,6 @@ export default function Inspector({ session, view, lang, id, onClose, onOpenCalc
 }) {
   const navigate = useNavigateToPage();
   const tt = bindT(lang);
-  const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
   const { stat, minion: minionIndex } = parseStatId(id);
   const minion = minionIndex === undefined ? undefined : view.calc?.minions?.find(row => row.index === minionIndex);
   const source = minion ?? view.calc;
@@ -32,12 +30,12 @@ export default function Inspector({ session, view, lang, id, onClose, onOpenCalc
   }}><div className="insp" data-stale={loading || view.stale || undefined}>
     <header className="insp-head">
       <div>
-        <span className="insp-kicker">{minion ? `${tt('minion.title')} · ${minion.name || tt('minion.unavailable')}` : w('Why this number', '这个数从哪来', '這個數從哪來')}</span>
+        <span className="insp-kicker">{minion ? `${tt('minion.title')} · ${minion.name || tt('minion.unavailable')}` : tt('inspector.title')}</span>
         <h2>{stat === 'TotalDPS' ? tt('calcs.hitDps') : statLabel(lang, stat)}</h2>
       </div>
       <div className="insp-actions">
-        <Button variant="ghost" size="icon" aria-pressed={pinned} aria-label={pinned ? w('Unpin from the results panel', '从结果栏取消固定', '從結果欄取消固定') : w('Pin to the results panel', '固定到结果栏', '固定到結果欄')} onClick={onTogglePin}><Pin /></Button>
-        <Button variant="ghost" size="icon" aria-label={w('Close', '关闭', '關閉')} onClick={onClose}><X /></Button>
+        <Button variant="ghost" size="icon" aria-pressed={pinned} aria-label={pinned ? tt('inspector.unpin') : tt('inspector.pin')} onClick={onTogglePin}><Pin /></Button>
+        <Button variant="ghost" size="icon" aria-label={tt('common.close')} onClick={onClose}><X /></Button>
       </div>
     </header>
     <p className="insp-value">{raw === undefined ? '—' : formatStat(stat, raw, lang)}</p>
@@ -48,6 +46,6 @@ export default function Inspector({ session, view, lang, id, onClose, onOpenCalc
           : detail ? emptyKey ? <p className="insp-note" role="status">{tt(emptyKey)}</p> : <BreakdownTable breakdown={detail} lang={lang} stat={stat} values={minion ? new Map(Object.entries(minion.stats)) : statMap(view.calc?.stats ?? [])} related={source?.breakdowns} onSelect={target => onOpenCalcs(minionIndex === undefined ? target : `Minion:${minionIndex}:${target}`)} />
             : <p className="insp-note" role="status">{tt(loading ? 'calcs.loadingDetail' : emptyKey!)}</p>}
     </div>
-    <footer className="insp-foot"><Button variant="ghost" size="sm" onClick={() => onOpenCalcs(id)}>{w('Open in Calculations', '在计算页中打开', '在計算頁中開啟')}<ChevronRight /></Button></footer>
+    <footer className="insp-foot"><Button variant="ghost" size="sm" onClick={() => onOpenCalcs(id)}>{tt('inspector.openInCalcs')}<ChevronRight /></Button></footer>
   </div></NavigateContext.Provider>;
 }

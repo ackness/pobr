@@ -16,12 +16,16 @@ vi.mock('../../hooks/useLocalizedLines', async original => ({
 const lines: ItemLineJson[] = [
   { kind: 'name', text: 'Woe Rain' }, { kind: 'base', text: 'Seeker Bow' },
   { kind: 'struct', text: 'Item Level: 81' },
+  { kind: 'struct', text: 'Twice Corrupted' },
+  { kind: 'struct', text: 'Rune: Perfect Iron Rune' },
+  { kind: 'implicit', text: '+10 to maximum Life' },
+  { kind: 'enchant', text: '+1 to Maximum Frenzy Charges' },
   { kind: 'rune', text: 'Bow Attacks fire an additional Arrow' },
   { kind: 'explicit', text: 'Adds 12 to 228 Lightning Damage', affix: 'prefix', tier: 1, tier_total: 9, mod_tags: ['lightning', 'damage'] },
   { kind: 'explicit', text: 'Unrecognised <effect> & retained text' },
   { kind: 'explicit', text: '14% increased Attack Speed', affix: 'suffix', tier: 2, tier_total: 5 },
 ];
-it.each(['grouped', 'compact', 'game'] as const)('%s keeps explicit modifiers in source order with verified row labels', style => {
+it.each(['grouped', 'compact', 'game'] as const)('%s shows base and socket effects first and organizes verified affixes', style => {
   const html = renderToStaticMarkup(<UiProvider lang="en-US" displayMode={style}>
     <ItemDisplayContent text="Rarity: RARE\nWoe Rain\nSeeker Bow" lang="en-US" lines={lines} translated={lines.map(line => line.text)} />
   </UiProvider>);
@@ -33,14 +37,42 @@ it.each(['grouped', 'compact', 'game'] as const)('%s keeps explicit modifiers in
   expect(html).toContain('>Suffix<');
   expect(html).toContain('>T1<');
   expect(html).toContain('>T2<');
+  const knownPrefix = html.indexOf('Lightning Damage');
+  const knownSuffix = html.indexOf('increased Attack Speed');
   const unknown = html.indexOf('Unrecognised &lt;effect&gt; &amp; retained text');
-  expect(unknown).toBeGreaterThan(html.indexOf('Lightning Damage'));
-  expect(unknown).toBeLessThan(html.indexOf('increased Attack Speed'));
-  expect(html).not.toMatch(/Prefixes|Suffixes|Unclassified|Tier not identified/);
+  const orderedEffects = ['Rune: Perfect Iron Rune', 'to maximum Life', 'to Maximum Frenzy Charges', 'Bow Attacks fire an additional Arrow'];
+  const effectPositions = orderedEffects.map(effect => html.indexOf(effect));
+  expect(effectPositions[0]).toBeGreaterThan(-1);
+  expect([...effectPositions].sort((a, b) => a - b)).toEqual(effectPositions);
+  expect(knownPrefix).toBeGreaterThan(effectPositions.at(-1)!);
+  expect(html).toContain('>Twice Corrupted<');
+  expect(unknown).toBeGreaterThan(knownPrefix);
+  if (style === 'grouped') {
+    expect(html).toContain('data-affix-group="prefix"');
+    expect(html).toContain('data-affix-group="suffix"');
+    expect(unknown).toBeGreaterThan(knownSuffix);
+  } else {
+    expect(unknown).toBeLessThan(knownSuffix);
+  }
+  expect(html).not.toMatch(/Unclassified|Tier not identified/);
   expect(html.match(/data-mod-tag=/g)).toHaveLength(2);
   expect(html).toContain('<strong class="item-value">14%</strong>');
   expect(html).toContain('Original text');
   expect(html.includes('<table')).toBe(style === 'compact');
+});
+
+it.each([
+  ['en-US', 'Equipment details', 'Equipment view', 'Woe Rain'],
+  ['zh-CN', '装备详情', '装备查看方式', '灾厄之雨'],
+  ['zh-TW', '裝備詳情', '裝備檢視方式', '災厄之雨'],
+] as const)('preserves equipment accessible names in %s', (lang, details, view, itemName) => {
+  const render = (name: string) => renderToStaticMarkup(<UiProvider lang={lang} displayMode="compact">
+    <ItemDisplayContent text="Rarity: RARE\nWoe Rain\nSeeker Bow" lang={lang} lines={lines}
+      translated={lines.map((line, index) => index === 0 ? name : line.text)} />
+  </UiProvider>);
+  expect(render('')).toContain(`aria-label="${details}"`);
+  expect(render(itemName)).toContain(`aria-label="${itemName}"`);
+  expect(render(itemName)).toContain(`aria-label="${view}"`);
 });
 
 it.each(['UNIQUE', 'RELIC'] as const)('%s modifiers omit affix side and tier while retaining known tags', rarity => {

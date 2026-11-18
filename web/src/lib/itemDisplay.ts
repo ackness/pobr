@@ -1,5 +1,5 @@
 import type { ItemLineJson } from '../api/types';
-import type { Lang } from './i18n';
+import { lookup, type Lang } from './i18n';
 export { DISPLAY_MODES as ITEM_DISPLAY_STYLES } from './displayModes';
 export type { DisplayMode as ItemDisplayStyle } from './displayModes';
 
@@ -21,7 +21,7 @@ export function itemDisplaySections(lines: readonly ItemLineJson[], translated: 
     if (['implicit', 'enchant', 'rune', 'class_req'].includes(line.kind)) { result.effects.push(line); return; }
     // Separators and parser bookkeeping are replaced by sections; original text stays available.
     if (!line.original.trim() || /^[-—]+$/.test(line.original) || /^(Unique ID:|Implicits:|Requirements:\s*$)/i.test(line.original)) return;
-    if (/^(Corrupted|Mirrored|Unidentified|Split|Sanctified)$/i.test(line.original)) { result.states.push(line); return; }
+    if (/^(Corrupted|Twice Corrupted|Mirrored|Unidentified|Split|Sanctified)$/i.test(line.original)) { result.states.push(line); return; }
     if (/^(Rune|Soul Core):/i.test(line.original)) { result.runes.push(line); return; }
     const quality = /^Quality(?: \([^)]+ Modifiers\))?:/i.test(line.original);
     const property = quality || /^(Item Level|LevelReq|Requires Level|Str|Dex|Int|Armour|Evasion(?: Rating)?|Energy Shield|Ward|Physical Damage|Elemental Damage|Chaos Damage|Critical (?:Hit|Strike) Chance|Attacks per Second|Weapon Range|Block Chance|Charm Slots|Sockets|Radius|Limited to):/i.test(line.original);
@@ -38,33 +38,9 @@ export function itemDisplaySections(lines: readonly ItemLineJson[], translated: 
   return result;
 }
 
-// Item modifier tags use a different set of IDs from gem skill types.
-const MOD_TAG_LABELS = new Map<string, readonly [string, string, string?]>([
-  ['accuracy', ['Accuracy', '命中']],
-  ['attack', ['Attack', '攻击', '攻擊']],
-  ['attribute', ['Attribute', '属性', '屬性']],
-  ['caster', ['Caster', '施法']],
-  ['chaos', ['Chaos', '混沌']],
-  ['cold', ['Cold', '冰霜', '冰冷']],
-  ['critical', ['Critical', '暴击', '暴擊']],
-  ['damage', ['Damage', '伤害', '傷害']],
-  ['defences', ['Defences', '防御', '防禦']],
-  ['elemental', ['Elemental', '元素']],
-  ['fire', ['Fire', '火焰']],
-  ['life', ['Life', '生命']],
-  ['lightning', ['Lightning', '闪电', '閃電']],
-  ['mana', ['Mana', '魔力']],
-  ['minion', ['Minion', '召唤物', '召喚物']],
-  ['physical', ['Physical', '物理']],
-  ['resistance', ['Resistance', '抗性']],
-  ['speed', ['Speed', '速度']],
-]);
-
+/** Item modifiers use different tag IDs from gem skill types. */
 export function itemModTagLabel(tag: string, lang: Lang): string {
-  const labels = MOD_TAG_LABELS.get(tag);
-  if (!labels) return tag.replace(/[_-]+/g, ' ').replace(/^[a-z]/, first => first.toUpperCase());
-  const [en, cn, tw = cn] = labels;
-  return lang === 'en-US' ? en : lang === 'zh-TW' ? tw : cn;
+  return lookup(lang, 'itemModTag', tag) ?? tag.replace(/[_-]+/g, ' ').replace(/^[a-z]/, first => first.toUpperCase());
 }
 
 /** Keep the sentence byte-for-byte while exposing signed values, ranges, decimals and percentages. */

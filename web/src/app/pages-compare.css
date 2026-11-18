@@ -16,7 +16,9 @@
   .shell-root .cmp-context { padding-top: .75rem; }
   .shell-root .cmp-identities { display: flex; flex-wrap: wrap; gap: .35rem 1.5rem; color: var(--muted-foreground); }
   .shell-root .cmp-config-basis { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; font-size: var(--text-sm); }
-  .shell-root .cmp-config-basis > button { max-width: 100%; width: auto; }
+  .shell-root .cmp-config-basis label { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; min-width: 0; }
+  .shell-root .cmp-config-basis button { max-width: 100%; width: auto; }
+  .shell-root .cmp-config-basis small { font-size: var(--text-xs); color: var(--muted-foreground); }
   .shell-root .cmp-config-value { margin-block: .4rem; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-sm); }
   .shell-root .cmp-mark, .shell-root .cmp-panel .compare-pair > div > strong:first-child::before { content: ''; display: inline-block; flex: none; width: .55rem; height: .55rem; border-radius: 50%; background: var(--color-fire); }
   .shell-root .cmp-mark[data-side='b'] { border-radius: 2px; background: var(--color-cold); }
@@ -46,6 +48,7 @@
   /* ── Stats: one hairline table per group, columns aligned across groups ─── */
   .shell-root .cmp-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1.5rem; margin-bottom: 1.25rem; }
   .shell-root .cmp-toolbar .cmp-note { margin: 0; }
+  .shell-root .cmp-toggles { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; }
   .shell-root .cmp-toggle { display: inline-flex; align-items: center; gap: .5rem; font-size: var(--text-sm); }
   .shell-root .cmp-stats { max-width: 56rem; }
   .shell-root .cmp-stats .compare-table-wrap { margin: 0 0 1.75rem; overflow: visible; }
@@ -64,6 +67,7 @@
   .shell-root .compare-panel tbody tr:hover { background: color-mix(in srgb, var(--muted) 55%, transparent); }
   .shell-root .cmp-stats tbody td:nth-child(2), .shell-root .cmp-stats tbody td:nth-child(3) { color: var(--muted-foreground); }
   .shell-root .cmp-delta { font-weight: 560; }
+  .shell-root .cmp-stats [data-unrounded] td { white-space: normal; overflow-wrap: anywhere; }
   .shell-root .cmp-details { margin-top: 1.5rem; font-size: var(--text-sm); }
   .shell-root .cmp-details summary { cursor: pointer; color: var(--primary); }
   .shell-root .cmp-details strong { display: block; margin-top: .75rem; font-weight: 550; }
@@ -73,6 +77,7 @@
   .shell-root .cmp-panel .compare-difference { padding: 1rem 0 1.25rem; border-top: 1px solid var(--border); }
   .shell-root .cmp-panel .compare-difference:first-of-type { border-top: 0; padding-top: 0; }
   .shell-root .cmp-panel .compare-difference > header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem .75rem; margin-bottom: .6rem; }
+  .shell-root .cmp-panel .cmp-copy { max-width: 100%; height: auto; padding-block: .45rem; white-space: normal; overflow-wrap: anywhere; }
   .shell-root .cmp-panel .compare-difference h4 { font-size: var(--text-base); font-weight: 600; overflow-wrap: anywhere; }
   .shell-root .cmp-panel .compare-difference > header p { font-size: var(--text-xs); color: var(--muted-foreground); }
   .shell-root .cmp-panel .compare-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem 2rem; }

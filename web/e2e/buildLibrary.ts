@@ -23,7 +23,14 @@ export async function goTo(page: Page, name: string, lang: Lang = 'en-US') {
 export async function openBuild(page: Page) {
   await bdLibraryButton(page).click();
   await expect(page.locator('#build-heading')).toBeVisible();
-  await expect(page.locator('.bd-import textarea')).toBeFocused();
+}
+
+/** Import is a separate action when the library already contains a build. */
+export async function openImport(page: Page) {
+  const section = page.locator('details.bd-import');
+  await expect(section).toBeVisible({ timeout: 90_000 });
+  if (!(await section.evaluate(element => (element as HTMLDetailsElement).open))) await section.locator('summary').click();
+  await expect(section).toHaveJSProperty('open', true);
 }
 
 /**
@@ -58,6 +65,7 @@ export async function animationsSettled(page: Page) {
 
 /** Picks where the next import goes: a new BD, or the current stage (which asks before it replaces anything). */
 export async function importInto(page: Page, destination: 'newBuild' | 'currentStage', lang: Lang = 'en-US') {
+  await openImport(page);
   const choices = page.getByRole('group', { name: workspaceText(lang).importDestination, exact: true }).getByRole('button');
   await choices.nth(destination === 'newBuild' ? 0 : 1).click();
   await expect(choices.nth(destination === 'newBuild' ? 0 : 1)).toHaveAttribute('aria-pressed', 'true');

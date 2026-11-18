@@ -40,6 +40,14 @@ test('settings switch all item details immediately, persist and leave the build 
     await closeSettings(page);
     await expect(detail(page)).toHaveAttribute('data-item-display', value);
     await expect(detail(page).locator('.item-value').filter({ hasText: /^14%$/ })).toBeVisible();
+    const extras = await detail(page).locator('.item-extra-effects').boundingBox();
+    const affixes = await detail(page).locator('.item-affix-group, .item-affix-table').boundingBox();
+    expect(extras && affixes && extras.y + extras.height <= affixes.y).toBe(true);
+    if (value === 'grouped') {
+      const prefix = await detail(page).locator('[data-affix-group="prefix"]').boundingBox();
+      const suffix = await detail(page).locator('[data-affix-group="suffix"]').boundingBox();
+      expect(prefix && suffix && prefix.y === suffix.y && prefix.x + prefix.width <= suffix.x).toBe(true);
+    }
     await detail(page).screenshot({ path: testInfo.outputPath(`${value}.png`) });
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-preferences')!).displayMode)).toBe(value);
   }
@@ -68,7 +76,7 @@ test('settings switch all item details immediately, persist and leave the build 
   await expect(editor).toHaveValue('Unapplied equipment draft');
 });
 
-test('all layouts preserve modifier order and wrap tags on narrow screens in both themes', async ({ page }, testInfo) => {
+test('layouts preserve their reading order and wrap tags on narrow screens in both themes', async ({ page }, testInfo) => {
   for (const theme of ['Light', 'Dark']) {
     for (const [mode, label] of [['grouped', 'Grouped details'], ['compact', 'Compact tables'], ['game', 'Game cards']]) {
       await openSettings(page);
@@ -79,25 +87,34 @@ test('all layouts preserve modifier order and wrap tags on narrow screens in bot
       const quality = detail(page).locator('.item-properties > div').filter({ hasText: 'Quality (Cold Modifiers)' });
       await expect(quality.locator('dd')).toHaveText('+20%');
       const rows = detail(page).locator('[data-kind="explicit"]');
-      await expect(rows).toContainText([
+      const modifierOrder = [
         'Adds 12 to 228 Lightning Damage', 'Adds 69 to 85 Cold Damage', '+4.92% to Critical Hit Chance',
         '14% increased Attack Speed', '+2 to Level of all Attack Skills', 'Adds 65 to 106 Fire Damage',
-      ]);
-      if (mode !== 'compact') await expect(detail(page).getByRole('region', { name: 'Modifiers', exact: true }).locator('[data-kind="explicit"]')).toHaveCount(6);
+      ];
+      await expect(rows).toHaveCount(modifierOrder.length);
+      await expect(rows).toContainText((mode === 'grouped' ? [0, 1, 5, 3, 2, 4] : [0, 1, 2, 3, 4, 5])
+        .map(index => modifierOrder[index]));
+      if (mode === 'grouped') {
+        const prefix = await detail(page).locator('[data-affix-group="prefix"]').boundingBox();
+        const suffix = await detail(page).locator('[data-affix-group="suffix"]').boundingBox();
+        expect(prefix && suffix && prefix.x === suffix.x && prefix.y + prefix.height <= suffix.y).toBe(true);
+      }
       await expect(detail(page).getByText('Unclassified', { exact: false })).toHaveCount(0);
-      const unknown = rows.nth(2);
+      const unknown = rows.filter({ hasText: '+4.92% to Critical Hit Chance' });
       await expect(unknown.locator('.item-affix-side, .item-affix-tier, [data-mod-tag]')).toHaveCount(0);
-      const cold = rows.nth(1);
+      const cold = rows.filter({ hasText: 'Adds 69 to 85 Cold Damage' });
       await expect(cold).toHaveAttribute('data-affix', 'prefix');
-      await expect(cold.getByText('Prefix', { exact: true })).toBeVisible();
+      const prefixLabel = mode === 'grouped' ? detail(page).locator('[data-affix-group="prefix"]') : cold;
+      await expect(prefixLabel.getByText('Prefix', { exact: true })).toBeVisible();
       await expect(cold.getByText('T2', { exact: true })).toBeVisible();
       const tags = cold.locator('[data-mod-tag]');
       await expect(tags).toHaveText(['Cold', 'Damage', 'Elemental', 'Attack', 'Projectile', 'Future tag with a long label']);
       expect(await tags.evaluateAll(elements => new Set(elements.map(el => el.getBoundingClientRect().top)).size)).toBeGreaterThan(1);
-      await expect(rows.nth(3)).toHaveAttribute('data-affix', 'suffix');
-      await expect(rows.nth(0).locator('[data-modifier-source="fractured"]')).toHaveText('Fractured · locked');
-      await expect(rows.nth(4).locator('[data-modifier-source="crafted"]')).toHaveText('Crafted');
-      await expect(rows.nth(0)).toHaveAttribute('data-damage', 'lightning');
+      await expect(rows.filter({ hasText: '14% increased Attack Speed' })).toHaveAttribute('data-affix', 'suffix');
+      const fractured = rows.filter({ hasText: 'Adds 12 to 228 Lightning Damage' });
+      await expect(fractured.locator('[data-modifier-source="fractured"]')).toHaveText('Fractured · locked');
+      await expect(rows.filter({ hasText: '+2 to Level of all Attack Skills' }).locator('[data-modifier-source="crafted"]')).toHaveText('Crafted');
+      await expect(fractured).toHaveAttribute('data-damage', 'lightning');
       const overflow = await detail(page).evaluate(root => {
         const right = root.getBoundingClientRect().right;
         return [...root.querySelectorAll('*')].some(el => el.getBoundingClientRect().width > 0 && el.getBoundingClientRect().right > right + 1);

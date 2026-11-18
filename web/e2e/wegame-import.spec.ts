@@ -18,7 +18,8 @@ test('WeGame import preserves gem levels and ranks quiver upgrades', async ({ pa
       ],
       talent_tree: { hashes: [], quest_stats: [] }, jewel_data: '[]',
       skills: [{ baseType: 'Ice Shot', support: false,
-        properties: [{ type: 5, values: [['12', 0]] }, { type: 6, values: [['+20%', 1]] }] }],
+        properties: [{ type: 5, values: [['12', 0]] }, { type: 6, values: [['+20%', 1]] }],
+        socketedItems: [{ baseType: 'Synthetic Unrecognized Support', support: true }] }],
     } });
   });
   await page.goto('/build');
@@ -28,11 +29,14 @@ test('WeGame import preserves gem levels and ranks quiver upgrades', async ({ pa
   );
   await page.locator('.import-submit').click();
   await expect(page.locator('#ov-title')).toBeVisible({ timeout: 90_000 });
-  // Guard from a charm is modelled, so nothing in this import is left unsupported: the Overview reports
-  // no line as not calculated and offers no list of them.
-  await expect(page.locator('.ov-facts > div').filter({ has: page.locator('dt', { hasText: 'Modifiers not included' }) }).locator('dd'))
-    .toHaveText('0', { timeout: 60_000 });
-  await expect(page.locator('.ov-details')).toHaveCount(0);
+  // The skipped support is not an uncalculated modifier that survived import; the Guard modifier is modelled.
+  await expect(page.locator('#ov-unincluded')).toHaveCount(0);
+  const receipt = page.getByRole('note', { name: 'Import summary' });
+  await expect(receipt).not.toContainText('modifiers not included');
+  await receipt.getByRole('link', { name: 'Check import notes' }).click();
+  await expect(page.locator('#bd-notes')).toBeFocused();
+  await expect(page.getByRole('textbox', { name: 'Notes', exact: true }))
+    .toHaveValue(/\[import\] Unknown or ambiguous gem: Synthetic Unrecognized Support/);
   await pageLink(page, 'Items').click();
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
   await pageLink(page, 'Skills').click();

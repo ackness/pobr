@@ -1,7 +1,7 @@
 import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
-import { loadoutSelect, openBuild, openExport, openLoadouts } from './buildLibrary';
+import { openImport, loadoutSelect, openBuild, openExport, openLoadouts } from './buildLibrary';
 import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { SMOKE } from './tags';
@@ -35,7 +35,7 @@ test('hosted import keeps selection and loadouts through editing and export; fai
   await page.keyboard.press('Escape');
   await page.getByRole('textbox', { name: 'Notes', exact: true }).fill('Edited hosted build');
   await openExport(page);
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
+  await page.getByRole('button', { name: 'Generate PoB code for this stage', exact: true }).click();
   const exportedCode = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
   const xml = inflateSync(Buffer.from(exportedCode, 'base64url')).toString('utf8');
   expect(xml).toContain('mainActiveSkill="2"');
@@ -43,12 +43,14 @@ test('hosted import keeps selection and loadouts through editing and export; fai
   expect(xml.match(/<SkillSet\b/g)).toHaveLength(2);
   expect(xml.match(/<ItemSet\b/g)).toHaveLength(2);
   expect(xml).toContain('Edited hosted build');
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code' }).fill(exportedCode);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible();
   await expect(mainSkill(page)).toContainText('Fireball');
   await openBuild(page);
+  await openImport(page);
   const before = (await saved()).state;
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://pobb.in/missing');
   await page.locator('.import-submit').click();

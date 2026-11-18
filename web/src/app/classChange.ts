@@ -6,7 +6,7 @@ export function classChangeMessage(session: BuildSession, lang: Lang, stageName:
   const tt = bindT(lang);
   const lines = [tt('build.classResetLevel')];
   const count = (key: Parameters<typeof tt>[0], value: number) => {
-    if (value) lines.push(tt(key).replace('{count}', String(value)));
+    if (value) lines.push(tt(key, { count: value }));
   };
   if (session.character?.ascendancy_name) lines.push(tt('build.classResetAscendancy'));
   count('build.classResetPassives', session.allocatedNodes.length);
@@ -19,5 +19,5 @@ export function classChangeMessage(session: BuildSession, lang: Lang, stageName:
   if (session.notes || Object.keys(session.annotations).length) lines.push(tt('build.classResetNotes'));
   if (Object.keys(session.calcParams).length) lines.push(tt('build.classResetConfig'));
   if (Object.keys(session.editorDrafts).length) lines.push(tt('build.classResetDrafts'));
-  return `${tt('build.confirmClassReset').replace('{class}', className)}\n${stageName}${lang === 'en-US' ? ':' : '：'}\n${lines.map(line => `• ${line}`).join('\n')}`;
+  return `${tt('build.confirmClassReset', { class: className })}\n${stageName}${tt('format.colonTight')}\n${lines.map(line => `• ${line}`).join('\n')}`;
 }

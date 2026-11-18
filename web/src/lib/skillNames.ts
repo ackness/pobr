@@ -27,7 +27,7 @@ export function normalizeGemName(name: string): string {
 
 export function markUntranslated(name: string, original: string, lang: Lang): string {
   return lang !== 'en-US' && name === original && /[A-Za-z]/.test(original)
-    ? t(lang, 'skills.untranslated').replace('{name}', name) : name;
+    ? t(lang, 'skills.untranslated', { name }) : name;
 }
 
 /** Forms share the gem/effect resolver before falling back to the original label. */
@@ -50,9 +50,9 @@ export function skillDisplayName(id: string, lang: Lang, byId: ReadonlyMap<strin
     for (const gem of byId.values()) {
       const index = gem.additional_skill_ids?.indexOf(id) ?? -1;
       if (index < 0) continue;
-      const kind = id.startsWith('Triggered') ? (lang === 'zh-CN' ? '触发' : '觸發') : '附属技能';
-      const suffix = gem.additional_skill_ids!.length > 1 ? ` ${index + 1}` : '';
-      return `${gemDisplayName(gem, lang)}（${lang === 'zh-TW' ? kind.replace('属', '屬') : kind}${suffix}）`;
+      const kind = t(lang, id.startsWith('Triggered') ? 'skills.triggeredEffect' : 'skills.additionalEffect');
+      const detail = gem.additional_skill_ids!.length > 1 ? `${kind} ${index + 1}` : kind;
+      return t(lang, 'format.parenthetical', { label: gemDisplayName(gem, lang), detail });
     }
   }
   if (Object.hasOwn(SYNTHETIC_SKILL_LABELS, id)) return t(lang, SYNTHETIC_SKILL_LABELS[id as keyof typeof SYNTHETIC_SKILL_LABELS]);

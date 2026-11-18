@@ -247,6 +247,10 @@ run = "python3 devs/scripts/pr-ready.py"
 description = "Run a web package command under the project environment: mise run web <command> [args]"
 run = "pnpm --dir web"
 
+[tasks."web:preview"]
+description = "Build and serve the current checkout on loopback; pass --tunnel for a public static Cloudflare preview"
+run = "python3 devs/scripts/web_preview.py"
+
 [tasks."setup:e2e"]
 description = "Install the locked Playwright browser and required OS libraries (explicit opt-in)"
 run = ["pnpm --dir web install --frozen-lockfile", "pnpm --dir web exec playwright install --with-deps chromium"]

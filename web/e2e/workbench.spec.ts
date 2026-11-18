@@ -1,4 +1,5 @@
 import { expandFormulaDetails } from './skillsAndCalcs';
+import { openImport } from './buildLibrary';
 import { expect, test, type Page } from '@playwright/test';
 import { deflateSync } from 'node:zlib';
 import { installTradeCatalogFixture } from './tradeCatalogFixture';
@@ -140,6 +141,7 @@ test('number keys, [ and ? work outside text fields and stay out of the way insi
   await expect(page.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeVisible();
   await page.keyboard.press('Escape');
   await page.goto('/build');
+  await openImport(page);
   const box = page.getByRole('textbox', { name: 'Build code', exact: true });
   await box.click(); await page.keyboard.type('3');
   await expect(box).toHaveValue('3');

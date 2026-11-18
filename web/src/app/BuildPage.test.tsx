@@ -40,7 +40,7 @@ function fixture() {
     socketGroups: [{ gems: [], enabled: true }], items: [{ slot: 'ring1', text: 'Ring' }], flasks: [], limbs: [], jewels: [],
     annotations: {}, editorDrafts: {}, notes: saved.notes, calcParams: { config_inputs: { quest: 1 } },
     treeMeta: { classes: [{ name: 'Witch', ascendancies: [{ id: 1, name: 'Lich' }] }, { name: 'Ranger', ascendancies: [] }] },
-    classNames: { classes: {}, ascendancies: {} }, hasBuildContent: true, loadouts: [], build: null, busy: false,
+    classNames: { classes: {}, ascendancies: {} }, hasBuildContent: true, isStarterWorkspace: false, loadouts: [], build: null, busy: false,
     exportCode: vi.fn(), exportBuildFiles: vi.fn(), newBuild: vi.fn(), removeBuild: vi.fn(), renameWorkspace: vi.fn(), duplicateBuild: vi.fn(), selectStage: vi.fn(),
   } as unknown as BuildSession;
   let lastRequest: number | undefined, claimed = false;
@@ -48,7 +48,7 @@ function fixture() {
   const render = (focusRequest = 0) => {
     if (lastRequest !== focusRequest) {
       lastRequest = focusRequest; claimed = false;
-      claimImportFocus = () => { if (claimed) return false; claimed = true; return true; };
+      claimImportFocus = () => { if (!focusRequest || claimed) return false; claimed = true; return true; };
     }
     hooks.beginRender();
     const tree = BuildPage({ session, lang: 'en-US', onImported: vi.fn(), claimImportFocus: claimImportFocus! });
@@ -66,18 +66,45 @@ beforeEach(() => {
   harness.focus.mockClear(); harness.confirm.mockReset(); harness.valid = true;
 });
 
-it('focuses the always-visible import textarea on open and explicit reopen, without refocusing on renders', () => {
+const importDetails = (nodes: ReturnType<typeof elements>) => control(nodes, 'details', props => props.className.includes('bd-import'));
+
+it('lists saved builds before collapsed import and opens and focuses on explicit requests only', () => {
   const { render } = fixture();
   const nodes = render();
-  expect(control(nodes, AppTextarea, props => props.className === 'import-code').ref).toBe(hooks.refs[0]);
-  expect(nodes.some(node => node.type === 'details' && node.props.className.includes('bd-import'))).toBe(false);
+  expect(nodes.findIndex(node => node.props.id === 'bd-library-title')).toBeLessThan(nodes.findIndex(node => node.props.id === 'bd-import-title'));
+  const details = importDetails(nodes);
+  expect(details.open).toBe(false);
+  details.ref.current = { open: false };
+  const textarea = control(nodes, AppTextarea, props => props.className === 'import-code');
+  expect(textarea.ref).toBe(hooks.refs[0]);
   hooks.runEffects();
-  expect(harness.focus).toHaveBeenCalledTimes(1);
-  control(nodes, AppTextarea, props => props.className === 'import-code').onChange({ target: { value: 'Code' } });
-  render(); hooks.runEffects();
-  expect(harness.focus).toHaveBeenCalledTimes(1);
+  expect(harness.focus).not.toHaveBeenCalled();
   render(1); hooks.runEffects();
-  expect(harness.focus).toHaveBeenCalledTimes(2);
+  expect(details.ref.current.open).toBe(true);
+  expect(harness.focus).toHaveBeenCalledTimes(1);
+  textarea.onChange({ target: { value: 'Code' } });
+  const next = render(1); hooks.runEffects();
+  expect(control(next, AppTextarea, props => props.className === 'import-code').value).toBe('Code');
+  expect(harness.focus).toHaveBeenCalledTimes(1);
+});
+
+it('starts empty libraries with import first, expanded and focused', () => {
+  const { session, render } = fixture();
+  session.isStarterWorkspace = true;
+  const nodes = render();
+  expect(nodes.findIndex(node => node.props.id === 'bd-import-title')).toBeLessThan(nodes.findIndex(node => node.props.id === 'bd-library-title'));
+  expect(importDetails(nodes).open).toBe(true);
+  hooks.runEffects();
+  expect(harness.focus).toHaveBeenCalledOnce();
+});
+
+it('labels the saved node count and states whether the download includes a recorded baseline', () => {
+  const { session, render } = fixture();
+  expect(render().some(node => node.type === 'small' && node.props.children.includes('3 saved nodes'))).toBe(true);
+  expect(render().some(node => node.props.children === 'No comparison baseline has been recorded for this build.')).toBe(true);
+  const build = session.workspace!.builds[1];
+  build.baseline = { saved: build.stages[0].saved, recordedAt: 1 };
+  expect(render().some(node => node.props.children === 'Includes the recorded comparison baseline and its notes from the time it was saved.')).toBe(true);
 });
 
 it('asks before resetting a class, lists the affected stage contents, and Cancel leaves all data unchanged', async () => {
@@ -147,14 +174,15 @@ it('only lists the active stage in the class confirmation', async () => {
 
 it('does not refocus import when a stage switch remounts the page', () => {
   const { session, render } = fixture();
-  render(); hooks.runEffects();
+  render(1); hooks.runEffects();
   expect(harness.focus).toHaveBeenCalledOnce();
   const build = session.workspace!.builds[1];
   build.stages.push({ ...build.stages[0], id: 'another-stage' });
   build.activeStage = 'another-stage';
   // Discard only child hook state, as React does for the stage-keyed main element.
   hooks.reset();
-  render(); hooks.runEffects();
+  expect(importDetails(render(1)).open).toBe(false);
+  hooks.runEffects();
   expect(harness.focus).toHaveBeenCalledOnce();
 });
 

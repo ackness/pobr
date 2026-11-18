@@ -107,6 +107,20 @@ test('recommends and shows a minion-only gain in the destination and shared befo
   } }));
 });
 
+test('shows hard limits and resistance priority beside the whole-item verdict for the selected destination', async () => {
+  const comparison = setup([], { objective: { stat: 'Life', constraints: [{ stat: 'Life', min: 200 }],
+    softMinimums: ['FireResist', 'ColdResist', 'LightningResist'].map(stat => ({ stat, min: 75 })) },
+    report: { ...report, baseline: { Life: 100, FireResist: 75, ColdResist: 75, LightningResist: 75 },
+      positions: [{ ...report.positions[0], stats: { Life: 180, FireResist: 70, ColdResist: 75, LightningResist: 75 } }] } });
+  comparison.resolve(); await Promise.resolve();
+  const verdict = comparison.render([]).match(/class="replacement-verdict"[^]*?<\/div>/)![0];
+  expect(verdict).toContain('Whole-item comparison · Body Armour');
+  expect(verdict).toContain('Life ≥ 200');
+  expect(verdict).toContain('This replacement falls outside the selected stat limits.');
+  expect(verdict).toContain('Elemental resistance priority targets 75% each');
+  expect(verdict).toContain('Total shortfall (percentage points): 0 → 5');
+});
+
 test.each([
   ['en-US', 'Life', 'Effective HP', 'Combined DPS', 'Hit DPS', 'Fire Resistance', ' pp'],
   ['zh-CN', '生命', '有效生命', '综合 DPS', '击中 DPS', '火焰抗性', ' 个百分点'],

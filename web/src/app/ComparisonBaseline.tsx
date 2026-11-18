@@ -10,7 +10,7 @@ export function ComparisonBaseline({ session, lang, onNavigate }: { session: Bui
   return <div className="rail-baseline">
     {baseline ? <>
       <span>{tt('compare.baselineRecorded').replace('{time}', baselineTime(baseline.recordedAt, lang))}</span>
-      <div><Button size="sm" variant="outline" onClick={() => { session.startBaselineComparison(); onNavigate('compare'); }}>{tt('compare.title')}</Button>
+      <div><Button size="sm" variant="outline" onClick={() => { session.startBaselineComparison(); onNavigate('compare'); }}>{tt('compare.withBaseline')}</Button>
         <Button size="sm" variant="ghost" disabled={session.busy} onClick={session.saveComparisonBaseline}>{tt('compare.recordAgain')}</Button></div>
     </> : <Button size="sm" variant="outline" disabled={session.busy || !session.workspace} onClick={session.saveComparisonBaseline}>{tt('compare.saveBaseline')}</Button>}
   </div>;

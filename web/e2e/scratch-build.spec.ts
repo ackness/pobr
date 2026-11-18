@@ -55,7 +55,7 @@ test('scratch build: class picker, level edit, tree allocation', SMOKE, async ({
 
   // 手动添加技能：自定义选择器搜 Comet → 回车选中首项 → 新组出现 → Hit DPS 出数。
   await pageLink(page, 'Skills').click();
-  const picker = page.getByPlaceholder('Add a skill group…');
+  const picker = page.getByPlaceholder('Search or browse gems…');
   await picker.fill('Comet');
   await expect(page.locator('.gem-picker-item').first()).toBeVisible();
   await picker.press('Enter');

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { formatNumber, formatStatValue, statFormat, statMap, STAT_SECTIONS, formatStat, setDisplayCatalog } from './statDisplay';
-import { statNameLabel } from './i18n';
+import { LANGS, lookup, statNameLabel } from './i18n';
+import { formatNumber, formatStatValue, statFormat, statMap, STAT_SECTIONS, statRowLabel, statSectionLabel, metricMeaning, formatStat, setDisplayCatalog } from './statDisplay';
 import catalog from '../api/generated/display_catalog.json' with { type: 'json' };
 import type { DisplayCatalogEntry } from '../api/types';
 
@@ -117,13 +117,23 @@ describe('STAT_SECTIONS', () => {
     expect(rows.find(row => row.id === 'FullDotDPS')?.hideZero).not.toBe(true);
   });
 
-  test('双语标签齐全', () => {
-    for (const section of STAT_SECTIONS) {
-      for (const row of section.rows) {
-        expect(row.label['en-US']).toBeTruthy();
-        expect(row.label['zh-TW']).toBeTruthy();
+  test('every sidebar row has a registered catalog label', () => {
+    for (const lang of LANGS) {
+      for (const section of STAT_SECTIONS) {
+        expect(statSectionLabel(lang, section)).toBeTruthy();
+        for (const row of section.rows) expect(lookup(lang, 'statRow', row.id) ?? lookup(lang, 'modName', row.id), row.id).toBeTruthy();
       }
     }
+  });
+
+  test('sidebar labels do not replace modifier labels or change stored section IDs', () => {
+    const resistances = STAT_SECTIONS.find(section => section.rows.some(row => row.id === 'FireResist'))!;
+    expect(resistances.id).toBe('Resistances');
+    expect(statSectionLabel('zh-TW', resistances)).toBe('抗性');
+    expect(statRowLabel('en-US', 'FireResist')).toBe('Fire Res.');
+    expect(statNameLabel('en-US', 'FireResist')).toBe('Fire Resistance');
+    expect(metricMeaning('ColdResist', 'zh-TW')).toBe(metricMeaning('FireResist', 'zh-TW'));
+    expect(metricMeaning('NotAStat', 'en-US')).toBeNull();
   });
 
   test('sidebar extensions have rows with display units', () => {
@@ -194,7 +204,7 @@ describe('STAT_SECTIONS', () => {
     }
     expect(statFormat('LifeUnreservedPercent')).toBe('percent');
     expect(statFormat('PreEffectiveCritChance')).toBe('percent');
-    expect(rows.get('ReloadTime')?.label['en-US']).toContain('(s)');
+    expect(statRowLabel('en-US', 'ReloadTime')).toContain('(s)');
     expect(rows.get('ProjectileSpeedMod')?.format).toBe('float2');
   });
 });
@@ -221,8 +231,8 @@ describe('stat section labels', () => {
   test('rows in one section never share a label, so a value and its percentage stay distinguishable', () => {
     for (const section of STAT_SECTIONS) {
       for (const lang of ['en-US', 'zh-CN', 'zh-TW'] as const) {
-        const labels = section.rows.map(row => row.label[lang]);
-        expect(labels.filter((label, index) => labels.indexOf(label) !== index), `${section.title['en-US']} ${lang}`).toEqual([]);
+        const labels = section.rows.map(row => statRowLabel(lang, row.id));
+        expect(labels.filter((label, index) => labels.indexOf(label) !== index), `${section.id} ${lang}`).toEqual([]);
       }
     }
   });

@@ -7,7 +7,6 @@ import { bindT, type Lang } from '../../lib/i18n';
 import './namedSets.css';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
-import { words } from '../../app/text';
 
 export function NamedSets({ session, lang, kind = 'config' }: { session: BuildSession; lang: Lang; kind?: 'config' | 'skill' }) {
   const tt = bindT(lang);
@@ -27,7 +26,7 @@ export function NamedSets({ session, lang, kind = 'config' }: { session: BuildSe
       </AppSelectControl>
     </label>
     <DropdownMenu><DropdownMenuTrigger asChild><AppButton disabled={session.busy}
-      aria-label={words(lang, `${label} actions`, `${label}操作`, `${label}操作`)}><MoreHorizontal aria-hidden="true" /></AppButton></DropdownMenuTrigger>
+      aria-label={tt('namedSets.actions', { label })}><MoreHorizontal aria-hidden="true" /></AppButton></DropdownMenuTrigger>
       <DropdownMenuContent align="end">
     {(['create', 'duplicate', 'rename'] as const).map(op => <DropdownMenuItem key={op}
       onSelect={() => { setEditing(op); setName(op === 'rename' ? title(sets.find(set => set.id === active)?.title ?? '') : ''); }}>

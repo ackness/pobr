@@ -9,7 +9,7 @@ import type { TreeEditResult } from '../api/types';
  * 防止乱序返回覆盖新状态。所有后端交互经 `api/backend`。
  */
 
-import { recordWorkspaceBaseline, activeWorkspaceStage, addWorkspaceBuild, appendImportedBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, duplicateWorkspaceBuild, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
+import { recordWorkspaceBaseline, activeWorkspaceStage, addWorkspaceBuild, appendImportedBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, duplicateWorkspaceBuild, isStarterWorkspace, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
 import { mergeLibraries, mergeWorkspaces } from '../lib/workspaceMerge';
 import { formatApiError } from '../api/error';
 import { resolveBuildInput } from '../api/import';
@@ -224,6 +224,10 @@ export interface BuildSession {
   /** 从导出的 JSON 恢复会话；非法输入抛错。 */
   importSession: (json: string, destination?: ImportDestination) => void;
   importCode: (code: string, options?: ImportOptions) => Promise<boolean>;
+  /** Source of the last successful import, for the transient review notice only. */
+  importSource: 'wegame' | null;
+  /** Whether the library holds only the untouched default stage. */
+  isStarterWorkspace: boolean;
   /** 切到指定 loadout（成组换天赋/装备/技能）；会覆盖本地编辑。 */
   switchLoadout: (sel: SetSelection) => Promise<void>;
   /** 当前 build 的 loadout 清单（导入后可用；手搓 build 为空）。 */
@@ -734,6 +738,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const [treeMeta, setTreeMeta] = useState<PassiveTreeMeta | null>(null);
   const [classNames, setClassNames] = useState<ClassNames>({ classes: {}, ascendancies: {} });
   const [build, setBuild] = useState<BuildJson | null>(null);
+  const [importSource, setImportSource] = useState<BuildSession['importSource']>(null);
   const [state, setState] = useState<BuildState | null>(null);
   const buildRef = useRef(build);
   buildRef.current = build;
@@ -1101,6 +1106,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         const decoded = isBuildFile
           ? await backend.decodeBuildFile(code)
           : await backend.decodeBuild(code);
+        const source = isBuildFile && JSON.parse(code).format === 'wegame' ? 'wegame' : null;
         // <Notes> 里可能带 PoBR 注释标记段：拆成总览笔记 + 局部注释。
         const { overview, annotations } = splitNotes(decoded.notes ?? '');
         const importedState: BuildState = {
@@ -1129,6 +1135,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         mergeImportedIntoLibrary(decoded, nextWorkspace);
         workspaceRef.current = nextWorkspace;
         setBuild(decoded);
+        setImportSource(source);
         // Do not persist imported notes into the stage being left behind.
         notesRef.current = overview;
         setNotesState(overview);
@@ -1676,6 +1683,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       workspaceRef.current = appendImportedBuild(workspaceRef.current, build, defaultStarterRef.current);
       const stage = activeWorkspaceStage(workspaceRef.current);
       restoreSession(stage.saved, stage.drafts);
+      setImportSource(null);
       return;
     }
     if (input.workspace !== undefined) {
@@ -1693,6 +1701,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       }
       restoreSession(saved, {});
     }
+    setImportSource(null);
   }, [restoreSession, classNames, lang]);
 
   const selectStage = useCallback((buildId: string, stageId?: string) => {
@@ -1913,6 +1922,8 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     exportBuildFiles,
     importSession,
     importCode,
+    importSource,
+    isStarterWorkspace: !workspace || isStarterWorkspace(workspace, defaultStarterRef.current),
     switchLoadout,
     manageLoadout,
     changeNamedSet,

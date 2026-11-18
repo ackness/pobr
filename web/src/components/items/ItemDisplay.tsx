@@ -3,7 +3,7 @@ import type { ItemLineJson } from '../../api/types';
 import { getBackend } from '../../api/backend';
 import { itemLines, rarityOf, useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
 import { isContinuation } from '../../lib/continuedLines';
-import { t, type Lang } from '../../lib/i18n';
+import { bindT, messages, originKindLabel, t, type Lang } from '../../lib/i18n';
 import { itemAttributeType, itemDamageType, itemDisplaySections, itemModTagLabel, itemValueParts, type DisplayItemLine } from '../../lib/itemDisplay';
 import { useUi } from '../shared/UiContext';
 import { AppTooltip } from '../shared/controls';
@@ -55,24 +55,28 @@ export function ItemDisplayContent({ text, lang, lines, translated, rawDetails =
   // A line a multi-line description translated into the line above shows no row.
   const shown = lines.flatMap((line, index) => isContinuation(line.text, translated[index]) ? [] : [index]);
   const model = itemDisplaySections(shown.map(index => lines[index]), shown.map(index => translated[index]));
-  const w = (en: string, cn: string, tw = cn) => lang === 'en-US' ? en : lang === 'zh-TW' ? tw : cn;
+  const tt = bindT(lang);
   const rarity = rarityOf(text);
   const fixedAffixes = rarity === 'unique' || rarity === 'relic';
   const affixOf = (line: DisplayItemLine) => line.kind === 'explicit' && !fixedAffixes ? line.affix : undefined;
   const tierOf = (line: DisplayItemLine) => line.kind === 'explicit' && !fixedAffixes ? line.tier : undefined;
-  const hasAffixes = model.explicit.some(affixOf);
+  const prefixes = model.explicit.filter(line => affixOf(line) === 'prefix');
+  const suffixes = model.explicit.filter(line => affixOf(line) === 'suffix');
+  const hasAffixes = prefixes.length > 0 || suffixes.length > 0;
+  const splitAffixes = style === 'grouped' && prefixes.length > 0 && suffixes.length > 0;
   const hasTiers = model.explicit.some(line => tierOf(line) != null);
-  const modifiersLabel = w('Modifiers', '词缀', '詞綴');
-  const affixLabels = { prefix: w('Prefix', '前缀', '前綴'), suffix: w('Suffix', '后缀', '後綴') };
+  const modifiersLabel = tt('itemDisplay.modifiers');
+  const affixLabels = { prefix: tt('itemDisplay.prefix'), suffix: tt('itemDisplay.suffix') };
   const effectLabels: Partial<Record<ItemLineJson['kind'], string>> = {
-    implicit: w('Implicit', '固有', '固定'), enchant: w('Enchant', '附魔'), rune: w('Rune', '符文'),
-    class_req: w('Requirement', '需求'),
+    implicit: tt('itemDisplay.implicit'), enchant: originKindLabel(lang, 'ItemEnchant'), rune: tt('itemDisplay.rune'),
+    class_req: tt('itemDisplay.requirement'),
   };
   const sourceLabels = {
-    crafted: w('Crafted', '工艺', '工藝'), fractured: w('Fractured · locked', '破裂 · 锁定', '破裂 · 鎖定'),
-    desecrated: w('Desecrated', '亵渎', '褻瀆'), mutated: w('Mutated', '异化', '異化'), custom: w('Custom', '自定义', '自訂'),
+    crafted: tt('itemDisplay.crafted'), fractured: tt('itemDisplay.fractured'),
+    desecrated: tt('trade.source.desecrated'), mutated: tt('itemDisplay.mutated'), custom: tt('common.custom'),
   };
-  const rarityLabel = ({ normal: w('Normal', '普通'), magic: w('Magic', '魔法'), rare: w('Rare', '稀有'), unique: w('Unique', '传奇', '傳奇'), relic: w('Relic', '遗珍', '遺珍') } as Record<string, string>)[rarity];
+  const { NORMAL, MAGIC, RARE } = messages(lang, 'itemCrafting');
+  const rarityLabel = ({ normal: NORMAL, magic: MAGIC, rare: RARE, unique: tt('itemDisplay.unique'), relic: tt('itemDisplay.relic') } as Record<string, string>)[rarity];
 
   function rowAttributes(line: DisplayItemLine) {
     return {
@@ -101,34 +105,34 @@ export function ItemDisplayContent({ text, lang, lines, translated, rawDetails =
   function tierBadge(line: DisplayItemLine) {
     const tier = tierOf(line);
     if (tier == null) return null;
-    const total = line.tier_total == null ? '' : w(` · ${line.tier_total} tiers for this base`, ` · 该基底共 ${line.tier_total} 档`, ` · 此基底共 ${line.tier_total} 階`);
-    return <AppTooltip content={w('T1 is the highest tier for this base.', 'T1 为该基底同类词缀的最高档。', 'T1 為此基底同類詞綴的最高階。') + total}>
+    const total = line.tier_total == null ? '' : tt('itemDisplay.tierTotal', { count: line.tier_total });
+    return <AppTooltip content={tt('itemDisplay.tierTooltip') + total}>
       <Badge variant="outline" tabIndex={0} className={`item-affix-tier${tier === 1 ? ' text-primary border-primary/30' : ''}`}>T{tier}</Badge>
     </AppTooltip>;
   }
 
-  function modifier(line: DisplayItemLine) {
+  function modifier(line: DisplayItemLine, showSide = true) {
     const effect = effectLabels[line.kind];
+    const side = showSide && affixOf(line);
     return <div className="item-affix-row item-line" {...rowAttributes(line)} key={line.index}>
       {effect ? <span className="item-affix-kind">{effect}</span> : null}
       <span className="item-affix-text">{modifierText(line)}</span>
-      {affixOf(line) || tierOf(line) != null ? <span className="item-affix-identity">
-        {affixBadge(line)}{tierBadge(line)}
+      {side || tierOf(line) != null ? <span className="item-affix-identity">
+        {side && affixBadge(line)}{tierBadge(line)}
       </span> : null}
     </div>;
   }
 
-  const extras = (model.effects.length > 0 || model.runes.length > 0) && <section className="item-extra-effects" aria-label={w('Additional effects', '附加效果')}>
-    <h5>{w('Additional effects', '附加效果')}</h5>
+  const extras = (model.effects.length > 0 || model.runes.length > 0) && <section className="item-extra-effects" aria-label={tt('itemDisplay.effects')}>
     {model.runes.length > 0 && <ul className="item-socketed-runes">{model.runes.map(line => <li key={line.index}>{line.text}</li>)}</ul>}
-    <div className="item-effects-list">{model.effects.map(modifier)}</div>
+    {model.effects.length > 0 && <div className="item-effects-list">{model.effects.map(line => modifier(line))}</div>}
   </section>;
 
-  return <article className={`item-display rarity-${rarity}`} data-item-display={style} aria-label={model.name || w('Equipment details', '装备详情', '裝備詳情')}>
+  return <article className={`item-display rarity-${rarity}`} data-item-display={style} aria-label={model.name || tt('itemDisplay.unnamedDetails')}>
     <header className="item-display-header">
       <div><h4 className="item-name">{model.name}</h4>{model.bases.map(line => <p className="item-display-base" key={line.index}>{line.text}</p>)}</div>
       <div className="item-display-badges">{rarityLabel && <Badge variant="outline" className="text-[var(--rarity-c)]">{rarityLabel}</Badge>}
-        {model.states.map(line => <Badge key={line.index} variant="outline" className={/^Corrupted$/i.test(line.original) ? 'text-destructive border-destructive/30' : ''}>{line.text}</Badge>)}
+        {model.states.map(line => <Badge key={line.index} variant="outline" className={/Corrupted$/i.test(line.original) ? 'text-destructive border-destructive/30' : ''}>{line.text}</Badge>)}
       </div>
     </header>
     {model.properties.length > 0 && <dl className="item-properties">{model.properties.map(property => <div key={property.index}>
@@ -136,18 +140,18 @@ export function ItemDisplayContent({ text, lang, lines, translated, rawDetails =
     </div>)}</dl>}
     {model.metadata.length > 0 && <div className="item-display-metadata">{model.metadata.map(line => <p key={line.index}>{line.text}</p>)}</div>}
     <Tabs defaultValue="details" className="item-display-tabs">
-      <div className="item-display-tabbar"><TabsList variant="line" aria-label={w('Equipment view', '装备查看方式', '裝備檢視方式')}>
-        <TabsTrigger value="details">{w('Details', '装备详情', '裝備詳情')}</TabsTrigger>
-        {!rawDetails && <TabsTrigger value="raw">{w('Original text', '原始文本', '原始文字')}</TabsTrigger>}
-      </TabsList>{hasTiers && <span className="item-tier-hint">{w('T1 is the highest tier', 'T1 为最高档', 'T1 為最高階')}</span>}</div>
+      <div className="item-display-tabbar"><TabsList variant="line" aria-label={tt('itemDisplay.view')}>
+        <TabsTrigger value="details">{tt('itemDisplay.details')}</TabsTrigger>
+        {!rawDetails && <TabsTrigger value="raw">{tt('common.originalText')}</TabsTrigger>}
+      </TabsList>{hasTiers && <span className="item-tier-hint">{tt('itemDisplay.tierHint')}</span>}</div>
       <TabsContent value="details" className="item-display-body">
-        {style === 'game' && extras}
+        {extras}
         {model.explicit.length > 0 && (style === 'compact' ? <table className="item-affix-table">
-          <caption className="sr-only">{w('Equipment modifiers', '装备词缀', '裝備詞綴')}</caption>
+          <caption className="sr-only">{tt('itemDisplay.modifierCaption')}</caption>
           <thead><tr>
-            <th scope="col">{w('Modifier and values', '词缀与数值', '詞綴與數值')}</th>
-            {hasAffixes && <th className="item-affix-side-cell" scope="col">{w('Type', '类型', '類型')}</th>}
-            {hasTiers && <th className="item-affix-tier-cell" scope="col">{w('Tier', '档位', '階級')}</th>}
+            <th scope="col">{tt('itemDisplay.modifierAndValues')}</th>
+            {hasAffixes && <th className="item-affix-side-cell" scope="col">{tt('common.type')}</th>}
+            {hasTiers && <th className="item-affix-tier-cell" scope="col">{tt('itemDisplay.tier')}</th>}
           </tr></thead>
           <tbody>{model.explicit.map(line => <tr className="item-line" key={line.index} {...rowAttributes(line)}>
             <td className="item-affix-text">{modifierText(line)}</td>
@@ -155,9 +159,19 @@ export function ItemDisplayContent({ text, lang, lines, translated, rawDetails =
             {hasTiers && <td className="item-affix-tier-cell">{tierBadge(line)}</td>}
           </tr>)}</tbody>
         </table> : <section className="item-affix-group" aria-label={modifiersLabel}>
-          <h5>{modifiersLabel}</h5>{model.explicit.map(modifier)}
+          {splitAffixes ? <>
+            <div className="item-affix-columns">
+              <div data-affix-group="prefix"><h5>{affixLabels.prefix}</h5>{prefixes.map(line => modifier(line, false))}</div>
+              <div data-affix-group="suffix"><h5>{affixLabels.suffix}</h5>{suffixes.map(line => modifier(line, false))}</div>
+            </div>
+            {prefixes.length + suffixes.length < model.explicit.length && <div className="item-affix-remainder">
+              {model.explicit.filter(line => !affixOf(line)).map(line => modifier(line))}
+            </div>}
+          </> : <>
+            <h5>{modifiersLabel}</h5>
+            <div className="item-affix-list">{model.explicit.map(line => modifier(line))}</div>
+          </>}
         </section>)}
-        {style !== 'game' && extras}
       </TabsContent>
       {!rawDetails && <TabsContent value="raw"><pre className="item-original-text">{text}</pre></TabsContent>}
     </Tabs>

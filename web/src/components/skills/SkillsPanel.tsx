@@ -25,7 +25,6 @@ import { eligibleSupports, lineageAvailable, supportSetsCompatible, supportPicke
 import { supportText } from '../../lib/supportI18n';
 import { MinionSelection } from './MinionSelection';
 import { SkillFormControls } from './SkillFormControls';
-import { words } from '../../app/text';
 import { barShare, groupDps, topDps, type GroupDps } from '../../app/pages/skills/dps';
 import { useSkillMetrics } from '../../app/pages/skills/useSkillMetrics';
 import { formatStatValue } from '../../lib/statDisplay';
@@ -40,6 +39,7 @@ interface Props {
   lang: Lang;
   active: boolean;
   focusSpirit?: number;
+  onFullDps?: () => void;
   focusOptimizer?: { group: number; nonce: number };
 }
 
@@ -49,9 +49,8 @@ function itemSourceName(source: SocketGroupInput['source']): string | undefined 
   return source?.startsWith('Item:') ? source.split(':')[2]?.split(',')[0]?.trim() : '';
 }
 
-export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit }: Props) {
+export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit, onFullDps }: Props) {
   const tt = bindT(lang);
-  const w = (en: string, cn: string, tw?: string) => words(lang, en, cn, tw);
   const [catalog, setCatalog] = useState<GemCatalogEntry[]>([]);
   const [tradeGems, setTradeGems] = useState<SupportMetadata[]>([]);
   const [catalogError, setCatalogError] = useState(false);
@@ -180,7 +179,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
         setOpenIdx(groups.length);
       }}
     />
-    {groups.length > 0 && <p className="skill-list-note">{w('Damage per second of each skill on its own.', '各技能单独的每秒伤害。', '各技能單獨的每秒傷害。')}</p>}
+    {groups.length > 0 && <p className="skill-list-note">{tt('skills.individualDpsHint')}</p>}
   </div>;
 
   const groupViews = groups.map((group, idx) => {
@@ -218,12 +217,12 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
     );
     const supportPicker = active && isOpen && (
       <div className="skill-group-picker">
-        <p className="skills-hint" role="status">{tt('skills.remainingSupports').replace('{count}', String(pickerState.remaining))} {tt(`skills.supportPicker.${pickerState.status}`)}</p>
+        <p className="skills-hint" role="status">{pickerState.status !== 'full' && `${tt('skills.remainingSupports').replace('{count}', String(pickerState.remaining))} `}{tt(`skills.supportPicker.${pickerState.status}`)}</p>
         {pickerState.partial && pickerState.status !== 'unknown' && <p className="skills-hint">{tt('skills.supportPartial')}</p>}
-        <GemPicker
+        {pickerState.status !== 'full' && <GemPicker
           entries={availableSupports}
           placeholder={tt('skills.addSupport')}
-          disabled={session.busy || ['loading', 'error', 'full', 'unknown'].includes(pickerState.status)}
+          disabled={session.busy || ['loading', 'error', 'unknown'].includes(pickerState.status)}
           lang={lang}
           onPick={(skillId) =>
             updateGroup(idx, {
@@ -231,7 +230,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
                 level: usableSupportLevel(tradeById.get(skillId)!, session.character?.level ?? 1), quality: 0 }],
             })
           }
-        />
+        />}
       </div>
     );
     const note = active && isOpen && (
@@ -260,7 +259,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
             const value = event.target.value;
             if (!value || Number.isFinite(Number(value)) && Number(value) >= 0) updateGroup(idx, { group_count: value ? Number(value) : null });
           }} /></label>
-        <p className="skills-hint">{tt('skills.fullDpsHint')}</p>
+        <p className="skills-hint">{tt('skills.fullDpsHint')}{onFullDps && <>{' '}<AppButton className="skill-full-dps-link" onClick={onFullDps}>{tt('skills.viewFullDps')}</AppButton></>}</p>
       </div>
     );
     const effectControl = effects.length > 1 && <label className="skill-effect-control">{tt('skills.effect')}
@@ -381,6 +380,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
                     {(spirit.released > 0) && ` · ${tt('skills.spiritReleased').replace('{value}', formatStatValue(spirit.released, 'int', lang))}`}
                   </span>}
             {isMain && <span className="skill-group-main">{tt('skills.main')}</span>}
+            {group.include_in_full_dps && <span className="ui-badge">{tt('skills.inFullDps')}</span>}
             {source && (
               <span className="granted-badge">
                 {source}
@@ -402,7 +402,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
             {dps?.kind === 'damage' ? <>{formatStatValue(dps.dps, 'float2', lang)}<span className="sr-only"> DPS</span></>
               : dps?.kind === 'minion' ? <>{formatStatValue(dps.dps, 'float2', lang)}<span className="sr-only"> {tt('skills.minionDps')}</span></>
               : dps?.kind === 'summoner' ? <span className="sr-only">{tt('skills.summonerPending')}</span>
-              : dps?.kind === 'none' ? <span className="sr-only">{w('deals no damage', '不造成伤害', '不造成傷害')}</span> : null}
+              : dps?.kind === 'none' ? <span className="sr-only">{tt('skills.noDamageA11y')}</span> : null}
           </span>
           <span className="skill-dps-bar" aria-hidden="true">
             {(dps?.kind === 'damage' || dps?.kind === 'minion') && <span style={{ width: `${barShare(dps.dps, dpsTop) * 100}%` }} />}
@@ -451,21 +451,21 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
         </header>
         {!selectedId && <p className="skills-hint">{tt(`skills.${noActiveState}Hint`)}</p>}
         {active && <SkillFormControls session={session} lang={lang} groupIndex={idx} catalog={byId} />}
-        {active && <section className="skill-gems-section" aria-label={w('Gems in this group', '本组宝石', '本組寶石')}>
-          <h4 className="skill-section-label">{w('Gems', '宝石', '寶石')}</h4>
+        {active && <section className="skill-gems-section" aria-label={tt('skills.groupGems')}>
+          <h4 className="skill-section-label">{tt('skills.gems')}</h4>
           <div className="gem-column-labels" aria-hidden="true">
             <span /><span>{tt('calcs.skill')}</span><span>{tt('skills.level')}</span><span>{tt('skills.quality')}</span>
             <span />
           </div>
           {gemList}
         </section>}
-        <section className="skill-support-section" aria-label={w('Add a support gem', '添加辅助宝石', '新增輔助寶石')}>
-          <h4 className="skill-section-label">{w('Add a support', '添加辅助', '新增輔助')}</h4>
+        <section className="skill-support-section" aria-label={tt('skills.addSupportA11y')}>
+          <h4 className="skill-section-label">{tt('skills.addSupportTitle')}</h4>
           {supportPicker}
           {optimizer}
         </section>
         {active && <details className="skill-advanced">
-          <summary className="disclosure">{w('Advanced', '高级', '進階')}</summary>
+          <summary className="disclosure">{tt('skills.advanced')}</summary>
           <div className="skill-advanced-body">
             {fullDps}
             {minionControls}
@@ -488,21 +488,21 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
         <AppButton disabled={session.busy} onClick={() => setSpiritRequested(value => value + 1)}>{tt('skills.inspectSpirit')}</AppButton>
         {(spiritRequested > 0 || focusSpirit !== undefined) && <p role="status">{spiritReport === undefined ? tt('skills.spiritPending') : spiritReport === null ? tt('skills.spiritUnavailable') : tt('skills.spiritExplanation')}</p>}
         {spiritReport?.shared.map(entry => <p key={entry.skillId}>{tt('skills.spiritSharedGroups')
-          .replace('{groups}', entry.groups.map(index => index + 1).join(lang === 'en-US' ? ', ' : '、'))
+          .replace('{groups}', entry.groups.map(index => index + 1).join(tt('format.listSeparator')))
           .replace('{skill}', gemName(entry.skillId))}</p>)}
         {spiritReport?.limited && <p role="note">{tt('skills.spiritLimits')}</p>}
       </div>}
       <div className="skill-groups" data-list-expanded={showAllGroups || undefined}>
         <aside className="skill-group-list">
           {groups.length > 0 ? toolbar : active && <div className="skills-empty">
-            <h3>{w('Start with the skill that deals your damage', '先加入造成伤害的计算技能', '先加入造成傷害的計算技能')}</h3>
-            <p>{w('Search for an active skill below to create the first group, or import a build from the library.', '在下方搜索一个主动技能来创建第一个技能组，或到 BD 库导入一套 BD。', '在下方搜尋一個主動技能來建立第一個技能組，或到 BD 庫匯入一套 BD。')}</p>
+            <h3>{tt('skills.firstSkillTitle')}</h3>
+            <p>{tt('skills.firstSkillHint')}</p>
             {toolbar}
           </div>}
           {groupViews.map(view => view.header)}
 
         {groups.length > 1 && <AppButton className="skills-list-toggle" aria-expanded={showAllGroups} onClick={() => setShowAllGroups(value => !value)}>
-          {showAllGroups ? w('Show selected skill only', '收起其他技能', '收起其他技能') : w(`All skill groups (${groups.length})`, `全部技能组（${groups.length}）`, `全部技能組（${groups.length}）`)}
+          {showAllGroups ? tt('skills.selectedOnly') : tt('skills.allGroups', { count: groups.length })}
         </AppButton>}
         </aside>
         {groupViews.find(view => view.detail)?.detail}

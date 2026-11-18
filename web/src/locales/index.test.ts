@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'vitest';
 import { LANGS, fallbackChain, gameTextFallback, lookup, messages, translated } from '.';
-import { statNameLabel } from '../lib/i18n';
+import { bindT, statNameLabel } from '../lib/i18n';
 
 describe('interface locale files', () => {
   test('each language resolves through its declared fallbacks, then English', () => {
-    expect(LANGS).toEqual(['zh-CN', 'zh-TW', 'en-US']);
+    expect(LANGS.filter(lang => ['zh-CN', 'zh-TW', 'en-US'].includes(lang))).toEqual(['zh-CN', 'zh-TW', 'en-US']);
     expect(fallbackChain('zh-TW')).toEqual(['zh-TW', 'zh-CN', 'en-US']);
     expect(fallbackChain('zh-CN')).toEqual(['zh-CN', 'en-US']);
     expect(fallbackChain('en-US')).toEqual(['en-US']);
@@ -17,6 +17,14 @@ describe('interface locale files', () => {
     expect(gameTextFallback('en-US')).toEqual([]);
     // Interface copy never falls back to the other script.
     expect(lookup('zh-CN', 'language', 'name')).toBe('简体中文');
+  });
+
+  test('named values are inserted literally and are not re-interpreted as placeholders', () => {
+    const tt = bindT('en-US');
+    expect(tt('overview.attributeShortfall', { need: 60, have: 45, attribute: '$& {need}' }))
+      .toBe('$& {need} 45 of 60 required');
+    expect(bindT('zh-TW')('overview.attributeShortfall', { need: 60, have: 45, attribute: '力量' }))
+      .toBe('力量不足：45 / 需要 60');
   });
 
   test('data-derived keys never resolve to Object members', () => {

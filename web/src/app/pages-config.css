@@ -10,6 +10,9 @@
   .shell-root .config-page .cfg-scenario { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; min-width: 0; }
   .shell-root .config-page .cfg-scenario-label,
   .shell-root .config-page .config-scenario .named-sets > label { font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-foreground); }
+  .shell-root .config-page .cfg-preset-details { flex: 0 1 auto; min-width: 0; font-size: var(--text-sm); }
+  .shell-root .config-page .cfg-preset-details[open] { flex-basis: 100%; }
+  .shell-root .config-page .cfg-preset-details > summary { min-height: 2rem; color: var(--muted-foreground); }
   .shell-root .config-page .cfg-scenario > .energy-trigger-note { flex-basis: 100%; }
   .shell-root .config-page .cfg-tier-summary { flex: 1 0 100%; min-width: 0; max-width: 48rem; font-size: var(--text-sm); }
   .shell-root .config-page .cfg-tier-summary p { margin: .5rem 0; }
@@ -34,7 +37,7 @@
 
   /* ── Find and filter ────────────────────────────────────────────────────── */
   .shell-root .config-page .config-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1.5rem; margin: 0 0 1.1rem; }
-  .shell-root .config-page .config-toolbar { display: flex; flex: 1 1 22rem; flex-wrap: wrap; align-items: center; gap: .6rem 1.5rem; margin: 0; padding: 0; min-width: 0; }
+  .shell-root .config-page .config-toolbar { display: flex; flex: 0 1 24rem; flex-wrap: wrap; align-items: center; gap: .6rem 1.5rem; margin: 0; padding: 0; min-width: 0; }
   .shell-root .config-page .config-search { flex: 1 1 15rem; width: auto; max-width: 26rem; min-width: 0; }
   .shell-root .config-page .config-filter { display: flex; align-items: center; gap: .5rem; font-size: var(--text-sm); color: var(--muted-foreground); }
 
@@ -86,6 +89,7 @@
   .shell-root .config-page .config-reset:hover:not(:disabled) { background: var(--muted); color: var(--foreground); }
   .shell-root .config-page .search-empty { display: grid; justify-items: start; gap: .75rem; padding: 1.5rem 0; color: var(--muted-foreground); }
   .shell-root .config-page .search-empty p { margin: 0; }
+  .shell-root .config-page .config-empty-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 
   /* ── Custom modifiers, party and raw values: the same flat language ─────── */
   .shell-root .config-page .config-custom .section-heading { margin: 0; font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-foreground); cursor: default; }

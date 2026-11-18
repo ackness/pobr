@@ -1,7 +1,7 @@
 import { t } from '../src/lib/i18n';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { buildAction, openItemsAfterImport, pageLink, playerHitDps } from './shell';
-import { importInto, openBuild, openExport, selectStage as chooseStage, settled, stableText } from './buildLibrary';
+import { openImport, importInto, openBuild, openExport, selectStage as chooseStage, settled, stableText } from './buildLibrary';
 import { answerConfirm } from './confirmDialog';
 import { readFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
@@ -120,7 +120,7 @@ test('committed Comet import reloads its entire saved stage and unresolved middl
   await expect(ascendancy).toBeEnabled();
   await expect(page.getByRole('textbox', { name: 'Notes', exact: true })).toHaveValue(before.notes);
   await openExport(page);
-  await expect(page.getByRole('button', { name: 'Generate share code', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Generate PoB code for this stage', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Copy current stage', exact: true })).toBeEnabled();
   expect(await snapshot(page)).toEqual(before);
   await expect(hitDps(page)).toHaveText(beforeDps);
@@ -184,7 +184,7 @@ test('Comet all-stage sharing and workspace backup reimport preserve complete sa
   await idle(page);
   const beforeShare = await snapshot(page);
   const build = activeBuild(beforeShare);
-  const shared = await downloadJson(page, 'Share this build · all stages');
+  const shared = await downloadJson(page, 'Download this build (all stages)');
   expect(shared.value.build).toEqual(build);
   await page.locator('input[type=file]').setInputFiles(shared.path);
   await expect(page.locator('#ov-title')).toBeVisible();
@@ -202,7 +202,7 @@ test('Comet all-stage sharing and workspace backup reimport preserve complete sa
   await selectStage(page, 'Edited');
   expect(activeSaved(await snapshot(page))).toEqual(build.stages[1].saved);
   const beforeBackup = await snapshot(page);
-  const backup = await downloadJson(page, 'Download backup');
+  const backup = await downloadJson(page, 'Back up local builds');
   expect(backup.value).toEqual(beforeBackup);
   await editName(page, 'New build', 'Temporary');
   await page.locator('input[type=file]').setInputFiles(backup.path);
@@ -222,7 +222,7 @@ test('Comet PoB share-code reimport retains the unresolved slot and source gem m
   const beforeDps = (await stableText(hitDps(page)))!;
   await openBuild(page);
   await openExport(page);
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
+  await page.getByRole('button', { name: 'Generate PoB code for this stage', exact: true }).click();
   const output = page.getByRole('textbox', { name: 'Share Code', exact: true });
   await expect(output).toBeVisible();
   const sharedCode = await output.inputValue();
@@ -237,6 +237,7 @@ test('Comet PoB share-code reimport retains the unresolved slot and source gem m
     nameSpec: 'Unleash', level: '0', quality: '0',
     count: '1', enableGlobal1: 'true', enableGlobal2: 'true',
   });
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(sharedCode);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -278,7 +279,7 @@ test('unresolved gems without count or global weapon attributes keep them absent
   expect((await snapshot(page)).state.socketGroups[0].gems[1]).toEqual(unresolved);
   await openBuild(page);
   await openExport(page);
-  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
+  await page.getByRole('button', { name: 'Generate PoB code for this stage', exact: true }).click();
   const output = page.getByRole('textbox', { name: 'Share Code', exact: true });
   await expect(output).toBeVisible();
   const sharedCode = await output.inputValue();
@@ -292,6 +293,7 @@ test('unresolved gems without count or global weapon attributes keep them absent
   for (const attribute of ['count', 'enableGlobal1', 'enableGlobal2']) {
     expect(attributes).not.toHaveProperty(attribute);
   }
+  await openImport(page);
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(sharedCode);
   await page.locator('.import-submit').click();
   await openItemsAfterImport(page);
@@ -310,6 +312,7 @@ test('malformed inactive Comet stage import preserves the current workspace and 
   const library = await page.evaluate(() => localStorage.getItem('pobr-v2-library'));
   const malformed = structuredClone(before);
   activeBuild(malformed).stages[0].saved.state.socketGroups[8].gems[1].quality = -1;
+  await openImport(page);
   await page.locator('input[type=file]').setInputFiles({
     name: 'malformed-workspace.json', mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(malformed)),

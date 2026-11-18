@@ -80,12 +80,17 @@ function starterContent(saved: SavedSession): string {
 }
 
 /** Identify the sole, unnamed default by content, including after a reload. */
-export function appendImportedBuild(workspace: BuildWorkspace, build: LocalBuild, defaultStarter?: SavedSession | null): BuildWorkspace {
-  const starter = workspace.builds[0], stage = starter.stages[0];
-  const replaceStarter = !!defaultStarter && workspace.builds.length === 1 && starter.name === ''
-    && !starter.baseline && starter.stages.length === 1 && stage.name === '' && Object.keys(stage.drafts).length === 0
+export function isStarterWorkspace(workspace: BuildWorkspace, defaultStarter?: SavedSession | null): boolean {
+  if (!defaultStarter || workspace.builds.length !== 1) return false;
+  const starter = workspace.builds[0];
+  if (starter.name || starter.baseline || starter.stages.length !== 1) return false;
+  const stage = starter.stages[0];
+  return stage.name === '' && Object.keys(stage.drafts).length === 0
     && starterContent(stage.saved) === starterContent(defaultStarter);
-  return { ...workspace, activeBuild: build.id, builds: [...(replaceStarter ? [] : workspace.builds), build] };
+}
+
+export function appendImportedBuild(workspace: BuildWorkspace, build: LocalBuild, defaultStarter?: SavedSession | null): BuildWorkspace {
+  return { ...workspace, activeBuild: build.id, builds: [...(isStarterWorkspace(workspace, defaultStarter) ? [] : workspace.builds), build] };
 }
 
 export function addWorkspaceBuild(workspace: BuildWorkspace, name: string, saved: SavedSession, defaultStarter?: SavedSession | null): BuildWorkspace {

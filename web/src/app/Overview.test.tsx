@@ -69,7 +69,7 @@ function summary(stats: Record<string, number>, {
 it('shows a positive Spirit excess with its limit, the weakest hit and shield-dominant total', () => {
   const html = summary({ Life: 1000, EnergyShield: 5000, Spirit: 100, SpiritUnreserved: -109, PhysicalMaxHit: 19203 });
   expect(html).toContain('精魂超出');
-  expect(html).toContain('>109<span class="ov-source">来源 ›</span>');
+  expect(html).toContain('>109<span class="ov-source">计算明细 ›</span>');
   expect(html).toContain('上限 100');
   expect(html).toContain('最怕物理：单次最多承受 19,203');
   expect(html).toContain('生命 + 能量护盾 6,000');

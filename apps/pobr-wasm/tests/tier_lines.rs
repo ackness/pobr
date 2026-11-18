@@ -427,7 +427,7 @@ Implicits: 0
 }
 
 #[test]
-fn named_catalyst_requires_line_evidence_for_tier_lookup() {
+fn named_catalyst_keeps_competing_tiers_unknown() {
     pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
     let item =
         "Rarity: RARE\nDisplay Fixture\nGold Ring\nItem Level: 79\nQuality (Cold Modifiers): +20%";
@@ -450,6 +450,59 @@ fn named_catalyst_requires_line_evidence_for_tier_lookup() {
     assert_eq!(raw["text"], roll);
     assert_eq!(raw["affix"], "prefix");
     assert_eq!(raw["tier"], 1);
+}
+
+#[test]
+fn untagged_catalysed_ring_matches_supported_rolls_and_retains_ambiguity() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    let text = "\
+Rarity: RARE
+Display Fixture
+Gold Ring
+Item Level: 79
+Quality (Cold Modifiers): +20%
+Implicits: 1
+9% increased Rarity of Items found
+Adds 10 to 25 Physical Damage to Attacks
+Adds 26 to 38 Cold damage to Attacks
++16% to all Elemental Resistances
++43% to Cold Resistance
++35% to Lightning Resistance
+{desecrated}30% increased Cold Damage";
+    let lines = classified_lines(text);
+    for (value, side, tier, tag) in [
+        (
+            "Adds 10 to 25 Physical Damage to Attacks",
+            "prefix",
+            2,
+            None,
+        ),
+        (
+            "Adds 26 to 38 Cold damage to Attacks",
+            "prefix",
+            1,
+            Some("cold"),
+        ),
+        ("+43% to Cold Resistance", "suffix", 2, Some("cold")),
+        ("+35% to Lightning Resistance", "suffix", 3, None),
+    ] {
+        let line = lines.iter().find(|line| line["text"] == value).unwrap();
+        assert_eq!(line["affix"], side, "{line}");
+        assert_eq!(line["tier"], tier, "{line}");
+        assert_eq!(line["mod_tags"][0].as_str(), tag, "{line}");
+    }
+    let all_res = lines
+        .iter()
+        .find(|line| line["text"] == "+16% to all Elemental Resistances")
+        .unwrap();
+    assert!(all_res.get("tier").is_none());
+    let special = lines.last().unwrap();
+    assert_eq!(special["modifier_sources"], json!(["desecrated"]));
+    assert!(special.get("tier").is_none());
+    assert!(
+        lines.iter().any(|line| line["kind"] == "implicit"
+            && line["text"] == "9% increased Rarity of Items found")
+    );
 }
 
 #[test]

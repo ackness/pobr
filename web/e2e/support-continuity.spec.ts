@@ -102,7 +102,7 @@ async function previewMetric(page: Page, label: 'Combined DPS' | 'Effective HP',
 }
 
 async function addGroup(page: Page, name: string) {
-  await page.getByPlaceholder('Add a skill group…').fill(name);
+  await page.getByPlaceholder('Search or browse gems…').fill(name);
   await page.getByRole('option').filter({ has: page.getByText(name, { exact: true }) }).click();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
 }

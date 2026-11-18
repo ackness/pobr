@@ -25,7 +25,7 @@ import { ConfigScopeControl, matchesConfigScope, type ConfigScope } from './Conf
 import { RawConfigValue } from './RawConfigValue';
 import { ScenarioBar } from '../../app/pages/config/ScenarioBar';
 import { confirmedByBuild, partitionRelevant } from '../../app/pages/config/scenario';
-import { words, colon } from '../../app/text';
+import { colon } from '../../app/text';
 import './config.css';
 import '../../app/config-workflow.css';
 
@@ -166,7 +166,7 @@ export function OptionRow({
             value={draft}
             placeholder={
               typeof fallback === 'number' || typeof fallback === 'string'
-                ? `${fallback}${inheritedLabel ? lang === 'en-US' ? ` (${inheritedLabel})` : `（${inheritedLabel}）` : ''}`
+                ? inheritedLabel ? tt('format.parenthetical', { label: fallback, detail: inheritedLabel }) : String(fallback)
                 : inheritedLabel ?? ''
             }
             onChange={event => setDraft(event.target.value)}
@@ -368,7 +368,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
     if (scope === 'modified') setModifiedEdits(current => new Set([...current, variable]));
   };
   const groupTitle = (name: string) => name === RELEVANT_SECTION
-    ? words(lang, 'Relevant to this build', '与此 BD 相关', '與此 BD 相關') : configSectionLabel(lang, name);
+    ? t(lang, 'config.applicable') : configSectionLabel(lang, name);
 
   useEffect(() => {
     const receive = () => {
@@ -464,7 +464,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
                   </p>
                   <p className="config-hint">
                     {damageType
-                      ? `${isMinion ? '' : `${tt('config.quickHitReason')}${colon(lang)}${damageTypeLabel(lang, damageType)}${lang === 'en-US' ? '. ' : '。'}`}${tt('config.quickMitigationReason')}`
+                      ? isMinion ? tt('config.quickMitigationReason') : tt('config.quickHitAndMitigation', { hit: tt('config.quickHitReason'), type: damageTypeLabel(lang, damageType), mitigation: tt('config.quickMitigationReason') })
                       : tt(option.var === 'conditionShockEffect' ? 'config.quickShockMagnitude' : 'config.quickShockState')}
                   </p>
                 </div>
@@ -494,7 +494,17 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
   const viewToggle = <ConfigScopeControl scope={scope} count={configuredCount} lang={lang} onChange={setScope} />;
 
   const catalog = (<>
-      <div className="config-controls">{searchToolbar}{viewToggle}</div>
+      <div className="config-controls">
+        {searchToolbar}{viewToggle}
+        {groups.length > 0 && <label className="config-mobile-category">
+          <span>{tt('config.category')}</span>
+          <AppSelectControl aria-label={tt('config.categoryA11y')} value={searching ? 'search' : activeSection}
+            onChange={event => { setQuery(''); setSelectedSection(event.target.value); setOpenSections(previous => new Set([...previous, event.target.value])); }}>
+            {searching && <option value="search">{tt('config.searchResults')}</option>}
+            {groups.map(group => <option key={group.name} value={group.name}>{groupTitle(group.name)} ({group.options.length})</option>)}
+          </AppSelectControl>
+        </label>}
+      </div>
       <div className="config-help-tools"><details className="config-guidance"><summary className="disclosure">{workflowLabel(lang, 'guidance')}</summary>
       <p className="config-hint">{tt('config.visibilityHint')}</p>
       <p className="config-hint">{tt('config.editHint')}</p>
@@ -505,14 +515,6 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
         {tt('config.loadFailed')} <AppButton onClick={() => setLoadAttempt(value => value + 1)}>{tt('common.retry')}</AppButton>
       </div>}
     <details className="config-quick-disclosure"><summary className="disclosure">{tt('config.quickTitle')}</summary>{quickAccess}</details></div>
-    {groups.length > 0 && <label className="config-mobile-category">
-      <span>{words(lang, 'Category', '分类', '分類')}</span>
-      <AppSelectControl aria-label={words(lang, 'Configuration category', '配置分类', '設定分類')} value={searching ? 'search' : activeSection}
-        onChange={event => { setQuery(''); setSelectedSection(event.target.value); setOpenSections(previous => new Set([...previous, event.target.value])); }}>
-        {searching && <option value="search">{words(lang, 'Search results', '搜索结果', '搜尋結果')}</option>}
-        {groups.map(group => <option key={group.name} value={group.name}>{groupTitle(group.name)} ({group.options.length})</option>)}
-      </AppSelectControl>
-    </label>}
     <div className="config-options-workspace">
       {groups.length > 0 && <nav className="config-group-nav" aria-label={workflowLabel(lang, 'jump')}>
         <h3>{workflowLabel(lang, 'jump')}</h3>
@@ -534,8 +536,12 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
       </nav>}
       <div className="config-option-groups">
       {loadState === 'ready' && groups.length === 0 && <div className="search-empty" role="status">
-        <p>{tt('common.noResults')}</p>
-        <AppButton onClick={() => { setQuery(''); setScope('all'); }}>{tt('config.showAll')}</AppButton>
+        <p>{tt('config.noResultsInScope').replace('{scope}', scope === 'all' ? tt('config.showAll')
+          : scope === 'modified' ? tt('config.configuredOnly').replace('{count}', String(configuredCount)) : tt('config.applicable'))}</p>
+        <div className="config-empty-actions">
+          {query.trim() && <AppButton onClick={() => setQuery('')}>{tt('common.clearSearch')}</AppButton>}
+          {scope !== 'all' && <AppButton onClick={() => setScope('all')}>{tt('config.showAll')}</AppButton>}
+        </div>
       </div>}
 
       {groups.map(({ name, options: sectionOptions }) => {

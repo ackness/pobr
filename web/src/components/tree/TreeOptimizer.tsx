@@ -268,8 +268,8 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
       <AppButton className="tree-planner-toggle disclosure" data-disclosure-level="section" aria-expanded={expanded} onClick={() => { if (expanded) cancel(); setExpanded(!expanded); }}>
         <DisclosureChevron />{text.title}
       </AppButton>
+      <p className="tree-planner-hint">{text.hint}</p>
       {expanded && <div className="tree-planner-body">
-        <p className="tree-planner-hint">{text.hint.replace('{points}', String(points))}</p>
         {applied && <p className="tree-planner-hint tree-planner-applied" role="status">
           <strong>{text.applied}</strong><br />
           {text.add} {applied.allocate.length}{separator}{applied.allocate.map(nodeLabel).join(' · ') || '—'}<br />

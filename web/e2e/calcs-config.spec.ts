@@ -72,10 +72,11 @@ test('overview, Full DPS and attribution remain separate and attribution is requ
   await page.getByRole('tab', { name: 'Full DPS', exact: true }).click();
   await expect(page.locator('.full-dps-table')).toBeVisible();
   await expect(page.locator('.skill-metrics-table')).toHaveCount(0);
-  await expect(page.locator('.full-dps-view')).toContainText('does not simulate skill rotations');
-  await page.getByRole('tab', { name: 'Source contributions', exact: true }).click();
+  await expect(page.locator('.full-dps-view')).toContainText('as if active together');
+  await expect(page.locator('.full-dps-view')).toContainText('Combined DPS is for the calculated skill.');
+  await page.getByRole('tab', { name: 'Removal impact', exact: true }).click();
   expect(await page.evaluate(() => window.calcsConfigProbe.attribution)).toBe(0);
-  await page.getByRole('button', { name: 'Source contributions', exact: true }).click();
+  await page.getByRole('button', { name: 'Calculate removal impact', exact: true }).click();
   await expect(page.locator('.attribution-table')).toBeVisible();
   expect(await page.evaluate(() => window.calcsConfigProbe.attribution)).toBe(1);
 });
@@ -142,8 +143,12 @@ test('typed raw values remain distinct and party blocks are localized', async ({
 
 test('mobile detail navigation and config groups stay within the viewport', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('.calcs-filters')).toBeInViewport();
+  await expect(page.locator('#calcs-detail')).toBeHidden();
   await page.locator('#breakdown-Life').click();
-  await expect(page.getByRole('button', { name: 'Back to metrics', exact: true })).toBeVisible();
+  const back = page.getByRole('button', { name: 'Back to metrics', exact: true });
+  await expect(back).toBeVisible();
+  await expect(page.locator('.calcs-metric-browser')).toBeHidden();
   const tabs = await page.getByRole('tablist').boundingBox();
   const panel = await page.getByRole('tabpanel').boundingBox();
   expect(tabs!.y + tabs!.height).toBeLessThanOrEqual(panel!.y);
