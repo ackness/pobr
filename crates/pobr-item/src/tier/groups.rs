@@ -23,7 +23,7 @@ struct ParsedLine<'a> {
     skeleton: String,
     captures: Vec<&'a str>,
     unscaled: bool,
-    desecrated: bool,
+    require_desecrated: bool,
 }
 
 struct Observation<'a> {
@@ -31,7 +31,8 @@ struct Observation<'a> {
     captures: Vec<&'a str>,
     values: Vec<Option<f64>>,
     lines: BTreeSet<usize>,
-    desecrated: bool,
+    unscaled: bool,
+    require_desecrated: bool,
 }
 
 struct MergedFamily<'a> {
@@ -82,6 +83,7 @@ impl TierIndex {
                 raw,
                 unscaled: None,
                 desecrated: false,
+                require_desecrated: false,
             })
             .collect::<Vec<_>>();
         self.lookup_line_rolls(&lines, base_tags, mod_domain, allowed_ids, None)
@@ -175,23 +177,23 @@ impl TierIndex {
                 } else {
                     None
                 };
-                [(line.raw, false, line.desecrated)]
+                [(line.raw, false, line.require_desecrated)]
                     .into_iter()
                     .chain(
                         line.unscaled
                             .filter(|&raw| raw != line.raw)
-                            .map(|raw| (raw, true, line.desecrated)),
+                            .map(|raw| (raw, true, false)),
                     )
                     .chain(grant.map(|raw| (raw, false, true)))
                     .filter(|(text, _, _)| !text.is_empty())
-                    .map(move |(text, unscaled, desecrated)| {
+                    .map(move |(text, unscaled, require_desecrated)| {
                         let (skeleton, captures) = tokenize(text);
                         ParsedLine {
                             index,
                             skeleton,
                             captures,
                             unscaled,
-                            desecrated,
+                            require_desecrated,
                         }
                     })
             })
@@ -219,7 +221,8 @@ impl TierIndex {
                         captures: captures.clone(),
                         values,
                         lines: assignment.iter().map(|line| line.index).collect(),
-                        desecrated: assignment.iter().any(|line| line.desecrated),
+                        unscaled: assignment.iter().any(|line| line.unscaled),
+                        require_desecrated: assignment.iter().any(|line| line.require_desecrated),
                     };
                     let Some(mod_indices) = entry
                         .stat_ids
@@ -231,7 +234,10 @@ impl TierIndex {
                     for &mod_index in mod_indices {
                         spend(&mut budget)?;
                         let modifier = &self.mods[mod_index];
-                        if observation.desecrated && !is_desecrated(modifier) {
+                        let desecrated = is_desecrated(modifier);
+                        if (observation.require_desecrated && !desecrated)
+                            || (observation.unscaled && desecrated)
+                        {
                             continue;
                         }
                         if let Some(fragment) = matching_fragment(&modifier.stats, &observation) {
@@ -257,6 +263,18 @@ impl TierIndex {
                 });
             }
         }
+        // Some exports mark ordinary affixes as desecrated. Prefer the catalogue
+        // only if a complete eligible Abyss affix explains the marked line.
+        let confirmed_desecrated: BTreeSet<_> = candidates
+            .iter()
+            .filter(|candidate| is_desecrated(&self.mods[candidate.mod_index]))
+            .flat_map(|candidate| candidate.fragment.lines.iter().copied())
+            .filter(|&index| lines[index].desecrated)
+            .collect();
+        candidates.retain(|candidate| {
+            candidate.fragment.lines.is_disjoint(&confirmed_desecrated)
+                || is_desecrated(&self.mods[candidate.mod_index])
+        });
         // Reserve slots for independent affixes before accepting a merged explanation.
         // Only a unique, non-overlapping candidate with no merged alternative can reserve one.
         let certain: Vec<_> = candidates
@@ -278,7 +296,13 @@ impl TierIndex {
         let explanations = if certain.is_empty() {
             Vec::new()
         } else {
-            self.merged_explanations(&matchable, &observations, is_desecrated, &mut budget)?
+            self.merged_explanations(
+                &matchable,
+                &observations,
+                is_desecrated,
+                &confirmed_desecrated,
+                &mut budget,
+            )?
         };
         let mut possibly_merged = BTreeSet::new();
         for explanation in &explanations {
@@ -326,6 +350,7 @@ impl TierIndex {
         eligible: &BTreeSet<usize>,
         observations: &[Observation<'_>],
         is_desecrated: impl Fn(&TierMod) -> bool,
+        confirmed_desecrated: &BTreeSet<usize>,
         budget: &mut usize,
     ) -> Option<Vec<MergedExplanation>> {
         let visible: BTreeSet<_> = observations
@@ -388,7 +413,11 @@ impl TierIndex {
                 let mut parts = BTreeSet::new();
                 let desecrated = selected.iter().all(|&index| families[index].desecrated);
                 for observation in observations {
-                    if observation.desecrated && !desecrated {
+                    if (desecrated && observation.unscaled)
+                        || (!desecrated
+                            && (observation.require_desecrated
+                                || !observation.lines.is_disjoint(confirmed_desecrated)))
+                    {
                         continue;
                     }
                     spend(budget)?;

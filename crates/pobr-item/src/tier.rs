@@ -58,6 +58,8 @@ pub struct TierLine<'a> {
     pub unscaled: Option<&'a str>,
     /// The import explicitly identifies this line as desecrated.
     pub desecrated: bool,
+    /// An untagged catalysed line is usable only as a raw desecrated roll.
+    pub require_desecrated: bool,
 }
 
 /// A complete affix match, with a tier when a ranking pool is available.

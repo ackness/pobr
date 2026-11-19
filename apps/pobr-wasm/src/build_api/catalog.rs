@@ -146,6 +146,11 @@ pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
                 }) {
                     return absent;
                 }
+                // A source annotation is not a catalyst tag. Untagged Abyss
+                // candidates may match the displayed value, but not a guessed reversal.
+                if line.modifier_sources.contains(&ModifierSource::Desecrated) {
+                    return (text, None);
+                }
                 match unscale_catalyst_line(&text, *quality, &scalability.1) {
                     CatalystRoll::Unscaled(unscaled) => (text, Some(unscaled)),
                     CatalystRoll::NoIntegralRoll => (text, None),
@@ -156,10 +161,17 @@ pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
         let rolls = rolls
             .iter()
             .zip(explicit)
-            .map(|((raw, unscaled), line)| TierLine {
-                raw,
-                unscaled: unscaled.as_deref(),
-                desecrated: line.modifier_sources.contains(&ModifierSource::Desecrated),
+            .map(|((raw, unscaled), line)| {
+                let desecrated = line.modifier_sources.contains(&ModifierSource::Desecrated);
+                TierLine {
+                    raw,
+                    unscaled: unscaled.as_deref(),
+                    desecrated,
+                    require_desecrated: desecrated
+                        && has_catalyst_quality
+                        && !line.unscalable
+                        && line.mod_tags.is_empty(),
+                }
             })
             .collect::<Vec<_>>();
         index.lookup_line_rolls(

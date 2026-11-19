@@ -360,7 +360,8 @@ fn marked_desecration_uses_source_and_catalyst_evidence_together() {
         (ring, "+20% to Cold and Chaos Resistances", Some("cold")),
     ];
     for (item, modifier, tag) in cases {
-        let lines = classified_lines(&format!("{item}{{desecrated}}{modifier}"));
+        let tags = tag.map_or_else(String::new, |tag| format!("{{tags:{tag}}}"));
+        let lines = classified_lines(&format!("{item}{{desecrated}}{tags}{modifier}"));
         let line = lines.last().unwrap();
         assert_eq!(line["text"], modifier);
         assert_eq!(line["affix"], "suffix", "{line}");
@@ -368,6 +369,36 @@ fn marked_desecration_uses_source_and_catalyst_evidence_together() {
         assert_eq!(line["mod_tags"][0].as_str(), tag, "{line}");
         assert!(line.get("tier").is_none(), "{line}");
     }
+    // A displayed value that needs a reversal cannot establish its own catalyst tag.
+    for catalyst in ["Cold", "Fire"] {
+        let ring = ring.replace("Cold Modifiers", &format!("{catalyst} Modifiers"));
+        for annotation in ["", "{desecrated}"] {
+            let lines = classified_lines(&format!(
+                "{ring}{annotation}+20% to Cold and Chaos Resistances"
+            ));
+            let line = lines.last().unwrap();
+            assert!(line.get("affix").is_none(), "{line}");
+            assert!(line.get("mod_tags").is_none(), "{line}");
+        }
+    }
+}
+
+#[test]
+fn a_desecration_annotation_does_not_hide_a_natural_roll() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    let lines = classified_lines(
+        "Rarity: RARE\nDisplay Fixture\nDrakeskin Boots\nItem Level: 82\n{desecrated}35% increased Movement Speed",
+    );
+    let line = lines.last().unwrap();
+    assert_eq!(line["modifier_sources"], json!(["desecrated"]));
+    assert_eq!(line["affix"], "prefix", "{line}");
+    assert_eq!(line["tier"], 1, "{line}");
+
+    let ring = "Rarity: RARE\nDisplay Fixture\nGold Ring\nItem Level: 82\nQuality (Cold Modifiers): +20%\n";
+    let lines = classified_lines(&format!("{ring}{{desecrated}}+43% to Cold Resistance"));
+    let line = lines.last().unwrap();
+    assert!(line.get("affix").is_none(), "{line}");
+    assert!(line.get("tier").is_none(), "{line}");
 }
 
 #[test]
