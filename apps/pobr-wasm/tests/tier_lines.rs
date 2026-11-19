@@ -230,6 +230,147 @@ fn hybrid_and_category_scoped_special_affixes_share_native_tiers() {
 }
 
 #[test]
+fn helmet_desecration_has_an_affix_side_without_a_natural_tier() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    let mixed = "+14% to Fire and Chaos Resistances";
+    let item = format!(
+        "Rarity: RARE\nDisplay Fixture\nAncestral Tiara\nItem Level: 80\n\
+         Quality: 20\nCorrupted\nRune: Greater Iron Rune\nRune: Greater Iron Rune\n\
+         +44 to maximum Energy Shield\n93% increased Energy Shield\n+135 to maximum Life\n\
+         +31% to Fire Resistance\n+38% to Cold Resistance\n{mixed}"
+    );
+    let lines = classified_lines(&item);
+    for (text, affix, tier) in [
+        ("+44 to maximum Energy Shield", "prefix", 3),
+        ("93% increased Energy Shield", "prefix", 1),
+        ("+135 to maximum Life", "prefix", 2),
+        ("+31% to Fire Resistance", "suffix", 3),
+        ("+38% to Cold Resistance", "suffix", 2),
+    ] {
+        let line = lines.iter().find(|line| line["text"] == text).unwrap();
+        assert_eq!(line["affix"], affix, "{line}");
+        assert_eq!(line["tier"], tier, "{line}");
+    }
+    let line = lines.iter().find(|line| line["text"] == mixed).unwrap();
+    assert_eq!(
+        line,
+        &json!({"kind": "explicit", "text": mixed, "affix": "suffix"})
+    );
+
+    let wrong_base = classified_lines(&format!("Rarity: RARE\nDisplay Fixture\nTwin Bow\n{mixed}"));
+    assert_eq!(
+        wrong_base.last().unwrap(),
+        &json!({"kind": "explicit", "text": mixed})
+    );
+}
+
+#[test]
+fn catalogue_desecration_covers_weapons_and_multiline_jewel_affixes() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    let cases = [
+        (
+            "Anvil Maul",
+            "prefix",
+            "99% increased Damage against Enemies with Fully Broken Armour",
+            false,
+        ),
+        (
+            "Alloy Crossbow",
+            "prefix",
+            "Grenade Skills have +1 Cooldown Use",
+            false,
+        ),
+        (
+            "Ashen Staff",
+            "suffix",
+            "+4 maximum stacks of Puppet Master",
+            false,
+        ),
+        (
+            "Emerald",
+            "prefix",
+            "{desecrated}10% increased Armour\n{desecrated}8% increased Attack Damage",
+            true,
+        ),
+    ];
+    for (base, side, modifiers, marked) in cases {
+        let item = format!("Rarity: RARE\nDisplay Fixture\n{base}\nItem Level: 100\n");
+        let lines = classified_lines(&format!("{item}{modifiers}"));
+        let explicit: Vec<_> = lines
+            .iter()
+            .filter(|line| line["kind"] == "explicit")
+            .collect();
+        assert_eq!(explicit.len(), modifiers.lines().count());
+        for line in explicit {
+            assert_eq!(line["affix"], side, "{base}: {line}");
+            assert!(line.get("tier").is_none(), "{base}: {line}");
+        }
+        if marked {
+            let incomplete =
+                classified_lines(&format!("{item}{}", modifiers.lines().next().unwrap()));
+            assert!(incomplete.last().unwrap().get("affix").is_none());
+        }
+    }
+}
+
+#[test]
+fn abyss_jewel_prefixes_respect_normal_and_radius_base_tags() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    let cases = [
+        (
+            "Emerald",
+            "Time-Lost Emerald",
+            "{desecrated}20% increased Magnitude of Abyssal Wasting you inflict",
+        ),
+        (
+            "Time-Lost Emerald",
+            "Emerald",
+            "Notable Passive Skills in Radius also grant 3% increased Global Armour, Evasion and Energy Shield",
+        ),
+    ];
+    for (valid, wrong, modifier) in cases {
+        let item = format!("Rarity: RARE\nDisplay Fixture\n{valid}\nItem Level: 100\n{modifier}");
+        let lines = classified_lines(&item);
+        let line = lines.last().unwrap();
+        assert_eq!(line["affix"], "prefix", "{valid}: {line}");
+        assert!(line.get("tier").is_none(), "{valid}: {line}");
+        let wrong_item =
+            format!("Rarity: RARE\nDisplay Fixture\n{wrong}\nItem Level: 100\n{modifier}");
+        assert!(
+            classified_lines(&wrong_item)
+                .last()
+                .unwrap()
+                .get("affix")
+                .is_none()
+        );
+    }
+}
+
+#[test]
+fn marked_desecration_uses_source_and_catalyst_evidence_together() {
+    pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
+    let chest = "Rarity: RARE\nDisplay Fixture\nAbyssal Cuirass\nItem Level: 100\n";
+    let ring = "Rarity: RARE\nDisplay Fixture\nGold Ring\nItem Level: 100\nQuality (Cold Modifiers): +20%\n";
+    let shared = "+17% to Fire and Chaos Resistances";
+    let unmarked = classified_lines(&format!("{chest}{shared}"));
+    assert!(unmarked.last().unwrap().get("affix").is_none());
+    let cases = [
+        (chest, shared, None),
+        (ring, shared, None),
+        (ring, "+20% to Cold and Chaos Resistances", Some("cold")),
+    ];
+    for (item, modifier, tag) in cases {
+        let lines = classified_lines(&format!("{item}{{desecrated}}{modifier}"));
+        let line = lines.last().unwrap();
+        assert_eq!(line["text"], modifier);
+        assert_eq!(line["affix"], "suffix", "{line}");
+        assert_eq!(line["modifier_sources"], json!(["desecrated"]));
+        assert_eq!(line["mod_tags"][0].as_str(), tag, "{line}");
+        assert!(line.get("tier").is_none(), "{line}");
+    }
+}
+
+#[test]
 fn ambiguous_merged_defence_and_life_lines_have_no_tier_or_affix() {
     pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
     let text = "\
@@ -533,7 +674,7 @@ Item Level: 79
 #[test]
 fn out_of_range_ring_damage_is_not_assigned_a_nearest_or_quality_adjusted_tier() {
     pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
-    let text = "Rarity: RARE\nDisplay Fixture\nGold Ring\nItem Level: 79\nQuality: 20\nAdds 26 to 38 Cold damage to Attacks\n+43% to Cold Resistance";
+    let text = "Rarity: RARE\nDisplay Fixture\nGold Ring\nItem Level: 82\nQuality: 20\nAdds 26 to 38 Cold damage to Attacks\n+43% to Cold Resistance";
     let lines = classified_lines(text);
     let damage = lines
         .iter()
@@ -548,6 +689,12 @@ fn out_of_range_ring_damage_is_not_assigned_a_nearest_or_quality_adjusted_tier()
             .iter()
             .any(|line| line["text"] == "+43% to Cold Resistance" && line["tier"] == 1)
     );
+    let low_level = text.replace("Item Level: 82", "Item Level: 79");
+    let lines = classified_lines(&low_level);
+    let cold = lines.last().unwrap();
+    assert_eq!(cold["text"], "+43% to Cold Resistance");
+    assert!(cold.get("affix").is_none(), "{cold}");
+    assert!(cold.get("tier").is_none(), "{cold}");
 }
 
 #[test]

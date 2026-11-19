@@ -80,7 +80,7 @@ export interface ItemLineJson {
   tier?: number;
   /** 该基底可掷的同池总档数（与 tier 成对出现）。 */
   tier_total?: number;
-  /** 词缀性质（与 tier 成对出现）。 */
+  /** 已确认的前后缀。档位未知时也可给出。 */
   affix?: 'prefix' | 'suffix';
   modifier_sources?: ('crafted' | 'fractured' | 'desecrated' | 'mutated' | 'custom')[];
   /** Verified game modifier tags, using stable English IDs such as `cold`. */

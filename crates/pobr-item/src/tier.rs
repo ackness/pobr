@@ -56,12 +56,15 @@ pub struct TierInfo {
 pub struct TierLine<'a> {
     pub raw: &'a str,
     pub unscaled: Option<&'a str>,
+    /// The import explicitly identifies this line as desecrated.
+    pub desecrated: bool,
 }
 
-/// A complete affix match and whether this line needed catalyst reversal.
+/// A complete affix match, with a tier when a ranking pool is available.
 #[derive(Clone)]
 pub struct TierMatch {
-    pub info: TierInfo,
+    pub is_prefix: bool,
+    pub tier: Option<TierInfo>,
     pub requires_catalyst: bool,
 }
 
@@ -532,7 +535,9 @@ fn compound_template_slots(template: &str) -> Option<(String, Vec<Slot>)> {
         let inner = &rest[open + 1..close];
         let key = inner.split(':').next().unwrap_or(inner);
         let k: usize = key.parse().ok()?;
-        rendered.push_str(&rest[..open]);
+        // `tokenize` consumes a leading plus as part of a numeric capture.
+        let text = &rest[..open];
+        rendered.push_str(text.strip_suffix('+').unwrap_or(text));
         rendered.push('\u{1}'); // placeholder sentinel (never appears in real game text)
         placeholder_order.push(k);
         rest = &rest[close + 1..];

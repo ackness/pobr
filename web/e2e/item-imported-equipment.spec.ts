@@ -98,6 +98,42 @@ Implicits: 0
   await detail.screenshot({ path: testInfo.outputPath('ring-modifiers.png') });
 });
 
+test('a helmet imported from WeGame groups its desecrated resistance suffix with the natural suffixes', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 1250 });
+  await page.route('**/api/import/wegame', route => route.fulfill({ json: {
+    format: 'wegame', version: 1, role: { level: 85, class_name: 'Sorceress' },
+    equipments: [{ inventoryId: 'Helm', baseType: '先祖冠冕', frameType: 2,
+      name: '测试冠冕', ilvl: 80, corrupted: true,
+      properties: [{ name: '品质', type: 6, values: [['+20%', 1]] }, { name: '能量护盾', type: 18, values: [['420', 1]] }],
+      sockets: [{ type: 'rune' }, { type: 'rune' }],
+      socketedItems: [{ socket: 0, baseType: 'Greater Iron Rune' }, { socket: 1, baseType: 'Greater Iron Rune' }],
+      runeMods: ['36% increased Armour, Evasion and Energy Shield'],
+      explicitMods: ['+44 to maximum Energy Shield', '93% increased Energy Shield', '+135 to maximum Life',
+        '+31% to Fire Resistance', '+38% to Cold Resistance', '+14% 火焰与混沌抗性'] }],
+    talent_tree: { hashes: [], quest_stats: [] }, jewel_data: '[]', skills: [],
+  } }));
+  await importBuild(page, 'https://www.wegame.com.cn/helper/poe2/#/share/SyntheticHelmetFixture');
+  await setLanguage(page, 'zh-CN');
+  await goTo(page, '装备', 'zh-CN');
+  await page.locator('.doll-cell[data-slot="helmet"] .doll-slot').click();
+  const detail = page.locator('.item-detail .item-display');
+  const prefixes = detail.locator('[data-affix-group="prefix"]');
+  const suffixes = detail.locator('[data-affix-group="suffix"]');
+  await expect(prefixes.locator('.item-affix-tier')).toHaveText(['T3', 'T1', 'T2']);
+  await expect(suffixes.locator('.item-affix-tier')).toHaveText(['T3', 'T2']);
+  const resistance = suffixes.locator('[data-kind="explicit"]').filter({ hasText: '+14%' });
+  await expect(resistance).toHaveAttribute('data-affix', 'suffix');
+  await expect(resistance.locator('.item-affix-tier, [data-modifier-source], [data-mod-tag]')).toHaveCount(0);
+  await expect(detail.locator('.item-affix-remainder')).toHaveCount(0);
+  await expect(detail.locator('.item-extra-effects + .item-affix-group')).toBeVisible();
+  await expect(detail.locator('.item-socketed-runes li')).toHaveCount(2);
+  await detail.screenshot({ path: testInfo.outputPath('wegame-helmet-desktop.png') });
+  await page.setViewportSize({ width: 390, height: 900 });
+  await expect(resistance).toBeVisible();
+  expect(await detail.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+  await detail.screenshot({ path: testInfo.outputPath('wegame-helmet-mobile.png') });
+});
+
 test('WeGame equipment places base, enchantment and socket effects above catalyst affixes', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.route('**/api/import/wegame', route => route.fulfill({ json: {

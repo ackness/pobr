@@ -2,6 +2,8 @@ use super::*;
 use std::collections::BTreeMap;
 
 const MAX_SEARCH_STEPS: usize = 16_384;
+const ABYSS_MOD_DOMAIN: u32 = 28;
+const NOTABLE_GRANT: &str = "Notable Passive Skills in Radius also grant ";
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 struct Fragment {
@@ -21,6 +23,7 @@ struct ParsedLine<'a> {
     skeleton: String,
     captures: Vec<&'a str>,
     unscaled: bool,
+    desecrated: bool,
 }
 
 struct Observation<'a> {
@@ -28,11 +31,13 @@ struct Observation<'a> {
     captures: Vec<&'a str>,
     values: Vec<Option<f64>>,
     lines: BTreeSet<usize>,
+    desecrated: bool,
 }
 
 struct MergedFamily<'a> {
     group: &'a str,
     generation_type: u32,
+    desecrated: bool,
     stats: Vec<ModStat>,
 }
 
@@ -56,9 +61,11 @@ impl TierIndex {
     }
 
     /// Extends the display pool with exact native IDs validated by the caller
-    /// for this base's category. IDs bypass only natural spawn weights, never
-    /// native domain, generation type, stat coverage or ambiguity checks.
-    /// Natural matches rank only against the natural pool; nonnatural matches
+    /// for this base's category. Same-domain IDs bypass natural spawn weights.
+    /// Desecrated IDs in the Abyss domain must also match the base's ordered
+    /// weights, which distinguish bases in a shared category such as jewels.
+    /// Cross-domain matches report the affix side without a tier.
+    /// Natural matches rank only against the natural pool; other tiered matches
     /// rank separately within each admitted source. Both pools retain native
     /// group, stat set and prefix/suffix. No source or text aliases are inferred.
     /// Excessive search ambiguity conservatively leaves every line unknown.
@@ -74,11 +81,12 @@ impl TierIndex {
             .map(|&raw| TierLine {
                 raw,
                 unscaled: None,
+                desecrated: false,
             })
             .collect::<Vec<_>>();
         self.lookup_line_rolls(&lines, base_tags, mod_domain, allowed_ids, None)
             .into_iter()
-            .map(|matched| matched.map(|matched| matched.info))
+            .map(|matched| matched.and_then(|matched| matched.tier))
             .collect()
     }
 
@@ -105,16 +113,28 @@ impl TierIndex {
         item_level: Option<u32>,
     ) -> Option<Vec<Option<TierMatch>>> {
         let tags = base_tags.iter().map(String::as_str).collect();
+        let is_natural = |modifier: &TierMod| {
+            modifier.domain == mod_domain && spawn_weight_positive(&modifier.spawn_weights, &tags)
+        };
+        let sources_of = |modifier: &TierMod| allowed_ids.get(&modifier.id);
+        let is_desecrated = |modifier: &TierMod| {
+            sources_of(modifier).is_some_and(|sources| sources.contains("desecrated"))
+        };
+        let is_allowed = |modifier: &TierMod| {
+            if modifier.domain == mod_domain {
+                sources_of(modifier).is_some_and(|sources| !sources.is_empty())
+            } else {
+                modifier.domain == ABYSS_MOD_DOMAIN
+                    && is_desecrated(modifier)
+                    && spawn_weight_positive(&modifier.spawn_weights, &tags)
+            }
+        };
         let eligible: BTreeSet<usize> = self
             .mods
             .iter()
             .enumerate()
             .filter(|(_, modifier)| {
-                modifier.domain == mod_domain
-                    && (spawn_weight_positive(&modifier.spawn_weights, &tags)
-                        || allowed_ids
-                            .get(&modifier.id)
-                            .is_some_and(|sources| !sources.is_empty()))
+                (is_natural(modifier) || is_allowed(modifier))
                     && modifier
                         .stats
                         .iter()
@@ -128,15 +148,14 @@ impl TierIndex {
         let natural: BTreeSet<usize> = eligible
             .iter()
             .copied()
-            .filter(|&index| spawn_weight_positive(&self.mods[index].spawn_weights, &tags))
+            .filter(|&index| is_natural(&self.mods[index]))
             .collect();
         let matchable: BTreeSet<_> = eligible
             .iter()
             .copied()
             .filter(|&index| {
                 let modifier = &self.mods[index];
-                item_level.is_none_or(|level| modifier.level <= level)
-                    || allowed_ids.contains_key(&modifier.id)
+                item_level.is_none_or(|level| modifier.level <= level) || is_allowed(modifier)
             })
             .collect();
         let mut by_stat: BTreeMap<&str, Vec<usize>> = BTreeMap::new();
@@ -145,25 +164,34 @@ impl TierIndex {
                 by_stat.entry(&stat.stat_id).or_default().push(mod_index);
             }
         }
+        let radius_jewel = tags.contains("radius_jewel");
         let parsed: Vec<_> = lines
             .iter()
             .enumerate()
             .flat_map(|(index, line)| {
-                [(line.raw, false)]
+                // The radius jewel display wraps the native stat description in a grant.
+                let grant = if radius_jewel {
+                    line.raw.strip_prefix(NOTABLE_GRANT)
+                } else {
+                    None
+                };
+                [(line.raw, false, line.desecrated)]
                     .into_iter()
                     .chain(
                         line.unscaled
                             .filter(|&raw| raw != line.raw)
-                            .map(|raw| (raw, true)),
+                            .map(|raw| (raw, true, line.desecrated)),
                     )
-                    .filter(|(text, _)| !text.is_empty())
-                    .map(move |(text, unscaled)| {
+                    .chain(grant.map(|raw| (raw, false, true)))
+                    .filter(|(text, _, _)| !text.is_empty())
+                    .map(move |(text, unscaled, desecrated)| {
                         let (skeleton, captures) = tokenize(text);
                         ParsedLine {
                             index,
                             skeleton,
                             captures,
                             unscaled,
+                            desecrated,
                         }
                     })
             })
@@ -191,6 +219,7 @@ impl TierIndex {
                         captures: captures.clone(),
                         values,
                         lines: assignment.iter().map(|line| line.index).collect(),
+                        desecrated: assignment.iter().any(|line| line.desecrated),
                     };
                     let Some(mod_indices) = entry
                         .stat_ids
@@ -202,6 +231,9 @@ impl TierIndex {
                     for &mod_index in mod_indices {
                         spend(&mut budget)?;
                         let modifier = &self.mods[mod_index];
+                        if observation.desecrated && !is_desecrated(modifier) {
+                            continue;
+                        }
                         if let Some(fragment) = matching_fragment(&modifier.stats, &observation) {
                             raw_matches.extend(assignment.iter().filter_map(|line| {
                                 (!line.unscaled && lines[line.index].unscaled.is_some())
@@ -246,7 +278,7 @@ impl TierIndex {
         let explanations = if certain.is_empty() {
             Vec::new()
         } else {
-            self.merged_explanations(&matchable, &observations, &mut budget)?
+            self.merged_explanations(&matchable, &observations, is_desecrated, &mut budget)?
         };
         let mut possibly_merged = BTreeSet::new();
         for explanation in &explanations {
@@ -273,13 +305,14 @@ impl TierIndex {
             if !candidate.fragment.lines.is_disjoint(&merged) {
                 continue;
             }
-            let Some(info) = self.group_tier(candidate.mod_index, &eligible, &natural, allowed_ids)
-            else {
-                continue;
-            };
+            let modifier = &self.mods[candidate.mod_index];
+            let tier = (modifier.domain == mod_domain)
+                .then(|| self.group_tier(candidate.mod_index, &eligible, &natural, allowed_ids))
+                .flatten();
             for &index in &candidate.fragment.lines {
                 result[index] = Some(TierMatch {
-                    info: info.clone(),
+                    is_prefix: modifier.generation_type == GENERATION_PREFIX,
+                    tier: tier.clone(),
                     requires_catalyst: lines[index].unscaled.is_some()
                         && !raw_matches.contains(&(candidate.mod_index, index)),
                 });
@@ -292,6 +325,7 @@ impl TierIndex {
         &self,
         eligible: &BTreeSet<usize>,
         observations: &[Observation<'_>],
+        is_desecrated: impl Fn(&TierMod) -> bool,
         budget: &mut usize,
     ) -> Option<Vec<MergedExplanation>> {
         let visible: BTreeSet<_> = observations
@@ -318,14 +352,17 @@ impl TierIndex {
             {
                 continue;
             }
+            let desecrated = is_desecrated(modifier);
             let key = (
                 modifier.group.as_str(),
                 modifier.generation_type,
                 stat_key(modifier.stats.iter().map(|stat| stat.stat_id.as_str())),
+                desecrated,
             );
             let family = families.entry(key).or_insert_with(|| MergedFamily {
                 group: &modifier.group,
                 generation_type: modifier.generation_type,
+                desecrated,
                 stats: modifier.stats.clone(),
             });
             for stat in &modifier.stats {
@@ -349,7 +386,11 @@ impl TierIndex {
             spend(budget)?;
             if selected.len() >= 2 {
                 let mut parts = BTreeSet::new();
+                let desecrated = selected.iter().all(|&index| families[index].desecrated);
                 for observation in observations {
+                    if observation.desecrated && !desecrated {
+                        continue;
+                    }
                     spend(budget)?;
                     if let Some(fragment) = matching_fragment(&stats, observation) {
                         parts.insert(fragment);
@@ -431,6 +472,7 @@ impl TierIndex {
                 .copied()
                 .filter(|index| {
                     eligible.contains(index)
+                        && self.mods[*index].domain == modifier.domain
                         && natural.contains(index) == natural.contains(&mod_index)
                         && source.is_none_or(|source| {
                             allowed_ids
