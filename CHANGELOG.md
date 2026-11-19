@@ -4,6 +4,22 @@ Notable changes to PoBR, the browser build planner at [pobr.win](https://pobr.wi
 
 Versions follow [SemVer](https://semver.org/). While the version is 0.0.x, any release may change behaviour; changes that need action from WASM, CLI or data consumers are listed under **Breaking changes**. How a release section is written: [RELEASING.md](RELEASING.md#4-发版上线).
 
+## [0.0.55] - 2026-11-19
+
+Support recommendations now show the expected gains and which gems to swap, with the complete setup available on demand. Equipment details recognise more imported desecrated affixes and place them in the appropriate prefix or suffix group. Game data remains at 0.5.5.8.
+
+### Breaking changes
+
+- WASM JSON schema 22 allows `classifyItemLinesJson` to return an `affix` without a `tier` or `tier_total`. Check for `tier` before using it. `tier` and `tier_total` still appear together. (#386, #387)
+
+### Changed
+
+- Review support recommendations below the gem editor. Compare estimated metrics and see which supports to equip or remove before applying a setup, or expand the result to inspect every gem. (#386)
+
+### Fixed
+
+- Recognise eligible desecrated affixes on imported equipment, including jewels, while preserving known natural tiers. Check the item's base and the complete modifier before assigning a prefix or suffix, and use compatible modifier tags to verify catalyst scaling for desecrated rolls. (#386)
+
 ## [0.0.54] - 2026-11-18
 
 Equipment details now put innate modifiers, enchantments and socketed effects first, with responsive prefix and suffix columns and clearer catalyst tiers. This release also makes the build library, calculation details and comparison controls easier to use on small screens. Game data remains at 0.5.5.8 and the WASM JSON schema stays at 21.
@@ -397,6 +413,7 @@ pobr.win now calculates with game data 0.5.5.5 (was 0.5.5.4.2), imported from th
 
 Notes for 0.0.43 and earlier are on [GitHub Releases](https://github.com/ackness/pobr/releases).
 
+[0.0.55]: https://github.com/ackness/pobr/compare/v0.0.54...v0.0.55
 [0.0.54]: https://github.com/ackness/pobr/compare/v0.0.53...v0.0.54
 [0.0.53]: https://github.com/ackness/pobr/compare/v0.0.52...v0.0.53
 [0.0.52]: https://github.com/ackness/pobr/compare/v0.0.51...v0.0.52
