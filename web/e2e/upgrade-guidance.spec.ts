@@ -109,7 +109,7 @@ test('shared goals link automatic supports and connected passive plans with real
   await expect(page.locator('.shell-alert')).toHaveCount(0);
 });
 
-test('support exclusions persist, invalidate old plans and constrain real-WASM recommendations', async ({ page }) => {
+test('support exclusions persist, invalidate old plans and constrain real-WASM recommendations', async ({ page }, testInfo) => {
   const openOptimizer = async () => {
     await goTo(page, 'Skills');
     await expect(page.locator('.skills-toolbar input')).toBeEnabled();
@@ -129,8 +129,16 @@ test('support exclusions persist, invalidate old plans and constrain real-WASM r
   await expect.poll(async () => Number(await count.innerText())).toBeGreaterThan(20);
   const candidates = Number(await count.innerText());
   await run.click();
-  await expect(page.locator('.support-plan').first()).toBeVisible({ timeout: 30_000 });
-  const gem = page.locator('.support-plan-gems > .opt-chip').first();
+  const plan = page.locator('.support-plan').first();
+  await expect(plan).toBeVisible({ timeout: 30_000 });
+  const details = plan.locator('.support-plan-details');
+  const gem = details.locator('.support-plan-gems > .opt-chip').first();
+  await expect(gem).toBeHidden();
+  await expect(plan.locator('.support-plan-edits')).toBeVisible();
+  const summary = details.locator('summary').first();
+  await summary.focus();
+  await summary.press('Enter');
+  await expect(gem).toBeVisible();
   const id = (await gem.getAttribute('data-skill-id'))!;
   const name = (await gem.getByRole('button').getAttribute('aria-label'))!.replace(/^Exclude /, '');
   await gem.getByRole('button').click();
@@ -150,10 +158,14 @@ test('support exclusions persist, invalidate old plans and constrain real-WASM r
   await expect(page.locator('.support-candidate')).toHaveCount(0);
   await expect(page.locator('.support-plan').first()).toBeVisible(); // Searching does not alter the selected pool.
   await expect(dps(page)).toHaveText(baseline);
-  for (const width of [320, 768, 1440]) {
+  for (const width of [320, 390, 768, 1440, 2560]) {
     await page.setViewportSize({ width, height: 900 });
     const overflow = await page.locator('main').evaluate(element => element.scrollWidth - element.clientWidth);
     expect(overflow, `Support exclusions and results must fit ${width}px`).toBeLessThanOrEqual(1);
+    if ([390, 1440, 2560].includes(width)) {
+      await plan.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: testInfo.outputPath(`support-recommendations-${width}.png`) });
+    }
   }
 
   await goTo(page, 'Items');

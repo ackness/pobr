@@ -458,10 +458,9 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
             <span />
           </div>
           {gemList}
-        </section>}
-        <section className="skill-support-section" aria-label={tt('skills.addSupportA11y')}>
-          <h4 className="skill-section-label">{tt('skills.addSupportTitle')}</h4>
           {supportPicker}
+        </section>}
+        <section className="skill-support-section" aria-label={supportText(lang, 'title')}>
           {optimizer}
         </section>
         {active && <details className="skill-advanced">

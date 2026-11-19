@@ -103,11 +103,12 @@ for (const width of [390, 1440, 2560]) {
         const detail = await page.locator('.skill-detail').boundingBox();
         expect(detail!.x).toBeGreaterThan(list!.x + list!.width);
         expect(detail!.y).toBeLessThanOrEqual(list!.y + list!.height);
-        // Past 90rem of page width "Add a support" opens beside the gems instead of leaving the right half empty.
+        // Gem editing and recommendations share the full detail width.
         const gems = await page.locator('.skill-gems-section').boundingBox();
         const supports = await page.locator('.skill-support-section').boundingBox();
-        expect(supports!.x).toBeGreaterThanOrEqual(gems!.x + gems!.width);
-        expect(Math.abs(supports!.y - gems!.y)).toBeLessThanOrEqual(1);
+        expect(supports!.y).toBeGreaterThanOrEqual(gems!.y + gems!.height);
+        expect(supports!.x).toBeCloseTo(gems!.x);
+        expect(supports!.width).toBeCloseTo(gems!.width);
       }
       if (width >= 1920 && tab === 'Overview') {
         // With a build the Overview's two columns use the wide workspace.
