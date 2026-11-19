@@ -272,8 +272,15 @@ impl TierIndex {
             .filter(|&index| lines[index].desecrated)
             .collect();
         candidates.retain(|candidate| {
-            candidate.fragment.lines.is_disjoint(&confirmed_desecrated)
-                || is_desecrated(&self.mods[candidate.mod_index])
+            let index = candidate.mod_index;
+            is_desecrated(&self.mods[index])
+                || (candidate.fragment.lines.is_disjoint(&confirmed_desecrated)
+                    && (natural.contains(&index)
+                        || candidate
+                            .fragment
+                            .lines
+                            .iter()
+                            .all(|&line| !lines[line].desecrated)))
         });
         // Reserve slots for independent affixes before accepting a merged explanation.
         // Only a unique, non-overlapping candidate with no merged alternative can reserve one.

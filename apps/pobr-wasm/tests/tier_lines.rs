@@ -384,7 +384,7 @@ fn marked_desecration_uses_source_and_catalyst_evidence_together() {
 }
 
 #[test]
-fn a_desecration_annotation_does_not_hide_a_natural_roll() {
+fn a_desecration_annotation_only_falls_back_to_a_natural_roll() {
     pobr_wasm::init_data_from_dir(pobr_gamedata::current_data_dir().to_str().unwrap()).unwrap();
     let lines = classified_lines(
         "Rarity: RARE\nDisplay Fixture\nDrakeskin Boots\nItem Level: 82\n{desecrated}35% increased Movement Speed",
@@ -399,6 +399,13 @@ fn a_desecration_annotation_does_not_hide_a_natural_roll() {
     let line = lines.last().unwrap();
     assert!(line.get("affix").is_none(), "{line}");
     assert!(line.get("tier").is_none(), "{line}");
+
+    let helmet = "Rarity: RARE\nDisplay Fixture\nAncestral Tiara\nItem Level: 82\n";
+    let modifier = "20% increased Glory generation";
+    let unmarked = classified_lines(&format!("{helmet}{modifier}"));
+    assert_eq!(unmarked.last().unwrap()["affix"], "prefix");
+    let marked = classified_lines(&format!("{helmet}{{desecrated}}{modifier}"));
+    assert!(marked.last().unwrap().get("affix").is_none());
 }
 
 #[test]
