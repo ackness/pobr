@@ -60,7 +60,8 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const damage = useHeadlineDamage(session.calc, lang);
   const group = session.socketGroups[groupIndex];
   const byId = useMemo(() => new Map(catalog.map(gem => [gem.skill_id, gem])), [catalog]);
-  const occupied = group?.gems.filter(gem => byId.get(gem.skill_id)?.is_support).length ?? 0;
+  const equipped = useMemo(() => group?.gems.filter(gem => byId.get(gem.skill_id)?.is_support) ?? [], [group, byId]);
+  const occupied = equipped.length;
   const [expanded, setExpanded] = useState(false);
   const descriptions = useGemDescriptions(active && expanded);
   const [capacity, setCapacity] = useState(Math.max(2, Math.min(5, occupied)));
@@ -265,43 +266,50 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
       const hover = preview ? {
         onEnter: (event: { currentTarget: Element }) => preview.showChanges(tt('opt.previewSupports', { supports: plan.supports.map(gem => gemName(gem.skill_id)).join(' + ') }), changes, event.currentTarget),
         onLeave: preview.clear } : undefined;
-      const equipped = group.gems.filter(gem => byId.get(gem.skill_id)?.is_support);
       const removed = equipped.filter(gem => !plan.supports.some(next => next.skill_id === gem.skill_id));
       const added = plan.supports.filter(gem => !equipped.some(old => old.skill_id === gem.skill_id));
       return <article className="support-plan" key={index} onMouseEnter={hover?.onEnter} onMouseLeave={hover?.onLeave} onFocus={hover?.onEnter} onBlur={hover?.onLeave}>
-      <div className="support-plan-edits">
-        <p>{st('equip')}{colon(lang)}{added.map(gem => gemName(gem.skill_id)).join(' · ') || st('none')}</p>
-        <p>{st('remove')}{colon(lang)}{removed.map(gem => gemName(gem.skill_id)).join(' · ') || st('none')}</p>
-      </div>
-      <div className="support-plan-gems">{plan.supports.map(gem => <span className="opt-chip" key={gem.skill_id} data-skill-id={gem.skill_id}
-        data-level={gem.level} data-quality={gem.quality} data-stat-set-index={gem.stat_set_index ?? undefined}>
-        {gemName(gem.skill_id)}{byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
-        <small>{st('level')} {gem.level} · {st('quality')} {gem.quality}</small>
-        <AppButton className="support-exclude-button" aria-label={`${st('exclude')} ${gemName(gem.skill_id)}`}
-          title={`${st('exclude')} ${gemName(gem.skill_id)}`} onClick={() => exclude(gem.skill_id)}><span aria-hidden>×</span></AppButton>
-      </span>)}</div>
-      <div className="support-plan-metrics">{[damage.stat, 'TotalEHP'].map(stat => {
-        const before = result.baseline[stat];
-        const after = plan.stats[stat];
-        return <span key={stat} className={before === undefined || after === undefined || after === before ? undefined : after > before ? 'is-positive' : 'is-negative'}>
-          {stat === damage.stat ? damage.label : metricLabel(stat)} {after === undefined ? '—' : formatStat(stat, after, lang)} <strong>{before === undefined || after === undefined ? '—' : change(before, after, stat)}</strong>
-        </span>;
-      })}</div>
-      {descriptions && <details className="support-diagnostics support-descriptions">
-        <summary className="disclosure">{st('descriptions')}</summary>
-        <p className="skills-hint">{tt('picker.descriptionHint')}</p>
-        {plan.supports.map(gem => {
-          const metadata = byId.get(gem.skill_id);
-          const entry = gemCatalog?.get(gem.skill_id) ?? {
-            skill_id: gem.skill_id, name: metadata?.name ?? gemName(gem.skill_id),
-            name_zh_cn: null, name_zh_tw: null, is_support: true, is_lineage: metadata?.is_lineage ?? false, is_unique_only: false,
-            active_effect_ids: [], colour: null, tags: metadata?.require_skill_types ?? [],
-          };
-          return <GemDescriptionPanel key={gem.skill_id} gem={entry} index={descriptions} lang={lang} />;
-        })}
-      </details>}
-      <AppButton disabled={session.busy} onClick={() => apply(index)}>{tt('opt.apply')}</AppButton>
-    </article>;
+        <div className="support-plan-metrics">{[damage.stat, 'TotalEHP'].map(stat => {
+          const before = result.baseline[stat];
+          const after = plan.stats[stat];
+          const trend = before === undefined || after === undefined || after === before ? undefined : after > before ? 'is-positive' : 'is-negative';
+          return <span key={stat} className={trend}>
+            <span className="support-metric-label">{stat === damage.stat ? damage.label : metricLabel(stat)}</span>{' '}
+            <b>{after === undefined ? '—' : formatStat(stat, after, lang)}</b>{' '}
+            {before !== undefined && after !== undefined && <strong>{change(before, after, stat)}</strong>}
+          </span>;
+        })}</div>
+        <dl className="support-plan-edits">
+          <dt>{st('equip')}</dt><dd>{added.map(gem => gemName(gem.skill_id)).join(' · ') || st('none')}</dd>
+          <dt>{st('remove')}</dt><dd>{removed.map(gem => gemName(gem.skill_id)).join(' · ') || st('none')}</dd>
+        </dl>
+        <div className="support-plan-actions">
+          <details className="support-plan-details">
+            <summary className="disclosure">{st('completeSet')}</summary>
+            {plan.supports.length ? <div className="support-plan-gems">{plan.supports.map(gem => <span className="opt-chip" key={gem.skill_id} data-skill-id={gem.skill_id}
+              data-level={gem.level} data-quality={gem.quality} data-stat-set-index={gem.stat_set_index ?? undefined}>
+              {gemName(gem.skill_id)}{byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
+              <small>{st('level')} {gem.level} · {st('quality')} {gem.quality}</small>
+              <AppButton className="support-exclude-button" aria-label={`${st('exclude')} ${gemName(gem.skill_id)}`}
+                title={`${st('exclude')} ${gemName(gem.skill_id)}`} onClick={() => exclude(gem.skill_id)}><span aria-hidden>×</span></AppButton>
+            </span>)}</div> : <p className="skills-hint">{st('noSupports')}</p>}
+            {descriptions && <details className="support-diagnostics support-descriptions">
+              <summary className="disclosure">{st('descriptions')}</summary>
+              <p className="skills-hint">{tt('picker.descriptionHint')}</p>
+              {plan.supports.map(gem => {
+                const metadata = byId.get(gem.skill_id);
+                const entry = gemCatalog?.get(gem.skill_id) ?? {
+                  skill_id: gem.skill_id, name: metadata?.name ?? gemName(gem.skill_id),
+                  name_zh_cn: null, name_zh_tw: null, is_support: true, is_lineage: metadata?.is_lineage ?? false, is_unique_only: false,
+                  active_effect_ids: [], colour: null, tags: metadata?.require_skill_types ?? [],
+                };
+                return <GemDescriptionPanel key={gem.skill_id} gem={entry} index={descriptions} lang={lang} />;
+              })}
+            </details>}
+          </details>
+          <AppButton disabled={session.busy} onClick={() => apply(index)}>{tt('opt.apply')}</AppButton>
+        </div>
+      </article>;
     })}
   </div>;
   const toggleButton = <AppButton className="gem-optimizer-toggle disclosure" data-disclosure-level="section" aria-expanded={expanded} onClick={() => {

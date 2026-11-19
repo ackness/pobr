@@ -499,15 +499,9 @@
 .support-exclude-button { display: inline-grid; place-items: center; flex: none; min-width: 28px; min-height: 28px; padding: 0; border: 0; background: transparent; color: var(--text-muted); font-size: var(--text-lg); }
 .support-exclude-button:hover { color: var(--color-negative); background: var(--surface-page); }
 .support-lineage-option { display: flex; gap: var(--space-2); align-items: center; color: var(--text-secondary); font-size: var(--text-sm); }
-.support-results { display: grid; gap: var(--space-3); }
-.support-baseline { display: flex; flex-wrap: wrap; gap: var(--space-3); padding: var(--space-3); background: var(--surface-panel); border-radius: var(--radius-sm); font-size: var(--text-sm); }
-.support-plan { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-card); }
-.support-plan-gems { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.support-plan > button { grid-row: 1 / 3; grid-column: 2; align-self: center; }
-.support-plan-metrics { display: flex; flex-wrap: wrap; gap: var(--space-4); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.support-plan-metrics { font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 .support-plan-metrics .is-positive { color: var(--color-positive); }
 .support-plan-metrics .is-negative { color: var(--color-negative); }
-.support-descriptions { grid-column: 1 / -1; }
 .support-diagnostics { padding: var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--surface-page); font-size: var(--text-sm); overflow-wrap: anywhere; min-width: 0; }
 .support-diagnostics summary { cursor: pointer; color: var(--text-secondary); }
 .support-diagnostics summary:focus-visible { outline: 2px solid var(--accent-gold-dim); outline-offset: 2px; }
@@ -516,8 +510,6 @@
 .support-diagnostic-excluded > li { padding: var(--space-2); border: 1px dashed var(--border-subtle); border-radius: var(--radius-sm); }
 .gem-name > .gem-lineage-badge { margin-left: var(--space-2); }
 @media (max-width: 600px) {
-  .support-plan { grid-template-columns: minmax(0, 1fr); }
-  .support-plan > button { grid-row: auto; grid-column: auto; justify-self: start; }
   .support-pool-details { padding: var(--space-2); }
 }
 

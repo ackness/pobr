@@ -94,7 +94,7 @@ it('shows a minion-only support improvement in the headline and explains that it
     baselineUnsupported: [], excluded: [], evaluated: 1, unmodeled: 0 });
   render(); expand(); render(); await button('Calculate support combinations').onClick!({} as never);
   const html = render();
-  expect(html).toContain('Minion hit DPS 150');
+  expect(html).toContain('Minion hit DPS</span> <b>150</b>');
   expect(html).toContain('+50.0%');
   expect(html).toContain('Wolf · per minion · limit 7');
 });
@@ -171,7 +171,7 @@ it('card, baseline and hover reuse the evaluated Combined DPS with identical int
   await button('Calculate support combinations').onClick!({} as never);
   const html = render();
   expect(html).toContain('Combined DPS 1,400,000');
-  expect(html).toContain('Combined DPS 4,461,801');
+  expect(html).toContain('Combined DPS</span> <b>4,461,801</b>');
   expect(html).toContain('+218.7%');
   expect(html).not.toContain('777.7');
   const target = {} as HTMLElement;
@@ -182,8 +182,8 @@ it('card, baseline and hover reuse the evaluated Combined DPS with identical int
   const hover = renderToStaticMarkup(<ChangeBar lang="en-US" />);
   expect(hover).toContain('1,400,000 → 4,461,801');
   expect(hover).toContain('+218.7%');
-  expect(html).toContain('Effective HP 200 <strong>+0.0%</strong>');
-  expect(html).not.toContain('is-positive">Effective HP');
+  expect(html).toContain('Effective HP</span> <b>200</b> <strong>+0.0%</strong>');
+  expect(html).not.toContain('is-positive"><span class="support-metric-label">Effective HP');
   expect(html).toContain('Equip');
   expect(html).toContain('New');
 });
@@ -196,7 +196,7 @@ it('the minion-only support hover previews the same damage stat as its card', as
     baselineUnsupported: [], excluded: [], evaluated: 1, unmodeled: 0 });
   render(); expand(); render(); await button('Calculate support combinations').onClick!({} as never);
   const html = render();
-  expect(html).toContain('Minion hit DPS 150.6');
+  expect(html).toContain('Minion hit DPS</span> <b>150.6</b>');
   harness.articles[0].onMouseEnter!({} as never);
   // The third argument is the hovered card, which this harness does not render.
   expect(harness.showChanges.mock.lastCall?.slice(0, 2)).toEqual([expect.any(String), expect.arrayContaining([

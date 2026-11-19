@@ -54,7 +54,7 @@ struct ItemLineJson {
     /// The total number of tiers rollable on this base within the pool (paired with `tier`).
     #[serde(skip_serializing_if = "Option::is_none")]
     tier_total: Option<u32>,
-    /// The affix kind: `prefix` / `suffix` (paired with `tier`).
+    /// The verified affix kind: `prefix` / `suffix`, independent of tier availability.
     #[serde(skip_serializing_if = "Option::is_none")]
     affix: Option<&'static str>,
 }
@@ -114,7 +114,8 @@ pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
             });
         let has_catalyst_quality = draft.catalyst.descriptor.is_some()
             && draft.catalyst.quality.is_some_and(|quality| quality > 0);
-        let explicit: Vec<_> = explicit
+        let rolls: Vec<_> = explicit
+            .clone()
             .map(|line| {
                 let absent = (String::new(), None);
                 if line.modifier_sources.contains(&ModifierSource::Custom)
@@ -141,14 +142,14 @@ pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
                     };
                 }
                 if line.modifier_sources.iter().any(|source| {
-                    matches!(
-                        source,
-                        ModifierSource::Crafted
-                            | ModifierSource::Desecrated
-                            | ModifierSource::Mutated
-                    )
+                    matches!(source, ModifierSource::Crafted | ModifierSource::Mutated)
                 }) {
                     return absent;
+                }
+                // A source annotation is not a catalyst tag. Untagged Abyss
+                // candidates may match the displayed value, but not a guessed reversal.
+                if line.modifier_sources.contains(&ModifierSource::Desecrated) {
+                    return (text, None);
                 }
                 match unscale_catalyst_line(&text, *quality, &scalability.1) {
                     CatalystRoll::Unscaled(unscaled) => (text, Some(unscaled)),
@@ -157,11 +158,20 @@ pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
                 }
             })
             .collect();
-        let rolls = explicit
+        let rolls = rolls
             .iter()
-            .map(|(raw, unscaled)| TierLine {
-                raw,
-                unscaled: unscaled.as_deref(),
+            .zip(explicit)
+            .map(|((raw, unscaled), line)| {
+                let desecrated = line.modifier_sources.contains(&ModifierSource::Desecrated);
+                TierLine {
+                    raw,
+                    unscaled: unscaled.as_deref(),
+                    desecrated,
+                    require_desecrated: desecrated
+                        && has_catalyst_quality
+                        && !line.unscalable
+                        && line.mod_tags.is_empty(),
+                }
             })
             .collect::<Vec<_>>();
         index.lookup_line_rolls(
@@ -169,7 +179,7 @@ pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
             &tags,
             domain,
             &allowed_sources,
-            catalyst.and(draft.header.item_level),
+            draft.header.item_level,
         )
     } else {
         vec![None; explicit.count()]
@@ -188,7 +198,7 @@ pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
             {
                 line.mod_tags.push(tag.clone());
             }
-            let tier = matched.map(|matched| matched.info);
+            let tier = matched.as_ref().and_then(|matched| matched.tier.as_ref());
             ItemLineJson {
                 text: line.text,
                 kind: display_line_kind_str(line.kind),
@@ -198,11 +208,15 @@ pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
                     .map(modifier_source_str)
                     .collect(),
                 mod_tags: line.mod_tags,
-                tier: tier.as_ref().map(|tier| tier.tier),
-                tier_total: tier.as_ref().map(|tier| tier.total),
-                affix: tier
-                    .as_ref()
-                    .map(|tier| if tier.is_prefix { "prefix" } else { "suffix" }),
+                tier: tier.map(|tier| tier.tier),
+                tier_total: tier.map(|tier| tier.total),
+                affix: matched.map(|matched| {
+                    if matched.is_prefix {
+                        "prefix"
+                    } else {
+                        "suffix"
+                    }
+                }),
             }
         })
         .collect();

@@ -140,20 +140,26 @@
   .shell-root .skills-page .gem-optimizer-body .skills-hint { margin: 0; font-size: var(--text-xs); line-height: 1.6; }
   .shell-root .skills-page .opt-progress { max-width: none; }
   .shell-root .skills-page .opt-progress progress { flex: 1; max-width: 24rem; accent-color: var(--primary); }
-  .shell-root .skills-page .support-results { display: grid; gap: 0; }
-  .shell-root .skills-page .support-baseline { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem 1.25rem; padding: 0 0 .6rem; border-radius: 0; background: none; font-size: var(--text-sm); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
-  .shell-root .skills-page .support-baseline strong { font-weight: 560; color: var(--foreground); }
-  .shell-root .skills-page .support-results > .skills-hint { padding-bottom: .5rem; }
-  .shell-root .skills-page .support-plan { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .5rem 1rem; padding: .8rem 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: none; }
-  .shell-root .skills-page .support-plan-edits { grid-column: 1; overflow-wrap: anywhere; }
-  .shell-root .skills-page .support-plan-edits p { margin: .15rem 0; }
-  .shell-root .skills-page .support-plan-metrics > span { white-space: nowrap; }
-  .shell-root .skills-page .support-plan > button { grid-row: 1 / 4; grid-column: 2; }
-  .shell-root .skills-page .support-plan-metrics { grid-column: 1; }
-  .shell-root .skills-page .support-plan-gems { grid-column: 1; display: flex; flex-wrap: wrap; gap: .4rem; }
-  .shell-root .skills-page .support-plan-gems > .opt-chip { padding: .15rem .25rem .15rem .6rem; border-radius: 999px; background: transparent; font-size: var(--text-sm); }
-  .shell-root .skills-page .support-plan-metrics { gap: .25rem 1.25rem; }
-  .shell-root .skills-page .support-plan-metrics strong { font-weight: 620; }
+  .shell-root .skills-page .support-results { display: grid; gap: .75rem; }
+  .shell-root .skills-page .support-baseline { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem 1.25rem; padding: .75rem 1rem; border-radius: var(--radius-md); background: var(--muted); font-size: var(--text-sm); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .shell-root .skills-page .support-baseline strong { font-weight: 600; color: var(--foreground); }
+  .shell-root .skills-page .support-plan { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: .75rem 1.5rem; padding: .85rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); }
+  .shell-root .skills-page .support-plan-metrics { display: grid; gap: .35rem; }
+  .shell-root .skills-page .support-plan-metrics > span { min-width: 0; line-height: 1.6; overflow-wrap: anywhere; }
+  .shell-root .skills-page .support-metric-label { color: var(--muted-foreground); }
+  .shell-root .skills-page .support-plan-metrics b { margin-inline: .25rem; color: var(--foreground); font-size: var(--text-base); font-weight: 620; white-space: nowrap; }
+  .shell-root .skills-page .support-plan-metrics strong { padding: .1em .4em; background: color-mix(in srgb, currentColor 9%, transparent); border-radius: .3rem; font-weight: 620; white-space: nowrap; }
+  .shell-root .skills-page .support-plan-edits { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .3rem .65rem; margin: 0; font-size: var(--text-sm); line-height: 1.5; }
+  .shell-root .skills-page .support-plan-edits dt { color: var(--muted-foreground); }
+  .shell-root .skills-page .support-plan-edits dd { margin: 0; overflow-wrap: anywhere; }
+  .shell-root .skills-page .support-plan-actions { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: .5rem .75rem; padding-top: .6rem; border-top: 1px solid var(--border); }
+  .shell-root .skills-page .support-plan-actions > button { justify-self: end; }
+  .shell-root .skills-page .support-plan-details { min-width: 0; font-size: var(--text-sm); }
+  .shell-root .skills-page .support-plan-details[open] { grid-column: 1 / -1; }
+  .shell-root .skills-page .support-plan-details > summary { min-height: 2rem; color: var(--muted-foreground); }
+  .shell-root .skills-page .support-plan-details > summary:hover { color: var(--foreground); }
+  .shell-root .skills-page .support-plan-gems { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .45rem; }
+  .shell-root .skills-page .support-plan-gems > .opt-chip { padding: .15rem .25rem .15rem .6rem; border-radius: .45rem; background: transparent; font-size: var(--text-sm); }
   .shell-root .skills-page :is(.support-diagnostics, .support-pool-details, .support-excluded) { padding: 0; border: 0; border-radius: 0; background: none; }
   .shell-root .skills-page .support-pool-details { margin-top: .25rem; }
   .shell-root .skills-page .support-pool-summary > strong { font-size: var(--text-base); color: var(--foreground); }
@@ -167,10 +173,9 @@
   .shell-root .skills-page .skill-advanced > summary:hover { color: var(--foreground); }
   .shell-root .skills-page .gem-optimizer-settings-body { display: grid; gap: .8rem; margin-top: .7rem; }
   .shell-root .skills-page .gem-optimizer-settings-body .opt-row { align-items: flex-end; gap: .75rem 1.25rem; }
-  /* Add a support: heading, status line, picker and recommendations are separate rows, not one block. */
-  .shell-root .skills-page .skill-support-section { display: grid; gap: var(--space-3); align-content: start; min-width: 0; }
-  .shell-root .skills-page .skill-support-section > .skill-section-label { margin: 0; }
-  .shell-root .skills-page .skill-group-picker { display: grid; gap: var(--space-2); margin: 0; }
+  .shell-root .skills-page .skill-support-section { min-width: 0; padding-top: 1rem; border-top: 1px solid var(--border); }
+  .shell-root .skills-page .skill-group-picker { display: grid; gap: var(--space-2); margin: .8rem 0 0; }
+  .shell-root .skills-page .skill-group-picker > .skills-hint { margin: 0; }
   .shell-root .skills-page .skill-group-picker .gem-picker { max-width: none; width: 100%; }
   /* A disclosure's text, field and list keep one gap, as the settings body and advanced body do. */
   .shell-root .skills-page .gem-optimizer-body :is(.support-pool-details, .support-diagnostics) > summary ~ * { margin: var(--space-3) 0 0; }
@@ -191,7 +196,7 @@
 
   /* The list stays available; details use the page scroll. */
   @container skills-page (min-width: 56rem) {
-    .shell-root .skills-page .skill-groups { grid-template-columns: minmax(20rem, .9fr) minmax(0, 1.6fr); column-gap: 0; }
+    .shell-root .skills-page .skill-groups { grid-template-columns: clamp(19rem, 32%, 26rem) minmax(0, 1fr); column-gap: 0; }
     .shell-root .skills-page .skill-group-list { position: sticky; top: 0; align-self: start; padding-right: 1.5rem; }
     .shell-root .skills-page .skills-toolbar { padding-right: 0; }
     .shell-root .skills-page .skill-group-header { margin-right: 0; }
@@ -199,17 +204,13 @@
     .shell-root .skills-page .skills-empty { grid-column: 1 / -1; }
   }
 
-  /* Wide page: the gems stay on the left and "Add a support" opens beside them instead of leaving the right half empty. */
-  @container skills-page (min-width: 90rem) {
-    .shell-root .skills-page .skill-detail { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); column-gap: 2rem; }
-    .shell-root .skills-page .skill-detail > :not(.skill-gems-section, .skill-support-section) { grid-column: 1 / -1; }
-    .shell-root .skills-page .skill-detail > .skill-support-section { grid-column: 2; }
+  @container skill-detail (min-width: 43rem) {
+    .shell-root .skills-page .support-plan { grid-template-columns: minmax(14rem, .8fr) minmax(0, 1.2fr); }
   }
 
-  /* ── The detail's own width decides how a gem row lays out ─────────────── */
+  /* The detail's own width decides how a gem row lays out. */
   @container skill-detail (max-width: 29rem) {
-    .shell-root .skills-page .support-plan { grid-template-columns: minmax(0, 1fr); }
-    .shell-root .skills-page .support-plan > button { grid-row: auto; grid-column: 1; justify-self: start; }
+    .shell-root .skills-page .support-plan { padding: .75rem; }
     .shell-root .skills-page .skill-detail .gem-column-labels { display: none; }
     .shell-root .skills-page .skill-detail .skill-gem { grid-template-columns: minmax(0, 1fr); row-gap: .3rem; padding: .6rem 0; }
     .shell-root .skills-page .skill-gem > .gem-name { grid-column: 1; }
