@@ -9,9 +9,8 @@ import { backfillFromDecoded, materialize, paramsFromDecoded, parseSaved, toRequ
 import { replaceUtility } from '../lib/utilityItems';
 import { tradeItemVariant } from '../lib/tradeOptimizer';
 import { switchWeapons } from '../lib/weaponSets';
-import { buildPassiveGraph, classStartSkill, implicitClassStarts } from '../lib/passiveGraph';
-import { passivePointSummary, passivePointSummaryTarget } from '../components/tree/treePresentation';
-import { EXPECTED_SCHEMA_VERSION, type BuildJson, type CalculateBuildRequest, type CalculateBuildResponse, type LineUsageResponse, type PassiveNode, type PassiveTreeMeta, type SkillMetricsResponse, type TreeEditResponse } from '../api/types';
+import { buildPassiveGraph, classStartSkill } from '../lib/passiveGraph';
+import { EXPECTED_SCHEMA_VERSION, type BuildJson, type CalculateBuildRequest, type CalculateBuildResponse, type LineUsageResponse, type PassiveNode, type SkillMetricsResponse, type TreeEditResponse } from '../api/types';
 
 const gem = (id: string) => `<Gem skillId="${id}" level="20" quality="0" enabled="true"/>`;
 const source = `<PathOfBuilding2>
@@ -77,43 +76,34 @@ describe.skipIf(env.POBR_WASM_CONTRACT !== '1')('real TS request to WASM weapon 
     };
   }, 120_000);
 
-  test('an empty level-90 tree gets its current budget from an exclusive neighbor preview', async () => {
+  test('the current budget is independent of the edit result for empty, weapon and disconnected allocations', async () => {
     const request: CalculateBuildRequest = { character: { class_name: 'Witch', level: 90 }, allocated_nodes: [] };
-    const effects = calculate(request).tree_effects!;
+    const root = classStartSkill(calculate(request).tree_effects, 'Witch')!;
     const manifest = JSON.parse(await readFile(new URL('../../public/data/manifest.json', import.meta.url), 'utf8')) as { version: string };
     const nodes = JSON.parse(await readFile(new URL(`../../public/data/${manifest.version}/base/passive_tree.json`, import.meta.url), 'utf8')) as PassiveNode[];
-    const root = classStartSkill(effects, 'Witch')!;
-    const target = passivePointSummaryTarget(nodes, new Set(), implicitClassStarts(effects), buildPassiveGraph(nodes).get(root) ?? []);
-    expect(target.node).not.toBeNull();
-    const response = preview({ request, ...target, action: 'allocate' });
-    expect(response.valid).toBe(true);
-    expect(response.result?.allocation.shared).toEqual([]);
-    expect(passivePointSummary(nodes, [], undefined, effects, response.result)).toEqual({ used: 0, max: 113, weapon: [0, 0] });
-
-    const meta = JSON.parse(await readFile(new URL(`../../public/data/${manifest.version}/base/passive_tree_meta.json`, import.meta.url), 'utf8')) as PassiveTreeMeta;
-    const ascendancy = meta.classes.find(entry => entry.name === 'Witch')!.ascendancies![0];
-    const ascRoot = nodes.find(node => node.kind === 'ascendancy_start' && node.ascendancy_id === ascendancy.id)!;
-    const cases: CalculateBuildRequest[] = [
-      { ...request, allocated_nodes: [root] },
-      { ...request, character: { ...request.character!, ascendancy_name: ascendancy.name }, allocated_nodes: [root, ascRoot.skill] },
-      { ...request, weapon_swap: { active: 1, alternate_items: [], exclusive_nodes: [[], [target.node!]] } },
-      { ...request, allocated_nodes: [target.node!], weapon_swap: { active: 2, alternate_items: [], exclusive_nodes: [[], [target.node!]] } },
+    const adjacent = new Set(buildPassiveGraph(nodes).get(root));
+    const weaponNode = nodes.find(node => adjacent.has(node.skill) && node.kind === 'normal' && !node.unlock_constraint)!.skill;
+    const cases: Array<[CalculateBuildRequest, number, [number, number]]> = [
+      [request, 0, [0, 0]],
+      [{ ...request, allocated_nodes: [root] }, 0, [0, 0]],
+      [{ ...request, allocated_nodes: [56216] }, 1, [0, 0]],
+      [{ ...request, weapon_swap: { active: 1, alternate_items: [], exclusive_nodes: [[], [weaponNode]] } }, 1, [0, 1]],
+      [{ ...request, allocated_nodes: [weaponNode], weapon_swap: { active: 2, alternate_items: [], exclusive_nodes: [[], [weaponNode]] } }, 1, [0, 1]],
     ];
-    const asc = preview({ request: cases[1], node: buildPassiveGraph(nodes).get(ascRoot.skill)![0], mode: 0, action: 'allocate' });
-    expect(asc.valid).toBe(true);
-    cases.push({ ...cases[1], allocated_nodes: asc.result!.allocation.shared });
-    for (const current of cases) {
-      const target = passivePointSummaryTarget(nodes, new Set(current.allocated_nodes), implicitClassStarts(effects),
-        buildPassiveGraph(nodes).get(root) ?? [], current.weapon_swap);
-      expect(target.node).not.toBeNull();
-      const response = preview({ request: current, ...target, action: 'allocate' });
-      expect(response.valid, JSON.stringify(current)).toBe(true);
-      expect(passivePointSummary(nodes, current.allocated_nodes!, current.weapon_swap, effects, response.result).max).toBe(113);
-      if (current.weapon_swap || current.allocated_nodes!.includes(asc.result!.added[0])) {
-        expect(response.result!.added).toEqual([]);
-        expect(response.result!.promoted).toEqual([]);
-      }
+    for (const [current, used, weapon] of cases) {
+      expect(preview({ request: current, node: root, mode: 0, action: 'refund' })).toEqual({
+        valid: false, reason: 'protected_root', result: null,
+        current_points: { points_used: used, points_max: 113, weapon_points_used: weapon },
+      });
     }
+    const disconnected = { ...request, allocated_nodes: [56216] };
+    const repair = preview({ request: disconnected, node: 56216, mode: 0, action: 'allocate' });
+    expect(repair.result?.added).toEqual([44871]);
+    expect(repair.result?.points_used).toBe(2);
+    expect(repair.current_points?.points_used).toBe(1);
+    const unknown = preview({ request: { ...request, allocated_nodes: [4294967295] }, node: root, mode: 0, action: 'refund' });
+    expect(unknown.reason).toBe('unknown_node');
+    expect(unknown.current_points).toBeNull();
   });
 
   test('equipped unselected utilities survive the real edit, save, reload, request and XML workflow', async () => {

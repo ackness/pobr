@@ -1225,7 +1225,12 @@ export interface TreeEditResult {
   weapon_points_used: [number, number];
   weapon_points_max: number;
 }
-export interface TreeEditResponse { valid: boolean; reason: string | null; result: TreeEditResult | null }
+export interface TreeEditResponse {
+  valid: boolean;
+  reason: string | null;
+  result: TreeEditResult | null;
+  current_points?: Pick<TreeEditResult, 'points_used' | 'points_max' | 'weapon_points_used'> | null;
+}
 
 /** Conversion is a detached preview; the caller must explicitly apply its code. */
 export interface TreeConversionNode {

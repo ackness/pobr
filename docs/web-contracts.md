@@ -591,8 +591,10 @@ Web 不重算剧情奖励，也不按节点名称猜起点：职业起点来自 
 
 版本 9 的 `previewTreeEditJson({ request, node, mode, action, quest_points })`
 校验鼠标、键盘、属性选择与详情编辑。mode 为 0／1／2，action 为 allocate／refund／promote，
-quest_points 为 0–24、默认 24。返回 `{ valid, reason, result }`，包括完整共用／两组分配、
+quest_points 为 0–24、默认 24。返回 `{ valid, reason, result, current_points }`，`result` 包括完整共用／两组分配、
 新增／移除／提升点、路径、`points_used`／`points_max` 与 `weapon_points_used`／`weapon_points_max`。
+兼容字段 `current_points` 按原分配返回已用普通点、普通点上限与两组已用武器点。
+它可用于断路导入和无效编辑的预算检查。原分配含未知节点、重叠分配或归入武器组的共用专属节点时，该字段为 null。
 请求须已载入活动组分配；应用前再次检查请求和模式仍相同，保留另一组属性与装备。
 悬停数值用完整验证路线，属性快捷键不能加断路点。
 

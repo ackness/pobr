@@ -9,7 +9,7 @@ import { SidebarResizeHandle } from './SidebarResizeHandle';
 import { readSideWidth, writeSideWidth } from './sidebarWidth';
 import { TreePointSummary } from './TreePointSummary';
 import { jewelSocketNames } from './jewelSocketNames';
-import { defaultReportStat, distributeAttributeChoices, passivePointSummary, passivePointSummaryTarget, treeHoverLines } from './treePresentation';
+import { defaultReportStat, distributeAttributeChoices, passivePointSummary, treeHoverLines } from './treePresentation';
 import { ValueText } from '../shared/ValueText';
 import { classDisplayName } from '../../lib/nativeDisplayNames';
 import { useAppDialogs } from '../shared/AppDialogs';
@@ -114,13 +114,10 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
     return buildPassiveGraph(nodes.filter(node => !implicitStarts.has(node.skill) || allowed.has(node.skill)));
   }, [nodes, implicitStarts, startSkill, grants]);
   const editRequest = useMemo(() => session.currentRequest(), [session.currentRequest]);
-  // One authoritative probe feeds the canvas count and both planners.
-  const summaryTarget = useMemo(() => passivePointSummaryTarget(nodes, allocated, implicitStarts,
-    startSkill === null ? [] : graph.get(startSkill) ?? [], session.weaponSwap),
-  [nodes, allocated, implicitStarts, graph, startSkill, session.weaponSwap]);
-  const currentPoints = useTreeEditPreview(editRequest, summaryTarget.node, summaryTarget.mode, 'allocate');
-  const pointSummary = useMemo(() => passivePointSummary(nodes, session.allocatedNodes, session.weaponSwap, treeEffects, currentPoints?.result),
-    [nodes, session.allocatedNodes, session.weaponSwap, treeEffects, currentPoints]);
+  // A protected-root preview reports the current budget and diagnoses incompatible imports.
+  const importCheck = useTreeEditPreview(editRequest, startSkill, 0, 'refund');
+  const pointSummary = useMemo(() => passivePointSummary(nodes, session.allocatedNodes, session.weaponSwap, treeEffects, importCheck?.current_points),
+    [nodes, session.allocatedNodes, session.weaponSwap, treeEffects, importCheck]);
   const planner = useTreeOptimizer({ session, lang, active, nodes, pointSummary,
     onLocate: node => setLocated({ node, nonce: Date.now() }),
     onRun: () => setOverlayReset(value => value + 1),
@@ -145,7 +142,7 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
   return <TreeCanvas key={canvasContext} session={session} lang={lang} onJewelSearch={onJewelSearch}
     consumedLocation={consumedLocation} ascendancyFocus={ascendancyFocus} socketLabels={socketLabels} onSearch={setNameSearch}
     graph={graph} startSkill={startSkill} implicitStarts={implicitStarts} grants={grants} allocated={allocated} pointSummary={pointSummary}
-    focusNode={located && located.nonce > (focusPlanner?.nonce ?? -1) ? located : focusPlanner?.node !== undefined ? focusPlanner : undefined} allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} nodeNames={nodeNames} error={error} routePreview={routePreview} planner={planner} conversion={conversion} overlayReset={overlayReset} />;
+    importCheckReason={importCheck?.reason} focusNode={located && located.nonce > (focusPlanner?.nonce ?? -1) ? located : focusPlanner?.node !== undefined ? focusPlanner : undefined} allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} nodeNames={nodeNames} error={error} routePreview={routePreview} planner={planner} conversion={conversion} overlayReset={overlayReset} />;
 }
 
 interface CanvasProps {
@@ -169,6 +166,7 @@ interface CanvasProps {
   grants: readonly PassiveAllocationGrant[];
   allocated: Set<number>;
   pointSummary: ReturnType<typeof passivePointSummary>;
+  importCheckReason: string | null | undefined;
   planner: TreeOptimizerState;
   /** The tree-conversion controls, shown in the canvas toolbar. */
   conversion?: ReactNode;
@@ -176,7 +174,7 @@ interface CanvasProps {
   overlayReset: number;
 }
 
-function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, socketLabels, onSearch, error, routePreview, graph, startSkill, implicitStarts, grants, allocated, pointSummary, planner, conversion, overlayReset }: CanvasProps) {
+function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, socketLabels, onSearch, error, routePreview, graph, startSkill, implicitStarts, grants, allocated, pointSummary, importCheckReason, planner, conversion, overlayReset }: CanvasProps) {
   const plannedNodes = routePreview?.plan ?? null;
   const routeText = messages(lang, 'treeOptimizer');
   const tt = bindT(lang);
@@ -451,12 +449,10 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     selectedAllocated ? 'refund' : 'allocate');
   const hoverPreview = useTreeEditPreview(editRequest, hover?.skill ?? null, allocationMode,
     hover && allocated.has(hover.skill) ? 'refund' : 'allocate');
-  // Root previews detect incompatible allocations; topology is checked separately for both sets.
-  const importCheck = useTreeEditPreview(editRequest, startSkill, allocationMode, 'refund');
-  const importProblem = needsTreeConversion(importCheck?.reason) || needsTreeConversion(editError);
+  const importProblem = needsTreeConversion(importCheckReason) || needsTreeConversion(editError);
   const disconnectedImport = useMemo(() => hasDisconnectedTreeNodes(nodes ?? [], graph, startSkill, grants,
     session.allocatedNodes, session.weaponSwap), [nodes, graph, startSkill, grants, session.allocatedNodes, session.weaponSwap])
-    || isDisconnectedTree(importCheck?.reason) || isDisconnectedTree(editError);
+    || isDisconnectedTree(importCheckReason) || isDisconnectedTree(editError);
   useLayoutEffect(() => { setEditError(null); }, [session.stateVersion]);
   const selectedPath = selectedPreview?.result?.added ?? [];
   const preview = hover ? hoverPreview : selectedPreview;

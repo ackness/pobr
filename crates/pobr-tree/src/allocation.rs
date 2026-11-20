@@ -35,6 +35,13 @@ pub enum EditAction {
     Promote,
 }
 #[derive(Clone, Debug, Serialize)]
+pub struct AllocationPoints {
+    pub points_used: u32,
+    pub points_max: u32,
+    pub weapon_points_used: [u32; 2],
+}
+
+#[derive(Clone, Debug, Serialize)]
 pub struct EditResult {
     pub allocation: Allocation,
     pub added: Vec<u32>,
@@ -180,7 +187,7 @@ impl<'a> AllocationTree<'a> {
         ]
     }
 
-    pub fn validate(&self, a: &Allocation) -> Result<(), String> {
+    fn validate_nodes(&self, a: &Allocation) -> Result<(), String> {
         if !a.shared.is_disjoint(&a.exclusive[0])
             || !a.shared.is_disjoint(&a.exclusive[1])
             || !a.exclusive[0].is_disjoint(&a.exclusive[1])
@@ -193,6 +200,11 @@ impl<'a> AllocationTree<'a> {
         if a.exclusive.iter().flatten().any(|id| self.shared_only(*id)) {
             return Err("shared_only_node".into());
         }
+        Ok(())
+    }
+
+    pub fn validate(&self, a: &Allocation) -> Result<(), String> {
+        self.validate_nodes(a)?;
         if !a.shared.is_subset(&self.reachable(&a.shared)) {
             return Err("disconnected_shared_path".into());
         }
@@ -307,6 +319,21 @@ impl<'a> AllocationTree<'a> {
             })
             .sum()
     }
+    fn point_limit(&self, a: &Allocation) -> u32 {
+        self.points_max.saturating_add(self.granted_points(a))
+    }
+
+    /// Count the current allocation even if an imported path is disconnected.
+    pub fn current_points(&self, a: &Allocation) -> Option<AllocationPoints> {
+        self.validate_nodes(a).ok()?;
+        let (points_used, weapon_points_used, _, _) = self.spend(a);
+        Some(AllocationPoints {
+            points_used,
+            points_max: self.point_limit(a),
+            weapon_points_used,
+        })
+    }
+
     pub fn edit(
         &self,
         before: &Allocation,
@@ -437,8 +464,8 @@ impl<'a> AllocationTree<'a> {
         let (used, sets, max, asc) = self.spend(&next);
         let (old_used, old_sets, old_max, old_asc) = self.spend(before);
         // An over-budget import can be reduced, but an edit may not worsen it.
-        let points_max = self.points_max.saturating_add(self.granted_points(&next));
-        let old_points_max = self.points_max.saturating_add(self.granted_points(before));
+        let points_max = self.point_limit(&next);
+        let old_points_max = self.point_limit(before);
         if used > points_max && (used > old_used || points_max < old_points_max) {
             return Err("passive_point_budget".into());
         }

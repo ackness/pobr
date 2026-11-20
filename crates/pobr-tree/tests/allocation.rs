@@ -264,8 +264,11 @@ fn granted_passive_points_extend_the_budget_and_refunds_cannot_remove_spent_gran
         t.edit(&before, 3, 0, EditAction::Allocate).unwrap_err(),
         "passive_point_budget"
     );
+    assert_eq!(t.current_points(&before).unwrap().points_max, 1);
     let granted = t.edit(&before, 5, 0, EditAction::Allocate).unwrap();
     assert_eq!((granted.points_used, granted.points_max), (1, 2));
+    let summary = t.current_points(&granted.allocation).unwrap();
+    assert_eq!((summary.points_used, summary.points_max), (1, 2));
     let spent = t
         .edit(&granted.allocation, 3, 0, EditAction::Allocate)
         .unwrap();

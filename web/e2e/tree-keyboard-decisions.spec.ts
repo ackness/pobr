@@ -626,6 +626,38 @@ test('1/2/3 choose the attribute of a hovered Attribute node instead of switchin
   await expect(page.locator('.tree-canvas')).toBeVisible();
 });
 
+test('a disconnected import keeps its budget and allows both planners to add points', async ({ page }) => {
+  await seeded(page, { allocatedNodes: [56216], attributeChoices: {}, jewels: [] });
+  await expect(page.locator('.tree-import-notice')).toContainText('disconnected');
+  await expect(page.locator('.tree-count')).toContainText(/1\s*\/\s*113/);
+  const before = await saved(page);
+  await page.getByRole('button', { name: 'Plan passive upgrades', exact: true }).click();
+  const run = page.getByRole('button', { name: 'Find upgrade routes', exact: true });
+  await expect(run).toBeEnabled();
+  const mode = page.getByRole('combobox', { name: 'Plan', exact: true });
+  await expect(mode).toContainText('Spend new points');
+  await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
+  await page.getByRole('option', { name: 'Max Life', exact: true }).click();
+  await page.getByRole('spinbutton', { name: 'Point budget', exact: true }).fill('8');
+  await run.click();
+  await expect(page.getByRole('heading', { name: 'Planning results', exact: true })).toBeVisible({ timeout: 40_000 });
+  await mode.click();
+  await page.getByRole('option', { name: 'Reallocate existing points', exact: true }).click();
+  await expect(run).toBeDisabled();
+  await mode.click();
+  await page.getByRole('option', { name: 'Plan with future points', exact: true }).click();
+  await expect(run).toBeEnabled();
+  const joint = page.getByRole('region', { name: 'Jewels and passive routes', exact: true });
+  await joint.getByRole('textbox', { name: 'Candidate jewel text', exact: true })
+    .fill('Rarity: MAGIC\nRuby\nImplicits: 0\n+1000 to maximum Life');
+  await joint.getByRole('combobox', { name: 'Candidate socket', exact: true }).click();
+  await page.locator(`[role="option"][data-value="${socket.skill}"]`).click();
+  await joint.getByRole('button', { name: 'Add jewel placement', exact: true }).click();
+  await joint.getByRole('button', { name: 'Find jewel and passive plans', exact: true }).click();
+  await expect(joint.locator('.jewel-plan-results')).toBeVisible({ timeout: 90_000 });
+  expect(await saved(page)).toEqual(before);
+});
+
 // A disconnected imported island is never refunded behind the player's back. Allocating a node next to it
 // takes the shortest path from the class start; when that path reaches the island, the island is reconnected.
 test('allocating next to a disconnected island reconnects it from the class start', async ({ page }) => {

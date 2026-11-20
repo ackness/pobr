@@ -48,7 +48,11 @@ fn set_two_round_trips_while_inactive_and_refunds_only_its_branch() {
         .map(String::as_str)
         .collect();
     keys.sort();
-    assert_eq!(keys, ["reason", "result", "valid"]);
+    assert_eq!(keys, ["current_points", "reason", "result", "valid"]);
+    assert_eq!(
+        edit["current_points"],
+        json!({"points_used": 0, "points_max": 103, "weapon_points_used": [0, 0]})
+    );
     assert_eq!(
         edit["result"]["allocation"]["exclusive"],
         json!([[], [node]])
