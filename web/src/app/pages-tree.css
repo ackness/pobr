@@ -181,12 +181,16 @@
   .shell-root .tree-panel .jewel-passive-planner h4 { margin: 0 0 .3rem; font-size: var(--text-sm); font-weight: 600; }
   .shell-root .tree-panel .jewel-plan-input { font-size: var(--text-xs); color: var(--muted-foreground); }
   .shell-root .tree-panel .jewel-editor { padding: 0; border: 0; border-radius: 0; background: none; }
-  .shell-root .tree-panel .node-power-scroll { max-height: none; border: 0; border-top: 1px solid var(--input); }
-  .shell-root .tree-panel .node-power th { background: var(--card); font-size: .6875rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); }
-  .shell-root .tree-panel .node-power td, .shell-root .tree-panel .node-power th { padding: .4rem .5rem; }
-  .shell-root .tree-panel .node-power td:first-child button { height: auto; min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; text-align: left; font-weight: 500; color: var(--foreground); }
-  .shell-root .tree-panel .node-power td:first-child button:hover:not(:disabled) { background: none; text-decoration: underline; text-underline-offset: .2em; }
-  .shell-root .tree-panel .node-power th button { height: auto; min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
+  .shell-root .tree-panel .node-power-sort { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem; margin-top: .75rem; padding-top: .65rem; border-top: 1px solid var(--border); }
+  .shell-root .tree-panel .node-power-sort > span { margin-inline-end: .25rem; font-size: var(--text-xs); color: var(--muted-foreground); }
+  .shell-root .tree-panel .node-power-sort button { display: inline-flex; align-items: center; gap: .25rem; padding: .25rem .5rem; height: auto; min-height: 1.75rem; font-size: var(--text-xs); border: 0; background: transparent; box-shadow: none; color: var(--muted-foreground); }
+  .shell-root .tree-panel .node-power-sort button:is(:hover, [aria-pressed='true']) { background: var(--muted); color: var(--foreground); }
+  .shell-root .tree-panel .node-power-sort button[aria-pressed='true'] { color: var(--primary); }
+  .shell-root .tree-panel .node-power-name { display: block; min-height: 0; height: auto; padding: 0; border: 0; background: transparent; box-shadow: none; text-align: start; white-space: normal; font-size: var(--text-base); line-height: 1.4; font-weight: 550; color: var(--foreground); }
+  .shell-root .tree-panel .node-power-name:hover:not(:disabled) { text-decoration: underline; text-underline-offset: .2em; }
+  .shell-root .tree-panel .node-power-route > summary { align-items: baseline; gap: .15rem .5rem; min-height: 1.5rem; font-size: var(--text-xs); }
+  .shell-root .tree-panel .node-power-route[open] > p { margin: .25rem 0 0; padding-inline-start: 1.5rem; }
+  .shell-root .tree-panel .node-power [role='status']:empty { margin: 0; }
 
   /* ── Smaller screens and larger text: the same pieces, stacked ──────────── */
   @container shell-container (max-width: 64rem) {
