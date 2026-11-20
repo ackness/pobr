@@ -76,7 +76,7 @@ test('small-node toggle and cancellation preserve the build and never restore st
   await report.getByRole('searchbox',{name:'Filter nodes'}).fill('');
   await report.getByRole('button',{name:'Evaluate all candidate nodes',exact:true}).click();
   await report.getByRole('button',{name:'Cancel report',exact:true}).click();
-  await expect(report.getByRole('status')).toHaveText('Report cancelled; rankings are provisional. Completed rows retained.');
+  await expect(report.getByRole('status')).toHaveText('Report canceled; rankings are provisional. Completed rows retained.');
   await expect(report.getByRole('button',{name:'Cancel report',exact:true})).toHaveCount(0);
   await choose(page, report.getByRole('combobox',{name:'Report stat',exact:true}), 'Energy Shield');
   await expect(report.locator('[data-status=ready]')).toHaveCount(0);

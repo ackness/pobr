@@ -104,7 +104,7 @@ it('uses the main minion damage for the headline and source contributions with s
     main_minion_index: 4,
     minions: [{ index: 4, name: 'Wolf', dps: 12345.67 } as NonNullable<CalculateBuildResponse['minions']>[number]],
   } });
-  expect(html).toContain('召唤物击中 DPS');
+  expect(html).toContain('召唤生物击中 DPS');
   expect(html).toContain('>12,346<span class="ov-source">');
   expect(html).toContain('移除后损失 11,000');
   expect(html).toContain('单只');
@@ -114,7 +114,7 @@ it('uses the main minion damage for the headline and source contributions with s
 it('shows all four base resistances in a compact summary', () => {
   const html = summary({ FireResist: 75, ColdResist: 60, LightningResist: 76, ChaosResist: -20 });
   const resistance = html.match(/<dl class="ov-resistances"[\s\S]*?<\/dl>/)![0];
-  for (const text of ['火焰抗性', '冰冷抗性', '闪电抗性', '混沌抗性', '75%', '60%', '76%', '-20%']) expect(resistance).toContain(text);
+  for (const text of ['火焰抗性', '冰霜抗性', '闪电抗性', '混沌抗性', '75%', '60%', '76%', '-20%']) expect(resistance).toContain(text);
 });
 
 it.each([74, 76])('opens resistance upgrades at %s using the returned cap instead of the saved default target', value => {
@@ -134,7 +134,7 @@ it('explains mapping beside the DPS only when the result confirms an energy trig
 });
 
 it.each([
-  ['en-US', 'Energy trigger rate is not modelled', 'DPS is shown as 0. Average hit is still calculated.'],
+  ['en-US', 'Energy trigger rate is not modeled', 'DPS is shown as 0. Average hit is still calculated.'],
   ['zh-CN', '尚未建模能量触发频率', 'DPS 显示为 0。平均击中伤害仍会计算。'],
   ['zh-TW', '尚未模擬能量觸發頻率', 'DPS 顯示為 0。仍會計算平均擊中傷害。'],
 ] as const)('explains the zero main-skill DPS and adds a finding in %s', (lang, title, note) => {

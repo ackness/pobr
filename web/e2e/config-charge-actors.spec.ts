@@ -220,7 +220,7 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
         const search = page.locator('.config-search');
         for (const actor of ['player', 'minions'] as const) {
           const query = lang === 'en-US' ? (actor === 'player' ? 'Player' : 'Minions')
-            : actor === 'player' ? '角色' : lang === 'zh-TW' ? '召喚物' : '召唤物';
+            : actor === 'player' ? '角色' : lang === 'zh-TW' ? '召喚物' : '召唤生物';
           await search.fill(query);
           for (const charge of charges) {
             await expect(control(page, lang, actor, charge)).toBeVisible();

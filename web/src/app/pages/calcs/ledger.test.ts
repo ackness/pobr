@@ -85,7 +85,7 @@ describe('lineText', () => {
       source_id: 'base.AncestralBoost',
       text: 'Ancestral Boost: 2 additional Strike targets; 30% more Slam damage and 25% increased Slam area',
     });
-    expect(ledgerDisplayText(boost, 'zh-CN')).toBe('先祖增幅：打击额外以 2 个敌人为目标；猛击伤害总增 30%，范围扩大 25%');
+    expect(ledgerDisplayText(boost, 'zh-CN')).toBe('先祖加持：打击额外以 2 个敌人为目标；猛击伤害总增 30%，范围扩大 25%');
     expect(ledgerDisplayText(boost, 'en-US')).toBe(boost.text);
     expect(ledgerDisplayText({ ...boost, text: 'Different future description' }, 'zh-CN')).toBe('Different future description');
   });

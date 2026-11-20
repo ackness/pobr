@@ -102,8 +102,8 @@ struct CalculateBuildArgs {
     /// Read the build code from a file.
     #[arg(long)]
     file: Option<String>,
-    /// Directory holding one version's game data JSON. Defaults to the copy
-    /// shipped in the repo.
+    /// Directory holding one version's game data JSON. Defaults to the active
+    /// version's data directory (`data/CURRENT`).
     #[arg(long)]
     data_dir: Option<String>,
     /// Enemy level. 0 means match the character's level.
@@ -141,7 +141,7 @@ struct ParseModArgs {
     /// The mod line to parse.
     text: String,
     /// Version data directory to compile the parser rules from. Defaults to the
-    /// copy shipped in the repo.
+    /// active version's data directory (`data/CURRENT`).
     #[arg(long)]
     data_dir: Option<String>,
 }
@@ -151,7 +151,7 @@ struct ExplainModArgs {
     /// The mod line to break down.
     text: String,
     /// Version data directory to compile the parser rules from. Defaults to the
-    /// copy shipped in the repo.
+    /// active version's data directory (`data/CURRENT`).
     #[arg(long)]
     data_dir: Option<String>,
     /// Emit JSON instead of the default human-readable text.
