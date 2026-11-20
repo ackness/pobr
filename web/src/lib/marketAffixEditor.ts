@@ -211,7 +211,7 @@ export function buildAffixItem(draft: AffixDraft, pool: TradeAffix[], characterL
     ...source.slice(at).filter((_, index) => !removed.has(index + at))].join('\n');
   const requiredLevel = Math.max(draft.base.level, ...mods.map(mod => Math.floor(mod.level * 0.8)),
     ...[...draft.text.matchAll(/(?:^|,|Requirements:)\s*(?:Requires\s+)?(?:Level|LevelReq):?\s*(\d+)/gmi)].map(match => Number(match[1])));
-  const rebuilt = itemForAffixProbes(raw).split('\n').filter(line => !/^(?:Physical Damage|Elemental Damage|Chaos Damage|Critical Hit Chance|Attacks per Second|Prefix|Suffix):/i.test(line.trim()))
+  const rebuilt = itemForAffixProbes(raw).split('\n').filter(line => !/^(?:Physical Damage|Elemental Damage|Chaos Damage|Critical Hit Chance|Attacks per Second|LevelReq|Prefix|Suffix):/i.test(line.trim()))
     .map(line => /^Item Level:/i.test(line) ? `Item Level: ${draft.itemLevel}` : line);
   if (!rebuilt.some(line => /^Item Level:/i.test(line))) rebuilt.push(`Item Level: ${draft.itemLevel}`);
   rebuilt.push(`LevelReq: ${requiredLevel}`);

@@ -4,6 +4,7 @@ import type { ItemLineJson } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
 import { AppButton } from '../shared/controls';
+import { useSessionAction } from '../shared/useSessionAction';
 import { resolveDamageObjective } from '../../lib/mainMinion';
 import { craftT } from '../../lib/itemCraftingText';
 import type { TradeBase, TradeCatalog } from '../../lib/tradeOptimizer';
@@ -22,6 +23,9 @@ export function ItemDraftWorkbench({ initialText, base, catalog, session, lang, 
   const [input, setInput] = useState({ text: initialText, revision: 0 });
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState(false);
+  const [staging, setStaging] = useState(false);
+  const [stageError, setStageError] = useState(false);
+  const captureAction = useSessionAction(session);
   const [jewelSockets, setJewelSockets] = useState<number[] | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -45,11 +49,25 @@ export function ItemDraftWorkbench({ initialText, base, catalog, session, lang, 
   }, [session.treeVersion, needsPositions]);
   if (error) return <p role="alert">{craftT(lang, 'error')}</p>;
   if (!draft || (needsPositions && !jewelSockets)) return <p role="status">{craftT(lang, 'loading')}</p>;
+  const compare = async (text: string) => {
+    if (!onJewelDraft) {
+      setInput(previous => ({ text, revision: previous.revision + 1 }));
+      return;
+    }
+    const current = captureAction();
+    setStaging(true); setStageError(false);
+    try {
+      const normalized = await (await getBackend()).normalizeItemDraft(text);
+      if (current()) onJewelDraft(normalized);
+    } catch { if (current()) setStageError(true); }
+    finally { setStaging(false); }
+  };
   return <div className="item-draft-workbench">
     {editable && !/^Rarity: NORMAL/m.test(draft.text) && <ReplacementAffixEditor key={draft.text}
       report={{ ...draft, base }} catalog={catalog} characterLevel={100} lang={lang}
-      disabled={session.busy} initiallyOpen compareLabel={onJewelDraft ? bindT(lang)('tree.useJewelDraft') : craftT(lang, 'compareEquipped')}
-      onCompare={onJewelDraft ?? (text => setInput(previous => ({ text, revision: previous.revision + 1 })))} onDirtyChange={setDirty} />}
+      disabled={session.busy || staging} initiallyOpen compareLabel={onJewelDraft ? bindT(lang)('tree.useJewelDraft') : craftT(lang, 'compareEquipped')}
+      onCompare={compare} onDirtyChange={setDirty} />}
+    {stageError && <p role="alert">{craftT(lang, 'error')}</p>}
     {editable && /^Rarity: NORMAL/m.test(draft.text) && <p>{craftT(lang, 'normalHint')}</p>}
     {onJewelDraft && /^Rarity: NORMAL/m.test(draft.text) && <AppButton disabled={session.busy} onClick={() => onJewelDraft(draft.text)}>{bindT(lang)('tree.useJewelDraft')}</AppButton>}
     {!dirty && jewelSockets && !onJewelDraft && <ItemReplacementCheck key={draft.text} session={session} lang={lang} active={true}

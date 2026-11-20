@@ -40,6 +40,25 @@ async function chooseUnique(page: Page, name: string) {
   return catalog;
 }
 
+async function holdNextWorkerCall(page: Page, method: string) {
+  return page.evaluateHandle(method => {
+    const post = Worker.prototype.postMessage;
+    const pending = { held: false, finish: (_fail: boolean) => {} };
+    Worker.prototype.postMessage = function (message, options) {
+      if (message?.method !== method) return Reflect.apply(post, this, [message, options]);
+      Worker.prototype.postMessage = post;
+      pending.held = true;
+      pending.finish = fail => {
+        if (fail) this.dispatchEvent(new MessageEvent('message', { data: {
+          id: message.id, kind: 'error', name: 'Error', message: 'jewel test rejection',
+        } }));
+        else Reflect.apply(post, this, [message, options]);
+      };
+    };
+    return pending;
+  }, method);
+}
+
 async function start(page: Page, text: string, socketNode = socket, allocation = allocated, weaponSwap?: WeaponSwap, socketGroups: unknown[] = []) {
   await page.addInitScript(({ text, socket, allocated, weaponSwap, socketGroups }) => {
     localStorage.setItem('pobr-v2-build-state', JSON.stringify({ version: 1, notes: '', state: {
@@ -121,6 +140,7 @@ test('crafts a rare jewel with two affixes in the socket and can discard the dra
   await affixes.getByRole('button', { name: 'Use in socket draft' }).click();
   await expect(draftText(page)).toHaveValue(/Rarity: RARE/);
   const crafted = await draftText(page).inputValue();
+  expect(crafted.match(/^LevelReq: \d+$/gm)).toHaveLength(1);
   expect(crafted.split('Implicits: 0\n').at(-1)!.trim().split('\n').length).toBeGreaterThanOrEqual(2);
   await editor(page).getByRole('button', { name: 'Cancel', exact: true }).click();
   await chooseSocket(page, socket.skill);
@@ -128,6 +148,56 @@ test('crafts a rare jewel with two affixes in the socket and can discard the dra
   await draftText(page).fill(crafted);
   await editor(page).getByRole('button', { name: 'Apply changes', exact: true }).click();
   await expect.poll(async () => (await saved(page)).jewels).toEqual([{ socket_node: socket.skill, text: crafted }]);
+});
+
+test('a rejected ring replacement keeps the editable draft and dependent point until retry', async ({ page }) => {
+  await start(page, ringText, socket, [...allocated, target.skill]);
+  await chooseSocket(page, socket.skill);
+  const original = await saved(page);
+  const replacement = 'Rarity: MAGIC\nRuby\nImplicits: 0\n+20 to maximum Life';
+  await draftText(page).fill(replacement);
+  const pending = await holdNextWorkerCall(page, 'loadPassiveTree');
+  const apply = editor(page).getByRole('button', { name: 'Apply changes' });
+  await apply.click();
+  await expect.poll(() => pending.evaluate(call => call.held)).toBe(true);
+  await expect(editor(page).getByRole('button', { name: 'Cancel', exact: true })).toBeDisabled();
+  await pending.evaluate(call => call.finish(true));
+  await expect(apply).toBeEnabled();
+  await expect(draftText(page)).toHaveValue(replacement);
+  expect(await saved(page)).toEqual(original);
+  await apply.click();
+  await expect(editor(page)).toHaveCount(0);
+  await expect.poll(async () => (await saved(page)).jewels[0].text).toBe(replacement);
+  expect((await saved(page)).allocatedNodes).not.toContain(target.skill);
+});
+
+test('a late catalogue response preserves newer text and library changes can be cancelled', async ({ page }) => {
+  await start(page, ringText);
+  await chooseSocket(page, socket.skill);
+  const original = await saved(page);
+  const catalog = await chooseUnique(page, 'The Adorned');
+  await expect(catalog.locator('.unique-roll-value')).toContainText('increased Effect');
+  const pending = await holdNextWorkerCall(page, 'uniqueItemDraft');
+  await catalog.getByRole('button', { name: 'Use in socket draft' }).click();
+  await expect.poll(() => pending.evaluate(call => call.held)).toBe(true);
+  const replacement = 'Rarity: RARE\nSaved Spark\nRuby\nImplicits: 0\n+20 to maximum Life';
+  await draftText(page).fill(replacement);
+  await pending.evaluate(call => call.finish(false));
+  await expect(catalog.getByRole('button', { name: 'Use in socket draft' })).toBeEnabled();
+  await expect(draftText(page)).toHaveValue(replacement);
+  await editor(page).getByRole('button', { name: 'Save to item library' }).click();
+  await editor(page).getByRole('button', { name: 'Cancel', exact: true }).click();
+  await chooseSocket(page, socket.skill);
+  const switcher = editor(page).getByRole('combobox', { name: 'Switch item' });
+  await switcher.click();
+  await page.getByRole('option', { name: /Saved Spark/ }).click();
+  await expect(draftText(page)).toHaveValue(replacement);
+  expect(await saved(page)).toEqual(original);
+  await switcher.click();
+  await page.getByRole('option', { name: '(unequip)' }).click();
+  await expect(draftText(page)).toHaveValue('');
+  await editor(page).getByRole('button', { name: 'Cancel', exact: true }).click();
+  expect(await saved(page)).toEqual(original);
 });
 
 test('replaces a jewel by its Chinese name from the narrow tree toolbar and confirms the equipped jewel', async ({ page }) => {

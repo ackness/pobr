@@ -229,8 +229,14 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
   });
   const jewelDraftKey = `jewel:${jewelSocket}`;
   const socketText = session.jewels.find(jewel => jewel.socket_node === jewelSocket)?.text ?? '';
-  const jewelEdit = jewelSocket === null ? null : { socket: jewelSocket,
-    draft: session.editorDrafts[jewelDraftKey] ?? socketText };
+  const draftText = session.editorDrafts[jewelDraftKey] ?? socketText;
+  const jewelEdit = useMemo(() => jewelSocket === null ? null : { socket: jewelSocket, draft: draftText },
+    [jewelSocket, draftText, session.stateVersion]);
+  const activeJewelEdit = useRef(jewelEdit);
+  useLayoutEffect(() => {
+    activeJewelEdit.current = jewelEdit;
+    return () => { activeJewelEdit.current = null; };
+  }, [jewelEdit]);
   const openJewel = useCallback((socket: number) => {
     setSideOpen(true);
     setJewelSocket(socket);
@@ -245,6 +251,14 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     setSelectedSkill(focusSkill);
     session.setEditorDraft(jewelDraftKey, null);
     setJewelSocket(null);
+  };
+  const applySocketJewel = (text: string, focusSkill: number | null) => {
+    if (!jewelEdit) return;
+    const jewels = session.jewels.filter(jewel => jewel.socket_node !== jewelEdit.socket);
+    if (text) jewels.push({ socket_node: jewelEdit.socket, text });
+    session.setJewels(jewels, () => {
+      if (activeJewelEdit.current === jewelEdit) closeJewelEditor(focusSkill);
+    });
   };
   /** hover 节点的加点/取消收益（防抖重算；按 stateVersion 失效的缓存）。 */
   const [refundReceipt, setRefundReceipt] = useState<RefundReceipt | null>(null);
@@ -597,6 +611,8 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
       if (action === 'refund') setRefundReceipt({ version: s.stateVersion + 1, points: response.result.removed.length, baseline: s.calc });
       else setRefundReceipt(null);
       if (jewelSocket !== null && response.result.removed.includes(jewelSocket)) {
+        focusDetailsRef.current = true;
+        setSelectedSkill(current => current ?? jewelSocket);
         s.setEditorDraft(`jewel:${jewelSocket}`, null); setJewelSocket(null);
       }
       setAttrPicker(null);
@@ -1460,12 +1476,9 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
             <span className="item-actions">
               <AppButton
                 ref={applyJewelRef}
-                disabled={session.busy || !allocated.has(jewelEdit.socket) || !jewelEdit.draft.trim() || jewelEdit.draft === socketText}
-                onClick={() => {
-                  const rest = session.jewels.filter((j) => j.socket_node !== jewelEdit.socket);
-                  session.setJewels([...rest, { socket_node: jewelEdit.socket, text: jewelEdit.draft }]);
-                  closeJewelEditor(jewelEdit.socket);
-                }}
+                disabled={session.busy || !allocated.has(jewelEdit.socket) || jewelEdit.draft === socketText
+                  || (jewelEdit.draft !== '' && !jewelEdit.draft.trim())}
+                onClick={() => applySocketJewel(jewelEdit.draft, jewelEdit.socket)}
               >
                 {tt('items.apply')}
               </AppButton>
@@ -1473,20 +1486,14 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
                 <AppButton
                   className="skill-remove"
                   disabled={session.busy}
-                  onClick={() => {
-                    session.setJewels(session.jewels.filter((j) => j.socket_node !== jewelEdit.socket));
-                    closeJewelEditor();
-                  }}
+                  onClick={() => applySocketJewel('', selectedSkill ?? jewelEdit.socket)}
                 >
                   {tt('items.remove')}
                 </AppButton>
               )}
               <AppButton
                 disabled={session.busy}
-                onClick={() => {
-                  actOnNode(jewelEdit.socket, 'refund');
-                  closeJewelEditor();
-                }}
+                onClick={() => actOnNode(jewelEdit.socket, 'refund')}
               >
                 {tt('tree.unallocSocket')}
               </AppButton>
@@ -1496,12 +1503,16 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
               >
                 {tt('lib.save')}
               </AppButton>
-              <AppButton onClick={() => closeJewelEditor()}>{tt('items.cancel')}</AppButton>
+              <AppButton disabled={session.busy} onClick={() => closeJewelEditor()}>{tt('items.cancel')}</AppButton>
             </span>
           </header>
           <p className="tree-hint">{tt('tree.jewelHint')}</p>
           <JewelDraftSources key={jewelEdit.socket} session={session} lang={lang}
-            onDraft={text => session.setEditorDraft(jewelDraftKey, text === socketText ? null : text)}
+            onDraft={text => {
+              if (activeJewelEdit.current !== jewelEdit) return false;
+              session.setEditorDraft(jewelDraftKey, text === socketText ? null : text);
+              return true;
+            }}
             onDraftReady={focusStagedJewel} />
           <NoteEditor
             value={session.annotations[`jewel:${jewelEdit.socket}`] ?? ''}
@@ -1511,18 +1522,16 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
           {jewelLib.length > 0 && (
             <div className="jewel-library">
               {(() => {
-                const current = session.jewels.find(
-                  (j) => j.socket_node === jewelEdit.socket,
-                )?.text;
-                const value =
-                  jewelLib.find((e) => e.text === current)?.id ?? (current ? '__current' : '');
+                const value = jewelLib.find(entry => entry.text === jewelEdit.draft)?.id
+                  ?? (!jewelEdit.draft ? '' : jewelEdit.draft === socketText ? '__current' : '__draft');
                 return (
                   <AppSelect
                     ariaLabel={tt('items.switcher')}
                     value={value}
                     disabled={session.busy}
                     options={[
-                      ...(current && !jewelLib.some((e) => e.text === current)
+                      ...(value === '__draft' ? [{ value, label: tt('editor.draft') }] : []),
+                      ...(socketText && !jewelLib.some((e) => e.text === socketText)
                         ? [{ value: '__current', label: tt('items.currentItem') }]
                         : []),
                       { value: '', label: tt('items.unequip') },
@@ -1532,22 +1541,8 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
                       })),
                     ]}
                     onChange={(v) => {
-                      if (v === '__current') return;
-                      const rest = session.jewels.filter(
-                        (j) => j.socket_node !== jewelEdit.socket,
-                      );
-                      if (v === '') {
-                        session.setJewels(rest);
-                        session.setEditorDraft(jewelDraftKey, null);
-                        return;
-                      }
-                      const entry = jewelLib.find((x) => x.id === v);
-                      if (!entry) return;
-                      session.setJewels([
-                        ...rest,
-                        { socket_node: jewelEdit.socket, text: entry.text },
-                      ]);
-                      session.setEditorDraft(jewelDraftKey, null);
+                      const text = v === '__current' ? socketText : v === '' ? '' : jewelLib.find(entry => entry.id === v)?.text;
+                      if (text !== undefined) session.setEditorDraft(jewelDraftKey, text === socketText ? null : text);
                     }}
                   />
                 );

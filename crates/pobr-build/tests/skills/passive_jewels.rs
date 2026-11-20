@@ -59,10 +59,21 @@ fn time_lost_jewel_displays_its_upgraded_circle_without_granting_allocation() {
     }
     assert!(small.rings[0].outer > 0.0);
     assert!(medium.rings[0].outer > small.rings[0].outer);
-    assert!(
-        state(&text.replace("Radius: Small", "Radius: Variable"))
-            .rings
-            .is_empty()
+    let variable_text = text.replace("Radius: Small", "Radius: Variable");
+    let variable = state(&variable_text);
+    let large = state(&text.replace("Radius: Small", "Radius: Large"));
+    assert_eq!(variable.rings.len(), 1);
+    assert_eq!(variable.rings[0].outer, large.rings[0].outer);
+    let free_text = "Passives in Radius can be Allocated without being connected to your tree";
+    let variable_free = state(&format!("{variable_text}\n{free_text}"));
+    let large_free = state(&format!(
+        "{}\n{free_text}",
+        text.replace("Radius: Small", "Radius: Large")
+    ));
+    assert_eq!(variable_free.rings[0].outer, large_free.rings[0].outer);
+    assert_eq!(
+        variable_free.allocation_grants[0].nodes,
+        large_free.allocation_grants[0].nodes
     );
 }
 

@@ -281,7 +281,7 @@ export interface BuildSession {
   /** 整份替换超越肢体（Items 编辑器）。 */
   setLimbs: (limbs: SlotItemInput[]) => void;
   /** 整份替换树插槽珠宝（Tree 页珠宝编辑器）。 */
-  setJewels: (jewels: JewelInput[]) => void;
+  setJewels: (jewels: JewelInput[], onApplied?: () => void) => void;
   /** Apply a complete shared-tree jewel/passive plan against its original request. */
   applyTreePlan: (expectedRequest: CalculateBuildRequest, plan: TreePlan) => boolean;
   removeJewelSocket: (socket: number, allocatedNodes: number[]) => void;
@@ -1308,7 +1308,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   );
 
   const setJewels = useCallback(
-    (jewels: JewelInput[], allocation?: number[]) => {
+    (jewels: JewelInput[], onApplied?: () => void, allocation?: number[]) => {
       const current = stateRef.current;
       if (!current) return;
       const next = { ...current, jewels, allocatedNodes: allocation ?? current.allocatedNodes };
@@ -1321,9 +1321,10 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         const attributeChoices = Object.fromEntries(Object.entries(next.attributeChoices)
           .filter(([id]) => kept.has(Number(id))));
         apply({ ...next, allocatedNodes, weaponSwap, attributeChoices }, { treeEdit: true });
+        onApplied?.();
       };
       const inactive = current.weaponSwap?.exclusive_nodes.some(nodes => nodes.length > 0);
-      if (!calc?.tree_effects?.allocation_grants.length && !busy && !inactive) {
+      if (calc && !calcError && !calc.tree_effects?.allocation_grants.length && !busy && !inactive) {
         commit(new Set(current.allocatedNodes.filter(id => !next.allocatedNodes.includes(id))));
         return;
       }
@@ -1377,7 +1378,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const removeJewelSocket = useCallback((socket: number, allocatedNodes: number[]) => {
     const current = stateRef.current;
     if (!current) return;
-    setJewels(current.jewels.filter(jewel => jewel.socket_node !== socket), allocatedNodes);
+    setJewels(current.jewels.filter(jewel => jewel.socket_node !== socket), undefined, allocatedNodes);
   }, [setJewels]);
 
   const setCharacter = useCallback(

@@ -131,7 +131,7 @@ test('complete item rebuild preserves untouched affixes and augments, removes de
   expect(rebuilt).toContain('Implicits: 1\n+20% to Cold Resistance');
   expect(rebuilt).toContain('Quality: +20%\nSockets: S\nRune: Iron Rune');
   expect(rebuilt).toContain('{rune}10% increased Armour');
-  expect(rebuilt).toContain('LevelReq: 43');
+  expect(rebuilt.match(/^LevelReq: .*$/gm)).toEqual(['LevelReq: 43']);
   expect(value.text).toContain('+80 to maximum Life');
   expect(value.text).toContain('+33% to Fire Resistance');
 });

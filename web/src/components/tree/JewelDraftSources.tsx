@@ -7,11 +7,11 @@ const UniqueCatalog = lazy(() => import('../items/UniqueCatalog').then(module =>
 const ItemCrafter = lazy(() => import('../items/ItemCrafter').then(module => ({ default: module.ItemCrafter })));
 
 export function JewelDraftSources({ session, lang, onDraft, onDraftReady }: {
-  session: BuildSession; lang: Lang; onDraft: (text: string) => void; onDraftReady: () => void;
+  session: BuildSession; lang: Lang; onDraft: (text: string) => boolean; onDraftReady: () => void;
 }) {
   const tt = bindT(lang);
   const [source, setSource] = useState<'unique' | 'craft' | 'staged' | null>(null);
-  const choose = (text: string) => { onDraft(text); setSource('staged'); };
+  const choose = (text: string) => { if (onDraft(text)) setSource('staged'); };
   useLayoutEffect(() => {
     if (source === 'staged') onDraftReady();
   }, [source, onDraftReady]);
