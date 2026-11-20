@@ -384,11 +384,24 @@
 .tree-planner-excluded { padding-left: var(--space-5); }
 .tree-planner-excluded > li { margin-top: var(--space-3); }
 .tree-plan-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
-.node.node-planned-add { stroke: var(--color-cold); stroke-width: 36; }
-/* A refunded point sits among the allocated ones, so it needs more than a thin ring to be found. */
-.node.node-planned-remove { stroke: var(--color-negative); stroke-width: 48; stroke-dasharray: 60 24; }
-.tree-edges .edge-plan-add { stroke: var(--color-cold); stroke-width: 26; opacity: 1; }
-.tree-edges .edge-plan-remove { stroke: var(--color-negative); stroke-width: 26; stroke-dasharray: 45 20; opacity: 1; }
+.tree-plan-points { display: flex; flex-wrap: wrap; gap: .25rem .65rem; margin: .45rem 0; font-size: var(--text-xs); color: var(--text-secondary); }
+.tree-plan-points [data-change="add"] { color: var(--color-cold); }
+.tree-plan-points [data-change="remove"] { color: var(--color-negative); }
+.tree-edges .edge-plan-add, .tree-edges .edge-plan-remove { stroke-width: 2.5; vector-effect: non-scaling-stroke; opacity: 1; }
+.tree-edges .edge-plan-add { stroke: var(--color-cold); }
+.tree-edges .edge-plan-remove { stroke: var(--color-negative); stroke-dasharray: 5 4; }
+.node.node-planned-remove { fill: color-mix(in srgb, var(--color-negative) 24%, var(--card)); stroke: var(--color-negative); }
+/* Keep the allocation readable while letting the proposed changes lead. */
+.tree-canvas[data-route-scope] .edge-active:not(.edge-plan-add, .edge-plan-remove) { opacity: .48; }
+.tree-canvas[data-route-scope] .node-allocated:not(.node-planned-add, .node-planned-remove, .node-selected) { opacity: .75; }
+.tree-canvas[data-route-scope="add"] :is(.edge-plan-remove, .tree-route-markers [data-change="remove"]),
+.tree-canvas[data-route-scope="remove"] :is(.edge-plan-add, .tree-route-markers [data-change="add"]) { opacity: .42; }
+.tree-route-markers { pointer-events: none; }
+.tree-route-markers [data-change="add"] { color: var(--color-cold); }
+.tree-route-markers [data-change="remove"] { color: var(--color-negative); }
+.tree-route-markers circle { fill: var(--card); stroke: currentColor; stroke-width: 2; }
+.tree-route-markers [data-change="remove"] circle { stroke-dasharray: 3 2; }
+.tree-route-markers path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 @media (max-width: 800px) {
   .tree-planner-results { grid-template-columns: 1fr; }
   .tree-planner-body { padding: 0 var(--space-3) var(--space-3); }

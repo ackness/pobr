@@ -1,3 +1,4 @@
+import { Share2 } from 'lucide-react';
 import { encounterTierLabel } from '../../lib/configEncounter';
 import { buildDisplayName, stageDisplayName } from '../../lib/workspaceNames';
 import { AppButton, AppInput, AppSelectControl } from '../shared/controls';
@@ -45,7 +46,7 @@ function comparisonDelta(delta: number | null, format: StatFormat, lang: Lang, u
   return `${value > 0 ? '+' : ''}${value}${isPercentageStat(format) ? t(lang, 'compare.pointUnit') : ''}`;
 }
 
-export function ComparePanel({ session, lang }: { session: BuildSession; lang: Lang }) {
+export function ComparePanel({ session, lang, onShare }: { session: BuildSession; lang: Lang; onShare?: () => void }) {
   const goTo = useNavigateToPage();
   const tt = bindT(lang);
   const dialogs = useAppDialogs(lang);
@@ -208,7 +209,9 @@ export function ComparePanel({ session, lang }: { session: BuildSession; lang: L
   const minion = mainMinion(minionOutput);
   const [minionName] = useLocalizedNames(minion ? [{ kind: 'monster', id: minion.monster_variety_id, name: minion.name }] : [], lang);
   return <section className="compare-panel" aria-labelledby="compare-heading">
-    <PageHeader id="compare-heading" title={tt('compare.title')} description={tt(readOnly ? 'compare.readOnly' : a && b && a !== b ? 'compare.editable' : 'compare.hint')} />
+    <PageHeader id="compare-heading" title={tt('compare.title')} description={tt(readOnly ? 'compare.readOnly' : a && b && a !== b ? 'compare.editable' : 'compare.hint')}>
+      {onShare && session.hasBuildContent && <Button variant="outline" onClick={onShare}><Share2 />{tt('overview.shareStage')}</Button>}
+    </PageHeader>
     <TabsPrimitive.Root className="cmp-root" value={activeTab} onValueChange={next => setTab(next as CompareTab)}>
       <div className="cmp-bar">
         {stagePickers}

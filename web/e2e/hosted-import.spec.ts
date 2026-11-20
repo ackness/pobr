@@ -1,5 +1,5 @@
 import { t } from '../src/lib/i18n';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Route } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
 import { openImport, loadoutSelect, openBuild, openExport, openLoadouts } from './buildLibrary';
 import { readFileSync } from 'node:fs';
@@ -11,12 +11,13 @@ const code = readFileSync(new URL('../worker-tests/fixtures/build-code.txt', imp
 
 test('hosted import keeps selection and loadouts through editing and export; failures preserve the build', SMOKE, async ({ page }, testInfo) => {
   let calls = 0;
+  const missing = Promise.withResolvers<Route>();
   await page.route('**/api/import/build-code', async route => {
     calls++;
     const url = route.request().postDataJSON().url;
     expect(url).toMatch(/^https:\/\/pobb.in\//);
-    await route.fulfill(url.endsWith('/missing')
-      ? { status: 404, json: { error_code: 'not_found' } } : { json: { code } });
+    if (url.endsWith('/missing')) missing.resolve(route);
+    else await route.fulfill({ json: { code } });
   });
   await page.goto('/build');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
@@ -52,13 +53,20 @@ test('hosted import keeps selection and loadouts through editing and export; fai
   await openBuild(page);
   await openImport(page);
   const before = (await saved()).state;
-  await page.getByRole('textbox', { name: 'Build code' }).fill('https://pobb.in/missing');
+  const field = page.getByRole('textbox', { name: 'Build code' });
+  const disclosure = page.locator('.bd-import');
+  await field.fill('https://pobb.in/missing');
   await page.locator('.import-submit').click();
-  await expect(page.locator('.shell-alert')).toContainText('not found');
+  await disclosure.locator(':scope > summary').click();
+  await expect(disclosure).toHaveJSProperty('open', false);
+  await (await missing.promise).fulfill({ status: 404, json: { error_code: 'not_found' } });
+  await expect(page.locator('#bd-import-error')).toBeVisible();
+  await expect(page.locator('#bd-import-error')).toContainText('not found');
+  await expect(field).toBeFocused();
   expect((await saved()).state).toEqual(before);
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://poe.ninja/poe2/builds/league/character/account/name');
   await page.locator('.import-submit').click();
-  await expect(page.locator('.shell-alert')).toContainText('not supported yet');
+  await expect(page.locator('#bd-import-error')).toContainText('not supported yet');
   expect(calls).toBe(2);
   await page.screenshot({ path: testInfo.outputPath('hosted-import.png'), fullPage: true });
   await page.reload();

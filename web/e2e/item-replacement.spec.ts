@@ -196,6 +196,13 @@ test('pasting detects both rings, recommends the actual better destination, and 
   expect(applied.items.find((item: { slot: string }) => item.slot === 'ring1')).toEqual(original.items.find((item: { slot: string }) => item.slot === 'ring1'));
   expect(applied.items.find((item: { slot: string }) => item.slot === 'ring2').text).toContain('Market Candidate');
   expect(applied.weaponSwap).toEqual(original.weaponSwap);
+  const receipt = page.locator('.replacement-applied');
+  await expect(receipt.getByRole('status')).toHaveText('Equipped Market Candidate in Ring 2.');
+  await expect(receipt).toBeInViewport();
+  await receipt.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(receipt).toHaveCount(0);
+  await expect.poll(async () => (await savedState(page)).items).toEqual(original.items);
+  await expect(dps(page)).toHaveText(before);
 });
 
 test('a complete Chinese market copy matches the English calculation and weapon changes invalidate its result', async ({ page }) => {
@@ -336,6 +343,7 @@ test('bow comparison inherits current runes, permits socket simulation and appli
   expect(weapon).toContain('Market Bow');
   expect(weapon).toContain('Rune: Iron Rune');
   expect(weapon).not.toContain('Perfect Iron Rune');
+  await expect(page.locator('.replacement-applied').getByRole('status')).toContainText('Equipped Market Bow');
   expect(applied.items.filter((item: { slot: string }) => item.slot !== 'weapon1'))
     .toEqual(original.items.filter((item: { slot: string }) => item.slot !== 'weapon1'));
   expect(applied.weaponSwap).toEqual(original.weaponSwap);

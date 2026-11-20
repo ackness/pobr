@@ -5,7 +5,7 @@ import type { PassiveJewelState, PassiveNode } from '../../api/types';
 import type { ObjectiveState } from '../shared/OptimizerControls';
 import { TreeOptimizer, useTreeOptimizer, type TreeOptimizerState } from './TreeOptimizer';
 
-const ui = vi.hoisted(() => ({ plan: vi.fn(), jewel: vi.fn(), goal: { preset: 'dps', cStat: '', cMin: '', cMax: '' } as ObjectiveState }));
+const ui = vi.hoisted(() => ({ plan: vi.fn(), jewel: vi.fn(), confirm: vi.fn(), goal: { preset: 'dps', cStat: '', cMin: '', cMax: '' } as ObjectiveState }));
 const hooks = await vi.hoisted(async () => {
   const { createHookHarness } = await import('../../testing/hookHarness');
   return createHookHarness({ refs: true, memo: 'deps', callback: 'deps',
@@ -14,6 +14,7 @@ const hooks = await vi.hoisted(async () => {
 vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 
 vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
+vi.mock('../shared/AppDialogs', () => ({ useAppDialogs: () => ({ confirm: ui.confirm }) }));
 vi.mock('../../hooks/useUpgradeGoal', () => ({ useUpgradeGoal: () => ({ goal: ui.goal, setGoal: vi.fn() }) }));
 vi.mock('../../hooks/useLocalizedLines', () => ({ useLocalizedNames: (names: { name: string }[]) => names.map(entry => entry.name) }));
 vi.mock('../../lib/passivePlanner', async original => ({ ...await original<typeof import('../../lib/passivePlanner')>(),
@@ -31,9 +32,12 @@ const effects: PassiveJewelState = { class_starts: { witch: 1, wayfarer: 1 }, al
   nodes: {}, conquered: [], unresolved: [], rings: [], warnings: [] };
 let session: BuildSession;
 let planner: TreeOptimizerState;
+let pointSummary: TreeOptimizerState['pointSummary'];
+let active: boolean;
+const setAllocatedNodes = vi.fn();
 const focusPlanner = { nonce: 1 }, onPreview = vi.fn(), nodeLabel = () => 'Minion power';
 function Harness() {
-  planner = useTreeOptimizer({ session, nodes, lang: 'en-US', active: true, focusPlanner, onPreview, nodeLabel });
+  planner = useTreeOptimizer({ session, nodes, pointSummary, lang: 'en-US', active, focusPlanner, onPreview, nodeLabel });
   return <TreeOptimizer planner={planner} />;
 }
 function render() {
@@ -46,11 +50,13 @@ function render() {
   throw new Error('Render did not settle');
 }
 beforeEach(() => {
-  hooks.reset(); ui.plan.mockReset(); ui.jewel.mockClear();
+  hooks.reset(); ui.plan.mockReset(); ui.jewel.mockClear(); ui.confirm.mockReset(); setAllocatedNodes.mockClear();
   ui.goal = { preset: 'dps', cStat: '', cMin: '', cMax: '' };
+  pointSummary = { used: 1, max: 113, weapon: [0, 0] };
+  active = true;
   vi.useFakeTimers(); vi.stubGlobal('window', { setTimeout, clearTimeout });
   const request = { allocated_nodes: [1] };
-  session = { currentRequest: () => request, allocatedNodes: [1], attributeChoices: {}, jewels: [],
+  session = { currentRequest: () => request, allocatedNodes: [1], attributeChoices: {}, jewels: [], setAllocatedNodes,
     character: { class_name: 'Witch' }, activeWeaponSet: 1, stateVersion: 1, calc: { stats: [], tree_effects: effects },
   } as unknown as BuildSession;
   ui.plan.mockResolvedValue({ baseline: {}, plans: [], evaluated: 1, limited: false, unmodeled: 0, baselineUnsupported: [], excluded: [] });
@@ -96,4 +102,58 @@ test('a new class picks its strongest base attribute when metadata arrives and r
   session.treeMeta = { tree: 'Default', classes: [{ name: 'Wayfarer', base_str: 7, base_dex: 40, base_int: 7 }] };
   render();
   expect(planner.attribute).toBe('int');
+});
+
+test('both searches share the available point cap without overwriting the requested budget', async () => {
+  pointSummary = { ...pointSummary, used: 112 };
+  expect(render()).toContain('Unspent points: 1');
+  expect(planner.mode).toBe('allocate');
+  expect(planner.pointLimit).toBe(1);
+  planner.run(); render(); await vi.advanceTimersByTimeAsync(350); render();
+  expect(ui.plan).toHaveBeenLastCalledWith(expect.objectContaining({ mode: 'allocate', points: 1 }));
+  expect(ui.jewel).toHaveBeenLastCalledWith(expect.objectContaining({ mode: 'allocate', points: 1, searchAllowed: true }));
+  planner.setMode('future'); render();
+  planner.setPoints(7); render();
+  active = false; render(); active = true; render();
+  expect(planner.mode).toBe('future');
+  expect(planner.points).toBe(7);
+  planner.setMode('allocate'); render();
+  expect(planner.points).toBe(1);
+  pointSummary = { ...pointSummary, used: 100 }; render();
+  expect(planner.points).toBe(7);
+});
+
+test('a full tree with refundable points defaults to reallocation', () => {
+  pointSummary = { ...pointSummary, used: 113 };
+  session.allocatedNodes = [1, 2];
+  session.currentRequest = () => ({ allocated_nodes: [1, 2] });
+  render();
+  expect(planner.mode).toBe('reallocate');
+  expect(planner.searchAllowed).toBe(true);
+});
+
+test('future apply rejects a receipt when the build changes during confirmation', async () => {
+  pointSummary = { ...pointSummary, used: 113 };
+  expect(render()).toContain('Choose “Plan with future points” to look ahead.');
+  expect(planner.mode).toBe('allocate');
+  planner.run(); render(); await vi.advanceTimersByTimeAsync(350);
+  expect(ui.plan).not.toHaveBeenCalled();
+  expect(ui.jewel).toHaveBeenLastCalledWith(expect.objectContaining({ searchAllowed: false }));
+  const plan = { allocate: [2], deallocate: [], target: 2, stats: { CombinedDPS: 150 } };
+  ui.plan.mockResolvedValue({ baseline: { CombinedDPS: 100 }, plans: [plan],
+    evaluated: 1, limited: false, unmodeled: 0, baselineUnsupported: [], excluded: [] });
+  planner.setMode('future'); render();
+  planner.run(); render(); await vi.advanceTimersByTimeAsync(350);
+  const html = render();
+  expect(html).toContain('Extra passive points needed: 1');
+  expect(html).toContain('Apply future plan');
+  expect(ui.plan).toHaveBeenLastCalledWith(expect.objectContaining({ mode: 'allocate', points: 3 }));
+  let confirm!: (answer: boolean) => void;
+  ui.confirm.mockImplementation(() => new Promise<boolean>(resolve => { confirm = resolve; }));
+  const apply = planner.apply(plan);
+  expect(ui.confirm).toHaveBeenCalledWith(expect.stringContaining('budget by 1.'), 'Apply over budget');
+  expect(setAllocatedNodes).not.toHaveBeenCalled();
+  session.stateVersion++; render();
+  confirm(true); await apply;
+  expect(setAllocatedNodes).not.toHaveBeenCalled();
 });

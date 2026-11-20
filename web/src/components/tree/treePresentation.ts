@@ -1,7 +1,8 @@
 import { OBJECTIVE_PRESETS } from '../../lib/optimize';
 import { formatComparisonDelta } from '../../lib/compare';
-import type { CalculateBuildResponse, AttributeChoice, PassiveClass, PassiveJewelState, PassiveNode, TreeAllocationMode, TreeEditResult, WeaponSwap } from '../../api/types';
+import type { CalculateBuildResponse, AttributeChoice, PassiveClass, PassiveJewelState, PassiveNode, TreeEditResponse, WeaponSwap } from '../../api/types';
 import { implicitClassStarts } from '../../lib/passiveGraph';
+import type { PassivePlan } from '../../lib/passivePlanner';
 import { bindT, messages, statNameLabel, type Lang } from '../../lib/i18n';
 import { formatNumber, statFormat } from '../../lib/statDisplay';
 
@@ -46,48 +47,29 @@ export function defaultTravelAttribute(choices: Record<string, AttributeChoice>,
   return (['dex', 'int', 'str'] as AttributeChoice[]).sort((a, b) => base[b] - base[a])[0];
 }
 
-/** Empty trees probe a regular neighbor in a weapon set, leaving shared point grants untouched. */
-export function passivePointSummaryTarget(nodes: readonly PassiveNode[], allocated: ReadonlySet<number>,
-  starts: ReadonlySet<number>, neighbours: readonly number[], swap?: WeaponSwap | null): { node: number | null; mode: TreeAllocationMode } {
-  const owned = new Set([...allocated, ...(swap?.exclusive_nodes.flat() ?? [])]);
-  const existing = nodes.find(node => owned.has(node.skill) && !starts.has(node.skill) && node.kind !== 'ascendancy_start');
-  if (existing) {
-    const set = swap?.exclusive_nodes.findIndex(ids => ids.includes(existing.skill)) ?? -1;
-    return { node: existing.skill, mode: (set + 1) as TreeAllocationMode };
-  }
-  const byId = new Map(nodes.map(node => [node.skill, node]));
-  const onlyStarts = [...owned].every(id => starts.has(id) || byId.get(id)?.kind === 'ascendancy_start');
-  if (!onlyStarts || swap?.exclusive_nodes.some(ids => ids.length)) return { node: null, mode: 0 };
-  const adjacent = new Set(neighbours);
-  const probe = nodes.find(node => adjacent.has(node.skill) && !starts.has(node.skill)
-    && node.kind === 'normal' && !node.ascendancy_id && !node.unlock_constraint);
-  return { node: probe?.skill ?? null, mode: 1 };
-}
-
-/** Budgets belong to the engine; an empty tree may borrow its budget from a weapon-only probe. */
 export function passivePointSummary(nodes: PassiveNode[], allocated: number[], swap?: WeaponSwap | null,
-  effects?: PassiveJewelState, current?: TreeEditResult | null) {
-  if (current && !current.added.length && !current.removed.length && !current.promoted.length) {
-    return { used: current.points_used, max: current.points_max, weapon: current.weapon_points_used };
-  }
+  effects?: PassiveJewelState, current?: TreeEditResponse['current_points']): { used: number | null; max: number | null; weapon: number[] } {
+  if (current) return { used: current.points_used, max: current.points_max, weapon: current.weapon_points_used };
   const byId = new Map(nodes.map(node => [node.skill, node]));
   const exclusive = swap?.exclusive_nodes ?? [[], []];
   const owned = new Set(exclusive.flat());
   const shared = [...new Set(allocated)].filter(id => !owned.has(id));
   const all = [...new Set([...shared, ...exclusive.flat()])];
-  // The engine grants ordinary points only from shared nodes. An exclusive-only
-  // probe therefore has the same maximum as an empty tree, even if its node grants points.
   const starts = implicitClassStarts(effects);
-  const onlyStarts = (ids: number[]) => ids.every(id => starts.has(id) || byId.get(id)?.kind === 'ascendancy_start');
-  const emptyBudget = onlyStarts(all) && current && onlyStarts(current.allocation.shared)
-    && !current.removed.length && !current.promoted.length ? current.points_max : null;
   const known = all.every(id => byId.has(id)) && (!all.length || Object.keys(effects?.class_starts ?? {}).length > 0);
   const regular = shared.filter(id => {
     const node = byId.get(id)!;
     return node && !node.ascendancy_id && !starts.has(id) && node.kind !== 'ascendancy_start';
   }).length;
   return { used: known ? regular + Math.max(exclusive[0].length, exclusive[1].length) : null,
-    max: emptyBudget, weapon: exclusive.map(ids => ids.length) };
+    max: null, weapon: exclusive.map(ids => ids.length) };
+}
+
+export type PassivePlannerMode = 'allocate' | 'reallocate' | 'future';
+
+/** These planners only trade paid shared main-tree nodes; weapon and ascendancy allocations stay put. */
+export function passivePlanOverflow(plan: PassivePlan, remaining: number): number {
+  return Math.max(0, plan.allocate.length - plan.deallocate.length - remaining);
 }
 
 export function treeStatLabel(lang: Lang, stat: string): string {

@@ -210,6 +210,8 @@
 .replacement-copy-links a { color: var(--accent-gold); text-decoration: underline; text-underline-offset: 3px; }
 .upgrade-item-check textarea { box-sizing: border-box; width: 100%; resize: vertical; margin-bottom: var(--space-3); min-height: 84px; padding: 12px; font-size: var(--text-xs); line-height: 1.65; }
 .replacement-goal { margin: var(--space-3) 0; color: var(--accent-gold); font-size: var(--text-xs); }
+.replacement-applied { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); }
+.replacement-applied > p { margin: 0; overflow-wrap: anywhere; }
 .replacement-actions, .replacement-apply { display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap; }
 .replacement-actions > span, .replacement-apply > span { font-size: var(--text-xs); color: var(--text-muted); }
 .replacement-content { display: grid; grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr); align-items: start; gap: 24px; margin-top: 24px; }

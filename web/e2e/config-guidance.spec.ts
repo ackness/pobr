@@ -254,8 +254,12 @@ test('review, jump, edit/reset, share and reload preserve imported false/zero/nu
   await ready(page);
   await importCode(page, syntheticCode(['Comet', 'Fireball'], raw));
   const before = await savedState(page);
-  await expect(page.locator('.shell-notice[role=note]')).toBeVisible();
-  await page.locator('.shell-notice[role=note]').getByRole('link', { name: 'Go to Configuration', exact: true }).click();
+  const reminder = page.locator('.import-summary');
+  await expect(reminder).toHaveCount(0);
+  await go(page, 'Overview');
+  await expect(reminder).toBeVisible();
+  await reminder.getByRole('link', { name: 'Go to Configuration', exact: true }).click();
+  await expect(reminder).toHaveCount(0);
   await openQuickAccess(page);
   for (const [key, value] of [['conditionEnemyShocked', false], ['conditionShockEffect', 0], ['enemyColdResist', 17]] as const) {
     await expect(entry(page, key).locator('output')).toHaveText(typeof value === 'boolean' ? (value ? 'On' : 'Off') : `${value}%`);
@@ -466,7 +470,7 @@ for (const planner of ['support', 'replacement'] as const) {
       await expect.poll(() => receiptNumbers(page, '.support-plan-metrics')).toEqual(receipt);
       await expect.poll(() => page.locator('.support-plan-gems [data-skill-id]').evaluateAll(elements =>
         elements.map(element => element.getAttribute('data-skill-id')))).toEqual(supportIds);
-      await expect(page.locator('.support-plan').first().getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
+      await expect(page.locator('.support-plan').first().getByRole('button', { name: 'Apply supports', exact: true })).toBeEnabled();
     } else {
       await expect.poll(() => receiptNumbers(page, '.swap-gain-card .replacement-metric')).toEqual(receipt);
       await expect(page.getByRole('button', { name: /^Apply to build/ })).toBeEnabled();
@@ -479,7 +483,7 @@ for (const planner of ['support', 'replacement'] as const) {
     await go(page, planner === 'support' ? 'Skills' : 'Upgrades');
     await expect(page.locator(planner === 'support' ? '.support-results' : '.replacement-content')).toHaveCount(0);
     const plannerApply = planner === 'support'
-      ? page.locator('.gem-optimizer').getByRole('button', { name: 'Apply', exact: true })
+      ? page.locator('.gem-optimizer').getByRole('button', { name: 'Apply supports', exact: true })
       : page.getByRole('button', { name: /^Apply to build/ });
     await expect(plannerApply).toHaveCount(0);
     // Reverting numerically does not resurrect a stale previously completed receipt.

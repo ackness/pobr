@@ -626,6 +626,62 @@ test('1/2/3 choose the attribute of a hovered Attribute node instead of switchin
   await expect(page.locator('.tree-canvas')).toBeVisible();
 });
 
+test('a disconnected import keeps its budget and charges for travel from the Witch start', async ({ page }) => {
+  await seeded(page, { allocatedNodes: [56216], attributeChoices: {}, jewels: [] });
+  await expect(page.locator('.tree-import-notice')).toContainText('disconnected');
+  await expect(page.locator('.tree-count')).toContainText(/1\s*\/\s*113/);
+  const before = await saved(page);
+  await page.getByRole('button', { name: 'Plan passive upgrades', exact: true }).click();
+  const run = page.getByRole('button', { name: 'Find upgrade routes', exact: true });
+  await expect(run).toBeEnabled();
+  const mode = page.getByRole('combobox', { name: 'Plan', exact: true });
+  await expect(mode).toContainText('Spend new points');
+  await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
+  await page.getByRole('option', { name: 'Max Life', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Route planner: new travel attributes', exact: true }).click();
+  await page.getByRole('option', { name: 'Strength', exact: true }).click();
+  const points = page.getByRole('spinbutton', { name: 'Point budget', exact: true });
+  await points.fill('1');
+  await run.click();
+  await expect(page.getByText('0 plans found', { exact: true })).toBeVisible({ timeout: 40_000 });
+  await points.fill('2');
+  await run.click();
+  const route = page.locator('.tree-planner-body > .tree-planner-results > li').first();
+  await expect(route).toBeVisible({ timeout: 40_000 });
+  await route.getByRole('button', { name: 'Show on tree', exact: true }).click();
+  await expect(page.locator('.node-planned-add[data-skill-id="44871"]')).toBeVisible();
+  expect(await saved(page)).toEqual(before);
+  await mode.click();
+  await page.getByRole('option', { name: 'Reallocate existing points', exact: true }).click();
+  await expect(run).toBeDisabled();
+  await mode.click();
+  await page.getByRole('option', { name: 'Plan with future points', exact: true }).click();
+  await expect(run).toBeEnabled();
+});
+
+test('joint planning finds a reachable jewel and charges for the bridge to an imported island', async ({ page }) => {
+  await seeded(page, { allocatedNodes: [56216, 9485], attributeChoices: {}, jewels: [] });
+  await expect(page.locator('.tree-count')).toContainText(/2\s*\/\s*113/);
+  await expect(page.locator('.tree-import-notice')).toContainText('disconnected');
+  const before = await saved(page);
+  await page.getByRole('button', { name: 'Plan passive upgrades', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
+  await page.getByRole('option', { name: 'Max Life', exact: true }).click();
+  await page.getByRole('spinbutton', { name: 'Point budget', exact: true }).fill('8');
+  const joint = page.getByRole('region', { name: 'Jewels and passive routes', exact: true });
+  await joint.getByRole('textbox', { name: 'Candidate jewel text', exact: true })
+    .fill('Rarity: MAGIC\nRuby\nImplicits: 0\n+1000 to maximum Life');
+  await joint.getByRole('combobox', { name: 'Candidate socket', exact: true }).click();
+  await page.locator(`[role="option"][data-value="${socket.skill}"]`).click();
+  await joint.getByRole('button', { name: 'Add jewel placement', exact: true }).click();
+  await joint.getByRole('button', { name: 'Find jewel and passive plans', exact: true }).click();
+  const route = joint.locator('.jewel-plan-results .tree-planner-results > li').first();
+  await expect(route).toContainText('Allocate 8', { timeout: 40_000 });
+  await route.getByRole('button', { name: 'Show joint route on tree', exact: true }).click();
+  await expect(page.locator('.node-planned-add[data-skill-id="44871"]')).toBeVisible();
+  expect(await saved(page)).toEqual(before);
+});
+
 // A disconnected imported island is never refunded behind the player's back. Allocating a node next to it
 // takes the shortest path from the class start; when that path reaches the island, the island is reconnected.
 test('allocating next to a disconnected island reconnects it from the class start', async ({ page }) => {

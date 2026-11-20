@@ -57,10 +57,15 @@ export function passivePlanningContext(
   const current = new Set(allocated.filter(id => byId.has(id)));
   const rooted = root !== null && connectedAllocation(graph, current, root, grants).size === current.size;
   const omittedMainNodes = allocated.some(id => !byId.has(id) && !allNodes.get(id)?.ascendancy_id);
+  const ascendancyPoints = new Set(allocated.filter(id => allNodes.get(id)?.ascendancy_id));
+  const ascendancyNodes = nodes.filter(node => node.ascendancy_id === ascendancy && !!node.ascendancy_id);
+  const ascendancyRoot = ascendancyNodes.find(node => node.kind === 'ascendancy_start')?.skill;
+  const ascendancyConnected = !ascendancyPoints.size || (ascendancyRoot !== undefined
+    && connectedAllocation(buildPassiveGraph(ascendancyNodes), ascendancyPoints, ascendancyRoot).size === ascendancyPoints.size);
   return {
     graph, byId, allocated: current, root, grants, roots,
     // Imports with unexplained topology remain extendable but must never be pruned automatically.
-    canRefund: rooted && exclusive.size === 0 && !omittedMainNodes,
+    canRefund: rooted && ascendancyConnected && exclusive.size === 0 && !omittedMainNodes,
     protectedNodes: new Set([...roots, ...filledSockets, ...(treeEffects?.unresolved ?? []),
       ...nodes.filter(node => allAllocated.has(node.skill)).flatMap(node => node.unlock_constraint?.nodes ?? [])]),
   };

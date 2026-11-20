@@ -102,6 +102,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   const socketLabels = jewelSocketNames(namedTreeNodes, passiveNames, lang);
   const jewelText = messages(lang, 'jewelPlanner');
   const [selected, setSelected] = useState('weapon1');
+  const [marketSlot, setMarketSlot] = useState<string>();
   const [jewelTypes, setJewelTypes] = useState<Record<string, JewelSearchType>>({});
   const [categories, setCategories] = useState<Record<string, string>>({});
   const [realm, setRealm] = useState<TradeRealm>(() => readPreference(preferenceKey(REALM_KEY)) === 'cn' ? 'cn' : 'intl');
@@ -426,14 +427,17 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
       <label className="trade-unique"><AppInput type="checkbox" checked={includeUnique} onChange={event => setIncludeUnique(event.target.checked)} />{tt('trade.includeUnique')}</label>
       </details>
       {searchReady && searchUrl && weights && <div className="trade-search-card">
-        <div><p>{flowT('searchPrepared')}</p><p>{tt(realm === 'cn' ? 'trade.cnMarketHint' : 'trade.directMarketHint')}</p>
-          <p className="trade-login">{ut('searchLogin')}</p>
+        <div><p>{flowT('searchPrepared')}</p>
+          <details className="trade-search-help"><summary className="disclosure">{flowT('searchHelp')}</summary>
+            <p>{tt(realm === 'cn' ? 'trade.cnMarketHint' : 'trade.directMarketHint')}</p><p>{ut('searchLogin')}</p>
+          </details>
           {!broad && <p className="trade-minimum" role="status">{weights.minimumWeight > 0
             ? <>{ut('searchMinimum')}{colon(lang)}<b>{formatNumber(weights.minimumWeight, 0)}</b> · {ut(weights.currentItemScore?.complete ? 'searchMinimumExact' : 'searchMinimumPartial')}</>
             : ut('searchNoMinimum')}</p>}
           <label className="trade-broad"><AppInput type="checkbox" checked={broad} onChange={event => setBroad(event.target.checked)} />{tt('trade.broaderSearch')}</label></div>
-        <div className="trade-search-actions"><a className="trade-primary trade-market-link" href={searchUrl} target="_blank" rel="noreferrer">{flowT('openSearch')}<span aria-hidden>↗</span></a>
-          <CopyButton text={searchUrl} label={tt('trade.copySearch')} lang={lang} /></div>
+        <div className="trade-search-actions"><a className="trade-primary trade-market-link" href={searchUrl} target="_blank" rel="noreferrer" onClick={() => setMarketSlot(selected)}>{flowT('openSearch')}<span aria-hidden>↗</span></a>
+          <CopyButton text={searchUrl} label={tt('trade.copySearch')} lang={lang} />
+          <AppButton className="trade-secondary trade-paste-jump" onClick={() => { setMarketSlot(selected); jumpToPaste(); }}>{ut('verifyWholeItem')}</AppButton></div>
       </div>}
       {!searchReady && selected !== 'gems' && <div className="trade-search-pending"><p>{flowT(!league.trim() ? 'chooseLeague' : 'searchPending')}</p><AppButton className="trade-primary" disabled>{flowT('openSearch')}</AppButton></div>}
   </>;
@@ -494,7 +498,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
             </details>}
           </section>
           <div className="trade-results-heading trade-weight-heading"><div><h4>{tt('trade.affixHeading')}</h4><p>{tt('trade.affixDescription')}</p></div>
-            <AppButton className="trade-secondary trade-paste-jump" onClick={jumpToPaste}>{ut('verifyWholeItem')}</AppButton></div>
+            {!searchReady && <AppButton className="trade-secondary trade-paste-jump" onClick={jumpToPaste}>{ut('verifyWholeItem')}</AppButton>}</div>
           {!hasScores ? <div className="trade-notice" role="status"><p>{tt('trade.noEquipmentScores')}</p><AppButton onClick={editGoal}>{tt('trade.adjustTarget')}</AppButton></div> : <div className="trade-score-table" role="table" aria-label={tt('trade.affixHeading')}>
             <div className="trade-score-row trade-score-labels" role="row"><span role="columnheader">{tt('trade.colLine')}</span><span role="columnheader">{ut('relativeWeight')}</span><span role="columnheader">{ut('marginal')}</span></div>
             {weights.weighted.map((weight, index) => <div key={weight.id} className="trade-score-row" role="row">
@@ -551,13 +555,13 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   return <section className="ui-page trade-page" aria-labelledby="trade-heading">
     <PageHeader id="trade-heading" title={tt('trade.title')} />
     <div className="upgrade-entry-actions">
-      <AppButton className="trade-primary" onClick={jumpToPaste}>{ut('pasteAction')}</AppButton>
       <AppButton className="trade-secondary" onClick={() => jumpTo(slotRef.current ?? marketRef.current)}>{ut('slotAction')}</AppButton>
+      <AppButton className="trade-secondary" onClick={jumpToPaste}>{ut('pasteAction')}</AppButton>
+      {pathsBlock}
     </div>
     <section className="up-step up-goal" aria-labelledby="up-goal">
       <h3 className="up-title" id="up-goal">{ut('calculationGoal')}</h3>
       {goalBlock}
-      {pathsBlock}
     </section>
     <section className="up-step up-market" aria-labelledby="up-market" ref={marketRef} tabIndex={-1}>
       <h3 className="up-title" id="up-market">{ut('slotAnalysis')}</h3>
@@ -571,6 +575,9 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
       {workspaceBlock}
     </section>
     <div className="up-paste" ref={pasteRef}>
+      {marketSlot && slots.includes(marketSlot) && <AppButton className="trade-secondary trade-return-market" onClick={() => {
+        setSelected(marketSlot); jumpTo(marketRef.current);
+      }}>{flowT('returnToMarket').replace('{slot}', () => labelOf(marketSlot))}</AppButton>}
       <ItemReplacementCheck session={session} lang={lang} active={active && canAnalyze} objective={objective} catalog={catalog}
         jewelSockets={jewelSockets} initialItemText={initialItemText} socketLabel={id => socketLabels.get(id) ?? tt('trade.jewelSocket')}
         goalLabel={goalLabel} damage={damage} actionClassName="trade-secondary" onEditGoal={editGoal} />

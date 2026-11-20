@@ -87,7 +87,7 @@ async function expectInvalidated(page: Page) {
   await expect(page.locator('.support-results')).toHaveCount(0);
   await expect(baseline(page)).toHaveCount(0);
   await expect(page.locator('.support-diagnostic-excluded')).toHaveCount(0);
-  await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
+  await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply supports', exact: true })).toHaveCount(0);
 }
 
 test('real baseline limits remain keyboard-readable across first page visits and Apply uses the exact recommended set', async ({ page }) => {
@@ -118,7 +118,7 @@ test('real baseline limits remain keyboard-readable across first page visits and
     for (let index = 0; index < await entries.count(); index++) {
       await entries.nth(index).locator(':scope > summary').click();
       if (await entries.nth(index).locator('.unincluded-raw').count()) await expectOriginalModifiersKeyboard(entries.nth(index));
-      await expect(entries.nth(index).getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
+      await expect(entries.nth(index).getByRole('button', { name: 'Apply supports', exact: true })).toHaveCount(0);
       await expect(entries.nth(index).locator('.support-plan')).toHaveCount(0);
     }
   }
@@ -142,9 +142,9 @@ test('real baseline limits remain keyboard-readable across first page visits and
     await goTo(page, 'Skills');
     await expect(baseline(page).locator('.unincluded-raw > pre')).toHaveText(raw);
     await expect.poll(() => page.locator('.support-plan').allTextContents()).toEqual(recommendations);
-    await expect(first.getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
+    await expect(first.getByRole('button', { name: 'Apply supports', exact: true })).toBeEnabled();
   }
-  await first.getByRole('button', { name: 'Apply', exact: true }).click();
+  await first.getByRole('button', { name: 'Apply supports', exact: true }).click();
   await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
   await expect.poll(async () => {
     const applied = (await groups(page))[0].gems;

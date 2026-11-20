@@ -18,6 +18,7 @@ test('secondary trigger names reuse localized gem names without rewriting IDs', 
 test('exact skill names win over aliases and unknown IDs remain identifiable', () => {
   const exact = { ...wind, skill_id: 'TriggeredWindDancerPlayer', name_zh_cn: '独立技能' };
   expect(skillDisplayName(exact.skill_id, 'zh-CN', new Map([...catalog, [exact.skill_id, exact]]))).toBe('独立技能');
+  expect(skillDisplayName(wind.skill_id, 'zh-CN', new Map())).toBe('Wind Dancer');
   expect(skillDisplayName('UnknownSkillPlayer', 'zh-CN', catalog)).toBe('Unknown Skill（未翻译）');
   expect(skillDisplayName('TriggeredWindDancerPlayer', 'zh-CN', new Map([[wind.skill_id, { ...wind, additional_skill_ids: undefined }]]))).toBe('Triggered Wind Dancer（未翻译）');
 });
@@ -54,6 +55,7 @@ test('gem tiers have one space and missing translations retain their original na
 test('form labels use known forms and shared gem names, preserving unknown labels', () => {
   expect(skillFormName('Projectile', 'form', 'zh-CN', catalog)).toBe('投射物');
   expect(skillFormName('Explosion', 'form', 'zh-TW', catalog)).toBe('爆炸');
+  expect(skillFormName('Wind Dancer', wind.skill_id, 'zh-CN', new Map())).toBe('Wind Dancer');
   expect(skillFormName('Wind Dancer', wind.skill_id, 'zh-CN', catalog)).toBe('风舞者');
   expect(skillFormName('Unknown Form', 'unknown', 'zh-CN', catalog)).toBe('Unknown Form（未翻译）');
 });

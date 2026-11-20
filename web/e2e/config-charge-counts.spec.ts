@@ -259,7 +259,7 @@ const plannerPage = (planner: Planner) => planner === 'support' ? 'Skills' : pla
 const results = (page: Page, planner: Planner) => page.locator(planner === 'support' ? '.support-results'
   : planner === 'passive' ? '.tree-planner-body > .tree-planner-results' : '.replacement-content');
 const apply = (page: Page, planner: Planner) => planner === 'support'
-  ? page.locator('.gem-optimizer').getByRole('button', { name: 'Apply', exact: true })
+  ? page.locator('.gem-optimizer').getByRole('button', { name: 'Apply supports', exact: true })
   : page.getByRole('button', { name: planner === 'passive' ? 'Apply plan' : /^Apply to build/, exact: planner === 'passive' });
 
 async function complete(page: Page, planner: Planner, first: boolean) {

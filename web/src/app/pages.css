@@ -12,6 +12,10 @@
   .shell-root .items-page :is(.items-equipped, .items-library, .item-detail) { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
   .shell-root .items-page .items-collection { display: grid; gap: 2rem; min-width: 0; }
   .shell-root .items-page .item-detail { padding-top: 1rem; border-top: 2px solid var(--rc, var(--border)); }
+  .shell-root .items-page .item-find-upgrade { border-color: var(--primary); color: var(--primary); }
+  @container shell-container (max-width: 34rem) {
+    .shell-root .items-page .item-find-upgrade { min-height: 2.75rem; font-size: var(--text-base); }
+  }
   .shell-root .items-page .items-library { padding-top: 1.25rem; border-top: 1px solid var(--border); }
   .shell-root .items-doll { position: sticky; top: 0; max-height: calc(100dvh - 2rem); overflow-y: auto; container: doll / inline-size; scrollbar-width: none; }
 

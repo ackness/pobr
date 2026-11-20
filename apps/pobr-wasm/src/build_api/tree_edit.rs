@@ -2,7 +2,9 @@ use super::ApiError;
 use super::request::{CalculateBuildRequest, apply_request_overrides, parse_build_from_request};
 use crate::state;
 use pobr_data::catalog::PassiveNodeKind;
-use pobr_tree::allocation::{Allocation, AllocationTree, EditAction, EditResult, Grant};
+use pobr_tree::allocation::{
+    Allocation, AllocationPoints, AllocationTree, EditAction, EditResult, Grant,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
@@ -25,6 +27,7 @@ struct Response {
     valid: bool,
     reason: Option<String>,
     result: Option<EditResult>,
+    current_points: Option<AllocationPoints>,
 }
 
 pub fn preview_tree_edit_json(input: &str) -> Result<String, String> {
@@ -119,16 +122,19 @@ fn preview(input: &str) -> Result<String, ApiError> {
         .collect();
     tree.points_max = build.character.level.saturating_sub(1) + req.quest_points;
     tree.weapon_points_base = req.quest_points;
+    let current_points = tree.current_points(&allocation);
     let response = match tree.edit(&allocation, req.node, req.mode, req.action) {
         Ok(result) => Response {
             valid: true,
             reason: None,
             result: Some(result),
+            current_points,
         },
         Err(reason) => Response {
             valid: false,
             reason: Some(reason),
             result: None,
+            current_points,
         },
     };
     serde_json::to_string(&response).map_err(|e| e.to_string().into())

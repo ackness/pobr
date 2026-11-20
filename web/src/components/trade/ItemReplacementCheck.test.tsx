@@ -49,12 +49,13 @@ afterEach(() => { vi.unstubAllGlobals(); });
 function setup(allocatedNodes: number[] = [], settings: { calc?: BuildSession['calc']; objective?: Objective; report?: ReplacementReport } = {}, lang: Lang = 'en-US') {
   const request: CalculateBuildRequest = { allocated_nodes: allocatedNodes };
   const session = { currentRequest: () => request, allocatedNodes, activeWeaponSet: 1, items: [], flasks: [], jewels: [],
-    setItems: vi.fn(), busy: false, calc: settings.calc } as unknown as BuildSession;
+    setItems: vi.fn(), setJewels: vi.fn(), canUndo: true, undoEdit: vi.fn(), calculationScope: {}, stateVersion: 10,
+    busy: false, calc: settings.calc } as unknown as BuildSession;
   let resolve!: (report: ReplacementReport) => void;
   ui.compare.mockImplementation(() => new Promise<ReplacementReport>(done => { resolve = done; }));
-  const render = (sockets: number[], socketLabel = () => 'Jewel socket') => {
+  const render = (sockets: number[] = [], socketLabel = () => 'Jewel socket', active = true) => {
     hooks.beginRender(); ui.buttons = [];
-    const html = renderToStaticMarkup(<ItemReplacementCheck session={session} lang={lang} active objective={settings.objective ?? objective}
+    const html = renderToStaticMarkup(<ItemReplacementCheck session={session} lang={lang} active={active} objective={settings.objective ?? objective}
       catalog={catalog} jewelSockets={sockets} socketLabel={socketLabel} goalLabel="Life" onEditGoal={() => {}} />);
     hooks.runEffects();
     return html;
@@ -64,7 +65,7 @@ function setup(allocatedNodes: number[] = [], settings: { calc?: BuildSession['c
   render([]);
   ui.buttons.find(button => button.children === upgradeT(lang, 'compare'))!.onClick?.({} as never);
   render([]);
-  return { render, resolve: (value = settings.report ?? report) => resolve(value), signal: ui.compare.mock.calls[0][2] as AbortSignal };
+  return { session, render, resolve: (value = settings.report ?? report) => resolve(value), signal: ui.compare.mock.calls[0][2] as AbortSignal };
 }
 
 test('late tree socket metadata and display-name rerenders preserve an in-flight equipment comparison and its visible result', async () => {
@@ -142,4 +143,57 @@ test.each([
   expect(metric('CombinedDPS')).toContain('<span><span>12,345</span> → <b class="swap-after">12,347</b></span>');
   expect(html).toContain(`<tr><th>${hit}</th><td>100</td><td>101.83</td><td>+1.83</td></tr>`);
   expect(html).toContain(`<tr><th>${resistance}</th><td>70%</td><td>72.4%</td><td>+2.4${unit}</td></tr>`);
+});
+
+test.each([
+  ['en-US', 'Equipped Chain Mail in Body Armour.', 'Undo'],
+  ['zh-CN', '已装备Chain Mail', '撤销'],
+  ['zh-TW', '已裝備Chain Mail', '復原'],
+] as const)('shows an exact equipment install after a transient inactive render in %s', async (lang, status, undoLabel) => {
+  const { resolve, render, session } = setup([], {}, lang);
+  const withRune = { slot: 'bodyarmour', text: `${text}\n{rune}20% increased Armour` };
+  resolve({ ...report, positions: [{ ...report.positions[0], variant: { set_items: [withRune] } }] });
+  await Promise.resolve();
+  render();
+  const apply = ui.buttons.find(button => typeof button.children === 'string' && button.children.startsWith(upgradeT(lang, 'apply')))!;
+  apply.onClick!({} as never);
+  expect(session.setItems).toHaveBeenCalledWith([withRune]);
+  session.stateVersion++;
+  session.items = vi.mocked(session.setItems).mock.calls[0][0];
+  session.busy = true;
+  expect(render([], undefined, false)).not.toContain('replacement-applied');
+  session.busy = false;
+  const after = render();
+  expect(after).toContain('replacement-applied');
+  expect(after).toContain(status);
+  expect(after).not.toContain('replacement-content');
+  const undo = ui.buttons.find(button => button.children === undoLabel)!;
+  if (lang === 'en-US') {
+    undo.onClick!({} as never);
+    expect(session.undoEdit).toHaveBeenCalledOnce();
+    expect(render()).not.toContain('replacement-applied');
+  } else {
+    // Even if a later edit leaves the identical item in place, it owns undo now.
+    session.stateVersion++;
+    expect(render()).not.toContain('replacement-applied');
+    undo.onClick!({} as never);
+    expect(session.undoEdit).not.toHaveBeenCalled();
+  }
+});
+
+test('a failed jewel preflight never claims the candidate was installed', async () => {
+  const { resolve, render, session } = setup();
+  const jewels = [{ socket_node: 7960, text }];
+  resolve({ ...report, positions: [{ ...report.positions[0], slot: 'Jewel@7960', variant: { jewels } }] });
+  await Promise.resolve();
+  render();
+  ui.buttons.find(button => button.children === 'Apply to build · Jewel socket')!.onClick!({} as never);
+  expect(session.setJewels).toHaveBeenCalledWith(jewels);
+  session.busy = true;
+  expect(render()).not.toContain('replacement-applied');
+  session.busy = false;
+  expect(render()).not.toContain('replacement-applied');
+  session.stateVersion++;
+  session.jewels = jewels;
+  expect(render()).not.toContain('replacement-applied');
 });

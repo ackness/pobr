@@ -62,13 +62,13 @@ test('the empty results rail aligns its hint with the import action on the build
 
   const section = page.locator('details.bd-import');
   const code = page.getByRole('textbox', { name: 'Build code', exact: true });
-  await section.locator('summary').click();
+  await section.locator(':scope > summary').click();
   await expect(section).toHaveJSProperty('open', false);
   await action.click();
   await expect(section).toHaveJSProperty('open', true);
   await expect(code).toBeFocused();
 
-  await section.locator('summary').click();
+  await section.locator(':scope > summary').click();
   await page.keyboard.press('Control+k');
   const palette = page.getByRole('dialog', { name: 'Search and commands' });
   await palette.getByRole('option', { name: 'Import or manage builds', exact: true }).click();

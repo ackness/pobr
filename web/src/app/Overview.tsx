@@ -1,6 +1,6 @@
 import { EnergyTriggerNote } from '../components/config/EnergyTriggerNote';
-import { useEffect, useState } from 'react';
-import { AlertTriangle, ArrowRight, CircleAlert, CircleCheck, Download } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { AlertTriangle, ArrowRight, BookmarkPlus, CircleAlert, CircleCheck, Download, Gem, Network, Search, Share2 } from 'lucide-react';
 import { getBackend } from '../api/backend';
 import type { AttributionResponse, GemCatalogEntry, SkillMetricsEntry } from '../api/types';
 import { Button } from '../components/ui/button';
@@ -51,7 +51,11 @@ function describe(finding: Finding, lang: Lang, catalog: ReadonlyMap<string, Gem
   }
 }
 
-export function Overview({ session, view, lang, navigate, focusStat, onSpirit, onImport }: { session: BuildSession; view: SettledCalc; lang: Lang; navigate: (route: Route) => void; focusStat: (id: string) => void; onSpirit?: () => void; onImport?: () => void }) {
+export function Overview({ session, view, lang, navigate, focusStat, onSpirit, onImport, importNotice, onShare, onPlanTree, onPlanSupports }: {
+  session: BuildSession; view: SettledCalc; lang: Lang; navigate: (route: Route) => void; focusStat: (id: string) => void;
+  onSpirit?: () => void; onImport?: () => void; importNotice?: ReactNode; onShare?: () => void;
+  onPlanTree?: () => void; onPlanSupports?: (group: number) => void;
+}) {
   const tt = bindT(lang);
   const enemy = resolveEnemyTier(session.calcParams.enemy_tier, session.calcParams.config_inputs);
   const selection = calculatedSkillKey(session);
@@ -146,7 +150,8 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit, o
 
   if (session.socketGroups.length === 0 && !session.hasBuildContent) {
     return <section className="ov ov-empty" aria-labelledby="ov-title">
-      <h1 id="ov-title">{tt('overview.importTitle')}</h1>
+      <h1 id="ov-title" tabIndex={-1}>{tt('overview.importTitle')}</h1>
+      {importNotice}
       <p>{tt('overview.importHint')}</p>
       <Button autoFocus onClick={onImport ?? (() => navigate('build'))}><Download />{tt('sidebar.importCreate')}</Button>
     </section>;
@@ -156,23 +161,32 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit, o
   const spirit = value('Spirit'), spiritFree = value('SpiritUnreserved');
   const dash = (format: (n: number) => string) => (n: number | null) => n === null ? '—' : format(n);
   const life = value('Life'), shield = value('EnergyShield');
-  const lifeAndShield = life !== null && shield !== null && shield > life
-    ? `${tt('overview.lifeAndShield')} ${int(life + shield)} · ` : '';
+  const shieldLeads = shield !== null && life !== null && shield > life;
+  const resource = shieldLeads ? 'EnergyShield' : 'Life';
+  const otherResource = shieldLeads ? 'Life' : 'EnergyShield';
+  const buildName = build?.name || tt('overview.untitledBuild');
   const spiritOver = spiritFree !== null && spiritFree < 0;
   const figures = [
     minion
       ? { id: `Minion:${minion.minion.index}:TotalDPS`, label: tt('sidebar.minionHitDps'), value: minion.minion.dps, format: dash(n => formatStatValue(n, 'float2')), sub: minionDpsNote(lang, minion.name, value('ActiveMinionLimit')), tone: 'dps' }
       : { id: 'CombinedDPS', label: tt('sidebar.combinedDps'), value: main?.combined_dps ?? null, format: dash(n => formatStatValue(n, 'float2')), sub: main ? skillName(main.skill_id) : tt('overview.noSkill'), tone: 'dps' },
     { id: 'TotalEHP', label: statRowLabel(lang, 'TotalEHP'), value: value('TotalEHP'), format: dash(int), sub: weakest ? tt('overview.weakestHit').replace('{type}', damageTypeLabel(lang, weakest[0])).replace('{value}', int(weakest[1])) : '', tone: 'ehp' },
-    { id: 'Life', label: statRowLabel(lang, 'Life'), value: value('Life'), format: dash(int), sub: `${lifeAndShield}${tt('overview.shield')} ${int(value('EnergyShield') ?? 0)} · ${statRowLabel(lang, 'Mana')} ${int(value('Mana') ?? 0)}`, tone: 'life' },
+    { id: resource, label: statRowLabel(lang, resource), value: value(resource), format: dash(int),
+      sub: `${statRowLabel(lang, otherResource)} ${dash(int)(value(otherResource))} · ${statRowLabel(lang, 'Mana')} ${dash(int)(value('Mana'))}`, tone: 'life' },
     { id: 'SpiritUnreserved', label: spiritOver ? tt('overview.spiritOver') : statNameLabel(lang, 'SpiritUnreserved'), value: spiritOver ? -spiritFree : spiritFree, format: dash(int), sub: spirit === null ? '' : tt('overview.spiritLimit').replace('{value}', int(spirit)), tone: spiritOver ? 'bad' : 'plain' },
   ];
 
   return <section className="ov" data-stale={view.stale || undefined} aria-labelledby="ov-title">
     <header className="ov-head">
-      <div><h1 id="ov-title">{build?.name || tt('overview.untitledBuild')}</h1>
-        <p>{[classLabel, session.character && `${tt('build.level')} ${session.character.level}`, stage?.name, enemyTierLabel(lang, enemy)].filter(Boolean).join(' · ')}</p></div>
+      <div><h1 id="ov-title" tabIndex={-1}>{buildName}</h1>
+        <div className="ov-context">
+          <span>{[classLabel === buildName ? '' : classLabel, session.character && `${tt('build.level')} ${session.character.level}`, stage?.name].filter(Boolean).join(' · ')}</span>
+          <Button variant="link" onClick={() => navigate('config')}>{enemyTierLabel(lang, enemy)}</Button>
+        </div>
+      </div>
+      {onShare && <Button variant="outline" onClick={onShare}><Share2 />{tt('overview.shareStage')}</Button>}
     </header>
+    {importNotice}
 
     <dl className="ov-figures" aria-busy={session.busy}>
       {figures.map(figure => <div key={figure.id} className={`ov-figure is-${figure.tone}`}>
@@ -185,6 +199,14 @@ export function Overview({ session, view, lang, navigate, focusStat, onSpirit, o
         {figure.tone === 'dps' && !minion && <EnergyTriggerNote trigger={calc?.unmodelled_meta_trigger} catalog={catalog} lang={lang} />}
       </div>)}
     </dl>
+
+    <div className="ov-actions" role="group" aria-label={tt('overview.nextActions')}>
+      <Button variant="outline" onClick={onPlanTree ?? (() => navigate('tree'))}><Network />{tt('overview.planTree')}</Button>
+      <Button variant="outline" onClick={() => main && onPlanSupports ? onPlanSupports(main.group_index) : navigate('skills')}><Gem />{tt('overview.adjustSkills')}</Button>
+      <Button variant="outline" onClick={() => navigate('trade')}><Search />{tt('overview.findEquipment')}</Button>
+      {build?.baseline ? <Button variant="ghost" onClick={() => { session.startBaselineComparison(); navigate('compare'); }}>{tt('compare.withBaseline')}</Button>
+        : <Button variant="ghost" disabled={session.busy} onClick={session.saveComparisonBaseline}><BookmarkPlus />{tt('overview.keepBaseline')}</Button>}
+    </div>
 
     <dl className="ov-resistances" aria-label={tt('overview.baseResistances')}>
       {(['Fire', 'Cold', 'Lightning', 'Chaos'] as const).map(type => <div key={type}>

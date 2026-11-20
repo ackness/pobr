@@ -48,8 +48,16 @@
   .shell-root .trade-page .upgrade-goal-details summary { color: var(--primary); }
   .shell-root .trade-page .upgrade-goal-details .opt-controls { margin: .75rem 0 0; }
 
-  .shell-root .trade-page .upgrade-paths { display: flex; flex-wrap: wrap; gap: .4rem; margin: .75rem 0 0; }
-  .shell-root .trade-page .upgrade-paths > button { display: inline-flex; height: auto; padding: .35rem .6rem; font-size: var(--text-xs); white-space: normal; }
+  .shell-root .trade-page .upgrade-paths { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .shell-root .trade-page .upgrade-paths > button { display: inline-flex; height: auto; padding: .45rem .9rem; font-size: var(--text-sm); white-space: normal; }
+  .shell-root .trade-page .trade-search-help { margin-block: .35rem; font-size: var(--text-sm); color: var(--muted-foreground); }
+  .shell-root .trade-page .trade-search-actions > :is(button, a) { max-width: 100%; }
+  .shell-root .trade-page .trade-return-market { margin-bottom: .65rem; }
+  @container shell-container (max-width: 34rem) {
+    .shell-root .trade-page .upgrade-entry-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .shell-root .trade-page .upgrade-paths { display: contents; }
+    .shell-root .trade-page :is(.upgrade-entry-actions, .trade-search-actions) :is(button, a) { min-height: 2.75rem; font-size: var(--text-base); }
+  }
 
   .shell-root .trade-page .trade-overview-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin: 0 0 1rem; padding: 0; border: 0; border-radius: 0; background: none; }
   .shell-root .trade-page .trade-overview-toolbar > div { flex: 1 1 18rem; min-width: 0; }

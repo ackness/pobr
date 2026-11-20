@@ -7,7 +7,7 @@ import { AppTooltip, AppButton, AppInput } from '../shared/controls';
 import { NamedSets } from '../shared/NamedSets';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { PageHeader } from '../shared/PageHeader';
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { GemCatalogEntry, SocketGroupInput } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
@@ -114,6 +114,9 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
     if (focusOptimizer && groups[focusOptimizer.group]) setOpenIdx(focusOptimizer.group, focusOptimizer.nonce);
   });
   useLayoutEffect(optimizerFocusRequest, [optimizerFocusRequest]);
+  const consumeOptimizerFocus = useCallback((nonce: number) => {
+    setOpenGroup(group => group?.focusNonce === nonce ? { ...group, focusNonce: undefined } : group);
+  }, []);
   useLayoutEffect(() => {
     if (openGroup && storedIdx === null) setOpenGroup(null);
   }, [session.socketGroupRevision, storedIdx]);
@@ -201,6 +204,8 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
     const dps = dpsRows.get(idx);
     const source = sourceLabel(idx);
     const spirit = spiritReport?.groups.get(idx);
+    // Loading the catalog can change the optimizer's skill key. Focus the settled instance.
+    const focusNonce = storedIdx === idx && (catalog.length > 0 || catalogError) ? openGroup?.focusNonce : undefined;
     const optimizer = isOpen && (
       <GemOptimizer
         key={`${session.socketGroupRevision}:${optimizerSkillKey}`}
@@ -212,7 +217,8 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
         catalog={tradeGems}
         gemCatalog={byId}
         gemName={gemName}
-        focusNonce={openGroup?.index === idx ? openGroup.focusNonce : undefined}
+        focusNonce={focusNonce}
+        onFocusConsumed={consumeOptimizerFocus}
       />
     );
     const supportPicker = active && isOpen && (

@@ -315,9 +315,9 @@ for (const destination of ['newBuild', 'currentStage'] as const) {
     await openSupportSettings(page);
     await expect(capacity).toHaveValue('3');
     await expect(lineage).not.toBeChecked();
-    await expect(first.getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
+    await expect(first.getByRole('button', { name: 'Apply supports', exact: true })).toBeEnabled();
     expect(await capture(page)).toEqual(before);
-    await first.getByRole('button', { name: 'Apply', exact: true }).click();
+    await first.getByRole('button', { name: 'Apply supports', exact: true }).click();
     await expect.poll(async () => (await saved(page)).state.socketGroups[0].gems.slice(1)).toEqual(supports);
     await settled(page);
     const after = await capture(page);

@@ -22,7 +22,7 @@ vi.mock('./TreeConversionControls', () => ({ TreeConversionControls: () => null,
 
 const nodes: PassiveNode[] = [{ skill: 1, id: 'critical', name: 'Critical Power', kind: 'normal',
   stats: ['10% increased Critical Hit Chance'] }];
-const session = { stateVersion: 0, allocatedNodes: [], activeWeaponSet: 1,
+const session = { stateVersion: 0, allocatedNodes: [], activeWeaponSet: 1, currentRequest: () => null,
   calc: { tree_effects: { nodes: {} } } } as unknown as BuildSession;
 const copyNodes = () => nodes.map(node => ({ ...node, stats: [...node.stats!] }));
 const render = <T,>(make: () => T): T => { hooks.beginRender(); return make(); };

@@ -82,9 +82,10 @@ describe('passive graph', () => {
     expect(shortestAllocationPath(graph, new Set([1]), 1, 4)).toEqual([2, 4]);
   });
 
-  it('uses all allocated nodes as BFS sources', () => {
+  it('only uses rooted allocations as route sources', () => {
     const graph = buildPassiveGraph([node(1, [2]), node(2, [3]), node(3, [4]), node(4)]);
-    expect(shortestAllocationPath(graph, new Set([1, 3]), 1, 4)).toEqual([4]);
+    expect(shortestAllocationPath(graph, new Set([1, 3]), 1, 4)).toEqual([2, 4]);
+    expect(shortestAllocationPath(graph, new Set([1, 2, 3]), 1, 4)).toEqual([4]);
   });
 
   it('drops branches disconnected by a removed middle node', () => {

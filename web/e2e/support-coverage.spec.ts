@@ -128,7 +128,7 @@ async function expectInvalidated(page: Page) {
   await expect(page.locator('.support-results')).toHaveCount(0);
   await expect(baseline(page)).toHaveCount(0);
   await expect(page.locator('.support-diagnostic-excluded')).toHaveCount(0);
-  await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
+  await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply supports', exact: true })).toHaveCount(0);
 }
 
 for (const [layout, viewport] of [
@@ -207,7 +207,7 @@ for (const [layout, viewport] of [
         const reasons = edit.locator('.unincluded-raw > pre');
         await expect(reasons).toHaveCount(1);
         expectSwiftIdentity((await reasons.textContent())!);
-        await expect(edit.getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
+        await expect(edit.getByRole('button', { name: 'Apply supports', exact: true })).toHaveCount(0);
         await expect(edit.locator('.support-plan')).toHaveCount(0);
       }
       await expect(page.locator(`.support-plan [data-skill-id="${swift}"]`)).toHaveCount(0);
@@ -229,9 +229,9 @@ for (const [layout, viewport] of [
         await goTo(page, 'Skills');
         await expect.poll(() => rejectedReceipt(rejected)).toEqual(excluded);
         await expect.poll(() => recommendationsReceipt(page)).toEqual(recommendations);
-        await expect(first.getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
+        await expect(first.getByRole('button', { name: 'Apply supports', exact: true })).toBeEnabled();
       }
-      await first.getByRole('button', { name: 'Apply', exact: true }).click();
+      await first.getByRole('button', { name: 'Apply supports', exact: true }).click();
       await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
       await expect.poll(async () => {
         const applied = (await groups(page))[0].gems;
