@@ -28,7 +28,7 @@ async function ready(page: Page) {
   await expect(page.locator('.tree-canvas svg')).toBeVisible({timeout:90_000});
   await expect(busy(page)).toHaveCount(0);
   await expect(page.locator('.node-power')).toHaveAttribute('open', '');
-  await expect(page.locator('.node-power tbody')).toHaveCount(0);
+  await expect(page.locator('.node-power-results')).toHaveCount(0);
 }
 
 const saved = (page: Page) => page.evaluate(() => localStorage.getItem('pobr-v2-build-state'));
@@ -38,14 +38,16 @@ test('report filters, scores full paths, sorts and focuses without allocating; s
   const before = await saved(page);
   const report = page.locator('.node-power');
   await report.getByRole('searchbox', {name:'Filter nodes'}).fill(String(target.skill));
-  const row = report.locator(`tr[data-node-id="${target.skill}"]`);
+  const row = report.locator(`[data-node-id="${target.skill}"]`);
   await expect(report).toContainText('Run an evaluation to see candidate rankings');
   await report.getByRole('button',{name:'Evaluate all candidate nodes',exact:true}).click();
   await expect(row).toHaveAttribute('data-status','ready',{timeout:60_000});
-  await expect(row.locator('td').nth(2)).toHaveText(String(route.allocate.length));
-  await expect(row.locator('td').nth(1)).not.toHaveText('—');
+  await expect(row.locator('.node-power-route > summary')).toContainText(`Path cost: ${route.allocate.length}`);
+  await expect(row.locator('.node-power-value')).not.toContainText('—');
   await report.getByRole('button',{name:'Points',exact:true}).click();
-  await expect(report.getByRole('columnheader',{name:'Points',exact:true})).toHaveAttribute('aria-sort','ascending');
+  await expect(report.getByRole('button', {name: /Points.*Ascending/})).toHaveAttribute('aria-pressed', 'true');
+  await row.locator('.node-power-route > summary').click();
+  await expect(row.getByText(/gain for single node/)).toBeVisible();
   await row.getByRole('button', {name:target.name!,exact:true}).click();
   await expect(page.locator('.tree-node-details')).toHaveAttribute('data-skill-id',String(target.skill));
   const view = (await page.locator('.tree-canvas svg').getAttribute('viewBox'))!.split(' ').map(Number);
@@ -67,7 +69,7 @@ test('small-node toggle and cancellation preserve the build and never restore st
   const before = await saved(page);
   const report = page.locator('.node-power');
   await report.getByRole('searchbox',{name:'Filter nodes'}).fill(String(nodes.find(n => n.name === 'Attribute' && n.skill >= 10000)!.skill));
-  await expect(report.locator('tbody tr')).toHaveCount(0);
+  await expect(report.locator('[data-node-id]')).toHaveCount(0);
   await report.getByRole('checkbox',{name:'Include small nodes'}).check();
   await expect(report).toContainText('Run an evaluation to see candidate rankings');
   await expect(report.getByRole('button', { name: 'Evaluate all candidate nodes', exact: true })).toBeEnabled();
@@ -77,10 +79,10 @@ test('small-node toggle and cancellation preserve the build and never restore st
   await expect(report.getByRole('status')).toHaveText('Report cancelled; rankings are provisional. Completed rows retained.');
   await expect(report.getByRole('button',{name:'Cancel report',exact:true})).toHaveCount(0);
   await choose(page, report.getByRole('combobox',{name:'Report stat',exact:true}), 'Energy Shield');
-  await expect(report.locator('tr[data-status=ready]')).toHaveCount(0);
+  await expect(report.locator('[data-status=ready]')).toHaveCount(0);
   await report.locator('summary').first().click();
   await report.locator('summary').first().click();
-  await expect(report.locator('tr[data-status=ready]')).toHaveCount(0);
+  await expect(report.locator('[data-status=ready]')).toHaveCount(0);
   expect(await saved(page)).toBe(before);
 });
 
@@ -97,9 +99,14 @@ for (const width of [390, 1440, 2560]) {
     expect((await sidebar.boundingBox())!.width).toBeCloseTo(expandedWidth, 0);
     await report.getByRole('searchbox', { name: 'Filter nodes' }).fill(String(target.skill));
     await report.getByRole('button', { name: 'Evaluate all candidate nodes', exact: true }).click();
-    await expect(report.locator(`tr[data-node-id="${target.skill}"]`)).toHaveAttribute('data-status', 'ready', { timeout: 60_000 });
+    await expect(report.locator(`[data-node-id="${target.skill}"]`)).toHaveAttribute('data-status', 'ready', { timeout: 60_000 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    expect(await report.locator('.node-power-scroll').evaluate(element => getComputedStyle(element).overflowY)).toBe('visible');
+    const heading = report.locator('.node-power-heading').first();
+    const name = (await heading.getByRole('button').boundingBox())!;
+    const gain = (await heading.locator('strong').boundingBox())!;
+    expect(name.x + name.width).toBeLessThanOrEqual(gain.x);
+    expect(Math.abs(name.y - gain.y)).toBeLessThan(8);
+    expect(await report.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
     expect((await sidebar.boundingBox())!.width).toBeCloseTo(expandedWidth, 0);
   });
 }
