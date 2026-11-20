@@ -3,6 +3,8 @@ import type { ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { BuildSession } from '../../hooks/useBuildSession';
+import type { Lang } from '../../lib/i18n';
+import type { SupportMetadata } from '../../lib/supportOptimizer';
 import { GemOptimizer } from './GemOptimizer';
 import { ChangeBar } from '../../app/preview/ChangeBar';
 
@@ -11,7 +13,7 @@ const harness = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], o
 vi.mock('../../hooks/useGemDescriptions', () => ({ useGemDescriptions: (enabled: boolean) => { harness.descriptionsEnabled = enabled; return harness.descriptions; } }));
 const hooks = await vi.hoisted(async () => {
   const { createHookHarness } = await import('../../testing/hookHarness');
-  return createHookHarness();
+  return createHookHarness({ refs: true });
 });
 vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../shared/controls', () => ({
@@ -40,16 +42,17 @@ vi.mock('../../lib/supportOptimizer', async original => ({ ...await original<typ
   lineageAvailable: () => true, optimizeSupports: harness.optimize,
 }));
 
-const catalog: never[] = [];
-function setup(main = 0) {
+const catalog: SupportMetadata[] = [{ skill_id: 'Old support', name: 'Old support', is_support: true } as SupportMetadata];
+function setup(main = 0, lang: Lang = 'en-US') {
   const request = { socket_groups: [] };
   const session = { socketGroups: [{ enabled: true, gems: [] }], character: { level: 100 }, calcParams: { main_socket_group: main },
-    currentRequest: () => request, calc: { main_skill: {}, stats: [] }, dataVersion: 'data-123', treeVersion: 'tree-456',
-    updateParams: vi.fn(), stateVersion: 1, socketGroupRevision: 1, activeWeaponSet: 1,
+    currentRequest: () => request, calc: { main_skill: { skill_id: 'Fireball' }, stats: [] }, dataVersion: 'data-123', treeVersion: 'tree-456',
+    updateParams: vi.fn(), stateVersion: 1, socketGroupRevision: 1, activeWeaponSet: 1, calculationScope: {},
+    canUndo: true, undoEdit: vi.fn(), setSocketGroups: vi.fn(),
   } as unknown as BuildSession;
-  const render = () => {
+  const render = (active = true) => {
     hooks.beginRender(); harness.buttons.length = 0; harness.articles.length = 0;
-    return renderToStaticMarkup(<GemOptimizer session={session} lang="en-US" active groupIndex={0} catalog={catalog} gemName={id => id} skillKey="skill" />);
+    return renderToStaticMarkup(<GemOptimizer session={session} lang={lang} active={active} groupIndex={0} catalog={catalog} gemName={id => id} skillKey="skill" />);
   };
   return { session, render };
 }
@@ -227,7 +230,7 @@ it.each([true, false])('recommendations show descriptions only when the engine c
     expect(html).not.toContain('support-descriptions');
     expect(html).not.toContain('gem-description-panel');
     expect(html).toContain('support');
-    expect(html).toContain('Apply');
+    expect(html).toContain('Apply supports');
   }
 });
 
@@ -245,4 +248,57 @@ it('keeps the unavailable-description message for a plan gem without official te
   expect(html).toContain('gem-description-panel');
   expect(html).toContain('No source description is available in this data snapshot.');
   expect(html).toContain('These describe the gem’s effects, not current-level values.');
+});
+
+it.each([
+  ['en-US', 'Calculate support combinations', 'Apply supports', 'Applied supports to Fireball', 'Added', 'Removed', 'Undo'],
+  ['zh-CN', '计算辅助搭配', '应用辅助宝石', '已更新Fireball的辅助宝石', '已添加', '已移除', '撤销'],
+  ['zh-TW', '計算輔助搭配', '套用輔助寶石', '已更新Fireball的輔助寶石', '已新增', '已移除', '復原'],
+] as const)('applied supports in %s show the installed edit, and undo is bound to that revision', async (lang, run, apply, applied, added, removed, undo) => {
+  const { session, render } = setup(0, lang);
+  const fireball = { skill_id: 'Fireball', level: 16, quality: 20 };
+  const oldGem = { skill_id: 'Old support', level: 1, quality: 0 };
+  const newGem = { skill_id: 'New support', level: 1, quality: 0 };
+  session.socketGroups = [{ enabled: true, gems: [fireball, oldGem] }];
+  const candidate = { enabled: true, gems: [fireball, newGem] };
+  harness.optimize.mockResolvedValueOnce({ baseline: { CombinedDPS: 100, TotalEHP: 200 }, evaluated: 1, unmodeled: 0,
+    baselineUnsupported: [], excluded: [], plans: [{ supports: [newGem], variant: { socket_groups: [candidate] },
+      stats: { CombinedDPS: 125, TotalEHP: 200 } }] });
+  render(); expand(); render(); await button(run).onClick!({} as never);
+  render();
+  const click = button(apply).onClick!;
+  click({} as never);
+  click({} as never);
+  expect(session.setSocketGroups).toHaveBeenCalledTimes(1);
+  expect(session.setSocketGroups).toHaveBeenCalledWith([expect.objectContaining(candidate)]);
+  expect(render()).not.toContain('support-applied');
+
+  session.socketGroups = vi.mocked(session.setSocketGroups).mock.calls[0][0];
+  session.stateVersion++;
+  session.busy = true;
+  session.calc = null;
+  expect(render()).not.toContain('support-results');
+  expect(button(undo).disabled).toBe(true);
+  expect(render(false)).not.toContain('support-applied');
+  session.busy = false;
+  const receipt = render();
+  expect(receipt).toContain(applied);
+  expect(receipt).toContain(`<dt>${added}</dt><dd>New support</dd>`);
+  expect(receipt).toContain(`<dt>${removed}</dt><dd>Old support</dd>`);
+  expect(receipt).toContain('+25.0%');
+  const undoApplied = button(undo).onClick!;
+  if (lang === 'en-US') {
+    undoApplied({} as never);
+    expect(session.undoEdit).toHaveBeenCalledOnce();
+    expect(render()).not.toContain('support-applied');
+  } else {
+    // An annotation is not a calculation edit, but undo would overwrite it.
+    session.annotations = { 'skill:0': 'Later annotation' };
+    expect(render()).toContain('support-applied');
+    expect(harness.buttons.some(props => props.children === undo)).toBe(false);
+    undoApplied({} as never);
+    expect(session.undoEdit).not.toHaveBeenCalled();
+    session.stateVersion++;
+    expect(render()).not.toContain('support-applied');
+  }
 });

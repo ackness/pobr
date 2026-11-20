@@ -149,7 +149,7 @@ function mergeEffect(before: BuildWorkspace, after: BuildWorkspace, conflicts: s
 }
 
 export type ImportDestination = 'newBuild' | 'currentStage';
-export interface ImportOptions { destination: ImportDestination; name?: string }
+export interface ImportOptions { destination: ImportDestination; name?: string; onError?: (message: string) => void }
 
 export interface BuildSession {
   saveComparisonBaseline: () => void;
@@ -1156,7 +1156,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         apply(nextState, { clean: true });
         return true;
       } catch (err) {
-        setOperationError(formatApiError(err));
+        (options.onError ?? setOperationError)(formatApiError(err));
         return false;
       } finally {
         setPendingOperations(count => count - 1);

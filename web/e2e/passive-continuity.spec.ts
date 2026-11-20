@@ -283,13 +283,16 @@ test('reallocation mode and maximum refunds survive navigation without changing 
   await routeRun(page).click();
   await expect(page.locator('.tree-planner-summary')).toBeVisible({ timeout: 90_000 });
   await expect(routeRun(page)).toBeEnabled();
-  const receipt = await page.locator('.tree-planner-summary').innerText();
+  const evaluation = page.locator('.tree-planner-summary');
+  await evaluation.locator(':scope > summary').click();
+  const receipt = await evaluation.innerText();
   await awayAndBack(page);
   await expect(page.getByRole('combobox', { name: 'Plan', exact: true })).toContainText('Reallocate existing points');
   await expect(page.getByRole('spinbutton', { name: 'Maximum refunds', exact: true })).toHaveValue('2');
   await expect(page.getByRole('combobox', { name: 'Route planner: new travel attributes', exact: true })).toContainText('Strength');
   await expect(joint(page).locator('.jewel-plan-candidates > li')).toHaveCount(1);
-  await expect.poll(() => page.locator('.tree-planner-summary').innerText()).toBe(receipt);
+  await evaluation.locator(':scope > summary').click();
+  await expect.poll(() => evaluation.innerText()).toBe(receipt);
   expect(await saved(page)).toEqual(before);
 });
 

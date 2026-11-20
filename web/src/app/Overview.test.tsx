@@ -22,7 +22,7 @@ function render(busy: boolean, lang: 'en-US' | 'zh-CN' | 'zh-TW', overrides: Par
   const session = { socketGroups: [{ gems: [] }], hasBuildContent: true, character: null, calcParams: {},
     classNames: { classes: {}, ascendancies: {} }, busy, calcError: null, stateVersion: 1, ...overrides } as unknown as BuildSession;
   const html = renderToStaticMarkup(<UpgradeGoalProvider><Overview session={session}
-    view={{ calc: null, previous: null, stale: busy }} lang={lang} navigate={() => {}} focusStat={() => {}} />
+    view={{ calc: null, previous: null, stale: busy }} lang={lang} navigate={() => {}} focusStat={() => {}} onShare={() => {}} onPlanTree={() => {}} onPlanSupports={() => {}} />
   </UpgradeGoalProvider>);
   return html.match(/<section[^>]+aria-labelledby="ov-skills"[\s\S]*?<\/section>/)![0];
 }
@@ -63,18 +63,22 @@ function summary(stats: Record<string, number>, {
   const session = { socketGroups: groups, calcParams: {}, hasBuildContent: true, classNames: { classes: {}, ascendancies: {} },
     stateVersion: 1 } as unknown as BuildSession;
   return renderToStaticMarkup(<UpgradeGoalProvider><Overview session={session} view={{ calc, previous: null, stale: false }}
-    lang={lang} navigate={() => {}} focusStat={() => {}} /></UpgradeGoalProvider>);
+    lang={lang} navigate={() => {}} focusStat={() => {}} onShare={() => {}} onPlanTree={() => {}} onPlanSupports={() => {}} /></UpgradeGoalProvider>);
 }
 
-it('shows a positive Spirit excess with its limit, the weakest hit and shield-dominant total', () => {
+it('shows Spirit excess, lowest maximum hit and the dominant defence resource', () => {
   const html = summary({ Life: 1000, EnergyShield: 5000, Spirit: 100, SpiritUnreserved: -109, PhysicalMaxHit: 19203 });
   expect(html).toContain('精魂超出');
   expect(html).toContain('>109<span class="ov-source">计算明细 ›</span>');
   expect(html).toContain('上限 100');
   expect(html).toContain('最怕物理：单次最多承受 19,203');
-  expect(html).toContain('生命 + 能量护盾 6,000');
+  expect(html).toContain('<dt>能量护盾</dt>');
+  expect(html).toContain('>5,000<span class="ov-source">');
+  expect(html).toContain('生命 1,000');
   expect(html.match(/class="ov-source"/g)).toHaveLength(4);
-  expect(summary({ Life: 5000, EnergyShield: 1000, SpiritUnreserved: 20 })).not.toContain('生命 + 能量护盾');
+  const lifeBuild = summary({ Life: 5000, EnergyShield: 1000, SpiritUnreserved: 20 });
+  expect(lifeBuild).toContain('<dt>生命</dt>');
+  expect(lifeBuild).toContain('能量护盾 1,000');
   expect(summary({ SpiritUnreserved: 0 })).not.toContain('精魂超出');
 });
 

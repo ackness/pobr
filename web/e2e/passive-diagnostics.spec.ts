@@ -70,6 +70,8 @@ async function complete(page: Page) {
 }
 
 async function assertPairedDiagnostics(page: Page) {
+  const evaluation = page.locator('.tree-planner-summary');
+  if (await evaluation.getAttribute('open') === null) await evaluation.locator(':scope > summary').click();
   await expect(baseline(page)).toHaveCount(1);
   await baseline(page).locator(':scope > summary').click();
   await expect(baseline(page).locator('.unincluded-lines > li')).toHaveText(['missing timeless jewel seed data']);

@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { t } from '../src/lib/i18n';
 import { expect, test, type Page } from '@playwright/test';
 import { openItemsAfterImport } from './shell';
+import { importBuild } from './skillsAndCalcs';
 import { headlineDpsValue, goTo, openOptimizerSettings, settledNumber, settledText } from './upgradesPage';
 import { SMOKE } from './tags';
 
@@ -85,7 +87,7 @@ test('shared goals link automatic supports and connected passive plans with real
   await expect(support).toBeVisible({ timeout: 30_000 });
   await expect(support.locator('.support-plan-metrics')).toContainText('Effective HP');
   const before = await settledText(dps(page));
-  await support.getByRole('button', { name: 'Apply', exact: true }).click();
+  await support.getByRole('button', { name: 'Apply supports', exact: true }).click();
   await expect(dps(page)).not.toHaveText(before);
   await goTo(page, 'Upgrades');
   await page.locator('.trade-position').filter({ hasText: 'Skill and support gems' }).click();
@@ -259,6 +261,115 @@ test('tree panning keeps the viewport fixed, reveals edge nodes and commits with
   await expect(page.locator('.tree-scene')).not.toHaveAttribute('transform', /translate/);
 });
 
+test('a full Invoker tree needs explicit approval to apply future points', async ({ page }) => {
+  const code = readFileSync(new URL('../../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', import.meta.url), 'utf8');
+  await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
+  await importBuild(page, code);
+  await goTo(page, 'Tree');
+  const count = page.locator('.tree-count');
+  await expect(count).toContainText('Used 121 / 121 points', { timeout: 90_000 });
+  await page.getByRole('button', { name: 'Plan passive upgrades', exact: true }).click();
+  const mode = page.getByRole('combobox', { name: 'Plan', exact: true });
+  const run = page.getByRole('button', { name: 'Find upgrade routes', exact: true });
+  const savedNodes = () => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state.allocatedNodes as number[]);
+  const before = await savedNodes();
+  await expect(mode).toContainText('Spend new points');
+  await expect(page.locator('.tree-planner-budget')).toContainText('No unspent points');
+  await expect(page.getByText(/Automatic refunds are unavailable with weapon-set passives/)).toBeVisible();
+  await expect(run).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Find jewel and passive plans', exact: true })).toBeDisabled();
+
+  await mode.click();
+  await page.getByRole('option', { name: 'Plan with future points', exact: true }).click();
+  const points = page.getByRole('spinbutton', { name: 'Point budget', exact: true });
+  await expect(points).toHaveValue('3');
+  await run.click();
+  const route = page.locator('.tree-planner-body > .tree-planner-results > li')
+    .filter({ has: page.getByText('Extra passive points needed: 3', { exact: true }) }).first();
+  await expect(route).toBeVisible({ timeout: 90_000 });
+  expect(await savedNodes()).toEqual(before);
+  await goTo(page, 'Overview');
+  await goTo(page, 'Tree');
+  await expect(mode).toContainText('Plan with future points');
+  await expect(points).toHaveValue('3');
+  const apply = route.getByRole('button', { name: 'Apply future plan', exact: true });
+  const dialog = page.getByRole('alertdialog');
+  await apply.click();
+  await expect(dialog).toContainText('exceeds your current passive point budget by 3');
+  expect(await savedNodes()).toEqual(before);
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(await savedNodes()).toEqual(before);
+  await apply.click();
+  await dialog.getByRole('button', { name: 'Apply over budget', exact: true }).click();
+  await expect(count).toContainText('Used 124 / 121 points');
+  await expect(count).toContainText('Over budget by 3');
+  await expect.poll(async () => (await savedNodes()).length).toBe(before.length + 3);
+});
+
+test('a respec preview fits both branches and can focus either one at every canvas width', async ({ page }) => {
+  await caster(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await goTo(page, 'Tree');
+  await page.getByRole('button', { name: 'Plan passive upgrades', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Plan', exact: true }).click();
+  await page.getByRole('option', { name: 'Reallocate existing points', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Objective', exact: true }).click();
+  await page.getByRole('option', { name: 'Max Effective HP', exact: true }).click();
+  await page.getByRole('button', { name: 'Find upgrade routes', exact: true }).click();
+  const route = page.locator('.tree-planner-body > .tree-planner-results > li').filter({ hasText: /Allocate 2.*Refund 3/ }).first();
+  await expect(route).toBeVisible({ timeout: 90_000 });
+  await expect(route.locator('.tree-plan-points')).toContainText('Save 1');
+  await expect(page.locator('.tree-planner-summary')).not.toHaveAttribute('open', '');
+  const trigger = route.getByRole('button', { name: 'Show on tree', exact: true });
+  const tree = page.locator('.tree-canvas > svg');
+  const controls = page.getByRole('group', { name: 'Route preview', exact: true });
+  const before = await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state.allocatedNodes);
+  const assertFit = async (scope: 'all' | 'add' | 'remove', count: number) => {
+    await expect.poll(() => tree.evaluate((svg, { scope, count }) => {
+      const markers = Array.from(svg.querySelectorAll<SVGGElement>(scope === 'all'
+        ? '[data-route-node]' : `[data-route-node][data-change="${scope}"]`));
+      const box = svg.getBoundingClientRect();
+      const toolbar = svg.parentElement!.querySelector('.tree-route-preview')!.getBoundingClientRect();
+      const points = markers.map(marker => new DOMPoint().matrixTransform(marker.getScreenCTM()!));
+      return points.length === count && points.every(point => point.x > box.left + 10 && point.x < box.right - 10
+        && point.y > toolbar.bottom + 10 && point.y < box.bottom - 10);
+    }, { scope, count })).toBe(true);
+  };
+  for (const viewport of [{ width: 1920, height: 1040 }, { width: 1280, height: 760 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await trigger.click();
+    await expect(controls).toBeInViewport({ ratio: 1 });
+    await assertFit('all', 5);
+    const overview = await tree.getAttribute('viewBox');
+    const addButton = controls.getByRole('button', { name: 'Allocate 2', exact: true });
+    if (viewport.width === 1920) {
+      await tree.locator('.node-planned-remove').first().hover();
+      await expect(page.locator('.tree-tooltip')).toBeVisible();
+      await addButton.press('Enter');
+      await expect(page.locator('.tree-tooltip')).toHaveCount(0);
+    } else {
+      await addButton.click();
+    }
+    await expect(tree).not.toHaveAttribute('viewBox', overview!);
+    await assertFit('add', 2);
+    const additions = await tree.getAttribute('viewBox');
+    await controls.getByRole('button', { name: 'Refund 3', exact: true }).click();
+    await expect(tree).not.toHaveAttribute('viewBox', additions!);
+    await assertFit('remove', 3);
+    if (viewport.width === 390) {
+      await controls.getByRole('button', { name: 'Back to plan', exact: true }).click();
+      await expect(trigger).toBeFocused();
+      await trigger.press('Enter');
+      await expect(controls).toBeFocused();
+      await assertFit('all', 5);
+    }
+  }
+  await controls.getByRole('button', { name: 'Clear preview', exact: true }).click();
+  await expect(tree.locator('[data-route-node]')).toHaveCount(0);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state.allocatedNodes)).toEqual(before);
+});
+
 test('editing passives automatically replans from the new tree and applying never spends points twice', async ({ page }) => {
   await caster(page);
   const before = await settledText(dps(page));
@@ -274,7 +385,9 @@ test('editing passives automatically replans from the new tree and applying neve
   await expect(dps(page)).not.toHaveText(before);
   await expect(plans.first()).toBeVisible({ timeout: 30_000 });
   const currentDps = await settledNumber(dps(page));
-  const summary = await page.locator('.tree-planner-summary').innerText();
+  const evaluation = page.locator('.tree-planner-summary');
+  await evaluation.locator(':scope > summary').click();
+  const summary = await evaluation.innerText();
   const planningDps = Number(summary.match(/Combined DPS ([\d,.]+)/)![1].replaceAll(',', ''));
   expect(planningDps).toBeCloseTo(currentDps, 0);
   await plans.first().getByRole('button', { name: 'Apply plan', exact: true }).click();

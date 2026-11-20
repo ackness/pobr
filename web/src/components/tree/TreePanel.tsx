@@ -19,12 +19,12 @@ import { TreeConversionControls, useTreeConversion } from './TreeConversionContr
 import { formatApiError } from '../../api/error';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { getBackend } from '../../api/backend';
-import type { AttributeChoice, PassiveNode, TreeAllocationMode } from '../../api/types';
+import type { AttributeChoice, PassiveAllocationGrant, PassiveNode, TreeAllocationMode } from '../../api/types';
 import { useTreeEditPreview } from '../../hooks/useTreeEditPreview';
 import { treeAllocationRequest } from '../../lib/weaponSets';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { cleanLine, useItemDisplayNames } from '../../hooks/useLocalizedLines';
-import { bindT, t, type Lang } from '../../lib/i18n';
+import { bindT, messages, t, type Lang } from '../../lib/i18n';
 import {
   allocationAccess,
   buildPassiveGraph,
@@ -42,7 +42,7 @@ import type { PassivePlan } from '../../lib/passivePlanner';
 import './tree.css';
 import { NodePowerTable } from './NodePowerTable';
 import { useTreeLocation } from './useTreeLocation';
-import { plannedEdgeClass } from './plannedRoute';
+import { placedRouteNodes, plannedEdgeClass, routeViewBox, type RouteScope } from './plannedRoute';
 import { colon } from '../../app/text';
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { passiveNodeMatches, passiveNodeName, translatePassiveCard, usePassiveNodeNames, type PassiveNodeNames } from './passiveNodeNames';
@@ -54,6 +54,8 @@ interface Props {
   focusPlanner?: { nonce: number; node?: number };
   onJewelSearch?: (socket: number) => void;
 }
+
+interface RoutePreview { plan: PassivePlan }
 
 const JEWEL_TEMPLATE = 'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
 
@@ -90,7 +92,7 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
       stats: change.replace ? change.stats : [...(node.stats ?? []), ...change.stats] } : node;
   }) ?? [], [rawNodes, displayChangesKey]);
   const [error, setError] = useState<string | null>(null);
-  const [plannedNodes, setPlannedNodes] = useState<PassivePlan | null>(null);
+  const [routePreview, setRoutePreview] = useState<RoutePreview | null>(null);
   const byId = useMemo(() => new Map(nodes.map(node => [node.skill, node])), [nodes]);
   const ascendancy = session.treeMeta?.classes.flatMap(entry => entry.ascendancies ?? [])
     .find(entry => entry.name === session.character?.ascendancy_name)?.id;
@@ -102,14 +104,31 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
   const consumedLocation = useRef<number | undefined>(undefined);
   const ascendancyFocus = useRef<string | null>(null);
   const [overlayReset, setOverlayReset] = useState(0);
-  const planner = useTreeOptimizer({ session, lang, active, nodes,
+  const grants = useMemo(() => treeEffects?.allocation_grants ?? [], [treeEffects]);
+  const allocated = useMemo(() => new Set(session.allocatedNodes), [session.allocatedNodes]);
+  const startSkill = classStartSkill(treeEffects, session.character?.class_name);
+  const implicitStarts = useMemo(() => implicitClassStarts(treeEffects), [treeEffects]);
+  // Use all nodes, not the canvas subset filtered by current ascendancy.
+  const graph = useMemo(() => {
+    const allowed = new Set([startSkill, ...grants.flatMap(grant => grant.roots)]);
+    return buildPassiveGraph(nodes.filter(node => !implicitStarts.has(node.skill) || allowed.has(node.skill)));
+  }, [nodes, implicitStarts, startSkill, grants]);
+  const editRequest = useMemo(() => session.currentRequest(), [session.currentRequest]);
+  // One authoritative probe feeds the canvas count and both planners.
+  const summaryTarget = useMemo(() => passivePointSummaryTarget(nodes, allocated, implicitStarts,
+    startSkill === null ? [] : graph.get(startSkill) ?? [], session.weaponSwap),
+  [nodes, allocated, implicitStarts, graph, startSkill, session.weaponSwap]);
+  const currentPoints = useTreeEditPreview(editRequest, summaryTarget.node, summaryTarget.mode, 'allocate');
+  const pointSummary = useMemo(() => passivePointSummary(nodes, session.allocatedNodes, session.weaponSwap, treeEffects, currentPoints?.result),
+    [nodes, session.allocatedNodes, session.weaponSwap, treeEffects, currentPoints]);
+  const planner = useTreeOptimizer({ session, lang, active, nodes, pointSummary,
     onLocate: node => setLocated({ node, nonce: Date.now() }),
     onRun: () => setOverlayReset(value => value + 1),
     nodeLabel: skill => {
       const node = byId.get(skill);
       return socketLabels.get(skill) ?? (node ? passiveNodeName(node, nodeNames) : t(lang, 'tree.passive'));
     },
-    onPreview: setPlannedNodes, focusPlanner: focusPlanner?.node === undefined ? focusPlanner : undefined });
+    onPreview: plan => setRoutePreview(plan ? { plan } : null), focusPlanner: focusPlanner?.node === undefined ? focusPlanner : undefined });
   useEffect(() => {
     let cancelled = false;
     getBackend()
@@ -125,7 +144,8 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
     session.character?.class_name, session.character?.ascendancy_name]);
   return <TreeCanvas key={canvasContext} session={session} lang={lang} onJewelSearch={onJewelSearch}
     consumedLocation={consumedLocation} ascendancyFocus={ascendancyFocus} socketLabels={socketLabels} onSearch={setNameSearch}
-    focusNode={located && located.nonce > (focusPlanner?.nonce ?? -1) ? located : focusPlanner?.node !== undefined ? focusPlanner : undefined} allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} nodeNames={nodeNames} error={error} plannedNodes={plannedNodes} planner={planner} conversion={conversion} overlayReset={overlayReset} />;
+    graph={graph} startSkill={startSkill} implicitStarts={implicitStarts} grants={grants} allocated={allocated} pointSummary={pointSummary}
+    focusNode={located && located.nonce > (focusPlanner?.nonce ?? -1) ? located : focusPlanner?.node !== undefined ? focusPlanner : undefined} allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} nodeNames={nodeNames} error={error} routePreview={routePreview} planner={planner} conversion={conversion} overlayReset={overlayReset} />;
 }
 
 interface CanvasProps {
@@ -142,7 +162,13 @@ interface CanvasProps {
   socketLabels: ReadonlyMap<number, string>;
   onSearch: (query: string) => void;
   error: string | null;
-  plannedNodes: PassivePlan | null;
+  routePreview: RoutePreview | null;
+  graph: ReturnType<typeof buildPassiveGraph>;
+  startSkill: number | null;
+  implicitStarts: ReadonlySet<number>;
+  grants: readonly PassiveAllocationGrant[];
+  allocated: Set<number>;
+  pointSummary: ReturnType<typeof passivePointSummary>;
   planner: TreeOptimizerState;
   /** The tree-conversion controls, shown in the canvas toolbar. */
   conversion?: ReactNode;
@@ -150,7 +176,9 @@ interface CanvasProps {
   overlayReset: number;
 }
 
-function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, socketLabels, onSearch, error, plannedNodes, planner, conversion, overlayReset }: CanvasProps) {
+function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, socketLabels, onSearch, error, routePreview, graph, startSkill, implicitStarts, grants, allocated, pointSummary, planner, conversion, overlayReset }: CanvasProps) {
+  const plannedNodes = routePreview?.plan ?? null;
+  const routeText = messages(lang, 'treeOptimizer');
   const tt = bindT(lang);
   /** Whether the planner / details column beside the canvas is shown. */
   const [sideOpen, setSideOpen] = useState(true);
@@ -161,7 +189,6 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
   const dialogs = useAppDialogs(lang);
   const captureAction = useSessionAction(session);
   const treeEffects = session.calc?.tree_effects;
-  const grants = useMemo(() => treeEffects?.allocation_grants ?? [], [treeEffects]);
   const canvasGeneration = useRef(0);
   useLayoutEffect(() => () => { canvasGeneration.current += 1; }, []);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -215,7 +242,15 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
   const [hoverGain, setHoverGain] = useState<number | null>(null);
   const [hoverCalculating, setHoverCalculating] = useState(false);
   const [hoverDiff, setHoverDiff] = useState<DiffEntry[] | null>(null);
-  const [viewBox, setViewBox] = useState<ViewBox | null>(null);
+  const [viewBox, setCameraView] = useState<ViewBox | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  const [routeFocus, setRouteFocus] = useState<{ preview: RoutePreview; scope: RouteScope | null }>();
+  const routeScope = routePreview && routeFocus?.preview === routePreview ? routeFocus.scope : routePreview && 'all';
+  const routeControlsRef = useRef<HTMLDivElement>(null);
+  const setViewBox = (view: ViewBox | null) => {
+    if (routePreview && routeScope) setRouteFocus({ preview: routePreview, scope: null });
+    setCameraView(view);
+  };
   const dragRef = useRef<{
     pointerId: number;
     startX: number;
@@ -231,7 +266,9 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
   const attachSvg = useCallback((svg: SVGSVGElement | null) => {
     svgRef.current = svg;
     if (!svg) return;
-    const stop = fitToParentInPixels(svg);
+    const stop = fitToParentInPixels(svg, size => {
+      setCanvasSize(prev => prev.width === size.width && prev.height === size.height ? prev : size);
+    });
     return () => { stop(); svgRef.current = null; };
   }, []);
   const sceneRef = useRef<SVGGElement | null>(null);
@@ -272,8 +309,6 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     target.addEventListener('wheel', consume, { passive: false });
     return () => target.removeEventListener('wheel', consume);
   }, [nodes]);
-
-  const allocated = useMemo(() => new Set(session.allocatedNodes), [session.allocatedNodes]);
 
   // 珠宝库（插槽编辑器的切换下拉）；显示名「名称·基底」批量送翻译。
   // ⚠️hook 必须在下方 early return 之前（React #310）。
@@ -396,20 +431,6 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
 
   const byId = useMemo(() => new Map(placed.map((n) => [n.skill, n])), [placed]);
 
-  /**
-   * 寻路图与职业起点。用 `nodes` 全集而非 `placed`——后者按当前飞升过滤，拿它建图
-   * 会让路径在飞升边界断裂；`buildPassiveGraph` 内部已跳过跨飞升的伪边。
-   */
-  const startSkill = useMemo(
-    () => classStartSkill(treeEffects, session.character?.class_name),
-    [session.character?.class_name, treeEffects],
-  );
-
-  const implicitStarts = useMemo(() => implicitClassStarts(treeEffects), [treeEffects]);
-  const graph = useMemo(() => {
-    const allowed = new Set([startSkill, ...grants.flatMap(grant => grant.roots)]);
-    return buildPassiveGraph((nodes ?? []).filter(node => !implicitStarts.has(node.skill) || allowed.has(node.skill)));
-  }, [nodes, implicitStarts, startSkill, grants]);
   const freeNodes = useMemo(() => allocationAccess(graph, allocated, startSkill, grants).free,
     [graph, allocated, startSkill, grants]);
   /** 搜索命中集（名称 + 词条文本，剥 `[a|b]` 标记后不分大小写子串匹配）。 */
@@ -426,10 +447,6 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
   const selectedNode = selectedSkill === null ? null : byId.get(selectedSkill) ?? null;
   const selectedAllocated = selectedSkill !== null && allocated.has(selectedSkill);
   const editRequest = useMemo(() => session.currentRequest(), [session.currentRequest]);
-  const summaryTarget = useMemo(() => passivePointSummaryTarget(nodes ?? [], allocated, implicitStarts,
-    startSkill === null ? [] : graph.get(startSkill) ?? [], session.weaponSwap),
-  [nodes, allocated, implicitStarts, graph, startSkill, session.weaponSwap]);
-  const currentPoints = useTreeEditPreview(editRequest, summaryTarget.node, summaryTarget.mode, 'allocate');
   const selectedPreview = useTreeEditPreview(editRequest, selectedSkill, allocationMode,
     selectedAllocated ? 'refund' : 'allocate');
   const hoverPreview = useTreeEditPreview(editRequest, hover?.skill ?? null, allocationMode,
@@ -677,20 +694,47 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
 
   const fullExtent = useMemo(() => treeExtent(placed), [placed]);
 
+  const routeNodes = useMemo(() => ({
+    add: placedRouteNodes(plannedNodes?.allocate ?? [], byId),
+    remove: placedRouteNodes(plannedNodes?.deallocate ?? [], byId),
+  }), [plannedNodes, byId]);
+
+  useLayoutEffect(() => {
+    const svg = svgRef.current;
+    if (!routeScope || !svg) return;
+    const { top, bottom, width, height } = svg.getBoundingClientRect();
+    let topInset = 0, bottomInset = 0;
+    const obstructions = panelRef.current?.querySelectorAll('.tree-bar-top, .tree-bar-view, .tree-side-toggle, .tree-edit-error, .asc-hint, .tree-route-preview');
+    for (const obstruction of obstructions ?? []) {
+      const rect = obstruction.getBoundingClientRect();
+      if (rect.bottom <= top || rect.top >= bottom) continue;
+      if (rect.top < top + height / 2) topInset = Math.max(topInset, rect.bottom - top);
+      else bottomInset = Math.max(bottomInset, bottom - rect.top);
+    }
+    const nodes = routeScope === 'all' ? [...routeNodes.add, ...routeNodes.remove] : routeNodes[routeScope];
+    const view = routeViewBox(nodes, width, height, topInset, bottomInset);
+    if (view) {
+      setHover(null);
+      setCameraView(view);
+    }
+  }, [routePreview, routeScope, routeNodes, canvasSize]);
+
   useEffect(() => {
-    if (!plannedNodes || !fullExtent) return;
-    const route = [...plannedNodes.allocate, ...plannedNodes.deallocate].map(id => byId.get(id))
-      .filter((node): node is PassiveNode => node?.x !== undefined && node.y !== undefined);
-    if (route.length === 0) return;
-    const xs = route.map(node => node.x!);
-    const ys = route.map(node => node.y!);
-    const width = Math.max(1600, Math.max(...xs) - Math.min(...xs) + 900);
-    const height = Math.max(1600, Math.max(...ys) - Math.min(...ys) + 900);
-    setViewBox(clampView({ x: (Math.max(...xs) + Math.min(...xs) - width) / 2,
-      y: (Math.max(...ys) + Math.min(...ys) - height) / 2, w: width, h: height }, fullExtent));
-    const frame = requestAnimationFrame(() => svgRef.current?.closest('.tree-canvas')?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
+    if (!routePreview) return;
+    const frame = requestAnimationFrame(() => {
+      const canvas = svgRef.current?.closest('.tree-canvas');
+      const rect = canvas?.getBoundingClientRect();
+      const screen = canvas?.closest('.shell-main')?.getBoundingClientRect();
+      if (rect && (rect.top < (screen?.top ?? 0) - 1 || rect.bottom > (screen?.bottom ?? window.innerHeight) + 1)) {
+        canvas?.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+        routeControlsRef.current?.focus({ preventScroll: true });
+      } else {
+        const card = planner.containerRef.current?.querySelector('.is-previewed');
+        card?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      }
+    });
     return () => cancelAnimationFrame(frame);
-  }, [plannedNodes, byId, fullExtent]);
+  }, [routePreview, planner.containerRef]);
 
   // 中文界面下把 hover 节点名 + 词条经词典/模板反查翻成简中（异步，结果晚到时
   // 校验仍是当前节点）。
@@ -807,10 +851,6 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     svgRef.current?.scrollIntoView({ block: 'center' });
     svgRef.current?.focus({ preventScroll: true });
   };
-  const pointSummary = useMemo(
-    () => passivePointSummary(nodes ?? [], session.allocatedNodes, session.weaponSwap, treeEffects, currentPoints?.result),
-    [nodes, session.allocatedNodes, session.weaponSwap, treeEffects, currentPoints],
-  );
   const ascendancyPoints = useMemo(() => {
     const shared = previewResult?.allocation.shared ?? [...allocated].filter(id => !owner.has(id));
     if (shared.some(id => !byId.has(id))) return null;
@@ -1098,10 +1138,11 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
   );
   const countEl = <TreePointSummary current={pointSummary} preview={preview} ascendancy={ascendancyPoints}
     invalidReason={isImportProblem(preview?.reason) ? '' : treeEditError(preview?.reason ?? null, lang)} lang={lang} />;
+  const routeScale = Math.min(canvasSize.width / view.w, canvasSize.height / view.h);
   const canvasEl = (
     // Drag moves and ends are handled on the canvas: once the shield covers the SVG, or if the captured
     // node is removed mid-drag, the next pointer events reach the shield instead of the SVG.
-    <div className="tree-canvas"
+    <div className="tree-canvas" data-route-scope={routePreview ? routeScope ?? 'all' : undefined}
       onPointerMove={onPointerMove}
       onPointerUp={e => finishDrag(e)}
       onPointerCancel={e => finishDrag(e, true)}
@@ -1133,8 +1174,35 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
           })}
           {edgesEl}
           {nodesEl}
+          {plannedNodes && routeScale > 0 && <g className="tree-route-markers" aria-hidden="true">
+            {(['add', 'remove'] as const).flatMap(scope => routeNodes[scope].map(node =>
+              <g key={node.skill} data-route-node={node.skill} data-change={scope}
+                transform={`translate(${node.x} ${node.y}) scale(${1 / routeScale})`}>
+                <circle r="9" />
+                <path d={scope === 'add' ? 'M -4 0 H 4 M 0 -4 V 4' : 'M -4 0 H 4'} />
+              </g>))}
+          </g>}
           </g>
         </svg>
+        {routePreview && (routeNodes.add.length > 0 || routeNodes.remove.length > 0) && <div className="tree-route-preview" ref={routeControlsRef} role="group" tabIndex={-1} aria-label={routeText.routePreview}>
+          <strong>{routeText.routePreview}</strong>
+          <div className="tree-route-scope">
+            {(['all', 'add', 'remove'] as const).filter(scope => scope === 'all' || routeNodes[scope].length > 0).map(scope =>
+              <AppButton key={scope} aria-pressed={routeScope === scope} data-scope={scope}
+                onClick={() => setRouteFocus({ preview: routePreview, scope })}>
+                {scope === 'all' ? routeText.focusAll : <>
+                  <span aria-hidden="true">{scope === 'add' ? '+' : '−'}</span>
+                  {(scope === 'add' ? routeText.addPoints : routeText.refundCount).replace('{count}', String(routeNodes[scope].length))}
+                </>}
+              </AppButton>)}
+          </div>
+          <AppButton className="tree-route-back" onClick={() => {
+            const trigger = planner.containerRef.current?.querySelector<HTMLButtonElement>('.is-previewed [data-route-preview-trigger]');
+            trigger?.scrollIntoView({ block: 'center' });
+            trigger?.focus({ preventScroll: true });
+          }}>{routeText.backToPlan}</AppButton>
+          <AppButton className="tree-route-clear" onClick={() => { svgRef.current?.focus({ preventScroll: true }); planner.clearPreview(); }}>{routeText.clear}</AppButton>
+        </div>}
         <div className="tree-drag-shield" aria-hidden="true" />
         {hover && !attrPicker && (
           <TreeTooltip
@@ -1186,7 +1254,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
             </AppButton>
           </div>
         )}
-        {!currentAscId &&
+        {!routePreview && !currentAscId &&
           ((session.treeMeta?.classes ?? []).find(
             (c) => c.name === session.character?.class_name,
           )?.ascendancies?.length ?? 0) > 0 && (

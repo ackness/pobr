@@ -19,13 +19,16 @@ import { feasibleOf, type Objective } from '../../lib/optimize';
 import { AppSelect } from '../shared/AppSelect';
 import { PlannerResultsNotice } from './PlannerResultsNotice';
 import { OptimizerProgress } from '../shared/OptimizerControls';
+import { useAppDialogs } from '../shared/AppDialogs';
+import { passivePlanOverflow, type PassivePlannerMode } from './treePresentation';
 
 
 interface Props {
   session: BuildSession; lang: Lang; nodes: PassiveNode[]; nodeLabel: (id: number) => string;
   onLocate?: (id: number) => void;
   active: boolean;
-  mode: 'allocate' | 'reallocate'; points: number; attribute: AttributeChoice; objective: Objective;
+  mode: PassivePlannerMode; points: number; remaining: number | null; searchAllowed: boolean;
+  attribute: AttributeChoice; objective: Objective;
   onPreview: (plan: PassivePlan | null) => void; onStart: () => void;
 }
 
@@ -56,17 +59,21 @@ export interface JewelPassivePlannerState {
   preview: number | null;
   applied: { plan: JewelPassivePlan; candidate: JewelPassiveCandidate | null } | null;
   exclusive: number[];
+  mode: PassivePlannerMode;
+  remaining: number | null;
+  searchAllowed: boolean;
   add: () => void;
   run: () => Promise<void>;
-  apply: (plan: JewelPassivePlan) => void;
+  apply: (plan: JewelPassivePlan) => Promise<void>;
   stop: () => void;
   show: (index: number | null) => void;
   /** Drops the joint route from the tree without touching the results. */
   clearPreview: () => void;
 }
 
-export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, onLocate, active, mode, points, attribute, objective, onPreview, onStart }: Props): JewelPassivePlannerState {
+export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, onLocate, active, mode, points, remaining, searchAllowed, attribute, objective, onPreview, onStart }: Props): JewelPassivePlannerState {
   const text = messages(lang, 'jewelPlanner');
+  const dialogs = useAppDialogs(lang);
   const [raw, setRaw] = useState('');
   const [socket, setSocket] = useState('');
   const [candidates, setCandidates] = useState<JewelPassiveCandidate[]>([]);
@@ -97,12 +104,17 @@ export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, onLoca
   }, [context, nodes, points]);
   const selectedSocket = sockets.some(entry => String(entry.node.skill) === socket) ? socket : String(sockets[0]?.node.skill ?? '');
   const key = JSON.stringify([session.stateVersion, session.dataVersion, session.treeVersion,
-    session.activeWeaponSet, request, session.calc?.tree_effects, candidates, mode, points, attribute, objective]);
+    session.activeWeaponSet, request, session.calc?.tree_effects, candidates, mode, points, remaining, attribute, objective]);
   const latestKey = useRef(key);
   latestKey.current = key;
   const activeRef = useRef(active);
   activeRef.current = active;
   const result = completed?.key === key ? completed.result : null;
+  const readyReceipt = useRef<{ receipt: JewelPassiveReceipt } | null>(null);
+  useLayoutEffect(() => {
+    readyReceipt.current = active && !session.busy && !session.calcError && result && completed ? { receipt: completed } : null;
+    return () => { readyReceipt.current = null; };
+  }, [active, session.busy, session.calcError, completed, result]);
   const stop = () => {
     controller.current?.abort(); controller.current = null;
     setProgress(null); setPreview(null); previewRef.current(null);
@@ -132,7 +144,7 @@ export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, onLoca
     } catch { setError(text.invalid); }
   };
   const run = async () => {
-    if (!active || !request || session.busy || session.calcError || !session.calc || exclusive.length || !candidates.length) return;
+    if (!active || !request || session.busy || session.calcError || !session.calc || !searchAllowed || exclusive.length || !candidates.length) return;
     onStart();
     controller.current?.abort();
     const abort = new AbortController(); controller.current = abort;
@@ -140,7 +152,8 @@ export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, onLoca
     const preparedRequest = withTravelAttributes(request, nodes, attribute);
     try {
       const result = await planJewelPassiveUpgrades({ request: preparedRequest, nodes,
-        className: session.character?.class_name, ascendancy, exclusiveNodes: exclusive, candidates, points, mode, objective,
+        className: session.character?.class_name, ascendancy, exclusiveNodes: exclusive, candidates, points,
+        mode: mode === 'future' ? 'allocate' : mode, objective,
         signal: abort.signal, onProgress: (done, total) => {
           if (activeRef.current && !abort.signal.aborted && controller.current === abort && latestKey.current === key) setProgress({ done, total });
         } });
@@ -153,12 +166,22 @@ export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, onLoca
       if (controller.current === abort) { controller.current = null; setProgress(null); }
     }
   };
-  const apply = (plan: JewelPassivePlan) => {
-    if (!active || !completed || completed.key !== latestKey.current || session.busy
+  const apply = async (plan: JewelPassivePlan) => {
+    const ready = readyReceipt.current;
+    if (!completed || completed !== ready?.receipt || completed.key !== latestKey.current
+      || !searchAllowed || remaining === null
       || JSON.stringify(session.currentRequest()) !== JSON.stringify(completed.request)
-      || !feasibleOf(plan.stats, completed.objective)) return;
+      || !completed.result.plans.includes(plan) || !feasibleOf(plan.stats, completed.objective)) return;
+    const overflow = passivePlanOverflow(plan, remaining);
+    if (mode === 'allocate' && overflow > 0) return;
+    if (mode === 'future' && overflow > 0) {
+      const budgetText = messages(lang, 'treeOptimizer');
+      if (!await dialogs.confirm(budgetText.confirmFuture.replace('{count}', String(overflow)), budgetText.applyOverBudget)
+        || ready !== readyReceipt.current || completed.key !== latestKey.current) return;
+    }
     // The guard compares the original build, not travel choices prepared for evaluation.
     if (!session.applyTreePlan(completed.request, plan)) { setError(text.stale); return; }
+    readyReceipt.current = null;
     // Match the ordinary planner's receipt lifetime to the successful atomic edit.
     setApplied({ version: session.stateVersion + 1, plan,
       candidate: completed.candidates.find(candidate => candidate.id === plan.candidateId) ?? null });
@@ -173,13 +196,16 @@ export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, onLoca
 
   return { session, lang, nodeLabel, onLocate, raw, setRaw, selectedSocket, setSocket, sockets,
     applied: applied?.version === session.stateVersion && !session.busy && !session.calcError ? applied : null,
-    candidates, remove, completed, result, progress, error, preview, exclusive, add, run, apply, stop, show, clearPreview };
+    candidates, remove, completed, result, progress, error, preview, exclusive, mode, remaining, searchAllowed,
+    add, run, apply, stop, show, clearPreview };
 }
 
 export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerState }) {
   const { session, lang, nodeLabel, onLocate, raw, setRaw, selectedSocket, setSocket, sockets,
-    candidates, remove, completed, result, progress, error, preview, exclusive, applied, add, run, apply, stop, show } = planner;
+    candidates, remove, completed, result, progress, error, preview, exclusive, mode, remaining, searchAllowed,
+    applied, add, run, apply, stop, show } = planner;
   const text = messages(lang, 'jewelPlanner');
+  const budgetText = messages(lang, 'treeOptimizer');
   const damage = useHeadlineDamage(session.calc, lang);
   const separator = colon(lang);
   const format = (value: number) => formatNumber(value);
@@ -213,7 +239,7 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
     </li>)}</ul>
     <details><summary className="disclosure">{messages(lang, 'nodePower').calculationDetails}</summary><p className="tree-planner-hint">{text.limit}</p></details>
     {exclusive.length > 0 && <p className="tree-planner-hint">{text.exclusive}</p>}
-    <AppButton className="tree-planner-run" disabled={!candidates.length || session.busy || Boolean(session.calcError) || !session.calc || Boolean(progress) || exclusive.length > 0}
+    <AppButton className="tree-planner-run" disabled={!candidates.length || session.busy || Boolean(session.calcError) || !session.calc || !searchAllowed || Boolean(progress) || exclusive.length > 0}
       onClick={() => void run()}>{text.run}</AppButton>
     {progress && <OptimizerProgress {...progress} lang={lang} onCancel={stop} />}
     {error && <p className="opt-error" role="alert">{error}</p>}
@@ -225,19 +251,23 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
       {result.diagnostics.length > 0 && <details><summary className="disclosure" data-disclosure-level="group">{text.diagnostics}</summary><ul>{result.diagnostics.map((reason, index) => <li key={index}>{reason}</li>)}</ul></details>}
       {!result.plans.length && <p>{text.none}</p>}
       {preview !== null && <AppButton onClick={() => show(null)}>{text.clear}</AppButton>}
-      <ol className="tree-planner-results">{result.plans.map((plan, index) => <li key={index} className={preview === index ? 'is-previewed' : ''}>
+      <ol className="tree-planner-results">{result.plans.map((plan, index) => {
+        const overflow = mode === 'future' && remaining !== null ? passivePlanOverflow(plan, remaining) : 0;
+        return <li key={index} className={preview === index ? 'is-previewed' : ''}>
         <div className="tree-plan-heading"><strong>{plan.candidateId === null ? text.current : plan.candidateLabel}</strong>
           <span>{plan.candidateId !== null && <>{nodeLabel(completed!.candidates.find(candidate => candidate.id === plan.candidateId)!.jewel.socket_node)} · </>}{text.addNodes} {plan.allocate.length} · {text.removeNodes} {plan.deallocate.length}</span></div>
         <div className="tree-plan-metrics">{[damage.stat, 'TotalEHP', 'Life'].map(stat => <span key={stat}>
           {stat === damage.stat ? damage.label : statNameLabel(lang, stat)} <b>{delta(plan.stats[stat] ?? 0, result.baseline[stat] ?? 0)}</b>
           <small>{formatStat(stat, result.baseline[stat] ?? 0, lang)} → <output data-stat={stat}>{formatStat(stat, plan.stats[stat] ?? 0, lang)}</output></small>
         </span>)}</div>
+        {overflow > 0 && <p className="tree-plan-budget">{budgetText.futureOverflow.replace('{count}', String(overflow))}</p>}
         <details><summary className="disclosure">{text.route}</summary><p>{text.addNodes}{separator}{plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>
           <p>{text.removeNodes}{separator}{plan.deallocate.map(nodeLabel).join(' · ') || '—'}</p>
           {plan.candidateId !== null && <pre>{completed!.candidates.find(candidate => candidate.id === plan.candidateId)?.jewel.text}</pre>}</details>
-        <div className="tree-plan-actions"><AppButton onClick={() => show(index)}>{text.preview}</AppButton>
-          <AppButton disabled={session.busy || !feasibleOf(plan.stats, completed!.objective)} onClick={() => apply(plan)}>{text.apply}</AppButton></div>
-      </li>)}</ol>
+        <div className="tree-plan-actions"><AppButton data-route-preview-trigger onClick={() => show(index)}>{text.preview}</AppButton>
+          <AppButton disabled={session.busy || !feasibleOf(plan.stats, completed!.objective)} onClick={() => void apply(plan)}>{overflow > 0 ? budgetText.applyFuture : text.apply}</AppButton></div>
+        </li>;
+      })}</ol>
     </div></PlannerResultsNotice>}
     </>}
   </section>;

@@ -2,6 +2,7 @@ import { OBJECTIVE_PRESETS } from '../../lib/optimize';
 import { formatComparisonDelta } from '../../lib/compare';
 import type { CalculateBuildResponse, AttributeChoice, PassiveClass, PassiveJewelState, PassiveNode, TreeAllocationMode, TreeEditResult, WeaponSwap } from '../../api/types';
 import { implicitClassStarts } from '../../lib/passiveGraph';
+import type { PassivePlan } from '../../lib/passivePlanner';
 import { bindT, messages, statNameLabel, type Lang } from '../../lib/i18n';
 import { formatNumber, statFormat } from '../../lib/statDisplay';
 
@@ -88,6 +89,13 @@ export function passivePointSummary(nodes: PassiveNode[], allocated: number[], s
   }).length;
   return { used: known ? regular + Math.max(exclusive[0].length, exclusive[1].length) : null,
     max: emptyBudget, weapon: exclusive.map(ids => ids.length) };
+}
+
+export type PassivePlannerMode = 'allocate' | 'reallocate' | 'future';
+
+/** These planners only trade paid shared main-tree nodes; weapon and ascendancy allocations stay put. */
+export function passivePlanOverflow(plan: PassivePlan, remaining: number): number {
+  return Math.max(0, plan.allocate.length - plan.deallocate.length - remaining);
 }
 
 export function treeStatLabel(lang: Lang, stat: string): string {

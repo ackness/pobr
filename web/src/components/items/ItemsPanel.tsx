@@ -415,7 +415,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
               />
             )}
             <span className="item-actions">
-              {onUpgrade && !isLimbSlot(selected) && <AppButton onClick={() => onUpgrade(selected)}>{tradeAnalysisText(lang, 'findBetter')}</AppButton>}
+              {onUpgrade && !isLimbSlot(selected) && <AppButton className="item-find-upgrade" onClick={() => onUpgrade(selected)}>{tradeAnalysisText(lang, 'findBetter')}</AppButton>}
               {!editing && (
                 <AppButton disabled={session.busy} onClick={() => setEditing(true)}>
                   {selectedText ? tt('items.edit') : tt('items.add')}
@@ -445,7 +445,6 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
               )}
             </span>
           </header>
-          {selectedText && <ItemContribution session={session} slot={selected} lang={lang} />}
           {craftingItem?.slot === selected && craftingItem.text === selectedText && craftingDraft?.base && (
             <EquippedItemCrafter key={`${selected}:${selectedText}`} draft={craftingDraft} session={session} lang={lang} />
           )}
@@ -533,6 +532,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
           ) : (
             <p className="item-empty-hint">{tt('items.empty')}</p>
           )}
+          {selectedText && <ItemContribution session={session} slot={selected} lang={lang} />}
           {isEquipmentSlot(selected) && (
             <ItemOptimizer
               session={session}

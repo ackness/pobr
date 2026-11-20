@@ -129,7 +129,7 @@ test('no useful scores disable market search and offer a focused target adjustme
   const html = render();
   expect(html).toContain('a trade search cannot be generated');
   expect(html).not.toContain('class="trade-primary trade-market-link"');
-  expect(button('Open trade search').disabled).toBe(true);
+  expect(button('Open official trade search').disabled).toBe(true);
   button('Change target or goal').onClick!({} as never);
   expect(ui.scroll).toHaveBeenCalledWith({ block: 'start' });
   expect(ui.focus).toHaveBeenCalledWith({ preventScroll: true });
@@ -149,7 +149,7 @@ test('usable scores show integer ranking scores, one-decimal gains and one equip
   expect(html).toMatch(/<details class="trade-method"><summary class="disclosure">Calculation details: trade weights<\/summary>.*32.046/);
   ui.selects.find(select => select.ariaLabel === 'League')!.onChange('__custom');
   expect(render()).toContain('Enter a league in Market settings to open this search.');
-  expect(button('Open trade search').disabled).toBe(true);
+  expect(button('Open official trade search').disabled).toBe(true);
 });
 
 test('affix priorities show reference tiers, source, every range and explicit unknown tiers', async () => {

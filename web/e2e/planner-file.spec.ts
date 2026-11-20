@@ -55,7 +55,7 @@ test('legacy planner level validation preserves the current save and allows leve
       name: `Level ${level}.build`, mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(source)),
     });
     if (level === 100) break;
-    await expect(page.locator('.shell-alert')).toHaveText('Character level must be a whole number from 1 to 100.');
+    await expect(page.locator('#bd-import-error')).toHaveText('Character level must be a whole number from 1 to 100.');
     expect(await saved()).toBe(before);
   }
   await expect(page.locator('#ov-title')).toBeVisible();

@@ -30,6 +30,7 @@ vi.mock('../../hooks/useLocalizedLines', async original => ({ ...await original<
   useLocalizedNames: (names: { name: string }[]) => names.map(entry => entry.name),
 }));
 vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
+vi.mock('../shared/AppDialogs', () => ({ useAppDialogs: () => ({ confirm: vi.fn() }) }));
 vi.mock('../../lib/nodePower', async original => ({ ...await original<typeof import('../../lib/nodePower')>(),
   evaluateNodePower: (...args: unknown[]) => ui.evaluate(...args),
 }));
@@ -55,6 +56,7 @@ const node = (skill: number, name: string, connections: number[], kind: PassiveN
 const nodes = [node(1, 'WITCH', [2], 'normal'), node(2, 'Power', [1], 'notable')];
 const effects: PassiveJewelState = { class_starts: { witch: 1 }, allocation_grants: [],
   nodes: {}, conquered: [], unresolved: [], rings: [], warnings: [] };
+const pointSummary = { used: 0, max: 113, weapon: [0, 0] };
 const session = { currentRequest: () => ({ allocated_nodes: [1] }), allocatedNodes: [1], stateVersion: 0,
   character: { class_name: 'Witch' }, jewels: [], calc: { tree_effects: effects }, busy: false } as unknown as BuildSession;
 
@@ -207,7 +209,7 @@ test('joint jewel and passive results show a minion-only gain with the same dama
 test('the passive planner starts collapsed and its main disclosure updates the expansion state', () => {
   const make = () => {
     const planner = useTreeOptimizer({ session: { ...session, attributeChoices: {} }, lang: 'en-US', active: true,
-      nodes, nodeLabel: () => 'Power', onPreview: vi.fn() });
+      nodes, pointSummary, nodeLabel: () => 'Power', onPreview: vi.fn() });
     return TreeOptimizer({ planner });
   };
   expect(render(make).html).not.toContain('Point budget');
@@ -220,7 +222,7 @@ test('the passive planner starts collapsed and its main disclosure updates the e
 test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('report and open route planner have distinct attribute selectors in %s', lang => {
   const renderBoth = () => {
     const planner = useTreeOptimizer({ session: { ...session, attributeChoices: {} }, lang, active: true,
-      nodes, nodeLabel: () => 'Power', onPreview: vi.fn(), focusPlanner: { nonce: 1 } });
+      nodes, pointSummary, nodeLabel: () => 'Power', onPreview: vi.fn(), focusPlanner: { nonce: 1 } });
     return <>{NodePowerTable({ session, nodes, nodeNames: new Map(), lang, stat: 'Life', stats: ['Life'],
       onStat: vi.fn(), onFocus: vi.fn(), onSearch: vi.fn() })}{TreeOptimizer({ planner })}</>;
   };
@@ -304,7 +306,7 @@ test('conversion preview cleans raw modifier markup, hides versions in details a
 test('passive plans keep unchanged metrics out of the compact row and reveal exact values in route details', () => {
   const make = () => {
     const planner = useTreeOptimizer({ session: { ...session, attributeChoices: {} }, lang: 'en-US', active: true,
-      nodes, nodeLabel: () => 'Power', onPreview: vi.fn(), focusPlanner: { nonce: 1 } });
+      nodes, pointSummary, nodeLabel: () => 'Power', onPreview: vi.fn(), focusPlanner: { nonce: 1 } });
     const result = { baseline: { TotalDPS: 100, TotalEHP: 100, Life: 100 }, baselineUnsupported: [], excluded: [],
       plans: [{ target: 2, allocate: [2], deallocate: [], stats: { TotalDPS: 100, TotalEHP: 100, Life: 120 } }],
       evaluated: 2, limited: false, unmodeled: 0 };

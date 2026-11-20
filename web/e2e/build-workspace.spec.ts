@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { answerConfirm } from './confirmDialog';
 import { buildAction, pageLink } from './shell';
-import { importInto, openBuild, openExport, openImport, selectStage, settled } from './buildLibrary';
+import { goTo, importInto, openBuild, openExport, openImport, selectStage, settled } from './buildLibrary';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 import { SMOKE } from './tags';
@@ -110,6 +110,25 @@ test('independent builds and stages preserve passive routes and notes across rel
   await expect(page.getByRole('group', { name: 'Saved builds', exact: true }).getByRole('button', { name: /Concurrent build|Temporary/ })).toHaveCount(0);
 });
 
+test('restoring a fresh workspace confirms success and focuses the empty overview', async ({ page }) => {
+  await page.goto('/build');
+  await ready(page);
+  await openExport(page);
+  const backupPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Back up local builds', exact: true }).click();
+  const backup = await backupPromise;
+  await importCode(page, code(30, '1,2', 'Temporary build'));
+  await openImport(page);
+  await page.locator('input[type=file]').setInputFiles((await backup.path())!);
+  await answerConfirm(page, true);
+  await expect(page.locator('.ov-empty #ov-title')).toBeFocused();
+  const notice = page.getByRole('note', { name: 'Import summary' });
+  await expect(notice).toHaveText('Import complete. The current stage is empty.');
+  await notice.getByRole('button').click();
+  await expect(notice).toHaveCount(0);
+  await expect(page.locator('.ov-empty button')).toBeEnabled();
+});
+
 test('library shows saved builds before import and shares both current and recorded notes', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/build');
@@ -121,15 +140,15 @@ test('library shows saved builds before import and shares both current and recor
   await expect(details).toHaveJSProperty('open', false);
   await expect(field).toBeHidden();
   const saved = await page.locator('#bd-library-title').boundingBox();
-  const disclosure = await details.locator('summary').boundingBox();
+  const disclosure = await details.locator(':scope > summary').boundingBox();
   expect(saved!.y).toBeLessThan(disclosure!.y);
   await openImport(page);
   await field.fill('Text to keep while collapsed');
-  await details.locator('summary').click();
+  await details.locator(':scope > summary').click();
   await expect(field).toBeHidden();
   await openImport(page);
   await expect(field).toHaveValue('Text to keep while collapsed');
-  await details.locator('summary').click();
+  await details.locator(':scope > summary').click();
 
   await openExport(page);
   await expect(page.getByText('No comparison baseline has been recorded for this build.')).toBeVisible();
@@ -143,6 +162,15 @@ test('library shows saved builds before import and shares both current and recor
   const shared = JSON.parse(readFileSync((await file.path())!, 'utf8'));
   expect(shared.build.baseline.saved.notes).toBe('Baseline notes');
   expect(shared.build.stages[0].saved.notes).toBe('Current notes');
+
+  await goTo(page, 'Compare');
+  await page.getByRole('button', { name: 'Share current stage', exact: true }).click();
+  await expect(page.locator('.bd-export h3').first()).toBeFocused();
+  await page.getByRole('button', { name: 'Generate PoB code for this stage', exact: true }).click();
+  const share = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
+  const xml = inflateSync(Buffer.from(share, 'base64url')).toString('utf8');
+  expect(xml).toContain('Current notes');
+  expect(xml).not.toContain('Baseline notes');
 });
 
 test('stage switching preserves unapplied item drafts and fits a narrow viewport', async ({ page }) => {

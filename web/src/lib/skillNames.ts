@@ -39,7 +39,8 @@ export function skillFormName(label: string, id: string, lang: Lang, catalog: Re
   if (named.length === 1) return named[0];
   const forms = { Projectile: 'skills.formProjectile', Explosion: 'skills.formExplosion' } as const;
   if (Object.hasOwn(forms, label)) return t(lang, forms[label as keyof typeof forms]);
-  return markUntranslated(normalizeGemName(label), normalizeGemName(label), lang);
+  const fallback = normalizeGemName(label);
+  return catalog.size ? markUntranslated(fallback, fallback, lang) : fallback;
 }
 
 /** Resolve secondary skills through the data's gem links, without inventing picker entries. */
@@ -57,5 +58,6 @@ export function skillDisplayName(id: string, lang: Lang, byId: ReadonlyMap<strin
   }
   if (Object.hasOwn(SYNTHETIC_SKILL_LABELS, id)) return t(lang, SYNTHETIC_SKILL_LABELS[id as keyof typeof SYNTHETIC_SKILL_LABELS]);
   const fallback = normalizeGemName(originalName || prettySkillId(id));
-  return markUntranslated(fallback, fallback, lang);
+  // The empty catalog is also the loading state. Keep the original name until we can check it.
+  return byId.size ? markUntranslated(fallback, fallback, lang) : fallback;
 }

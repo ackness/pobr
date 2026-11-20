@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
+import { X } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { bindT, type Lang } from '../lib/i18n';
 import type { Route } from './routes';
 import type { ImportSummary } from './importReview';
 
-export function ImportReviewNotice({ route, lang, summary, onDismiss, onReview, onReviewNotes, modifierCount }: {
-  route: Route; lang: Lang; summary: ImportSummary; onDismiss: () => void; onReview: () => void;
+export function ImportReviewNotice({ route, lang, summary, empty = false, onDismiss, onReview, onReviewNotes, modifierCount }: {
+  route: Route; lang: Lang; summary: ImportSummary; empty?: boolean; onDismiss: () => void; onReview: () => void;
   onReviewNotes?: () => void; modifierCount?: number;
 }) {
   const tt = bindT(lang);
@@ -15,7 +16,7 @@ export function ImportReviewNotice({ route, lang, summary, onDismiss, onReview, 
   const overviewHasModifiers = route === 'overview' && !!summary.calc && count > 0;
   return <div className="shell-notice import-summary" role="note" aria-label={tt('build.importSummary')}>
     <div className="import-summary-body">
-      <p><strong>{tt('build.imported')}</strong>{' · '}{tt('config.importReview')}{' '}
+      {empty ? <p><strong>{tt('build.importedEmptyStage')}</strong></p> : <p><strong>{tt('build.imported')}</strong>{' · '}{tt('config.importReview')}{' '}
         <a href="/config" onClick={event => { event.preventDefault(); onReview(); }}>{tt('config.review')}</a>
         {!summary.calc && <>{' · '}{tt(summary.failed ? 'build.summaryFailed' : 'build.summaryPending')}</>}
         {overviewHasModifiers && <>{' · '}<a href="#ov-unincluded" onClick={event => {
@@ -26,12 +27,12 @@ export function ImportReviewNotice({ route, lang, summary, onDismiss, onReview, 
           if (details) details.open = true;
           target.focus();
         }}>{tt('build.summaryModifiersLink').replace('{count}', String(count))}</a></>}
-      </p>
-      {summary.importSource === 'wegame' && <p>{tt('build.wegameReview')}{' '}
+      </p>}
+      {!empty && summary.importSource === 'wegame' && <p>{tt('build.wegameReview')}{' '}
         <a href="/build#bd-notes" onClick={onReviewNotes ? event => { event.preventDefault(); onReviewNotes(); } : undefined}>{tt('build.reviewImportNotes')}</a>{' '}
         {tt('build.wegameWeaponSets')}
       </p>}
     </div>
-    <Button variant="ghost" onClick={onDismiss}>{tt('config.reviewDismiss')}</Button>
+    <Button variant="ghost" size="icon" aria-label={tt('config.reviewDismiss')} title={tt('config.reviewDismiss')} onClick={onDismiss}><X /></Button>
   </div>;
 }

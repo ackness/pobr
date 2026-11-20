@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { openItemsAfterImport } from './shell';
 import { headlineDps } from './skillsAndCalcs';
 import { copyCurrentStage, currentStage, ehpValue, goTo, openCustomModifiers, openOptimizerSettings, openStage, reduceMotion, settledNumber, settledText } from './upgradesPage';
@@ -39,7 +40,7 @@ async function expectFreshOptimizer(page: Page) {
   await expect(page.locator('.gem-optimizer-toggle')).toHaveAttribute('aria-expanded', 'false');
   await expect(page.locator('.gem-optimizer-body')).toHaveCount(0);
   await expect(page.locator('.support-results')).toHaveCount(0);
-  await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
+  await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply supports', exact: true })).toHaveCount(0);
   await expect(page.locator('.opt-progress')).toHaveCount(0);
 }
 
@@ -88,7 +89,7 @@ async function selectObjective(page: Page, name: string) {
 
 async function expectNoPlans(page: Page) {
   await expect(page.locator('.support-results')).toHaveCount(0);
-  await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
+  await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply supports', exact: true })).toHaveCount(0);
   await expect(page.locator('.opt-progress')).toHaveCount(0);
   await expect(run(page)).toBeEnabled();
 }
@@ -141,7 +142,7 @@ test('completed support plans and nondefault socket and lineage settings survive
   await expect(run(page)).toHaveCount(0);
   await expect(capacity(page)).toHaveCount(0);
   await expect(lineage(page)).toHaveCount(0);
-  await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
+  await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply supports', exact: true })).toHaveCount(0);
 
   await returnToSkills(page);
   await expect(page.locator('.skill-group-title').first()).toHaveAttribute('aria-expanded', 'true');
@@ -150,42 +151,59 @@ test('completed support plans and nondefault socket and lineage settings survive
   await expect(lineage(page)).not.toBeChecked();
   await expect.poll(() => page.locator('.support-results').innerText()).toBe(completed);
   await expect.poll(() => page.locator('.support-plan').first().locator('.support-plan-metrics').innerText()).toBe(recommended);
-  await expect(page.locator('.support-plan').first().getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
+  await expect(page.locator('.support-plan').first().getByRole('button', { name: 'Apply supports', exact: true })).toBeEnabled();
   await expect(dps(page)).toHaveText(beforeDps);
 });
 
-test('same-stage Apply after returning to Skills equips the displayed complete support set and DPS preview', SMOKE, async ({ page }) => {
-  await syntheticCaster(page);
-  await openOptimizer(page);
-  await capacity(page).fill('3');
-  await lineage(page).uncheck();
-  await selectObjective(page, 'Combined DPS');
-  const groupsBefore = await socketGroups(page);
-  const beforeDps = await settledNumber(dps(page));
-  await completePlan(page);
-  const first = page.locator('.support-plan').first();
-  const ids = await first.locator('.support-plan-gems > .opt-chip').evaluateAll(elements =>
-    elements.map(element => element.getAttribute('data-skill-id')!));
-  expect(ids.length, 'The recommendation must fit the explicitly unlocked capacity').toBeLessThanOrEqual(3);
-  await expect(first.locator('.gem-lineage-badge')).toHaveCount(0);
-  const previewDps = await previewMetric(page, 'Combined DPS');
-  expect(previewDps).toBeGreaterThan(beforeDps);
+test.describe('touch support application', () => {
+  test.use({ hasTouch: true });
 
-  await goTo(page, 'Calculations');
-  await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
-  await returnToSkills(page);
-  await expect(first).toBeVisible();
-  await first.getByRole('button', { name: 'Apply', exact: true }).click();
-  await expect.poll(async () => numeric(await dps(page).innerText())).toBeGreaterThan(beforeDps);
-  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
-  const applied = await socketGroups(page);
-  expect(applied[0].gems[0]).toEqual(groupsBefore[0].gems[0]);
-  expect(applied[0].gems.slice(1).map(gem => gem.skill_id)).toEqual(ids);
-  expect(Math.abs(await settledNumber(dps(page)) - previewDps),
-    'Equipped DPS must match the real-WASM preview to its displayed integer precision').toBeLessThanOrEqual(0.5);
-  await expectNoPlans(page);
-  await expect(capacity(page)).toHaveValue('3');
-  await expect(lineage(page)).not.toBeChecked();
+  test('same-stage Apply after returning to Skills equips the displayed complete support set and DPS preview', SMOKE, async ({ page }) => {
+    await syntheticCaster(page);
+    await openOptimizer(page);
+    await capacity(page).fill('3');
+    await lineage(page).uncheck();
+    await selectObjective(page, 'Combined DPS');
+    const groupsBefore = await socketGroups(page);
+    const beforeDps = await settledNumber(dps(page));
+    await completePlan(page);
+    const first = page.locator('.support-plan').first();
+    const ids = await first.locator('.support-plan-gems > .opt-chip').evaluateAll(elements =>
+      elements.map(element => element.getAttribute('data-skill-id')!));
+    expect(ids.length, 'The recommendation must fit the explicitly unlocked capacity').toBeLessThanOrEqual(3);
+    await expect(first.locator('.gem-lineage-badge')).toHaveCount(0);
+    const previewDps = await previewMetric(page, 'Combined DPS');
+    expect(previewDps).toBeGreaterThan(beforeDps);
+
+    await goTo(page, 'Calculations');
+    await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply supports', exact: true })).toHaveCount(0);
+    await returnToSkills(page);
+    await expect(first).toBeVisible();
+    const desktop = page.viewportSize()!;
+    await page.setViewportSize({ width: 390, height: 844 });
+    await first.getByRole('button', { name: 'Apply supports', exact: true }).tap();
+    const receipt = page.locator('.support-applied');
+    await expect(receipt).toBeInViewport();
+    await expect(receipt.getByRole('status')).toBeFocused();
+    await expect(receipt).toContainText('Applied supports to Fireball');
+    await expect(receipt).toContainText('Added');
+    await expect(receipt).toContainText('Combined DPS');
+    await page.setViewportSize(desktop);
+    await expect.poll(async () => numeric(await dps(page).innerText())).toBeGreaterThan(beforeDps);
+    await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
+    const applied = await socketGroups(page);
+    expect(applied[0].gems[0]).toEqual(groupsBefore[0].gems[0]);
+    expect(applied[0].gems.slice(1).map(gem => gem.skill_id)).toEqual(ids);
+    expect(Math.abs(await settledNumber(dps(page)) - previewDps),
+      'Equipped DPS must match the real-WASM preview to its displayed integer precision').toBeLessThanOrEqual(0.5);
+    await expectNoPlans(page);
+    await expect(capacity(page)).toHaveValue('3');
+    await expect(lineage(page)).not.toBeChecked();
+    await receipt.getByRole('button', { name: 'Undo', exact: true }).click();
+    await expect(receipt).toHaveCount(0);
+    await expect.poll(() => socketGroups(page)).toEqual(groupsBefore);
+    await expect.poll(() => settledNumber(dps(page))).toBeCloseTo(beforeDps, 0);
+  });
 });
 
 for (const edit of ['build', 'goal'] as const) {
@@ -376,7 +394,7 @@ test('leaving Skills cancels an active real-WASM batch and its late continuation
   await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toHaveCount(0);
   await expect(run(page)).toHaveCount(0);
   await expect(capacity(page)).toHaveCount(0);
-  await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply', exact: true })).toHaveCount(0);
+  await expect(page.locator('.gem-optimizer').getByRole('button', { name: 'Apply supports', exact: true })).toHaveCount(0);
   // Drain the response-processing yield that already follows real candidate work.
   await page.clock.runFor(1000);
   await expect(page.locator('.support-results')).toHaveCount(0);
@@ -444,16 +462,74 @@ test('replacing a skill set with identical groups resets selected support worksp
   expect(await lineage(page).isChecked()).toBe(initialLineage);
 });
 
-test('stage switching in Skills does not replay a prior-stage focus but accepts a new planning action', async ({ page }) => {
+test('cold support handoff waits for the catalog and scrolls to the ready control once', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  const code = readFileSync(new URL('../../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', import.meta.url), 'utf8').trim();
+  await page.goto('/build');
+  const submit = page.locator('.import-submit');
+  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code, { timeout: 90_000 });
+  await submit.click();
+  await expect(page.locator('#ov-title')).toBeFocused({ timeout: 90_000 });
+  await expect(page.locator('.shell-save-state[data-busy]')).toHaveCount(0);
+
+  const handoff = await page.evaluateHandle(() => {
+    const queued: (() => void)[] = [];
+    const scrolls: (ScrollBehavior | undefined)[] = [];
+    const post = Worker.prototype.postMessage;
+    Worker.prototype.postMessage = function (message, options) {
+      const send = () => Reflect.apply(post, this, [message, options]);
+      if (message?.method === 'gemCatalog') queued.push(send);
+      else send();
+    };
+    const scroll = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (options) {
+      if (this.closest('.gem-optimizer') && typeof options === 'object') scrolls.push(options.behavior);
+      scroll.call(this, options);
+    };
+    return { queued, scrolls, release() {
+      Worker.prototype.postMessage = post;
+      for (const send of queued.splice(0)) send();
+    } };
+  });
+  await page.getByRole('button', { name: 'Adjust skills', exact: true }).click();
+  await expect.poll(() => handoff.evaluate(state => state.queued.length)).toBeGreaterThan(0);
+  await expect(page.locator('.gem-optimizer-toggle')).toBeVisible();
+  // Let a premature focus effect run while the real catalog response is still held.
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await handoff.evaluate(state => state.release());
+  await expect(run(page)).toBeFocused();
+  await expect(run(page)).toBeInViewport();
+  await expect(page.locator('.shell-root')).toHaveJSProperty('scrollTop', 0);
+  expect(await page.locator('.shell-topbar').evaluate(element => element.getBoundingClientRect().top)).toBe(0);
+  expect(await handoff.evaluate(state => state.scrolls)).toEqual(['smooth']);
+});
+
+test('support handoff focuses and scrolls once with reduced motion, and does not replay across stages', async ({ page }) => {
+  await reduceMotion(page);
   await syntheticCaster(page);
   const originalStage = (await currentStage(page).innerText()).trim();
   await copyCurrentStage(page, 'Focus copy');
   await goTo(page, 'Upgrades');
-  await page.locator('.upgrade-paths > button').filter({ hasText: 'opens Skills' }).click();
+  const scrolls = await page.evaluateHandle(() => {
+    const calls: (ScrollBehavior | undefined)[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (options) {
+      if (this.closest('.gem-optimizer') && typeof options === 'object') calls.push(options.behavior);
+      original.call(this, options);
+    };
+    return calls;
+  });
+  const handoff = page.locator('.upgrade-paths > button').filter({ hasText: 'opens Skills' });
+  const focusedControl = page.locator('.gem-optimizer :is(.gem-optimizer-toggle, .opt-run):focus');
+  await handoff.click();
+  await expect(focusedControl).toBeInViewport();
   await expect(page.locator('.gem-optimizer-body')).toBeVisible();
+  expect(await scrolls.jsonValue()).toEqual(['auto']);
   await openStage(page, originalStage);
   await expectFreshOptimizer(page);
+  expect(await scrolls.jsonValue()).toEqual(['auto']);
   await goTo(page, 'Upgrades');
-  await page.locator('.upgrade-paths > button').filter({ hasText: 'opens Skills' }).click();
-  await expect(page.locator('.gem-optimizer-body')).toBeVisible();
+  await handoff.click();
+  await expect(focusedControl).toBeInViewport();
+  expect(await scrolls.jsonValue()).toEqual(['auto', 'auto']);
 });

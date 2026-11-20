@@ -141,6 +141,9 @@
   .shell-root .skills-page .opt-progress { max-width: none; }
   .shell-root .skills-page .opt-progress progress { flex: 1; max-width: 24rem; accent-color: var(--primary); }
   .shell-root .skills-page .support-results { display: grid; gap: .75rem; }
+  .shell-root .skills-page .support-applied { display: grid; justify-items: start; gap: .65rem; padding: .75rem 1rem; border: 1px solid var(--border); border-inline-start: 3px solid var(--primary); border-radius: var(--radius-md); background: var(--card); }
+  .shell-root .skills-page .support-applied > [role='status'] { display: grid; gap: .45rem; min-width: 0; overflow-wrap: anywhere; }
+  .shell-root .skills-page .support-applied p { margin: 0; }
   .shell-root .skills-page .support-baseline { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem 1.25rem; padding: .75rem 1rem; border-radius: var(--radius-md); background: var(--muted); font-size: var(--text-sm); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
   .shell-root .skills-page .support-baseline strong { font-weight: 600; color: var(--foreground); }
   .shell-root .skills-page .support-plan { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: .75rem 1.5rem; padding: .85rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); }

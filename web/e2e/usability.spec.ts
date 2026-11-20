@@ -3,6 +3,7 @@ import { bdLibraryButton, openItemsAfterImport } from './shell';
 import { answerConfirm } from './confirmDialog';
 import { choose, goTo } from './skillsAndCalcs';
 import { deflateSync } from 'node:zlib';
+import { readFileSync } from 'node:fs';
 import { animationsSettled } from './buildLibrary';
 import { SMOKE } from './tags';
 
@@ -28,7 +29,8 @@ test('failed code and file imports retain the editor and current build; a valid 
   const code = page.getByRole('textbox', { name: 'Build code', exact: true });
   await code.fill('not-a-valid-build');
   await page.locator('.import-submit').click();
-  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.locator('.bd-import').getByRole('alert')).toContainText('Could not read this build code');
+  await expect(code).toBeFocused();
   await expect(code).toHaveValue('not-a-valid-build');
   await expect(page.getByLabel('Level', { exact: true })).toHaveValue('40');
   expect(await saved(page)).toEqual(before);
@@ -57,6 +59,65 @@ test('failed code and file imports retain the editor and current build; a valid 
   expect(restored.workspace.restoreEpoch).toBeGreaterThan(before.workspace.restoreEpoch ?? 0);
   before.workspace.restoreEpoch = restored.workspace.restoreEpoch;
   expect(restored).toEqual(before);
+});
+
+test('a long paste stays usable and the active build survives sharing and reload', async ({ page, context, browser }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/');
+  await page.locator('.ov-empty button').click({ timeout: 90_000 });
+  const code = page.getByRole('textbox', { name: 'Build code', exact: true });
+  const source = readFileSync(new URL('../../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', import.meta.url), 'utf8').trim();
+  await expect(code).toBeFocused();
+  await page.evaluate(text => navigator.clipboard.writeText(text), source);
+  await page.keyboard.press('Control+V');
+  await expect(code).toHaveValue(source);
+  const submit = page.locator('.import-submit');
+  await expect(submit).toBeInViewport({ ratio: 1 });
+  expect((await submit.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  expect(await code.evaluate((field: HTMLTextAreaElement) => field.scrollHeight > field.clientHeight)).toBe(true);
+  await submit.click();
+  await expect(page.locator('#ov-title')).toBeFocused({ timeout: 90_000 });
+  const summary = page.locator('.ov-figures');
+  await expect(summary.getByRole('button', { name: /Energy Shield: [\d,]+.*View calculation details/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Keep current version for comparison', exact: true }).click();
+  await expect(page.locator('.ov-actions').getByRole('button', { name: 'Compare with baseline', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Share current stage', exact: true }).click();
+  const exportSection = page.locator('details.bd-export');
+  await expect(exportSection.locator('h3').first()).toBeFocused();
+  await expect(page.locator('.import-summary')).toHaveCount(0);
+  await exportSection.getByRole('button', { name: 'Generate PoB code for this stage', exact: true }).click();
+  const share = exportSection.getByRole('textbox', { name: 'Share Code', exact: true });
+  await expect(share).toBeVisible();
+  expect((await share.boundingBox())!.height).toBeLessThan(230);
+  const exported = await share.inputValue();
+  await exportSection.getByRole('button', { name: 'Copy', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(exported);
+
+  // A recipient has no local workspace or baseline to supply missing data.
+  const before = await saved(page);
+  const recipient = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+  try {
+    await recipient.addInitScript(() => localStorage.setItem('pobr-lang', 'en-US'));
+    const other = await recipient.newPage();
+    await other.goto(page.url());
+    await expect(other.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
+    await other.getByRole('textbox', { name: 'Build code', exact: true }).fill(exported);
+    await other.locator('.import-submit').click();
+    await expect(other.locator('#ov-title')).toBeFocused({ timeout: 90_000 });
+    await expect(other.locator('.shell-save-state[data-busy]')).toHaveCount(0);
+    const reopened = await saved(other);
+    expect(reopened.state.character).toEqual(before.state.character);
+    expect([...reopened.state.allocatedNodes].sort()).toEqual([...before.state.allocatedNodes].sort());
+    expect(reopened.state.params.main_socket_group).toBe(before.state.params.main_socket_group);
+    expect(reopened.state.socketGroups).toEqual(before.state.socketGroups);
+    expect(reopened.workspace.builds).toHaveLength(1);
+    expect(reopened.workspace.builds[0].baseline).toBeUndefined();
+  } finally { await recipient.close(); }
+
+  await page.reload();
+  await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
+  expect(await saved(page)).toEqual(before);
 });
 
 test('share codes expire after edits and clipboard failure offers selectable text', async ({ page }) => {

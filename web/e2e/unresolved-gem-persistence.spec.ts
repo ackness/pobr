@@ -321,7 +321,11 @@ test('malformed inactive Comet stage import preserves the current workspace and 
     buffer: Buffer.from(JSON.stringify(malformed)),
   });
   await answerConfirm(page, true);
-  await expect(page.getByRole('alert')).toContainText('invalid workspace file');
+  await expect(page.locator('#bd-import-error')).toContainText('Could not read this file');
+  const details = page.locator('.bd-import-error details');
+  await details.locator('summary').click();
+  await expect(details.locator('p')).toBeVisible();
+  await expect(details.locator('p')).toContainText('invalid workspace file');
   expect(await snapshot(page)).toEqual(before);
   expect(await page.evaluate(() => localStorage.getItem('pobr-v2-library'))).toBe(library);
   await page.reload();

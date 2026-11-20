@@ -419,7 +419,7 @@ Small Passive Skills in Radius also grant 2% increased Spell Damage</Item><ItemS
       await page.screenshot({ path: test.info().outputPath('time-lost-search.png'), fullPage: true });
     } else {
       await expect(page.locator('.trade-market-link')).toHaveCount(0);
-      await expect(page.getByRole('button', { name: 'Open trade search', exact: true })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Open official trade search', exact: true })).toBeDisabled();
       await expect(page.getByText('No equipment scores are available for this calculation target; a trade search cannot be generated.')).toBeVisible();
     }
     await openLibrary(page);

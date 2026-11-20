@@ -8,7 +8,7 @@ import type { AttributeChoice, CalculateBuildRequest, CalculateBuildResponse, Pa
 import { formatApiError } from '../src/api/error';
 import type { SavedSession } from '../src/hooks/useBuildSession';
 import type { BuildWorkspace } from '../src/lib/buildWorkspace';
-import { bindT, type Lang } from '../src/lib/i18n';
+import { bindT, messages, type Lang } from '../src/lib/i18n';
 import { buildPassiveGraph, shortestAllocationPath } from '../src/lib/passiveGraph';
 import { formatStatValue, STAT_SECTIONS, statFormat, statRowLabel } from '../src/lib/statDisplay';
 import { workspaceText } from '../src/lib/workspaceText';
@@ -169,8 +169,12 @@ async function openTree(page: Page, lang: Lang = 'en-US') {
   await expect(page.locator('.tree-planner-body')).toBeVisible();
 }
 
-async function configure(page: Page, lang: Lang = 'en-US') {
+async function configure(page: Page, lang: Lang = 'en-US', future = false) {
   await openTree(page, lang);
+  if (future) {
+    const text = messages(lang, 'treeOptimizer');
+    await select(page, text.mode, text.future);
+  }
   await select(page, bindT(lang)('opt.objective'), bindT(lang)('opt.objLife'));
   await page.getByRole('spinbutton', { name: labels[lang].points, exact: true }).fill('3');
   await select(page, labels[lang].attribute, labels[lang].strength);
@@ -222,9 +226,8 @@ async function evaluateFrostRoutes(page: Page, lang: Lang) {
   await expect(summary).toBeVisible({ timeout: 90_000 });
   await expect(run(page, 'route', lang)).toBeEnabled();
   await expect(page.locator('.opt-progress, .opt-error')).toHaveCount(0);
-  const details = summary.locator(':scope > details');
-  await details.locator(':scope > summary').click();
-  const evaluated = Number((await details.locator(':scope > span').innerText()).split(/[:：]/).at(-1));
+  await summary.locator(':scope > summary').click();
+  const evaluated = Number(await summary.locator('[data-evaluated-count]').getAttribute('data-evaluated-count'));
   expect(evaluated, 'The real imported build must finish actual route evaluations, even if none improves its objective').toBeGreaterThan(0);
 }
 
@@ -292,7 +295,9 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
       test.setTimeout(300_000);
       await page.setViewportSize({ width, height: 780 });
       await frostWorkspace(page, lang);
-      await configure(page, lang);
+      await configure(page, lang, true);
+      const plannerText = messages(lang, 'treeOptimizer');
+      const mode = page.getByRole('combobox', { name: plannerText.mode, exact: true });
       const before = await capture(page);
       await paste(page, JSON.stringify(before.envelope), 'currentStage', lang, true);
       await expect(page.getByRole('alert')).toHaveCount(0);
@@ -300,13 +305,14 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
       await reject(page, before, 'newBuild', lang);
       await screenshot(page, page.getByRole('alert').last(), testInfo, 'new-build-rejection');
       await openTree(page, lang);
-      // Expected I15 red seam: the unchanged valid calculation must remain usable.
+      await expect(mode).toHaveText(plannerText.future);
       await expect(run(page, 'route', lang)).toBeEnabled();
       await evaluateFrostRoutes(page, lang);
       expect(await capture(page)).toEqual(before);
       await reject(page, before, 'currentStage', lang);
       await screenshot(page, page.getByRole('alert').last(), testInfo, 'current-stage-rejection');
       await openTree(page, lang);
+      await expect(mode).toHaveText(plannerText.future);
       await expect(page.getByRole('spinbutton', { name: labels[lang].points, exact: true })).toHaveValue('3');
       await expect(page.getByRole('combobox', { name: labels[lang].attribute, exact: true })).toContainText(labels[lang].strength);
       await evaluateFrostRoutes(page, lang);
@@ -429,7 +435,7 @@ test('support receipts and settings survive rejected imports without losing the 
   }));
   const previewText = await first.locator('.support-plan-metrics > span').filter({ hasText: /^Combined DPS / }).innerText();
   const predictedDps = numeric(previewText.match(/^Combined DPS ([\d,.]+)/)![1]);
-  await first.getByRole('button', { name: 'Apply', exact: true }).click();
+  await first.getByRole('button', { name: 'Apply supports', exact: true }).click();
   await expect.poll(async () => (await saved(page)).state.socketGroups[0].gems.slice(1)).toEqual(supports);
   const after = await capture(page);
   const expected = structuredClone(before.envelope);
@@ -518,12 +524,15 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
       const failedBytes = await bytes(page);
       const failedDisplay = await displayed(page);
       await paste(page, rejectedSource, 'newBuild', lang);
-      // A later operation error must not clear or replace the calculation failure.
+      // The import form keeps its own error and preserves the active calculation failure.
       await expect(calcAlert).toHaveText(rawCalcError);
-      const sourceAlert = page.getByRole('alert').filter({ hasText: rawImportError });
-      await expect(sourceAlert).toHaveText(rawImportError);
-      await expect(calcAlert).toBeVisible();
+      const sourceAlert = page.locator('#bd-import-error');
+      await expect(sourceAlert).toHaveText(bindT(lang)('build.importRecoveryFile'));
       await expect(sourceAlert).toBeVisible();
+      const technical = page.locator('.bd-import-error details');
+      await technical.locator('summary').click();
+      await expect(technical.locator('p')).toHaveText(rawImportError);
+      await expect(calcAlert).toBeVisible();
       await expect(page.getByRole('alert')).toHaveCount(2);
       expect(await bytes(page)).toEqual(failedBytes);
       expect(await displayed(page)).toEqual(failedDisplay);
@@ -533,11 +542,8 @@ for (const lang of ['en-US', 'zh-TW', 'zh-CN'] as const) {
       expect(await joint(page, lang).locator('.jewel-plan-candidates').innerText()).toBe(candidates);
       await expect(joint(page, lang).locator('.jewel-plan-results')).toHaveCount(0);
       await expect(calcAlert).toHaveText(rawCalcError);
-      await expect(sourceAlert).toHaveText(rawImportError);
+      await expect(sourceAlert).toHaveCount(0);
       await expect(routeResults(page)).toHaveCount(0);
-      await sourceAlert.scrollIntoViewIfNeeded();
-      await expect(calcAlert).toBeInViewport();
-      await expect(sourceAlert).toBeInViewport();
       await screenshot(page, calcAlert, testInfo, 'calculation-failure-after-rejected-import');
       await goTo(page, bindT(lang)('tab.skills'), lang);
       await level.fill(String(before.envelope.state.socketGroups[0].gems[0].level));

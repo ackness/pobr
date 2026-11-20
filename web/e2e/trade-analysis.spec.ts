@@ -85,6 +85,11 @@ test('item details hand off the slot, goal and baseline to step 4 without page o
   await expect(page.locator('.trade-market-context')).toContainText('Goal: Max Life');
   await expect(page.locator('.trade-market-context')).toContainText('Compare with current item: Second Ring');
   await expect(page.locator('.up-market .trade-market-link')).toHaveCount(1);
+  await page.locator('.trade-search-card .trade-paste-jump').click();
+  await expect(page.getByRole('textbox', { name: 'Complete item text', exact: true })).toBeFocused();
+  await page.getByRole('button', { name: 'Back to trade · Ring 2', exact: true }).click();
+  await expect(page.locator('.up-market')).toBeFocused();
+  await expect(page.locator('.trade-position[data-slot-id="ring2"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.trade-priority-table thead')).toContainText('Balanced score');
   await expect(page.locator('.trade-priority-table thead')).toContainText('Combined DPS');
   for (const width of [390, 1440, 2560]) {

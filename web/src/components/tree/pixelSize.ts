@@ -7,7 +7,7 @@
  * after an allocation). With a size in pixels the shapes keep their layout. The CSS percentage stays as
  * the size until the first measurement and wherever ResizeObserver is missing.
  */
-export function fitToParentInPixels(element: HTMLElement | SVGElement): () => void {
+export function fitToParentInPixels(element: HTMLElement | SVGElement, onResize?: (size: { width: number; height: number }) => void): () => void {
   const parent = element.parentElement;
   if (!parent || typeof ResizeObserver === 'undefined') return () => {};
   const observer = new ResizeObserver(entries => {
@@ -18,6 +18,7 @@ export function fitToParentInPixels(element: HTMLElement | SVGElement): () => vo
     const height = box ? box.blockSize : entry.contentRect.height;
     element.style.width = `${width}px`;
     element.style.height = `${height}px`;
+    onResize?.({ width, height });
   });
   observer.observe(parent);
   return () => {

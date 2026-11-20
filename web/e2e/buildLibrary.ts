@@ -29,7 +29,7 @@ export async function openBuild(page: Page) {
 export async function openImport(page: Page) {
   const section = page.locator('details.bd-import');
   await expect(section).toBeVisible({ timeout: 90_000 });
-  if (!(await section.evaluate(element => (element as HTMLDetailsElement).open))) await section.locator('summary').click();
+  if (!(await section.evaluate(element => (element as HTMLDetailsElement).open))) await section.locator(':scope > summary').click();
   await expect(section).toHaveJSProperty('open', true);
 }
 
@@ -74,14 +74,14 @@ export async function importInto(page: Page, destination: 'newBuild' | 'currentS
 /** The share and backup actions sit in a section that starts closed. */
 export async function openExport(page: Page) {
   const section = page.locator('details.bd-export');
-  if (!(await section.evaluate(element => (element as HTMLDetailsElement).open))) await section.locator('summary').click();
+  if (!(await section.evaluate(element => (element as HTMLDetailsElement).open))) await section.locator(':scope > summary').click();
   await expect(section).toHaveJSProperty('open', true);
 }
 
 /** The imported PoB loadouts section of the Build page; it starts closed. */
 export async function openLoadouts(page: Page) {
   const section = page.locator('details.bd-details');
-  if (!(await section.evaluate(element => (element as HTMLDetailsElement).open))) await section.locator('summary').click();
+  if (!(await section.evaluate(element => (element as HTMLDetailsElement).open))) await section.locator(':scope > summary').click();
   await expect(section).toHaveJSProperty('open', true);
 }
 export const loadoutSelect = (page: Page) => page.getByRole('combobox', { name: 'PoB loadout', exact: true });

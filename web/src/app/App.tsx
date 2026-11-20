@@ -142,15 +142,20 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const [importFocusRequest, setImportFocusRequest] = useState(0);
   const claimImportFocus = useImportFocus(route, importFocusRequest);
   const [notesFocusRequest, setNotesFocusRequest] = useState<number>();
+  const [shareFocusRequest, setShareFocusRequest] = useState<number>();
   const [reviewStage, setReviewStage] = useState<ImportReview | null>(null);
+  const focusImportedBuild = useRef(false);
   const previousStage = useRef(stageKey);
   const stageChanged = previousStage.current !== stageKey;
   useEffect(() => {
     previousStage.current = stageKey;
     setSpiritFocus(undefined); setCalcsFocus(null); setUpgradeFocus(undefined); setSkillFocus(undefined); setTreeFocus(undefined);
-    setStatsOpen(false); setInspect(null); setNotesFocusRequest(undefined);
+    setStatsOpen(false); setInspect(null); setNotesFocusRequest(undefined); setShareFocusRequest(undefined);
   }, [stageKey]);
-  useEffect(() => { if (route !== 'build') setNotesFocusRequest(undefined); }, [route]);
+  useEffect(() => {
+    if (route !== 'build') { setNotesFocusRequest(undefined); setShareFocusRequest(undefined); }
+    if (route === 'config') setReviewStage(null);
+  }, [route]);
   useEffect(() => {
     const next = advanceImportReview(reviewStage, stageKey, session);
     if (next !== reviewStage) setReviewStage(next);
@@ -160,15 +165,32 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
     addEventListener('popstate', pop); return () => removeEventListener('popstate', pop);
   }, []);
   useEffect(() => { main.current?.scrollTo(0, 0); document.title = `${pageNames(lang)[route]} · PoBR`; }, [route, lang]);
+  useEffect(() => {
+    if (route !== 'overview' || !focusImportedBuild.current || !stageKey || reviewStage?.scope !== stageKey) return;
+    const heading = main.current?.querySelector<HTMLElement>('#ov-title[tabindex]');
+    if (heading) { heading.focus({ preventScroll: true }); focusImportedBuild.current = false; }
+  }, [route, stageKey, reviewStage?.scope]);
   const navigate = (next: Route) => {
     const commit = () => { if (next !== route) history.pushState(null, '', routePath(next)); setRoute(next); setMenuOpen(false); setStatsOpen(false); };
     if (next === route) commit(); else withViewTransition(commit);
   };
   const openImport = () => {
-    setNotesFocusRequest(undefined);
+    setNotesFocusRequest(undefined); setShareFocusRequest(undefined);
     setImportFocusRequest(value => value + 1);
     navigate('build');
   };
+  const openShare = () => {
+    setNotesFocusRequest(undefined);
+    setShareFocusRequest(value => (value ?? 0) + 1);
+    navigate('build');
+  };
+  const onImported = () => {
+    focusImportedBuild.current = true;
+    setReviewStage({ scope: null });
+    navigate('overview');
+  };
+  const openPlanner = () => { setTreeFocus({ nonce: Date.now() }); navigate('tree'); };
+  const openSupportPlanner = (group: number) => { setSkillFocus({ group, nonce: Date.now() }); navigate('skills'); };
   const focusStat = (id: string) => { setCalcsFocus({ id }); setInspect(null); navigate('calcs'); };
   /** A number opens the calculation behind it beside the page you are on; the skill overview is a page of its own. */
   const inspectStat = (id: string) => { if (id === 'skill-metrics') focusStat(id); else { setStatsOpen(false); setInspect(id); } };
@@ -210,8 +232,9 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const panelLoading = <div role="status" className="shell-panel-loading"><Skeleton className="h-12 w-2/3" /><Skeleton className="h-64 w-full" /><p>{t(lang, 'ui.loadingPanel')}</p></div>;
   const saveState = session.workspaceRecovery ? t(lang, 'shell.savingPaused') : session.storageFailed ? tt('shell.saveFailed') : session.busy ? tt('shell.calculating') : t(lang, 'shell.saved');
   const rail = <ResultsRail route={route} session={session} view={view} lang={lang} onStatClick={inspectStat} onNavigate={navigate} onOpenImport={openImport} pinned={pinned} onTogglePin={togglePin} />;
-  const importNotice = reviewStage && reviewStage.scope === stageKey && <ImportReviewNotice route={route} lang={lang}
+  const importNotice = route === 'overview' && reviewStage && reviewStage.scope === stageKey && <ImportReviewNotice route={route} lang={lang}
     summary={reviewStage.summary ?? { character: session.character, classNames: session.classNames, calc: null, failed: !!session.calcError, importSource: session.importSource }}
+    empty={!session.hasBuildContent && session.socketGroups.length === 0}
     modifierCount={view.calc?.unsupported_modifiers.length ?? 0}
     onDismiss={() => setReviewStage(null)} onReview={() => { setReviewStage(null); navigate('config'); }}
     onReviewNotes={() => { setReviewStage(null); setNotesFocusRequest(Date.now()); navigate('build'); }} />;
@@ -252,22 +275,22 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
         </div>}
         {preferencesFailed && <p className="shell-alert" role="alert">{tt('shell.preferencesFailed')}</p>}
         {session.syncNotice && <div className="shell-notice" role="status" data-sync={session.syncNotice.kind}><p>{syncMessage(session.syncNotice.kind, tt)}</p><Button variant="ghost" onClick={session.dismissSyncNotice}>{tt('shell.dismiss')}</Button></div>}
-        {route !== 'build' && importNotice}
         {Object.keys(session.editorDrafts).length > 0 && <div className="shell-notice" role="status"><p>{t(lang, 'editor.draftHint')}</p><Button variant="outline" onClick={() => navigate('items')}>{t(lang, 'editor.reviewItems')}</Button><Button variant="outline" onClick={() => navigate('tree')}>{t(lang, 'editor.reviewJewels')}</Button></div>}
         {session.calcError && <div className="shell-alert" role="alert"><strong>{tt('shell.calculationUnavailable')}</strong><p>{session.calcError}</p></div>}
         {session.operationError && <div className="shell-alert" role="alert">{buildImportErrorMessage(session.operationError, lang)}</div>}
         <UiProvider lang={lang} displayMode={pageDisplayMode(preferences, route)}><div className="shell-page-content" data-page={route}>
           {route === 'overview' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><Overview session={session} view={view} lang={lang} navigate={navigate} focusStat={inspectStat}
-            onImport={openImport} onSpirit={() => { setSpiritFocus(Date.now()); navigate('skills'); }} /></PageErrorBoundary>}
-          {route === 'build' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><BuildPage session={session} lang={lang} claimImportFocus={claimImportFocus} notesFocusRequest={notesFocusRequest} importNotice={importNotice} onImported={() => { setReviewStage({ scope: null }); navigate('overview'); }} /></PageErrorBoundary>}
+            importNotice={importNotice} onImport={openImport} onShare={openShare} onPlanTree={openPlanner} onPlanSupports={openSupportPlanner}
+            onSpirit={() => { setSpiritFocus(Date.now()); navigate('skills'); }} /></PageErrorBoundary>}
+          {route === 'build' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><BuildPage session={session} lang={lang} claimImportFocus={claimImportFocus} notesFocusRequest={notesFocusRequest} shareFocusRequest={shareFocusRequest} onImported={onImported} /></PageErrorBoundary>}
           {route === 'items' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({ slot, nonce: Date.now() }); navigate('trade'); }} /></PageErrorBoundary>}
           {route === 'config' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><ConfigPanel session={session} lang={lang} settledCalc={view.calc} /></PageErrorBoundary>}
           {/* Separate Suspense and error boundaries keep retained planners mounted when another page loads or fails. */}
             {route === 'calcs' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><Suspense fallback={panelLoading}><CalcsPanel session={session} lang={lang} settledCalc={view.calc} focus={stageChanged ? null : calcsFocus} onFocusConsumed={() => setCalcsFocus(null)} /></Suspense></PageErrorBoundary>}
-            {route === 'compare' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><Suspense fallback={panelLoading}><ComparePanel key={`${session.comparisonRevision}:${session.workspace?.activeBuild}:${session.workspace?.builds.find(build => build.id === session.workspace?.activeBuild)?.activeStage}`} session={session} lang={lang} /></Suspense></PageErrorBoundary>}
+            {route === 'compare' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><Suspense fallback={panelLoading}><ComparePanel key={`${session.comparisonRevision}:${session.workspace?.activeBuild}:${session.workspace?.builds.find(build => build.id === session.workspace?.activeBuild)?.activeStage}`} session={session} lang={lang} onShare={openShare} /></Suspense></PageErrorBoundary>}
             {retained('tree') && <div hidden={route !== 'tree'}><PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><PanelActivity active={route === 'tree'}><Suspense fallback={panelLoading}><TreePanel session={session} lang={lang} active={route === 'tree'} focusPlanner={stageChanged ? undefined : treeFocus} onJewelSearch={socket => { setUpgradeFocus({ slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius' }); navigate('trade'); }} /></Suspense></PanelActivity></PageErrorBoundary></div>}
             {retained('skills') && <div hidden={route !== 'skills'}><PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><PanelActivity active={route === 'skills'}><SkillsPanel session={session} lang={lang} active={route === 'skills'} onFullDps={() => focusStat('full-dps')} focusOptimizer={stageChanged ? undefined : skillFocus} focusSpirit={stageChanged ? undefined : spiritFocus} /></PanelActivity></PageErrorBoundary></div>}
-            {retained('trade') && <div hidden={route !== 'trade'}><PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><PanelActivity active={route === 'trade'}><Suspense fallback={panelLoading}><TradePanel session={session} lang={lang} active={route === 'trade'} focus={stageChanged ? undefined : upgradeFocus} onSkills={group => { setSkillFocus({ group, nonce: Date.now() }); navigate('skills'); }} onTree={node => { setTreeFocus({ nonce: Date.now(), node }); navigate('tree'); }} /></Suspense></PanelActivity></PageErrorBoundary></div>}
+            {retained('trade') && <div hidden={route !== 'trade'}><PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><PanelActivity active={route === 'trade'}><Suspense fallback={panelLoading}><TradePanel session={session} lang={lang} active={route === 'trade'} focus={stageChanged ? undefined : upgradeFocus} onSkills={openSupportPlanner} onTree={node => { if (node === undefined) openPlanner(); else { setTreeFocus({ nonce: Date.now(), node }); navigate('tree'); } }} /></Suspense></PanelActivity></PageErrorBoundary></div>}
         </div></UiProvider>
       </main>
       <ChangeBar lang={lang} />
@@ -277,7 +300,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
     <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} session={session} view={view} lang={lang} pageLabel={tabLabel} onNavigate={navigate} onOpenImport={openImport} onInspect={inspectStat} onSettings={() => setSettingsOpen(true)}
       onToggleTheme={() => onPreferences({ ...preferences, theme: document.documentElement.classList.contains('dark') ? 'light' : 'dark' })} themeLabel={document.documentElement.classList.contains('dark') ? tt('shell.lightTheme') : tt('shell.darkTheme')} />
     <ShortcutsDialog open={helpOpen} onOpenChange={setHelpOpen} lang={lang} pageLabel={tabLabel} />
-    <GlobalPaste session={session} lang={lang} onImported={() => { setReviewStage({ scope: null }); navigate('overview'); }} />
+    <GlobalPaste session={session} lang={lang} onImported={onImported} />
     <Sheet open={menuOpen} onOpenChange={setMenuOpen}><SheetContent side="left" className="shell-mobile-navigation"><SheetHeader className="sr-only"><SheetTitle>{t(lang, 'a11y.mainNavigation')}</SheetTitle><SheetDescription>{tt('shell.mobileNavigationHint')}</SheetDescription></SheetHeader>
       {brand}{tabs(true)}
       <div className="shell-nav-footer"><Button variant="ghost" onClick={() => { setMenuOpen(false); setSettingsOpen(true); }}><Settings2 />{tt('settings.title')}</Button></div>
