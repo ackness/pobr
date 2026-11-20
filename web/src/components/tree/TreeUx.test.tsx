@@ -79,7 +79,7 @@ test('report opens with an entry empty state, evaluates, locates a result and re
   const initial = render(make);
   expect(initial.element.props).toMatchObject({ open: true });
   expect(initial.html).toContain('Run an evaluation to see candidate rankings');
-  expect(initial.html).not.toContain('<tbody>');
+  expect(initial.html).not.toContain('node-power-results');
   expect(button('Evaluate all candidate nodes').disabled).toBe(false);
   ui.evaluate.mockImplementation(async ({ rows, onBatch }) => {
     onBatch(rows.map((row: { node: PassiveNode }) => ({ ...row, status: 'ready', gain: 5, perPoint: 5, single: 5, diagnostics: [] })), 1, 1, []);
@@ -91,7 +91,7 @@ test('report opens with an entry empty state, evaluates, locates a result and re
   expect(evaluated).not.toContain('#2');
   click('Power'); expect(focus).toHaveBeenCalledWith(nodes[1]);
   click('Reset report');
-  expect(render(make).html).not.toContain('<tbody>');
+  expect(render(make).html).not.toContain('node-power-results');
   (initial.element.props as { onToggle: (event: unknown) => void }).onToggle({ currentTarget: { open: false } });
   expect(render(make).html).not.toContain('Filter nodes');
 });

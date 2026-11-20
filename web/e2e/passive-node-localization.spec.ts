@@ -34,7 +34,7 @@ test('known passive names and Chinese search preserve raw IDs, build state and e
     [6898, 'Relentless Vindicator', '无休仲裁者'],
     [28950, 'Devoted Protector', '献身卫士'],
   ] as const) {
-    const row = report.locator(`tr[data-node-id="${id}"]`);
+    const row = report.locator(`[data-node-id="${id}"]`);
     for (const query of [chinese, english, String(id)]) {
       await search.fill(query);
       if (await row.count() === 0 || await row.getAttribute('data-status') !== 'ready') {
@@ -44,19 +44,20 @@ test('known passive names and Chinese search preserve raw IDs, build state and e
       await expect(row).toHaveAttribute('data-status', 'ready', { timeout: 60_000 });
       await expect(report.getByRole('status')).toHaveText(reportText.complete);
       await expect(row.getByRole('button', { name: chinese, exact: true })).toBeVisible();
-      await expect(row.locator('td').first()).not.toContainText(`#${id}`);
+      await expect(row.getByRole('button')).not.toContainText(`#${id}`);
     }
   }
   await search.fill('6898');
-  const row = report.locator('tr[data-node-id="6898"]');
+  const row = report.locator('[data-node-id="6898"]');
   await expect(row).toHaveAttribute('data-status', 'ready', { timeout: 60_000 });
   await expect(evaluate).toBeDisabled();
-  const values = await row.locator('td').allTextContents();
+  const scores = async () => (await row.locator('.node-power-value, .node-power-route > summary').allTextContents())
+    .map(value => value.match(/[+−-]?[\d,.]+/g));
+  const values = await scores();
   await language(page, '繁體中文');
   await expect(row.getByRole('button', { name: '無休仲裁者', exact: true })).toBeVisible();
   await expect(row).toHaveAttribute('data-status', 'ready');
-  const numeric = (cells: string[]) => cells.slice(1, 4).map(value => value.match(/[+−-]?[\d,.]+/g));
-  expect(numeric(await row.locator('td').allTextContents())).toEqual(numeric(values));
+  expect(await scores()).toEqual(values);
   await search.fill('無休仲裁者');
   await row.getByRole('button', { name: '無休仲裁者', exact: true }).click();
   await expect(page.locator('.tree-node-details')).toHaveAttribute('data-skill-id', '6898');

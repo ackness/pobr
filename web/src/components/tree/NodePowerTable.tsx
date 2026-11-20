@@ -118,21 +118,36 @@ export function NodePowerTable({ session, nodes, nodeNames, lang, stat, stats, o
       {error && <p role="alert">{error}</p>}
       {results && results.limits.length > 0 && <details><summary className="disclosure" data-disclosure-level="group">{t.limits} ({results.limits.length})</summary><ul>{results.limits.map(line => <li key={line}>{line}</li>)}</ul></details>}
       {!results && !progress ? <p>{t.notStarted}</p> : <>
-      <div className="node-power-scroll" tabIndex={0} role="region" aria-label={t.title}>
-        <table aria-label={t.title}>
-          <thead><tr>{(['node', 'perPoint', 'points', 'gain'] as const).map(id => <th key={id} aria-sort={sort === id ? ascending ? 'ascending' : 'descending' : 'none'}><AppButton onClick={() => changeSort(id)}>{columnLabel(id)}</AppButton></th>)}</tr></thead>
-          <tbody>{visible.map(row => <tr key={row.node.skill} data-node-id={row.node.skill} data-status={row.status}>
-            <td><AppButton onClick={() => onFocus(row.node)} disabled={row.node.x === undefined || row.node.y === undefined}>{passiveNodeName(row.node, nodeNames)}</AppButton>{row.node.ascendancy_id && <small>{t.asc}</small>}
-              {row.status !== 'ready' && <small>{t[row.status]}</small>}
-              <details><summary className="disclosure">{t.calculationDetails}</summary><p>{t.kind}{separator}{t[row.node.kind as 'normal' | 'notable' | 'keystone']}</p><p>{columnLabel('single')}{separator}{number(row.single)}</p></details>
-              {row.diagnostics.length > 0 && <details><summary className="disclosure">{t[row.status]}</summary>{row.diagnostics.map((text, i) => <p key={i}>{text}</p>)}</details>}
-            </td>
-            <td data-label={columnLabel('perPoint')}>{number(row.perPoint)}</td><td data-label={columnLabel('points')}>{row.path?.length ?? '—'}</td><td data-label={columnLabel('gain')}>{number(row.gain)}</td>
-
-          </tr>)}</tbody>
-        </table>
-        {visible.length === 0 && <p>{t.empty}</p>}
+      <div className="node-power-sort" role="group" aria-label={t.sortBy}>
+        <span aria-hidden="true">{t.sortBy}</span>
+        {(['node', 'points', 'gain', 'perPoint'] as const).map(id => <AppButton key={id}
+          aria-pressed={sort === id} onClick={() => changeSort(id)}>
+          {id === 'gain' ? t.pathTotal : id === 'perPoint' ? t.perPointShort : t[id]}
+          {sort === id && <><span aria-hidden="true">{ascending ? '↑' : '↓'}</span><span className="sr-only">{ascending ? t.ascending : t.descending}</span></>}
+        </AppButton>)}
       </div>
+      <div className="node-power-columns" aria-hidden="true"><span>{t.node}</span><span>{columnLabel('perPoint')}</span></div>
+      <ul className="node-power-results" aria-label={t.title}>
+        {visible.map(row => <li key={row.node.skill} data-node-id={row.node.skill} data-status={row.status}>
+          <div className="node-power-heading">
+            <AppButton className="node-power-name" onClick={() => onFocus(row.node)} disabled={row.node.x === undefined || row.node.y === undefined}>{passiveNodeName(row.node, nodeNames)}</AppButton>
+            <strong className="node-power-value"><span className="sr-only">{columnLabel('perPoint')}{separator}</span>{number(row.perPoint)}</strong>
+          </div>
+          <details className="node-power-route">
+            <summary className="disclosure">
+              <span className="sr-only">{t.calculationDetails}{separator}</span>
+              <span>{t.pathPoints.replace('{count}', String(row.path?.length ?? '—'))}</span>
+              <span>{t.pathTotal} {number(row.gain)}</span>
+              {row.node.ascendancy_id && <span>{t.asc}</span>}
+            </summary>
+            <p>{t.kind}{separator}{t[row.node.kind as 'normal' | 'notable' | 'keystone']}</p>
+            <p>{columnLabel('single')}{separator}{number(row.single)}</p>
+          </details>
+          {row.diagnostics.length > 0 ? <details><summary className="disclosure">{t[row.status]}</summary>{row.diagnostics.map((text, i) => <p key={i}>{text}</p>)}</details>
+            : row.status !== 'ready' && <small>{t[row.status]}</small>}
+        </li>)}
+      </ul>
+      {visible.length === 0 && <p>{t.empty}</p>}
       <div className="node-power-actions"><AppButton disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>{t.previous}</AppButton><span>{t.page} {currentPage + 1} / {Math.max(1, Math.ceil(ranked.length / PAGE_SIZE))}</span><AppButton disabled={(currentPage + 1) * PAGE_SIZE >= ranked.length} onClick={() => setPage(currentPage + 1)}>{t.next}</AppButton></div>
       </>}
       <details><summary className="disclosure">{t.calculationDetails}</summary><p>{t.calculationHint}</p><p>{t.scope}</p></details>
