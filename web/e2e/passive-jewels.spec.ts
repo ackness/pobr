@@ -25,6 +25,20 @@ const target = nodes.find(node => node.kind === 'notable' && !node.ascendancy_id
 const ringText = 'Rarity: UNIQUE\nControlled Metamorphosis\nDiamond\nVersion: Old\nVersion: Current\nVariant: Small\nVariant: Medium\nSelected Variant: 2\nRadius: Variable\nImplicits: 0\n{variant:1}Only affects Passives in Small Ring\n{variant:2}Only affects Passives in Medium Ring\nPassives in Radius can be Allocated without being connected to your tree\n{range:0.5}-(20-10)% to all Elemental Resistances';
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!).state);
 const circle = (page: Page, id: number) => page.locator(`circle[data-skill-id="${id}"]`);
+const editor = (page: Page) => page.locator('.jewel-editor');
+const draftText = (page: Page) => editor(page).getByRole('textbox', { name: 'Jewel socket', exact: true });
+async function chooseSocket(page: Page, id: number) {
+  await page.getByRole('combobox', { name: 'Choose an allocated jewel socket' }).click();
+  await page.locator(`[role="option"][data-value="${id}"]`).click();
+}
+
+async function chooseUnique(page: Page, name: string) {
+  await editor(page).getByRole('button', { name: 'Choose a unique jewel' }).click();
+  const catalog = editor(page).getByRole('region', { name: 'Unique catalogue' });
+  await catalog.getByRole('searchbox').fill(name);
+  await catalog.locator('.unique-result').filter({ hasText: name }).click();
+  return catalog;
+}
 
 async function start(page: Page, text: string, socketNode = socket, allocation = allocated, weaponSwap?: WeaponSwap, socketGroups: unknown[] = []) {
   await page.addInitScript(({ text, socket, allocated, weaponSwap, socketGroups }) => {
@@ -57,6 +71,117 @@ test('selected ring grants one-point allocation and removal revokes only the dep
   expect((await saved(page)).allocatedNodes).toEqual([...allocated].sort((a, b) => a - b));
   await expect(circle(page, target.skill)).not.toHaveClass(/node-allocated|node-jewel-allocatable/);
   await expect(page.locator('.shell-alert')).toHaveCount(0);
+});
+
+test('a catalogued Adorned scales a corrupted jewel in the other socket until replaced', async ({ page }) => {
+  const other = sockets.find(node => node.skill !== socket.skill && path(node).length > 0)!;
+  const magic = 'Rarity: MAGIC\nRuby\nImplicits: 0\n+100 to maximum Life\n+10 to maximum Mana\nCorrupted';
+  await start(page, magic, socket, [...new Set([...allocated, ...path(other)])]);
+  const life = async () => Number((await statValue(page, /^Life$/).innerText()).replaceAll(',', ''));
+  const baseline = await life();
+  expect(baseline).toBeGreaterThan(100);
+  const toggle = page.getByRole('button', { name: 'Attributes & planning' });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await circle(page, other.skill).dispatchEvent('click');
+  await expect(draftText(page)).toBeVisible();
+  await expect(draftText(page)).toHaveValue('');
+  const catalog = await chooseUnique(page, 'The Adorned');
+  await catalog.getByRole('button', { name: 'All maximum rolls' }).click();
+  await catalog.getByRole('button', { name: 'Use in socket draft' }).click();
+  await expect(draftText(page)).toHaveValue(/150% increased Effect/);
+  expect((await saved(page)).jewels).toEqual([{ socket_node: socket.skill, text: magic }]);
+  await editor(page).getByRole('button', { name: 'Apply changes', exact: true }).click();
+  await expect.poll(life).toBeGreaterThan(baseline);
+  await chooseSocket(page, other.skill);
+  const rare = 'Rarity: RARE\nBright Spark\nEmerald\nImplicits: 0\n+8 to maximum Mana\n+6% to Fire Resistance';
+  await draftText(page).fill(rare);
+  await editor(page).getByRole('button', { name: 'Apply changes', exact: true }).click();
+  await expect.poll(life).toBe(baseline);
+  expect((await saved(page)).jewels).toEqual(expect.arrayContaining([
+    { socket_node: socket.skill, text: magic }, { socket_node: other.skill, text: rare },
+  ]));
+});
+
+test('crafts a rare jewel with two affixes in the socket and can discard the draft', async ({ page }) => {
+  const original = 'Rarity: MAGIC\nRuby\nImplicits: 0\n+20 to maximum Life';
+  await start(page, original);
+  await chooseSocket(page, socket.skill);
+  await editor(page).getByRole('button', { name: 'Craft a jewel' }).click();
+  const craft = editor(page).getByRole('region', { name: 'Craft item' });
+  await craft.getByRole('button', { name: 'Create draft' }).click();
+  const affixes = craft.locator('.replacement-affix-editor');
+  for (const kind of ['Prefixes', 'Suffixes']) {
+    await affixes.getByRole('button', { name: kind, exact: true }).click();
+    await affixes.getByRole('combobox', { name: 'Choose a modifier and tier' }).click();
+    await page.getByRole('option').first().click();
+    await affixes.locator('.affix-editor-add > .trade-primary').click();
+  }
+  await expect(affixes.locator('.affix-editor-row')).toHaveCount(2);
+  await affixes.getByRole('button', { name: 'Use in socket draft' }).click();
+  await expect(draftText(page)).toHaveValue(/Rarity: RARE/);
+  const crafted = await draftText(page).inputValue();
+  expect(crafted.split('Implicits: 0\n').at(-1)!.trim().split('\n').length).toBeGreaterThanOrEqual(2);
+  await editor(page).getByRole('button', { name: 'Cancel', exact: true }).click();
+  await chooseSocket(page, socket.skill);
+  await expect(draftText(page)).toHaveValue(original);
+  await draftText(page).fill(crafted);
+  await editor(page).getByRole('button', { name: 'Apply changes', exact: true }).click();
+  await expect.poll(async () => (await saved(page)).jewels).toEqual([{ socket_node: socket.skill, text: crafted }]);
+});
+
+test('replaces a jewel by its Chinese name from the narrow tree toolbar and confirms the equipped jewel', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => localStorage.setItem('pobr-lang', 'zh-CN'));
+  await start(page, 'Rarity: MAGIC\nRuby\nImplicits: 0\n+20 to maximum Life');
+  const picker = page.getByRole('combobox', { name: '选择已分配的珠宝孔' });
+  const counter = page.locator('.tree-count');
+  await expect(counter).toContainText(/已用 \d+ \/ \d+ 点/);
+  const originalPoints = await counter.innerText();
+  await expect(picker).toBeInViewport({ ratio: 1 });
+  await picker.click();
+  await page.locator(`[role="option"][data-value="${socket.skill}"]`).click();
+  const apply = editor(page).getByRole('button', { name: '应用修改' });
+  await expect(apply).toBeDisabled();
+  await editor(page).getByRole('button', { name: '选择传奇珠宝' }).click();
+  await editor(page).getByRole('searchbox').fill('浮华');
+  await editor(page).getByRole('button', { name: /浮华/ }).click();
+  await editor(page).getByRole('button', { name: '填入珠宝草稿' }).click();
+  await expect(editor(page).locator('textarea')).toHaveValue(/The Adorned/);
+  await expect(apply).toBeFocused();
+  await apply.press('Enter');
+  const details = page.locator(`.tree-node-details[data-skill-id="${socket.skill}"]`);
+  await expect(details).toBeFocused();
+  await expect(details.getByRole('status').filter({ hasText: '浮华' })).toBeInViewport();
+  await expect(details.getByRole('button', { name: '退点', exact: true })).toBeEnabled();
+  await expect(counter).toHaveText(originalPoints);
+  expect(new Set((await saved(page)).allocatedNodes)).toEqual(new Set(allocated));
+});
+
+test('replacing a catalogue ring with a radius-grant jewel changes the overlay and revokes remote allocation', async ({ page }) => {
+  await start(page, 'Rarity: MAGIC\nRuby\nImplicits: 0\n+1 to maximum Life');
+  await chooseSocket(page, socket.skill);
+  const catalog = await chooseUnique(page, 'Controlled Metamorphosis');
+  await catalog.getByRole('combobox', { name: 'Variant', exact: true }).click();
+  await page.getByRole('option', { name: 'Medium Ring', exact: true }).click();
+  await catalog.getByRole('button', { name: 'Use in socket draft' }).click();
+  await editor(page).getByRole('button', { name: 'Apply changes', exact: true }).click();
+  const overlay = page.locator(`.jewel-radius[data-jewel-source="${socket.skill}"]`);
+  await expect(overlay).toBeVisible();
+  await expect(circle(page, target.skill)).toHaveClass(/node-jewel-allocatable/);
+  await circle(page, target.skill).dispatchEvent('click');
+  await expect(circle(page, target.skill)).toHaveClass(/node-allocated/);
+  await chooseSocket(page, socket.skill);
+  const beforeReplacement = await saved(page);
+  await draftText(page).fill('Rarity: RARE\nTime Shard\nTime-Lost Ruby\nRadius: Small\nImplicits: 0\nSmall Passive Skills in Radius also grant +2 to Strength');
+  await editor(page).getByRole('button', { name: 'Apply changes', exact: true }).click();
+  await expect(circle(page, target.skill)).not.toHaveClass(/node-allocated|node-jewel-allocatable/);
+  await expect(overlay).toHaveAttribute('d', /^M[^M]+$/);
+  expect((await saved(page)).allocatedNodes).not.toContain(target.skill);
+  await page.getByRole('button', { name: 'Undo tree edit', exact: true }).click();
+  await expect.poll(() => saved(page)).toEqual(beforeReplacement);
+  await expect(circle(page, target.skill)).toHaveClass(/node-allocated/);
+  await expect(overlay).toHaveAttribute('d', /^M.+M/);
 });
 
 test('alternate start is implicit and replacing its jewel revokes its remote path', async ({ page }) => {

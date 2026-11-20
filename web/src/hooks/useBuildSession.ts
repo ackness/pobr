@@ -1320,7 +1320,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         const kept = new Set([...allocatedNodes, ...(weaponSwap?.exclusive_nodes.flat() ?? [])]);
         const attributeChoices = Object.fromEntries(Object.entries(next.attributeChoices)
           .filter(([id]) => kept.has(Number(id))));
-        apply({ ...next, allocatedNodes, weaponSwap, attributeChoices });
+        apply({ ...next, allocatedNodes, weaponSwap, attributeChoices }, { treeEdit: true });
       };
       const inactive = current.weaponSwap?.exclusive_nodes.some(nodes => nodes.length > 0);
       if (!calc?.tree_effects?.allocation_grants.length && !busy && !inactive) {

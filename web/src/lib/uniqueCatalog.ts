@@ -54,9 +54,9 @@ export function uniqueRolls(entry: UniqueEntry, selection: UniqueSelection) {
 }
 
 export function filterUniques(entries: UniqueEntry[], query: string, itemClass: string, slot: string,
-  catalog: TradeCatalog, localized: ReadonlyMap<number, string> = new Map()): UniqueEntry[] {
+  catalog?: TradeCatalog, localized: ReadonlyMap<number, string> = new Map()): UniqueEntry[] {
   const needle = query.trim().toLocaleLowerCase();
-  const allowed = slot ? new Set(basesForSlot(catalog, slot).map(base => base.name)) : null;
+  const allowed = slot && catalog ? new Set(basesForSlot(catalog, slot).map(base => base.name)) : null;
   return entries.filter(entry => (!itemClass || entry.bases.some(base => base.item_class === itemClass))
     && (!allowed || entry.bases.some(base => allowed.has(base.name)))
     && (!needle || `${entry.name}\n${entry.raw}\n${localized.get(entry.id) ?? ''}`.toLocaleLowerCase().includes(needle)));

@@ -54,6 +54,23 @@ fn unique_catalog_contract_and_variant_dependent_bases() {
 }
 
 #[test]
+fn adorned_draft_keeps_the_selected_effect_without_the_catalogue_drop_source() {
+    init();
+    let adorned = entry("The Adorned");
+    let raw = adorned["raw"].as_str().unwrap();
+    let roll = raw
+        .lines()
+        .position(|line| line.contains("(0-150)%"))
+        .unwrap();
+    let selected = draft(json!({ "id": adorned["id"], "rolls": { (roll.to_string()): 1.0 } }));
+    let text = selected["text"].as_str().unwrap();
+    assert!(text.contains("150% increased Effect of Jewel Socket Passive Skills"));
+    assert!(text.contains("containing Corrupted Magic Jewels"));
+    assert!(raw.contains("Source:"));
+    assert!(!text.contains("Source:"));
+}
+
+#[test]
 fn variants_and_roll_values_round_trip_through_library_text_and_export() {
     init();
     let astramentis = entry("Astramentis");

@@ -35,6 +35,38 @@ fn jewel(mods: &str) -> String {
 }
 
 #[test]
+fn time_lost_jewel_displays_its_upgraded_circle_without_granting_allocation() {
+    let data = data();
+    let socket = data
+        .passive_nodes_for(None)
+        .values()
+        .find(|node| node.id.starts_with("jewel_slot") && node.x.is_some() && node.y.is_some())
+        .unwrap()
+        .skill;
+    let text = "Rarity: RARE\nTime Shard\nTime-Lost Ruby\nRadius: Small\nImplicits: 0\nSmall Passive Skills in Radius also grant +2 to Strength";
+    let state = |raw: &str| {
+        let jewel = radius_jewel_from_text(socket, raw).unwrap();
+        passive_jewel_state(&Build::new().with_radius_jewels(vec![jewel]), data)
+    };
+    let small = state(text);
+    let medium = state(&format!("{text}\nUpgrades Radius to Medium"));
+    for result in [&small, &medium] {
+        assert_eq!(result.rings.len(), 1);
+        assert_eq!(result.rings[0].source, socket);
+        assert_eq!(result.rings[0].center, socket);
+        assert_eq!(result.rings[0].inner, 0.0);
+        assert!(result.allocation_grants.is_empty());
+    }
+    assert!(small.rings[0].outer > 0.0);
+    assert!(medium.rings[0].outer > small.rings[0].outer);
+    assert!(
+        state(&text.replace("Radius: Small", "Radius: Variable"))
+            .rings
+            .is_empty()
+    );
+}
+
+#[test]
 fn allocation_uses_selected_tree_ring_boundaries_and_stable_class_ids() {
     let mut data = data().clone();
     let entries = [

@@ -216,13 +216,14 @@ pub fn passive_jewel_state(build: &Build, data: &BuildData) -> PassiveJewelState
                     .into_iter()
                     .filter(|n| n.x.is_some() && n.y.is_some())
                 {
-                    if free || !from_keystones.is_empty() || conquest.is_some() {
-                        result.rings.push(JewelRing {
-                            source: jewel.socket_node,
-                            center: center.skill,
-                            inner,
-                            outer,
-                        });
+                    result.rings.push(JewelRing {
+                        source: jewel.socket_node,
+                        center: center.skill,
+                        inner,
+                        outer,
+                    });
+                    if !free && from_keystones.is_empty() && conquest.is_none() {
+                        continue;
                     }
                     let mut affected: Vec<_> = nodes
                         .values()
