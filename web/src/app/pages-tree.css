@@ -92,6 +92,7 @@
 
   /* ── The side column: node details, attributes, node power, planners ───── */
   .shell-root .tree-panel .tree-side { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; border-left: 1px solid var(--border); background: var(--card); container-type: inline-size; container-name: tree-sidebar; }
+  .shell-root .tree-panel .tree-bar-socket-picker { display: none; }
   /* The drag handle straddles the border between canvas and column; its line shows on hover, focus and while dragging. */
   .shell-root .tree-panel .tree-side-resize { position: absolute; z-index: 7; top: 0; bottom: 0; grid-column: 2; grid-row: 1; left: -.3rem; width: .6rem; cursor: col-resize; touch-action: none; user-select: none; -webkit-user-select: none; }
   .shell-root .tree-panel .tree-side-resize::after { content: ''; position: absolute; inset: 0 .25rem; background: var(--primary); opacity: 0; transition: opacity .12s; }
@@ -194,6 +195,9 @@
 
   /* ── Smaller screens and larger text: the same pieces, stacked ──────────── */
   @container shell-container (max-width: 64rem) {
+    .shell-root .tree-panel .tree-bar-socket-picker { display: block; min-width: 0; flex: 1 1 100%; }
+    .shell-root .tree-panel .tree-bar-socket-picker .app-select-trigger { width: 100%; }
+    .shell-root .tree-panel .tree-side-socket-picker { display: none; }
     .shell-root .shell-main.shell-page-tree { display: block; overflow: auto; padding: 0 0 2rem; }
     .shell-root .shell-main.shell-page-tree .shell-page-content, .shell-root .shell-main.shell-page-tree .shell-page-content > div:not([hidden]) { display: block; }
     .shell-root .tree-panel, .shell-root .tree-panel[data-side='closed'], .shell-root .tree-panel:has(.tree-planner-body), .shell-root .tree-panel:has(.node-power[open]) { display: block; }

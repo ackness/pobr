@@ -21,6 +21,7 @@ vi.mock('../api/backend', () => ({ getBackend: async () => ({
   decodeBuild: harness.decode, decodeBuildFile: harness.decode,
   init: async () => {}, gameLocales: async () => [], loadClassNames: async () => ({ classes: {}, ascendancies: {} }),
   dataVersion: '1.0.0.1', dataInfo: { data_version: '1.0.0.1', tree_version: 'future_tree', locales: [] },
+  loadPassiveTree: async () => [],
   loadTreeMeta: harness.meta,
 }) }));
 
@@ -66,6 +67,21 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 it('initializes notes when access to localStorage itself throws', () => {
   vi.spyOn(globalThis, 'localStorage', 'get').mockImplementation(() => { throw new Error('Storage blocked'); });
   expect(renderSession().notes).toBe('');
+});
+
+it('does not commit a jewel replacement when its allocation baseline cannot be recalculated', async () => {
+  const saved = defaultStarterSession('Witch');
+  saved.state.jewels = [{ socket_node: 123, text: 'original' }];
+  const { cleanups } = await bootStoredSession(saved);
+  harness.calculate.mockRejectedValue(new Error('baseline unavailable'));
+  renderSession().setCharacter({ level: 42 });
+  await vi.waitFor(() => expect(renderSession().calcError).toBe('baseline unavailable'));
+  const applied = vi.fn();
+  renderSession().setJewels([], applied);
+  await vi.waitFor(() => expect(renderSession().operationError).toBe('baseline unavailable'));
+  expect(renderSession().jewels).toEqual(saved.state.jewels);
+  expect(applied).not.toHaveBeenCalled();
+  cleanups.forEach(cleanup => cleanup?.());
 });
 
 it.each([undefined, '0.5.5.5'])('restoring preserves the stamp %s until an edit saves with the loaded data version', async data_version => {

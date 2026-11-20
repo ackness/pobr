@@ -35,6 +35,49 @@ fn jewel(mods: &str) -> String {
 }
 
 #[test]
+fn time_lost_jewel_displays_its_upgraded_circle_without_granting_allocation() {
+    let data = data();
+    let socket = data
+        .passive_nodes_for(None)
+        .values()
+        .find(|node| node.id.starts_with("jewel_slot") && node.x.is_some() && node.y.is_some())
+        .unwrap()
+        .skill;
+    let text = "Rarity: RARE\nTime Shard\nTime-Lost Ruby\nRadius: Small\nImplicits: 0\nSmall Passive Skills in Radius also grant +2 to Strength";
+    let state = |raw: &str| {
+        let jewel = radius_jewel_from_text(socket, raw).unwrap();
+        passive_jewel_state(&Build::new().with_radius_jewels(vec![jewel]), data)
+    };
+    let small = state(text);
+    let medium = state(&format!("{text}\nUpgrades Radius to Medium"));
+    for result in [&small, &medium] {
+        assert_eq!(result.rings.len(), 1);
+        assert_eq!(result.rings[0].source, socket);
+        assert_eq!(result.rings[0].center, socket);
+        assert_eq!(result.rings[0].inner, 0.0);
+        assert!(result.allocation_grants.is_empty());
+    }
+    assert!(small.rings[0].outer > 0.0);
+    assert!(medium.rings[0].outer > small.rings[0].outer);
+    let variable_text = text.replace("Radius: Small", "Radius: Variable");
+    let variable = state(&variable_text);
+    let large = state(&text.replace("Radius: Small", "Radius: Large"));
+    assert_eq!(variable.rings.len(), 1);
+    assert_eq!(variable.rings[0].outer, large.rings[0].outer);
+    let free_text = "Passives in Radius can be Allocated without being connected to your tree";
+    let variable_free = state(&format!("{variable_text}\n{free_text}"));
+    let large_free = state(&format!(
+        "{}\n{free_text}",
+        text.replace("Radius: Small", "Radius: Large")
+    ));
+    assert_eq!(variable_free.rings[0].outer, large_free.rings[0].outer);
+    assert_eq!(
+        variable_free.allocation_grants[0].nodes,
+        large_free.allocation_grants[0].nodes
+    );
+}
+
+#[test]
 fn allocation_uses_selected_tree_ring_boundaries_and_stable_class_ids() {
     let mut data = data().clone();
     let entries = [

@@ -208,6 +208,19 @@ pub fn passive_jewel_state(build: &Build, data: &BuildData) -> PassiveJewelState
                 (parsed.is_complete() && !parsed.mods.is_empty()).then_some((raw, text, attribute))
             })
             .collect();
+        let allocation_effect = free || !from_keystones.is_empty() || conquest.is_some();
+        let band = band.or_else(|| {
+            if ring_index.is_none()
+                && (!jewel.grant_lines.is_empty()
+                    || jewel.notable_effect_inc > 0
+                    || jewel.small_effect_inc > 0
+                    || allocation_effect)
+            {
+                bands.iter().find(|band| band.label == "Large")
+            } else {
+                None
+            }
+        });
         if let Some(band) = band {
             let inner = f64::from(band.inner) * data.jewel_radii.distance_multiplier;
             let outer = f64::from(band.outer) * data.jewel_radii.distance_multiplier;
@@ -216,13 +229,14 @@ pub fn passive_jewel_state(build: &Build, data: &BuildData) -> PassiveJewelState
                     .into_iter()
                     .filter(|n| n.x.is_some() && n.y.is_some())
                 {
-                    if free || !from_keystones.is_empty() || conquest.is_some() {
-                        result.rings.push(JewelRing {
-                            source: jewel.socket_node,
-                            center: center.skill,
-                            inner,
-                            outer,
-                        });
+                    result.rings.push(JewelRing {
+                        source: jewel.socket_node,
+                        center: center.skill,
+                        inner,
+                        outer,
+                    });
+                    if !allocation_effect {
+                        continue;
                     }
                     let mut affected: Vec<_> = nodes
                         .values()

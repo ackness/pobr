@@ -6,7 +6,7 @@ import type { UniqueDraft, UniqueEntry, UniqueSelection } from '../../api/unique
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useLocalizedLines, useLocalizedNames } from '../../hooks/useLocalizedLines';
 import { lineText } from '../../lib/continuedLines';
-import { slotLabel, type Lang } from '../../lib/i18n';
+import { bindT, slotLabel, type Lang } from '../../lib/i18n';
 import { itemClassName, itemClassLabel, itemNameLabel } from '../../lib/itemCrafting';
 import { craftT } from '../../lib/itemCraftingText';
 import { basesForSlot, loadTradeCatalog, type TradeCatalog } from '../../lib/tradeOptimizer';
@@ -19,9 +19,11 @@ import './itemCrafter.css';
 
 const slots = ['weapon1', 'weapon2', 'helmet', 'bodyarmour', 'gloves', 'boots', 'amulet', 'ring1', 'ring2', 'belt', 'Flask 1', 'Flask 2', 'Charm 1', 'Charm 2', 'Charm 3', 'Jewel@catalogue'];
 
-export function UniqueCatalog({ session, lang, selectedSlot }: { session: BuildSession; lang: Lang; selectedSlot?: string | null }) {
+export function UniqueCatalog({ session, lang, selectedSlot, onJewelDraft }: {
+  session: BuildSession; lang: Lang; selectedSlot?: string | null; onJewelDraft?: (text: string) => void;
+}) {
   const t = (key: Parameters<typeof uniqueT>[1]) => uniqueT(lang, key);
-  const [data, setData] = useState<{ entries: UniqueEntry[]; catalog: TradeCatalog } | null>(null);
+  const [data, setData] = useState<{ entries: UniqueEntry[]; catalog?: TradeCatalog } | null>(null);
   const [error, setError] = useState(false);
   const [query, setQuery] = useState('');
   const [itemClass, setItemClass] = useState('');
@@ -29,14 +31,20 @@ export function UniqueCatalog({ session, lang, selectedSlot }: { session: BuildS
   const [slot, setSlot] = useState<string | null>(null);
   const currentSlot = slot ?? (selectedSlot && slots.includes(selectedSlot) ? selectedSlot : '');
   const [picked, setPicked] = useState<number | null>(null);
+  const jewelsOnly = !!onJewelDraft;
   useEffect(() => {
     let cancelled = false;
     getBackend().then(async backend => {
+      if (jewelsOnly) {
+        const entries = await backend.uniqueCatalog();
+        if (!cancelled) setData({ entries: entries.filter(entry => entry.item_type === 'jewel') });
+        return;
+      }
       const [entries, catalog, game] = await Promise.all([backend.uniqueCatalog(), loadTradeCatalog(), backend.itemCraftingCatalog()]);
       if (!cancelled) setData({ entries, catalog: uniquePreviewCatalog(entries, catalog, game) });
     }).catch(() => { if (!cancelled) setError(true); });
     return () => { cancelled = true; };
-  }, []);
+  }, [jewelsOnly]);
   const baseNames = useMemo(() => [...new Set(data?.entries.flatMap(entry => entry.bases.map(base => base.name)) ?? [])], [data]);
   const bases = useLocalizedNames(baseNames.map(name => ({ kind: 'base' as const, name })), lang);
   const baseLabel = (name: string) => itemNameLabel(name, bases[baseNames.indexOf(name)], lang);
@@ -51,7 +59,7 @@ export function UniqueCatalog({ session, lang, selectedSlot }: { session: BuildS
   const classNames = useLocalizedNames(classes.map(name => ({ kind: 'itemClass' as const, name: itemClassName(name) })), lang);
   const slotsByBase = useMemo(() => {
     const map = new Map<string, string[]>();
-    if (data) for (const slot of slots) for (const base of basesForSlot(data.catalog, slot)) {
+    if (data?.catalog) for (const slot of slots) for (const base of basesForSlot(data.catalog, slot)) {
       const matched = map.get(base.name) ?? [];
       map.set(base.name, [...matched, slot]);
     }
@@ -62,15 +70,15 @@ export function UniqueCatalog({ session, lang, selectedSlot }: { session: BuildS
   if (error) return <p role="alert">{t('error')}</p>;
   if (!data) return <p role="status">{craftT(lang, 'loading')}</p>;
   return <section className="item-crafter unique-catalogue ui-card" aria-label={t('title')}>
-    <p>{t('hint')}</p>
+    {!jewelsOnly && <p>{t('hint')}</p>}
     <div className="item-crafter-fields">
       <label>{t('search')}<AppInput type="search" aria-label={t('search')} value={query} onChange={event => { setSlot(currentSlot); setQuery(event.target.value); setPicked(null); }} /></label>
-      <label>{t('itemClass')}<AppSelect ariaLabel={t('itemClass')} value={itemClass}
+      {!jewelsOnly && <label>{t('itemClass')}<AppSelect ariaLabel={t('itemClass')} value={itemClass}
         options={[{ value: '', label: t('allClasses') }, ...classes.map((value, i) => ({ value, label: itemClassLabel(value, classNames[i], lang) }))]}
-        onChange={value => { setSlot(currentSlot); setItemClass(value); setPicked(null); }} /></label>
-      <label>{t('slot')}<AppSelect ariaLabel={t('slot')} value={currentSlot}
+        onChange={value => { setSlot(currentSlot); setItemClass(value); setPicked(null); }} /></label>}
+      {!jewelsOnly && <label>{t('slot')}<AppSelect ariaLabel={t('slot')} value={currentSlot}
         options={[{ value: '', label: t('allSlots') }, ...slots.map(value => ({ value, label: value.startsWith('Jewel@') ? t('jewel') : slotLabel(lang, value) }))]}
-        onChange={value => { setSlot(value); setPicked(null); }} /></label>
+        onChange={value => { setSlot(value); setPicked(null); }} /></label>}
     </div>
     <p>{t('matches')}{colon(lang)}{results.length}</p>
     <div className="unique-results" role="group" aria-label={t('choose')}>
@@ -78,16 +86,18 @@ export function UniqueCatalog({ session, lang, selectedSlot }: { session: BuildS
         onClick={() => { setSlot(currentSlot); setPicked(result.id); }}>
         <strong>{itemNameLabel(result.name, names[data.entries.indexOf(result)], lang)}</strong>
         <span>{result.bases.map(base => baseLabel(base.name)).join(' / ')}</span>
-        <small>{[...new Set(result.bases.flatMap(base => slotsByBase.get(base.name) ?? []))]
-          .map(slot => slot.startsWith('Jewel@') ? t('jewel') : slotLabel(lang, slot)).join(' · ') || t('slotUnknown')}</small>
+        {!jewelsOnly && <small>{[...new Set(result.bases.flatMap(base => slotsByBase.get(base.name) ?? []))]
+          .map(slot => slot.startsWith('Jewel@') ? t('jewel') : slotLabel(lang, slot)).join(' · ') || t('slotUnknown')}</small>}
       </AppButton>)}
     </div>
     {!results.length && <p>{t('empty')}</p>}
-    {entry && <UniqueItem key={entry.id} entry={entry} catalog={data.catalog} session={session} lang={lang} />}
+    {entry && <UniqueItem key={entry.id} entry={entry} catalog={data.catalog} session={session} lang={lang} onJewelDraft={onJewelDraft} />}
   </section>;
 }
 
-function UniqueItem({ entry, catalog, session, lang }: { entry: UniqueEntry; catalog: TradeCatalog; session: BuildSession; lang: Lang }) {
+function UniqueItem({ entry, catalog, session, lang, onJewelDraft }: {
+  entry: UniqueEntry; catalog?: TradeCatalog; session: BuildSession; lang: Lang; onJewelDraft?: (text: string) => void;
+}) {
   const t = (key: Parameters<typeof uniqueT>[1]) => uniqueT(lang, key);
   const [selection, setSelection] = useState<UniqueSelection>(() => defaultUniqueSelection(entry));
   const [draft, setDraft] = useState<{ value: UniqueDraft; revision: number } | null>(null);
@@ -120,6 +130,7 @@ function UniqueItem({ entry, catalog, session, lang }: { entry: UniqueEntry; cat
     try {
       const value = await (await getBackend()).uniqueItemDraft(selection);
       if (alive.current) {
+        if (onJewelDraft) { onJewelDraft(value.text); return; }
         setDraft(previous => ({ value, revision: (previous?.revision ?? 0) + 1 }));
         setResolved({ key: selectionKey, text: value.text });
       }
@@ -128,12 +139,12 @@ function UniqueItem({ entry, catalog, session, lang }: { entry: UniqueEntry; cat
     } finally { if (alive.current) setBusy(false); }
   };
   const previewCatalog = useMemo(() => {
-    if (!draft || draft.value.required_level === null) return catalog;
+    if (!catalog || !draft || draft.value.required_level === null) return catalog;
     return { ...catalog, bases: catalog.bases.map(base => base.name === draft.value.base ? {
       ...base, level: Math.max(base.requirement_known === false ? 1 : base.level, draft.value.required_level ?? 1), requirement_known: true,
     } : base) };
   }, [catalog, draft]);
-  const base = previewCatalog.bases.find(base => base.name === draft?.value.base);
+  const base = previewCatalog?.bases.find(base => base.name === draft?.value.base);
   const variantOptions = variants.map((_, i) => ({ value: String(i + 1), label: variantLabels[i] ?? variants[i] }));
   return <div className="unique-item">
     <fieldset disabled={busy || session.busy} className="unique-selection">
@@ -157,10 +168,11 @@ function UniqueItem({ entry, catalog, session, lang }: { entry: UniqueEntry; cat
         <div><AppRange min={0} max={100} step={1} aria-label={`${t('roll')} ${i + 1}`} value={line.roll * 100} disabled={busy || session.busy}
           onValueChange={value => update({ ...selection, rolls: { ...selection.rolls, [line.index]: value / 100 } })} /></div><output>{Math.round(line.roll * 100)}%</output><p className="unique-roll-value">{resolvedLabels[i] || (resolved?.key !== selectionKey ? t('resolvingRoll') : t('rollUnavailable'))}</p>
       </label>)}</div>}
-      <AppButton className="trade-primary" onClick={() => void prepare()}>{t(busy ? 'preparing' : 'preview')}</AppButton>
+      <AppButton className="trade-primary" onClick={() => void prepare()}>{onJewelDraft && !busy
+        ? bindT(lang)('tree.useJewelDraft') : t(busy ? 'preparing' : 'preview')}</AppButton>
     </fieldset>
     {error && <p role="alert">{t(error)}</p>}
-    {draft && base && <ItemDraftWorkbench key={draft.revision} initialText={draft.value.text} base={base} catalog={previewCatalog} session={session} lang={lang} editable={false} />}
+    {draft && base && previewCatalog && <ItemDraftWorkbench key={draft.revision} initialText={draft.value.text} base={base} catalog={previewCatalog} session={session} lang={lang} editable={false} />}
     {draft && !base && <div><p>{t('unavailable')}</p><AppButton disabled={saved} onClick={() => {
       session.saveLibraryItem(entry.item_type === 'jewel' ? 'jewel' : 'item', draft.value.text); setSaved(true);
     }}>{craftT(lang, saved ? 'saved' : 'save')}</AppButton></div>}

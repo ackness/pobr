@@ -167,6 +167,7 @@ fn unique_draft(request: &str) -> Result<String, ApiError> {
         if base_lines
             .iter()
             .any(|(base_index, _, _)| *base_index == index)
+            || line.starts_with("Source:")
             || line.starts_with("Selected Variant:")
             || line.starts_with("Selected Alt Variant")
             || line.starts_with("Selected Version:")

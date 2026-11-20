@@ -73,7 +73,9 @@ export function EquippedItemCrafter({ draft, session, lang }: { draft: EquippedI
   </section>;
 }
 
-export function ItemCrafter({ session, lang, selectedSlot }: { session: BuildSession; lang: Lang; selectedSlot?: string | null }) {
+export function ItemCrafter({ session, lang, selectedSlot, onJewelDraft }: {
+  session: BuildSession; lang: Lang; selectedSlot?: string | null; onJewelDraft?: (text: string) => void;
+}) {
   const t = (key: Parameters<typeof craftT>[1]) => craftT(lang, key);
   const [catalog, setCatalog] = useState<CraftCatalog | null>(null);
   const [error, setError] = useState(false);
@@ -84,13 +86,17 @@ export function ItemCrafter({ session, lang, selectedSlot }: { session: BuildSes
   const [itemLevel, setItemLevel] = useState(85);
   const [quality, setQuality] = useState(0);
   const [created, setCreated] = useState<{ text: string; id: number } | null>(null);
+  const jewelsOnly = !!onJewelDraft;
   useEffect(() => {
     let cancelled = false;
     Promise.all([getBackend().then(backend => backend.itemCraftingCatalog()), loadTradeCatalog()])
-      .then(([game, display]) => { if (!cancelled) setCatalog(craftingCatalog(game, display)); })
+      .then(([game, display]) => {
+        if (!cancelled) setCatalog(craftingCatalog(game, jewelsOnly
+          ? { ...display, bases: display.bases.filter(base => base.category === 'jewel') } : display));
+      })
       .catch(() => { if (!cancelled) setError(true); });
     return () => { cancelled = true; };
-  }, []);
+  }, [jewelsOnly]);
   const classes = useMemo(() => [...new Set(catalog?.bases.map(base => base.itemClass) ?? [])], [catalog]);
   const currentClass = itemClass || (catalog ? defaultCraftClass(catalog, selectedSlot, [...session.items, ...session.flasks, ...session.limbs].find(item => item.slot === selectedSlot)?.text) : '');
   const bases = useMemo(() => catalog?.bases.filter(base => base.itemClass === currentClass) ?? [], [catalog, currentClass]);
@@ -107,9 +113,9 @@ export function ItemCrafter({ session, lang, selectedSlot }: { session: BuildSes
   return <section className="item-crafter ui-card" aria-label={t('craft')}>
     <p>{t('hint')}</p>
     <div className="item-crafter-fields">
-      <label>{t('itemClass')}<AppSelect ariaLabel={t('itemClass')} value={currentClass}
+      {(!jewelsOnly || classes.length > 1) && <label>{t('itemClass')}<AppSelect ariaLabel={t('itemClass')} value={currentClass}
         options={classes.map((value, i) => ({ value, label: itemClassLabel(value, classNames[i], lang, true) }))}
-        onChange={value => { reset(); setItemClass(value); setBaseId(''); }} /></label>
+        onChange={value => { reset(); setItemClass(value); setBaseId(''); }} /></label>}
       <label>{t('base')}<AppSelect ariaLabel={t('base')} value={base?.id ?? ''}
         options={bases.map((base, i) => ({ value: base.id, label: itemNameLabel(base.name, craftBaseDisplayName(base, lang, names[i] ?? base.name), lang), hint: `${t('requirement')} ${base.level}` }))}
         onChange={value => { reset(); setBaseId(value); }} /></label>
@@ -129,6 +135,6 @@ export function ItemCrafter({ session, lang, selectedSlot }: { session: BuildSes
         setItemClass(currentClass);
         setCreated({ text: baseDraftText(base, chosenRarity, itemLevel, quality), id: (created?.id ?? 0) + 1 });
       }}>{t('create')}</AppButton>
-    {created && base && <ItemDraftWorkbench key={created.id} initialText={created.text} base={base} catalog={catalog} session={session} lang={lang} />}
+    {created && base && <ItemDraftWorkbench key={created.id} initialText={created.text} base={base} catalog={catalog} session={session} lang={lang} onJewelDraft={onJewelDraft} />}
   </section>;
 }

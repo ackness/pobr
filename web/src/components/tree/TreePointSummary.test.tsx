@@ -12,9 +12,9 @@ const preview = (used: number): TreeEditResponse => ({ valid: true, reason: null
 
 test('one primary counter uses the same budget before, during and after a hover preview', () => {
   expect(render(null)).toContain('Used 119 / 121 points');
-  expect(render(preview(120))).toContain('Used 120 / 121 points<span class="tree-count-change">(+1 this change)');
-  expect(render(preview(117))).toContain('(-2 this change)');
-  expect(render(preview(119))).toContain('(+0 this change)');
+  expect(render(preview(120))).toContain('Used 120 / 121 points<span class="tree-count-change">(preview +1)');
+  expect(render(preview(117))).toContain('(preview -2)');
+  expect(render(preview(119))).toContain('(preview +0)');
   expect(render(preview(120)).match(/class="tree-count"/g)).toHaveLength(1);
   expect(render(null)).toContain('<details class="tree-point-details">');
   expect(render(null)).not.toContain('open=""');
@@ -26,7 +26,7 @@ test('an invalid preview preserves the counter and announces its visible diagnos
   const disclosure = html.indexOf('<details');
   expect(html.slice(0, disclosure)).toContain('<p class="tree-edit-preview" role="status" aria-live="polite" aria-atomic="true">Disconnected path</p>');
   expect(html.slice(disclosure)).not.toContain('Disconnected path');
-  expect(html).not.toContain('this change');
+  expect(html).toContain('<span class="tree-count-change"></span>');
 });
 
 test('the preview status stays available for live updates and clears when a preview is valid or dismissed', () => {
