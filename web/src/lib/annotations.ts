@@ -1,14 +1,15 @@
 /**
- * 局部注释（装备/技能组/珠宝旁的「为什么选它」说明）与 PoB2 `<Notes>` 的互转。
+ * Round-trip conversion between per-entity annotations ("why this choice" notes next to items/skills/jewels)
+ * and PoB2 `<Notes>`.
  *
- * PoB2 code 格式没有逐部件注释的位置，因此把注释序列化成 Notes 末尾的一个
- * 标记段随 code 往返：PoB2 本体把它当普通笔记文本展示（可读），PoBR 导入时
- * 解析回结构化 map。标记段之前的部分是自由笔记（总览）。
+ * Because the PoB2 export format has no dedicated per-part note fields, annotations are serialized into
+ * a marked section at the end of `<Notes>`: PoB2 displays it as readable plain text, and PoBR parses it
+ * back into a structured map on import. Everything before the marker remains free-form overview notes.
  *
- * 注释 key 约定（也是导出文本里的段头）：
- *   `item:<slot>`（装备槽）/ `flask:<slot>`（药剂/护符槽）/
- *   `jewel:<socket_node>`（树插槽珠宝）/ `skill:<index>`（技能组序号，与
- *   socket_groups 数组序一致，encode/decode 保序所以可往返）。
+ * Annotation key convention (also used as section headers in exported text):
+ *   `item:<slot>` (equipment slot) / `flask:<slot>` (flask/charm slot) /
+ *   `jewel:<socket_node>` (passive tree jewel socket) / `skill:<index>` (socket group index, matching
+ *   the `socket_groups` array order which encode/decode preserves for round-tripping).
  */
 
 export type Annotations = Record<string, string>;
@@ -16,7 +17,7 @@ export type Annotations = Record<string, string>;
 const MARKER = '===== PoBR Annotations =====';
 const HEADER_RE = /^\[((?:item|flask|jewel|skill):[^\]]+)\]$/;
 
-/** 总览笔记 + 注释 map → `<Notes>` 全文（无注释时原样返回总览）。 */
+/** Overview notes + annotations map -> full `<Notes>` text (returns overview unchanged when empty). */
 export function composeNotes(overview: string, annotations: Annotations): string {
   const entries = Object.entries(annotations).filter(([, text]) => text.trim());
   if (entries.length === 0) return overview;
@@ -25,7 +26,7 @@ export function composeNotes(overview: string, annotations: Annotations): string
   return `${head ? `${head}\n\n` : ''}${MARKER}\n${blocks.join('\n\n')}`;
 }
 
-/** `<Notes>` 全文 → 总览笔记 + 注释 map（无标记段时注释为空）。 */
+/** Full `<Notes>` text -> overview notes + annotations map (annotations empty when marker is absent). */
 export function splitNotes(notes: string): { overview: string; annotations: Annotations } {
   const lines = notes.split('\n');
   const markerIdx = lines.findIndex((l) => l.trim() === MARKER);

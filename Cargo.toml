@@ -9,7 +9,7 @@ members = [
     "crates/pobr-build",
     "apps/pobr-cli",
     "apps/pobr-wasm",
-    # 工具
+    # Tools
     "tools/sync-pob-catalog",
     "tools/precompile-mods",
 ]
@@ -29,7 +29,7 @@ pobr-tree = { path = "crates/pobr-tree" }
 pobr-item = { path = "crates/pobr-item" }
 pobr-build = { path = "crates/pobr-build" }
 regex = "1.11"
-# M6-B 数据驱动 parser 引擎的 plain 短语 / literal 预过滤索引（蓝图 §2.3）。
+# M6-B data-driven parser engine plain-phrase / literal prefilter index.
 aho-corasick = "1.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

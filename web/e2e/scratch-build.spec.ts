@@ -1,6 +1,6 @@
 /**
- * 白手起 build 流程（PoB2 新建语义）：不导入任何 code——启动即有默认角色、
- * 结果栏出数；切职业、改等级、树上点选加点均实时重算。
+ * From-scratch build flow (PoB2 "New Build" semantics): starts without importing any code—
+ * opens with a default character and computed sidebar stats; changing class, level, or passive nodes recalculates live.
  */
 
 import { expect, test } from '@playwright/test';
@@ -13,7 +13,7 @@ test('scratch build: class picker, level edit, tree allocation', SMOKE, async ({
   await page.goto('/build');
   await expect(page.getByRole('heading', { name: 'Character' })).toBeVisible({ timeout: 90_000 });
 
-  // 切职业 → 职业选择器跟随。
+  // Switch class -> class selector follows.
   const classPicker = page.getByRole('combobox', { name: 'Class', exact: true });
   await choose(page, classPicker, 'Witch');
   // Changing class resets what the default build carries (its level and configuration), so it asks first.
@@ -31,15 +31,15 @@ test('scratch build: class picker, level edit, tree allocation', SMOKE, async ({
   await expect(lifeValue).not.toHaveText('—', { timeout: 30_000 });
   await expect(lifeValue).not.toHaveText('0');
 
-  // 改等级 → Life 变化（等级驱动基础生命）。
+  // Edit level -> Life changes (base life scales with level).
   await settled(page);
   const lifeBefore = await stableText(lifeValue);
   await page.getByLabel('Level').fill('90');
   await expect(lifeValue).not.toHaveText(lifeBefore!, { timeout: 30_000 });
 
-  // 树上点一个节点 → 沿最短路径整条点亮（PoB2 语义，见 lib/passiveGraph）。
-  // 具体点数取决于该节点离职业起点多远，故只断言「从 0 变成正数」——钉死数字会
-  // 让树数据一升级就挂。
+  // Click a passive node -> allocates the full shortest path (PoB2 semantics; see lib/passiveGraph).
+  // The exact point count depends on distance from the class start, so only assert "0 -> positive"—
+  // pinning a hard number would break on tree data bumps.
   await pageLink(page, 'Tree').click();
   await expect(page.locator('.tree-canvas svg')).toBeVisible({ timeout: 30_000 });
   // Level 90 gives 89 level points plus the 24 quest points.
@@ -53,7 +53,7 @@ test('scratch build: class picker, level edit, tree allocation', SMOKE, async ({
   await expect(page.locator('.tree-count')).toHaveText(/Used [1-9]\d* \/ \d+ points/, { timeout: 30_000 });
   await expect(target).toHaveClass(/node-allocated/);
 
-  // 手动添加技能：自定义选择器搜 Comet → 回车选中首项 → 新组出现 → Hit DPS 出数。
+  // Manually add a skill: search Comet in custom picker -> Enter picks first -> group appears -> Hit DPS computes.
   await pageLink(page, 'Skills').click();
   const picker = page.getByPlaceholder('Search or browse gems…');
   await picker.fill('Comet');
@@ -64,7 +64,7 @@ test('scratch build: class picker, level edit, tree allocation', SMOKE, async ({
   await expect(dpsValue).not.toHaveText('0', { timeout: 30_000 });
   await expect(dpsValue).not.toHaveText('—');
 
-  // 手动添加装备：人形布局点 Ring 1 槽位 → 编辑面板默认模板（+50 Life）→ Life 变化。
+  // Manually add gear: click Ring 1 on paper doll -> apply default panel template (+50 Life) -> Life changes.
   await settled(page);
   const lifeBeforeItem = await stableText(lifeValue);
   await pageLink(page, 'Items').click();
@@ -72,7 +72,7 @@ test('scratch build: class picker, level edit, tree allocation', SMOKE, async ({
   await page.locator('.item-detail').getByRole('button', { name: 'Apply changes' }).click();
   await expect(lifeValue).not.toHaveText(lifeBeforeItem!, { timeout: 30_000 });
 
-  // 三语切换：EN → 繁 → 简（页面名称跟随，简繁字形区分）。语言在设置面板里选。
+  // Switch between all 3 UI languages: EN -> zh-TW -> zh-CN (nav labels follow script). Language selector lives in settings.
   const language = async (name: string) => {
     await page.locator('.shell-settings-button').click();
     await choose(page, page.locator('#shell-language'), name);

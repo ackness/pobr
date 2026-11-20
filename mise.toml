@@ -4,8 +4,8 @@ min_version = "2026.10.23"
 # Game/language data are temporary imports of the owner artifacts named in
 # pipeline/data.lock.json; data:prepare installs exactly that target.
 
-# Rust 版本只在 rust-toolchain.toml 里写一份（本地与 CI 共用）；让 mise 读取它，
-# 而不是在这里重复钉一个版本号。
+# Keep the Rust toolchain version defined once in rust-toolchain.toml (shared locally and in CI);
+# let mise read it directly instead of duplicating the pin here.
 [settings]
 idiomatic_version_file_enable_tools = ["rust"]
 
@@ -37,11 +37,11 @@ description = "Prepare everyday tools and frozen package dependencies with mise 
 run = "mise bootstrap --only packages,tools,task"
 
 [tasks."data:version"]
-description = "显示本地选中版本；官方补丁发现请在 RePoE 运行 client:version"
+description = "Show the locally selected version; run client:version in RePoE for official patch discovery"
 run = "cat data/CURRENT"
 
 [tasks."data:update"]
-description = "从明确外部 lock 准备候选；采用须显式 --activate --expected-current"
+description = "Prepare a candidate from an explicit external lock; adoption requires --activate --expected-current"
 run = "python3 -m pipeline.runtime.locked_update"
 
 [tasks."data:bump"]

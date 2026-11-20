@@ -17,7 +17,7 @@ pobr-i18n.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 
-# wasm-bindgen 绑定仅在 wasm feature 下启用，保证宿主 `cargo build` 不需 wasm 工具链。
+# Enable wasm-bindgen bindings only under the `wasm` feature so host `cargo build` does not require a wasm toolchain.
 wasm-bindgen = { version = "0.2", optional = true }
 
 [dev-dependencies]

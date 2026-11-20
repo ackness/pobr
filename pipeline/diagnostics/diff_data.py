@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""对比两个 data/<patch>/ 目录，产出人读 diff 摘要。
+"""Diff two `data/<patch>/` directories and print a human-readable summary.
 
-两种粒度：
-  - 默认（文件级）：列文件增删 + 共有文件的条目数 / 字节变化。
-        python3 -m pipeline.diagnostics.diff_data data/4.5.0.3.4 data/4.5.2.1.3
-  - --semantic（语义级）：按域逐条 keyed-diff——哪个天赋节点/技能/词条
-    新增·删除·**数值改动**，回答"某版本改了什么、怎么反映进计算"。
-        python3 -m pipeline.diagnostics.diff_data data/4.5.0.3.4 data/4.5.2.1.3 --semantic
+Two levels of detail:
+  - Default (file summary): list added/removed files plus entry count and byte deltas.
+        python3 -m pipeline.diagnostics.diff_data data/0.5.5.5 data/0.5.5.8
+  - --semantic: keyed diff by domain (added, removed, and value-changed passives,
+    skills, or modifiers).
+        python3 -m pipeline.diagnostics.diff_data data/0.5.5.5 data/0.5.5.8 --semantic
         python3 -m pipeline.diagnostics.diff_data A B --semantic --domain tree --limit 40
         python3 -m pipeline.diagnostics.diff_data A B --semantic --json /tmp/diff.json
 
-设计参考 PoB2：calc 引擎版本无关，唯一随版本变的是「数据池 + 天赋树」。
-本工具把"数据池跨版本的语义增量"显性化（PoB2 靠 export+CHANGELOG 获得的可见性），
-是新版本快速迭代的输入：先看 diff，再决定哪些手工 overlay / 测试需要跟随。
+Designed after PoB2: the calc engine is version-independent, and only the data
+pool and passive tree change across patches. Making semantic deltas explicit
+shows which overlays or tests need follow-up when adopting a new patch.
 """
 
 import argparse
@@ -29,7 +29,7 @@ def load(p):
 
 
 def count_entries(obj):
-    """估算条目数：list → len；dict 去掉 _meta 后 → 顶层 key 数或首个 list 值的 len。"""
+    """Estimate entry count: list -> len; dict excluding _meta -> top-level keys or max list len."""
     if isinstance(obj, list):
         return len(obj)
     if isinstance(obj, dict):
@@ -45,7 +45,7 @@ def rel_files(root):
     return {str(p.relative_to(root)) for p in Path(root).rglob("*.json")}
 
 
-# ── 文件级摘要（向后兼容的默认模式）─────────────────────────────────────────
+# -- File summary (default backwards-compatible mode) --------------------------
 def file_summary(old_root, new_root):
     old_files = rel_files(old_root)
     new_files = rel_files(new_root)
@@ -53,22 +53,22 @@ def file_summary(old_root, new_root):
     removed = sorted(old_files - new_files)
     common = sorted(new_files & old_files)
 
-    print(f"# 数据 diff: {old_root} → {new_root}\n")
-    print(f"- 旧文件数: {len(old_files)}  新文件数: {len(new_files)}")
-    print(f"- 新增文件: {len(added)}  删除文件: {len(removed)}  共有: {len(common)}\n")
+    print(f"# Data diff: {old_root} -> {new_root}\n")
+    print(f"- Old files: {len(old_files)}  New files: {len(new_files)}")
+    print(f"- Added: {len(added)}  Removed: {len(removed)}  Common: {len(common)}\n")
 
     if added:
-        print("## 新增文件")
+        print("## Added files")
         for f in added:
-            print(f"  + {f}  ({count_entries(load(Path(new_root)/f))} 条)")
+            print(f"  + {f}  ({count_entries(load(Path(new_root)/f))} entries)")
         print()
     if removed:
-        print("## 删除文件")
+        print("## Removed files")
         for f in removed:
             print(f"  - {f}")
         print()
 
-    print("## 共有文件：条目数变化 / 字节变化")
+    print("## Common files: entry and byte deltas")
     rows = []
     for f in common:
         op = Path(old_root) / f
@@ -78,19 +78,19 @@ def file_summary(old_root, new_root):
              op.stat().st_size, npth.stat().st_size)
         )
     rows.sort(key=lambda r: abs(r[2] - r[1]), reverse=True)
-    print(f"{'文件':<48} {'旧条':>8} {'新条':>8} {'Δ条':>7} {'旧KB':>8} {'新KB':>8}")
+    print(f"{'File':<48} {'Old':>8} {'New':>8} {'Delta':>7} {'Old KB':>8} {'New KB':>8}")
     for f, oc, nc, ob, nb in rows:
         d = nc - oc
         mark = "" if d == 0 and ob == nb else "  *"
         print(f"{f:<48} {oc:>8} {nc:>8} {d:>+7} {ob/1024:>8.0f} {nb/1024:>8.0f}{mark}")
 
 
-# ── 语义级 keyed-diff ────────────────────────────────────────────────────────
+# -- Semantic keyed diff -----------------------------------------------------
 # (file, mode, container, key_field, compare_fields)
-#   mode "list"      : 顶层就是 [ {key_field:..}, .. ]
-#   mode "container" : 顶层 { container: [ {key_field:..}, .. ], _meta:.. }
-#   mode "topdict"   : 顶层 { <key>: <value>, .., _meta:.. }（key 即条目 id，整值比对）
-# compare_fields=None ⇒ 整条比对（topdict 用）。
+#   mode "list"      : top-level [ {key_field:..}, .. ]
+#   mode "container" : top-level { container: [ {key_field:..}, .. ], _meta:.. }
+#   mode "topdict"   : top-level { <key>: <value>, .., _meta:.. } (key is entry id)
+# compare_fields=None compares the whole entry (used for topdict).
 DOMAINS = {
     "tree": ("base/passive_tree.json", "list", None, "id",
              ["name", "kind", "stats"]),
@@ -147,21 +147,21 @@ def short(v, n=140):
 
 
 def render_change(name, old_e, new_e, fields):
-    """单条改动的紧凑展示，聚焦 calc 相关字段（stats / sets / mods 等）。"""
-    if fields is None:  # topdict 整值
+    """Compact diff formatting focusing on calc-relevant fields (stats / sets / mods)."""
+    if fields is None:  # topdict full-value change
         ol = len(old_e) if hasattr(old_e, "__len__") else "?"
         nl = len(new_e) if hasattr(new_e, "__len__") else "?"
-        return f"    ~ {name}  (条目整值变化; 大小 {ol}→{nl})"
-    lines = [f"    ~ {name}  字段: {', '.join(fields)}"]
+        return f"    ~ {name}  (entry value changed; size {ol}->{nl})"
+    lines = [f"    ~ {name}  fields: {', '.join(fields)}"]
     for f in fields:
         ov, nv = old_e.get(f), new_e.get(f)
-        lines.append(f"        {f}: {short(ov, 90)}  →  {short(nv, 90)}")
+        lines.append(f"        {f}: {short(ov, 90)}  ->  {short(nv, 90)}")
     return "\n".join(lines)
 
 
 def semantic_diff(old_root, new_root, only_domain, limit, json_out):
     report = {}
-    print(f"# 语义 diff: {old_root} → {new_root}\n")
+    print(f"# Semantic diff: {old_root} -> {new_root}\n")
     for dom, (rel, mode, container, key_field, fields) in DOMAINS.items():
         if only_domain and dom != only_domain:
             continue
@@ -171,7 +171,7 @@ def semantic_diff(old_root, new_root, only_domain, limit, json_out):
         old = extract(load(op), mode, container, key_field)
         new = extract(load(npth), mode, container, key_field)
         if old is None or new is None:
-            print(f"## {dom}  ({rel}) — 跳过（文件解析失败）\n")
+            print(f"## {dom}  ({rel}) -- skipped (failed to parse file)\n")
             continue
         added, removed, changed = keyed_diff(old, new, fields)
         report[dom] = {
@@ -181,47 +181,47 @@ def semantic_diff(old_root, new_root, only_domain, limit, json_out):
             "changed": [{"key": k, "fields": fs} for k, fs in changed],
         }
         print(f"## {dom}  ({rel})")
-        print(f"   旧 {len(old)} 条 / 新 {len(new)} 条 — "
-              f"新增 {len(added)}  删除 {len(removed)}  改动 {len(changed)}")
+        print(f"   old {len(old)} / new {len(new)} -- "
+              f"added {len(added)}  removed {len(removed)}  changed {len(changed)}")
         if added:
-            print(f"   ＋ 新增 {len(added)}:")
+            print(f"   + added {len(added)}:")
             for k in added[:limit]:
                 print(f"      + {k}")
             if len(added) > limit:
-                print(f"      … 余 {len(added) - limit} 条")
+                print(f"      ... {len(added) - limit} more")
         if removed:
-            print(f"   － 删除 {len(removed)}:")
+            print(f"   - removed {len(removed)}:")
             for k in removed[:limit]:
                 print(f"      - {k}")
             if len(removed) > limit:
-                print(f"      … 余 {len(removed) - limit} 条")
+                print(f"      ... {len(removed) - limit} more")
         if changed:
-            print(f"   ～ 改动 {len(changed)}:")
+            print(f"   ~ changed {len(changed)}:")
             for k, fs in changed[:limit]:
                 print(render_change(k, old[k], new[k], fs))
             if len(changed) > limit:
-                print(f"      … 余 {len(changed) - limit} 条")
+                print(f"      ... {len(changed) - limit} more")
         print()
 
     if json_out:
         Path(json_out).write_text(
             json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-        print(f"(机读 diff 已写入 {json_out})")
+        print(f"(machine-readable diff written to {json_out})")
 
 
 def main():
-    ap = argparse.ArgumentParser(description="对比两个 data/<patch>/ 目录")
+    ap = argparse.ArgumentParser(description="Diff two data/<patch>/ directories")
     ap.add_argument("old_root")
     ap.add_argument("new_root")
     ap.add_argument("--semantic", action="store_true",
-                    help="按域逐条 keyed-diff（节点/技能/词条的增删改）")
+                    help="Run keyed semantic diff by domain (added/removed/changed nodes, skills, modifiers)")
     ap.add_argument("--domain", choices=sorted(DOMAINS), default=None,
-                    help="只 diff 指定域")
+                    help="Diff only the selected domain")
     ap.add_argument("--limit", type=int, default=15,
-                    help="每类（增/删/改）最多展示几条示例（默认 15）")
+                    help="Max examples to show per category (default 15)")
     ap.add_argument("--json", dest="json_out", default=None,
-                    help="把语义 diff 同时写为机读 JSON")
+                    help="Also write the semantic diff as JSON")
     args = ap.parse_args()
 
     if args.semantic:

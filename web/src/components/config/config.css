@@ -45,7 +45,7 @@
   overflow-wrap: anywhere;
 }
 
-/* 自定义 modifier 的原始 key 是标识符，保留等宽以区别于人类可读的目录标签。 */
+/* Custom modifier raw keys are identifiers; keep monospace to distinguish them from human-readable catalog labels. */
 .config-key--raw {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -130,7 +130,7 @@
   flex-wrap: wrap;
 }
 
-/* 内置目录 */
+/* Built-in catalog */
 .config-toolbar {
   display: flex;
   align-items: center;

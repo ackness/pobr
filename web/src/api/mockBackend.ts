@@ -1,7 +1,7 @@
 /**
- * Mock 后端：与 wasm 后端同签名，返回 fixture 数据。
- * 供 UI 独立开发（无需构建 wasm / 同步数据）与 vitest 组件测试。
- * 启用：`VITE_POBR_BACKEND=mock npm run dev`。
+ * Mock backend: matches the wasm backend signature and returns fixture data.
+ * Used for standalone UI development (no wasm build or data sync required) and vitest component tests.
+ * Enable with `VITE_POBR_BACKEND=mock npm run dev`.
  */
 
 import type { PobrBackend } from './backend';
@@ -140,7 +140,7 @@ export function createMockBackend(): PobrBackend {
       return [];
     },
     async classifyItemLines() {
-      // mock 不分类；返回 [] 让面板回落到无区分渲染。
+      // Mock skips classification; return [] so the panel falls back to plain rendering.
       return [];
     },
     async nodePower() {
@@ -171,7 +171,7 @@ export function createMockBackend(): PobrBackend {
       return groups.map(() => false);
     },
     async runeCatalog() {
-      // mock 无符文目录；面板隐藏符文编辑器。
+      // Mock has no rune catalog; the panel hides the rune editor.
       return [];
     },
     async uniqueCatalog() { return []; },

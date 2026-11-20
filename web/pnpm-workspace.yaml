@@ -1,7 +1,7 @@
 packages:
   - .
 
-# esbuild 的 postinstall 下载平台二进制，vite 依赖它；显式放行。
+# esbuild's postinstall downloads a platform binary needed by vite; allow it explicitly.
 allowBuilds:
   esbuild: true
   # Verify/install the platform runtime used by Worker smoke tests.

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# driver.sh — pobr 环境 bootstrap + 烟雾验证 + PoB2 vendor 参考克隆。
+# driver.sh — pobr environment bootstrap, smoke checks, and vendored PoB2 reference clone.
 #
-# 把"新环境从零到能跑测试 + 能查 PoB2 公式"的流程脚本化（会话 2026-06-18 实跑得出）。
-# 子命令：
-#   bootstrap  安装 luajit/构建依赖 + 克隆 vendor（钉定 commit）+ CLI build
+# Scripted setup from a clean environment to running tests and consulting PoB2 Lua formulas.
+# Subcommands:
+#   bootstrap  Install LuaJIT/build deps + clone vendored PoB2 (pinned commit) + CLI build
 #   deps       Install/cache the compatible PoB2 LuaJIT runtime
-#   vendor     仅克隆/对齐 PoB2 vendor 到钉定 commit（gitignored，永不提交）
+#   vendor     Clone/align vendored PoB2 to the pinned commit (gitignored, never committed)
 #   build      Build the application CLI, or forward explicit Cargo selectors.
 #   test <args> Forward targeted cargo test arguments (package, suite, filter).
 #   lint <args> Format check plus Clippy for explicitly selected Cargo targets.
@@ -14,9 +14,9 @@
 #   regen      precompile-mods --report, then its tests
 #   warm       copy another worktree's target/debug (clone or cp -a)
 #   smoke      Quick representative aggregation, parser and codec checks.
-#   data       数据现状自检 + 再生管线说明（含云端约束）
-#   lua <pat>  在 vendor PoB2 Lua 里 grep 一个 pattern（公式/规则裁决用）
-#   status     报告 luajit / vendor / data 就绪态
+#   data       Data status check + pipeline commands
+#   lua <pat>  Grep a pattern in vendored PoB2 Lua (for formula/rule cross-checks)
+#   status     Report luajit / vendor / data readiness
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -67,7 +67,7 @@ cmd_deps() {
 }
 
 cmd_vendor() {
-  say "PoB2 vendor 参考克隆（gitignored，不提交）"
+  say "PoB2 vendor reference clone (gitignored, never committed)"
   local sha repo
   sha="$(vendor_commit)" || return 1
   repo="$(reference_field repository)" || return 1
@@ -78,19 +78,19 @@ cmd_vendor() {
     vendor_root=""
   fi
   if [[ -z "$vendor_root" ]]; then
-    [[ -z "$(ls -A "$VENDOR_DIR")" ]] || { echo "ERROR: vendor 目录非空且不是独立 Git 仓库" >&2; return 1; }
+    [[ -z "$(ls -A "$VENDOR_DIR")" ]] || { echo "ERROR: vendor directory is non-empty and not an isolated Git repo" >&2; return 1; }
     git -C "$VENDOR_DIR" init -q || return 1
   fi
   local vendor_changes
   vendor_changes="$(git -C "$VENDOR_DIR" status --porcelain --untracked-files=no)" || return 1
   [[ -z "$vendor_changes" ]] \
-    || { echo "ERROR: vendor 有未提交修改，拒绝切换 commit" >&2; return 1; }
+    || { echo "ERROR: vendor checkout has uncommitted changes; refusing to switch commit" >&2; return 1; }
   if [ -f "$VENDOR_DIR/src/Modules/ModParser.lua" ] \
      && [ "$(git -C "$VENDOR_DIR" rev-parse HEAD 2>/dev/null)" = "$sha" ]; then
     printf '%s\n' "$sha" > vendor/.pob2-version.txt || return 1
-    echo "vendor 已在钉定 commit $sha"; return 0
+    echo "vendor is already at pinned commit $sha"; return 0
   fi
-  echo "克隆 PoB2 @ ${sha}（depth 1 fetch-by-sha）..."
+  echo "Cloning PoB2 @ ${sha} (depth 1 fetch-by-sha)..."
   git -C "$VENDOR_DIR" remote get-url origin >/dev/null 2>&1 \
     || git -C "$VENDOR_DIR" remote add origin "$repo" || return 1
   local origin; origin="$(git -C "$VENDOR_DIR" remote get-url origin)" || return 1
@@ -470,29 +470,29 @@ cmd_smoke() {
 }
 
 cmd_data() {
-  say "数据现状自检"
+  say "Data status self-check"
   if [ -d "$DATA_ROOT/$DATA_VER" ]; then
-    echo "✓ data/$DATA_VER 已临时导入（base/overlay/generated/i18n）——来源按独立锁固定"
+    echo "✓ data/$DATA_VER is staged locally (base/overlay/generated/i18n) — pinned via pipeline/data.lock.json"
     ls "$DATA_ROOT/$DATA_VER" | sed 's/^/    /'
   else
-    echo "✗ data/$DATA_VER 缺失（先运行 mise run data:prepare）"
+    echo "✗ data/$DATA_VER is missing (run mise run data:prepare first)"
   fi
   cat <<'EOF'
 
-数据只来自 pipeline/data.lock.json 固定的 ackness/repoe 与 ackness/poe2-zh-cn-stats 发布（详见 pipeline/README.md）：
-  1) 当前固定输入       : mise run data:prepare（临时导入）；mise run data:check 离线确认工作树干净
-  2) 精简发行包         : mise run data:pack build --out <fresh>
-  3) 新版本完整候选     : mise run data:update --lock <data-lock> --out <fresh>
-  4) 显式本地采用       : 上一命令加 --activate --expected-current <old-version>
-采用前保留版本、GameData 和 parity 门禁；失败回滚，来源接受与部署另作决定。
-官方版本发现、原料采集与语言生成由 owner 仓库执行；PoBR 不读取原始表导出或 vendor Lua 生成数据。
+Data comes exclusively from ackness/repoe and ackness/poe2-zh-cn-stats releases pinned in pipeline/data.lock.json (see pipeline/README.md):
+  1) Active pinned input    : mise run data:prepare (stage locally); mise run data:check (verify clean worktree offline)
+  2) Compact release pack   : mise run data:pack build --out <fresh>
+  3) New version candidate  : mise run data:update --lock <data-lock> --out <fresh>
+  4) Explicit local adoption: add --activate --expected-current <old-version> to the command above
+Version, GameData, and parity gates run before adoption; failures roll back, and source acceptance/deployment are handled separately.
+Official patch discovery, raw extraction, and locale generation live in the owner repositories; PoBR never reads raw table exports or vendor Lua to generate data.
 EOF
 }
 
 cmd_lua() {
   local pat="${2:-}"
-  [ -n "$pat" ] || { echo "usage: driver.sh lua '<pattern>'  （在 vendor PoB2 Lua 里 grep）"; return 2; }
-  [ -d "$VENDOR_DIR/src" ] || { echo "vendor 未克隆，先跑：driver.sh vendor"; return 1; }
+  [ -n "$pat" ] || { echo "usage: driver.sh lua '<pattern>'  (grep in vendor PoB2 Lua)"; return 2; }
+  [ -d "$VENDOR_DIR/src" ] || { echo "vendor is not cloned; run: driver.sh vendor"; return 1; }
   say "grep vendor PoB2 Lua: $pat"
   grep -rnF -- "$pat" "$VENDOR_DIR/src/Modules/ModParser.lua" \
     "$VENDOR_DIR/src/Modules/CalcOffence.lua" \
@@ -501,11 +501,11 @@ cmd_lua() {
 }
 
 cmd_versions() {
-  say "已准备数据版本 + 多版本无关性 smoke"
-  echo "data/ 版本目录："; ls -d "$DATA_ROOT"/[0-9]*/ 2>/dev/null | sed 's#/$##; s#.*/##' | sed 's/^/    /'
-  echo "本次数据版本：${DATA_VER}（测试与 PoB2 对照值都针对它）"
-  echo "切到更新版本运行（零代码改动）：export POBR_DATA_VERSION=<ver>  或  写 data/CURRENT"
-  echo "→ multi_version smoke（对每个版本 BuildData::load + calc）："
+  say "Prepared data versions + multi-version agnostic smoke test"
+  echo "data/ version directories:"; ls -d "$DATA_ROOT"/[0-9]*/ 2>/dev/null | sed 's#/$##; s#.*/##' | sed 's/^/    /'
+  echo "Active data version: ${DATA_VER} (tests and PoB2 oracle values target it)"
+  echo "Switch to another version (zero code changes): export POBR_DATA_VERSION=<ver>  or write data/CURRENT"
+  echo "→ multi_version smoke (BuildData::load + calc per version):"
   cargo test -p pobr-build --test parity multi_version -- --nocapture 2>&1 \
     | grep -E "multi-version\]|test result:"
 }
@@ -514,15 +514,15 @@ cmd_diff() {
   local a="${2:-}" b="${3:-}"
   if [ -z "$a" ] || [ -z "$b" ]; then
     echo "usage: driver.sh diff <verA> <verB> [--domain tree|mods|bases|skill_levels|skill_stats|special_mods|uniques] [--limit N]"
-    echo "已准备版本："; ls -d "$DATA_ROOT"/[0-9]*/ 2>/dev/null | sed 's#/$##; s#.*/##; s/^/    /'
+    echo "Prepared versions:"; ls -d "$DATA_ROOT"/[0-9]*/ 2>/dev/null | sed 's#/$##; s#.*/##; s/^/    /'
     return 2
   fi
-  say "语义数据 diff: $a → ${b}（节点/技能/词条的增删改）"
+  say "Semantic data diff: $a -> ${b} (added/removed/changed nodes, skills, mods)"
   python3 -m pipeline.diagnostics.diff_data "$DATA_ROOT/$a" "$DATA_ROOT/$b" --semantic "${@:4}"
 }
 
 cmd_status() {
-  say "就绪态"
+  say "Readiness status"
   local runtime
   if runtime="$(bash "$ROOT/devs/scripts/pob2-luajit.sh" resolve)"; then
     echo "✓ PoB2 LuaJIT: $runtime"
@@ -532,10 +532,10 @@ cmd_status() {
   local sha; sha="$(vendor_commit)"
   if [ -f "$VENDOR_DIR/src/Modules/ModParser.lua" ]; then
     local have; have="$(git -C "$VENDOR_DIR" rev-parse HEAD 2>/dev/null)"
-    [ "$have" = "$sha" ] && echo "✓ vendor: 钉定 commit $sha" || echo "~ vendor: 在 ${have}（钉定 ${sha}，driver.sh vendor 对齐）"
-  else echo "✗ vendor 未克隆（driver.sh vendor）"; fi
-  [ -d "$DATA_ROOT/$DATA_VER" ] && echo "✓ data: $DATA_VER 已准备" || echo "✗ data: $DATA_VER 缺失（mise run data:prepare）"
-  command -v cargo >/dev/null && echo "✓ cargo: $(cargo --version)" || echo "✗ cargo 缺失"
+    [ "$have" = "$sha" ] && echo "✓ vendor: pinned at commit $sha" || echo "~ vendor: at ${have} (pinned ${sha}; run driver.sh vendor to sync)"
+  else echo "✗ vendor not cloned (driver.sh vendor)"; fi
+  [ -d "$DATA_ROOT/$DATA_VER" ] && echo "✓ data: $DATA_VER ready" || echo "✗ data: $DATA_VER missing (mise run data:prepare)"
+  command -v cargo >/dev/null && echo "✓ cargo: $(cargo --version)" || echo "✗ cargo missing"
 }
 
 case "${1:-}" in

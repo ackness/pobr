@@ -1,43 +1,42 @@
--- PoB2 headless oracle：SkillStatMap 注入后 modList 对拍（M1-T2b，蓝图 T2.3 oracle 抽样）。
+-- PoB2 headless oracle: cross-check modList after SkillStatMap injection (M1-T2b, blueprint T2.3 oracle sampling).
 --
--- 对给定 (effectId, stat, value) 探针，用 PoB2 真实框架函数
--- `calcs.mergeSkillInstanceMods`（Modules/CalcActiveSkill.lua:82）+ 真实 statMap
--- 数据（Data/SkillStatMap.lua 全局表 / Data/Skills/*.lua per-statSet 覆盖，经
--- metatable 链）跑一次受控合并，dump 注入后 modList（PoB2 原始名 / type / 合并值 /
--- flags / keywordFlags / tags）为 JSON。受控值经 `extraStats` 参数注入——合成
--- statSet 自身无 stat（buildSkillInstanceStats 返回空表），合并结果即该单条 stat
--- 的映射产物，可逐 stat 归因。
+-- For each `(effectId, stat, value)` probe, invokes PoB2's real `calcs.mergeSkillInstanceMods`
+-- (`Modules/CalcActiveSkill.lua:82`) with real `statMap` data (`Data/SkillStatMap.lua` global table /
+-- `Data/Skills/*.lua` per-statSet overrides via metatable chain), dumping the injected modList
+-- (PoB2 raw name, type, merged value, flags, keywordFlags, tags) as JSON. Values inject via
+-- `extraStats`—the synthetic statSet has no own stats (`buildSkillInstanceStats` returns empty),
+-- so the merged result isolates that single stat's mapped output for per-stat attribution.
 --
--- effectId 取 "GLOBAL" 时直接探全局表 data.skillStatMap；否则取
--- data.skills[effectId].statSets[1].statMap（默认 set，与 PoBR 引擎
--- set_key=None → "1" 的口径一致；vendor SkillsTab.lua:354 缺省 statSetIndex=1）。
+-- `effectId = "GLOBAL"` probes the global `data.skillStatMap`; otherwise uses
+-- `data.skills[effectId].statSets[1].statMap` (default set, matching PoBR's `set_key=None -> "1"`;
+-- vendor `SkillsTab.lua:354` defaults `statSetIndex=1`).
 --
--- 纯包装：不修改任何 vendor 源码。须从 vendor src/ 目录运行（同 oracle.lua）：
+-- Pure wrapper: modifies no vendor source. Run from `vendor/PathOfBuilding-PoE2/src` (like `oracle.lua`):
 --   cd vendor/PathOfBuilding-PoE2/src
 --   LUA_PATH="../runtime/lua/?.lua;../runtime/lua/?/init.lua;./?.lua;;" CI=true \
 --     luajit ../../../tools/pob2-oracle/statmap_oracle.lua <effectId> <stat> <value> [...]
 --
--- 参数为 (effectId, stat, value) 三元组的重复序列；JSON 数组输出到 stdout。
+-- Arguments repeat `(effectId, stat, value)` triples; JSON array outputs to stdout.
 
 if #arg < 3 or #arg % 3 ~= 0 then
 	io.stderr:write("usage: statmap_oracle.lua <effectId|GLOBAL> <stat> <value> [...]\n")
 	os.exit(2)
 end
 
--- HeadlessWrapper 启动过程可能改写全局 arg——先快照。
+-- HeadlessWrapper startup may mutate global `arg`; snapshot it first.
 local queries = {}
 for i = 1, #arg do
 	queries[i] = arg[i]
 end
 
--- 静音 headless 启动噪声（同 oracle.lua 做法）。
+-- Silence headless startup noise (same pattern as `oracle.lua`).
 local realPrint = print
 _G.print = function() end
 dofile("HeadlessWrapper.lua")
 _G.print = realPrint
 
--- `calcs` 是模块局部表（Modules/Calcs.lua:13-17 模式）——按同样方式把
--- CalcActiveSkill 装载进自己的表（LoadModule 幂等，纯函数注册，不动全局状态）。
+-- `calcs` is module-local (`Modules/Calcs.lua:13-17` pattern)—load `CalcActiveSkill` into a
+-- private table (`LoadModule` is idempotent and registers pure functions without mutating global state).
 local calcs = {}
 LoadModule("Modules/CalcActiveSkill", calcs)
 assert(calcs.mergeSkillInstanceMods, "calcs.mergeSkillInstanceMods not loaded")
@@ -50,8 +49,8 @@ local function jsonEscape(s)
 	end))
 end
 
--- 通用值序列化（number / string / boolean / 嵌套表；表按 string 键排序 + 数组部
--- 分保序，输出确定性）。
+-- Generic value serializer (`number` / `string` / `boolean` / nested table; sorts string keys and
+-- preserves array order for deterministic output).
 local function encodeValue(v, depth)
 	depth = depth or 0
 	if depth > 6 then return '"<depth>"' end
@@ -64,7 +63,7 @@ local function encodeValue(v, depth)
 		return '"' .. jsonEscape(v) .. '"'
 	elseif t == "table" then
 		local parts = {}
-		-- 数组部分。
+		-- Array part.
 		local arr = {}
 		for i, item in ipairs(v) do
 			arr[#arr + 1] = encodeValue(item, depth + 1)
@@ -72,7 +71,7 @@ local function encodeValue(v, depth)
 		if #arr > 0 then
 			parts[#parts + 1] = '"_list":[' .. table.concat(arr, ",") .. "]"
 		end
-		-- string 键部分（排序）。
+		-- String key part (sorted).
 		local keys = {}
 		for k in pairs(v) do
 			if type(k) == "string" then keys[#keys + 1] = k end
@@ -86,8 +85,8 @@ local function encodeValue(v, depth)
 	return '"<' .. t .. '>"'
 end
 
--- 序列化一条注入后 mod：名字 / 聚合类型 / 合并值 / flags / keywordFlags / tags
--- （tag 为 mod 表的数组部分）。
+-- Serialize an injected mod: name, aggregation type, merged value, flags, keywordFlags, and tags
+-- (tags form the array portion of the mod table).
 local function encodeMod(m)
 	local tags = {}
 	for _, tag in ipairs(m) do
@@ -99,8 +98,8 @@ local function encodeMod(m)
 		m.flags or 0, m.keywordFlags or 0, table.concat(tags, ","))
 end
 
--- 单条探针：合成 statSet（statMap 引用真实表，自身无 stat / baseMods），经
--- extraStats 注入受控 (stat, value)，跑真实 mergeSkillInstanceMods。
+-- Single probe: build a synthetic statSet (inheriting the real `statMap` with no own stats/baseMods)
+-- and inject controlled `(stat, value)` via `extraStats` into the real `mergeSkillInstanceMods`.
 local function probeOne(effectId, stat, value)
 	local statMap
 	if effectId == "GLOBAL" then

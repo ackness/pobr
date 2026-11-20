@@ -4,15 +4,15 @@ import { useEffect, useRef, useState } from 'react';
 import { bindT, type Lang } from '../../lib/i18n';
 
 interface Props {
-  /** 当前注释文本（空串 = 无注释）。 */
+  /** Current annotation text (empty string = none). */
   value: string;
-  /** 提交（失焦即存；空文本 = 删除该注释）。 */
+  /** Commit handler (saves on blur; empty string deletes the annotation). */
   onCommit: (text: string) => void;
   lang: Lang;
 }
 
-/** 局部注释编辑器（装备/技能组/珠宝旁通用）：无注释时是一个小按钮，
- *  有注释时展示为引用块；点击进入编辑，失焦自动保存。 */
+/** Inline annotation editor shared across items, socket groups, and jewels:
+ *  renders as a small button when empty or a quote block when set; click to edit, saves on blur. */
 export function NoteEditor({ value, onCommit, lang }: Props) {
   const tt = bindT(lang);
   const [editing, setEditing] = useState(false);

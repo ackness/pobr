@@ -3,10 +3,10 @@ import type { EnemyPresets } from './enemyPresets';
 import type { UniqueEntry, UniqueSelection, UniqueDraft } from './uniques';
 import type { CraftingMetadata } from './itemCrafting';
 /**
- * API 层唯一入口：组件层只 import 这里，看不到 wasm。
+ * Sole entrypoint of the API layer: UI components only import here and never see wasm directly.
  *
- * - 默认 wasm 后端（真实计算）；
- * - `VITE_POBR_BACKEND=mock` 时用 fixture mock（UI 独立开发 / vitest）。
+ * - Default: wasm backend (real calculation);
+ * - With `VITE_POBR_BACKEND=mock`: fixture mock (standalone UI dev / vitest).
  */
 
 import type {
@@ -46,15 +46,15 @@ export interface JewelBase {
 }
 
 export interface PobrBackend {
-  /** 初始化（wasm 模块加载 + 游戏数据注入）；幂等。 */
+  /** Initialize (wasm module load + game data staging); idempotent. */
   init(onProgress?: (message: string) => void): Promise<void>;
   /** Version of the game data successfully loaded into this backend. */
   readonly dataVersion?: string;
   readonly dataInfo?: import('./types').DataInfo;
   decodeBuild(pobCode: string): Promise<BuildJson>;
   /**
-   * 切到指定 loadout 后重新解码（成组切换天赋/装备/技能）。
-   * 三个序号取自 `BuildJson.loadouts[]`；null 表示该类保持原样。
+   * Switch to the given loadout and re-decode (bulk swap of passive tree / gear / skills).
+   * Indices come from `BuildJson.loadouts[]`; `null` keeps that category unchanged.
    * The returned code contains the selected loadout and becomes the new export base.
    */
   switchLoadout(
@@ -62,8 +62,8 @@ export interface PobrBackend {
     sel: SetSelection,
   ): Promise<SelectedLoadoutJson>;
   /**
-   * 组管理：复制 / 重命名 / 删除一个 loadout，返回**新的 build code**。
-   * `name` 同时写进三类 set 的 title——同名即成组，用户无需理解 `{tag}` 语法。
+   * Loadout set management: duplicate / rename / remove a loadout and return the **new build code**.
+   * `name` writes into all three set titles—matching names form a group without exposing `{tag}` syntax.
    */
   manageLoadout(
     pobCode: string,
@@ -85,15 +85,15 @@ export interface PobrBackend {
   breakdownDescriptors(): Promise<NonNullable<CalculateBuildResponse['breakdown_descriptors']>>;
   /** Static display units, categories and comparison direction from the engine. */
   displayCatalog(): Promise<DisplayCatalogEntry[]>;
-  /** 编辑态 → PoB2 分享 code（请求同 calculateBuild + 可选 notes）。 */
+  /** Editable state -> PoB2 share code (same request as `calculateBuild` plus optional notes/base_code). */
   encodeBuild(request: CalculateBuildRequest & { notes?: string; base_code?: string }): Promise<string>;
   /** Independent metrics for every active effect, including utility and unavailable skills. */
   skillMetrics(request: CalculateBuildRequest): Promise<SkillMetricsResponse>;
   importPartyMember(code: string): Promise<import('./types').PartyMember>;
   attribution(request: AttributionRequest): Promise<AttributionResponse>;
-  /** 构筑每一行词条在计算中的去向（比计算更慢，按需调用）。 */
+  /** Trace how each modifier line entered calculation (slower than `calculateBuild`; fetch on demand). */
   lineUsage(request: CalculateBuildRequest): Promise<LineUsageResponse>;
-  /** 天赋树静态数据（静态资产，不经 wasm）。 */
+  /** Static passive tree data (static asset, bypasses wasm). */
   loadPassiveTree(treeVersion?: string | null): Promise<PassiveNode[]>;
   previewTreeConversion(code: string, allSpecs: boolean): Promise<TreeConversionResponse>;
   previewTreeEdit(request: CalculateBuildRequest, node: number, mode: TreeAllocationMode, action: TreeEditAction): Promise<TreeEditResponse>;
@@ -104,22 +104,22 @@ export interface PobrBackend {
   itemCraftingCatalog(): Promise<CraftingMetadata>;
   normalizeItemDraft(text: string): Promise<string>;
   loadJewelBases(): Promise<JewelBase[]>;
-  /** 天赋树节点美术边车（未生成时返回 null，界面回退纯 SVG 圆点）。 */
-  /** 职业/升华元数据（新建 build 选择器）。 */
+  /** Passive node artwork sidecar (returns null when absent; UI falls back to plain SVG circles). */
+  /** Class/ascendancy metadata (for new build selector). */
   loadTreeMeta(): Promise<PassiveTreeMeta>;
-  /** 加载职业/升华名的简中对照表（数据包缺该文件时返回空表，界面显示英文原名）。 */
+  /** Load Simplified Chinese class/ascendancy name table (returns empty map when missing; UI keeps English names). */
   loadClassNames(): Promise<ClassNames>;
-  /** 宝石目录（手动技能编辑选择器）。 */
+  /** Gem catalog (for manual skill picker). */
   gemDescriptions(): Promise<import('../lib/gemDescriptions').GemDescriptionIndex | null>;
   gemCatalog(): Promise<GemCatalogEntry[]>;
   minionCatalog(): Promise<MinionCatalog>;
-  /** 内置配置目录（Config 页分区开关）。 */
+  /** Built-in config catalog (Config page section toggles). */
   loadConfigOptions(): Promise<ConfigOption[]>;
   /** Enemy tier facts from the same pinned snapshot as the calculation. */
   loadEnemyPresets(): Promise<EnemyPresets | null>;
-  /** 英文词条行 → `lang` 显示（数据包语言包的模板反查，按回退链；不认识原样返回）。 */
+  /** English mod lines -> `lang` display (template reverse lookup in language pack following fallback chain; unrecognized lines returned verbatim). */
   translateLines(lines: string[], lang?: import('../lib/i18n').Lang): Promise<string[]>;
-  /** Names of known identity (passive node id, item base line) → `lang` display: the locale's
+  /** Names of known identity (passive node id, item base line) -> `lang` display: the locale's
    * id-scoped native catalog first (unresolved stays English), otherwise the same path as `translateLines`. */
   translateNames(names: readonly import('../lib/nativeDisplayNames').GameNameRequest[], lang?: import('../lib/i18n').Lang): Promise<string[]>;
   /** {@link translateLines} with who wrote each shown text: `origin` `agent` / `human` for the translation
@@ -127,34 +127,34 @@ export interface PobrBackend {
   translateLinesDetailed(lines: string[], lang?: import('../lib/i18n').Lang): Promise<import('../lib/nativeDisplayTexts').DisplayText[]>;
   /** {@link translateNames} with origins (as {@link translateLinesDetailed}). */
   translateNamesDetailed(names: readonly import('../lib/nativeDisplayNames').GameNameRequest[], lang?: import('../lib/i18n').Lang): Promise<import('../lib/nativeDisplayTexts').DisplayText[]>;
-  /** 数据包声明的语言及其回退链（初始化前为空）；页面据此解析游戏文本的回退。 */
+  /** Languages declared by the data pack and their fallback chains (empty before init); pages resolve game-text fallbacks from this. */
   gameLocales(): Promise<import('../lib/gameLocales').GameLocaleInfo[]>;
-  /** 物品文本 → 逐行类别（Items 面板上色；空/异常返回 []，调用方回落无区分渲染）。 */
+  /** Item text -> per-line categories (for Items panel coloring; returns [] on empty/error so caller falls back to unstyled rendering). */
   classifyItemLines(text: string): Promise<ItemLineJson[]>;
-  /** 树节点威力热力图（PoB2 PowerBuilder 语义：深度内单点试加求目标属性增量）。 */
+  /** Passive tree node power heatmap (PoB2 PowerBuilder semantics: single-node trial allocation within depth for target stat delta). */
   nodePower(
     request: CalculateBuildRequest,
     powerStat: string,
     maxDepth: number,
     nodes?: number[],
-    /** 只算候选列表的一段（响应带 `total`）；省略则全部。 */
+    /** Evaluate only one window of candidates (response includes `total`); omit to evaluate all. */
     window?: NodePowerWindow,
   ): Promise<NodePowerResponse>;
-  /** 通用变体评估（寻优框架计算面：变体 → 全量重算 → 属性值；打分在前端）。 */
+  /** Generic variant evaluation (optimizer computation side: variant -> full recalc -> stat values; scoring stays in frontend). */
   optimizeVariants(request: OptimizeVariantsRequest): Promise<OptimizeVariantsResponse>;
   /** One result per group; shares the calculation engine's support fixed point. */
   supportGroupsCompatible(groups: SocketGroupInput[]): Promise<boolean[]>;
-  /** 符文/魂核目录（符文槽选择器）；`itemText` 给定时逐符文附对该物品适用的效果行。 */
+  /** Rune / Soul Core catalog (for rune socket selector); when `itemText` is supplied, attaches applicable effects per rune. */
   runeCatalog(itemText?: string): Promise<RuneCatalogEntry[]>;
   itemAugmentInfo(text: string): Promise<ItemAugmentInfo>;
-  /** 重插符文：重写物品文本的 Rune 命名行 + {rune} 词条行；`sockets` 给定时
-   *  同步加减孔（重写/新增/移除 `Sockets:` 行）。非法输入抛错。 */
+  /** Reforge runes: rewrites `Rune:` lines and `{rune}` mod lines in item text; when `sockets` is given,
+   *  adds/removes sockets (rewriting/adding/removing the `Sockets:` line). Throws on invalid input. */
   reforgeRunes(text: string, runes: string[], sockets?: number): Promise<string>;
 }
 
 let backendPromise: Promise<PobrBackend> | null = null;
 
-/** 取当前后端（懒加载单例）。 */
+/** Get the active backend (lazy-loaded singleton). */
 export function getBackend(): Promise<PobrBackend> {
   backendPromise ??= createBackend().then(withBreakdownDescriptors);
   return backendPromise;

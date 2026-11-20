@@ -2,7 +2,7 @@
  * Affix probes live in tradeOptimizer.ts; gem upgrade planning lives in tradeMarket.ts.
  */
 
-/** 数字骨架化（与 owner 发布的 trade_stat_map.json 生成规则一致）：先剥 {…} 标注再归一数字。 */
+/** Numeric skeletonization (matches the owner release `trade_stat_map.json` rule): strip `{...}` annotations then normalize numbers. */
 export function normalizeTradeLine(line: string): string {
   return line
     .replace(/\{[^}]*\}/g, '')
@@ -50,7 +50,7 @@ export function tradeQueryWeights<T extends WeightedStat>(weighted: readonly T[]
   }).slice(0, 32);
 }
 
-/** 服务器：国际服 / 国服（腾讯）。路径结构相同，仅主机名不同；stat id 通用。 */
+/** Realm: International / China (Tencent). Path structure is identical with different hostnames; stat IDs are shared. */
 export type TradeRealm = 'intl' | 'cn';
 
 const REALM_HOSTS: Record<TradeRealm, string> = {
