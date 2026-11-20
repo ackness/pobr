@@ -16,7 +16,7 @@ Calcs 直接读取异常计算阶段留下的输入，不另算一遍伤害：
 
 ### 武器保证中毒与无限层
 
-Splinter of Lorrata 的 `local_poison_on_hit` 保证这把武器击中时中毒，按 `PoisonChance OVERRIDE 100` 处理；`local_hits_with_this_weapon_ignore_poison_limit` 让这把武器施加的毒不受层数上限限制。两条均只读实际来源手，不作用于法术、非武器攻击、另一手或召唤物。禁止施毒优先；保证中毒也不允许本来不符合条件的伤害类型施毒。依据为[物品原文](https://poe2db.tw/us/Splinter_of_Lorrata)和游戏原生 stat。
+Splinter of Lorrata 的 `local_poison_on_hit` 保证这把武器击中时中毒，按 `PoisonChance OVERRIDE 100` 处理；`local_hits_with_this_weapon_ignore_poison_limit` 让这把武器施加的毒不受层数上限限制。两条均只读实际来源手，不作用于法术、非武器攻击、另一手或召唤生物。禁止施毒优先；保证中毒也不允许本来不符合条件的伤害类型施毒。依据为[物品原文](https://poe2db.tw/us/Splinter_of_Lorrata)和游戏原生 stat。
 
 无限层仍按应用频率与持续时间估计实例数，但全部实例生效，因此使用平均伤害掷值和原有暴击占比，不做有限层溢出时的强实例筛选。缺少频率输入只回退单实例。交替攻击各手各占一半应用频率，同时双手命中则各用完整频率。无限来源与有限来源相加，后者仍受自己的上限约束；Full DPS 按手拆分并保留跨技能的有限共享池，最终仍受总 DoT 上限限制。
 
@@ -42,13 +42,13 @@ Crimson Assault 先把流血基础持续时间改为 1 秒，再应用持续时�
 
 INC 合计攻击者的 `Enemy<X>Duration`、`EnemyAilmentDuration`、`EnemyElementalAilmentDuration` 与目标的 `Self<X>Duration`、`SelfAilmentDuration`、`SelfElementalAilmentDuration`。映射包括 `shock_duration_+%`、`chill_duration_+%`、`lightning_ailment_duration_+%`、`cold_ailment_duration_+%`、`freeze_duration_+%`、`chill_and_freeze_duration_+%`；`support_pure_shock_shock_duration_+%_final` 和 `active_skill_freeze_duration_+%_final` 走 MORE。
 
-只有所选命中能够施加时才展示持续时间：感电要求非零几率；冰缓要求冰冷命中且没有 `CannotChill`；冻结要求 `FreezeBuildupAvg > 0`。引擎不由持续时间推算冻结速度或再次冻结的间隔。PoB2 没有对应的 `FreezeDuration` 输出。
+只有所选命中能够施加时才展示持续时间：感电要求非零几率；冰缓要求冰霜命中且没有 `CannotChill`；冻结要求 `FreezeBuildupAvg > 0`。引擎不由持续时间推算冻结速度或再次冻结的间隔。PoB2 没有对应的 `FreezeDuration` 输出。
 
 冰缓与感电幅度由攻击者和目标两侧倍率相乘。`calc::ailment::effect_mod_factors` 分别读取攻击者的 `Enemy<X>Magnitude` / `AilmentMagnitude`、目标的 `Self<X>Magnitude` / `AilmentMagnitude`，每侧最低为零。`ChillEffectMod` / `ShockEffectMod` 展示乘积，中性值为 1。
 
 攻击者倍率还按暴击占比 c 加权：`(1 − c) × factor + c × factor_with_CriticalStrike`。`AilmentsAreNeverFromCrit` 下 c 为零。这样，`shock_effect_+%_with_critical_strikes` / `chill_effect_+%_with_critical_strikes` 只影响暴击部分。来源伤害仍使用现有非暴击／暴击平均近似，没有分别求两种命中的最终幅度；**没有游戏内实测**。
 
-`FreezeBuildupAvg` 表示一次成功命中平均积累了冻结门槛的百分之几：暴击加权、减免后的可冻结伤害 × `FreezeBuildupPct` × 目标 `FreezeBuildup` / `ImmobilisationBuildup` 倍率。默认来源是冰冷；`<Type>CanFreeze` 可允许其他伤害类型，例如 Pinnacle of Power。实现为 `calc::ailment::freeze_buildup_terms`，共用重度晕眩的减免后伤害。不命中或具有 `CannotFreeze` 时为零。
+`FreezeBuildupAvg` 表示一次成功命中平均积累了冻结门槛的百分之几：暴击加权、减免后的可冻结伤害 × `FreezeBuildupPct` × 目标 `FreezeBuildup` / `ImmobilisationBuildup` 倍率。默认来源是冰霜；`<Type>CanFreeze` 可允许其他伤害类型，例如 Pinnacle of Power。实现为 `calc::ailment::freeze_buildup_terms`，共用重度晕眩的减免后伤害。不命中或具有 `CannotFreeze` 时为零。
 
 `active_skill_hit_damage_freeze_multiplier_+%_final` 提供攻击者的更多累积；Freezing Mark 的 `freezing_mark_hit_damage_freeze_multiplier_+%_final` 提供目标的 MORE。明细保留 `FreezeSourceHitAverage`、`FreezeBuildupPerDamage`、`EnemyFreezeBuildupMultiplier`；持续时间明细保留 `BaseAilmentDuration`、`AilmentDurationIncreased`、`AilmentDurationMore`、`EnemyDebuffDuration`，幅度明细保留 `AttackerChillMagnitude`、`TargetChillMagnitude`。
 
@@ -64,7 +64,7 @@ INC 合计攻击者的 `Enemy<X>Duration`、`EnemyAilmentDuration`、`EnemyEleme
 
 2026-10-17 的 Oil Barrage 调查：主技能在第 9 组，辅助为 Nova Projectiles I、Salvo、Ricochet II、Fork、Armour Break III。[Tainted Strike](https://poe2db.tw/us/Tainted_Strike)（`criticals79`，节点 `22864`）的 `non_damaging_ailment_effect_+%_with_critical_strikes` 给暴击造成的非伤害异常 30% increased 幅度。PoB2 将其算入 `EnemyFreezeBuildup`，配合 Suppressing Fire（`44746`）的 40% more Immobilisation 得到 1.30 × 1.40 = 1.82。PoBR 解析到 `FreezeBuildup`，但累积查询未开启暴击条件，因此为 1.40。
 
-当时的临时副本只增加一条相反的 30% reduced 词条，PoB2 从 1.547927978 降至 1.190713830，正好相差 1.30 倍；100% 暴击率、冰冷命中伤害和 DPS 不变。PoBR 两次都是 0.440092450。这个实验确认了差异来源，**没有证明“异常幅度”在游戏里应当放大冻结累积**。[游戏关键词](https://poe2db.tw/us/Keywords)分别定义了幅度和累积，没有明确两者等价。现有映射来自导出器；仍需明确游戏规则或客户端实测，不能据此修改引擎或新增 known-difference 豁免。
+当时的临时副本只增加一条相反的 30% reduced 词条，PoB2 从 1.547927978 降至 1.190713830，正好相差 1.30 倍；100% 暴击率、冰霜命中伤害和 DPS 不变。PoBR 两次都是 0.440092450。这个实验确认了差异来源，**没有证明“异常幅度”在游戏里应当放大冻结累积**。[游戏关键词](https://poe2db.tw/us/Keywords)分别定义了幅度和累积，没有明确两者等价。现有映射来自导出器；仍需明确游戏规则或客户端实测，不能据此修改引擎或新增 known-difference 豁免。
 
 ### 施加的减速幅度
 
@@ -78,7 +78,7 @@ INC 合计攻击者的 `Enemy<X>Duration`、`EnemyAilmentDuration`、`EnemyEleme
 
 `HeavyStunBuildupAvg` 是一次成功命中的平均重度晕眩累积，占 poise（怪物累积门槛）的百分比。游戏 `KeywordPopups` Stun / HeavyStun（55 / 57）以造成的伤害为依据，Premitigation（422）另指减免前伤害。PoBR 复用命中 DPS 的逐类型减免后伤害，非暴击和暴击分别算护甲后再加权；只在暴击中出现的伤害也计入。它不乘命中率，交替双手按每次成功命中平均。
 
-玩家的物理伤害与近战命中各给 50% more 累积，两者相乘；冰冷不积累重度晕眩（`KeywordPopups[3]`）。怪物的 100% 物理／33% 近战加成是怪物造成伤害的规则，不能套给玩家。
+玩家的物理伤害与近战命中各给 50% more 累积，两者相乘；冰霜不积累重度晕眩（`KeywordPopups[3]`）。怪物的 100% 物理／33% 近战加成是怪物造成伤害的规则，不能套给玩家。
 
 [Daze](https://poe2db.tw/us/Daze)使目标承受 50% more 晕眩累积。`conditionEnemyDazed` 只在有效模式成立。近期合并的 `daze_magnitude_+%` / `DazeMagnitude` 已由 `setup_env::scale_enemy_daze` 读取：若幅度增加 i（以比例表示），总倍率为 `1 + 0.5 × (1 + i)`；已有基础 1.5 倍，所以代码另乘 `(1 + 0.5 × (1 + i)) / 1.5 = 1 + i / 3`。50% increased Daze 幅度使总倍率从 1.5 变为 1.75，不改变 Daze 几率或持续时间。拥有施加来源不会自动开启敌人 Dazed 状态。幅度规则为 `exporter: "absent"`；比例缩放有回归测试，没有游戏内实测。
 
@@ -116,9 +116,9 @@ poise 计算读取 `GameConstants.HeavyStunDamageScale = 58 / 100 = 0.58`、对�
 
 `LifeOnKill` / `ManaOnKill` / `EnergyShieldOnKill` 是每次击杀的固定恢复加对应最终最大资源百分比，遵守禁止恢复条件。命中击杀必须属于玩家；图腾、陷阱、地雷等代理不返还给玩家。它们不假设击杀频率，也不处理持续伤害击杀归属。Cannibalism 的 `support_cannibalism_recover_%_maximum_life_on_kill` 仍未映射（II 的值为 3）；Amazon Twister `5355205a1743` 少的 81 是机制缺口，不是单位差异。
 
-完全破甲会移除护甲，使非玩家目标承受 20% increased 物理命中伤害。`FullyBrokenArmourEffect` 展示效果修正后的百分比，只有配置完全破甲才影响命中。The Molten One's Gift（28542）将它扩展到火焰，Storm's Rebuke（22726）扩展到冰冷、闪电，stat 为 `fully_broken_armour_and_sundered_armour_you_inflict_also_applies_to_*`。同一效果只缩放一次，包括前者自带的 15% increased。
+完全破甲会移除护甲，使非玩家目标承受 20% increased 物理命中伤害。`FullyBrokenArmourEffect` 展示效果修正后的百分比，只有配置完全破甲才影响命中。The Molten One's Gift（28542）将它扩展到火焰，Storm's Rebuke（22726）扩展到冰霜、闪电，stat 为 `fully_broken_armour_and_sundered_armour_you_inflict_also_applies_to_*`。同一效果只缩放一次，包括前者自带的 15% increased。
 
-这是玩家施加到共享敌人的减益，召唤物命中也受益；仅属于召唤物的授予或效果加成不能修改它。即使敌人原本无护甲，仍需完全破甲状态。持续伤害不受影响；拥有词条不代表自动破甲或永久覆盖。
+这是玩家施加到共享敌人的减益，召唤生物命中也受益；仅属于召唤生物的授予或效果加成不能修改它。即使敌人原本无护甲，仍需完全破甲状态。持续伤害不受影响；拥有词条不代表自动破甲或永久覆盖。
 
 `calc::effect_views` 的下列字段只是展示估计，不自动开启 Fully Broken Armour、Dazed、Maimed、Blinded 等状态。**没有游戏内实测**。
 

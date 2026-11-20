@@ -143,4 +143,4 @@ Rust 使用 **edition 2024**；应用与工具继承 workspace 发布版本，�
 
 本项目与 Grinding Gear Games 无任何关联，亦未获其背书。应用消费的游戏数据
 派生自 Path of Exile 2 客户端资源，版权归 Grinding Gear Games 所有，仅用于
-构建计算的互操作目的（与 Path of Building 社区惯例一致）。
+构筑计算的互操作目的（与 Path of Building 社区惯例一致）。

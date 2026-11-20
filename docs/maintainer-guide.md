@@ -98,7 +98,7 @@ mise run triage [组或构筑目录 ...]                 # 数值不对的第一
 mise run diagnose <构筑>                           # 一个构筑的导入损耗、参考差异与丢掉的输入
 mise run compare <构筑> [Stat ...]                 # 一个构筑与固定 PoB2 逐 stat 对照（需 vendor 与 LuaJIT）
 mise run gaps [--kind unique|passive|...]          # 词条缺口队列；选中一行后 mise run gap "<模板或文本>"
-mise run lookup <id 或名字> [--level N]            # 游戏数据里的技能、stat、基底、天赋节点、暗金
+mise run lookup <id 或名字> [--level N]            # 游戏数据里的技能、stat、基底、天赋节点、传奇
 mise run accuracy [含 */code.txt 的目录]           # 构筑码对照自带参考值（无需 vendor）
 mise run skills:sweep / mise run config:coverage   # 技能与配置项的覆盖
 mise run audit:display [--release <tag>] <构筑集>  # 不开浏览器看网页会显示什么：报错、名字里的原始 ID、未翻译与未支持的行
@@ -158,7 +158,7 @@ mise run audit:display [--release <tag>] <构筑集>  # 不开浏览器看网页
 | `parse/` | 文本 → Modifier：`mod_parser/`、`mod_cache.rs`、`apply_range.rs` |
 | `rules/` | 规则数据 → Modifier：stat map、特殊词条、配置、buff 解释、`skill_stats.rs`、handler 契约 |
 | `ingest/` | 来源接入（item / passive / skill / character / campaign），保留 `SourceId` 归因 |
-| `skill_env/` | 技能环境：技能与 stat set、辅助判定、buff spec、召唤物、触发、武器贡献 |
+| `skill_env/` | 技能环境：技能与 stat set、辅助判定、buff spec、召唤生物、触发、武器贡献 |
 | `aggregate/` | `ModDb`：sum / more / flag / override / list 与带 trace 的查询 |
 | `calc/` | `CalculationSession` / `Env` 与 offence、defence、ailment、buff、EHP、恢复等阶段；`perform.rs` 执行各阶段 |
 | `attribute/` | TraceGraph 与 direct / marginal / interaction 归因 |
@@ -188,7 +188,7 @@ mise run audit:display [--release <tag>] <构筑集>  # 不开浏览器看网页
 - 技能 stat 的含义写进 `crates/pobr-core/src/rules/skill_stats.rs`：以游戏 stat id 为键，用引擎自己的 modifier 表达。这张表先于随 owner 包导入、由 PoB2 转换的 `skill_stat_map.json` 查询；抽取映射拒绝或缺失的 stat（`mise run diagnose` 第 4 节）优先在这里补，不扩充按 PoB2 名称写的白名单。
 - 不新增“因为 vendor `X.lua:行号` 这样写”式的注释：行号随 vendor 升级失效，也说明不了游戏规则。改到旧代码时顺手换成规则本身的描述。
 - 结果不同时，先按游戏词条和数据判断谁对，不默认 PoB2 正确。PoBR 自有的词条规则声明 `exporter: "absent"`（导出工具没有实现）或 `"differs"`（口径不同），并填 `game_source`；absent 规则在参考口径下自动排除。确认的有意差异写进 [pob2-differences.md](pob2-differences.md)，逐行登记到 `devs/scripts/known-differences.json`。
-- 普通技能、树、基底、符文、actor 与描述已逐批由目标事实接回原消费者；parser、config、special、部分 stat-map／关系、暗金与兼容字段仍保留固定 PoB2／社区解释。按字段区分自主事实、策展与历史 codec，不把整个已迁域重新归为 PoB2 导出依赖。现存依赖和退出顺序见 [pob2-differences.md](pob2-differences.md#数据来源现状与退出顺序)；自有规则仍以游戏依据和实际输出需求实现。
+- 普通技能、树、基底、符文、actor 与描述已逐批由目标事实接回原消费者；parser、config、special、部分 stat-map／关系、传奇与兼容字段仍保留固定 PoB2／社区解释。按字段区分自主事实、策展与历史 codec，不把整个已迁域重新归为 PoB2 导出依赖。现存依赖和退出顺序见 [pob2-differences.md](pob2-differences.md#数据来源现状与退出顺序)；自有规则仍以游戏依据和实际输出需求实现。
 
 `vendor/PathOfBuilding-PoE2/` 是固定 commit 的完整检出（gitignore；`mise run vendor` 按 `devs/reference-sources.json` 的独立参考 pin 克隆，`mise run vendor:lua "<pattern>"` 搜索）。核对公式时读本地 Lua，不去网上找。生产数据的来源与参考测试版本分别维护，见[数据管线](../pipeline/README.md)。
 
@@ -213,7 +213,7 @@ mise run audit:display [--release <tag>] <构筑集>  # 不开浏览器看网页
 
 L2 的 [examples/output-snapshot.json](../examples/output-snapshot.json) 记录锁的 `runtime_identity`、录制时 workspace 应用版本 `engine_version`，以及 `demo-bd-test/builds/*/code.txt` 和 `reference-builds/tuned/builds/*/code.txt` 的输出；不读 holdout 或 PoB2 参考值。使用 `against_reference_enemy()`（Pinnacle 首领、EFFECTIVE、全部引擎模型和自有规则开启），按构筑码选定的主技能计算。录制前验证实际 `GameData::identity()` 与锁一致，避免其他数据目录或本地 patch 被贴上当前锁身份。应用发版不要求重录；`engine_version` 是录制来源，不是相等断言。
 
-稳定字段列表由测试的 `STATS` 维护：DPS 家族（`TotalDPS`、`CombinedDPS`、`WithDotDPS`、`TotalDotDPS`、Ignite / Poison / Bleed）、AverageDamage、ActionRate、CritChance / CritMultiplier；Life / EnergyShield / Mana / Spirit 及未保留资源；Armour / Evasion、四抗及上限、Block / SpellBlock / Evade / Deflect；TotalEHP 与五类 MaxHit；三资源的 RegenRecovery / NetRegen、Life / Mana LeechGainRate；Str / Dex / Int。另录主技能的 `MinionTotalDPS` / `MinionLife`（没有召唤物时为 0）。单位与 Calcs 显示 catalog 相同，概率为百分数。有限数按小数点后六位舍入（不是六位有效数字），负零归零；同一舍入区间内小于 `0.000001` 的变化可能不报告。无穷显式存为 `Infinity` / `-Infinity`；`NaN` 是计算错误，即使两边相同也拒绝验证、报告与录制。值用字符串避免 JSON 数字精度和无穷歧义；构筑与 stat 按键排序，增删也报告。重录和报告命令见[开发工作流](development-workflow.md#l2-输出快照命令)。
+稳定字段列表由测试的 `STATS` 维护：DPS 家族（`TotalDPS`、`CombinedDPS`、`WithDotDPS`、`TotalDotDPS`、Ignite / Poison / Bleed）、AverageDamage、ActionRate、CritChance / CritMultiplier；Life / EnergyShield / Mana / Spirit 及未保留资源；Armour / Evasion、四抗及上限、Block / SpellBlock / Evade / Deflect；TotalEHP 与五类 MaxHit；三资源的 RegenRecovery / NetRegen、Life / Mana LeechGainRate；Str / Dex / Int。另录主技能的 `MinionTotalDPS` / `MinionLife`（没有召唤生物时为 0）。单位与 Calcs 显示 catalog 相同，概率为百分数。有限数按小数点后六位舍入（不是六位有效数字），负零归零；同一舍入区间内小于 `0.000001` 的变化可能不报告。无穷显式存为 `Infinity` / `-Infinity`；`NaN` 是计算错误，即使两边相同也拒绝验证、报告与录制。值用字符串避免 JSON 数字精度和无穷歧义；构筑与 stat 按键排序，增删也报告。重录和报告命令见[开发工作流](development-workflow.md#l2-输出快照命令)。
 
 L3 的版本对应关系由 [devs/reference-sources.json](../devs/reference-sources.json) 中 `pob2.data_version` 明确声明，指该 commit 验证过的游戏补丁号，精确匹配活动 `data_version()`；不由 commit 日期推断。更新 pin 时核实并同步该字段，PoB2 落后时保留旧值与旧 golden 身份。固定 PoB2 参考仍为 `0.5.5.5`，与活动数据 `0.5.5.8` 不匹配，因此仍计算并打印 L3 报告，按既有规则跳过吻合率断言。匹配时 COMBAT golden 还必须声明同一版本。恢复同版本参考后重新测量 L3；引擎 PR 不能为通过检查随意降低基线，只有游戏文本或数据证明参考有误时才按证据调整，在常量旁写明构筑、stat 与依据。L3 门禁防退步，不证明正确。`tools/pob2-oracle` 为 `compare` 与 `triage` 提供逐分量分解。
 

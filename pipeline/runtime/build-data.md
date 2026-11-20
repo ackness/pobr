@@ -83,7 +83,7 @@ external/local intersections fail. The four game facts retain their original
 patch and source metadata; the three compatibility files retain their vendor
 pins and limitations, including the unresolved buff-reference drift. Game part
 metadata separately identifies the nine mixed numeric/interpretation or derived
-outputs retained in this batch. Their business bytes remain unchanged; RePoE
+outputs retained in this batch. Their payload bytes remain unchanged; RePoE
 storage does not move the interpretation/selection code out of PoBR.
 
 All inputs are authenticated before a fresh complete bundle is published.
