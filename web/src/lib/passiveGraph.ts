@@ -83,9 +83,7 @@ export function allocationRoutes(
   budget = Infinity,
 ): Map<number, number[]> {
   const access = allocationAccess(graph, allocated, root, grants);
-  const radiusNodes = new Set(grants.flatMap(grant => grant.nodes));
-  const sources = new Set([...allocated].filter(id => !radiusNodes.has(id) || access.connected.has(id)));
-  access.roots.forEach(id => sources.add(id));
+  const sources = new Set([...access.connected, ...access.roots]);
   const paths = new Map<number, number[]>([...sources].filter(id => graph.has(id)).map(id => [id, []]));
   const queue = [...paths.keys()].sort((a, b) => a - b);
   const visited = new Set<number>();

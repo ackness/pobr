@@ -109,7 +109,26 @@ describe('passive upgrade planner', () => {
     expect(allocationPaths(context, context.allocated, 8).some(plan => [8, 10, 11, 12, 13, 20, 21].includes(plan.target))).toBe(false);
   });
 
-  it('does not invent routes when an older response has no class-start mapping', () => {
+  it('charges for a bridge to an imported island before searching beyond it', () => {
+    const nodes = [node(1, [2]), node(2, [3]), node(3, [4]), node(4)];
+    const request = { allocated_nodes: [3] };
+    const context = passivePlanningContext(nodes, [3], 'Sorceress');
+    const extension = { allocate: [4], deallocate: [], target: 4 };
+    expect(allocationPaths(context, context.allocated, 1).map(plan => plan.allocate)).toEqual([[2]]);
+    expect(passivePlanAllocation(request, context, extension, 1, 'allocate')).toBeNull();
+    const route = allocationPaths(context, context.allocated, 2).find(plan => plan.target === 4)!;
+    expect(route.allocate).toEqual([2, 4]);
+    expect(passivePlanAllocation(request, context, route, 2, 'allocate')?.allocatedNodes).toEqual([3, 2, 4]);
+  });
+
+  it('blocks refunds when an imported ascendancy branch is disconnected', () => {
+    const nodes = [node(1, [2]), node(2), node(3, [4], { kind: 'ascendancy_start', ascendancy_id: 'Test' }),
+      node(4, [5], { ascendancy_id: 'Test' }), node(5, [], { ascendancy_id: 'Test' })];
+    expect(passivePlanningContext(nodes, [2, 4, 5], 'Sorceress', [], [], 'Test').canRefund).toBe(true);
+    expect(passivePlanningContext(nodes, [2, 5], 'Sorceress', [], [], 'Test').canRefund).toBe(false);
+  });
+
+  it('rejects unknown class roots without inventing routes', () => {
     const nodes = [node(1, [2]), node(2, [3]), node(3)];
     const context = planningContext(nodes, [2], 'Sorceress');
     expect(context.root).toBeNull();
@@ -241,9 +260,9 @@ describe('passive upgrade planner', () => {
   it('validates atomic application against connectivity, budgets, protected nodes and attribute choices', () => {
     const nodes = [node(1, [2, 4]), node(2, [3], { name: 'Attribute' }), node(3),
       node(4, [5], { name: 'Attribute' }), node(5, [], { kind: 'jewel_socket' }),
-      node(20, [], { ascendancy_id: 'Witch1' })];
+      node(20, [], { ascendancy_id: 'Witch1' }), node(21, [20], { kind: 'ascendancy_start', ascendancy_id: 'Witch1' })];
     const request = withTravelAttributes({ allocated_nodes: [2, 3, 20], attribute_choices: { '2': 'str' } }, nodes, 'int');
-    const context = passivePlanningContext(nodes, [2, 3, 20], 'Sorceress');
+    const context = passivePlanningContext(nodes, [2, 3, 20], 'Sorceress', [], [], 'Witch1');
     const plan = { allocate: [4], deallocate: [2, 3], target: 4 };
     expect(passivePlanAllocation(request, context, plan, 2, 'reallocate')).toEqual({
       allocatedNodes: [20, 4], attributeChoices: { '4': 'int' },
