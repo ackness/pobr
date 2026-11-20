@@ -4,6 +4,30 @@ Notable changes to PoBR, the browser build planner at [pobr.win](https://pobr.wi
 
 Versions follow [SemVer](https://semver.org/). While the version is 0.0.x, any release may change behaviour; changes that need action from WASM, CLI or data consumers are listed under **Breaking changes**. How a release section is written: [RELEASING.md](RELEASING.md#4-发版上线).
 
+## [0.0.56] - 2026-11-20
+
+The Overview now guides you from importing a build to planning upgrades, keeping a baseline and sharing the current stage. Passive previews show exactly where to add or refund points, and applied support and equipment changes stay easy to review and undo. This release uses game data 0.5.5.8.
+
+### Breaking changes
+
+- None.
+
+### Changed
+
+- Review an imported build in the Overview and open passive planning, support recommendations, equipment upgrades or current-stage sharing directly. Keep a copy of the original build to compare later. (#389)
+- See additions and refunds together on the passive tree, or focus on either group. Plan within the current point budget or explicitly approve a future plan that needs more points. (#389)
+- Review applied support swaps and the slot used for an equipment replacement while the build recalculates. Both changes offer undo. Back to trade restores the original market slot. (#389)
+
+### Fixed
+
+- Keep long import and share codes in scrollable fields, reopen the import form on failure, and move focus to the Overview after a successful import. (#389)
+- Count the original passive allocation on disconnected imports. Routes include the points needed to reconnect a branch, and a disconnected main tree or ascendancy disables automatic refunds. (#389)
+- Preserve the app header when moving focus between pages, and avoid replaying the support recommendation scroll when the gem catalog loads. (#389)
+
+### For developers
+
+- `previewTreeEditJson` includes an optional `current_points` summary of the original allocation, even when the requested edit is invalid. (#389)
+
 ## [0.0.55] - 2026-11-19
 
 Support recommendations now show the expected gains and which gems to swap, with the complete setup available on demand. Equipment details recognise more imported desecrated affixes and place them in the appropriate prefix or suffix group. Game data remains at 0.5.5.8.
@@ -413,6 +437,7 @@ pobr.win now calculates with game data 0.5.5.5 (was 0.5.5.4.2), imported from th
 
 Notes for 0.0.43 and earlier are on [GitHub Releases](https://github.com/ackness/pobr/releases).
 
+[0.0.56]: https://github.com/ackness/pobr/compare/v0.0.55...v0.0.56
 [0.0.55]: https://github.com/ackness/pobr/compare/v0.0.54...v0.0.55
 [0.0.54]: https://github.com/ackness/pobr/compare/v0.0.53...v0.0.54
 [0.0.53]: https://github.com/ackness/pobr/compare/v0.0.52...v0.0.53
