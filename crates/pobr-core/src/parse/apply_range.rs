@@ -31,8 +31,8 @@
 ///   positive and the original had `+`; a negative-sign range
 ///   (`-(min-max)`) negates the whole result.
 /// - `-N% increased` -> `N% reduced` and similar antonym rewrites (mirrors
-///   ItemTools.lua:67-72 `antonymFunc`, for the negative-percentage case
-///   that precedes range resolution).
+///   ItemTools.lua:67-72 `antonymFunc`, applied after range resolution so
+///   resolved negative values also flip cleanly).
 /// - Text with no range is returned unchanged.
 ///
 /// `scalability`: the modScalability table (not consumed yet; reserved for
@@ -44,8 +44,8 @@ pub fn apply_range(line: &str, range: f64, scalability: Option<&()>, value_scala
     // (linear fallback), but the parameters stay in the signature for later
     // extension.
     let _ = (scalability, value_scalar);
-    let antonymed = apply_antonyms(line);
-    substitute_ranges(&antonymed, range)
+    let substituted = substitute_ranges(line, range);
+    apply_antonyms(&substituted)
 }
 
 /// Rewrites `increased`<->`reduced` and `more`<->`less` antonyms: normalizes
@@ -181,8 +181,9 @@ fn split_range_body(body: &str) -> Option<(&str, &str)> {
 /// Number -> text: integers drop the decimal point; otherwise keep it
 /// (trimming trailing zeros), matching Lua's `tostring`.
 fn fmt_value(v: f64) -> String {
-    if v.fract().abs() < f64::EPSILON {
-        format!("{}", v as i64)
+    let v = if v == 0.0 { 0.0 } else { v };
+    if (v - v.round()).abs() < 1e-12 && v.abs() < (i64::MAX as f64) {
+        format!("{}", v.round() as i64)
     } else {
         let mut s = format!("{v}");
         if s.contains('.') {
@@ -283,5 +284,33 @@ mod tests {
     fn negative_min_range() {
         // (-5-10) → min=-5,max=10; range 0.5 → -5 + 0.5*15 = 2.5。
         assert_eq!(ar("(-5-10)% increased Speed", 0.5), "2.5% increased Speed");
+    }
+
+    #[test]
+    fn antonyms_apply_after_range_substitution() {
+        assert_eq!(ar("-(10-20)% increased Damage", 0.5), "15% reduced Damage");
+        assert_eq!(ar("(-10-10)% increased Damage", 0.0), "10% reduced Damage");
+        assert_eq!(
+            ar("-(10-20)% more Fire Damage", 0.5),
+            "15% less Fire Damage"
+        );
+        assert_eq!(
+            ar("(-10-10)% reduced Mana Cost", 0.0),
+            "10% increased Mana Cost"
+        );
+    }
+
+    #[test]
+    fn fmt_value_rounds_near_integers_and_normalizes_negative_zero() {
+        // 0.1 + 0.3 * (3.1 - 0.1) = 0.9999999999999999 in IEEE-754 f64.
+        assert_eq!(ar("+(0.1-3.1) to Strength", 0.3), "+1 to Strength");
+        // -(0-0) yields -0.0; normalized to "0".
+        assert_eq!(ar("-(0-0) to Strength", 0.5), "0 to Strength");
+        assert_eq!(fmt_value(-0.0), "0");
+        assert_eq!(fmt_value(1.0 - 1e-13), "1");
+        assert_eq!(fmt_value(-2.0 + 1e-13), "-2");
+        // Huge values beyond i64::MAX must not saturate to i64::MAX.
+        let huge = 1e25;
+        assert_ne!(fmt_value(huge), format!("{}", i64::MAX));
     }
 }
