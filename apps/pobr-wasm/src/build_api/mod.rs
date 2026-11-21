@@ -225,7 +225,7 @@ pub fn import_party_member_json(code: &str) -> Result<String, String> {
     let data = state::build_data().map_err(|e| ApiError::not_initialized(e).into_json())?;
     let member = pobr_build::party::import_member(code, &data)
         .map_err(|e| ApiError::decode_error(e.to_string()).into_json())?;
-    serde_json::to_string(&member).map_err(|e| e.to_string())
+    serde_json::to_string(&member).map_err(|e| ApiError::from(e.to_string()).into_json())
 }
 
 #[cfg(test)]
@@ -251,6 +251,16 @@ mod localize_tests {
     }
 
     #[test]
+    fn input_text_translates_passive_node_names_via_parser_tables() {
+        let dir = pobr_gamedata::current_data_dir();
+        crate::init_data_from_dir(&dir.to_string_lossy()).unwrap();
+        assert_eq!(
+            localize_input_text("配置 深渊之怒"),
+            "Allocates Abyssal Ire"
+        );
+    }
+
+    #[test]
     fn input_text_reads_a_description_written_on_two_lines_together() {
         let dir = pobr_gamedata::current_data_dir();
         crate::init_data_from_dir(&dir.to_string_lossy()).unwrap();
@@ -272,5 +282,50 @@ mod localize_tests {
             localize_input_text("附加 5 - 10 冰霜伤害\n玩家及其召唤生物附加 3 - 4 冰霜伤害"),
             "Adds 5 to 10 Cold Damage\n玩家及其召唤生物附加 3 - 4 冰霜伤害"
         );
+    }
+}
+
+#[cfg(test)]
+mod api_error_tests {
+    use super::*;
+
+    fn parse_api_error(raw: String) -> serde_json::Value {
+        let value: serde_json::Value =
+            serde_json::from_str(&raw).expect("error must be valid ApiError JSON");
+        let message = value["message"].as_str().expect("ApiError message string");
+        assert!(
+            serde_json::from_str::<serde_json::Value>(message).is_err(),
+            "ApiError message must not contain nested JSON: {raw}"
+        );
+        value
+    }
+
+    #[test]
+    fn endpoints_return_single_wrapped_api_error_json() {
+        let bad_calc = parse_api_error(calculate_build_json("{not json").unwrap_err());
+        assert_eq!(bad_calc["code"], "bad_request");
+
+        let bad_lines = parse_api_error(translate_lines_json("zh-CN", "{}").unwrap_err());
+        assert_eq!(bad_lines["code"], "bad_request");
+
+        let bad_kind = parse_api_error(game_name("zh-CN", "unknown_kind", "key").unwrap_err());
+        assert_eq!(bad_kind["code"], "bad_request");
+
+        let internal = parse_api_error(ApiError::from("serialize: boom".to_string()).into_json());
+        assert_eq!(internal["code"], "internal");
+        assert_eq!(internal["message"], "serialize: boom");
+        assert!(internal.get("slot").is_none());
+
+        // Fresh thread guarantees uninitialized thread-local data even under --test-threads=1.
+        let (minion_err, party_err) = std::thread::spawn(|| {
+            (
+                minion_catalog_json().unwrap_err(),
+                import_party_member_json("invalid").unwrap_err(),
+            )
+        })
+        .join()
+        .unwrap();
+        assert_eq!(parse_api_error(minion_err)["code"], "not_initialized");
+        assert_eq!(parse_api_error(party_err)["code"], "not_initialized");
     }
 }

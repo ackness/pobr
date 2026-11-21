@@ -77,11 +77,11 @@ pub(crate) fn cached_response(
 
 /// [`cached_response`] with a caller-built key. The key must cover every part
 /// of the request that can change the response.
-pub(crate) fn cached_response_keyed(
+pub(crate) fn cached_response_keyed<E>(
     endpoint: &'static str,
     request_key: String,
-    compute: impl FnOnce() -> Result<String, String>,
-) -> Result<String, String> {
+    compute: impl FnOnce() -> Result<String, E>,
+) -> Result<String, E> {
     let key = (endpoint, request_key);
     let hit = RESPONSE_CACHE.with_borrow_mut(|cache| {
         let got = cache.entries.get(&key).cloned();
@@ -377,5 +377,30 @@ mod tests {
         init_data_from_dir(dir.to_str().unwrap()).unwrap();
         assert_eq!(crate::locales::cached(), (vec![], vec![]));
         TIER_INDEX.with_borrow(|slot| assert!(slot.is_none()));
+    }
+
+    #[test]
+    fn cached_response_keyed_preserves_typed_errors_without_caching_them() {
+        #[derive(Debug, PartialEq, Eq)]
+        enum CustomError {
+            Bad(&'static str),
+        }
+
+        let key = "typed_err_key".to_string();
+        let err = cached_response_keyed("typed_err_test", key.clone(), || {
+            Err(CustomError::Bad("bad input"))
+        });
+        assert_eq!(err, Err(CustomError::Bad("bad input")));
+
+        let mut calls = 0usize;
+        for _ in 0..2 {
+            let got = cached_response_keyed::<CustomError>("typed_err_test", key.clone(), || {
+                calls += 1;
+                Ok("cached".to_string())
+            })
+            .unwrap();
+            assert_eq!(got, "cached");
+        }
+        assert_eq!(calls, 1, "subsequent call must hit cache after error");
     }
 }
