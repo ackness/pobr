@@ -64,7 +64,29 @@ pub(crate) fn buff_skill_specs(
     let bonuses = super::resolve::gem_property_bonuses(build, data);
     let mut ctx = context.stat_map_ctx();
     let use_alt_quality = super::resolve::gemling_quality_flag(build, data);
-    pobr_core::skill_env::buff_skill_specs(&mut ctx, build, data, &bonuses, use_alt_quality)
+    let active_weapon_class = build
+        .items
+        .get(&pobr_data::item::EquipmentSlot::Weapon1)
+        .and_then(|item| data.base_item(&item.base.to_string()))
+        .map(|base| base.item_class.as_str());
+    let mut specs =
+        pobr_core::skill_env::buff_skill_specs(&mut ctx, build, data, &bonuses, use_alt_quality);
+    // A weapon-restricted debuff skill (e.g. Oil Grenade requiring a Crossbow,
+    // Oil Barrage requiring a Talisman) cannot apply its debuff when the active
+    // weapon set does not hold a compatible weapon.
+    specs.retain(|spec| {
+        if spec.kind != pobr_core::calc::BuffKind::Debuff {
+            return true;
+        }
+        let Some(effect) = data.granted_effects.get(&spec.skill_id) else {
+            return true;
+        };
+        let Some(required) = super::resolve::required_weapon_classes(effect) else {
+            return true;
+        };
+        active_weapon_class.is_some_and(|class| required.contains(&class))
+    });
+    specs
 }
 
 /// The **player-side buff** granted by a support → [`BuffSpec`] (kind =

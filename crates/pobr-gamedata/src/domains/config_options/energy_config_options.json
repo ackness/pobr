@@ -94,6 +94,29 @@
       "verified": true
     },
     {
+      "var": "energyDodgeRollsPerSecond",
+      "input_type": "count_allow_zero",
+      "section": "Skill Options",
+      "label": "Dodge rolls per second:",
+      "tooltip": "Dodge rolls completed per second for Cast on Dodge. Uses Dodge Roll's base travel distance plus any bonus distance. If absent, keeps the spell’s own rate. Set 0 for zero events.",
+      "visibility": {
+        "if_skill": [
+          "MetaCastOnDodgePlayer"
+        ]
+      },
+      "effects": [
+        {
+          "target": "player",
+          "name": "Multiplier:EnergyDodgeRollsPerSecond",
+          "mod_type": "BASE",
+          "value": {
+            "kind": "input"
+          }
+        }
+      ],
+      "verified": true
+    },
+    {
       "var": "enemyKillsPerSecond",
       "input_type": "count_allow_zero",
       "section": "When In Combat",

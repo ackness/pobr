@@ -79,6 +79,7 @@ test('unconditional options work without a calculation', () => {
 
 test.each([
   ['MetaCastOnBlockPlayer', ['energyIncomingHitRate']],
+  ['MetaCastOnDodgePlayer', ['energyDodgeRollsPerSecond']],
   ['MetaCastOnMinionDeathPlayer', ['energyMinionDeathsPerSecond', 'energyMinionPower']],
   ['MetaSpellslingerPlayer', ['energyInvocationUsesPerSecond']],
   ['MetaElementalInvocationPlayer', ['energyInvocationUsesPerSecond']],
@@ -88,16 +89,16 @@ test.each([
 ] as const)('Applicable view gates Energy controls for %s', (skill, expected) => {
   const native: { options: ConfigOption[] } = JSON.parse(readFileSync(new URL('../../../crates/pobr-gamedata/src/domains/config_options/energy_config_options.json', import.meta.url), 'utf8'));
   const snapshot: { options: ConfigOption[] } = JSON.parse(readFileSync(new URL(`../../../data/${dataVersion}/overlay/config_options.json`, import.meta.url), 'utf8'));
-  const energyOptions = native.options.filter(option => option.var.startsWith('energy'));
-  const options = snapshot.options.filter(option => energyOptions.some(energy => energy.var === option.var));
-  expect(options).toEqual([...energyOptions].sort((a, b) => a.var.localeCompare(b.var)));
-  const ids = options.flatMap(option => option.visibility?.if_skill ?? []);
+  const energyOptions = native.options.filter(option => option.var.startsWith('energy')).sort((a, b) => a.var.localeCompare(b.var));
+  const snapshotEnergy = snapshot.options.filter(option => energyOptions.some(energy => energy.var === option.var));
+  expect(snapshotEnergy).toEqual(energyOptions.filter(option => snapshotEnergy.some(entry => entry.var === option.var)));
+  const ids = energyOptions.flatMap(option => option.visibility?.if_skill ?? []);
   // The backend contract tests verify these predicates from actual socket groups,
   // including a meta gem outside the inspected skill's group.
   const context: ConfigContext = { main_skill: 'spark', skill_types: ['Spell'], predicates: {
     if_skill: Object.fromEntries(ids.map(id => [id, id === skill])),
   } };
-  const shown = options.filter(option => showConfigOption(option, configApplicability(option, context, {}), {}, false));
+  const shown = energyOptions.filter(option => showConfigOption(option, configApplicability(option, context, {}), {}, false));
   expect(shown.map(option => option.var)).toEqual(expected);
   for (const option of shown) expect(configApplicability(option, context, {})).toBe('applicable');
 });

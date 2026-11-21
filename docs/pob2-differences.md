@@ -233,15 +233,15 @@ Cast on Critical 里的法术，PoBR 按宝石触发它的频率计算 DPS 和�
 
 ### 其他 Energy 家族
 
-Cast on Elemental Ailment、Cast on Block、Cast on Minion Death、Spellslinger、Elemental Invocation 同样按 Energy 计算（`skill_env::triggers::energy_trigger_modifiers`、`calc::energy::apply_energy_trigger`）。
+Cast on Elemental Ailment、Cast on Block、Cast on Minion Death、Cast on Dodge、Spellslinger、Elemental Invocation 同样按 Energy 计算（`skill_env::triggers::energy_trigger_modifiers`、`calc::energy::apply_energy_trigger`）。
 
-格挡每次给 25，召唤生物被击杀时每点 Power 给 50；Spellslinger 按自施法的基础使用时间每 10 ms 给 0.2，Total use time 的加法同样计双倍。元素事件只有点燃、感电、冻结，没有冰缓；每点敌人 Power 的感电给 1、冻结给 10，点燃再乘新实例完整减伤前伤害与异常阈值之比，不封顶。20 级前四族自带 57% increased Energy，Elemental Invocation 为 68%；兼容 meta 的增益与半额返还辅助作用于 meta 本身，不要求能辅助 payload。
+格挡每次给 25，召唤生物被击杀时每点 Power 给 50，闪避翻滚按移动距离每米给 2（`cast_on_dodge_roll_gain_X_centienergy_per_unit_travelled_while_dodge_rolling = 200`，基础距离取 `DodgeRollPlayer` 的 `dodge_roll_base_travel_distance = 46` 即 4.6 m，再加异品质 `cast_on_dodge_dodge_roll_distance_granted_+` 与装备／天赋的 `±# metre(s) to Dodge Roll distance`）；Spellslinger 按自施法的基础使用时间每 10 ms 给 0.2，Total use time 的加法同样计双倍。元素事件只有点燃、感电、冻结，没有冰缓；每点敌人 Power 的感电给 1、冻结给 10，点燃再乘新实例完整减伤前伤害与异常阈值之比，不封顶。20 级前五族自带 57% increased Energy，Elemental Invocation 为 68%；兼容 meta 的增益与半额返还辅助作用于 meta 本身，不要求能辅助 payload。
 
 Spellslinger 与 Elemental Invocation 的 500 储能和每轮法术消耗分开，后者每品质加 5 储能；自动触发的容量按同组被支持法术的总消耗计算。
 
 ### Energy 外部事件输入
 
-Energy 的外部事件输入由 `config_resolve::resolve_config` 读取：`energyIncomingHitRate` 是可格挡来袭命中／秒，乘有效格挡率；未填才回退到显式 `enemySpeed` 的 1000／毫秒，显式 0 优先且表示零事件，`enemySpeed = 0` 同理。该回退把一次敌人动作当作一次可格挡命中，不另算敌人命中或玩家闪避。`energyMinionDeathsPerSecond` 只计被击杀，不模拟到期、生命或死亡；`energyMinionPower` 默认 1。两种速率缺失或没有格挡等必要机制时保留法术自身频率；显式零事件停止触发。`energyInvocationUsesPerSecond` 未填时假设有能量即使用，受冷却和服务器 tick 限制；显式 0 即使无来源也停止使用。Invocation 保留余能，按平均返还消耗及 ⌊容量／整轮消耗⌋ × 使用频率限制吞吐；不分别排程 payload，不模拟整轮超容量时的部分触发。上述外部速率和 Invocation 使用模型**没有游戏内实测**。
+Energy 的外部事件输入由 `config_resolve::resolve_config` 读取：`energyIncomingHitRate` 是可格挡来袭命中／秒，乘有效格挡率；未填才回退到显式 `enemySpeed` 的 1000／毫秒，显式 0 优先且表示零事件，`enemySpeed = 0` 同理。该回退把一次敌人动作当作一次可格挡命中，不另算敌人命中或玩家闪避。`energyMinionDeathsPerSecond` 只计被击杀，不模拟到期、生命或死亡；`energyMinionPower` 默认 1。`energyDodgeRollsPerSecond` 是每秒闪避翻滚次数，每次翻滚按当前 `DodgeRollDistance` 计算获得能量；带有 `CannotDodgeRoll`（如 Unwavering Stance）时视为缺少闪避翻滚来源。外部速率缺失或缺少格挡／闪避翻滚等必要机制时保留法术自身频率；显式零事件停止触发。`energyInvocationUsesPerSecond` 未填时假设有能量即使用，受冷却和服务器 tick 限制；显式 0 即使无来源也停止使用。Invocation 保留余能，按平均返还消耗及 ⌊容量／整轮消耗⌋ × 使用频率限制吞吐；不分别排程 payload，不模拟整轮超容量时的部分触发。上述外部速率和 Invocation 使用模型**没有游戏内实测**。
 
 ### Energy 来源近似
 
@@ -249,7 +249,7 @@ Energy 的来源近似是按基础频率预选最多六个玩家自用、非触�
 
 ### Energy 输出
 
-CLI/WASM 的 `energy_trigger` 给出储能、每轮消耗、来源、事件率、每事件 Energy、返还和频率上限。六族缺来源时带 `at_own_rate: true`、`source: null` 与稳定的 `missing_source`，命中与持续伤害保留自身速率；`SkillTriggerRate` / `TriggerRateCap` 的明细给出自身速率与补充输入提示，原始触发率字段仍为未解出的 0。有来源时 CoC 的 `TriggerRateCap` 是来源暴击事件率。`ActionRate` / `TotalDPS` 的派生公式包含 Energy 调整，Full DPS 使用调整后的输出；CLI 保留 `energy_per_critical_hit` 兼容字段。配置项由 PoBR 自有的 `crates/pobr-gamedata/src/domains/config_options/energy_config_options.json` 提供，加载时（`pobr-gamedata` 的 `config_options()`）按 `var` 覆盖目录中的同名项，按稳定 meta id 的 `if_skill` 筛选。
+CLI/WASM 的 `energy_trigger` 给出储能、每轮消耗、来源、事件率、每事件 Energy、返还和频率上限。七族缺来源时带 `at_own_rate: true`、`source: null` 与稳定的 `missing_source`，命中与持续伤害保留自身速率；`SkillTriggerRate` / `TriggerRateCap` 的明细给出自身速率与补充输入提示，原始触发率字段仍为未解出的 0。有来源时 CoC 的 `TriggerRateCap` 是来源暴击事件率。`ActionRate` / `TotalDPS` 的派生公式包含 Energy 调整，Full DPS 使用调整后的输出；CLI 保留 `energy_per_critical_hit` 兼容字段。配置项由 PoBR 自有的 `crates/pobr-gamedata/src/domains/config_options/energy_config_options.json` 提供，加载时（`pobr-gamedata` 的 `config_options()`）按 `var` 覆盖目录中的同名项，按稳定 meta id 的 `if_skill` 筛选。
 
 ### 图腾数量与层数
 

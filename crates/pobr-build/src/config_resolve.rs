@@ -182,6 +182,7 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
         ("energyIncomingHitRate", "EnergyIncomingHitRate"),
         ("energyMinionDeathsPerSecond", "EnergyMinionDeathsPerSecond"),
         ("energyMinionPower", "EnergyMinionPower"),
+        ("energyDodgeRollsPerSecond", "EnergyDodgeRollsPerSecond"),
         (
             "energyInvocationUsesPerSecond",
             "EnergyInvocationUsesPerSecond",

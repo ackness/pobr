@@ -33,7 +33,7 @@ export function hasEnergyTrigger(calc: CalculateBuildResponse | null | undefined
   const trigger = calc?.energy_trigger;
   const main = calc?.main_skill;
   if (!trigger || !(trigger.maximum_energy > 0) || !trigger.source || trigger.at_own_rate || trigger.missing_source
-    || calc?.main_minion_index != null || !main || ['Block', 'MinionDeath'].includes(trigger.source)) return false;
+    || calc?.main_minion_index != null || !main || ['Block', 'MinionDeath', 'DodgeRoll'].includes(trigger.source)) return false;
   const group = groups[main.group_index];
   if (!group?.enabled) return false;
   if (!groups.some(candidate => candidate.enabled && candidate.gems.some(gem => gem.enabled !== false && gem.skill_id === trigger.source))) return false;

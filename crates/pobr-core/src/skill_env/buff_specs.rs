@@ -463,8 +463,15 @@ pub fn buff_skill_specs(
                     // doc for the vendor mapping; both payloads are empty for most skills).
                     let es_buff = effect_stats(skill_id, level, gem.quality, set_index);
                     let set_key = data.selected_set_key(skill_id, set_index);
-                    let mut debuff_mods =
-                        debuff_stat_modifiers(ctx, &es_buff, skill_id, set_key.as_deref());
+                    // Active-skill debuffs (e.g. Oil Grenade / Oil Barrage / Frost Bomb)
+                    // require the skill to be usable in the active weapon set, matching
+                    // Chaos DoT markers and Flame Wall rather than persisting unconditionally
+                    // from an inactive swap set.
+                    let mut debuff_mods = if group.active_in_weapon_set {
+                        debuff_stat_modifiers(ctx, &es_buff, skill_id, set_key.as_deref())
+                    } else {
+                        Vec::new()
+                    };
                     let chaos_dot = chaos_dot::skill(&group, data, gem, skill_id, level);
                     let has_chaos_dot = chaos_dot.is_some();
                     debuff_mods.extend(chaos_dot);
@@ -1241,7 +1248,7 @@ pub fn exposure_support_modifiers(
     groups.for_each_enabled_group(&mut |group| {
         let idx = group_index;
         group_index += 1;
-        if main_group_index == Some(idx) {
+        if main_group_index == Some(idx) || !group.active_in_weapon_set {
             return;
         }
         // Exposure-source host: the group's active skill itself produces a debuff

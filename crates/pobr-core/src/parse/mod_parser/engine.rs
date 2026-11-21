@@ -139,6 +139,10 @@ fn parse_mod_engine_impl(
         };
     }
 
+    if let Some(outcome) = try_match_pobr_rule(&lower, original) {
+        return outcome;
+    }
+
     // working line: vendor appends a trailing space before form scanning, `line = line .. " "`.
     let mut work = format!("{normalized} ");
 
@@ -702,6 +706,67 @@ fn normalize_pobr_name(
     }
 }
 
+/// PoBR-owned Rust modifier rules that are absent from the frozen upstream
+/// parser tables. Each emitted modifier carries an `ExporterRule` so the
+/// reference basis omits it cleanly and `beyond_pob2` attributes it.
+fn try_match_pobr_rule(lower: &str, original: &str) -> Option<ParseOutcome> {
+    parse_dodge_roll_distance(lower, original)
+}
+
+/// Parses `dodge_roll_base_travel_distance` and conditional
+/// `dodge_roll_travel_distance_*` lines (`+0.3 metres to Dodge Roll distance`,
+/// `+0.5 metres to Dodge Roll distance while Surrounded`, Lioneye's Paws
+/// recently-rolled modifiers) into `DodgeRollDistance BASE` (in metres).
+fn parse_dodge_roll_distance(lower: &str, original: &str) -> Option<ParseOutcome> {
+    let (prefix, rest) = lower.split_once(" to dodge roll distance")?;
+    let amount = prefix
+        .strip_suffix(" metres")
+        .or_else(|| prefix.strip_suffix(" metre"))?;
+    if !amount.starts_with(['+', '-']) {
+        return None;
+    }
+    let value: f64 = amount.parse().ok()?;
+    if !value.is_finite() {
+        return None;
+    }
+    let tag = match rest {
+        "" => None,
+        " while surrounded" => Some(ModTag::condition("Surrounded", false)),
+        " if you've dodge rolled recently" | " if you have dodge rolled recently" => {
+            Some(ModTag::condition("DodgeRolledRecently", false))
+        }
+        " if you haven't dodge rolled recently" | " if you have not dodge rolled recently" => {
+            Some(ModTag::condition("DodgeRolledRecently", true))
+        }
+        _ => return None,
+    };
+    static RULE: std::sync::LazyLock<std::sync::Arc<pobr_data::source::ExporterRule>> =
+        std::sync::LazyLock::new(|| {
+            std::sync::Arc::new(pobr_data::source::ExporterRule {
+                id: "dodge_roll_distance".to_string(),
+                exporter: pobr_data::source::ExporterCoverage::Absent,
+                game_source: "dodge_roll_base_travel_distance; dodge_roll_travel_distance_*"
+                    .to_string(),
+            })
+        });
+    let mut modifier = Modifier::number(
+        crate::calc::energy::DODGE_ROLL_DISTANCE,
+        ModType::Base,
+        value,
+    )
+    .with_source(original);
+    if let Some(tag) = tag {
+        modifier = modifier.with_tag(tag);
+    }
+    modifier.set_exporter_rule(&RULE);
+    Some(ParseOutcome {
+        mods: vec![modifier],
+        status: ParseStatus::Parsed,
+        unparsed: None,
+        special_meta: None,
+    })
+}
+
 fn unsupported(text: &str) -> ParseOutcome {
     ParseOutcome {
         mods: Vec::new(),
@@ -891,5 +956,47 @@ mod tests {
             "should not leave a bare Speed behind: {:?}",
             o.mods
         );
+    }
+
+    #[test]
+    fn parses_dodge_roll_distance_modifiers() {
+        let r = real_rules();
+        for (line, expected, expected_tag) in [
+            ("+0.3 metres to Dodge Roll distance", 0.3, None),
+            ("+1 metre to Dodge Roll distance", 1.0, None),
+            (
+                "+0.5 metres to Dodge Roll distance while [Surrounded]",
+                0.5,
+                Some(ModTag::condition("Surrounded", false)),
+            ),
+            (
+                "+2 metres to Dodge Roll distance if you haven't Dodge Rolled Recently",
+                2.0,
+                Some(ModTag::condition("DodgeRolledRecently", true)),
+            ),
+            (
+                "-1 metre to Dodge Roll distance if you've Dodge Rolled Recently",
+                -1.0,
+                Some(ModTag::condition("DodgeRolledRecently", false)),
+            ),
+        ] {
+            let o = parse_mod_engine(line, &r);
+            assert_eq!(o.status, ParseStatus::Parsed, "{line}: {:?}", o.unparsed);
+            assert_eq!(o.mods.len(), 1, "{line}: {:?}", o.mods);
+            let m = &o.mods[0];
+            assert_eq!(m.name.as_str(), crate::calc::energy::DODGE_ROLL_DISTANCE);
+            assert_eq!(m.mod_type, ModType::Base);
+            assert_eq!(m.value, ModValue::Number(expected), "{line}");
+            assert_eq!(
+                m.tags,
+                expected_tag.into_iter().collect::<Vec<_>>(),
+                "{line}"
+            );
+            assert_eq!(
+                m.exporter_rule.as_ref().map(|rule| rule.exporter),
+                Some(pobr_data::source::ExporterCoverage::Absent),
+                "{line}"
+            );
+        }
     }
 }

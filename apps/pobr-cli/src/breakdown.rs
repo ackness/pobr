@@ -481,10 +481,12 @@ pub fn render_breakdowns(report: &CalculateBuildReport) -> String {
             report.unsupported_modifiers.len()
         );
     }
-    if let Some(reference) = &report.reference
+    if !report.reference_basis
+        && let Some(reference) = &report.reference
         && (reference.at_own_rate_of_use
             || reference.rain_hits_whenever_allowed
-            || reference.periodic_hits_assume_sustained)
+            || reference.periodic_hits_assume_sustained
+            || reference.exporter_absent_rules_omitted)
     {
         let _ = writeln!(
             s,
@@ -526,6 +528,27 @@ pub fn render_breakdowns(report: &CalculateBuildReport) -> String {
             num(main.combined_dps)
         );
     }
+    if let Some(trigger) = &report.output.energy_trigger
+        && let Some(terms) = &trigger.terms
+    {
+        if terms.at_own_rate {
+            let _ = writeln!(
+                s,
+                "energy trigger: using skill's own rate (max energy {}; missing source: {})",
+                num(trigger.maximum_energy),
+                terms.missing_source.unwrap_or("unknown")
+            );
+        } else {
+            let _ = writeln!(
+                s,
+                "energy trigger: source {} · {} energy/event · {} triggers/s (max energy {})",
+                trigger.source_skill.as_deref().unwrap_or("unknown"),
+                num(terms.energy_per_event),
+                num(trigger.triggers_per_second),
+                num(trigger.maximum_energy)
+            );
+        }
+    }
     for entry in &report.breakdowns {
         let _ = writeln!(s);
         let mut header = format!("== {}", entry.stat);
@@ -552,6 +575,22 @@ pub fn render_breakdowns(report: &CalculateBuildReport) -> String {
             None => {
                 let _ = writeln!(s, "  no modifier lines or steps for this stat");
             }
+        }
+    }
+    let changed_rules: Vec<_> = report
+        .beyond_pob2
+        .iter()
+        .filter(|rule| rule.changed_rows > 0)
+        .collect();
+    if !changed_rules.is_empty() {
+        let _ = writeln!(s);
+        let _ = writeln!(s, "== beyond PoB2 ({} active rule(s))", changed_rules.len());
+        for rule in changed_rules {
+            let _ = writeln!(
+                s,
+                "  {} ({} reference row(s)) · {}",
+                rule.rule_id, rule.changed_rows, rule.game_source
+            );
         }
     }
     if let Some(usage) = &report.usage {

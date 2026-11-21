@@ -23,6 +23,15 @@ describe('ScenarioBar', () => {
     expect(html).not.toContain('armour');
     expect(render('none')).not.toContain('clearing packs');
   });
+
+  it('explains missing external energy inputs in the scenario bar without showing the mapping pack note', () => {
+    const calc = { main_skill: { group_index: 0 }, energy_trigger: { maximum_energy: 100, source: null, at_own_rate: true, missing_source: 'EnergyNeedsDodgeRolls' } } as CalculateBuildResponse;
+    const html = renderToStaticMarkup(<UiProvider lang="en-US"><TooltipProvider>
+      <ScenarioBar lang="en-US" calc={calc} session={{ socketGroups: [{ enabled: true, gems: [{ skill_id: 'MetaCastOnDodgePlayer' }] }], calcParams: { enemy_tier: 'none', config_inputs: {} } } as unknown as BuildSession} />
+    </TooltipProvider></UiProvider>);
+    expect(html).toContain('Using the spell&#x27;s own rate. Set Dodge rolls per second in Configuration to calculate Energy triggers.');
+    expect(html).not.toContain('clearing packs');
+  });
   it('presses exactly the preset that matches the enemy tier', () => {
     expect(pressed(render('boss'))).toEqual(['Boss']);
     expect(pressed(render('none'))).toEqual(['Mapping']);

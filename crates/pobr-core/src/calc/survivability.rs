@@ -181,13 +181,29 @@ pub fn calc_regen(db: &ModDb, cfg: &CalcConfig, pool: f64, stat: &str) -> f64 {
     // has no such name, kept for compatibility) plus the generic `XRecoveryRate`.
     let rate_name = ModName::from(format!("{stat}Rate"));
     let recovery_rate_name = recovery_rate_mod_name(stat);
-    let mut inc_names = vec![
-        bare_name.clone(),
-        rate_name.clone(),
-        recovery_rate_name.clone(),
-    ];
-    inc_names.extend(shared_regen_increase_names(db, cfg, stat));
-    let inc = db.sum(ModType::Inc, cfg, &inc_names);
+    let shared_names = shared_regen_increase_names(db, cfg, stat);
+    let inc = if shared_names.is_empty() {
+        db.sum(
+            ModType::Inc,
+            cfg,
+            &[
+                bare_name.clone(),
+                rate_name.clone(),
+                recovery_rate_name.clone(),
+            ],
+        )
+    } else {
+        let keep_shared = shared_regen_increase_filter(db, cfg, stat);
+        let mut inc_names = vec![
+            bare_name.clone(),
+            rate_name.clone(),
+            recovery_rate_name.clone(),
+        ];
+        inc_names.extend(shared_names.iter().cloned());
+        db.sum_where(ModType::Inc, cfg, &inc_names, |modifier| {
+            !shared_names.contains(&modifier.name) || keep_shared(modifier)
+        })
+    };
     let more = db.more(cfg, &[bare_name])
         * db.more(cfg, &[rate_name])
         * db.more(cfg, &[recovery_rate_name]);
@@ -211,6 +227,75 @@ pub(crate) fn shared_regen_increase_names(
         ModName::from(source),
         ModName::from(format!("{source}Rate")),
     ]
+}
+
+/// Filters shared regeneration increases so a modifier that already applies
+/// directly to `stat` is never counted twice under "Increases and Reductions
+/// to X also apply to Y" (Kurgal's Gaze, Furious Wellspring).
+///
+/// Covers both single-line combined modifiers (e.g. "15% increased Life and
+/// Mana Regeneration Rate", which emit a pair with identical origin line) and
+/// paired SkillGem buff stats (e.g. Virtuous Barrier's blue-gem buff, whose
+/// in-game "Life and Mana Regeneration Rate" is exported as separate `_life_`
+/// and `_mana_` buff stats on the same skill).
+pub(crate) fn shared_regen_increase_filter<'a>(
+    db: &'a ModDb,
+    cfg: &CalcConfig,
+    stat: &str,
+) -> impl Fn(&crate::Modifier) -> bool + 'a {
+    let direct_names = [ModName::from(stat), ModName::from(format!("{stat}Rate"))];
+    let direct: Vec<&crate::Modifier> = db
+        .evaluate_names(cfg, &direct_names)
+        .into_iter()
+        .filter(|row| row.active && row.modifier.mod_type == ModType::Inc)
+        .map(|row| row.modifier)
+        .collect();
+    let buff_token_pair = match stat {
+        "ManaRegen" => Some(("_life_", "_mana_")),
+        "RageRegen" => Some(("_mana_", "_rage_")),
+        _ => None,
+    };
+    move |shared| {
+        !direct
+            .iter()
+            .any(|existing| same_regen_modifier_source(shared, existing, buff_token_pair))
+    }
+}
+
+fn same_regen_modifier_source(
+    shared: &crate::Modifier,
+    direct: &crate::Modifier,
+    buff_token_pair: Option<(&str, &str)>,
+) -> bool {
+    match (&shared.origin, &direct.origin) {
+        (Some(s), Some(d)) => {
+            if s.source_id == d.source_id
+                && s.parent_source_id == d.parent_source_id
+                && s.slot == d.slot
+                && s.raw_text == d.raw_text
+                && (s.raw_text.is_some()
+                    || (shared.source.is_some() && shared.source == direct.source))
+            {
+                return true;
+            }
+            if let Some((from_token, to_token)) = buff_token_pair
+                && s.source_id.kind == SourceKind::SkillGem
+                && d.source_id.kind == SourceKind::SkillGem
+                && s.source_id.id.contains(from_token)
+                && s.source_id.id.replace(from_token, to_token) == d.source_id.id
+            {
+                return true;
+            }
+            false
+        }
+        (None, None) => {
+            shared.source.is_some()
+                && shared.source == direct.source
+                && shared.value == direct.value
+                && shared.tags == direct.tags
+        }
+        _ => false,
+    }
 }
 
 /// Returns the corresponding `XRecoveryRate` ModName for a resource name.

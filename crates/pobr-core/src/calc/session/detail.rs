@@ -129,6 +129,8 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "EnergyTriggerCost",
             "EnergyPerBlock",
             "EnergyPerMinionPower",
+            "EnergyPerDodgeMetre",
+            "DodgeRollDistance",
             "EnergyPerCastMillisecond",
             "EnergyPerIgnitePower",
             "EnergyPerShockPower",
@@ -137,6 +139,8 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "Multiplier:EnergyIncomingHitRate",
             "Multiplier:EnergyMinionDeathsPerSecond",
             "Multiplier:EnergyMinionPower",
+            "Multiplier:EnergyDodgeRollsPerSecond",
+            "Condition:CannotDodgeRoll",
             "Multiplier:EnergyInvocationUsesPerSecond",
             "EnergyGenerated",
             "Multiplier:EnemyPower",
@@ -774,27 +778,46 @@ impl CalculationSession {
             })
             .collect();
         let regen_stat = stat.strip_suffix("Recovery").unwrap_or(stat);
-        let mut shared_increases =
+        let shared_regen =
             super::super::survivability::shared_regen_increase_names(db, &cfg, regen_stat);
-        if stat == "EsRechargeRate" {
-            shared_increases.extend(
-                super::super::defence::es_recharge_increase_names(db, &cfg)
-                    .into_iter()
-                    .skip(1),
-            );
+        if !shared_regen.is_empty() {
+            let keep =
+                super::super::survivability::shared_regen_increase_filter(db, &cfg, regen_stat);
+            for name in shared_regen {
+                let names = [name.clone()];
+                groups.push(SourceGroup {
+                    name: name.to_string(),
+                    more_precision: None,
+                    totals: (0.0, db.sum_where(ModType::Inc, &cfg, &names, &keep), 1.0),
+                    rows: db
+                        .evaluate_names(&cfg, &names)
+                        .into_iter()
+                        .filter(|row| row.modifier.mod_type == ModType::Inc)
+                        .map(|mut row| {
+                            row.active &= keep(row.modifier);
+                            row
+                        })
+                        .collect(),
+                });
+            }
         }
-        for name in shared_increases {
-            let names = [name.clone()];
-            groups.push(SourceGroup {
-                name: name.to_string(),
-                more_precision: None,
-                totals: (0.0, db.sum(ModType::Inc, &cfg, &names), 1.0),
-                rows: db
-                    .evaluate_names(&cfg, &names)
-                    .into_iter()
-                    .filter(|row| row.modifier.mod_type == ModType::Inc)
-                    .collect(),
-            });
+        if stat == "EsRechargeRate" {
+            for name in super::super::defence::es_recharge_increase_names(db, &cfg)
+                .into_iter()
+                .skip(1)
+            {
+                let names = [name.clone()];
+                groups.push(SourceGroup {
+                    name: name.to_string(),
+                    more_precision: None,
+                    totals: (0.0, db.sum(ModType::Inc, &cfg, &names), 1.0),
+                    rows: db
+                        .evaluate_names(&cfg, &names)
+                        .into_iter()
+                        .filter(|row| row.modifier.mod_type == ModType::Inc)
+                        .collect(),
+                });
+            }
         }
         groups
     }

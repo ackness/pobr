@@ -43,6 +43,7 @@ fn exporter_rule(stat: &str) -> Option<std::sync::Arc<pobr_data::source::Exporte
                 "ancestral_cry_empowered_attacks_strike_X_additional_enemies",
                 "ancestral_cry_non_skill_physical_to_fire_convert_%",
                 "gem_quality_ancestral_cry_global_fire_damage_granted_+%_final",
+                "cast_on_dodge_dodge_roll_distance_granted_+",
             ]
             .into_iter()
             .map(|stat| (stat, pobr_data::source::ExporterCoverage::Absent))
@@ -1213,6 +1214,15 @@ fn player_buff_modifiers_impl(stat: &str, value: f64, skill: BuffSkill) -> Optio
             "CriticalStrikeChance",
             ModType::Inc,
             value,
+        )]),
+        // Cast on Dodge, from its quality on a character whose gem quality
+        // grants the additional effect: "Buff grants +(0-1) metre to Dodge
+        // Roll distance" (stored in decimetres, matching
+        // `dodge_roll_base_travel_distance`).
+        "cast_on_dodge_dodge_roll_distance_granted_+" => Some(vec![Modifier::number(
+            crate::calc::energy::DODGE_ROLL_DISTANCE,
+            ModType::Base,
+            value / 10.0,
         )]),
         // Archmage: "Non-Channelling Spells cost an additional {0}% of your
         // maximum Mana". The stat is in hundredths of a percent. The cost is
