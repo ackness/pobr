@@ -691,7 +691,9 @@ pub(super) fn inject_main_skill_mods(
         //         reload_time_ms) + CrossbowBoltCount (the ammo sibling skill's stat),
         //         consumed by perform's `fill_crossbow_reload`. Returns empty for a
         //         non-crossbow/grenade skill.
-        session.add_modifiers(crossbow_reload_modifiers(build, data, group, skill_id));
+        session.add_modifiers(crossbow_reload_modifiers(
+            build, data, group, skill, skill_id,
+        ));
         if ctx
             .main
             .main_skill_types

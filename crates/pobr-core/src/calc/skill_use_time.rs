@@ -246,6 +246,39 @@ pub fn apply_crossbow_reload(
     }
 }
 
+/// Expected number of crossbow bolts reloaded within the past `window_s`
+/// seconds, averaged over shots fired during a steady-state reload cycle
+/// (Fresh Clip I: 6s, Fresh Clip II: 8s).
+///
+/// Each reload loads `bolt_count` bolts at the start of a cycle whose firing
+/// phase lasts `T_fire = reload.total_firing_time` and whose full cycle lasts
+/// `C = T_fire + reload.effective_reload_time`. For a shot fired at
+/// `t ∈ [0, T_fire]`, the number of reloads inside `(t - window_s, t]` is
+/// `k + [t < r]` with `k = floor(window_s / C)` and `r = window_s - k * C`.
+/// Averaging uniformly over `t ∈ [0, T_fire]` gives
+/// `bolt_count * (k + min(r, T_fire) / T_fire)`.
+pub fn crossbow_bolts_reloaded_in_window(
+    reload: &CrossbowReload,
+    bolt_count: f64,
+    window_s: f64,
+) -> f64 {
+    if !reload.effective_bolt_count.is_finite()
+        || reload.total_firing_time <= 0.0
+        || window_s <= 0.0
+    {
+        return 0.0;
+    }
+    let bolt_count = bolt_count.max(1.0);
+    let cycle = reload.total_firing_time + reload.effective_reload_time;
+    if cycle <= 0.0 {
+        return 0.0;
+    }
+    let full_cycles = (window_s / cycle).floor();
+    let remainder = (window_s - full_cycles * cycle).max(0.0);
+    let partial = (remainder / reload.total_firing_time).min(1.0);
+    super::round(bolt_count * (full_cycles + partial))
+}
+
 /// Crossbow reload time folding (vendor `calcCrossbowReloadTime`,
 /// `CalcOffence.lua:283-291`): `reload = base /
 /// calcLib.mod(skillModList, cfg, "ReloadSpeed", "Speed")` — `Speed`'s and
@@ -339,5 +372,30 @@ mod crossbow_reload_tests {
             (t - 0.8 / 1.5).abs() < 1e-9,
             "INC sums within the same bucket: {t}"
         );
+    }
+
+    #[test]
+    fn bolts_reloaded_in_window_matches_shot_averaged_cycle() {
+        // Long clip (Rapid Shot: 100 bolts at 8.6221/s, 0.7895s reload):
+        // T_fire = 11.5981s > 8s, so 8 / T_fire of fired shots have the 100-bolt reload in window.
+        let long = apply_crossbow_reload(8.6221, 100.0, 0.7895, 0.0, 0.0);
+        let in_8s = crossbow_bolts_reloaded_in_window(&long, 100.0, 8.0);
+        assert!(
+            (in_8s - 8.0 * 8.6221).abs() < 1e-3,
+            "expected ~68.9768, got {in_8s}"
+        );
+
+        // Short clip (2 bolts at 2.5/s, 0.45s reload => T_fire = 0.8s, C = 1.25s):
+        // Over 8s: floor(8 / 1.25) = 6 full cycles, remainder = 0.5s => partial = 0.5 / 0.8 = 0.625.
+        let short = apply_crossbow_reload(2.5, 2.0, 0.45, 0.0, 0.0);
+        let short_8s = crossbow_bolts_reloaded_in_window(&short, 2.0, 8.0);
+        assert!(
+            (short_8s - 2.0 * 6.625).abs() < 1e-4,
+            "expected 13.25, got {short_8s}"
+        );
+
+        // Infinite magazine never reloads.
+        let inf = apply_crossbow_reload(5.0, 10.0, 0.8, 100.0, 0.0);
+        assert_eq!(crossbow_bolts_reloaded_in_window(&inf, 10.0, 8.0), 0.0);
     }
 }

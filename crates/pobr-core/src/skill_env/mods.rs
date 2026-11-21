@@ -719,30 +719,7 @@ pub fn crossbow_reload_modifiers(
     // Magazine capacity from the sibling ammo skill: the first `CrossbowAmmoSkill`
     // among the group's own gems or their additional granted effects, taking its
     // selected level's `base_number_of_crossbow_bolts` stat.
-    let ammo = gems.iter().find_map(|g| {
-        let mut candidates: Vec<&str> = vec![g.skill_id.as_str()];
-        candidates.extend(
-            effects
-                .additional_effects(&g.skill_id)
-                .iter()
-                .map(String::as_str),
-        );
-        candidates
-            .into_iter()
-            .find(|eid| {
-                effects
-                    .effect(eid)
-                    .is_some_and(|e| e.skill_types.iter().any(|t| t == "CrossbowAmmoSkill"))
-            })
-            .map(|eid| {
-                (
-                    eid.to_string(),
-                    g.gem_level,
-                    g.quality,
-                    (eid == g.skill_id).then_some(g.stat_set_index).flatten(),
-                )
-            })
-    });
+    let ammo = crossbow_ammo_sibling(effects, gems);
     if let Some((ammo_id, gem_level, quality, set_index)) = ammo {
         let stats = stat_sets.effect_stats_with_quality(
             &ammo_id,
@@ -799,6 +776,89 @@ pub fn crossbow_reload_modifiers(
                 .with_raw_text("crossbow_skill_has_no_ammo"),
             ),
         );
+    }
+    mods
+}
+
+/// Finds the first sibling `CrossbowAmmoSkill` among `gems` or their
+/// additional granted effects, returning `(ammo_skill_id, gem_level, quality, stat_set_index)`.
+pub fn crossbow_ammo_sibling(
+    effects: &dyn crate::skill_env::EffectLookup,
+    gems: &[GemInput],
+) -> Option<(String, u32, u32, Option<u32>)> {
+    gems.iter().find_map(|g| {
+        let mut candidates: Vec<&str> = vec![g.skill_id.as_str()];
+        candidates.extend(
+            effects
+                .additional_effects(&g.skill_id)
+                .iter()
+                .map(String::as_str),
+        );
+        candidates
+            .into_iter()
+            .find(|eid| {
+                effects
+                    .effect(eid)
+                    .is_some_and(|e| e.skill_types.iter().any(|t| t == "CrossbowAmmoSkill"))
+            })
+            .map(|eid| {
+                (
+                    eid.to_string(),
+                    g.gem_level,
+                    g.quality,
+                    (eid == g.skill_id).then_some(g.stat_set_index).flatten(),
+                )
+            })
+    })
+}
+
+/// Transfers the base resource cost (e.g. `SkillManaCostBase`) from a
+/// crossbow firing skill's sibling `CrossbowAmmoSkill` when the firing skill
+/// itself carries no cost and consumes ammunition. In PoE2 game data, bolt
+/// firing effects (such as `GalvanicShardsPlayer` and `RapidShotPlayer`) have
+/// zero cost while the reload ammo effect (`*AmmoPlayer`) holds the reload
+/// cost paid once per magazine cycle (`perform::resource_cost_use_rate`).
+pub fn crossbow_ammo_cost_modifiers(
+    data: &dyn crate::skill_env::SkillLevelLookup,
+    gems: &[GemInput],
+    skill_id: &str,
+    own_mana_cost: Option<f64>,
+) -> Vec<Modifier> {
+    if own_mana_cost.is_some_and(|c| c > 0.0) {
+        return Vec::new();
+    }
+    let Some(effect) = data.effect(skill_id) else {
+        return Vec::new();
+    };
+    let has_type = |t: &str| effect.skill_types.iter().any(|x| x == t);
+    if !has_type("CrossbowSkill") || has_type("Grenade") || has_type("CrossbowAmmoSkill") {
+        return Vec::new();
+    }
+    if data
+        .effect_stats(skill_id, 1, 0, None)
+        .all()
+        .any(|s| s.stat == "crossbow_skill_has_no_ammo" && s.value != 0.0)
+    {
+        return Vec::new();
+    }
+    let Some((ammo_id, ammo_level, _, ammo_set_index)) = crossbow_ammo_sibling(data, gems) else {
+        return Vec::new();
+    };
+    let Some(resolved) =
+        crate::skill_env::resolve_skill_level(data, &ammo_id, ammo_level, ammo_set_index)
+    else {
+        return Vec::new();
+    };
+    let mut mods = Vec::new();
+    if let Some(mc) = resolved.mana_cost
+        && mc > 0.0
+    {
+        let origin = ModifierSource::new(SourceId::new(
+            SourceKind::SkillGem,
+            format!("skill.{ammo_id}.SkillManaCostBase"),
+        ))
+        .with_raw_text(format!("ammo skill {ammo_id} base mana cost"));
+        mods.push(Modifier::number("SkillManaCostBase", ModType::Base, mc).with_origin(origin));
     }
     mods
 }

@@ -296,3 +296,58 @@ fn minion_supports_set_gem_levels_and_reservation() {
         }
     }
 }
+
+/// Living Lightning II spawns 8 minions (raising Predator's Mark Q20 damage
+/// taken by 8 × 4% = +32%) when linked to a compatible Attack skill, and 0
+/// when no primary active skill in its group can be supported (e.g. Blasphemy
+/// + Curse of Repulsion).
+#[test]
+fn living_lightning_spawns_only_when_support_applies_to_primary_active_skill() {
+    use pobr_build::{Build, SocketGroup};
+
+    let data = data();
+    let opts = DataOrchestratorOptions {
+        mode_effective: true,
+        ..Default::default()
+    };
+    let mut pounce = SocketGroup::new().with_gem_skill("WolfPouncePlayer", 20);
+    pounce.gem_skills[0].quality = 20;
+    let base = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20))
+        .add_socket_group(pounce)
+        .with_main_socket_group(1);
+
+    let bare = calculate_with_data(&base, data, &opts).unwrap();
+    let incompatible = calculate_with_data(
+        &base.clone().add_socket_group(
+            SocketGroup::new()
+                .with_gem_skill("BlasphemyPlayer", 18)
+                .with_gem_skill("CurseOfRepulsionPlayer", 20)
+                .with_gem_skill("SupportLivingLightningPlayerTwo", 1),
+        ),
+        data,
+        &opts,
+    )
+    .unwrap();
+    assert_eq!(
+        incompatible.dps, bare.dps,
+        "incompatible Blasphemy + Curse of Repulsion must not spawn Living Lightning"
+    );
+
+    let compatible = calculate_with_data(
+        &base.add_socket_group(
+            SocketGroup::new()
+                .with_gem_skill("WhirlingSlashPlayer", 10)
+                .with_gem_skill("SupportLivingLightningPlayerTwo", 1),
+        ),
+        data,
+        &opts,
+    )
+    .unwrap();
+    assert!(
+        (compatible.dps / bare.dps - 1.32).abs() < 1e-4,
+        "8 Living Lightning minions should add +32% damage taken via Predator's Mark Q20: {} vs {}",
+        compatible.dps,
+        bare.dps
+    );
+}

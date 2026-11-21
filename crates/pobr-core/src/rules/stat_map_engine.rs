@@ -643,11 +643,37 @@ fn is_consumable_flag(name: &str) -> bool {
             | "InevitableCriticalHits"
             | "NoCritMultiplier"
             | "NeverCrit"
+            | "CannotBleed"
             | "CannotIgnite"
+            | "CannotPoison"
             | "CannotShock"
             | "CannotChill"
             | "CannotFreeze"
             | "CannotElectrocute"
+            // Cross-type ailment contribution flags consumed by
+            // `calc::ailment` (e.g. Xoph's Pyre `base_chaos_damage_can_ignite`,
+            // Tul's Stillness `chaos_damage_can_freeze`, Esh's Radiance
+            // `chaos_damage_can_shock`, Olroth's Hubris `physical_damage_can_freeze`,
+            // `all_damage_can_*`).
+            | "ChaosCanIgnite"
+            | "ColdCanIgnite"
+            | "LightningCanIgnite"
+            | "PhysicalCanIgnite"
+            | "ChaosCanFreeze"
+            | "FireCanFreeze"
+            | "LightningCanFreeze"
+            | "PhysicalCanFreeze"
+            | "ChaosCanShock"
+            | "ColdCanShock"
+            | "FireCanShock"
+            | "PhysicalCanShock"
+            | "FireCanBleed"
+            | "ColdCanBleed"
+            | "LightningCanBleed"
+            | "ChaosCanBleed"
+            | "FireCanPoison"
+            | "ColdCanPoison"
+            | "LightningCanPoison"
             // Brutality's native restrictions use the existing typed gate
             // after conversion and damage gained as another type.
             | "DealNoFire"
@@ -833,6 +859,17 @@ fn collect_skill_data(
     // skills whose sustained rate is the useful sidebar view.
     if key == "showAverage" {
         let mut modifier = Modifier::flag("ShowAverageDamage");
+        for tag in tags {
+            modifier = modifier.with_tag(tag);
+        }
+        items.push(MappedItem::Modifier(Box::new(modifier)));
+        return Ok(());
+    }
+    // Skills whose poison lasts for the skill's own effect duration rather
+    // than the default 2-second poison base (e.g. Poisonburst Arrow's cloud,
+    // `poison_duration_is_skill_duration`).
+    if key == "poisonDurationIsSkillDuration" {
+        let mut modifier = Modifier::flag("PoisonDurationIsSkillDuration");
         for tag in tags {
             modifier = modifier.with_tag(tag);
         }
@@ -1328,6 +1365,12 @@ pub(crate) fn translated_mod_name_parts<'a>(
         // = `calc::warcry` (empower-count math CalcPerform.lua:2121-2123 +
         // the uptime-scaled DamageGainAsFire injection CalcOffence.lua:3251-3254).
         "WarcryPowerPer" | "WarcryPowerCap" | "InfernalExtraFireDamageMultiplier" => {
+            base_name
+        }
+        // Concoct / Ambrosia supports: percentage of equipped Life/Mana Flask
+        // maximum charges consumed on skill use, resolved into
+        // `LifeFlaskChargeConsumed` / `ManaFlaskChargeConsumed` multipliers.
+        "Multiplier:LifeFlaskMaxChargesPercent" | "Multiplier:ManaFlaskMaxChargesPercent" => {
             base_name
         }
         //  Ailment duration -- vendor's infliction-side mod names carry an
@@ -3915,5 +3958,71 @@ mod tests {
             UnsupportedReason::UnsupportedTag(String::new()).category(),
             "tag"
         );
+    }
+
+    #[test]
+    fn cross_type_ailment_and_prohibition_flags_are_mapped() {
+        let catalog = catalog_json(
+            r#"{ "global": {
+                "base_chaos_damage_can_ignite": {
+                    "mods": [{ "kind": "flag", "name": "ChaosCanIgnite", "mod_type": "FLAG" }]
+                },
+                "chaos_damage_can_shock": {
+                    "mods": [{ "kind": "flag", "name": "ChaosCanShock", "mod_type": "FLAG" }]
+                },
+                "physical_damage_can_freeze": {
+                    "mods": [{ "kind": "flag", "name": "PhysicalCanFreeze", "mod_type": "FLAG" }]
+                },
+                "cannot_poison": {
+                    "mods": [{ "kind": "flag", "name": "CannotPoison", "mod_type": "FLAG" }]
+                },
+                "cannot_bleed": {
+                    "mods": [{ "kind": "flag", "name": "CannotBleed", "mod_type": "FLAG" }]
+                },
+                "poison_duration_is_skill_duration": {
+                    "mods": [{ "kind": "skill_data", "name": "SkillData", "mod_type": "LIST",
+                               "value": { "key": "poisonDurationIsSkillDuration", "value": true } }]
+                },
+                "consume_%_of_maximum_life_flask_charges_on_skill_use": {
+                    "mods": [{ "kind": "mod", "name": "Multiplier:LifeFlaskMaxChargesPercent", "mod_type": "BASE" }]
+                }
+            }, "per_stat_set": {} }"#,
+        );
+        for (stat, expected_name) in [
+            ("base_chaos_damage_can_ignite", "ChaosCanIgnite"),
+            ("chaos_damage_can_shock", "ChaosCanShock"),
+            ("physical_damage_can_freeze", "PhysicalCanFreeze"),
+            ("cannot_poison", "CannotPoison"),
+            ("cannot_bleed", "CannotBleed"),
+            (
+                "poison_duration_is_skill_duration",
+                "PoisonDurationIsSkillDuration",
+            ),
+        ] {
+            let MappedOutcome::Mapped(items) = map_stat(&catalog, "TestSkill", None, stat, 1.0)
+            else {
+                panic!("expected Mapped for {stat}");
+            };
+            assert_eq!(items.len(), 1, "{stat}");
+            let MappedItem::Modifier(m) = &items[0] else {
+                panic!("expected Modifier for {stat}");
+            };
+            assert_eq!(m.name.as_str(), expected_name);
+            assert_eq!(m.mod_type, ModType::Flag);
+        }
+        let MappedOutcome::Mapped(items) = map_stat(
+            &catalog,
+            "SupportConcoctPlayerTwo",
+            None,
+            "consume_%_of_maximum_life_flask_charges_on_skill_use",
+            30.0,
+        ) else {
+            panic!("expected Mapped for Concoct flask charge percent");
+        };
+        let MappedItem::Modifier(m) = &items[0] else {
+            panic!("expected Modifier");
+        };
+        assert_eq!(m.name.as_str(), "Multiplier:LifeFlaskMaxChargesPercent");
+        assert_eq!(m.value.as_number(), Some(30.0));
     }
 }

@@ -263,10 +263,18 @@ pub(crate) fn crossbow_reload_modifiers(
     build: &Build,
     data: &BuildData,
     group: &SocketGroup,
+    skill: &ResolvedSkillLevel,
     skill_id: &str,
 ) -> Vec<Modifier> {
-    let gems = group.gem_inputs();
-    pobr_core::skill_env::crossbow_reload_modifiers(
+    let mut gems = group.gem_inputs();
+    if let (Some(selected), Some((gem_level, bonus_levels))) = (
+        super::resolve::selected_group_effect(data, group),
+        super::resolve::selected_effect_levels(build, data, group),
+    ) && let Some(gem) = gems.get_mut(selected.gem_index)
+    {
+        gem.gem_level = gem_level.saturating_add(bonus_levels);
+    }
+    let mut mods = pobr_core::skill_env::crossbow_reload_modifiers(
         data,
         data,
         build,
@@ -274,7 +282,14 @@ pub(crate) fn crossbow_reload_modifiers(
         &gems,
         skill_id,
         super::resolve::gemling_quality_flag(build, data),
-    )
+    );
+    mods.extend(pobr_core::skill_env::crossbow_ammo_cost_modifiers(
+        data,
+        &gems,
+        skill_id,
+        skill.mana_cost,
+    ));
+    mods
 }
 
 /// Map the resolved selected skill's stats with ordinary and enabled additional

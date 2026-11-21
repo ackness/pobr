@@ -979,6 +979,19 @@ pub fn support_buff_specs(
     data: &dyn BuffEnv,
     use_alt_quality: bool,
 ) -> Vec<BuffSpec> {
+    support_buff_specs_filtered(ctx, groups, data, use_alt_quality, |_, _| true)
+}
+
+/// Like [`support_buff_specs`], filtering candidate host active skills through
+/// `host_usable` (e.g. skipping Bow-only skills such as Snipe when no Bow is
+/// equipped in the active weapon set).
+pub fn support_buff_specs_filtered(
+    ctx: &mut StatMapCtx<'_>,
+    groups: &dyn SocketGroupView,
+    data: &dyn BuffEnv,
+    use_alt_quality: bool,
+    host_usable: impl Fn(&EnabledGroup<'_>, &str) -> bool,
+) -> Vec<BuffSpec> {
     use std::collections::HashSet;
     let mut specs = Vec::new();
     let mut seen: HashSet<(String, String)> = HashSet::new();
@@ -997,7 +1010,7 @@ pub fn support_buff_specs(
                         .map(String::as_str),
                 )
             })
-            .filter(|id| data.effect(id).is_some_and(|e| !e.is_support))
+            .filter(|id| data.effect(id).is_some_and(|e| !e.is_support) && host_usable(&group, id))
             .collect();
         if active_ids.is_empty() {
             return;
@@ -1256,18 +1269,23 @@ pub fn exposure_support_modifiers(
         // exposure-inflicting payload → that group's compatible support list.
         let mut support_entries: BTreeSet<(usize, String)> = BTreeSet::new();
         for gem in group.gems {
-            let Some(effect) = data.effect(&gem.skill_id) else {
-                continue;
-            };
-            if effect.is_support {
-                continue;
-            }
-            let judgement = group_judgement(&group, data, &gem.skill_id);
-            if !hosts_exposure(ctx, &group, data, gem, &judgement, true) {
-                continue;
-            }
-            for sup in judgement.compatible {
-                support_entries.insert((sup.gem_index, sup.effect_id));
+            let effect_ids = std::iter::once(gem.skill_id.as_str()).chain(
+                data.additional_effects(&gem.skill_id)
+                    .iter()
+                    .map(String::as_str),
+            );
+            for skill_id in effect_ids {
+                if data.effect(skill_id).is_none_or(|effect| effect.is_support) {
+                    continue;
+                }
+                for judgement in skill_judgements(&group, data, skill_id) {
+                    if !hosts_exposure(ctx, &group, data, gem, &judgement, true) {
+                        continue;
+                    }
+                    for sup in judgement.compatible {
+                        support_entries.insert((sup.gem_index, sup.effect_id));
+                    }
+                }
             }
         }
         for (idx, effect_id) in support_entries {
@@ -1343,9 +1361,10 @@ fn hosts_exposure(
 }
 
 /// Whether any enabled skill group inflicts exposure: a skill, or a support
-/// applying to it, that inflicts it. The configured exposure on the enemy
-/// needs such a source (`calc::setup_env::reduce_enemy_exposure`); a skill
-/// whose debuff is exposure puts that exposure on the enemy itself.
+/// applying to it (including attacks made by its summoned minions), that
+/// inflicts it. The configured exposure on the enemy needs such a source
+/// (`calc::setup_env::reduce_enemy_exposure`); a skill whose debuff is
+/// exposure puts that exposure on the enemy itself.
 pub fn groups_inflict_exposure(
     ctx: &mut StatMapCtx<'_>,
     groups: &dyn SocketGroupView,
@@ -1357,12 +1376,18 @@ pub fn groups_inflict_exposure(
             return;
         }
         inflicts = group.gems.iter().any(|gem| {
-            data.effect(&gem.skill_id)
-                .is_some_and(|effect| !effect.is_support)
-                && {
-                    let judgement = group_judgement(&group, data, &gem.skill_id);
-                    hosts_exposure(ctx, &group, data, gem, &judgement, false)
-                }
+            let effect_ids = std::iter::once(gem.skill_id.as_str()).chain(
+                data.additional_effects(&gem.skill_id)
+                    .iter()
+                    .map(String::as_str),
+            );
+            effect_ids.into_iter().any(|skill_id| {
+                data.effect(skill_id)
+                    .is_some_and(|effect| !effect.is_support)
+                    && skill_judgements(&group, data, skill_id)
+                        .into_iter()
+                        .any(|judgement| hosts_exposure(ctx, &group, data, gem, &judgement, false))
+            })
         });
     });
     inflicts

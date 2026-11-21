@@ -285,7 +285,7 @@ Pounce 的 Predator's Mark（“Marked target takes {0}% increased damage for ea
 
 数量按一次激活的一只狼加游戏 stat `skill_cross_slash_triggered_summon_+_wolves_if_rare` / `_if_unique` 的稀有度加成（Rare +0、Unique +1），即普通／稀有敌人一只、独特敌人两只；不是假设达到 20 级 `number_of_wolves_allowed` 的六只上限。只有这个效果是所选主技能时，这些狼才计入 `MinionPresenceCount` / `SummonedMinion`；不推算击杀频率或持续累积的狼数。
 
-所选召唤效果的最小 sweep 仍有差异：PoBR 的两只狼使同颗宝石的 Mark 增加 6% 承伤，单只狼 DPS 为 49.8971；只保留召唤效果、去掉 Mark 时为 47.0728，钉定 PoB2 为 46.9565（剩余约 0.25% 来自伤害区间与敌人护甲取整）。这里保留现有 Mark 应用规则，不按参考值补伤害倍率。tuned 组的 Witchhunter 构筑上这个数是 0：它的 Living Lightning II 所在组没有能被辅助的技能，不会出现 Living Lightning；构筑码自带的参考值按 8 只计（+32%），比 PoBR 高。辅助宝石授予的召唤生物在辅助能生效时也还没有创建。
+所选召唤效果的最小 sweep 仍有差异：PoBR 的两只狼使同颗宝石的 Mark 增加 6% 承伤，单只狼 DPS 为 49.8971；只保留召唤效果、去掉 Mark 时为 47.0728，钉定 PoB2 为 46.9565（剩余约 0.25% 来自伤害区间与敌人护甲取整）。这里保留现有 Mark 应用规则，不按参考值补伤害倍率。辅助宝石授予的召唤生物（如 Living Lightning I/II）在辅助与同组主主动技能兼容时正常创建；tuned 组的 Witchhunter 构筑上这个数仍为 0，因为它的 Living Lightning II 所在组（Blasphemy + Curse of Repulsion）没有可被辅助的主主动技能，而构筑码自带的参考值按 8 只计（+32%），比 PoBR 高。
 
 ### Minion Pact 与 Presence
 

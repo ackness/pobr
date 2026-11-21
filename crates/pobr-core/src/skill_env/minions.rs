@@ -227,6 +227,58 @@ pub fn spawn_minions(
             summon.skill_id = effect.skill_id.to_string();
             candidates.push((effect.gem_index, summon));
         }
+        // Support-granted minions (e.g. SupportLivingLightningPlayer[Two] →
+        // TriggeredLivingLightningPlayer[Two]) spawn only when the support
+        // applies to a primary active skill in the same socket group.
+        let mut support_summons = Vec::new();
+        for (sup_index, sup_gem) in group.gems.iter().enumerate() {
+            if !data
+                .effect(&sup_gem.skill_id)
+                .is_some_and(|effect| effect.is_support)
+            {
+                continue;
+            }
+            let granted_minions: Vec<&str> = data
+                .additional_effects(&sup_gem.skill_id)
+                .iter()
+                .map(String::as_str)
+                .filter(|extra_id| {
+                    data.effect(extra_id)
+                        .is_some_and(|effect| !effect.is_support)
+                        && !summoned_minions(data, extra_id, None).is_empty()
+                })
+                .collect();
+            if granted_minions.is_empty() {
+                continue;
+            }
+            let host = group.gems.iter().find(|host| {
+                data.effect(&host.skill_id)
+                    .is_some_and(|effect| !effect.is_support)
+                    && group_judgement(&group, data, &host.skill_id)
+                        .compatible
+                        .iter()
+                        .any(|sup| sup.gem_index == sup_index && sup.effect_id == sup_gem.skill_id)
+            });
+            let Some(host) = host else {
+                continue;
+            };
+            for extra_id in granted_minions {
+                support_summons.push((
+                    sup_index,
+                    GemInput {
+                        skill_id: extra_id.to_string(),
+                        gem_level: host.gem_level,
+                        global_level_bonus: host.global_level_bonus,
+                        quality: 0,
+                        stat_set_index: None,
+                        corrupted: host.corrupted,
+                        minion: None,
+                        minion_skill: None,
+                    },
+                ));
+            }
+        }
+        candidates.extend(support_summons);
         for (
             gem_index,
             GemInput {
@@ -1095,6 +1147,8 @@ fn own_minion_count(
             // skill and its quality contribute to the native cap.
             if ds.stat == "base_number_of_zombies_allowed" {
                 limit_bonus = session.base_sum("ActiveZombieLimit");
+            } else if ds.stat == "base_number_of_living_lightning_allowed" {
+                limit_bonus = session.base_sum("ActiveLivingLightningLimit");
             }
         }
     }
