@@ -71,17 +71,34 @@ fn field_text(value: &StatMapValue, captures: &[String]) -> Option<String> {
     }
 }
 
-/// Resolve a template field value as a number (either a `$n` capture or a literal).
+/// Resolve a template field value as a number (`$n`, `$n:mult(N)` / `$n:div(N)` /
+/// `$n:base(N)`, or a numeric literal). Unknown operators such as `:cap` return `None`
+/// instead of silently discarding the operator.
 fn field_number(value: &StatMapValue, captures: &[String]) -> Option<f64> {
     match value {
         StatMapValue::Number(n) => Some(*n),
         StatMapValue::Text(s) => {
-            if let Some(rest) = s.strip_prefix('$') {
-                let n: usize = rest.split(':').next()?.parse().ok()?;
-                captures.get(n.saturating_sub(1))?.parse().ok()
-            } else {
-                s.parse().ok()
+            let Some(rest) = s.strip_prefix('$') else {
+                return s.parse().ok();
+            };
+            let (idx_str, op) = match rest.split_once(':') {
+                Some((i, o)) => (i, Some(o)),
+                None => (rest, None),
+            };
+            let idx: usize = idx_str.parse().ok()?;
+            let mut v: f64 = captures.get(idx.saturating_sub(1))?.parse().ok()?;
+            if let Some(op) = op {
+                let (name, arg) = op.split_once('(')?;
+                let arg: f64 = arg.strip_suffix(')')?.parse().ok()?;
+                v = match name {
+                    "mult" => v * arg,
+                    "div" if arg != 0.0 => v / arg,
+                    "div" => v,
+                    "base" => v + arg,
+                    _ => return None,
+                };
             }
+            Some(v)
         }
         _ => None,
     }
@@ -94,40 +111,10 @@ fn field_bool(value: &StatMapValue) -> Option<bool> {
     }
 }
 
-/// Evaluate a numeric field value that carries a **capture operator** (`$n:mult(N)` → ×N,
-/// `$n:div(N)` → ÷N, `$n:base(N)` → +N; falls back to [`field_number`] when there's no
-/// operator). The template/special dialect shares the same `:cap` mechanism as
-/// `interpolate_segment`, just applied to numbers instead.
-///
-/// Only used by consumers like MultiplierThreshold's `threshold = "$1:mult(10)"` (metres →
-/// internal units) — deliberately **not** folded into [`field_number`], to avoid changing the
-/// semantics of existing fields like Multiplier's `limit="$1:base(6)"` as a side effect; those
-/// are separate latent bugs, out of scope for this change.
+/// Evaluate a numeric field value that carries a capture operator (`$n:mult(N)`, `$n:div(N)`,
+/// `$n:base(N)`).
 fn field_number_capop(value: &StatMapValue, captures: &[String]) -> Option<f64> {
-    let StatMapValue::Text(s) = value else {
-        return field_number(value, captures);
-    };
-    let Some(rest) = s.strip_prefix('$') else {
-        return field_number(value, captures);
-    };
-    let (idx_str, op) = match rest.split_once(':') {
-        Some((i, o)) => (i, Some(o)),
-        None => (rest, None),
-    };
-    let idx: usize = idx_str.parse().ok()?;
-    let mut v: f64 = captures.get(idx.saturating_sub(1))?.parse().ok()?;
-    if let Some(op) = op {
-        let (name, arg) = op.split_once('(')?;
-        let arg: f64 = arg.strip_suffix(')')?.parse().ok()?;
-        v = match name {
-            "mult" => v * arg,
-            "div" if arg != 0.0 => v / arg,
-            "div" => v,
-            "base" => v + arg,
-            _ => return None,
-        };
-    }
-    Some(v)
+    field_number(value, captures)
 }
 
 /// Instantiate a [`TagTemplate`] into a pobr [`ModTag`].
@@ -141,11 +128,12 @@ fn field_number_capop(value: &StatMapValue, captures: &[String]) -> Option<f64> 
 /// - `PerStat` / `PercentStat` (stat/div/limit);
 /// - `SkillName` (skill name list);
 /// - `SlotName` (equipment slot);
-/// - `MultiplierThreshold` (var/threshold/upper/actor).
+/// - `MultiplierThreshold` (var/threshold/upper/actor);
+/// - `StatThreshold` (stat/threshold/upper; scalar thresholds only).
 ///
 /// **Not mappable** (no pobr landing point, returns `None`; the line can still produce other
 /// mods, but the caller uses this to treat the whole line as a conservative mismatch — see
-/// engine): `GlobalEffect` / `ItemCondition` / `StatThreshold` etc.
+/// engine): `GlobalEffect` / `ItemCondition` etc.
 pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
     let f = &tag.fields;
     match tag.tag_type.as_str() {
@@ -376,10 +364,56 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
                 upper,
             })
         }
+        "StatThreshold" => {
+            if f.contains_key("statList")
+                || f.contains_key("thresholdStat")
+                || f.contains_key("thresholdPercent")
+                || f.contains_key("thresholdPercentVar")
+                || f.contains_key("actor")
+                || f.contains_key("thresholdActor")
+            {
+                return None;
+            }
+            let stat = f.get("stat").and_then(|v| field_text(v, captures))?;
+            if stat.is_empty() || stat.contains('$') {
+                return None;
+            }
+            let stat = normalize_attribute_var(&normalize_perstat_slot_suffix(&stat));
+            let threshold = f
+                .get("threshold")
+                .and_then(|v| field_number_capop(v, captures))?;
+            let upper = f.get("upper").and_then(field_bool).unwrap_or(false);
+            let pre_perform = is_pre_perform_stat(&stat);
+            if upper && !pre_perform {
+                return None;
+            }
+            if !upper && threshold <= 0.0 && !pre_perform {
+                return None;
+            }
+            Some(ModTag::StatThreshold {
+                stat,
+                threshold,
+                upper,
+            })
+        }
         // Unmapped tag shape: conservatively skip (return None; engine decides how to treat
         // the whole line based on this).
         _ => None,
     }
+}
+
+fn is_pre_perform_stat(stat: &str) -> bool {
+    matches!(
+        stat,
+        "Strength"
+            | "Dexterity"
+            | "Intelligence"
+            | "LowestAttribute"
+            | "Tribute"
+            | "Life"
+            | "Mana"
+            | "Spirit"
+    )
 }
 
 /// `<Ailment>Stacks` threshold var → the enemy-ailment-present condition var
@@ -494,6 +528,7 @@ pub fn is_mappable_tag_type(tag_type: &str) -> bool {
             | "PercentStat"
             | "SlotName"
             | "MultiplierThreshold"
+            | "StatThreshold"
     )
 }
 
@@ -857,6 +892,150 @@ mod tests {
                 upper: true,
             }
         );
+    }
+
+    #[test]
+    fn multiplier_tag_applies_numeric_op_and_rejects_cap() {
+        let t = tag(
+            "Multiplier",
+            &[
+                ("var", StatMapValue::Text("Stage".into())),
+                ("limit", StatMapValue::Text("$1:base(6)".into())),
+            ],
+        );
+        assert_eq!(
+            compile_tag(&t, &["4".into()]).unwrap(),
+            ModTag::Multiplier {
+                var: "Stage".into(),
+                div: 1.0,
+                limit: Some(10.0),
+                actor: None,
+                limit_var: None,
+                limit_actor: None,
+                invert: false,
+                limit_total: false,
+            }
+        );
+
+        let bad_limit = tag(
+            "Multiplier",
+            &[
+                ("var", StatMapValue::Text("Stage".into())),
+                ("limit", StatMapValue::Text("$1:cap".into())),
+            ],
+        );
+        assert_eq!(
+            compile_tag(&bad_limit, &["4".into()]).unwrap(),
+            ModTag::Multiplier {
+                var: "Stage".into(),
+                div: 1.0,
+                limit: None,
+                actor: None,
+                limit_var: None,
+                limit_actor: None,
+                invert: false,
+                limit_total: false,
+            }
+        );
+    }
+
+    #[test]
+    fn stat_threshold_compiles_scalar_and_pre_perform_upper_bounds() {
+        assert!(is_mappable_tag_type("StatThreshold"));
+
+        let at_least_dex = tag(
+            "StatThreshold",
+            &[
+                ("stat", StatMapValue::Text("Dex".into())),
+                ("threshold", StatMapValue::Text("$1".into())),
+            ],
+        );
+        assert_eq!(
+            compile_tag(&at_least_dex, &["200".into()]).unwrap(),
+            ModTag::StatThreshold {
+                stat: "Dexterity".into(),
+                threshold: 200.0,
+                upper: false,
+            }
+        );
+
+        let below_dex = tag(
+            "StatThreshold",
+            &[
+                ("stat", StatMapValue::Text("Dex".into())),
+                ("threshold", StatMapValue::Text("$1:base(-1)".into())),
+                ("upper", StatMapValue::Bool(true)),
+            ],
+        );
+        assert_eq!(
+            compile_tag(&below_dex, &["100".into()]).unwrap(),
+            ModTag::StatThreshold {
+                stat: "Dexterity".into(),
+                threshold: 99.0,
+                upper: true,
+            }
+        );
+
+        let armour_on_body = tag(
+            "StatThreshold",
+            &[
+                ("stat", StatMapValue::Text("ArmourOnBody Armour".into())),
+                ("threshold", StatMapValue::Number(1.0)),
+            ],
+        );
+        assert_eq!(
+            compile_tag(&armour_on_body, &[]).unwrap(),
+            ModTag::StatThreshold {
+                stat: "ArmourOnbodyarmour".into(),
+                threshold: 1.0,
+                upper: false,
+            }
+        );
+
+        // Non-pre-perform stats only compile positive lower bounds (`threshold > 0`, `!upper`).
+        let no_mana_reserved = tag(
+            "StatThreshold",
+            &[
+                ("stat", StatMapValue::Text("ManaReserved".into())),
+                ("threshold", StatMapValue::Number(0.0)),
+                ("upper", StatMapValue::Bool(true)),
+            ],
+        );
+        assert_eq!(compile_tag(&no_mana_reserved, &[]), None);
+
+        let zero_lower_post_perform = tag(
+            "StatThreshold",
+            &[
+                ("stat", StatMapValue::Text("Armour".into())),
+                ("threshold", StatMapValue::Number(0.0)),
+            ],
+        );
+        assert_eq!(compile_tag(&zero_lower_post_perform, &[]), None);
+
+        // Compound/stat-based thresholds stay unmapped so special_mods or conservative gating wins.
+        let stat_list = tag(
+            "StatThreshold",
+            &[
+                (
+                    "statList",
+                    StatMapValue::List(vec![
+                        StatMapValue::Text("LifeCost".into()),
+                        StatMapValue::Text("LifePerSecondCost".into()),
+                    ]),
+                ),
+                ("threshold", StatMapValue::Number(1.0)),
+            ],
+        );
+        assert_eq!(compile_tag(&stat_list, &[]), None);
+
+        let threshold_stat = tag(
+            "StatThreshold",
+            &[
+                ("stat", StatMapValue::Text("Strength".into())),
+                ("thresholdStat", StatMapValue::Text("Dexterity".into())),
+            ],
+        );
+        assert_eq!(compile_tag(&threshold_stat, &[]), None);
     }
 
     #[test]

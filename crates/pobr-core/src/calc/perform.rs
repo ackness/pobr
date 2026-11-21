@@ -176,6 +176,8 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         for (name, value) in [
             ("LifeUnreserved", life_res.unreserved),
             ("ManaUnreserved", mana_res.unreserved),
+            ("LifeReserved", life_res.reserved),
+            ("ManaReserved", mana_res.reserved),
         ] {
             env.cfg.stats.insert(name.into(), value);
             env.cfg.multipliers.insert(name.into(), value);

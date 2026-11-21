@@ -144,7 +144,8 @@ aho-corasick 预筛选使用的最长字面子串，后者记录 `^` 锚定。�
     }
   },
   "verified": false,
-  "batch": "S2"
+  "batch": "S2",
+  "source_note": "Per-level item/passive defence modifier"
 }
 ```
 
@@ -154,7 +155,7 @@ aho-corasick 预筛选使用的最长字面子串，后者记录 `^` 锚定。�
 | `pattern` | 必填 | 整行 Rust 正则；捕获按 `$1..$n` 编号 |
 | `mods` | 与 `handler_id` 二选一；识别空结果见下文 | 输出的 `ModTemplateDef` 列表 |
 | `handler_id` | 与非空 `mods` 互斥 | JSON 无法表达的 Rust handler，见第 6 节 |
-| `handler_args` | handler 所需参数 | 按顺序转交捕获，例如 `["$1","$2"]` |
+| `handler_args` | handler 所需参数 | 按顺序转交捕获，只接受 `"$1"`..`"$n"` |
 | `enums` | 可选 | `{"<capture#>": {"<word>": "<literal>"}}`，把封闭词集映射到完整名称 |
 | `vendor_pattern` | 可选 | 该规则替代的原 Lua pattern，用于和 PoB2 行对照 |
 | `exporter` | 默认 `same` | PoB2 未实现用 `absent`，行为不同用 `differs`；`absent` 规则在参考口径中排除 |
@@ -220,16 +221,17 @@ aho-corasick 预筛选使用的最长字面子串，后者记录 `^` 锚定。�
 
 <a id="5b-inline-placeholders-in-mod_parser_rulesjson-tag-fields--handler_args"></a>
 
-### 5b. 通用规则标签字段与 `handler_args` 的内联占位符
+### 5b. 通用规则标签字段的内联占位符（`template.rs`）与 `handler_args`
 
-标签字段字符串和 handler 字符串参数由
-`crates/pobr-core/src/parse/mod_parser/template.rs` 解释：
+`overlay/mod_parser_rules.json` 的标签字段字符串由
+`crates/pobr-core/src/parse/mod_parser/template.rs` 解释；`special_mods.json` 的 `handler_args`
+则由 `crates/pobr-core/src/rules/special_mod/validate.rs` 与 `special_mod.rs` 解释，仅支持纯捕获 `"$1"`..`"$n"`：
 
-| 格式 | 示例 | 结果 |
-|------|------|------|
-| 捕获 | `"$1"` | 捕获 1 |
-| 首字母大写并拼接 | `"$2:cap+Effect"` | `firstToUpper($2) . "Effect"`，例如 `FrenzyEffect` |
-| 数值运算 | `"$1:mult(10)"` / `"$1:div(N)"` / `"$1:base(N)"` | 捕获 × / ÷ / + `N` |
+| 格式 | 适用位置 | 示例 | 结果 |
+|------|----------|------|------|
+| 捕获 | 通用规则标签、`handler_args` | `"$1"` | 捕获 1 |
+| 首字母大写并拼接 | 通用规则文本标签字段 | `"$2:cap+Effect"` | `firstToUpper($2) . "Effect"`，例如 `FrenzyEffect` |
+| 数值运算 | 通用规则数值标签字段（`Multiplier` / `PerStat` / `PercentStat` / `MultiplierThreshold`） | `"$1:mult(10)"` / `"$1:div(N)"` / `"$1:base(N)"` | 捕获 × / ÷ / + `N` |
 
 <a id="dsl-hard-boundary"></a>
 

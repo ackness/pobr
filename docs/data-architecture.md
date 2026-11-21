@@ -86,7 +86,7 @@ RePoE 发布 ───┐
 ## 3. 发布与导入契约
 
 - **owner 发布。** 新发布是 owner 仓库的 GitHub Release：tag（`game/<patch>-<n>`、`locale/<patch>-<n>`）打在生成它的
-  master 提交上，附件为包、GNU 格式的 `SHA256SUMS` 与 `receipt.json`（生产提交、契约版本、全部输入）。
+  默认分支提交上（RePoE 为 `master`，翻译库为 `main`），附件为包、GNU 格式的 `SHA256SUMS` 与 `receipt.json`（生产提交、契约版本、全部输入）。
   发布方的历史由它自己的 Release 列表承担，PoBR 锁不复制发布索引、序号或描述哈希链。
   `data:bump` 要求 `receipt.json` 写明 `target`（与包一致）和 `producer` 的 `repository`、40 位 `commit`、
   `dirty: false`；`contract.version` 可省略，游戏快照声明 `contract_version` 时两者必须相等。
@@ -128,7 +128,7 @@ RePoE 发布 ───┐
     `GemEffects.SupportText`、`ActiveSkills.Description` 中，id 规则同上，记录为 `[英文原文, 译文原文]`；
     英文与游戏成员逐字节相同才算同一条，译文同样保留原文标记。语言 owner 只写有官方译文的 id、不写 `null`
     （`null` 表示"停在英文"，会挡住 zh-TW 回退到 zh-CN），也不写 `origins`（官方文本）。
-    zh-CN 在现有文件里；zh-TW 是新文件 `i18n/zh-TW/display_texts.json`（`locale: "zh-TW"`，形状相同，已按 manifest
+    zh-CN 与 zh-TW 同形状（`i18n/zh-TW/display_texts.json`，`locale: "zh-TW"`，均已随语言包分发并按 manifest
     `files` 读取），作用域还可以包括已有的 `MonsterVarieties.Name` 等。
 - <a id="item-class-names"></a>**物品类别名称（契约 1.4）。** 英文属于游戏 owner，译文属于语言 owner；这是由 `contract/1.4` 固定的可选显示文本契约，
   不改变既有数值成员。契约版本规则见 [§3.1](#31-数据契约版本)，输入及新成员仍须通过各 owner 的发布审核。

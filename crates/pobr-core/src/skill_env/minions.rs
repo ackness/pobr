@@ -1121,7 +1121,9 @@ fn own_minion_count(
     if skill_id == "WolfPounceSummonWolfPlayer" {
         let rarity_stat = if session.enemy_has_flag("Condition:Unique") {
             "skill_cross_slash_triggered_summon_+_wolves_if_unique"
-        } else if session.enemy_has_flag("Condition:RareOrUnique") {
+        } else if session.enemy_has_flag("Condition:Rare")
+            || session.enemy_has_flag("Condition:RareOrUnique")
+        {
             "skill_cross_slash_triggered_summon_+_wolves_if_rare"
         } else {
             return Some(1);

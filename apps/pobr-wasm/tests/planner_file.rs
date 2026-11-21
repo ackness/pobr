@@ -145,3 +145,18 @@ fn unsupported_meta_gems_are_diagnosed_and_old_trees_are_rejected() {
             .contains("historical")
     );
 }
+
+#[test]
+fn skill_weapon_set_roundtrips_through_decode_and_encode() {
+    init();
+    let mut source = fixture();
+    source["skills"][0]["weapon_set"] = json!(2);
+    let build = decode(&source);
+    assert_eq!(build["socket_groups"][0]["weapon_set"], json!(2));
+    let result = export(&code(&build), Some(&source), false);
+    let file: Value =
+        serde_json::from_str(result["files"][0]["content"].as_str().unwrap()).unwrap();
+    assert_eq!(file["skills"][0]["weapon_set"], json!(2));
+    let restored = decode(&file);
+    assert_eq!(restored["socket_groups"], build["socket_groups"]);
+}

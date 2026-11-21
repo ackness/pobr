@@ -658,8 +658,8 @@ mod tests {
         assert!((pools.shared_effective_life - expected).abs() < 1e-9);
         assert!((pools.shared_hit_pool - expected).abs() < 1e-9);
         // No per-type MoM → every type falls back to shared (:2816-2817).
-        for idx in 0..5 {
-            assert!((pools.hit_pool_by_type[idx] - expected).abs() < 1e-9);
+        for &pool in &pools.hit_pool_by_type {
+            assert!((pool - expected).abs() < 1e-9);
         }
     }
 

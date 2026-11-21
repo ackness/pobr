@@ -22,7 +22,7 @@ CLI 完整构筑和 marginal（逐来源边际贡献）结果带数据版本、�
 | `output.minions` | 每个创建的召唤生物：怪物 id、召唤来源、所用 skill_id、等级、DPS、防御。 |
 | `--breakdown <stats>` | 返回 breakdowns 和 main_skill，步骤／词条来自 pobr_build::breakdown。`Minion:<stat>` 选主技能召唤生物，包含角色给它的词条。 |
 | `--full-dps` | 返回 output.full_dps、full_dot_dps、full_dps_skills；请求 FullDPS／FullDotDPS 分解也会计算。未请求时字段缺省，不拿未算的零比参考。 |
-| `output.ehp` | 实际 EHP 输入与过程量：逐类型敌人伤害、转换后承伤、资源池、命中次数、伤害概率与避开概率。 |
+| `output.ehp` | 实际 EHP 输入与过程量：逐类型敌人伤害（`enemy_damage`）、减免后承伤（`taken_hit`）、资源池、命中次数、伤害概率与避开概率。 |
 | `--reference-basis` | output 与分解改用参考口径，并标 reference_basis。 |
 | `--usage` | 返回逐行 usage，始终用全部模型开启的游戏口径，不随 reference-basis 改变。 |
 | `--lang <code>`（全局） | 输入的词条行／物品文本若是该语言，先转成英文规范行再解析（`calculate --mod`、`parse-mod`、`explain-mod` 及其 `--build` 候选行、`parse-item`）。用户输入的行在 `unsupported`（`calculate`、`parse-item`）与 `explain-mod --build` 的 `added_mod_texts`、`unsupported_modifiers` 里按原样返回，不重新渲染。构筑自身的英文行改用该语言显示：`calculate-build` 的 `unsupported_modifiers`、`missing_items[].name`、分解的 `source_text`、usage 的 `lines[].text` 与 `unparsed[].text`，`explain-mod --build` 的 `baseline_unsupported_modifiers`，以及 `parse-item` 的 `base`。`parse-mod`／`explain-mod` 的 `unparsed` 余文、modifier 的 `source` 和说明文字保持英文。语言包来自数据包 `i18n/<code>/` 及其 `_meta.json` 声明的回退；数值、ID 与计算不变。`en-US` 不翻译；数据包缺失或损坏时报数据错误；数据包没有的语言报错并列出可用语言；该语言链上没有词条模板时警告并保持英文。 |
@@ -119,7 +119,7 @@ Evergrasping、Runic Ward 与恢复的有意差异仍按[防御约定](mechanics
 
 护甲不减持续伤害，只读不分命中的额外减伤，受各类型上限约束。
 net_recovery_terms 与这些字段共用 recovery::dot_taken，所以自身持续伤害的净恢复也读取持续伤害抗性、
-元素基础减伤和 CI，而非命中抗性。四种持续抗性有 steps，其余为实际输入 derived。
+元素基础减伤和 CI，而非命中抗性。四种持续抗性与其余实际输入一样提供 derived（formula 与 inputs），不提供 steps。
 
 敌人行动速度由 skill_use_time::action_speed_factor 读取敌人 ModDb，包含冰缓。
 攻击时间只用显式 enemySpeed（毫秒，EnemyActionTime），未配置为 0。

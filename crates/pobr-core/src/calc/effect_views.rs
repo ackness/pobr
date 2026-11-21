@@ -27,10 +27,10 @@ use crate::{CalcConfig, ModDb};
 
 use super::Env;
 
-/// KeywordPopups Armour Break: break against Normal monsters is tripled.
-/// Magic monsters (doubled) have no enemy configuration, so a non-Rare,
-/// non-Unique enemy is Normal.
+/// KeywordPopups Armour Break: break against Normal monsters is tripled and
+/// against Magic monsters is doubled.
 pub const ARMOUR_BREAK_VS_NORMAL: f64 = 3.0;
+pub const ARMOUR_BREAK_VS_MAGIC: f64 = 2.0;
 /// KeywordPopups Daze, Maim and Blind base durations, in seconds.
 pub const DAZE_BASE_DURATION: f64 = 8.0;
 pub const MAIM_BASE_DURATION: f64 = 4.0;
@@ -418,12 +418,16 @@ fn armour_break_terms(
         ));
     }
     let names = [ModName::from("ArmourBreakPerHit")];
-    let rarity_multiplier =
-        if enemy.flag(&cfg, "Condition:Unique") || enemy.flag(&cfg, "Condition:RareOrUnique") {
-            1.0
-        } else {
-            ARMOUR_BREAK_VS_NORMAL
-        };
+    let rarity_multiplier = if enemy.flag(&cfg, "Condition:Unique")
+        || enemy.flag(&cfg, "Condition:Rare")
+        || enemy.flag(&cfg, "Condition:RareOrUnique")
+    {
+        1.0
+    } else if enemy.flag(&cfg, "Condition:Magic") {
+        ARMOUR_BREAK_VS_MAGIC
+    } else {
+        ARMOUR_BREAK_VS_NORMAL
+    };
     ArmourBreakTerms {
         flat: db.sum(ModType::Base, &cfg, &names),
         from_damage,

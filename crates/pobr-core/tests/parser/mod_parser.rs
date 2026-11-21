@@ -2751,3 +2751,39 @@ fn weapon_aliases_do_not_capture_existing_non_weapon_scopes() {
     assert_eq!(parsed.mods[0].name.as_str(), "Damage");
     assert_eq!(parsed.mods[0].flags, ModFlags::NONE);
 }
+
+#[test]
+fn stat_threshold_phrases_compile_into_mod_tags() {
+    let below =
+        crate::support::parse_mod("10% increased Movement Speed while Dexterity is below 100")
+            .unwrap();
+    assert!(below.is_complete(), "{below:?}");
+    assert_eq!(
+        below.mods[0].tags,
+        vec![pobr_core::ModTag::StatThreshold {
+            stat: "Dexterity".into(),
+            threshold: 99.0,
+            upper: true,
+        }]
+    );
+
+    let reserved =
+        crate::support::parse_mod("20% increased Spell Damage if you have reserved Life and Mana")
+            .unwrap();
+    assert!(reserved.is_complete(), "{reserved:?}");
+    assert_eq!(
+        reserved.mods[0].tags,
+        vec![
+            pobr_core::ModTag::StatThreshold {
+                stat: "LifeReserved".into(),
+                threshold: 1.0,
+                upper: false,
+            },
+            pobr_core::ModTag::StatThreshold {
+                stat: "ManaReserved".into(),
+                threshold: 1.0,
+                upper: false,
+            },
+        ]
+    );
+}

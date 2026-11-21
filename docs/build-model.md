@@ -142,7 +142,7 @@ Rigwald's Ferocity 的 `support_rigwald_*_in_weapon_set_*` 等只在对应组生
 `mainActiveSkill` 从 1 起，数技能组里可选择的主动效果，而不是只数主动宝石。
 每颗宝石内部先按 `GemEffects.GrantedEffectDisplayOrder`
 （`GemEffectDef::granted_effect_display_order`）排列，未列效果接后，再去掉辅助效果。
-辅助授予的主动效果也计入，入口为 `skill_env::mods::group_active_effects`。
+辅助授予的主动效果也计入，入口为 `skill_env::group_active_effects`。
 宝石 `skillId` 是主效果，不保证为序号 1：弩弹先射击再装填，旗帜先旗帜再保留，
 幻影先生成效果再 meta 主效果。无显示顺序的旧快照用主效果、附加效果顺序。
 导入、计算、目录和导出共用该顺序。
@@ -168,7 +168,7 @@ tuned Titan His Scattering Calamity 的主技能在第一组，其他常驻技�
 
 ### 命名组与 XML 保留
 
-JSON/WASM 握手为 21（20 起 Web 初始化需要 `displayCatalogJson`，21 起需要 `dataInfo`）：`pobr_wasm::SCHEMA_VERSION` 与 Web `EXPECTED_SCHEMA_VERSION` 配对。
+JSON/WASM 握手为 22（20 起 Web 初始化需要 `displayCatalogJson`，21 起需要 `dataInfo`）：`pobr_wasm::SCHEMA_VERSION` 与 Web `EXPECTED_SCHEMA_VERSION` 配对。
 解码返回 config_sets／skill_sets 及活动 id，按 XML 稳定 id 选组，不把稀疏 id 当位置。
 `xml_merge::manage_named_set` 可新建、复制、重命名、删除，拒绝不存在 id 和删最后一组。
 旧平铺 Config／Skills 管理时包装为 Default，平铺 Skills 导出也包装。
@@ -238,7 +238,7 @@ Warcry、Movement、Aura、AppliesCurse、伤害类型等限制各自技能；�
 
 逐技能总览和 Full DPS 对各主动效果独立重算，触发来源也会克隆 Build 重算。
 `selection_memo.rs::SelectionScope` 只在这一轮复用不依赖技能选择的纯函数结果，
-目前为 gem_property_bonuses、radius_jewel_grant_modifiers、slot_bonus_effect_scales。
+目前为 `gem_property_bonuses`、`radius_jewel_grants`、`slot_bonus_scales`。
 作用域按构筑／数据地址区分，关闭即失效；其他装备或武器视图不共用。
 `calculate_prepared_with_context`、`attributes_without_skills` 用 enter_unless_named 开作用域；
 触发克隆只在计算期间 adopt，进触发缓存前撤销地址。
@@ -256,7 +256,7 @@ Warcry、Movement、Aura、AppliesCurse、伤害类型等限制各自技能；�
 手写缓存键逐字段解构，不能用 `..` 漏新字段。Compare 模式、report/session 入口不缓存。
 旧文本 CalcCache 默认 64 项，计算时核对结构相等；peek(u64) 仍只查哈希。
 两者都不做按依赖重算，也不会自动改变应用缓存。
-BuildData 保留平铺公共字段／构造器，查询分在 build_data/{skills,equipment,passives,rules}.rs。
+BuildData 保留平铺公共字段／构造器，查询分在 build_data/{skills,equipment,passives,rules,quality}.rs。
 
 ## Web 运行时与天赋树规划
 

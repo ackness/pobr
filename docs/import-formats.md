@@ -40,12 +40,12 @@ PoBR 把不同来源的角色方案（BD）转换为同一个 `Build`。各格�
 | 内容 | PoB2 码（含上述分享站点） | WeGame 分享 | Planner v1 `.build` | 旧国服 `.build` |
 |---|---|---|---|---|
 | 角色等级、职业、升华 | 有 | 有；升华角色的 `class_name` 是升华名 | 等级固定默认 1；可带升华 | 等级从名称的 `Lv.N` 读取，可带升华 |
-| 天赋树 | 节点 id、树版本、武器组专属点、属性选择 | 节点 hash、`specialisations` 专属点、`skill_overrides` 属性选择 | 游戏节点 id、武器组；识别属性提示 | 节点 slug，再映射为 id |
-| 装备 | 完整文本，含变体、数值范围和符文 | 按栏位的 JSON，由导入器重建文本 | 只有提示，不生成物品 | 缺少基底名和稀有度，以占位基底和 RARE 构造 |
+| 天赋树 | 节点 id、树版本、武器组专属点、属性选择 | 节点 hash、`specialisations` 专属点、`skill_overrides` 属性选择 | 游戏节点 id、武器组；识别属性提示 | 节点 slug（映射为 id），可选 `weapon_set` 专属点 |
+| 装备 | 完整文本，含变体、数值范围和符文 | 按栏位的 JSON，由导入器重建文本 | 只有提示，不生成物品 | 缺少基底名和稀有度，以占位基底和 RARE 构造；支持 `Weapon2`/`Offhand2` 备选武器组 |
 | 技能和辅助 | 稳定 id、等级、品质、启用状态、效果序号、配置组 | 只有简中名；等级和品质来自属性字符串 | 游戏宝石 id；默认 1 级、0 品质，精确的 `Level N, Q% Quality` 提示可恢复数值 | 宝石 id；默认 20 级、0 品质 |
 | 主技能选择 | 有 | 无 | 无 | 无 |
 | 天赋／物品授予技能的来源 | `Tree:<node>`、物品来源、`enableGlobal` 等 | 无来源标记，作为普通组出现 | 不携带 | 不携带 |
-| 技能的武器组绑定 | 有 | 无 | 可携带 | 跳过第二组 |
+| 技能的武器组绑定 | 有 | 无 | 可携带（导入与导出保留 `weapon_set`） | 可携带（可选 `weapon_set`） |
 | 战斗配置和参考值 | 有配置及 `PlayerStat` 等参考值 | 只有任务奖励 | 无 | 无 |
 | 树上珠宝 | 插槽节点 id | `PassiveJewel_<n>` 或节点 id | 无 | 无 |
 
@@ -60,7 +60,7 @@ PoBR 把不同来源的角色方案（BD）转换为同一个 `Build`。各格�
   例如 Coming Calamity 授予的版本不会挤掉普通 Herald of Ice。同名仍有歧义时
   （如各武器的默认攻击），导入器报告 `Unknown or ambiguous gem`。
 - `PassiveJewel_<n>` 的 `n` 是游戏 `PassiveJewelSlots` 表的行号，不是插槽顺序或节点号。
-  该行经 `Slot` 指向天赋节点；映射位于 `data/overlay-common/passive_jewel_slots.json`。
+  该行经 `Slot` 指向天赋节点；映射优先读取活动版本 `overlay/passive_jewel_slots.json`（缺失时回退 `data/overlay-common/passive_jewel_slots.json`）。
   找不到有效插槽时报告问题，不放入该珠宝。
 - 羁绊（`Bonded`）符文行依赖特定职业，导入器不应用，并在笔记中说明。
 - 任务奖励按文本读取；`N Broken Boss Faces` 是进度计数，标为未建模，不作为普通词条。

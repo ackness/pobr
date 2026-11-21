@@ -84,7 +84,7 @@ INC 合计攻击者的 `Enemy<X>Duration`、`EnemyAilmentDuration`、`EnemyEleme
 
 poise 计算读取 `GameConstants.HeavyStunDamageScale = 58 / 100 = 0.58`、对应等级的 `DefaultMonsterStats.PoiseThreshold`、角色的 `EnemyHeavyStunBuildup` / `EnemyImmobilisationBuildup`，以及敌人的累积和门槛修正。独特稀有度的 500% MORE（`Mods.MonsterUnique2`，即 6 倍）再乘 `MonsterVarieties.PoiseThreshold / 100`，均受 `Condition:Effective` 限制。
 
-活动版本 0.5.5.4.2 的首领表由 `data/overlay-common/boss_poise_thresholds.json` 手工保留行 ID 和导出 SHA-256：普通 Boss 用 313（带 BossHealthBar 的 MAP 行众数）；Pinnacle/Uber 用 Xesht 行 1946 的 1700，即 17 倍。导出中没有独立 Uber variety。这是代表性默认值，不表示所有首领门槛一样。`base/enemy_presets.json` 中的 vendor Map Boss/Xesht poise 不用于此计算；常规导出支持这一列后应改为生成。
+活动版本的首领表由版本层 `overlay/boss_poise_thresholds.json` 提供（0.5.5.8 由 `pobr-data-adapter ordinary boss-poise` 生成），并保留 `data/overlay-common/boss_poise_thresholds.json` 作为旧快照回退（保留 0.5.5.4.2 的行 ID 与导出 SHA-256）：普通 Boss 用 313（带 `BossHealthBar` 的 MAP 行众数）；Pinnacle/Uber 用 Xesht 行 1946 的 1700，即 17 倍。导出中没有独立 Uber variety。这是代表性默认值，不表示所有首领门槛一样。`base/enemy_presets.json` 中的 vendor Map Boss/Xesht poise 不用于此计算。
 
 `CannotStun` / `CannotHeavyStun` 禁止累积。Mauling Stuns 与 Focused Thrust 共用距离处理，要求 `enemyDistance <= 米数 × 10`；未提供距离时沿用该处理器的零距离约定。
 
@@ -122,7 +122,7 @@ poise 计算读取 `GameConstants.HeavyStunDamageScale = 58 / 100 = 0.58`、对�
 
 `calc::effect_views` 的下列字段只是展示估计，不自动开启 Fully Broken Armour、Dazed、Maimed、Blinded 等状态。**没有游戏内实测**。
 
-- `ArmourBreakPerHit = (固定破甲 BASE + Σ 减免后伤害 × <Type>DamageAsArmourBreak / 100) × (1 + INC / 100) × MORE × 稀有度倍率`。伤害在暴击加权后、命中率之前；法术暴击破甲只用暴击份额 `c·m / (1 − c + c·m)`。关键词规定对普通怪 3 倍、魔法怪 2 倍；当前没有魔法敌人配置，非稀有／独特使用 3 倍。`HitsToFullyBreakArmour = ceil(破甲前敌人护甲 / 每次破甲)`；`TimeToFullyBreakArmour = 次数 / 每秒成功命中数`，后者为动作速率 × 重复次数 × 命中率。来源包括 `armour_break_amount_+%`、`_vs_enemies_affected_by_ailments`、`apply_X_armour_break_on_hit`、`armour_break_{physical,fire}_damage_%_dealt_as_armour_break`、`support_increased_armour_break_armour_break_amount_+%_final`。
+- `ArmourBreakPerHit = (固定破甲 BASE + Σ 减免后伤害 × <Type>DamageAsArmourBreak / 100) × (1 + INC / 100) × MORE × 稀有度倍率`。伤害在暴击加权后、命中率之前；法术暴击破甲只用暴击份额 `c·m / (1 − c + c·m)`。关键词规定对普通怪 3 倍、魔法怪 2 倍；代码分别对 `Condition:Unique`／`Rare`／`RareOrUnique` 取 1 倍、`Condition:Magic` 取 2 倍、其余普通怪取 3 倍。`HitsToFullyBreakArmour = ceil(破甲前敌人护甲 / 每次破甲)`；`TimeToFullyBreakArmour = 次数 / 每秒成功命中数`，后者为动作速率 × 重复次数 × 命中率。来源包括 `armour_break_amount_+%`、`_vs_enemies_affected_by_ailments`、`apply_X_armour_break_on_hit`、`armour_break_{physical,fire}_damage_%_dealt_as_armour_break`、`support_increased_armour_break_armour_break_amount_+%_final`。
 - `DazeChance` 最高 100%。`DazeUptime` / `MaimUptime` / `BlindUptime` 以 8／4／4 秒为基础，再计时长和过期速度。假设成功命中均匀到达，令 `n = rate × duration`、`k = floor(n)`、`f = n − k`、p 为每击概率，覆盖率为 `f·(1 − (1 − p)^(k+1)) + (1 − f)·(1 − (1 − p)^k)`；p=1 时即 `min(1, rate × duration)`。`maim_on_hit_%`、`attacks_chance_to_blind_on_hit_%` 只给攻击，禁止或免疫使其为零。即使估计接近 100%，也不会自动开启敌人状态。
 - `Maximum{Fire,Cold,Lightning}Infusions = 3 + 对应类型及通用追加值`，基础来自 `BaseMaximumInfusionCount`。`SurroundedRadiusMetres` 从 3 米起按面积加成缩放；`BaseRequiredEnemiesToBeConsideredSurrounded = 5`，不代表自动放置五个敌人。
 - `CurseActivationDelay` 只在选中诅咒时读取：`curse_delay_duration_ms × (1 + delay increase − activation-speed increase) × MORE`。Whispers of Doom 的 `keystone_hex_master` 给 MORE 100（双倍延迟）。

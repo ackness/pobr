@@ -119,7 +119,7 @@ Bonestorm（“Channel to conjure a swarm of bone spikes in the air, then releas
 
 ### 不保留精魂的物品授予
 
-Lament / Portent / Absent Amulet 授予的技能不保留精魂（`ItemInherentSkills.IsWeapon` 按固定[社区解释政策](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/item-grants/0.5.5.5-community-semantics-policy.json)映射为 `NoReservation`，官方字段语义未独立认证；三个基底列在 `overlay-common/item_granted_skills.json`）。PoB2 导入角色时把这个技能再列成一个普通宝石组并按宝石保留 30 / 60 / 100 精魂，所以这类构筑码自带的 `SpiritUnreserved` 常为负数，而游戏里保留量不可能超过精魂总量。
+Lament / Portent / Absent Amulet 授予的技能不保留精魂（`ItemInherentSkills.IsWeapon` 按固定[社区解释政策](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/item-grants/0.5.5.5-community-semantics-policy.json)映射为 `NoReservation`，官方字段语义未独立认证；三个基底列在 `overlay/item_granted_skills.json`／`overlay-common/item_granted_skills.json`）。PoB2 导入角色时把这个技能再列成一个普通宝石组并按宝石保留 30 / 60 / 100 精魂，所以这类构筑码自带的 `SpiritUnreserved` 常为负数，而游戏里保留量不可能超过精魂总量。
 
 PoBR 把“排在组首、等级与授予等级相同、无品质、未腐化”的那个普通组认作被授予的技能本身，不计保留，也按授予技能的需求降级（见[授予技能](mechanics/items.md#宝石等级品质与授予技能)）；其余同名宝石照常保留（`calc_orchestrator/granted_skills.rs`）。其他物品授予、需要保留精魂的技能也是这样认出的同一个技能，只保留一次；PoB2 的物品组和宝石组各保留一次（tuned 组 Gemling Legionnaire Frostbolt 与 Oracle Grim Pillars 胸甲授予的 Blink：PoB2 120，PoBR 60）。
 
@@ -317,7 +317,7 @@ Evergrasping Ring 的 “Enemies in your Presence Gain (6-12)% of Damage as Extr
 
 Vile Effusion 按目标上不同混沌 DoT 类型数发射，类型与状态假设见[黑暗雕像](mechanics/offence.md#黑暗雕像)。原生额外投射物的 targeting 数值不是单目标命中次数，也没有额外基础一发。不能用某份参考结果的四倍关系代替类型检查。
 
-[公开 Lich 样本 `27c94`](https://poe.ninja/poe2/pob/27c94) 的原始配置有四种有效类型，修复后的单图腾命中 DPS 为 50,262.84，与原参考接近。该样本的原生 Vile Effusion 混沌命中还能由兼容的 Poison II（`base_chance_to_poison_on_hit_% = 60`）施加中毒；游戏技能没有禁止中毒的 stat。[技能与辅助说明](https://www.poe2wiki.net/wiki/Dark_Effegy)也允许这一组合。PoBR 保留 2,464.24 的中毒 DPS，原参考和钉定 PoB2 此项为零。原生禁止中毒、无有效伤害或零持续时间仍使结果为零；回归见 `tests/skills/dark_effigy.rs`。这里的持续状态假设不证明实际战斗中的覆盖率。
+[公开 Lich 样本 `27c94`](https://poe.ninja/poe2/pob/27c94) 的原始配置有四种有效类型，修复后的单图腾命中 DPS 为 50,262.84，与原参考接近。该样本的原生 Vile Effusion 混沌命中还能由兼容的 Poison II（`base_chance_to_poison_on_hit_% = 60`）施加中毒；游戏技能没有禁止中毒的 stat。[技能与辅助说明](https://www.poe2wiki.net/wiki/Dark_Effigy)也允许这一组合。PoBR 保留 2,464.24 的中毒 DPS，原参考和钉定 PoB2 此项为零。原生禁止中毒、无有效伤害或零持续时间仍使结果为零；回归见 `tests/skills/dark_effigy.rs`。这里的持续状态假设不证明实际战斗中的覆盖率。
 
 ### 咒符生效与参考口径
 
