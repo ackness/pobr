@@ -162,18 +162,28 @@ fn collect_debuff_mod(
     // extra gating semantics, reported wholesale); everything else is
     // translated directly.
     let mut tags = Vec::new();
+    let mut unscalable = false;
     for tag in &element.tags {
         let is_global =
             matches!(tag.get("type"), Some(StatMapValue::Text(t)) if t == "GlobalEffect");
         if is_global {
             if !tag
                 .keys()
-                .all(|k| matches!(k.as_str(), "type" | "effectType"))
+                .all(|k| matches!(k.as_str(), "type" | "effectType" | "unscalable"))
             {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
                     "GlobalEffect has keys outside the convention: {:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
+            }
+            match tag.get("unscalable") {
+                Some(StatMapValue::Bool(true)) => unscalable = true,
+                Some(StatMapValue::Bool(false)) | None => {}
+                Some(other) => {
+                    return Err(UnsupportedReason::UnsupportedTag(format!(
+                        "GlobalEffect unscalable must be a bool: {other:?}"
+                    )));
+                }
             }
             continue;
         }
@@ -185,6 +195,7 @@ fn collect_debuff_mod(
         } else {
             Modifier::number(translated, mod_type, merged_value)
         };
+        modifier.unscalable = unscalable;
         for tag in &tags {
             modifier = modifier.with_tag(tag.clone());
         }

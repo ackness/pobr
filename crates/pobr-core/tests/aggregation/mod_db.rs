@@ -1268,3 +1268,93 @@ fn unmet_requirement_says_what_a_query_would_check() {
     let attack = Modifier::number("Damage", ModType::Inc, 20.0).with_flags(ModFlags::ATTACK);
     assert_eq!(attack.unmet_requirement(&ctx), None);
 }
+
+#[test]
+fn scale_add_mod_honors_unscalable_at_top_level_and_in_nested_mods() {
+    use pobr_core::HighPrecisionRules;
+
+    let rules = HighPrecisionRules::default();
+    let cfg = CalcConfig::new();
+    let mut db = ModDb::new();
+
+    // Top-level unscalable modifier stays at its raw value under 2x scaling;
+    // scalable sibling scales normally.
+    db.scale_add_mod(
+        Modifier::number("Multiplier:SigilOfPowerMaxStages", ModType::Base, 4.0)
+            .with_unscalable(true),
+        2.0,
+        &rules,
+    );
+    db.scale_add_mod(
+        Modifier::number("TakenFromCompanionBeforeYou", ModType::Base, 10.0).with_unscalable(true),
+        2.0,
+        &rules,
+    );
+    db.scale_add_mod(Modifier::number("Damage", ModType::Inc, 25.0), 2.0, &rules);
+
+    assert_eq!(
+        db.sum(
+            ModType::Base,
+            &cfg,
+            &[ModName::from("Multiplier:SigilOfPowerMaxStages")]
+        ),
+        4.0
+    );
+    assert_eq!(
+        db.sum(
+            ModType::Base,
+            &cfg,
+            &[ModName::from("TakenFromCompanionBeforeYou")]
+        ),
+        10.0
+    );
+    assert_eq!(db.sum(ModType::Inc, &cfg, &[ModName::from("Damage")]), 50.0);
+
+    // NestedMods inside a scalable wrapper: unscalable inner leaf stays unscaled,
+    // scalable inner leaf scales, and an unscalable outer wrapper skips all children.
+    let scalable_wrapper = Modifier::new(
+        "ExtraAura",
+        ModType::List,
+        ModValue::NestedMods(vec![
+            Modifier::number("Armour", ModType::Base, 100.0),
+            Modifier::number("TakenFromCompanionBeforeYou", ModType::Base, 10.0)
+                .with_unscalable(true),
+            Modifier::new(
+                "MinionModifier",
+                ModType::List,
+                ModValue::NestedMods(vec![
+                    Modifier::number("Damage", ModType::Inc, 15.0),
+                    Modifier::number("Multiplier:Stages", ModType::Base, 3.0).with_unscalable(true),
+                ]),
+            ),
+        ]),
+    );
+    let unscalable_wrapper = Modifier::new(
+        "ExtraAuraUnscalable",
+        ModType::List,
+        ModValue::NestedMods(vec![Modifier::number("Armour", ModType::Base, 100.0)]),
+    )
+    .with_unscalable(true);
+
+    db.scale_add_mod(scalable_wrapper, 2.0, &rules);
+    db.scale_add_mod(unscalable_wrapper, 2.0, &rules);
+
+    let extra = db.named("ExtraAura").next().expect("ExtraAura stored");
+    let inner = extra.value.as_nested_mods().expect("nested");
+    assert_eq!(inner[0].value.as_number(), Some(200.0));
+    assert_eq!(inner[1].value.as_number(), Some(10.0));
+    let deep = inner[2].value.as_nested_mods().expect("deep nested");
+    assert_eq!(deep[0].value.as_number(), Some(30.0));
+    assert_eq!(deep[1].value.as_number(), Some(3.0));
+
+    let untouched = db
+        .named("ExtraAuraUnscalable")
+        .next()
+        .expect("ExtraAuraUnscalable stored");
+    assert_eq!(
+        untouched.value.as_nested_mods().unwrap()[0]
+            .value
+            .as_number(),
+        Some(100.0)
+    );
+}

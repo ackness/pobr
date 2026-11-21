@@ -387,14 +387,25 @@ fn collect_player_buff_flag(
         let is_global =
             matches!(tag.get("type"), Some(StatMapValue::Text(t)) if t == "GlobalEffect");
         if is_global {
-            if !tag
-                .keys()
-                .all(|k| matches!(k.as_str(), "type" | "effectType" | "effectName"))
-            {
+            if !tag.keys().all(|k| {
+                matches!(
+                    k.as_str(),
+                    "type" | "effectType" | "effectName" | "unscalable"
+                )
+            }) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
                     "GlobalEffect has keys outside the convention: {:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
+            }
+            match tag.get("unscalable") {
+                Some(StatMapValue::Bool(true)) => modifier.unscalable = true,
+                Some(StatMapValue::Bool(false)) | None => {}
+                Some(other) => {
+                    return Err(UnsupportedReason::UnsupportedTag(format!(
+                        "GlobalEffect unscalable must be a bool: {other:?}"
+                    )));
+                }
             }
             continue;
         }
@@ -470,12 +481,11 @@ fn collect_player_buff_mod(
     }
     // tag: GlobalEffect is stripped (an extra gating key reports the whole
     // entry; `effectName` = the buff's display name, no gating semantics, so
-    // it's allowed; `unscalable` = a marker that the buff effect multiplier
-    // zone is exempt -- PoBR's buff_pass doesn't model the scaling-exemption
-    // dimension, but there's no difference when the multiplier zone is 1, so
-    // it's allowed through and logged); everything else is translated
-    // directly.
+    // it's allowed; `unscalable` = exempt from buff effect and modifier
+    // scaling, propagated onto `Modifier.unscalable`); everything else is
+    // translated directly.
     let mut tags = Vec::new();
+    let mut unscalable = false;
     for tag in &element.tags {
         let is_global =
             matches!(tag.get("type"), Some(StatMapValue::Text(t)) if t == "GlobalEffect");
@@ -490,6 +500,15 @@ fn collect_player_buff_mod(
                     "GlobalEffect has keys outside the convention: {:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
+            }
+            match tag.get("unscalable") {
+                Some(StatMapValue::Bool(true)) => unscalable = true,
+                Some(StatMapValue::Bool(false)) | None => {}
+                Some(other) => {
+                    return Err(UnsupportedReason::UnsupportedTag(format!(
+                        "GlobalEffect unscalable must be a bool: {other:?}"
+                    )));
+                }
             }
             continue;
         }
@@ -519,6 +538,7 @@ fn collect_player_buff_mod(
         };
         modifier.flags = flags;
         modifier.keyword_flags = modifier.keyword_flags | kw_from_flags;
+        modifier.unscalable = unscalable;
         for tag in &tags {
             modifier = modifier.with_tag(tag.clone());
         }
