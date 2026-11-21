@@ -56,7 +56,6 @@ node.1739	Grants Skill: <underline>{Hollow Form}
 node.17600	[LifeLeech|Leeching Life] from your [Hit|Hits] causes your [Companion] to also Leech the [LeechSameAmount|same amount] of Life
 node.17646	[DecimatingStrike|Decimating Strike]
 node.17754	Grants Skill: <underline>{Summon Infernal Hound}
-node.17825	+0.5 metres to Dodge Roll distance while [Surrounded]
 node.18081	Damage Penetrates 20% [ElementalDamage|Elemental] [Resistances] for each time you've used a Skill that Requires [Glory] in the past 6 seconds
 node.18280	Can instead consume 25% of maximum Mana to trigger [Charm|Charms] with insufficient charges
 node.18419	[Totem|Totems] Regenerate 3% of maximum Life per second
