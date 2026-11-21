@@ -19,12 +19,31 @@
 #   status     Report luajit / vendor / data readiness
 set -uo pipefail
 
+CALLER_PWD="$PWD"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT" || exit 1
 
 DATA_ROOT="${POBR_DATA_ROOT:-$ROOT/data}"
-DATA_VER="${POBR_DATA_VERSION:-$(head -n 1 "$DATA_ROOT/CURRENT" 2>/dev/null)}"
+DATA_VER="${POBR_DATA_VERSION:-}"
+if [[ -z "$DATA_VER" && -f "$DATA_ROOT/CURRENT" ]]; then
+  DATA_VER="$(head -n 1 "$DATA_ROOT/CURRENT" | tr -d '[:space:]')"
+fi
 VENDOR_DIR="vendor/PathOfBuilding-PoE2"
+
+# Resolve an existing relative path against the caller's cwd first, falling back to $ROOT.
+resolve_existing_path() {
+  local target="$1"
+  if [[ "$target" != /* ]]; then
+    if [[ -e "$CALLER_PWD/$target" ]]; then
+      printf '%s\n' "$CALLER_PWD/$target"
+      return 0
+    elif [[ -e "$ROOT/$target" ]]; then
+      printf '%s\n' "$ROOT/$target"
+      return 0
+    fi
+  fi
+  printf '%s\n' "$target"
+}
 
 say() { printf '\n\033[1m== %s ==\033[0m\n' "$*"; }
 
@@ -164,7 +183,7 @@ cmd_diagnose() {
   fi
   local target="$1"
   # A relative path is the caller's; the test binary runs from its crate.
-  if [[ -e "$target" && "$target" != /* ]]; then target="$PWD/$target"; fi
+  target="$(resolve_existing_path "$target")"
   POBR_DIAGNOSE="$target" cargo test -q -p pobr-build --test parity \
     diagnose_build::diagnose_build -- --ignored --nocapture
 }
@@ -178,7 +197,7 @@ cmd_compare() {
   fi
   local target="$1"
   shift
-  if [[ -e "$target" && "$target" != /* ]]; then target="$PWD/$target"; fi
+  target="$(resolve_existing_path "$target")"
   python3 devs/scripts/compare-build.py "$target" "$@"
 }
 
@@ -188,7 +207,9 @@ cmd_compare() {
 cmd_triage() {
   local args=() arg
   for arg in "$@"; do
-    if [[ -e "$arg" && "$arg" != /* ]]; then arg="$PWD/$arg"; fi
+    if [[ "$arg" != -* ]]; then
+      arg="$(resolve_existing_path "$arg")"
+    fi
     args+=("$arg")
   done
   python3 devs/scripts/triage.py ${args[@]+"${args[@]}"}
@@ -222,7 +243,15 @@ cmd_accuracy() {
     return 2
   fi
   local corpus="${1:-}"
-  if [[ -n "$corpus" && "$corpus" != /* ]]; then corpus="$PWD/$corpus"; fi
+  if [[ -n "$corpus" && "$corpus" != /* ]]; then
+    if [[ -e "$CALLER_PWD/$corpus" ]]; then
+      corpus="$CALLER_PWD/$corpus"
+    elif [[ -e "$ROOT/$corpus" ]]; then
+      corpus="$ROOT/$corpus"
+    else
+      corpus="$CALLER_PWD/$corpus"
+    fi
+  fi
   ${corpus:+env POBR_REFERENCE_BUILDS="$corpus"} cargo test -q -p pobr-build --test parity \
     reference_report::reference_report -- --ignored --nocapture
 }
@@ -344,11 +373,12 @@ cmd_regen() {
 # is not warmed either: only release packaging builds it.
 
 # Clone $1 to $2 copy-on-write; fail quietly when the filesystem cannot.
+# Incremental state is tied to absolute paths, so drop it after cloning too.
 warm_clone() {
   if [[ "$(uname)" == Darwin ]]; then
-    cp -ac "$1" "$2" 2>/dev/null && return 0
+    cp -ac "$1" "$2" 2>/dev/null && find "$2" -name incremental -type d -prune -exec rm -rf {} + && return 0
   else
-    cp -a --reflink=always "$1" "$2" 2>/dev/null && return 0
+    cp -a --reflink=always "$1" "$2" 2>/dev/null && find "$2" -name incremental -type d -prune -exec rm -rf {} + && return 0
   fi
   rm -rf "$2"; return 1
 }
@@ -374,6 +404,14 @@ cmd_warm() {
   local source="${1:-}"
   if [[ -z "$source" ]]; then
     source="$(git worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p')"
+  elif [[ "$source" != /* ]]; then
+    if [[ -d "$CALLER_PWD/$source" ]]; then
+      source="$CALLER_PWD/$source"
+    elif [[ -d "$ROOT/$source" ]]; then
+      source="$ROOT/$source"
+    else
+      source="$CALLER_PWD/$source"
+    fi
   fi
   [[ -n "$source" && -d "$source/target/debug" ]] \
     || { echo "ERROR: no target/debug under source worktree '${source}'" >&2; return 1; }
@@ -425,7 +463,7 @@ gate_step() {
     build)    cargo test -q -p pobr-build --lib --test skills --test codec --test dualrun --test tree_convert ;;
     parity)   cargo test -q -p pobr-build --test parity ;;
     apps)     cargo test -q -p pobr-data -p pobr-gamedata -p pobr-i18n -p pobr-tree -p pobr-item \
-                -p pobr-wasm -p pobr-cli ;;
+                -p pobr-wasm -p pobr-cli -p sync-pob-catalog ;;
     web)      pnpm --dir web i18n:check && pnpm --dir web typecheck && pnpm --dir web test ;;
     accuracy) cmd_accuracy ;;
   esac
