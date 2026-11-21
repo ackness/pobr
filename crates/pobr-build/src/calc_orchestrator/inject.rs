@@ -50,7 +50,7 @@ use super::skill::resolve::parse_gem_property_bonus;
 use super::skill::triggers::trigger_modifiers;
 use super::sources::{GEM_PROPERTY_READER, LineFate, LineHolder, SourceWriter, item_sections_mut};
 use super::stat_map::exposure_support_modifiers;
-use super::{DataOrchestratorOptions, StageCtx, scale_trunc_2dp};
+use super::{DataOrchestratorOptions, StageCtx};
 use crate::build::{Build, SocketGroup};
 use crate::build_data::BuildData;
 use crate::error::BuildError;
@@ -1081,7 +1081,11 @@ pub(super) fn inject_items(
             .iter()
             .find(|(s, scale)| *s == slot && *scale != 0.0)
         {
-            scale_item_bonuses(&mut ingest.modifiers, (1.0 + scale).max(0.0));
+            scale_item_bonuses(
+                &mut ingest.modifiers,
+                (1.0 + scale).max(0.0),
+                &data.high_precision,
+            );
         }
         session.add_item_ingest(slot, &filtered, ingest);
     }
@@ -1341,21 +1345,15 @@ pub(super) fn stage_inject_jewels(
             for mut m in parsed_mods {
                 let origin = ModifierSource::new(source.clone()).with_raw_text(text.clone());
                 m = m.with_origin(origin);
-                // Minion bonuses are nested inside a LIST modifier. Scale
-                // that payload with the existing precision rules, as radius
-                // jewel grants already do, while preserving its source/tags.
-                if let Some(scale) = scale
-                    && matches!(m.value, pobr_core::ModValue::NestedMods(_))
-                {
-                    let mut scaled = pobr_core::ModDb::new();
-                    scaled.scale_add_mod(m, scale, &ctx.data.high_precision);
-                    mods.extend(scaled.iter_mods().cloned());
-                    continue;
-                }
-                if let Some(scale) = scale
-                    && let pobr_core::ModValue::Number(v) = m.value
-                {
-                    m.value = pobr_core::ModValue::Number(scale_trunc_2dp(v, scale));
+                // Scale scalar and nested jewel bonuses (including minion LIST
+                // payloads) with the data pack's precision rules while keeping
+                // unscalable modifiers, source, and tags intact.
+                if let Some(scale) = scale {
+                    scale_item_bonuses(
+                        std::slice::from_mut(&mut m),
+                        scale,
+                        &ctx.data.high_precision,
+                    );
                 }
                 mods.push(m);
             }
