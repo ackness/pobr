@@ -76,7 +76,7 @@ describe('lineText', () => {
         status: 'unread' as const, reason: null, used_in: [] }] };
     expect(ledgerDisplayText(generated, 'zh-CN', {
       raiseSpectreEnableCurses: configLabel('zh-CN', { var: 'raiseSpectreEnableCurses', label: 'Enable curses:' }),
-    })).toBe('配置：启用幽魂的诅咒');
+    })).toBe('配置：启用灵体的诅咒');
     expect(ledgerDisplayText(generated, 'zh-CN')).toBe('SpectreCursesEnabled');
   });
 

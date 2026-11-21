@@ -139,7 +139,7 @@ const CONFIG_LABEL_TW_OVERRIDES: Record<string, string> = {
   sacrificedRageCount: '獻祭的盛怒數量（非最大值時）：',
   summonCompanionEnableCurses: '啟用盟友的詛咒：',
   twisterCold: '旋風獲得冰冷元素：',
-  whirlwindBuffCold: '回旋之風獲得冰冷元素：',
+  whirlwindBuffCold: '迴旋之風獲得冰冷元素：',
 };
 
 const CONFIG_HELP_TW_OVERRIDES: Record<string, string> = {
@@ -252,11 +252,11 @@ const CONFIG_HELP_TW_OVERRIDES: Record<string, string> = {
   'Enable any curse skills that your Companions have.':
     '啟用盟友擁有的詛咒技能。',
   'Twister has passed over Cold Ground or consumed a Cold Whirlwind.':
-    '旋風已穿過冰冷地面，或消耗了冰冷回旋之風。',
+    '旋風已穿過冰冷地面，或消耗了冰冷迴旋之風。',
   'Controls how ancestrally boosted attacks are calculated:\nAverage: Averages out Boost usage with cast time, attack speed and cooldown.\nMax Hit: Shows maximum hit for lining up all sources of ancestral boost.':
     '控制先祖強化攻擊的計算方式：平均值結合施法時間、攻擊速度與冷卻平均強化使用次數；最大擊中顯示全部先祖強化來源同時生效時的最大擊中傷害。',
   'Whirlwind has passed over Cold Ground.':
-    '回旋之風已穿過冰冷地面。',
+    '迴旋之風已穿過冰冷地面。',
   'Assume an Archon Buff is currently active. Default off: gaining a buff does not establish its uptime. Enables bonuses granted by your Archon modifiers; the intrinsic effects of individual Archon types are not included.':
     '假設目前已有統治者增益生效。預設關閉：獲得增益並不代表持續覆蓋。啟用統治者詞綴授予的加成；不計入各類統治者本身的固有效果。',
   'Your Absolution Skill Damage will not be scaled with Count setting.\nBy default it multiplies both minion count and skill hit count which leads to incorrect\nTotal DPS calculation since Absolution cannot inherently shotgun.\nDo not enable if you use Spell Totem support, Spell Cascade support or similar supports':
