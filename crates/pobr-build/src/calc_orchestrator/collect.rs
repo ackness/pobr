@@ -733,13 +733,6 @@ pub(crate) fn radius_jewel_expansions<'a>(
     out
 }
 
-/// ScaleAddMod's default integer branch: round to two decimal places, then
-/// truncate toward zero. Scaling that needs the precision exception table uses
-/// the core ScaleAddMod primitive instead.
-pub(crate) fn vendor_scale_mod_value(value: f64, scale: f64) -> f64 {
-    pobr_core::skill_env::vendor_scale_mod_value(value, scale)
-}
-
 /// Parse each radius grant once and scale its modifiers for each allocated node.
 /// Structured scaling preserves multiple values and the data pack's precision
 /// rules; rewriting only the first number in the source text loses both.
