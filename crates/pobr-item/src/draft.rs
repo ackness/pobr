@@ -515,26 +515,26 @@ fn apply_spec(
     match spec {
         "Unique ID" => draft.header.unique_id = Some(val.to_string()),
         "Item Level" => draft.header.item_level = parse_u32(val),
-        "Quality" => draft.header.quality = parse_u32(val),
+        "Quality" => draft.header.quality = parse_percent(val),
         "LevelReq" | "Requires Level" => draft.header.level_req = parse_u32(val),
         "Level" => {} // imported level req, not trusted; discard its meaning but don't treat it as a mod line
-        "Spirit" => draft.header.spirit = val.trim().parse::<f64>().ok(),
+        "Spirit" => draft.header.spirit = parse_f64(val),
         "Charm Slots" => draft.header.charm_limit = parse_u32(val),
         "Talisman Tier" => draft.header.talisman_tier = parse_u32(val),
         "League" => draft.header.league = Some(val.to_string()),
         "Requires Class" | "Class" => draft.header.class_restriction = Some(val.to_string()),
-        "Armour" => draft.header.armour = val.trim().parse::<f64>().ok(),
-        "Evasion" | "Evasion Rating" => draft.header.evasion = val.trim().parse::<f64>().ok(),
-        "Energy Shield" => draft.header.energy_shield = val.trim().parse::<f64>().ok(),
-        "Ward" => draft.header.ward = val.trim().parse::<f64>().ok(),
+        "Armour" => draft.header.armour = parse_f64(val),
+        "Evasion" | "Evasion Rating" => draft.header.evasion = parse_f64(val),
+        "Energy Shield" => draft.header.energy_shield = parse_f64(val),
+        "Ward" => draft.header.ward = parse_f64(val),
         "Catalyst" => draft.catalyst.name = Some(val.to_string()),
-        "CatalystQuality" => draft.catalyst.quality = parse_u32(val),
+        "CatalystQuality" => draft.catalyst.quality = parse_percent(val),
         "Radius" => draft.header.radius_label = Some(first_alpha_run(val)),
         "Limited to" => draft.header.limited_to = parse_u32(val),
         "Sockets" => {
             let (s, j) = count_sockets(val);
-            draft.header.socket_count = s;
-            draft.header.jewel_socket_count = j;
+            draft.header.socket_count = draft.header.socket_count.saturating_add(s);
+            draft.header.jewel_socket_count = draft.header.jewel_socket_count.saturating_add(j);
         }
         "Rune" => draft.header.runes.push(val.to_string()),
         "Note" | "Str" | "Dex" | "Int" | "Requirements" => {
@@ -621,12 +621,30 @@ fn catalyst_descriptor(spec: &str) -> Option<&str> {
         .filter(|descriptor| !descriptor.is_empty())
 }
 
+fn strip_augmented(s: &str) -> &str {
+    let trimmed = s.trim();
+    const SUFFIX: &[u8] = b"(augmented)";
+    let bytes = trimmed.as_bytes();
+    if bytes.len() >= SUFFIX.len()
+        && bytes[bytes.len() - SUFFIX.len()..].eq_ignore_ascii_case(SUFFIX)
+    {
+        // Safe char boundary: the matched suffix is pure ASCII.
+        trimmed[..bytes.len() - SUFFIX.len()].trim_end()
+    } else {
+        trimmed
+    }
+}
+
 fn parse_u32(s: &str) -> Option<u32> {
     s.trim().parse::<u32>().ok()
 }
 
+fn parse_f64(s: &str) -> Option<f64> {
+    strip_augmented(s).parse::<f64>().ok()
+}
+
 fn parse_percent(s: &str) -> Option<u32> {
-    s.trim()
+    strip_augmented(s)
         .trim_start_matches('+')
         .trim_end_matches('%')
         .trim()
@@ -981,6 +999,90 @@ Implicits: 0
 {exotic}+5 to some future modifier";
         let d = ItemDraft::parse(raw).unwrap();
         assert_eq!(d.lines[0].annotations.tags, vec!["exotic".to_string()]);
+        fixpoint(raw);
+    }
+
+    #[test]
+    fn dual_rune_and_jewel_sockets_roundtrip_fixpoint() {
+        let combined = "\
+Rarity: RARE
+Dual Socket
+Sacrificial Regalia
+Item Level: 80
+Sockets: S S J
+Rune: Iron Rune
+Rune: None
+Implicits: 0
++50 to maximum Life";
+        let d = ItemDraft::parse(combined).unwrap();
+        assert_eq!(d.header.socket_count, 2);
+        assert_eq!(d.header.jewel_socket_count, 1);
+        assert_eq!(d.header.runes, vec!["Iron Rune", "None"]);
+        let rebuilt = d.build_raw();
+        assert!(rebuilt.contains("Sockets: S S J\n"), "{rebuilt}");
+        assert_eq!(rebuilt.matches("Sockets:").count(), 1, "{rebuilt}");
+        fixpoint(combined);
+
+        // Legacy split Sockets lines also combine and reach a fixpoint.
+        let split = "\
+Rarity: RARE
+Dual Socket
+Sacrificial Regalia
+Item Level: 80
+Sockets: S S
+Rune: Iron Rune
+Rune: None
+Sockets: J
+Implicits: 0
++50 to maximum Life";
+        let d_split = ItemDraft::parse(split).unwrap();
+        assert_eq!(d_split, d);
+        fixpoint(split);
+    }
+
+    #[test]
+    fn augmented_quality_and_defences_parse_and_roundtrip() {
+        let raw = "\
+Rarity: RARE
+Clipboard Piece
+Falconer's Jacket
+Spirit: 100 (augmented)
+Armour: 450 (augmented)
+Evasion Rating: 1292 (augmented)
+Energy Shield: 312 (AUGMENTED)
+Ward: 150 (augmented)
+Quality: +20% (augmented)
+Quality (Life Modifiers): +15% (augmented)
+Item Level: 81
+Implicits: 0
++80 to maximum Life";
+        let d = ItemDraft::parse(raw).unwrap();
+        assert_eq!(d.header.spirit, Some(100.0));
+        assert_eq!(d.header.armour, Some(450.0));
+        assert_eq!(d.header.evasion, Some(1292.0));
+        assert_eq!(d.header.energy_shield, Some(312.0));
+        assert_eq!(d.header.ward, Some(150.0));
+        assert_eq!(d.header.quality, Some(20));
+        assert_eq!(d.catalyst.descriptor.as_deref(), Some("Life"));
+        assert_eq!(d.catalyst.quality, Some(15));
+        fixpoint(raw);
+    }
+
+    #[test]
+    fn selection_annotations_roundtrip_fixpoint() {
+        let raw = "\
+Rarity: UNIQUE
+Test Unique
+Crimson Amulet
+Item Level: 80
+Implicits: 0
+{version:1,2}{base:1}{group:2}{variant:3}+20 to Strength";
+        let d = ItemDraft::parse(raw).unwrap();
+        let ann = &d.lines[0].annotations;
+        assert_eq!(ann.versions, Some(vec![1, 2]));
+        assert_eq!(ann.bases, Some(vec![1]));
+        assert_eq!(ann.groups, Some(vec![2]));
+        assert_eq!(ann.variants, Some(vec![3]));
         fixpoint(raw);
     }
 }
