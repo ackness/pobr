@@ -1439,17 +1439,35 @@ impl CalculationSession {
             "IgniteDamage" | "BleedDamage" | "PoisonDamage" => {
                 let prefix = stat.trim_end_matches("Damage");
                 let id = format!("{prefix}DPS");
-                let duration = self
-                    .ailment_stage_terms(&id)
-                    .and_then(|t| t.passes.first())
-                    .map_or(0.0, |(_, t)| t.duration);
-                (
-                    format!("round({id} * AilmentDuration, 9)"),
-                    vec![
-                        (id.clone(), crate::display_catalog::display_value(out, &id)),
-                        ("AilmentDuration".into(), duration),
-                    ],
-                )
+                if let Some(stage) = self.ailment_stage_terms(&id)
+                    && let Some(merge) = stage.merge
+                    && let [(_, a), (_, b), ..] = stage.passes.as_slice()
+                {
+                    let (stronger_damage, weaker_damage) =
+                        crate::calc::ailment::ordered_hand_ailment_damages(a, b);
+                    (
+                        "round(StrongerAilmentDamage * StrongerAilmentShare + WeakerAilmentDamage * WeakerAilmentShare, 9)"
+                            .into(),
+                        vec![
+                            ("StrongerAilmentDamage".into(), stronger_damage),
+                            ("WeakerAilmentDamage".into(), weaker_damage),
+                            ("StrongerAilmentShare".into(), merge.stronger_share),
+                            ("WeakerAilmentShare".into(), merge.weaker_share),
+                        ],
+                    )
+                } else {
+                    let duration = self
+                        .ailment_stage_terms(&id)
+                        .and_then(|t| t.passes.first())
+                        .map_or(0.0, |(_, t)| t.duration);
+                    (
+                        format!("round({id} * AilmentDuration, 9)"),
+                        vec![
+                            (id.clone(), crate::display_catalog::display_value(out, &id)),
+                            ("AilmentDuration".into(), duration),
+                        ],
+                    )
+                }
             }
             "CullingDPS" | "ReservationDPS" => {
                 let t = perform::skill_dot_terms(env);

@@ -129,7 +129,7 @@ fn source_range(stage: &AilmentStageTerms, suffix: &str) -> f64 {
     };
     stage
         .sources
-        .last()
+        .first()
         .into_iter()
         .flatten()
         .filter(|part| part.damage_type == damage_type)
@@ -157,7 +157,7 @@ pub(crate) fn display_value(out: &OutputTable, stat: &str) -> Option<f64> {
     let Some(stage) = stage(out, kind) else {
         return Some(0.0);
     };
-    let Some((_, t)) = stage.passes.last() else {
+    let Some((_, t)) = stage.passes.first() else {
         return Some(0.0);
     };
     Some(match suffix {
@@ -209,7 +209,7 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
                 context,
             });
         };
-        let (_, t) = stage.passes.last()?;
+        let (_, t) = stage.passes.first()?;
         match suffix {
             "ChancePerHit" => (
                 "AilmentApplicationChance * 100".into(),
@@ -261,7 +261,7 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
                 };
                 let (resist, inc, more) = ailment::effmult_terms(
                     &env.enemy.mod_db,
-                    &env.cfg,
+                    &ailment::ailment_scoped_cfg(&env.cfg, kind),
                     damage_type,
                     env.cfg.mode_effective,
                 );

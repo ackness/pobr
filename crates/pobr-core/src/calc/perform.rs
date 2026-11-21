@@ -4,8 +4,8 @@ use crate::{CalcConfig, ModDb, ModValue, Modifier};
 
 use super::ailment::{
     AilmentSource, AilmentStageTerms, AilmentTerms, HandAilmentMerge, StackConfig,
-    ailment_crit_chance, ailment_duration, ailment_effect_mod, ailment_rate_mod, apply_dot_dps_cap,
-    bleed_traced, chill_traced, cross_type_source_hit, debuff_duration_mult,
+    ailment_crit_chance, ailment_duration_terms, ailment_effect_mod, ailment_rate_mod,
+    apply_dot_dps_cap, bleed_traced, chill_traced, cross_type_source_hit, debuff_duration_mult,
     electrocute_poise_buildup_traced, estimate_active_stacks, freeze_poise_buildup_traced,
     ignite_traced, merge_hand_ailment_dps, poison_traced, roll_average, shock_traced,
     stack_potential, stacking_ailment_dps_traced, stored_source_at_roll,
@@ -2315,7 +2315,8 @@ fn damaging_ailment_for_pass(
     // "Damaging Ailments deal damage #% faster" — the same damage in less
     // time, so fewer instances are active at once.
     let rate = ailment_rate_mod(player, enemy, cfg, name);
-    let duration_before_rate = ailment_duration(kind, player, cfg);
+    let duration_before_rate = ailment_duration_terms(kind, player, Some(enemy), cfg)
+        .map_or(0.0, |t| round(t.value().max(0.0)));
     let duration = duration_before_rate * debuff_duration_mult(enemy, cfg)
         / if rate > 0.0 { rate } else { 1.0 };
     let stack = resolve_stack_config(
@@ -2354,6 +2355,8 @@ fn damaging_ailment_for_pass(
 
     let (per_second_pct, magnitude_inc, magnitude_more) =
         super::ailment::magnitude_scaling(kind, player, cfg);
+    let effect = ailment_effect_mod(player, &scoped_cfg);
+    let cap = cfg.constants.game().dot_dps_cap;
     let terms = AilmentTerms {
         source_hit: source.hit_avg,
         source_crit: source.crit_avg,
@@ -2379,9 +2382,9 @@ fn damaging_ailment_for_pass(
         enemy_duration: debuff_duration_mult(enemy, cfg),
         stacks: stack.active_stacks,
         max_stacks: stack.displayed_max(),
-        effect: ailment_effect_mod(player, cfg),
+        effect,
         rate,
-        cap: cfg.constants.game().dot_dps_cap,
+        cap,
         dps: 0.0,
     };
     // The crit column follows the source: without crit-applied ailments it
@@ -2400,13 +2403,7 @@ fn damaging_ailment_for_pass(
         // magnitude_dps already includes percentBase × AilmentMagnitude × effMult;
         // finalize adds effectMod × rateMod + DotDpsCap.
         let active_ailments = stack.active();
-        let dps = finalize_ailment_dps(
-            out.magnitude_dps * active_ailments,
-            name,
-            player,
-            enemy,
-            cfg,
-        );
+        let dps = finalize_ailment_dps(out.magnitude_dps * active_ailments, effect, rate, cap);
         Some(AilmentPassResult {
             dps,
             // vendor's `Total<Ailment>DPS = <Ailment>DPS` (`:5238-5242`, stacking is already
@@ -2422,11 +2419,11 @@ fn damaging_ailment_for_pass(
     } else {
         // Fallback when the signal is missing (the old convention): `chance × magnitude`,
         // stacking uses the full-stacks upper bound.
-        let dps = finalize_ailment_dps(out.expected_dps, name, player, enemy, cfg);
+        let dps = finalize_ailment_dps(out.expected_dps, effect, rate, cap);
         let (stacked, _) = stacking_ailment_dps_traced(dps, &stack, kind, trace);
         Some(AilmentPassResult {
             dps,
-            stacked_dps: apply_dot_dps_cap(stacked, cfg.constants.game().dot_dps_cap),
+            stacked_dps: apply_dot_dps_cap(stacked, cap),
             active_stacks_panel: active_stacks_of(&stack),
             stacks_estimate: 0.0,
             max_stacks: stack.displayed_max(),
@@ -2766,7 +2763,14 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
                 merge,
             },
         ));
-        let damage = round(dps * results[0].terms.duration);
+        let damage = match (&merge, results.as_slice()) {
+            (Some(merge), [a, b, ..]) => {
+                let (stronger_damage, weaker_damage) =
+                    super::ailment::ordered_hand_ailment_damages(&a.terms, &b.terms);
+                round(stronger_damage * merge.stronger_share + weaker_damage * merge.weaker_share)
+            }
+            _ => round(dps * results[0].terms.duration),
+        };
         let out = &mut env.player.output;
         match kind {
             AilmentType::Bleed => {
@@ -2869,28 +2873,17 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
     env.non_damaging_terms = non_damaging_terms;
 }
 
-/// Lane C: applies `AilmentEffect` (MORE) × `rateMod` (Faster/Slower) to a damaging ailment's
+/// Lane C: applies `AilmentEffect` (INC + MORE) × `rateMod` (Faster/Slower) to a damaging ailment's
 /// expected DPS, then clamps by the global `DotDpsCap`.
 ///
-/// - `effectMod`: `ailment_effect_mod` (the player's `AilmentEffect` MORE aggregate, defaults to 1.0).
-/// - `rateMod`: `ailment_rate_mod` (the player's `<Ailment>Faster`/`Slower` + the enemy's
-///   `Self<Ailment>Faster`, defaults to 1.0).
-/// - DPS = `expected_dps × effectMod × rateMod`, clamped `min(_, DotDpsCap)`.
+/// - `effect`: `ailment_effect_mod` evaluated on the ailment's `scoped_cfg` (defaults to 1.0).
+/// - `rate`: `ailment_rate_mod` evaluated on raw `cfg` (defaults to 1.0).
+/// - DPS = `expected_dps × effect × rate`, clamped `min(_, dot_dps_cap)`.
 ///
-/// All three corrections are neutral (1.0 / no cap) with no corresponding mods, so the output
-/// matches what it was before Lane C was wired in (backward compatible).
 /// Source: PoB2 `CalcOffence.lua` l.5190/l.5035/l.5193; the Lane C integration_spec.
-fn finalize_ailment_dps(
-    expected_dps: f64,
-    ailment_name: &str,
-    player: &ModDb,
-    enemy: &ModDb,
-    cfg: &CalcConfig,
-) -> f64 {
-    let effect = ailment_effect_mod(player, cfg);
-    let rate = ailment_rate_mod(player, enemy, cfg, ailment_name);
+fn finalize_ailment_dps(expected_dps: f64, effect: f64, rate: f64, dot_dps_cap: f64) -> f64 {
     let scaled = expected_dps * effect * rate;
-    apply_dot_dps_cap(scaled, cfg.constants.game().dot_dps_cap)
+    apply_dot_dps_cap(scaled, dot_dps_cap)
 }
 
 /// Resolves the stack ceiling and the existing rate × duration estimate.
