@@ -505,8 +505,10 @@ pub(crate) fn cull_threshold_percent(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig
     let game = cfg.constants.game();
     let threshold = if enemy.flag(cfg, "Condition:Unique") {
         game.culling_strike_unique_threshold
-    } else if enemy.flag(cfg, "Condition:RareOrUnique") {
+    } else if enemy.flag(cfg, "Condition:Rare") || enemy.flag(cfg, "Condition:RareOrUnique") {
         game.culling_strike_rare_threshold
+    } else if enemy.flag(cfg, "Condition:Magic") {
+        game.culling_strike_magic_threshold
     } else {
         game.culling_strike_normal_threshold
     };
@@ -872,5 +874,22 @@ mod tests {
         );
         assert_eq!(out.total_dot_dps, 80.0);
         assert_eq!(out.combined_dps, 580.0);
+    }
+
+    #[test]
+    fn culling_strike_respects_all_enemy_rarities() {
+        let db = db_with(vec![Modifier::flag("CanCull")]);
+        let cfg = CalcConfig::attack();
+        assert_eq!(cull_threshold_percent(&db, &ModDb::new(), &cfg), Some(35.0));
+        for (flag, expected) in [
+            ("Condition:Magic", 20.0),
+            ("Condition:Rare", 10.0),
+            ("Condition:RareOrUnique", 10.0),
+            ("Condition:Unique", 5.0),
+        ] {
+            let mut enemy = ModDb::new();
+            enemy.add_mod(Modifier::flag(flag));
+            assert_eq!(cull_threshold_percent(&db, &enemy, &cfg), Some(expected));
+        }
     }
 }

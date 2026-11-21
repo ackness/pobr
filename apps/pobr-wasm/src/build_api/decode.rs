@@ -622,6 +622,8 @@ struct CnBuildFile {
 #[derive(Debug, Deserialize)]
 struct CnPassive {
     id: String,
+    #[serde(default)]
+    weapon_set: Option<u8>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -635,12 +637,12 @@ struct CnItem {
 struct CnSkill {
     id: String,
     #[serde(default)]
+    weapon_set: Option<u8>,
+    #[serde(default)]
     support_skills: Vec<CnPassive>,
 }
 
-/// `.build` slot -> our equipment slot id. `Weapon2`/`Offhand2` is the
-/// second weapon set, unmodeled in v1 (the same known gap as
-/// `useSecondWeaponSet` in XML import), so it's skipped.
+/// `.build` slot -> our active equipment slot id (weapon set 1).
 fn cn_inventory_slot(inventory_id: &str) -> Option<&'static str> {
     Some(match inventory_id {
         "Weapon1" => "weapon1",
@@ -653,6 +655,15 @@ fn cn_inventory_slot(inventory_id: &str) -> Option<&'static str> {
         "Ring1" => "ring1",
         "Ring2" => "ring2",
         "Belt1" => "belt",
+        _ => return None,
+    })
+}
+
+/// `.build` weapon set 2 slot -> our weapon slot id in `weapon_swap.alternate_items`.
+fn cn_alternate_slot(inventory_id: &str) -> Option<&'static str> {
+    Some(match inventory_id {
+        "Weapon2" => "weapon1",
+        "Offhand2" => "weapon2",
         _ => return None,
     })
 }
@@ -676,7 +687,7 @@ fn cn_gem_effect_id(data: &BuildData, gem_id: &str) -> Option<String> {
 ///
 /// Known limitations: equipment has no base name/rarity (constructed as
 /// RARE plus a placeholder name, with base defence values missing); gems
-/// have no level/quality (defaulted to 20/0); the second weapon set is skipped.
+/// have no level/quality (defaulted to 20/0).
 pub fn decode_build_file_json(content: &str) -> Result<String, String> {
     decode_build_file_impl(content).map_err(super::ApiError::into_json)
 }
@@ -697,6 +708,19 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
     }
     let file: CnBuildFile = serde_json::from_value(value)
         .map_err(|e| super::ApiError::decode_error(format!("invalid .build json: {e}")))?;
+    if file
+        .passives
+        .iter()
+        .any(|p| p.weapon_set.is_some_and(|s| s > 2))
+        || file
+            .skills
+            .iter()
+            .any(|s| s.weapon_set.is_some_and(|w| w > 2))
+    {
+        return Err(super::ApiError::decode_error(
+            "invalid .build weapon_set (must be 0, 1, or 2)",
+        ));
+    }
     let data = state::build_data().map_err(super::ApiError::not_initialized)?;
     let game = state::game_data().map_err(super::ApiError::not_initialized)?;
 
@@ -743,33 +767,59 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
         .map(|n| (n.id.as_str(), n.skill))
         .collect();
     let mut allocated_nodes: Vec<u32> = Vec::new();
+    let mut exclusive_nodes = [Vec::<u32>::new(), Vec::new()];
     let mut unknown_passives = 0usize;
     for p in &file.passives {
         match slug_to_skill.get(p.id.as_str()) {
-            Some(&skill) => allocated_nodes.push(skill),
+            Some(&skill) => match p.weapon_set {
+                Some(set @ 1..=2) => {
+                    exclusive_nodes[usize::from(set - 1)].push(skill);
+                    if set == 1 {
+                        allocated_nodes.push(skill);
+                    }
+                }
+                _ => allocated_nodes.push(skill),
+            },
             None => unknown_passives += 1,
         }
     }
+    for nodes in &mut exclusive_nodes {
+        nodes.sort_unstable();
+        nodes.dedup();
+    }
+    if exclusive_nodes[0]
+        .iter()
+        .any(|id| exclusive_nodes[1].contains(id))
+    {
+        return Err(super::ApiError::decode_error(
+            "passive appears in both exclusive weapon sets",
+        ));
+    }
+    allocated_nodes.retain(|id| !exclusive_nodes[1].contains(id));
     allocated_nodes.sort_unstable();
     allocated_nodes.dedup();
 
     // Equipment: only mod lines are available -> construct PoB text (RARE
     // plus a placeholder name; Chinese mod lines are handled by the calc-side translation layer).
-    let equipped: Vec<SlotItemJson> = file
-        .items
-        .iter()
-        .filter_map(|item| {
-            let slot = cn_inventory_slot(&item.inventory_id)?;
-            let text = format!(
-                "Rarity: RARE\nImported Item\n{}",
-                item.additional_text.trim()
-            );
-            Some(SlotItemJson {
+    let mut equipped: Vec<SlotItemJson> = Vec::new();
+    let mut alternate_items: Vec<super::request::SlotItemInput> = Vec::new();
+    for item in &file.items {
+        let text = format!(
+            "Rarity: RARE\nImported Item\n{}",
+            item.additional_text.trim()
+        );
+        if let Some(slot) = cn_inventory_slot(&item.inventory_id) {
+            equipped.push(SlotItemJson {
                 slot: slot.to_string(),
                 text,
-            })
-        })
-        .collect();
+            });
+        } else if let Some(slot) = cn_alternate_slot(&item.inventory_id) {
+            alternate_items.push(super::request::SlotItemInput {
+                slot: slot.to_string(),
+                text,
+            });
+        }
+    }
 
     // Skill groups: gem base id -> effect id (level/quality default to 20/0).
     let mut unknown_gems = 0usize;
@@ -820,7 +870,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
             Some(SocketGroupJson {
                 include_in_full_dps: false,
                 group_count: None,
-                weapon_set: None,
+                weapon_set: group.weapon_set.filter(|set| matches!(*set, 1 | 2)),
                 slot: None,
                 enabled: true,
                 main_active_skill: None,
@@ -831,9 +881,17 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
         })
         .collect();
 
+    let weapon_swap = (!alternate_items.is_empty()
+        || exclusive_nodes.iter().any(|nodes| !nodes.is_empty()))
+    .then_some(super::request::WeaponSwapInput {
+        active: 1,
+        alternate_items,
+        exclusive_nodes,
+    });
+
     let json = BuildJson {
         party: Default::default(),
-        weapon_swap: None,
+        weapon_swap,
         character: CharacterJson {
             level,
             class_name,

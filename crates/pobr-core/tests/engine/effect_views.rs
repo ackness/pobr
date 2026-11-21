@@ -268,6 +268,31 @@ fn armour_break_per_hit_counts_flat_damage_increase_and_rarity() {
         1.0,
     );
 
+    // Explicit Magic (2x) and Rare (1x) enemy conditions match KeywordPopups.
+    let mut magic = session(CalcConfig::spell().with_mode_effective(true), &lines);
+    magic.setup_enemy(10, EnemyTier::None);
+    magic.add_enemy_modifiers([
+        Modifier::number("Armour", ModType::Override, 1000.0),
+        Modifier::flag("Condition:Magic"),
+    ]);
+    magic.perform_minimal().unwrap();
+    close(
+        input(&magic, "ArmourBreakPerHit", "ArmourBreakRarityMultiplier"),
+        2.0,
+    );
+
+    let mut rare = session(CalcConfig::spell().with_mode_effective(true), &lines);
+    rare.setup_enemy(10, EnemyTier::None);
+    rare.add_enemy_modifiers([
+        Modifier::number("Armour", ModType::Override, 1000.0),
+        Modifier::flag("Condition:Rare"),
+    ]);
+    rare.perform_minimal().unwrap();
+    close(
+        input(&rare, "ArmourBreakPerHit", "ArmourBreakRarityMultiplier"),
+        1.0,
+    );
+
     // Reported only: damage is unchanged by the per-hit lines.
     let plain = armour_session(EnemyTier::None, CalcConfig::spell(), &[]);
     close(plain.output().dps, out.dps);
@@ -438,4 +463,47 @@ fn standalone_chaos_immunity_and_charm_recharge_start() {
     let mut unused = session(CalcConfig::spell(), &lines);
     unused.perform_minimal().unwrap();
     assert_eq!(display_value(unused.output(), "EsRechargeDelay"), 4.0);
+}
+
+#[test]
+fn stat_threshold_mods_evaluate_attributes_and_reservations_in_session() {
+    let lines = [
+        "100% increased Spell Damage while Dexterity is below 100",
+        "50% increased Spell Damage while you have at least 200 Dexterity",
+        "25% increased Spell Damage if you have reserved Life and Mana",
+    ];
+
+    let base_damage = |dex: f64, reserve_life: f64, reserve_mana: f64| {
+        let mut cfg = CalcConfig::spell();
+        cfg.stats.insert("Dexterity".into(), dex);
+        let mut s = session(cfg, &lines);
+        if reserve_life > 0.0 {
+            s.add_modifiers([Modifier::number(
+                "LifeReserved",
+                ModType::Base,
+                reserve_life,
+            )]);
+        }
+        if reserve_mana > 0.0 {
+            s.add_modifiers([Modifier::number(
+                "ManaReserved",
+                ModType::Base,
+                reserve_mana,
+            )]);
+        }
+        s.perform_minimal().unwrap();
+        s.output().dps
+    };
+
+    // Baseline Spell hit is 100 (neither threshold held at Dex=150 with no reservation).
+    close(base_damage(150.0, 0.0, 0.0), 100.0);
+    // Strict `< 100` boundary: 99 applies (+100%), 100 does not.
+    close(base_damage(99.0, 0.0, 0.0), 200.0);
+    close(base_damage(100.0, 0.0, 0.0), 100.0);
+    // `>= 200` Dexterity (+50%).
+    close(base_damage(200.0, 0.0, 0.0), 150.0);
+    // Requires BOTH Life and Mana reserved (+25%).
+    close(base_damage(150.0, 10.0, 0.0), 100.0);
+    close(base_damage(150.0, 0.0, 10.0), 100.0);
+    close(base_damage(150.0, 10.0, 10.0), 125.0);
 }

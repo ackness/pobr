@@ -181,6 +181,13 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
             .iter()
             .filter(|e| cn_gem_effect_id(&data, e.id()).is_some()),
     ) {
+        group["weapon_set"] = match entry {
+            Entry::Object {
+                weapon_set: Some(set @ 1..=2),
+                ..
+            } => json!(*set),
+            _ => Value::Null,
+        };
         let mut entries = vec![entry];
         if let Entry::Object { support_skills, .. } = entry {
             entries.extend(
@@ -416,6 +423,7 @@ fn export_build(
         }
         for (gem, base) in gems.iter().filter(|(_, b)| !b.is_support) {
             let mut entry = existing(source, "skills", &base.id);
+            entry["weapon_set"] = json!(group.weapon_set.unwrap_or(0));
             if entry
                 .get("additional_text")
                 .and_then(Value::as_str)

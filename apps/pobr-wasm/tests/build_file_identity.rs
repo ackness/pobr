@@ -312,4 +312,62 @@ fn committed_legacy_export_preserves_character_tree_items_and_skills() {
             .collect();
         assert_eq!(ids, *expected);
     }
+    let swap = &decoded["weapon_swap"];
+    assert_eq!(swap["active"], 1);
+    assert_eq!(swap["alternate_items"].as_array().unwrap().len(), 1);
+    assert_eq!(swap["alternate_items"][0]["slot"], "weapon1");
+    assert!(!swap["exclusive_nodes"][0].as_array().unwrap().is_empty());
+    assert!(swap["exclusive_nodes"][1].as_array().unwrap().is_empty());
+}
+
+#[test]
+fn legacy_build_preserves_weapon_swap_items_and_weapon_sets() {
+    init();
+    let input = json!({
+        "passives": [
+            {"id": "melee17", "weapon_set": 1},
+            {"id": "melee18", "weapon_set": 2}
+        ],
+        "items": [
+            {"inventory_id": "Weapon1", "additional_text": "+10 to Strength"},
+            {"inventory_id": "Weapon2", "additional_text": "+20 to Dexterity"},
+            {"inventory_id": "Offhand2", "additional_text": "+30 to Intelligence"}
+        ],
+        "skills": [
+            {"id": "Metadata/Items/Gem/SkillGemIceShot", "weapon_set": 2}
+        ]
+    });
+    let decoded = decode(&input);
+    assert_eq!(decoded["tree"]["allocated_nodes"], json!([3936]));
+    assert_eq!(
+        decoded["weapon_swap"]["exclusive_nodes"],
+        json!([[3936], [46325]])
+    );
+    assert_eq!(
+        decoded["weapon_swap"]["alternate_items"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+    assert_eq!(
+        decoded["weapon_swap"]["alternate_items"][0]["slot"],
+        "weapon1"
+    );
+    assert_eq!(
+        decoded["weapon_swap"]["alternate_items"][1]["slot"],
+        "weapon2"
+    );
+    assert_eq!(decoded["socket_groups"][0]["weapon_set"], json!(2));
+
+    let mut conflict = input.clone();
+    conflict["passives"] = json!([
+        {"id": "melee18", "weapon_set": 1},
+        {"id": "melee18", "weapon_set": 2}
+    ]);
+    assert_decode_error(&conflict.to_string());
+
+    let mut bad_set = input;
+    bad_set["skills"] = json!([{"id": "Metadata/Items/Gem/SkillGemIceShot", "weapon_set": 3}]);
+    assert_decode_error(&bad_set.to_string());
 }
