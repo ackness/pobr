@@ -22,7 +22,6 @@ actionlint = "latest"
 
 [env]
 _.path = ["{{ config_root }}/.cache/runtime/bin"]
-POBR_LUAJIT = "{{ config_root }}/.cache/runtime/bin/luajit"
 LUA_PATH = "{{ config_root }}/vendor/PathOfBuilding-PoE2/runtime/lua/?.lua;{{ config_root }}/vendor/PathOfBuilding-PoE2/runtime/lua/?/init.lua;;"
 
 [bootstrap.packages]

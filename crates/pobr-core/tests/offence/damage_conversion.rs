@@ -503,3 +503,54 @@ fn embitter_gains_every_extra_damage_as_cold() {
     assert!(find(&output, DamageType::Fire).is_none_or(|fire| fire.max == 0.0));
     assert!(find(&output, DamageType::Chaos).is_none_or(|chaos| chaos.max == 0.0));
 }
+
+/// Global/elemental conversion targeting the source type itself (e.g. Avatar of Fire's
+/// `DamageConvertToFire` alongside Blackflame's `FireDamageConvertToChaos`) must skip
+/// self-conversion (`from == to`) rather than diluting outgoing conversions during normalization.
+#[test]
+fn self_conversion_does_not_dilute_outgoing_conversions() {
+    let fire_only_input = MinimalInput {
+        base_hit_min: 0.0,
+        base_hit_max: 0.0,
+        ..base_input()
+    };
+
+    // Global: Avatar of Fire (75% DamageConvertToFire) + Blackflame (100% FireDamageConvertToChaos).
+    let mut db = ModDb::new();
+    db.add_list([
+        Modifier::number("FireDamageMin", ModType::Base, 100.0),
+        Modifier::number("FireDamageMax", ModType::Base, 200.0),
+        Modifier::number("DamageConvertToFire", ModType::Base, 75.0),
+        Modifier::number("FireDamageConvertToChaos", ModType::Base, 100.0),
+    ]);
+    let output = calculate_minimal(&db, &CalcConfig::attack(), &fire_only_input);
+    let chaos = component(&output, DamageType::Chaos);
+    assert_eq!((chaos.min, chaos.max), (100.0, 200.0));
+    assert!(find(&output, DamageType::Fire).is_none_or(|fire| fire.max == 0.0));
+
+    // Elemental: 100% ElementalDamageConvertToFire + 100% FireDamageConvertToChaos.
+    let mut elem_db = ModDb::new();
+    elem_db.add_list([
+        Modifier::number("FireDamageMin", ModType::Base, 100.0),
+        Modifier::number("FireDamageMax", ModType::Base, 200.0),
+        Modifier::number("ElementalDamageConvertToFire", ModType::Base, 100.0),
+        Modifier::number("FireDamageConvertToChaos", ModType::Base, 100.0),
+    ]);
+    let elem_out = calculate_minimal(&elem_db, &CalcConfig::attack(), &fire_only_input);
+    let elem_chaos = component(&elem_out, DamageType::Chaos);
+    assert_eq!((elem_chaos.min, elem_chaos.max), (100.0, 200.0));
+    assert!(find(&elem_out, DamageType::Fire).is_none_or(|fire| fire.max == 0.0));
+
+    // Skill stage: 50% SkillDamageConvertToFire + 100% SkillFireDamageConvertToChaos.
+    let mut skill_db = ModDb::new();
+    skill_db.add_list([
+        Modifier::number("FireDamageMin", ModType::Base, 100.0),
+        Modifier::number("FireDamageMax", ModType::Base, 200.0),
+        Modifier::number("SkillDamageConvertToFire", ModType::Base, 50.0),
+        Modifier::number("SkillFireDamageConvertToChaos", ModType::Base, 100.0),
+    ]);
+    let skill_out = calculate_minimal(&skill_db, &CalcConfig::attack(), &fire_only_input);
+    let skill_chaos = component(&skill_out, DamageType::Chaos);
+    assert_eq!((skill_chaos.min, skill_chaos.max), (100.0, 200.0));
+    assert!(find(&skill_out, DamageType::Fire).is_none_or(|fire| fire.max == 0.0));
+}

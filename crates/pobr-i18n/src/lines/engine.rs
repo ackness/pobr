@@ -118,13 +118,26 @@ fn template_skeleton(segments: &[Segment]) -> String {
     out
 }
 
-/// Whether a captured value is valid: non-empty and entirely numeric-shaped characters (sign/decimal point included).
+/// Whether a captured value is valid: optional leading `+`/`-`, ASCII digits
+/// with at most one decimal point, and at least one ASCII digit.
 fn is_numeric_capture(value: &str) -> bool {
     let trimmed = value.trim();
-    !trimmed.is_empty()
-        && trimmed
-            .chars()
-            .all(|c| c.is_ascii_digit() || matches!(c, '+' | '-' | '.'))
+    let unsigned = trimmed.strip_prefix(['+', '-']).unwrap_or(trimmed);
+    let mut has_digit = false;
+    let mut dots = 0usize;
+    for byte in unsigned.bytes() {
+        if byte.is_ascii_digit() {
+            has_digit = true;
+        } else if byte == b'.' {
+            dots += 1;
+            if dots > 1 {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+    has_digit
 }
 
 /// The byte length of a number at the start of `text` (`-`? digits, then
@@ -955,101 +968,247 @@ fn percent_slots(segments: &[Segment]) -> impl Iterator<Item = usize> + '_ {
     })
 }
 
-/// ASCII case-insensitive substring search (the dictionary's English
-/// templates have case variants). Byte-level window comparison: non-ASCII
-/// bytes require byte-for-byte equality, and UTF-8 continuation bytes are
-/// never confused with lead bytes, so a match position always lands on a character boundary.
-fn find_ignore_ascii_case(haystack: &str, needle: &str) -> Option<usize> {
-    if needle.is_empty() {
-        return Some(0);
-    }
-    if needle.len() > haystack.len() {
-        return None;
-    }
+/// Yields every byte offset in `haystack` where `needle` matches ASCII
+/// case-insensitively (`needle` must be non-empty). Byte-level window
+/// comparison: non-ASCII bytes require byte-for-byte equality, and UTF-8
+/// continuation bytes are never confused with lead bytes, so every yielded
+/// offset lands on a character boundary.
+fn find_all_ignore_ascii_case<'a>(
+    haystack: &'a str,
+    needle: &'a str,
+) -> impl Iterator<Item = usize> + 'a {
+    let needle_bytes = needle.as_bytes();
     haystack
         .as_bytes()
-        .windows(needle.len())
-        .position(|window| window.eq_ignore_ascii_case(needle.as_bytes()))
+        .windows(needle_bytes.len())
+        .enumerate()
+        .filter_map(move |(offset, window)| {
+            window.eq_ignore_ascii_case(needle_bytes).then_some(offset)
+        })
 }
 
-/// Matches segments one by one: literals align in order, and the text
-/// between placeholders becomes a captured value, which must be
-/// numeric-shaped or of a kind `captures` accepts: a roll range (display
-/// direction), or, in the fallback channel (where candidates are already
-/// gated by strong anchors), a non-empty string without newlines. A
-/// placeholder that appears more than once (the same value on two lines of
-/// a description) must capture the same text each time. Returns `placeholder index ->
-/// captured text` on success.
+/// Memoization key for failed states in [`SegmentMatcher`].
+///
+/// For templates without repeated placeholders, `repeated` stays empty (zero
+/// heap allocation), reducing the key to `(seg_idx, pos)`. For templates with
+/// repeated placeholders, currently bound values of those repeated
+/// placeholders are included so a failure caused by an earlier binding does
+/// not poison another branch.
+#[derive(PartialEq, Eq, Hash)]
+struct MemoKey {
+    seg_idx: usize,
+    pos: usize,
+    repeated: Vec<(usize, String)>,
+}
+
+struct SegmentMatcher<'a> {
+    line: &'a str,
+    segments: &'a [Segment],
+    captures: Captures,
+    /// Sorted placeholder indices that appear more than once in `segments`.
+    repeated: Vec<usize>,
+    failed: HashSet<MemoKey>,
+}
+
+impl<'a> SegmentMatcher<'a> {
+    fn new(line: &'a str, segments: &'a [Segment], captures: Captures) -> Self {
+        let mut repeated = Vec::new();
+        for (i, seg) in segments.iter().enumerate() {
+            if let Segment::Placeholder { index, .. } = seg
+                && segments[i + 1..].iter().any(|later| {
+                    matches!(later, Segment::Placeholder { index: other, .. } if other == index)
+                })
+                && !repeated.contains(index)
+            {
+                repeated.push(*index);
+            }
+        }
+        repeated.sort_unstable();
+        Self {
+            line,
+            segments,
+            captures,
+            repeated,
+            failed: HashSet::new(),
+        }
+    }
+
+    fn memo_key(&self, seg_idx: usize, pos: usize, values: &HashMap<usize, String>) -> MemoKey {
+        let repeated = if self.repeated.is_empty() {
+            Vec::new()
+        } else {
+            self.repeated
+                .iter()
+                .filter_map(|index| values.get(index).map(|value| (*index, value.clone())))
+                .collect()
+        };
+        MemoKey {
+            seg_idx,
+            pos,
+            repeated,
+        }
+    }
+
+    fn try_capture(
+        &mut self,
+        index: usize,
+        capture: &str,
+        slot_captures: Captures,
+        values: &mut HashMap<usize, String>,
+        next: impl FnOnce(&mut Self, &mut HashMap<usize, String>) -> bool,
+    ) -> bool {
+        let Some(value) = accept_capture(capture, slot_captures) else {
+            return false;
+        };
+        // A repeated placeholder must capture the same text each time (so a
+        // template repeating `{0}` on two lines does not join two lines with
+        // different values, the second silently replacing the first).
+        let inserted = match values.get(&index) {
+            Some(previous) if *previous != value => return false,
+            Some(_) => false,
+            None => {
+                values.insert(index, value);
+                true
+            }
+        };
+        if next(self, values) {
+            true
+        } else {
+            if inserted {
+                values.remove(&index);
+            }
+            false
+        }
+    }
+
+    fn step(&mut self, seg_idx: usize, pos: usize, values: &mut HashMap<usize, String>) -> bool {
+        let line = self.line;
+        let segments = self.segments;
+        let Some(seg) = segments.get(seg_idx) else {
+            return pos == line.len();
+        };
+        let key = self.memo_key(seg_idx, pos, values);
+        if self.failed.contains(&key) {
+            return false;
+        }
+        let matched = match seg {
+            Segment::Literal(raw_lit) => {
+                // Let a signed slot own its sign, including when rendering
+                // replaced the template's literal plus with a minus.
+                let optional_plus = plus_before_signed_slot(segments, seg_idx + 1);
+                let lit = if optional_plus {
+                    raw_lit.strip_suffix('+').unwrap_or(raw_lit.as_str())
+                } else {
+                    raw_lit.as_str()
+                };
+                if let Some(rest) = pos
+                    .checked_add(lit.len())
+                    .and_then(|end| line.get(pos..end))
+                    && rest.eq_ignore_ascii_case(lit)
+                {
+                    let mut next_pos = pos + lit.len();
+                    // Older output included both the literal and slot's plus.
+                    if optional_plus && line[next_pos..].starts_with("++") {
+                        next_pos += 1;
+                    }
+                    self.step(seg_idx + 1, next_pos, values)
+                } else {
+                    false
+                }
+            }
+            Segment::Placeholder { index, .. } => {
+                let literal_plus = plus_before_signed_slot(segments, seg_idx);
+                let slot_captures = Captures {
+                    ranges: self.captures.ranges || literal_plus,
+                    ..self.captures
+                };
+                match segments.get(seg_idx + 1) {
+                    None => {
+                        self.try_capture(*index, &line[pos..], slot_captures, values, |_, _| true)
+                    }
+                    Some(Segment::Placeholder { .. }) => false,
+                    Some(Segment::Literal(raw_lit)) => {
+                        let optional_plus = plus_before_signed_slot(segments, seg_idx + 2);
+                        let lit = if optional_plus {
+                            raw_lit.strip_suffix('+').unwrap_or(raw_lit.as_str())
+                        } else {
+                            raw_lit.as_str()
+                        };
+                        let haystack = &line[pos..];
+                        if lit.is_empty() {
+                            // Stripping the literal `+` left an empty separator
+                            // (e.g. `{0}+{1:+d}`): split only where the signed
+                            // slot's own `+` or `-` begins.
+                            haystack
+                                .bytes()
+                                .enumerate()
+                                .filter(|&(_, byte)| matches!(byte, b'+' | b'-'))
+                                .any(|(rel, _)| {
+                                    let mut next_pos = pos + rel;
+                                    if optional_plus && line[next_pos..].starts_with("++") {
+                                        next_pos += 1;
+                                    }
+                                    self.try_capture(
+                                        *index,
+                                        &line[pos..pos + rel],
+                                        slot_captures,
+                                        values,
+                                        |this, values| this.step(seg_idx + 2, next_pos, values),
+                                    )
+                                })
+                        } else {
+                            find_all_ignore_ascii_case(haystack, lit).any(|rel| {
+                                let mut next_pos = pos + rel + lit.len();
+                                // Older output included both the literal and slot's plus.
+                                if optional_plus && line[next_pos..].starts_with("++") {
+                                    next_pos += 1;
+                                }
+                                self.try_capture(
+                                    *index,
+                                    &line[pos..pos + rel],
+                                    slot_captures,
+                                    values,
+                                    |this, values| this.step(seg_idx + 2, next_pos, values),
+                                )
+                            })
+                        }
+                    }
+                }
+            }
+        };
+        if !matched {
+            self.failed.insert(key);
+        }
+        matched
+    }
+}
+
+/// Matches segments one by one with memoized backtracking across literal
+/// occurrences: literals align in order, and the text between placeholders
+/// becomes a captured value, which must be numeric-shaped or of a kind
+/// `captures` accepts: a roll range (display direction), or, in the fallback
+/// channel (where candidates are already gated by strong anchors), a non-empty
+/// string without newlines. A placeholder that appears more than once (the
+/// same value on two lines of a description) must capture the same text each
+/// time. Returns `placeholder index -> captured text` on success.
 fn match_segments(
     line: &str,
     segments: &[Segment],
     captures: Captures,
 ) -> Option<HashMap<usize, String>> {
-    let mut values: HashMap<usize, String> = HashMap::new();
-    let mut pos = 0usize;
-    let mut pending: Option<(usize, Captures)> = None;
-    for (position, seg) in segments.iter().enumerate() {
-        match seg {
-            Segment::Placeholder { index, .. } => {
-                // Two adjacent placeholders with no literal separator —
-                // shouldn't appear in a template, fail conservatively.
-                if pending.is_some() {
-                    return None;
-                }
-                let literal_plus = plus_before_signed_slot(segments, position);
-                pending = Some((
-                    *index,
-                    Captures {
-                        ranges: captures.ranges || literal_plus,
-                        ..captures
-                    },
-                ));
-            }
-            Segment::Literal(lit) => {
-                // Let a signed slot own its sign, including when rendering
-                // replaced the template's literal plus with a minus.
-                let optional_plus = plus_before_signed_slot(segments, position + 1);
-                let lit = if optional_plus {
-                    &lit[..lit.len() - 1]
-                } else {
-                    lit
-                };
-                let found = find_ignore_ascii_case(&line[pos..], lit)?;
-                if let Some((index, captures)) = pending.take() {
-                    let value = accept_capture(&line[pos..pos + found], captures)?;
-                    insert_capture(&mut values, index, value)?;
-                } else if found != 0 {
-                    return None;
-                }
-                pos += found + lit.len();
-                // Older output included both the literal and slot's plus.
-                if optional_plus && line[pos..].starts_with("++") {
-                    pos += 1;
-                }
-            }
-        }
-    }
-    if let Some((index, captures)) = pending {
-        let value = accept_capture(&line[pos..], captures)?;
-        insert_capture(&mut values, index, value)?;
-    } else if pos != line.len() {
+    // Two adjacent placeholders with no literal separator —
+    // shouldn't appear in a template, fail conservatively.
+    if segments.windows(2).any(|pair| {
+        matches!(
+            pair,
+            [Segment::Placeholder { .. }, Segment::Placeholder { .. }]
+        )
+    }) {
         return None;
     }
-    Some(values)
-}
-
-/// Records a placeholder's captured value; `None` when the placeholder
-/// already captured a different one (so a template repeating `{0}` on two
-/// lines does not join two lines with different values, the second silently
-/// replacing the first).
-fn insert_capture(values: &mut HashMap<usize, String>, index: usize, value: String) -> Option<()> {
-    match values.get(&index) {
-        Some(previous) if *previous != value => None,
-        _ => {
-            values.insert(index, value);
-            Some(())
-        }
-    }
+    let mut values: HashMap<usize, String> = HashMap::new();
+    let mut matcher = SegmentMatcher::new(line, segments, captures);
+    matcher.step(0, 0, &mut values).then_some(values)
 }
 
 /// Substitutes captured values back into the English template (`{N}` /

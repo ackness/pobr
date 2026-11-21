@@ -431,13 +431,14 @@ impl<'a> AllocationTree<'a> {
                         });
                     }
                 } else {
-                    if let Some(shared_target) = path.iter().rev().find(|id| {
-                        self.shared_only(**id)
+                    if let Some(split_idx) = path.iter().rposition(|id| {
+                        self.shared_only(*id)
                             && !before.shared.contains(id)
                             && !implicit.contains(id)
                     }) {
+                        let shared_target = path[split_idx];
                         let shared_path = self
-                            .route(before, *shared_target, 0)
+                            .route(before, shared_target, 0)
                             .ok_or("no_shared_path")?;
                         for id in &shared_path {
                             next.shared.insert(*id);
@@ -445,9 +446,13 @@ impl<'a> AllocationTree<'a> {
                                 s.remove(id);
                             });
                         }
-                        path.extend(shared_path);
-                        path.sort_unstable();
-                        path.dedup();
+                        let mut combined = shared_path;
+                        for id in path.into_iter().skip(split_idx + 1) {
+                            if !combined.contains(&id) {
+                                combined.push(id);
+                            }
+                        }
+                        path = combined;
                     }
                     for id in &path {
                         if !next.shared.contains(id) && !implicit.contains(id) {
@@ -493,5 +498,113 @@ impl<'a> AllocationTree<'a> {
             weapon_points_used: sets,
             weapon_points_max: max,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn set(ids: &[u32]) -> BTreeSet<u32> {
+        ids.iter().copied().collect()
+    }
+
+    /// Graph where weapon set 1 (`10 -> 11 -> 2`) reaches socket `4` via `2 -> 3 -> 4`
+    /// (2 hops from `2`), while the shortest shared path from root `1` to `4` is
+    /// `1 -> 5 -> 8 -> 4` (3 hops vs 5 hops through `10 -> 11 -> 2 -> 3 -> 4`).
+    fn alternate_shared_prefix_nodes(prefix_kind: &str) -> Vec<PassiveNodeDef> {
+        serde_json::from_value(serde_json::json!([
+            {"skill": 1, "id": "root", "kind": "normal", "connections": [10, 5]},
+            {"skill": 10, "id": "w1", "kind": "normal", "connections": [11]},
+            {"skill": 11, "id": "w2", "kind": "normal", "connections": [2]},
+            {"skill": 2, "id": "w3", "kind": "normal", "connections": [3]},
+            {"skill": 3, "id": "stale_prefix", "kind": prefix_kind, "connections": [4]},
+            {"skill": 4, "id": "socket", "kind": "jewel_socket", "connections": [6, 8]},
+            {"skill": 5, "id": "s1", "kind": "normal", "connections": [8]},
+            {"skill": 8, "id": "s2", "kind": "normal", "connections": [4]},
+            {"skill": 6, "id": "target", "kind": "normal"}
+        ]))
+        .unwrap()
+    }
+
+    fn make_tree(nodes: &[PassiveNodeDef]) -> AllocationTree<'_> {
+        let mut t = AllocationTree::new(nodes.iter());
+        t.roots.insert(1);
+        t.class_starts.insert(1);
+        t.points_max = 10;
+        t.weapon_points_base = 5;
+        t
+    }
+
+    #[test]
+    fn weapon_set_crossing_shared_only_discards_stale_prefix_and_keeps_bfs_order() {
+        let nodes = alternate_shared_prefix_nodes("normal");
+        let tree = make_tree(&nodes);
+        let before = Allocation {
+            shared: set(&[]),
+            exclusive: [set(&[10, 11, 2]), set(&[])],
+        };
+
+        let result = tree.edit(&before, 6, 1, EditAction::Allocate).unwrap();
+
+        assert_eq!(result.allocation.shared, set(&[4, 5, 8]));
+        assert_eq!(result.allocation.exclusive[0], set(&[2, 6, 10, 11]));
+        assert!(
+            !result.allocation.all().contains(&3),
+            "stale prefix node 3 must not be wasted into exclusive"
+        );
+        assert_eq!(
+            result.path,
+            vec![1, 5, 8, 4, 6],
+            "EditResult.path must preserve BFS traversal order"
+        );
+    }
+
+    #[test]
+    fn earlier_shared_only_node_on_discarded_prefix_is_not_placed_in_exclusive() {
+        let nodes = alternate_shared_prefix_nodes("keystone");
+        let tree = make_tree(&nodes);
+        let before = Allocation {
+            shared: set(&[]),
+            exclusive: [set(&[10, 11, 2]), set(&[])],
+        };
+
+        let result = tree.edit(&before, 6, 1, EditAction::Allocate).unwrap();
+
+        assert_eq!(result.allocation.shared, set(&[4, 5, 8]));
+        assert_eq!(result.allocation.exclusive[0], set(&[2, 6, 10, 11]));
+        assert!(!result.allocation.all().contains(&3));
+        assert_eq!(result.path, vec![1, 5, 8, 4, 6]);
+    }
+
+    #[test]
+    fn shared_path_overlapping_suffix_deduplicates_without_losing_order() {
+        // Weapon set 1 (`10 -> 11 -> 12 -> 2`) reaches target `6` via `2 -> 4 -> 6` (2 hops),
+        // crossing socket `4`. From root `1` alone, the shortest shared path to socket `4` is
+        // `1 -> 5 -> 8 -> 6 -> 4` (4 hops vs 5 hops through `10 -> 11 -> 12 -> 2 -> 4`),
+        // which already traverses suffix node `6`.
+        let nodes: Vec<PassiveNodeDef> = serde_json::from_value(serde_json::json!([
+            {"skill": 1, "id": "root", "kind": "normal", "connections": [10, 5]},
+            {"skill": 10, "id": "w1", "kind": "normal", "connections": [11]},
+            {"skill": 11, "id": "w2", "kind": "normal", "connections": [12]},
+            {"skill": 12, "id": "w3", "kind": "normal", "connections": [2]},
+            {"skill": 2, "id": "w4", "kind": "normal", "connections": [4]},
+            {"skill": 4, "id": "socket", "kind": "jewel_socket", "connections": [6]},
+            {"skill": 5, "id": "s1", "kind": "normal", "connections": [8]},
+            {"skill": 8, "id": "s2", "kind": "normal", "connections": [6]},
+            {"skill": 6, "id": "target", "kind": "normal"}
+        ]))
+        .unwrap();
+        let tree = make_tree(&nodes);
+        let before = Allocation {
+            shared: set(&[]),
+            exclusive: [set(&[10, 11, 12, 2]), set(&[])],
+        };
+
+        let result = tree.edit(&before, 6, 1, EditAction::Allocate).unwrap();
+
+        assert_eq!(result.allocation.shared, set(&[4, 5, 6, 8]));
+        assert_eq!(result.allocation.exclusive[0], set(&[2, 10, 11, 12]));
+        assert_eq!(result.path, vec![1, 5, 8, 6, 4]);
     }
 }

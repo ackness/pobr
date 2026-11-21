@@ -105,6 +105,7 @@ fn apply_build_attrs(
             }
             "className" => header.identity.class_name = value,
             "ascendClassName" => header.identity.ascendancy_name = value,
+            "viewMode" => header.view_mode = parse_view_mode(&value),
             _ => {}
         }
     }
@@ -149,6 +150,21 @@ mod tests {
         assert_eq!(header.identity.class_name, "Ranger");
         assert_eq!(header.identity.ascendancy_name, "Deadeye");
         assert_eq!(header.view_mode, ViewMode::Tree);
+    }
+
+    #[test]
+    fn parses_non_default_view_mode_on_build_and_root() {
+        let on_build = r#"<PathOfBuilding2><Build level="80" className="Witch" viewMode="ITEMS"/></PathOfBuilding2>"#;
+        assert_eq!(
+            parse_build_header(on_build).expect("parse").view_mode,
+            ViewMode::Items
+        );
+
+        let on_root = r#"<PathOfBuilding2 viewMode="CALCS"><Build level="80" className="Witch"/></PathOfBuilding2>"#;
+        assert_eq!(
+            parse_build_header(on_root).expect("parse").view_mode,
+            ViewMode::Calcs
+        );
     }
 
     #[test]

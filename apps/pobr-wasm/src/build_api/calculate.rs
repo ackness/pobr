@@ -190,7 +190,8 @@ fn minion_outputs(
 /// before any data is loaded and a client needs it once. Calculation responses carry it
 /// only on request (`include_descriptors`).
 pub fn breakdown_descriptors_json() -> Result<String, String> {
-    serde_json::to_string(detail_descriptors_ref()).map_err(|e| format!("serialize: {e}"))
+    serde_json::to_string(detail_descriptors_ref())
+        .map_err(|e| super::ApiError::from(format!("serialize: {e}")).into_json())
 }
 
 /// 0.2 + 0.3: full build calculation -> the full display_catalog key/values
@@ -336,10 +337,10 @@ fn calculate_snapshot(
         let full = state::cached_response_keyed(
             "full_dps",
             selection_cache_key(request_json, false, false),
-            || {
-                let full = super::request::full_dps_for_build(&build, &data, req)
-                    .map_err(|e| e.into_json())?;
-                serde_json::to_string(&full).map_err(|e| format!("serialize Full DPS: {e}"))
+            || -> Result<String, super::ApiError> {
+                let full = super::request::full_dps_for_build(&build, &data, req)?;
+                serde_json::to_string(&full)
+                    .map_err(|e| super::ApiError::from(format!("serialize Full DPS: {e}")))
             },
         )?;
         session = session.with_full_dps(
@@ -590,6 +591,33 @@ mod detail_request_tests {
         assert_ne!(
             selection_cache_key(no_main, true, false),
             selection_cache_key(no_main_details, true, false)
+        );
+    }
+
+    #[test]
+    fn cached_api_error_is_serialized_once_without_double_wrapping() {
+        let compute = || -> Result<String, crate::build_api::ApiError> {
+            state::cached_response_keyed(
+                "api_error_no_double_wrap_test",
+                "key".to_string(),
+                || -> Result<String, crate::build_api::ApiError> {
+                    Err(crate::build_api::ApiError::bad_request("invalid slot")
+                        .with_slot("weapon1"))
+                },
+            )?;
+            Ok(String::new())
+        };
+        let err_json = compute()
+            .map_err(crate::build_api::ApiError::into_json)
+            .unwrap_err();
+        let parsed: serde_json::Value =
+            serde_json::from_str(&err_json).expect("valid ApiError JSON");
+        assert_eq!(parsed["code"], "bad_request");
+        assert_eq!(parsed["message"], "invalid slot");
+        assert_eq!(parsed["slot"], "weapon1");
+        assert!(
+            serde_json::from_str::<serde_json::Value>(parsed["message"].as_str().unwrap()).is_err(),
+            "message must not contain double-wrapped JSON: {err_json}"
         );
     }
 }

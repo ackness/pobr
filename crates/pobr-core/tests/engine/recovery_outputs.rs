@@ -837,3 +837,31 @@ fn regeneration_shares_only_increases_and_reductions_with_the_destination() {
         }
     }
 }
+
+#[test]
+fn zealots_oath_transfers_excess_regen_while_preserving_direct_life_recovery() {
+    let env = run(
+        vec![
+            Modifier::number("LifeRegen", ModType::Base, 100.0),
+            Modifier::number("LifeRecovery", ModType::Base, 20.0),
+            Modifier::number("LifeRecoveryRate", ModType::Inc, 50.0),
+            Modifier::number("EnergyShieldRegen", ModType::Base, 10.0),
+            Modifier::flag("ZealotsOath"),
+        ],
+        0.0,
+    );
+    // LifeRegen = 100 * 1.5 = 150 transfers to ES (10 + 150 = 160);
+    // direct LifeRecovery = 20 * 1.5 = 30 stays on Life.
+    value(&env, "LifeRegenRecovery", 30.0);
+    value(&env, "EnergyShieldRegenRecovery", 160.0);
+
+    let direct_only = run(
+        vec![
+            Modifier::number("LifeRecovery", ModType::Base, 20.0),
+            Modifier::flag("ZealotsOath"),
+        ],
+        0.0,
+    );
+    value(&direct_only, "LifeRegenRecovery", 20.0);
+    value(&direct_only, "EnergyShieldRegenRecovery", 0.0);
+}

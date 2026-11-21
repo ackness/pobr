@@ -22,8 +22,8 @@ PoB 自己的 `.busted` 配置就是靠 `lpath = "../runtime/lua/?.lua"` 解决�
 在仓库根运行 `mise run setup:oracle`，自动准备固定 vendor 与支持 `+=` 的 LuaJIT。
 PoB2 仓库、完整 commit 与输出协议由 [reference-sources.json](../../devs/reference-sources.json)
 独立固定，不由活动游戏快照的 parser 元数据选择。`vendor/.pob2-version.txt` 仅为本地安装记录。
-项目 runtime 的 commit 由 `devs/scripts/pob2-luajit.sh` 维护，mise 将其暴露到
-`.cache/runtime/bin` 并设置 `POBR_LUAJIT`；不要求手工安装系统 LuaJIT。
+项目 runtime 的 commit 由 `devs/scripts/pob2-luajit.sh` 维护，mise 将 `.cache/runtime/bin`
+加入 PATH 并由该脚本解析兼容运行时（也可用 `POBR_LUAJIT` / `LUAJIT` 显式覆盖）；不要求手工安装系统 LuaJIT。
 `mise run status` 只检查，不安装。独立调用下面的 runner 时也经 `mise exec --` 执行，
 以便使用同一份环境和纯 Lua 依赖。
 

@@ -30,7 +30,6 @@ use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_
 use pobr_core::calc::MinimalInput;
 use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::PassiveTreeSpec;
-use pobr_gamedata::{GameData, repo_data_root};
 
 // fixtures
 
@@ -41,9 +40,8 @@ const MARTIAL_ARTIST_CODE: &str =
 
 // Data loading (shared GameData + BuildData across every test in this suite)
 
-fn load_game_data() -> BuildData {
-    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
-    BuildData::load(&data).expect("load BuildData from repo data")
+fn load_game_data() -> &'static BuildData {
+    super::test_data()
 }
 
 // Test bodies

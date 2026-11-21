@@ -15,6 +15,8 @@
 //! `buff:<name>` (buff domain, budget ≤8); total <100 (a hard-boundary monitor for the
 //! DSL — approaching the cap signals the data-driven split has failed).
 
+use std::sync::{Arc, OnceLock};
+
 use pobr_core::CampaignProgress;
 use pobr_core::modifier::{ModTag, ModValue, Modifier};
 use pobr_core::rules::config_interpreter::{ConfigInputValue, ConfigOutcome};
@@ -67,6 +69,12 @@ pub fn build_registry() -> HandlerRegistry {
     pobr_core::rules::buff_expander::register_handlers(&mut registry)
         .expect("startup-time buff handler registration should not conflict");
     registry
+}
+
+/// Returns the process-wide shared handler registry, initialized once via [`build_registry`].
+pub fn shared_registry() -> Arc<HandlerRegistry> {
+    static REGISTRY: OnceLock<Arc<HandlerRegistry>> = OnceLock::new();
+    Arc::clone(REGISTRY.get_or_init(|| Arc::new(build_registry())))
 }
 
 /// First batch of config handlers.

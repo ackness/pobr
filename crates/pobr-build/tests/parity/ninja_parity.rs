@@ -27,7 +27,6 @@
 use pobr_build::corpus::{CorpusLine, LineSource};
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::OutputTable;
-use pobr_gamedata::GameData;
 use std::path::{Path, PathBuf};
 
 fn builds_dir() -> PathBuf {
@@ -55,10 +54,9 @@ fn discover_builds() -> Vec<PathBuf> {
     dirs
 }
 
-fn load_data() -> BuildData {
+fn load_data() -> &'static BuildData {
     // Both modes calculate current data; historical references keep their own identity.
-    let data = GameData::new(pobr_gamedata::current_data_dir());
-    BuildData::load(&data).expect("load BuildData")
+    super::test_data()
 }
 
 /// Reads meta.json::player_stats (PoB2 golden values).

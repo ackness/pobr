@@ -139,3 +139,112 @@ fn zero_crit_chance_is_neutral() {
     let (_, combined) = out.stored_combined_avg[0];
     assert!((combined - 150.0).abs() < 1e-9);
 }
+
+/// Crit-only and non-crit-only damage types (via `Condition:CriticalStrike`) must
+/// merge by `DamageType` union rather than positional zip, preserving both in
+/// `stored_combined_avg`, `stored_ranges`, `mitigated_avg`, and `hit_mitigation_terms`.
+#[test]
+fn crit_only_and_non_crit_only_damage_types_merge_by_type_and_mitigate() {
+    use pobr_core::calc::{CalculationSession, calculate_minimal_vs_enemy};
+
+    let mut db = crit_db();
+    db.add_mod(Modifier::flag("CannotBeEvaded"));
+    // Non-crit-only Lightning: 50-50.
+    db.add_mod(
+        Modifier::number("LightningDamageMin", ModType::Base, 50.0)
+            .with_tag(ModTag::condition("CriticalStrike", true)),
+    );
+    db.add_mod(
+        Modifier::number("LightningDamageMax", ModType::Base, 50.0)
+            .with_tag(ModTag::condition("CriticalStrike", true)),
+    );
+    // Crit-only Fire: 100-100 (×3 crit mult = 300-300 on crit leg).
+    db.add_mod(
+        Modifier::number("FireDamageMin", ModType::Base, 100.0)
+            .with_tag(ModTag::condition("CriticalStrike", false)),
+    );
+    db.add_mod(
+        Modifier::number("FireDamageMax", ModType::Base, 100.0)
+            .with_tag(ModTag::condition("CriticalStrike", false)),
+    );
+
+    let mut enemy = ModDb::new();
+    enemy.add_mod(Modifier::number("LightningResist", ModType::Base, 20.0));
+    enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
+
+    let cfg = CalcConfig::attack().with_mode_effective(true);
+    let inp = MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        base_action_rate: 1.0,
+        ..MinimalInput::default()
+    };
+    let out = calculate_minimal_vs_enemy(&db, &enemy, &cfg, &inp);
+
+    let find_avg = |slice: &[(DamageType, f64)], ty: DamageType| -> f64 {
+        slice
+            .iter()
+            .find(|(t, _)| *t == ty)
+            .unwrap_or_else(|| panic!("missing {ty:?}"))
+            .1
+    };
+    let eps = 1e-9;
+
+    // c = 0.4, 1-c = 0.6, m = 3.0:
+    // Physical: 100*0.6 + 300*0.4 = 180
+    // Lightning (non-crit only): 50*0.6 = 30
+    // Fire (crit only): 300*0.4 = 120
+    assert!((find_avg(&out.stored_combined_avg, DamageType::Physical) - 180.0).abs() < eps);
+    assert!((find_avg(&out.stored_combined_avg, DamageType::Lightning) - 30.0).abs() < eps);
+    assert!((find_avg(&out.stored_combined_avg, DamageType::Fire) - 120.0).abs() < eps);
+
+    // stored_ranges must contain Physical, Lightning (crit=0), and Fire (hit=0).
+    let fire_range = out
+        .stored_ranges
+        .iter()
+        .find(|r| r.damage_type == DamageType::Fire)
+        .expect("crit-only Fire must be present in stored_ranges");
+    assert_eq!(fire_range.hit_min, 0.0);
+    assert_eq!(fire_range.hit_max, 0.0);
+    assert!((fire_range.crit_min - 300.0).abs() < eps);
+    assert!((fire_range.crit_max - 300.0).abs() < eps);
+
+    let lightning_range = out
+        .stored_ranges
+        .iter()
+        .find(|r| r.damage_type == DamageType::Lightning)
+        .expect("non-crit-only Lightning must be present in stored_ranges");
+    assert!((lightning_range.hit_min - 50.0).abs() < eps);
+    assert!((lightning_range.hit_max - 50.0).abs() < eps);
+    assert_eq!(lightning_range.crit_min, 0.0);
+    assert_eq!(lightning_range.crit_max, 0.0);
+
+    // Mitigated averages: Phys 180, Lightning 30*0.8 = 24, Fire 120*0.5 = 60.
+    assert!((find_avg(&out.mitigated_avg, DamageType::Physical) - 180.0).abs() < eps);
+    assert!((find_avg(&out.mitigated_avg, DamageType::Lightning) - 24.0).abs() < eps);
+    assert!((find_avg(&out.mitigated_avg, DamageType::Fire) - 60.0).abs() < eps);
+
+    // Session mitigation_terms must succeed and report all three types by DamageType.
+    let mut session = CalculationSession::new(inp).with_config(cfg);
+    session.add_modifiers(db.iter_mods().cloned());
+    session.add_enemy_modifiers(enemy.iter_mods().cloned());
+    session.perform_minimal().expect("perform");
+    let parts = session
+        .hit_mitigation_terms(0)
+        .expect("hit_mitigation_terms must handle crit-only damage types");
+    assert_eq!(parts.len(), 3);
+    let fire_part = parts
+        .iter()
+        .find(|p| p.damage_type == DamageType::Fire)
+        .expect("Fire mitigation part");
+    assert!((fire_part.average - 120.0).abs() < eps);
+    assert!((fire_part.mitigated - 60.0).abs() < eps);
+    assert_eq!(fire_part.resist, Some(50.0));
+    let lightning_part = parts
+        .iter()
+        .find(|p| p.damage_type == DamageType::Lightning)
+        .expect("Lightning mitigation part");
+    assert!((lightning_part.average - 30.0).abs() < eps);
+    assert!((lightning_part.mitigated - 24.0).abs() < eps);
+    assert_eq!(lightning_part.resist, Some(20.0));
+}

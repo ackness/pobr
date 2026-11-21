@@ -402,6 +402,106 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         self.assertEqual(sorted(p.name for p in (self.root / "target").iterdir()), ["debug"])
         self.assertEqual((self.root / "target/debug/deps/lib.rlib").read_text(), "debug")
 
+    def test_warm_clone_prunes_incremental_directory(self):
+        source = self.root / "source tree"
+        self.write("source tree/target/debug/deps/lib.rlib", "debug")
+        self.write("source tree/target/debug/incremental/state", "path-bound")
+        # Simulate a copy-on-write capable cp by stripping -ac / --reflink=always and forwarding cp -a.
+        self.write("bin/cp", f'#!/bin/bash\n'
+                   f'args=()\n'
+                   f'for a in "$@"; do\n'
+                   f'  case "$a" in\n'
+                   f'    --reflink=always) ;;\n'
+                   f'    -ac) args+=(-a) ;;\n'
+                   f'    *) args+=("$a") ;;\n'
+                   f'  esac\n'
+                   f'done\n'
+                   f'exec {shutil.which("cp")} "${{args[@]}}"\n')
+        (self.root / "bin/cp").chmod(0o755)
+        result = self.run_script("devs/scripts/driver.sh", "warm", str(source))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("copy-on-write clone", result.stdout)
+        self.assertFalse((self.root / "target/debug/incremental").exists())
+        self.assertTrue((source / "target/debug/incremental/state").is_file())
+
+    def test_gate_apps_includes_sync_pob_catalog(self):
+        result = self.run_script("devs/scripts/driver.sh", "gate", "--only", "apps")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        [call] = self.calls()
+        self.assertEqual(call[:2], ["test", "-q"])
+        self.assertIn("sync-pob-catalog", call)
+
+    def test_driver_resolves_relative_paths_against_caller_cwd(self):
+        sub = self.root / "nested/work"
+        sub.mkdir(parents=True)
+        self.write("nested/work/local-build/code.txt", "code")
+        self.write("nested/work/other-wt/target/debug/deps/lib.rlib", "debug")
+        self.write("examples/root-build/code.txt", "root")
+        self.write("data/CURRENT", "  test \r\n")
+        # Stub compare-build.py and triage.py to echo resolved arguments.
+        self.write("devs/scripts/compare-build.py", "import json, sys; print(json.dumps(sys.argv[1:]))\n")
+        self.write("devs/scripts/triage.py", "import json, sys; print(json.dumps(sys.argv[1:]))\n")
+        self.write("bin/cargo", '''#!/usr/bin/env python3
+import json, os, sys
+print(json.dumps({"diag": os.environ.get("POBR_DIAGNOSE"),
+                  "ref": os.environ.get("POBR_REFERENCE_BUILDS"), "args": sys.argv[1:]}))
+''')
+        (self.root / "bin/cargo").chmod(0o755)
+        def run_from_sub(*args):
+            return subprocess.run(
+                ["bash", str(self.root / "devs/scripts/driver.sh"), *args],
+                cwd=sub, env=self.env, capture_output=True, text=True, timeout=10,
+            )
+        # Caller-relative paths win; repo-relative paths still work as fallback.
+        res = run_from_sub("compare", "local-build", "Life")
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(json.loads(res.stdout), [str(sub / "local-build"), "Life"])
+        res = run_from_sub("compare", "examples/root-build")
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(json.loads(res.stdout), [str(self.root / "examples/root-build")])
+        res = run_from_sub("triage", "local-build", "--jobs", "2")
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(json.loads(res.stdout), [str(sub / "local-build"), "--jobs", "2"])
+        res = run_from_sub("diagnose", "local-build")
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(json.loads(res.stdout)["diag"], str(sub / "local-build"))
+        res = run_from_sub("accuracy", "local-build")
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertEqual(json.loads(res.stdout)["ref"], str(sub / "local-build"))
+        res = run_from_sub("warm", "other-wt")
+        self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
+        self.assertEqual((self.root / "target/debug/deps/lib.rlib").read_text(), "debug")
+
+    def test_regen_respects_data_root_and_nested_summary_json(self):
+        external = self.root / "external-data"
+        self.write("external-data/CURRENT", "  custom \r\n")
+        self.write("external-data/custom/base/passive_tree.json", "[]")
+        self.write("external-data/custom/generated/special_derived.json", "{}")
+        self.write("external-data/custom/generated/special_vendor.json", "{}")
+        self.write("external-data/overlay-common/special_mods.json", '{"from":"external"}')
+        shutil.rmtree(self.root / "data")
+        self.write("devs/ci/parse-coverage-baseline.json", '{"coverage_ratio": 0.9}')
+        self.write("bin/cargo", '''#!/usr/bin/env python3
+import json, pathlib, sys
+args = sys.argv[1:]
+dest = pathlib.Path(args[args.index("--data") + 1])
+assert json.loads((dest.parent / "overlay-common/special_mods.json").read_text()) == {"from": "external"}
+(dest / "generated").mkdir(parents=True, exist_ok=True)
+(dest / "generated/parse-coverage.json").write_text(
+    json.dumps({"summary": {"coverage_ratio": 0.95}}), encoding="utf-8")
+''')
+        (self.root / "bin/cargo").chmod(0o755)
+        self.env["POBR_DATA_ROOT"] = str(external)
+        self.env.pop("POBR_PATCH", None)
+        result = self.run_script("devs/scripts/regen-check.sh")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("exceeds baseline", result.stdout)
+        # Dropping below baseline via nested summary fails cleanly.
+        self.write("devs/ci/parse-coverage-baseline.json", '{"coverage_ratio": 0.99}')
+        result = self.run_script("devs/scripts/regen-check.sh")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("coverage ratchet failed", result.stdout)
+
 
 class ModifierWorkflowTests(unittest.TestCase):
     def setUp(self):
@@ -1454,6 +1554,66 @@ class TriageTests(unittest.TestCase):
         [(template, entry)] = self.triage.gather_unsupported(results)
         self.assertEqual((template, sorted(entry["builds"]), sorted(entry["actionable"])),
                          ("#% increased Damage", ["a", "b"], ["b"]))
+
+    def test_skill_names_respects_data_env_and_caches_per_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for version, name in (("v1", "First Cast"), ("v2", "Second Cast")):
+                base = root / version / "base"
+                base.mkdir(parents=True)
+                (base / "skill_gems.json").write_text("[]", encoding="utf-8")
+                (base / "granted_effects.json").write_text(json.dumps([
+                    {"id": "MetaCastOnCritPlayer", "displayed_name": name},
+                ]), encoding="utf-8")
+            (root / "CURRENT").write_text("v1\n", encoding="utf-8")
+            with patch.dict(os.environ, {"POBR_DATA_ROOT": str(root)}):
+                os.environ.pop("POBR_DATA_VERSION", None)
+                self.assertEqual(self.triage.skill_names()["MetaCastOnCritPlayer"], "First Cast")
+                os.environ["POBR_DATA_VERSION"] = "v2"
+                self.assertEqual(self.triage.skill_names()["MetaCastOnCritPlayer"], "Second Cast")
+                self.assertEqual(len(self.triage._SKILL_NAMES), 2)
+
+    def test_reservation_free_skills_prefers_version_overlay_over_common(self):
+        xml = ("<PathOfBuilding2><Items>"
+               "<Item id=\"1\">Rarity: UNIQUE\nCommon\nCommon Amulet\nGrants Skill: Level 20 First Skill\n</Item>"
+               "<Item id=\"2\">Rarity: UNIQUE\nVersion\nVersion Amulet\nGrants Skill: Level 20 Second Skill\n</Item>"
+               "</Items></PathOfBuilding2>")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "CURRENT").write_text("v1\n", encoding="utf-8")
+            (root / "overlay-common").mkdir(parents=True)
+            (root / "overlay-common/item_granted_skills.json").write_text(
+                json.dumps({"reservation_free_bases": ["Common Amulet"]}), encoding="utf-8")
+            (root / "v1/overlay").mkdir(parents=True)
+            with patch.dict(os.environ, {"POBR_DATA_ROOT": str(root)}):
+                os.environ.pop("POBR_DATA_VERSION", None)
+                self.assertEqual(self.triage.reservation_free_skills(xml), {"firstskill"})
+                # Version overlay overrides overlay-common (matching GameData::load_overlay_or_common).
+                (root / "v1/overlay/item_granted_skills.json").write_text(
+                    json.dumps({"reservation_free_bases": ["Version Amulet"]}), encoding="utf-8")
+                self.assertEqual(self.triage.reservation_free_skills(xml), {"secondskill"})
+
+    def test_usage_token_streams_binary_with_identical_hash(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / "pobr"
+            payload = b"binary-bytes" * 4096
+            binary.write_bytes(payload)
+            data_root = root / "data"
+            (data_root / "v1/base").mkdir(parents=True)
+            (data_root / "overlay-common").mkdir(parents=True)
+            (data_root / "CURRENT").write_text("v1\n", encoding="utf-8")
+            sample = data_root / "v1/base/sample.json"
+            sample.write_text("{}", encoding="utf-8")
+            with patch.dict(os.environ, {"POBR_DATA_ROOT": str(data_root)}):
+                os.environ.pop("POBR_DATA_VERSION", None)
+                actual = self.triage.usage_token(binary)
+            expected = hashlib.sha256(payload)
+            expected.update(Path(self.triage.__file__).read_bytes())
+            stat = sample.stat()
+            expected.update(f"{sample.resolve()}:{stat.st_size}:{stat.st_mtime_ns}".encode())
+            self.assertEqual(actual, expected.hexdigest())
 
 
 class LookupTests(unittest.TestCase):

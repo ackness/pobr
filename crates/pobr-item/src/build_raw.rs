@@ -93,17 +93,17 @@ impl ItemDraft {
         if let Some(q) = h.quality {
             lines.push(format!("Quality: {q}"));
         }
-        if h.socket_count > 0 {
-            let sockets = vec!["S"; h.socket_count as usize].join(" ");
-            lines.push(format!("Sockets: {sockets}"));
-            for i in 0..h.socket_count as usize {
+        if h.socket_count > 0 || h.jewel_socket_count > 0 {
+            let rune_sockets = h.socket_count as usize;
+            let jewel_sockets = h.jewel_socket_count as usize;
+            let mut sockets = Vec::with_capacity(rune_sockets + jewel_sockets);
+            sockets.resize(rune_sockets, "S");
+            sockets.resize(rune_sockets + jewel_sockets, "J");
+            lines.push(format!("Sockets: {}", sockets.join(" ")));
+            for i in 0..rune_sockets {
                 let rune = h.runes.get(i).map(String::as_str).unwrap_or("None");
                 lines.push(format!("Rune: {rune}"));
             }
-        }
-        if h.jewel_socket_count > 0 {
-            let sockets = vec!["J"; h.jewel_socket_count as usize].join(" ");
-            lines.push(format!("Sockets: {sockets}"));
         }
         if let Some(lr) = h.level_req {
             lines.push(format!("LevelReq: {lr}"));

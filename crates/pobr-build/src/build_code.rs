@@ -26,14 +26,21 @@ use crate::error::BuildCodeError;
 /// leaves plenty of headroom while still guarding against zip-bombs).
 pub const MAX_DECOMPRESSED_BYTES: usize = 16 * 1024 * 1024;
 
-/// Upper bound on compressed input length (encode side; normal Build XML is far smaller).
+/// Upper bound on input length for both encode (Build XML) and decode (encoded build code).
 pub const MAX_INPUT_BYTES: usize = 16 * 1024 * 1024;
 
 /// Decodes a PoB Build Code into a Build XML string.
 ///
 /// Tolerant of whitespace, missing padding, and both URL-safe and standard alphabets.
-/// Guards against zip-bombs by erroring if the decompressed output exceeds [`MAX_DECOMPRESSED_BYTES`].
+/// Guards against oversized inputs ([`MAX_INPUT_BYTES`]) and zip-bombs
+/// ([`MAX_DECOMPRESSED_BYTES`]).
 pub fn decode_pob_code(code: &str) -> Result<String, BuildCodeError> {
+    if code.len() > MAX_INPUT_BYTES {
+        return Err(BuildCodeError::InputTooLarge {
+            len: code.len(),
+            limit: MAX_INPUT_BYTES,
+        });
+    }
     let cleaned = strip_ascii_whitespace(code);
     if cleaned.is_empty() {
         return Err(BuildCodeError::Empty);
@@ -174,6 +181,16 @@ mod tests {
         assert!(matches!(
             decode_pob_code(&code),
             Err(BuildCodeError::Inflate(_))
+        ));
+    }
+
+    #[test]
+    fn oversized_code_errors_before_decoding() {
+        let oversized = "a".repeat(MAX_INPUT_BYTES + 1);
+        assert!(matches!(
+            decode_pob_code(&oversized),
+            Err(BuildCodeError::InputTooLarge { len, limit })
+                if len == MAX_INPUT_BYTES + 1 && limit == MAX_INPUT_BYTES
         ));
     }
 }

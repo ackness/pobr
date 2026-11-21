@@ -212,9 +212,10 @@ pub struct UsageModifier {
     pub mod_type: &'static str,
     /// The value as stored: a number, `true` / `false`, a text, or `[nested N]`.
     pub value: UsageValue,
-    /// An applied number's value in the main skill's context, scaling tags
-    /// applied (caps shared with other modifiers are not). `null` for a
-    /// modifier that is not an applied number or does not match that context.
+    /// An applied number's value in the main skill's context (or its hit
+    /// context for hit-keyword modifiers), scaling tags applied (caps shared
+    /// with other modifiers are not). `null` for a modifier that is not an
+    /// applied number or does not match that context.
     pub applied: Option<f64>,
     pub status: ModifierStatus,
     /// `inactive`: the requirement it did not meet; `outside`: what consumes
@@ -420,8 +421,8 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
                     value: stored_value(&modifier.value),
                     applied: (status == ModifierStatus::Applied
                         && matches!(modifier.value, ModValue::Number(_))
-                        && modifier.matches(main.cfg))
-                    .then(|| modifier.effective_number(main))
+                        && modifier.matches(context.cfg))
+                    .then(|| modifier.effective_number(*context))
                     .flatten(),
                     read_gate: (status == ModifierStatus::Inactive)
                         .then(|| {
@@ -617,7 +618,10 @@ pub fn line_usage(diagnosis: &Diagnosis, build: &Build, data: &BuildData) -> Lin
                         &skill.skill_id,
                         skill.gem_level.saturating_add(skill.bonus_levels),
                     )
-                    .map_or(skill.gem_level + skill.bonus_levels, |row| row.level),
+                    .map_or_else(
+                        || skill.gem_level.saturating_add(skill.bonus_levels),
+                        |row| row.level,
+                    ),
                 quality: skill.quality,
             })
             .collect(),
@@ -796,11 +800,12 @@ fn enemy_distance_gate(modifier: &Modifier, cfg: &pobr_core::CalcConfig) -> Opti
     })
 }
 
-/// A slot-scoped defence increase with no base to scale: the shield-local
-/// query for that defence never runs when the equipped shield has no base of
-/// it (the per-slot loop iterates the slot bases). Reports as inactive with a
-/// state gate so the gap queue files it as state-gated, not dropped. Applied
-/// conversions are judged by the read log before reaching this fallback.
+/// A slot-scoped defence increase with no base to scale: the slot-local
+/// query for that defence never runs when the equipped item in that slot has
+/// no base of it (the per-slot loop iterates the slot bases). Reports as
+/// inactive with a state gate so the gap queue files it as state-gated, not
+/// dropped. Applied conversions are judged by the read log before reaching
+/// this fallback.
 fn missing_slot_base_gate(
     modifier: &Modifier,
     bases: &BTreeSet<(String, String)>,
@@ -821,6 +826,19 @@ fn missing_slot_base_gate(
         ("bodyarmour", "EnergyShield") => {
             Cow::Borrowed("the equipped body armour has no base Energy Shield")
         }
+        ("helmet", "Armour") => Cow::Borrowed("the equipped helmet has no base Armour"),
+        ("helmet", "Evasion") => Cow::Borrowed("the equipped helmet has no base Evasion"),
+        ("helmet", "EnergyShield") => {
+            Cow::Borrowed("the equipped helmet has no base Energy Shield")
+        }
+        ("gloves", "Armour") => Cow::Borrowed("the equipped gloves have no base Armour"),
+        ("gloves", "Evasion") => Cow::Borrowed("the equipped gloves have no base Evasion"),
+        ("gloves", "EnergyShield") => {
+            Cow::Borrowed("the equipped gloves have no base Energy Shield")
+        }
+        ("boots", "Armour") => Cow::Borrowed("the equipped boots have no base Armour"),
+        ("boots", "Evasion") => Cow::Borrowed("the equipped boots have no base Evasion"),
+        ("boots", "EnergyShield") => Cow::Borrowed("the equipped boots have no base Energy Shield"),
         _ => return None,
     };
     if bases.contains(&(slot.to_string(), name.to_string())) {
@@ -1833,5 +1851,162 @@ mod tests {
         );
         let zero = Modifier::number("Life", ModType::Base, 0.0);
         assert_eq!(uncounted_reason(&zero, &sites), "its value is 0");
+    }
+
+    #[test]
+    fn missing_slot_base_gate_covers_all_armour_slots() {
+        use pobr_core::ModTag;
+
+        let empty = BTreeSet::new();
+        for (slot, stat, expected) in [
+            (
+                "weapon2",
+                "Armour",
+                "the equipped shield has no base Armour",
+            ),
+            (
+                "weapon2",
+                "Evasion",
+                "the equipped shield has no base Evasion",
+            ),
+            (
+                "weapon2",
+                "EnergyShield",
+                "the equipped shield has no base Energy Shield",
+            ),
+            (
+                "bodyarmour",
+                "Armour",
+                "the equipped body armour has no base Armour",
+            ),
+            (
+                "bodyarmour",
+                "Evasion",
+                "the equipped body armour has no base Evasion",
+            ),
+            (
+                "bodyarmour",
+                "EnergyShield",
+                "the equipped body armour has no base Energy Shield",
+            ),
+            ("helmet", "Armour", "the equipped helmet has no base Armour"),
+            (
+                "helmet",
+                "Evasion",
+                "the equipped helmet has no base Evasion",
+            ),
+            (
+                "helmet",
+                "EnergyShield",
+                "the equipped helmet has no base Energy Shield",
+            ),
+            (
+                "gloves",
+                "Armour",
+                "the equipped gloves have no base Armour",
+            ),
+            (
+                "gloves",
+                "Evasion",
+                "the equipped gloves have no base Evasion",
+            ),
+            (
+                "gloves",
+                "EnergyShield",
+                "the equipped gloves have no base Energy Shield",
+            ),
+            ("boots", "Armour", "the equipped boots have no base Armour"),
+            (
+                "boots",
+                "Evasion",
+                "the equipped boots have no base Evasion",
+            ),
+            (
+                "boots",
+                "EnergyShield",
+                "the equipped boots have no base Energy Shield",
+            ),
+        ] {
+            for mod_type in [ModType::Inc, ModType::More] {
+                let modifier = Modifier::number(stat, mod_type, 50.0)
+                    .with_tag(ModTag::SlotName(slot.to_string()));
+                let gate = missing_slot_base_gate(&modifier, &empty)
+                    .unwrap_or_else(|| panic!("expected gate for {slot} {stat} {mod_type:?}"));
+                assert_eq!(&*gate.state, expected);
+                assert!(gate.config_option.is_none());
+
+                let present = BTreeSet::from([(slot.to_string(), stat.to_string())]);
+                assert!(missing_slot_base_gate(&modifier, &present).is_none());
+            }
+            let base_mod = Modifier::number(stat, ModType::Base, 50.0)
+                .with_tag(ModTag::SlotName(slot.to_string()));
+            assert!(missing_slot_base_gate(&base_mod, &empty).is_none());
+        }
+
+        let ring = Modifier::number("Armour", ModType::Inc, 50.0)
+            .with_tag(ModTag::SlotName("ring1".to_string()));
+        assert!(missing_slot_base_gate(&ring, &empty).is_none());
+    }
+
+    #[test]
+    fn hit_keyword_modifier_reports_applied_value_and_skill_level_saturates() {
+        use pobr_core::CalcConfig;
+        use pobr_core::calc::MinimalInput;
+
+        let mut session = CalculationSession::new(MinimalInput {
+            base_hit_min: 10.0,
+            base_hit_max: 20.0,
+            base_action_rate: 1.0,
+            ..MinimalInput::default()
+        })
+        .with_config(CalcConfig::spell());
+        session.add_modifiers([Modifier::number("Damage", ModType::Inc, 25.0)
+            .with_keyword_flags(KeywordFlags::HIT)
+            .with_source("25% increased Damage with Hits")]);
+        session.track_modifier_reads();
+        let session = session.finish().unwrap();
+        assert!(session.output().total_hit_avg > 0.0);
+        let reads = session.modifier_reads();
+        let variables = session.read_variables();
+        let diagnosis = Diagnosis {
+            session,
+            main_skill: None,
+            skills: vec![crate::MainSkillSummary {
+                skill_id: "MissingSkill".into(),
+                gem_id: String::new(),
+                gem_level: u32::MAX,
+                bonus_levels: 5,
+                quality: 20,
+                stat_set_index: None,
+            }],
+            unparsed_lines: Vec::new(),
+            unmapped_stats: Vec::new(),
+            unknown_stats: Vec::new(),
+            unread_modifiers: Vec::new(),
+            read_names: Vec::new(),
+            unprovided_multipliers: Vec::new(),
+            unset_conditions: Vec::new(),
+            reads,
+            variables,
+            received_lines: Vec::new(),
+        };
+        let ledger = line_usage(&diagnosis, &Build::new(), &BuildData::empty());
+        let row = ledger
+            .lines
+            .iter()
+            .find(|line| line.text.as_deref() == Some("25% increased Damage with Hits"))
+            .expect("hit modifier line");
+        assert_eq!(row.status, LineStatus::Applied);
+        assert_eq!(row.modifiers.len(), 1);
+        assert_eq!(row.modifiers[0].status, ModifierStatus::Applied);
+        assert_eq!(row.modifiers[0].applied, Some(25.0));
+        assert_eq!(
+            ledger.skills,
+            vec![SkillLevel {
+                skill_id: "MissingSkill".into(),
+                level: u32::MAX,
+                quality: 20,
+            }]
+        );
     }
 }

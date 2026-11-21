@@ -1189,3 +1189,214 @@ fn an_official_rolled_template_wins_over_a_supplement_written_with_parentheses()
         Some(("某物 +(1-2)".into(), None))
     );
 }
+
+#[test]
+fn numeric_captures_require_valid_number_syntax() {
+    let pack = templates_pack(
+        "zz",
+        serde_json::json!([
+            {"src": "{0:+d} 生命上限", "en": "{0:+d} to maximum Life"},
+            {"src": "能量护盾提高 {0:d}%", "en": "{0:d}% increased maximum Energy Shield"}
+        ]),
+    );
+    let parser = LineParser::new(&[&pack], []).unwrap();
+    for (line, expected) in [
+        ("+50 生命上限", "+50 to maximum Life"),
+        ("-10 生命上限", "-10 to maximum Life"),
+        ("5 生命上限", "5 to maximum Life"),
+        (
+            "能量护盾提高 12.5%",
+            "12.5% increased maximum Energy Shield",
+        ),
+        (
+            "能量护盾提高 +0.5%",
+            "+0.5% increased maximum Energy Shield",
+        ),
+        (
+            "能量护盾提高 -0.5%",
+            "-0.5% increased maximum Energy Shield",
+        ),
+    ] {
+        assert_eq!(parser.parse_line(line).as_deref(), Some(expected), "{line}");
+    }
+    for bad in [
+        "- 生命上限",
+        "+ 生命上限",
+        ". 生命上限",
+        "... 生命上限",
+        "1..2 生命上限",
+        "--5 生命上限",
+        "++5 生命上限",
+        "+-5 生命上限",
+        "1-2 生命上限",
+        "+. 生命上限",
+        "能量护盾提高 -%",
+        "能量护盾提高 +%",
+        "能量护盾提高 ...%",
+        "能量护盾提高 1..2%",
+    ] {
+        assert_eq!(parser.parse_line(bad), None, "{bad}");
+    }
+}
+
+#[test]
+fn backtracking_matches_negative_ranges_and_adjacent_signed_slots() {
+    let pack = templates_pack(
+        "zz",
+        serde_json::json!([
+            {"src": "范围 +({0}-{1}) 某物", "en": "+({0}-{1}) to Foo"},
+            {"src": "组合 {0}+{1:+d}", "en": "Combo {0} and {1:+d}"},
+            {"src": "{0}+{1:+d} 点", "en": "{0} plus {1:+d} points"},
+            {"src": "前缀 +{0:+d} 数值", "en": "Prefix {0:+d} Value"}
+        ]),
+    );
+    let parser = LineParser::new(&[&pack], []).unwrap();
+    let renderer = LineRenderer::new(&[&pack], []).unwrap();
+
+    // `Literal("-")` between `{0}` and `{1}` must backtrack past the leading `-`
+    // of a negative `{0}` instead of failing on the first `-` occurrence.
+    for (en, zh) in [
+        ("+(1-2) to Foo", "范围 +(1-2) 某物"),
+        ("+(-10-10) to Foo", "范围 +(-10-10) 某物"),
+        ("+(-10--5) to Foo", "范围 +(-10--5) 某物"),
+    ] {
+        assert_eq!(renderer.render_line(en).as_deref(), Some(zh), "{en}");
+        assert_eq!(parser.parse_line(zh).as_deref(), Some(en), "{zh}");
+    }
+
+    // `Literal("+")` before `{1:+d}` strips `+` to an empty literal (`optional_plus`)
+    // and splits where the signed slot's own `+` or `-` begins.
+    for (zh, en) in [
+        ("组合 10+5", "Combo 10 and +5"),
+        ("组合 10-5", "Combo 10 and -5"),
+        ("组合 -10-5", "Combo -10 and -5"),
+        ("组合 10++5", "Combo 10 and +5"),
+        ("组合 10+(1-2)", "Combo 10 and +(1-2)"),
+        ("组合 10-(1-2)", "Combo 10 and -(1-2)"),
+        ("10+5 点", "10 plus +5 points"),
+        ("10-5 点", "10 plus -5 points"),
+        ("-10-5 点", "-10 plus -5 points"),
+    ] {
+        assert_eq!(parser.parse_line(zh).as_deref(), Some(en), "{zh}");
+    }
+    for bad in [
+        "组合 105",
+        "组合 10+-5",
+        "组合 10--5",
+        "组合 10+++5",
+        "105 点",
+    ] {
+        assert_eq!(parser.parse_line(bad), None, "{bad}");
+    }
+    assert_eq!(
+        renderer.render_line("Combo 10 and +5").as_deref(),
+        Some("组合 10+5")
+    );
+    assert_eq!(
+        renderer.render_line("Combo 10 and -5").as_deref(),
+        Some("组合 10-5")
+    );
+    assert_eq!(
+        parser.parse_line("前缀 -5 数值").as_deref(),
+        Some("Prefix -5 Value")
+    );
+}
+
+#[test]
+fn backtracking_handles_repeated_placeholders_and_memoizes_exponential_inputs() {
+    // A repeated placeholder must backtrack to a later literal occurrence when
+    // the first split makes the two captures disagree.
+    let repeat_templates = vec![StatLineTemplate {
+        src: "Prefix {0}-{1}-{0}".into(),
+        en: "{0}|{1}".into(),
+        origin: None,
+    }];
+    let repeat = LineTranslator::new(&repeat_templates, HashMap::new());
+    assert_eq!(
+        repeat.translate_line("Prefix x-y-z-x-y").as_deref(),
+        Some("x-y|z")
+    );
+    assert_eq!(repeat.translate_line("Prefix x-y-z-w"), None);
+
+    // Pathological repeated literals with a failing tail must terminate quickly
+    // via failed-state memoization rather than exploring exponentially many splits.
+    let mut src = String::from("Anchor ");
+    for i in 0..16 {
+        src.push_str(&format!("{{{i}}}a"));
+    }
+    src.push('b');
+    let redos_templates = vec![StatLineTemplate {
+        src,
+        en: "ok".into(),
+        origin: None,
+    }];
+    let redos = LineTranslator::new(&redos_templates, HashMap::new());
+    let input = format!("Anchor {}c", "xa".repeat(35));
+    assert_eq!(redos.translate_line(&input), None);
+}
+
+#[test]
+fn parser_loads_passive_node_names_with_base_word_passive_precedence() {
+    let pack = LocalePack::from_files(
+        "zz",
+        [
+            (
+                "stat_lines.json",
+                serde_json::json!([
+                    {"src": "配置 {0}", "en": "Allocates {0}"},
+                    {"src": "{0}范围内的天赋可以配置", "en": "Passives in Radius of {0} can be Allocated"}
+                ])
+                .to_string()
+                .into_bytes(),
+            ),
+            (
+                "base_items.json",
+                serde_json::json!({
+                    "Metadata/Items/Rings/BaseWin": "共用名甲"
+                })
+                .to_string()
+                .into_bytes(),
+            ),
+            (
+                "words.json",
+                serde_json::json!({
+                    "Word Overridden By Base": "共用名甲",
+                    "Word Wins Over Passive": "共用名乙"
+                })
+                .to_string()
+                .into_bytes(),
+            ),
+            (
+                "passive_names.json",
+                serde_json::json!({
+                    "Passive Overridden By Base": "共用名甲",
+                    "Passive Overridden By Word": "共用名乙",
+                    "Iron Reflexes": "霸体"
+                })
+                .to_string()
+                .into_bytes(),
+            ),
+        ],
+    )
+    .unwrap();
+    let bases = [("Metadata/Items/Rings/BaseWin", "Base Wins")];
+    let parser = LineParser::new(&[&pack], bases).unwrap();
+
+    // PassiveNode names translate standalone and inside string-placeholder lines.
+    assert_eq!(parser.parse_line("霸体").as_deref(), Some("Iron Reflexes"));
+    assert_eq!(
+        parser.parse_line("配置 霸体").as_deref(),
+        Some("Allocates Iron Reflexes")
+    );
+    assert_eq!(
+        parser.parse_line("霸体范围内的天赋可以配置").as_deref(),
+        Some("Passives in Radius of Iron Reflexes can be Allocated")
+    );
+
+    // Precedence within a pack: BaseItem > Word > PassiveNode.
+    assert_eq!(parser.parse_line("共用名甲").as_deref(), Some("Base Wins"));
+    assert_eq!(
+        parser.parse_line("共用名乙").as_deref(),
+        Some("Word Wins Over Passive")
+    );
+}

@@ -180,6 +180,20 @@ jobs:
           path: web/dist
           if-no-files-found: error
           retention-days: 3
+      - name: Package standalone WASM and report size
+        run: |
+          pnpm package-wasm
+          cat ../.cache/wasm-release/wasm-size.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Standalone WASM package smoke
+        run: pnpm smoke-wasm-package
+      - name: Upload WASM release assets
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: wasm-release
+          path: .cache/wasm-release/*
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
       # The Playwright suite runs locally (`mise run e2e`; `mise run e2e release` before a
       # release). A range that changes the data lock (master push, or a manual run on a branch
       # whose lock differs from the default branch) runs the one data-bump spec here: the
@@ -212,20 +226,6 @@ jobs:
       - name: Data-bump smoke
         if: steps.data-smoke.outputs.run == 'true'
         run: pnpm exec playwright test data-bump-smoke.spec.ts
-      - name: Package standalone WASM and report size
-        run: |
-          pnpm package-wasm
-          cat ../.cache/wasm-release/wasm-size.md >> "$GITHUB_STEP_SUMMARY"
-      - name: Standalone WASM package smoke
-        run: pnpm smoke-wasm-package
-      - name: Upload WASM release assets
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: wasm-release
-          path: .cache/wasm-release/*
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 14
       - name: Upload E2E failure artifacts
         if: failure()
         uses: actions/upload-artifact@v7.0.2

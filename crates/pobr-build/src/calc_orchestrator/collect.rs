@@ -368,8 +368,9 @@ pub(crate) fn granted_passive_defs<'d>(
     // mods; a line that fails to parse is silently skipped — matching
     // skip-and-collect semantics).
     let item_texts = build
-        .items
-        .values()
+        .equipped_items()
+        .into_iter()
+        .map(|(_, item)| item)
         .chain(build.limbs.values())
         .flat_map(|item| {
             item.implicit_texts
@@ -491,17 +492,26 @@ pub(crate) fn keystone_mod_map(
 ) -> std::collections::BTreeMap<String, Vec<Modifier>> {
     let allocated_ids: std::collections::HashSet<u32> =
         allocated.iter().map(|n| n.node_id.0).collect();
+    let mut candidates: Vec<(u32, &pobr_data::catalog::PassiveNodeDef)> = data
+        .passive_nodes_for(build.tree_version.as_deref())
+        .iter()
+        .filter(|(id, def)| {
+            def.kind == pobr_data::catalog::PassiveNodeKind::Keystone && !allocated_ids.contains(id)
+        })
+        .map(|(&id, def)| (id, def))
+        .collect();
+    candidates.sort_unstable_by_key(|(id, _)| *id);
     let mut map = std::collections::BTreeMap::new();
-    for (id, def) in data.passive_nodes_for(build.tree_version.as_deref()) {
-        if def.kind != pobr_data::catalog::PassiveNodeKind::Keystone || allocated_ids.contains(id) {
-            continue;
-        }
+    for (id, def) in candidates {
         let Some(name) = def.name.clone() else {
             continue;
         };
+        if map.contains_key(&name) {
+            continue;
+        }
         let node = AllocatedNode {
             native: None,
-            node_id: pobr_data::passive_tree::NodeId(*id),
+            node_id: pobr_data::passive_tree::NodeId(id),
             ascendancy: def.ascendancy_id.is_some(),
             // The same line handling as an allocated keystone, so a granted
             // keystone means what the allocated one does.
@@ -515,7 +525,7 @@ pub(crate) fn keystone_mod_map(
             continue;
         };
         if !ingest.modifiers.is_empty() {
-            map.insert(name, ingest.modifiers);
+            map.entry(name).or_insert(ingest.modifiers);
         }
     }
     map
@@ -1093,4 +1103,66 @@ pub(crate) fn collect_item_texts(build: &Build) -> Vec<String> {
         texts.extend(item.modifier_texts.iter().cloned());
     }
     texts
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use pobr_core::mod_parser::CompiledParserRules;
+    use pobr_data::catalog::parser_rules::ModParserRulesDoc;
+    use pobr_data::catalog::{PassiveNodeDef, PassiveNodeKind};
+
+    use super::*;
+
+    fn minimal_fire_rules() -> Arc<CompiledParserRules> {
+        let doc: ModParserRulesDoc = serde_json::from_str(
+            r#"{"forms":[{"pattern":"^(%d+)%% increased","form":"INC","literal":"% increased","anchored":true}],
+                "name_map":[{"phrase":"fire damage","names":["FireDamage"]}],
+                "flag_phrases":[],"pre_flags":[],"tag_phrases":[]}"#,
+        )
+        .unwrap();
+        Arc::new(CompiledParserRules::compile(&doc).unwrap())
+    }
+
+    fn keystone_node(skill: u32, name: &str, stat: &str) -> PassiveNodeDef {
+        PassiveNodeDef {
+            skill,
+            id: format!("keystone_{skill}"),
+            name: Some(name.to_string()),
+            kind: PassiveNodeKind::Keystone,
+            stats: vec![stat.to_string()],
+            native_stats: None,
+            group: None,
+            orbit: None,
+            orbit_index: None,
+            x: None,
+            y: None,
+            connections: vec![],
+            ascendancy_id: None,
+            unlock_constraint: None,
+            variants: vec![],
+            apply_to_armour: false,
+        }
+    }
+
+    #[test]
+    fn keystone_mod_map_picks_lowest_id_on_duplicate_names() {
+        let mut data = BuildData::empty();
+        data.parser_rules = Some(minimal_fire_rules());
+        // Node 5 has no parseable mod; nodes 10 and 20 both parse -> node 10 must win.
+        for (id, stat) in [
+            (20, "20% increased Fire Damage"),
+            (5, "Unrecognized keystone line"),
+            (10, "10% increased Fire Damage"),
+        ] {
+            data.passive_nodes
+                .insert(id, keystone_node(id, "Shared Keystone", stat));
+        }
+
+        let map = keystone_mod_map(&Build::new(), &data, &[]);
+        let mods = map.get("Shared Keystone").expect("keystone resolved");
+        assert_eq!(mods.len(), 1);
+        assert_eq!(mods[0].value.as_number(), Some(10.0));
+    }
 }

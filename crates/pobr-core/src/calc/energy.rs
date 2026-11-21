@@ -465,9 +465,14 @@ pub fn apply_energy_trigger(env: &mut Env) {
                 let freeze = value(SOURCE_FREEZE_CHANCE);
                 let chances = ignite + shock + freeze;
                 let energy = if chances > 0.0 {
+                    let ignite_damage = value(SOURCE_IGNITE_DAMAGE);
+                    let ignite_energy = if ignite_damage > 0.0 && threshold > 0.0 {
+                        ignite * sum(ENERGY_PER_IGNITE_POWER) * ignite_damage / threshold
+                    } else {
+                        0.0
+                    };
                     power
-                        * (ignite * sum(ENERGY_PER_IGNITE_POWER) * value(SOURCE_IGNITE_DAMAGE)
-                            / threshold
+                        * (ignite_energy
                             + shock * sum(ENERGY_PER_SHOCK_POWER)
                             + freeze * sum(ENERGY_PER_FREEZE_POWER))
                         / chances
@@ -673,5 +678,85 @@ mod tests {
         assert!((rate - 1.0).abs() < 1e-12, "{rate}");
         // A hit that fills the gem from empty gains nothing from the refund.
         assert_eq!(triggers_per_second(4.0, 300.0, 300.0, 0.25), 4.0);
+    }
+
+    #[test]
+    fn zero_ailment_threshold_does_not_produce_nan_or_infinite_energy() {
+        use crate::calc::{Actor, ActorBaseStats};
+        use crate::{ModValue, Modifier};
+
+        // Shock source with zero ignite damage and zero enemy ailment threshold:
+        // previously 0.0 / 0.0 = NaN poisoned the entire ailment energy sum.
+        let mut shock_env = Env::new(Actor::new(80, ActorBaseStats::default()));
+        shock_env.enemy.mod_db.add_mod(Modifier::number(
+            "EnemyAilmentThreshold",
+            ModType::Inc,
+            -100.0,
+        ));
+        shock_env
+            .player
+            .mod_db
+            .add_mod(Modifier::number(MAXIMUM_ENERGY, ModType::Base, 100.0));
+        shock_env.player.mod_db.add_mod(Modifier::number(
+            ENERGY_PER_SHOCK_POWER,
+            ModType::Base,
+            20.0,
+        ));
+        shock_env.player.mod_db.add_mod(Modifier::number(
+            ENERGY_PER_IGNITE_POWER,
+            ModType::Base,
+            10.0,
+        ));
+        shock_env.player.mod_db.add_mod(
+            Modifier::new(
+                ENERGY_SOURCE,
+                ModType::List,
+                ModValue::NestedMods(vec![
+                    Modifier::number(SOURCE_RATE, ModType::Base, 2.0),
+                    Modifier::number(SOURCE_HIT_CHANCE, ModType::Base, 1.0),
+                    Modifier::number(SOURCE_SHOCK_CHANCE, ModType::Base, 1.0),
+                    Modifier::number(SOURCE_IGNITE_CHANCE, ModType::Base, 0.0),
+                    Modifier::number(SOURCE_IGNITE_DAMAGE, ModType::Base, 0.0),
+                ]),
+            )
+            .with_source("ShockSkill"),
+        );
+        apply_energy_trigger(&mut shock_env);
+        assert!(shock_env.player.output.skill_trigger_rate.is_finite());
+        // 20 energy per shock / 100 max -> 5 events -> 2.0 / 5 = 0.4 triggers/s.
+        assert!((shock_env.player.output.skill_trigger_rate - 0.4).abs() < 1e-9);
+
+        // Ignite-only source with zero ailment threshold yields 0 energy (not +inf).
+        let mut ignite_env = Env::new(Actor::new(80, ActorBaseStats::default()));
+        ignite_env.enemy.mod_db.add_mod(Modifier::number(
+            "EnemyAilmentThreshold",
+            ModType::Inc,
+            -100.0,
+        ));
+        ignite_env
+            .player
+            .mod_db
+            .add_mod(Modifier::number(MAXIMUM_ENERGY, ModType::Base, 100.0));
+        ignite_env.player.mod_db.add_mod(Modifier::number(
+            ENERGY_PER_IGNITE_POWER,
+            ModType::Base,
+            10.0,
+        ));
+        ignite_env.player.mod_db.add_mod(
+            Modifier::new(
+                ENERGY_SOURCE,
+                ModType::List,
+                ModValue::NestedMods(vec![
+                    Modifier::number(SOURCE_RATE, ModType::Base, 2.0),
+                    Modifier::number(SOURCE_HIT_CHANCE, ModType::Base, 1.0),
+                    Modifier::number(SOURCE_IGNITE_CHANCE, ModType::Base, 1.0),
+                    Modifier::number(SOURCE_IGNITE_DAMAGE, ModType::Base, 500.0),
+                ]),
+            )
+            .with_source("IgniteSkill"),
+        );
+        apply_energy_trigger(&mut ignite_env);
+        assert!(ignite_env.player.output.skill_trigger_rate.is_finite());
+        assert_eq!(ignite_env.player.output.skill_trigger_rate, 0.0);
     }
 }

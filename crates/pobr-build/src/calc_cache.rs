@@ -187,14 +187,14 @@ impl<'a> DataCalcCache<'a> {
 /// Child computations only: a source build is the exact post-selection input.
 /// No failed result is inserted. The recursive child context has memo disabled.
 pub(crate) struct TriggerMemo {
-    entries: VecDeque<(Build, pobr_core::calc::TriggerSourceStats)>,
+    entries: VecDeque<(Build, pobr_core::calc::TriggerSourceStats, Vec<String>)>,
     capacity: usize,
     pub hits: u64,
     pub misses: u64,
 }
 
 impl TriggerMemo {
-    fn new(capacity: usize) -> Self {
+    pub fn new(capacity: usize) -> Self {
         Self {
             entries: VecDeque::new(),
             capacity,
@@ -202,30 +202,45 @@ impl TriggerMemo {
             misses: 0,
         }
     }
-    pub fn get(&mut self, build: &Build) -> Option<pobr_core::calc::TriggerSourceStats> {
+    pub fn get(
+        &mut self,
+        build: &Build,
+    ) -> Option<(pobr_core::calc::TriggerSourceStats, Vec<String>)> {
         if let Some(pos) = self
             .entries
             .iter()
-            .position(|(key, _)| same_build(key, build))
+            .position(|(key, _, _)| same_build(key, build))
         {
             self.hits += 1;
             let entry = self.entries.remove(pos).expect("matched entry");
             let stats = entry.1;
+            let support_limits = entry.2.clone();
             self.entries.push_back(entry);
-            Some(stats)
+            Some((stats, support_limits))
         } else {
             self.misses += 1;
             None
         }
     }
-    pub fn insert(&mut self, build: Build, stats: pobr_core::calc::TriggerSourceStats) {
+    pub fn insert(
+        &mut self,
+        build: Build,
+        stats: pobr_core::calc::TriggerSourceStats,
+        support_limits: Vec<String>,
+    ) {
         if self.capacity == 0 {
             return;
         }
-        if self.entries.len() == self.capacity {
+        if let Some(pos) = self
+            .entries
+            .iter()
+            .position(|(key, _, _)| same_build(key, &build))
+        {
+            self.entries.remove(pos);
+        } else if self.entries.len() == self.capacity {
             self.entries.pop_front();
         }
-        self.entries.push_back((build, stats));
+        self.entries.push_back((build, stats, support_limits));
     }
     fn clear(&mut self) {
         self.entries.clear();
@@ -536,9 +551,51 @@ mod tests {
                 crit_chance: 5.0,
                 ..Default::default()
             },
+            Vec::new(),
         );
         assert!(memo.get(&second).is_none());
         assert!(memo.get(&third).is_none());
+    }
+
+    #[test]
+    fn trigger_memo_preserves_support_limits_and_deduplicates_on_insert() {
+        let mut memo = TriggerMemo::new(2);
+        let first = build(80);
+        let second = build(81);
+        let stats_v1 = pobr_core::calc::TriggerSourceStats {
+            action_rate: 1.5,
+            ..Default::default()
+        };
+        let stats_v2 = pobr_core::calc::TriggerSourceStats {
+            action_rate: 2.5,
+            ..Default::default()
+        };
+        memo.insert(
+            first.clone(),
+            stats_v1,
+            vec!["TriggerSource: limit v1".into()],
+        );
+        memo.insert(
+            second.clone(),
+            stats_v1,
+            vec!["TriggerSource: limit second".into()],
+        );
+        // Re-inserting an existing key updates it in place without evicting `second`.
+        memo.insert(
+            first.clone(),
+            stats_v2,
+            vec!["TriggerSource: limit v2".into()],
+        );
+        assert_eq!(memo.entries.len(), 2);
+        assert_eq!(
+            memo.get(&first),
+            Some((stats_v2, vec!["TriggerSource: limit v2".into()]))
+        );
+        assert_eq!(
+            memo.get(&second),
+            Some((stats_v1, vec!["TriggerSource: limit second".into()]))
+        );
+        assert_eq!(memo.hits, 2);
     }
 
     #[test]

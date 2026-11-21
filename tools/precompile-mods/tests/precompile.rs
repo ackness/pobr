@@ -29,7 +29,7 @@ fn patch() -> String {
 }
 
 fn data_dir() -> PathBuf {
-    repo_root().join("data").join(patch())
+    pobr_gamedata::current_data_dir()
 }
 
 /// Two isolated runs cover determinism, coverage accounting and the committed golden.
@@ -104,49 +104,46 @@ fn assert_coverage_counts(corpus: &corpus::Corpus, outcome: &parsed::PrecompileO
     );
 }
 
-/// Golden: the committed parse-coverage.json summary must equal a fresh rerun.
-/// Also checks the committed report against the baseline (the ratchet baseline tracks the artifact).
+/// Checks the fresh coverage report against the baseline ratchet (always),
+/// and against a local `data/<patch>/generated/parse-coverage.json` when present.
 fn assert_committed_coverage(fresh_report: &[u8]) {
-    let committed_path = data_dir().join("generated/parse-coverage.json");
-    if !committed_path.is_file() {
-        // Skip before the first commit (artifact not on disk yet) — this
-        // check becomes active as soon as the artifact is checked in.
-        eprintln!("SKIP: no committed parse-coverage.json yet");
-        return;
-    }
-    let committed: serde_json::Value =
-        serde_json::from_slice(&std::fs::read(&committed_path).unwrap()).unwrap();
-    let committed_summary = &committed["summary"];
-
     let fresh: serde_json::Value = serde_json::from_slice(fresh_report).unwrap();
+    let fresh_summary = &fresh["summary"];
 
-    assert_eq!(
-        committed_summary, &fresh["summary"],
-        "committed parse-coverage.json summary does not match a fresh rerun -- data/generated/ was \
-         hand-edited or the artifact is stale; rerun cargo run -p precompile-mods -- --data data/<active-version> --report and commit"
-    );
-
-    // Coverage ratchet: the committed artifact must not fall below the
-    // baseline (same semantics as devs/scripts/regen-check.sh). The baseline
-    // is a manual decision gate (like parity_no_regression) and doesn't
-    // auto-refresh with regen; raising the baseline after a coverage
-    // improvement is a deliberate, optional action, so we assert a
-    // direction rather than equality here — a data regen that raises
-    // coverage no longer mechanically breaks this test.
-    let baseline_path = repo_root().join("devs/ci/parse-coverage-baseline.json");
-    if baseline_path.is_file() {
-        let baseline: serde_json::Value =
-            serde_json::from_slice(&std::fs::read(&baseline_path).unwrap()).unwrap();
-        let base = baseline["coverage_ratio"].as_f64().expect("baseline ratio");
-        let cur = committed_summary["coverage_ratio"]
-            .as_f64()
-            .expect("committed ratio");
-        assert!(
-            cur + 5e-7 >= base,
-            "coverage ratchet failed: committed {cur} < baseline {base} -- parse coverage must not decrease; \
-             if this is expected (corpus expansion), update devs/ci/parse-coverage-baseline.json in the same PR"
+    let committed_path = data_dir().join("generated/parse-coverage.json");
+    if committed_path.is_file() {
+        let committed: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&committed_path).unwrap()).unwrap();
+        assert_eq!(
+            &committed["summary"], fresh_summary,
+            "committed parse-coverage.json summary does not match a fresh rerun -- data/generated/ was \
+             hand-edited or the artifact is stale; rerun cargo run -p precompile-mods -- --data data/<active-version> --report and commit"
         );
     }
+
+    // Coverage ratchet: fresh parse coverage must not fall below the baseline
+    // (same semantics as devs/scripts/regen-check.sh). The baseline is a manual
+    // decision gate (like parity_no_regression) and doesn't auto-refresh with
+    // regen; raising the baseline after a coverage improvement is a deliberate,
+    // optional action, so we assert a direction rather than equality here — a
+    // data regen that raises coverage no longer mechanically breaks this test.
+    let baseline_path = repo_root().join("devs/ci/parse-coverage-baseline.json");
+    assert!(
+        baseline_path.is_file(),
+        "missing coverage baseline {}",
+        baseline_path.display()
+    );
+    let baseline: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&baseline_path).unwrap()).unwrap();
+    let base = baseline["coverage_ratio"].as_f64().expect("baseline ratio");
+    let cur = fresh_summary["coverage_ratio"]
+        .as_f64()
+        .expect("fresh coverage_ratio");
+    assert!(
+        cur + 5e-7 >= base,
+        "coverage ratchet failed: fresh {cur} < baseline {base} -- parse coverage must not decrease; \
+         if this is expected (corpus expansion), update devs/ci/parse-coverage-baseline.json in the same PR"
+    );
 }
 
 /// Mirror the version data directory into a unique temp `<tmp>/data/<patch>/`

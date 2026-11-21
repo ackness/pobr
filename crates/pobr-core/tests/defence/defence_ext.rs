@@ -599,3 +599,84 @@ fn any_taken_reflect_is_deferred_false() {
         "the reflect damage-taken chain is deferred, matching PoB2's current behaviour"
     );
 }
+
+#[test]
+fn es_recharge_clamps_negative_rate_and_non_positive_delay_denom() {
+    let cfg = CalcConfig::default();
+
+    let mut neg_rate_db = ModDb::new();
+    neg_rate_db.add_mod(Modifier::number(
+        "EnergyShieldRecharge",
+        ModType::Inc,
+        -150.0,
+    ));
+    let neg_rate = calc_es_recharge(&neg_rate_db, &cfg, 1000.0, false);
+    assert_eq!(neg_rate.rate_fraction, 0.0);
+    assert_eq!(neg_rate.delay_seconds, 4.0);
+
+    for slower in [-100.0, -150.0] {
+        let mut slow_delay_db = ModDb::new();
+        slow_delay_db.add_mod(Modifier::number(
+            "EnergyShieldRechargeFaster",
+            ModType::Inc,
+            slower,
+        ));
+        let res = calc_es_recharge(&slow_delay_db, &cfg, 1000.0, false);
+        assert!(res.delay_seconds.is_finite());
+        assert_eq!(res.delay_seconds, 0.0, "faster_inc={slower}");
+    }
+}
+
+#[test]
+fn avoidance_elemental_ailments_applies_to_shock_and_stormshroud_decouples_shock_immune() {
+    let cfg = CalcConfig::default();
+
+    // AvoidElementalAilments applies to Shock as well as Ignite/Chill/Freeze.
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number(
+        "AvoidElementalAilments",
+        ModType::Base,
+        40.0,
+    ));
+    let base = calc_avoidance(&db, &cfg, 0.0, 0.0, false);
+    assert_eq!(base.avoid_shock, 40.0);
+    assert_eq!(base.avoid_ignite, 40.0);
+    assert_eq!(base.avoid_chill, 40.0);
+    assert_eq!(base.avoid_freeze, 40.0);
+
+    // Stormshroud adds only direct AvoidShock to the other elemental ailments (no double-counting).
+    db.add_mod(Modifier::number("AvoidShock", ModType::Base, 30.0));
+    db.add_mod(Modifier::flag("ShockAvoidAppliesToElementalAilments"));
+    let storm = calc_avoidance(&db, &cfg, 0.0, 0.0, false);
+    assert_eq!(storm.avoid_shock, 70.0);
+    assert_eq!(storm.avoid_ignite, 70.0);
+    assert_eq!(storm.avoid_chill, 70.0);
+    assert_eq!(storm.avoid_freeze, 70.0);
+
+    // Stormshroud does not transfer ShockImmune to Ignite/Chill/Freeze.
+    let mut immune_db = ModDb::new();
+    immune_db.add_mod(Modifier::flag("ShockImmune"));
+    immune_db.add_mod(Modifier::flag("ShockAvoidAppliesToElementalAilments"));
+    let immune = calc_avoidance(&immune_db, &cfg, 0.0, 0.0, false);
+    assert_eq!(immune.avoid_shock, 100.0);
+    assert_eq!(immune.avoid_ignite, 0.0);
+    assert_eq!(immune.avoid_chill, 0.0);
+    assert_eq!(immune.avoid_freeze, 0.0);
+
+    // Detail sources match: AvoidShock lists AvoidElementalAilments; AvoidIgnite omits ShockImmune.
+    let mut session =
+        pobr_core::calc::CalculationSession::new(pobr_core::calc::MinimalInput::default());
+    session.add_modifiers([
+        Modifier::number("AvoidElementalAilments", ModType::Base, 35.0),
+        Modifier::flag("ShockImmune"),
+    ]);
+    let completed = session.finish().unwrap();
+    let shock_sources = completed.detail_sources("AvoidShock");
+    assert!(
+        shock_sources
+            .iter()
+            .any(|g| g.name == "AvoidElementalAilments")
+    );
+    let ignite_sources = completed.detail_sources("AvoidIgnite");
+    assert!(!ignite_sources.iter().any(|g| g.name == "ShockImmune"));
+}

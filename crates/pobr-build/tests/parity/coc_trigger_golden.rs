@@ -19,7 +19,6 @@
 //! failure message (the convention of `golden_regression.rs`).
 
 use pobr_build::{Build, BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
-use pobr_gamedata::GameData;
 
 const COC_XML: &str = include_str!("../fixtures/coc_cast_on_crit.xml");
 
@@ -69,9 +68,8 @@ fn assert_near_float(label: &str, expected: f64, actual: f64) {
     );
 }
 
-fn load_build_data() -> BuildData {
-    let data = GameData::new(pobr_gamedata::current_data_dir());
-    BuildData::load(&data).expect("load BuildData from repo data")
+fn load_build_data() -> &'static BuildData {
+    super::test_data()
 }
 
 fn parse_coc_build() -> Build {

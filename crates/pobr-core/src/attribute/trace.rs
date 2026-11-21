@@ -352,9 +352,15 @@ impl TraceGraph {
 
     pub fn source_ancestors(&self, node_id: TraceNodeId) -> Vec<&SourceId> {
         let mut sources = Vec::new();
+        let mut visited = vec![false; self.nodes.len()];
         let mut stack = self.incoming(node_id);
 
         while let Some(current) = stack.pop() {
+            let idx = current.as_usize();
+            if visited.get(idx).copied().unwrap_or(true) {
+                continue;
+            }
+            visited[idx] = true;
             if let Some(node) = self.node(current) {
                 if let Some(source) = &node.source {
                     sources.push(source);
@@ -405,5 +411,33 @@ impl TraceGraph {
         violations.sort();
         violations.dedup();
         violations
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pobr_data::source::SourceKind;
+
+    #[test]
+    fn source_ancestors_handles_deep_diamond_dag_linearly() {
+        let mut graph = TraceGraph::new();
+        let origin = SourceId::new(SourceKind::PassiveNode, "diamond-root");
+        let mut prev = graph.add_source_node("root", 1.0, origin.clone());
+
+        // 40-layer diamond has 2^40 paths; without visited tracking this hangs.
+        for layer in 0..40 {
+            let left = graph.add_node(format!("L{layer}"), 1.0, TraceOperation::Add);
+            let right = graph.add_node(format!("R{layer}"), 1.0, TraceOperation::Add);
+            let join = graph.add_node(format!("J{layer}"), 2.0, TraceOperation::Add);
+            graph.add_edge(prev, left);
+            graph.add_edge(prev, right);
+            graph.add_edge(left, join);
+            graph.add_edge(right, join);
+            prev = join;
+        }
+
+        let ancestors = graph.source_ancestors(prev);
+        assert_eq!(ancestors, vec![&origin]);
     }
 }

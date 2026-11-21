@@ -792,7 +792,8 @@ pub fn calc_es_recharge(
     // Recharge rate: base 750%/min, scaled by EnergyShieldRecharge INC/MORE.
     let rate_inc = db.sum(ModType::Inc, cfg, &es_recharge_increase_names(db, cfg));
     let rate_more = db.more(cfg, &[ModName::from("EnergyShieldRecharge")]);
-    let rate_per_min = ES_RECHARGE_RATE_PER_MINUTE_BASE * (1.0 + rate_inc / 100.0) * rate_more;
+    let rate_per_min =
+        (ES_RECHARGE_RATE_PER_MINUTE_BASE * (1.0 + rate_inc / 100.0) * rate_more).max(0.0);
     // Convert to a per-second fraction (750%/min = 12.5%/s; divide by 100 to get a fraction).
     let rate_fraction = rate_per_min / 60.0 / 100.0;
 
@@ -810,13 +811,19 @@ pub fn calc_es_recharge(
                     cfg,
                     &[ModName::from("EnergyShieldRechargeFaster")],
                 )
-        });
+        })
+        .max(0.0);
     let faster_inc = db.sum(
         ModType::Inc,
         cfg,
         &[ModName::from("EnergyShieldRechargeFaster")],
     );
-    let delay_seconds = round(recharge_base / (1.0 + faster_inc / 100.0));
+    let delay_denom = 1.0 + faster_inc / 100.0;
+    let delay_seconds = if delay_denom > 0.0 {
+        round(recharge_base / delay_denom)
+    } else {
+        0.0
+    };
 
     EsRecharge {
         rate_fraction: round(rate_fraction),
@@ -930,30 +937,33 @@ pub fn calc_avoidance(
 
     // Ailment avoidance (capped at 100%; Immune flags set it straight to 100)
 
-    // Stormshroud: shock avoidance also applies to all elemental ailments
+    // Stormshroud: modifiers to chance to avoid being Shocked also apply to all elemental ailments
+    // (does not transfer ShockImmune, and avoids double-counting AvoidElementalAilments / AvoidShock).
     let shock_applies_to_elemental = db.flag(cfg, "ShockAvoidAppliesToElementalAilments");
     let elemental_ailment_immune = db.flag(cfg, "ElementalAilmentImmune");
+    let avoid_elemental_raw = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("AvoidElementalAilments")],
+    );
+    let avoid_shock_direct = db.sum(ModType::Base, cfg, &[ModName::from("AvoidShock")]);
 
-    // Shock avoidance (used by the Stormshroud interaction; ElementalAilmentImmune also covers shock)
+    // Shock avoidance (ElementalAilmentImmune also covers shock)
     let shock_immune = db.flag(cfg, "ShockImmune") || elemental_ailment_immune;
     let shock_avoid_raw = if shock_immune {
         100.0
     } else {
-        db.sum(ModType::Base, cfg, &[ModName::from("AvoidShock")])
+        avoid_shock_direct + avoid_elemental_raw
     };
     let avoid_shock = round(shock_avoid_raw.clamp(0.0, AVOID_AILMENT_CAP));
 
     let elemental_extra = if shock_applies_to_elemental {
-        shock_avoid_raw
+        avoid_shock_direct
     } else {
         0.0
     };
 
-    let avoid_elemental_base = db.sum(
-        ModType::Base,
-        cfg,
-        &[ModName::from("AvoidElementalAilments")],
-    ) + elemental_extra;
+    let avoid_elemental_base = avoid_elemental_raw + elemental_extra;
 
     let ignite_immune = db.flag(cfg, "IgniteImmune") || elemental_ailment_immune;
     let avoid_ignite_raw = if ignite_immune {
@@ -1240,11 +1250,11 @@ pub(crate) fn evade_terms(
         ],
     );
 
-    // :1437 the combined independent formula (no per-type factor, no clamp to 0 — matches
-    // vendor, only :1449's cap clamping applies).
+    // :1437 the combined independent formula (no per-type factor; clamp to [0, evade_max]
+    // before Unlucky squaring so negative values cannot flip positive).
     let mut combined = EvadeTerms {
         scaling: 1.0,
-        clamp_zero: false,
+        clamp_zero: true,
         enemy_chance: monster_hit_chance_pct(evasion, enemy_accuracy),
         ..melee
     };

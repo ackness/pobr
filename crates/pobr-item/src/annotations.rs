@@ -34,6 +34,12 @@ pub struct ModLineAnnotations {
     pub unscalable: bool,
     /// `{variant:1,2,3}` — the per-line variant gating set (CheckModLineVariant).
     pub variants: Option<Vec<u32>>,
+    /// `{version:1,2}` — the per-line version gating set.
+    pub versions: Option<Vec<u32>>,
+    /// `{base:1,2}` — the per-line base-variant gating set.
+    pub bases: Option<Vec<u32>>,
+    /// `{group:1,2}` — the per-line variant-group gating set.
+    pub groups: Option<Vec<u32>>,
     /// `{tags:a,b}` — unmodeled annotations, kept verbatim.
     pub tags: Vec<String>,
 }
@@ -52,6 +58,9 @@ impl ModLineAnnotations {
             && !self.crafted
             && !self.unscalable
             && self.variants.is_none()
+            && self.versions.is_none()
+            && self.bases.is_none()
+            && self.groups.is_none()
             && self.tags.is_empty()
     }
 
@@ -92,15 +101,30 @@ impl ModLineAnnotations {
         if self.unscalable {
             out.push_str("{unscalable}");
         }
-        if let Some(vars) = &self.variants {
-            let spec: Vec<String> = vars.iter().map(u32::to_string).collect();
-            out.push_str(&format!("{{variant:{}}}", spec.join(",")));
+        for (key, ids) in [
+            ("variant", &self.variants),
+            ("version", &self.versions),
+            ("base", &self.bases),
+            ("group", &self.groups),
+        ] {
+            if let Some(ids) = ids {
+                let spec: Vec<String> = ids.iter().map(u32::to_string).collect();
+                out.push_str(&format!("{{{key}:{}}}", spec.join(",")));
+            }
         }
         if !self.tags.is_empty() {
             out.push_str(&format!("{{tags:{}}}", self.tags.join(",")));
         }
         out
     }
+}
+
+fn parse_u32_list(value: Option<&str>) -> Vec<u32> {
+    value
+        .unwrap_or("")
+        .split(',')
+        .filter_map(|s| s.trim().parse::<u32>().ok())
+        .collect()
 }
 
 /// Parses a single mod line: strips **every** leading `{...}` annotation
@@ -110,8 +134,8 @@ impl ModLineAnnotations {
 /// `for varSpec in line:gmatch("{variant:([%d,]+)}")`; this implementation is
 /// equivalent, looping over leading `{key[:value]}` segments. Unrecognized
 /// `{key}` annotations fall back into [`ModLineAnnotations::tags`] (so
-/// round-tripping never loses bytes) — but known keys (range/variant/the
-/// booleans) go to their dedicated fields.
+/// round-tripping never loses bytes) — but known keys (range/variant/version/
+/// base/group/the booleans) go to their dedicated fields.
 pub fn parse_mod_line(line: &str) -> (ModLineAnnotations, String) {
     let mut ann = ModLineAnnotations::default();
     let mut rest = line;
@@ -147,21 +171,18 @@ pub fn parse_mod_line(line: &str) -> (ModLineAnnotations, String) {
             "mutated" => ann.mutated = true,
             "crafted" => ann.crafted = true,
             "unscalable" => ann.unscalable = true,
-            "variant" => {
-                let ids: Vec<u32> = value
-                    .unwrap_or("")
-                    .split(',')
-                    .filter_map(|s| s.trim().parse::<u32>().ok())
-                    .collect();
-                ann.variants = Some(ids);
-            }
+            "variant" => ann.variants = Some(parse_u32_list(value)),
+            "version" => ann.versions = Some(parse_u32_list(value)),
+            "base" => ann.bases = Some(parse_u32_list(value)),
+            "group" => ann.groups = Some(parse_u32_list(value)),
             "tags" => {
-                ann.tags = value
-                    .unwrap_or("")
-                    .split(',')
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty())
-                    .collect();
+                ann.tags.extend(
+                    value
+                        .unwrap_or("")
+                        .split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty()),
+                );
             }
             // Unknown key: push back into tags verbatim to stay lossless
             // (so future PoB2 keys never lose bytes).
@@ -223,6 +244,41 @@ mod tests {
         assert_eq!(ann.range, Some(0.5));
         assert_eq!(ann.variants, Some(vec![1, 3]));
         assert_eq!(text, "+(40-50) to maximum Life");
+    }
+
+    #[test]
+    fn parses_and_renders_version_base_and_group() {
+        let (ann, text) =
+            parse_mod_line("{version:1,2}{base:1}{group:2}{variant:3}+10 to Dexterity");
+        assert!(!ann.is_empty());
+        assert_eq!(ann.variants, Some(vec![3]));
+        assert_eq!(ann.versions, Some(vec![1, 2]));
+        assert_eq!(ann.bases, Some(vec![1]));
+        assert_eq!(ann.groups, Some(vec![2]));
+        assert!(ann.tags.is_empty());
+        assert_eq!(text, "+10 to Dexterity");
+        assert_eq!(
+            ann.render_prefix(),
+            "{variant:3}{version:1,2}{base:1}{group:2}"
+        );
+        let (reparsed, _) = parse_mod_line(&format!("{}{text}", ann.render_prefix()));
+        assert_eq!(reparsed, ann);
+    }
+
+    #[test]
+    fn merges_multiple_tags_and_unknown_annotations() {
+        let (ann, text) = parse_mod_line("{exotic}{tags:life,defense}{tags:attack}+20 to Life");
+        assert_eq!(
+            ann.tags,
+            vec![
+                "exotic".to_string(),
+                "life".to_string(),
+                "defense".to_string(),
+                "attack".to_string(),
+            ]
+        );
+        assert_eq!(text, "+20 to Life");
+        assert_eq!(ann.render_prefix(), "{tags:exotic,life,defense,attack}");
     }
 
     #[test]

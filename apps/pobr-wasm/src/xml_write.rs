@@ -93,6 +93,7 @@ pub(crate) struct XmlInput<'a> {
 fn esc_attr(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
+        .replace('>', "&gt;")
         .replace('"', "&quot;")
 }
 
@@ -335,4 +336,54 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
 
     wln!(w, "</PathOfBuilding2>");
     xml
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn esc_attr_escapes_greater_than_and_roundtrips_through_merge() {
+        assert_eq!(
+            esc_attr(r#"A > B < C & "D""#),
+            "A &gt; B &lt; C &amp; &quot;D&quot;"
+        );
+
+        let empty_sets = [Vec::new(), Vec::new()];
+        let empty_attrs = BTreeMap::new();
+        let empty_config = BTreeMap::new();
+        let blocks = [CustomModifierBlock {
+            title: "DPS > 1M".to_string(),
+            enabled: true,
+            text: "+50 to maximum Life".to_string(),
+        }];
+        let xml = write_build_xml(&XmlInput {
+            active_weapon_set: 1,
+            weapon_set_nodes: &empty_sets,
+            level: 80,
+            class_name: "Witch",
+            ascendancy_name: "",
+            tree_version: "0_5",
+            allocated_nodes: &[],
+            attribute_choices: &empty_attrs,
+            items: Vec::new(),
+            flasks: Vec::new(),
+            jewels: Vec::new(),
+            socket_groups: Vec::new(),
+            main_socket_group: None,
+            config_inputs: &empty_config,
+            custom_modifier_blocks: &blocks,
+            notes: None,
+        });
+        assert!(xml.contains(r#"title="DPS &gt; 1M""#), "{xml}");
+
+        let base = r#"<PathOfBuilding2><Config activeConfigSet="1"><ConfigSet id="1" title="Default"/></Config></PathOfBuilding2>"#;
+        let merged = pobr_build::xml_merge::merge_active_sets(base, &xml);
+        assert!(
+            merged.contains(
+                r#"<CustomModifierBlock title="DPS &gt; 1M" enabled="true">+50 to maximum Life</CustomModifierBlock>"#
+            ),
+            "{merged}"
+        );
+    }
 }
