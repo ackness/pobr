@@ -18,7 +18,7 @@ use pobr_i18n::{LineParser, LineRenderer, LocaleMeta, LocalePack, NameKind, STAT
 use crate::state::{build_data, game_data};
 
 /// The name tables each direction reads.
-const PARSER_NAMES: &[NameKind] = &[NameKind::BaseItem, NameKind::Word];
+const PARSER_NAMES: &[NameKind] = &[NameKind::BaseItem, NameKind::Word, NameKind::PassiveNode];
 const RENDERER_NAMES: &[NameKind] = &[
     NameKind::BaseItem,
     NameKind::Word,
