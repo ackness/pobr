@@ -615,3 +615,30 @@ fn pre_effective_multiplier_includes_the_inevitable_penalty() {
     assert!((crit.pre_effective_multiplier - 1.73).abs() < 1e-3);
     approx(crit.pre_effective_multiplier, crit.multiplier);
 }
+
+#[test]
+fn negative_base_crit_chance_and_negative_inc_never_flip_positive() {
+    let enemy = ModDb::new();
+    let cfg = CalcConfig::attack().with_mode_effective(true);
+
+    // Negative flat base (-5%) times negative inc factor (-100% -> 1 + (-200)/100 = -1)
+    // must clamp base_pct at 0 instead of flipping (-5) * (-1) = +5%.
+    let mut double_neg = ModDb::new();
+    double_neg.add_list([
+        Modifier::number("CriticalStrikeChance", ModType::Base, -5.0),
+        Modifier::number("CriticalStrikeChance", ModType::Inc, -200.0),
+    ]);
+    let crit = resolve_crit(&double_neg, &enemy, &cfg, 1.0, 0.0, true);
+    approx(crit.pre_effective_chance, 0.0);
+    approx(crit.chance, 0.0);
+
+    // Negative flat base alone with CritChanceLucky must stay 0, not negative.
+    let mut neg_lucky = ModDb::new();
+    neg_lucky.add_list([
+        Modifier::number("CriticalStrikeChance", ModType::Base, -5.0),
+        Modifier::flag("CritChanceLucky"),
+    ]);
+    let crit_lucky = resolve_crit(&neg_lucky, &enemy, &cfg, 1.0, 0.0, true);
+    approx(crit_lucky.pre_effective_chance, 0.0);
+    approx(crit_lucky.chance, 0.0);
+}

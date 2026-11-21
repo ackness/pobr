@@ -350,14 +350,10 @@ impl CritChanceTerms {
         if self.always {
             return 100.0;
         }
-        let base_pct = self.base_pct();
+        let base_pct = self.base_pct().max(0.0);
         let inc = self.player_inc + self.enemy_inc;
         let crit_pct = (base_pct * (1.0 + inc / 100.0) * self.more).min(self.cap);
-        if base_pct > 0.0 {
-            crit_pct.max(0.0)
-        } else {
-            crit_pct
-        }
+        crit_pct.max(0.0)
     }
 
     /// The steps from the source base to the chance after `adjust`. An
@@ -377,6 +373,7 @@ impl CritChanceTerms {
                 steps.current() + self.enemy_flat,
             );
         }
+        steps.at_least(0.0);
         let before_increases = steps.current();
         steps.increased(self.player_inc);
         if self.enemy_inc != 0.0 {
@@ -388,9 +385,7 @@ impl CritChanceTerms {
         }
         steps.more(self.more);
         steps.at_most(FormulaOp::Cap, self.cap);
-        if self.base_pct() > 0.0 {
-            steps.at_least(0.0);
-        }
+        steps.at_least(0.0);
         if let Some(hit_chance) = adjust.hit_chance
             && hit_chance != 1.0
             && steps.current() != 0.0

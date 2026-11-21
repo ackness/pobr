@@ -2787,3 +2787,41 @@ fn stat_threshold_phrases_compile_into_mod_tags() {
         ]
     );
 }
+
+#[test]
+fn grants_and_removes_emit_hand_attack_placeholder() {
+    use pobr_core::item::apply_weapon_hand_conditions;
+    use pobr_data::item::EquipmentSlot;
+
+    for (text, expected_value) in [("Grants 5 Accuracy", 5.0), ("Removes 5 Accuracy", -5.0)] {
+        let parsed = parse_mod(text).unwrap();
+        assert!(parsed.is_complete(), "{text}: {parsed:?}");
+        assert_eq!(parsed.mods.len(), 1);
+        assert_eq!(parsed.mods[0].name.as_str(), "Accuracy");
+        assert_eq!(parsed.mods[0].mod_type, ModType::Base);
+        assert_eq!(parsed.mods[0].value, ModValue::Number(expected_value));
+        assert!(
+            parsed.mods[0]
+                .tags
+                .contains(&ModTag::condition("{Hand}Attack", false)),
+            "{text}: expected {{Hand}}Attack placeholder, got {:?}",
+            parsed.mods[0].tags
+        );
+
+        for (slot, matching, other) in [
+            (EquipmentSlot::Weapon1, "MainHandAttack", "OffHandAttack"),
+            (EquipmentSlot::Weapon2, "OffHandAttack", "MainHandAttack"),
+        ] {
+            let mut mods = parsed.mods.clone();
+            apply_weapon_hand_conditions(&mut mods, slot);
+            assert!(
+                mods[0].matches(&CalcConfig::attack().with_condition(matching, true)),
+                "{text}: {slot:?} should match {matching}"
+            );
+            assert!(
+                !mods[0].matches(&CalcConfig::attack().with_condition(other, true)),
+                "{text}: {slot:?} should not match {other}"
+            );
+        }
+    }
+}

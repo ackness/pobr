@@ -106,12 +106,7 @@ pub(super) fn inject_flasks_charms(session: &mut SourceWriter, build: &Build, da
         // base name" reliably locates it (a normal/rare item whose full name equals
         // the base name matches too).
         let item_name = item.base.to_string();
-        let base = data
-            .base_items
-            .values()
-            .filter(|def| def.utility.is_some() || !def.charm_buff.is_empty())
-            .filter(|def| item_name.contains(def.name.as_str()))
-            .max_by_key(|def| def.name.len());
+        let base = match_utility_base(&item_name, data);
         if let Some(utility) = base.and_then(|base| base.utility.as_ref()) {
             session.add_utility_base(slot_name, item, utility);
         }
@@ -130,6 +125,23 @@ pub(super) fn inject_flasks_charms(session: &mut SourceWriter, build: &Build, da
             session.add_flask_charm(slot_name, &augmented);
         }
     }
+}
+
+fn match_utility_base<'d>(
+    item_name: &str,
+    data: &'d BuildData,
+) -> Option<&'d pobr_data::catalog::BaseItemDef> {
+    data.base_items
+        .values()
+        .filter(|def| def.utility.is_some() || !def.charm_buff.is_empty())
+        .filter(|def| item_name.contains(def.name.as_str()))
+        .max_by(|a, b| {
+            a.name
+                .len()
+                .cmp(&b.name.len())
+                .then_with(|| a.name.cmp(&b.name))
+                .then_with(|| a.id.cmp(&b.id))
+        })
 }
 
 /// Stage 4: skill gems classified as active/support, each injected via its own attribution entry point.
@@ -204,22 +216,18 @@ pub(super) fn inject_buffs_and_heralds(
     //     player db; a curse goes through priority/limit/slot assignment (:2829-2896).
     //     The static direct injection `aura_buff_modifiers` used before the C5-2 switch
     //     is now off.
-    for spec in buff_skill_specs(context, build, data) {
-        // A `Multiplier:<X>` BASE in the buff payload → bridged to cfg.multipliers
-        // (matching vendor's GetMultiplier, which sums modDB's `Multiplier:<X>`
-        // globally, ModStore.lua:369; PoBR's ModTag::Multiplier reads from a
-        // pre-populated cfg.multipliers table, so this must be explicitly backfilled
-        // here). The first consumer = Sigil of Power's
-        // `Multiplier:SigilOfPowerMaxStages` BASE 4 (the limitVar denominator for the
-        // per-stage MORE).
-        for m in &spec.mods {
-            if let Some(var) = m.name.as_str().strip_prefix("Multiplier:")
-                && m.mod_type == ModType::Base
-                && let Some(v) = m.value.as_number()
-            {
-                session.set_multiplier(var, v);
-            }
-        }
+    let buff_specs = buff_skill_specs(context, build, data);
+    // A `Multiplier:<X>` BASE in the buff payload → bridged to cfg.multipliers
+    // (matching vendor's GetMultiplier, which sums modDB's `Multiplier:<X>`
+    // globally, ModStore.lua:369; PoBR's ModTag::Multiplier reads from a
+    // pre-populated cfg.multipliers table, so this must be explicitly backfilled
+    // here). Deduplicate same-name buff copies by max so duplicate socket groups
+    // do not stack limits, then add each distinct buff's max onto any pre-existing
+    // multiplier. The first consumer = Sigil of Power's
+    // `Multiplier:SigilOfPowerMaxStages` BASE 4 (the limitVar denominator for the
+    // per-stage MORE).
+    apply_buff_multiplier_backfill(session, &buff_specs);
+    for spec in buff_specs {
         session.add_buff_skill(spec);
     }
     for spec in pobr_core::skill_env::flame_wall_buff_specs(
@@ -263,6 +271,37 @@ pub(super) fn inject_buffs_and_heralds(
         for name in &heralds {
             session.set_condition(format!("AffectedBy{}", name.replace(' ', "")), true);
         }
+    }
+}
+
+fn apply_buff_multiplier_backfill(session: &mut SourceWriter, specs: &[pobr_core::calc::BuffSpec]) {
+    let mut by_buff: std::collections::BTreeMap<(&str, &str), f64> =
+        std::collections::BTreeMap::new();
+    for spec in specs {
+        for m in &spec.mods {
+            if let Some(var) = m.name.as_str().strip_prefix("Multiplier:")
+                && m.mod_type == ModType::Base
+                && let Some(v) = m.value.as_number()
+            {
+                by_buff
+                    .entry((spec.name.as_str(), var))
+                    .and_modify(|existing| *existing = existing.max(v))
+                    .or_insert(v);
+            }
+        }
+    }
+    let mut totals: std::collections::BTreeMap<&str, f64> = std::collections::BTreeMap::new();
+    for ((_, var), v) in by_buff {
+        *totals.entry(var).or_insert(0.0) += v;
+    }
+    for (var, delta) in totals {
+        let existing = session
+            .config()
+            .multipliers
+            .get(var)
+            .copied()
+            .unwrap_or(0.0);
+        session.set_multiplier(var, existing + delta);
     }
 }
 
@@ -1042,7 +1081,7 @@ pub(super) fn inject_items(
             .iter()
             .find(|(s, scale)| *s == slot && *scale != 0.0)
         {
-            scale_item_bonuses(&mut ingest.modifiers, 1.0 + scale);
+            scale_item_bonuses(&mut ingest.modifiers, (1.0 + scale).max(0.0));
         }
         session.add_item_ingest(slot, &filtered, ingest);
     }
@@ -1522,4 +1561,154 @@ pub(super) fn stage_inject_extra_texts(
     session
         .add_modifier_texts(texts)
         .map_err(|e| BuildError::Parse(e.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use pobr_core::calc::{BuffKind, BuffSpec, MinimalInput};
+    use pobr_core::mod_parser::CompiledParserRules;
+    use pobr_data::catalog::BaseItemDef;
+    use pobr_data::catalog::parser_rules::ModParserRulesDoc;
+    use pobr_data::item::{ItemBaseId, ItemRarity, RolledDefence};
+
+    use super::*;
+
+    fn minimal_fire_rules() -> Arc<CompiledParserRules> {
+        let doc: ModParserRulesDoc = serde_json::from_str(
+            r#"{"forms":[{"pattern":"^(%d+)%% increased","form":"INC","literal":"% increased","anchored":true}],
+                "name_map":[{"phrase":"fire damage","names":["FireDamage"]}],
+                "flag_phrases":[],"pre_flags":[],"tag_phrases":[]}"#,
+        )
+        .unwrap();
+        Arc::new(CompiledParserRules::compile(&doc).unwrap())
+    }
+
+    fn charm_base(id: &str, name: &str) -> BaseItemDef {
+        BaseItemDef {
+            id: id.to_string(),
+            name: name.to_string(),
+            item_class: "UtilityFlask".to_string(),
+            drop_level: 1,
+            width: 1,
+            height: 1,
+            tags: vec![],
+            implicits: vec![],
+            mod_domain: 1,
+            weapon: None,
+            armour: None,
+            spirit: None,
+            charm_buff: vec!["+25% to Fire Resistance".into()],
+            utility: None,
+            req_str: 0,
+            req_dex: 0,
+            req_int: 0,
+        }
+    }
+
+    #[test]
+    fn match_utility_base_breaks_same_length_ties_deterministically() {
+        let mut by_name = BuildData::empty();
+        by_name
+            .base_items
+            .insert("Alpha".into(), charm_base("id_z", "Alpha"));
+        by_name
+            .base_items
+            .insert("Bravo".into(), charm_base("id_a", "Bravo"));
+        assert_eq!(
+            match_utility_base("Alpha Bravo", &by_name).map(|b| b.name.as_str()),
+            Some("Bravo")
+        );
+
+        let mut by_id = BuildData::empty();
+        by_id
+            .base_items
+            .insert("k1".into(), charm_base("id_a", "Same"));
+        by_id
+            .base_items
+            .insert("k2".into(), charm_base("id_b", "Same"));
+        assert_eq!(
+            match_utility_base("Same", &by_id).map(|b| b.id.as_str()),
+            Some("id_b")
+        );
+    }
+
+    #[test]
+    fn buff_multiplier_backfill_deduplicates_same_buff_and_adds_to_existing() {
+        let mut session = SourceWriter::new(CalculationSession::new(MinimalInput::default()));
+        session.set_multiplier("WindDancerLimit", 1.0);
+        session.set_multiplier("SharedLimit", 2.0);
+        let make_spec = |name: &str, var: &str, value: f64| BuffSpec {
+            name: name.into(),
+            kind: BuffKind::Buff,
+            skill_id: name.into(),
+            mods: vec![Modifier::number(
+                format!("Multiplier:{var}"),
+                ModType::Base,
+                value,
+            )],
+            magnitude: 1.0,
+            slot: None,
+            socket_index: 0,
+            is_mark: false,
+            ignore_curse_limit: false,
+            local_effect_inc: 0.0,
+            local_effect_more: 1.0,
+            skill_types: pobr_data::skill::SkillTypes::NONE,
+        };
+        let specs = vec![
+            make_spec("Wind Dancer", "WindDancerLimit", 3.0),
+            make_spec("Wind Dancer", "WindDancerLimit", 2.0),
+            make_spec("BuffA", "SharedLimit", 4.0),
+            make_spec("BuffB", "SharedLimit", 5.0),
+            make_spec("FreshBuff", "FreshLimit", 3.0),
+        ];
+        apply_buff_multiplier_backfill(&mut session, &specs);
+        assert_eq!(
+            session.config().multipliers.get("WindDancerLimit"),
+            Some(&4.0)
+        );
+        assert_eq!(session.config().multipliers.get("SharedLimit"), Some(&11.0));
+        assert_eq!(session.config().multipliers.get("FreshLimit"), Some(&3.0));
+    }
+
+    #[test]
+    fn inject_items_clamps_over_100_percent_reduced_slot_bonuses_to_zero() {
+        let mut data = BuildData::empty();
+        data.parser_rules = Some(minimal_fire_rules());
+        let ring = Item {
+            base: ItemBaseId::from("Iron Ring"),
+            rarity: ItemRarity::Rare,
+            quality: 0,
+            corrupted: false,
+            implicit_texts: vec![],
+            modifier_texts: vec!["50% increased Fire Damage".into()],
+            enchant_texts: vec![],
+            rolled_defence: RolledDefence::default(),
+            socketed: vec![],
+            parsed_stats: vec![],
+        };
+        let belt = Item {
+            base: ItemBaseId::from("Rawhide Belt"),
+            rarity: ItemRarity::Rare,
+            quality: 0,
+            corrupted: false,
+            implicit_texts: vec![],
+            modifier_texts: vec!["150% reduced bonuses gained from Equipped Rings".into()],
+            enchant_texts: vec![],
+            rolled_defence: RolledDefence::default(),
+            socketed: vec![],
+            parsed_stats: vec![],
+        };
+        let build = Build::new()
+            .set_item(EquipmentSlot::Ring1, ring)
+            .set_item(EquipmentSlot::Belt, belt);
+        let mut session = SourceWriter::new(CalculationSession::new(MinimalInput::default()));
+        inject_items(&mut session, &build, &data, false, false).unwrap();
+        let session = session.finish_sources();
+        let fire_mods: Vec<_> = session.mod_db().named("FireDamage").collect();
+        assert_eq!(fire_mods.len(), 1);
+        assert_eq!(fire_mods[0].value.as_number(), Some(0.0));
+    }
 }

@@ -55,6 +55,9 @@ pub fn env_finalize(env: &mut Env) {
     merge_keystones(env);
     // Stage 6 (T2): equivalent to doActorMisc (flag → buff_definitions → mods).
     expand_misc_buffs(env);
+    // Stage 5 keystones granted by flasks/buffs and Stage 6 misc buffs can add
+    // or activate EnemyModifier entries; forward newly eligible ones idempotently.
+    forward_enemy_modifiers(env);
     // Stage 6.5: Rage, after the buffs that change its maximum and effect.
     super::rage::apply_rage(env);
     // Stage 6.6: modifiers to something else that also apply to the player.

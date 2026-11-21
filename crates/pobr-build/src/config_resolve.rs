@@ -48,7 +48,7 @@ use pobr_gamedata::ruleset::ConfigCatalog;
 
 use crate::build::Build;
 use crate::build_config::BuildConfig;
-use crate::handlers::{build_registry, campaign_progress_from_config, enemy_tier_from_config};
+use crate::handlers::{campaign_progress_from_config, enemy_tier_from_config, shared_registry};
 
 /// Explicit raw booleans whose legacy conditions must not defeat a current edit.
 /// False charge-use / elemental-ailment inputs emit no interpreter FLAG, so
@@ -259,7 +259,7 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
         .values
         .entry("companionInPresence".into())
         .or_insert(ConfigInputValue::Bool(false));
-    let outcome = interpret(&catalog.options, &inputs, &build_registry());
+    let outcome = interpret(&catalog.options, &inputs, &shared_registry());
 
     merge_conditions(&mut config.conditions, &outcome);
     merge_multipliers(&mut config.multipliers, &outcome);
@@ -619,7 +619,7 @@ mod tests {
             let outcome = interpret(
                 std::slice::from_ref(def),
                 &build.config.raw_inputs,
-                &build_registry(),
+                &shared_registry(),
             );
             assert!(
                 outcome.diagnostics.is_empty(),

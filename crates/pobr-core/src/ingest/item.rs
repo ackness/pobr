@@ -212,7 +212,7 @@ const LOCAL_ADDED_DAMAGE: [&str; 8] = [
 
 /// The condition the parser gives a line about "this weapon", until the
 /// item's slot names the hand.
-const HAND_ATTACK_PLACEHOLDER: &str = "{Hand}Attack";
+pub(crate) const HAND_ATTACK_PLACEHOLDER: &str = "{Hand}Attack";
 
 /// The "convert to local" modifier on weapons: an unflagged
 /// `CriticalStrikeMultiplier` (vendor `CritMultiplier`) gets a

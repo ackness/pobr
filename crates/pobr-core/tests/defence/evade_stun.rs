@@ -579,3 +579,20 @@ fn strong_chin_helmet_lowest_gives_stun_threshold() {
     let t = calc_stun_threshold(&db, &cfg, &stun_inputs(1000.0));
     assert!((t - 1150.0).abs() < EPS, "got {t}");
 }
+
+/// When per-type evasion splits combined from melee and enemy HitChance mult drives
+/// the raw combined formula negative (100 - 53*2 = -6), combined clamps to 0 before
+/// UnluckyEvade squaring so (-6)^2/100 never flips into a positive evade chance.
+#[test]
+fn evade_combined_clamps_to_zero_before_unlucky_squaring() {
+    let db = db_with(vec![
+        Modifier::number("MeleeEvasion", ModType::Inc, 500.0),
+        Modifier::flag("UnluckyEvade"),
+    ]);
+    let s = calc_evade_suite(&db, &CalcConfig::default(), 4000.0, 1000.0, 2.0, false);
+    assert!((s.melee - 38.44).abs() < EPS, "got {}", s.melee);
+    assert_eq!(s.projectile, 0.0);
+    assert_eq!(s.spell, 0.0);
+    assert_eq!(s.spell_projectile, 0.0);
+    assert_eq!(s.evade_chance, 0.0);
+}

@@ -506,7 +506,11 @@ pub fn calculate_with_data_session_tracked(
     let mut session = calculate_prepared_with_context(&prepared, data, options, &mut context)?;
     if options.full_dps {
         session = session.with_full_dps(full_dps::calculate_prepared(
-            build, &prepared, data, options,
+            build,
+            &prepared,
+            data,
+            options,
+            context.trigger_memo.clone(),
         )?);
     }
     Ok((session, prepared.into_owned()))
@@ -526,7 +530,11 @@ pub fn calculate_with_data_session_prepared<'a>(
     let mut session = calculate_prepared_with_context(&prepared, data, options, &mut context)?;
     if options.full_dps {
         session = session.with_full_dps(full_dps::calculate_prepared(
-            build, &prepared, data, options,
+            build,
+            &prepared,
+            data,
+            options,
+            context.trigger_memo.clone(),
         )?);
     }
     Ok((session, prepared))
@@ -575,7 +583,11 @@ fn calculate_with_context(
     let mut session = calculate_prepared_with_context(&prepared, data, options, context)?;
     if options.full_dps && !context.is_trigger_source {
         session = session.with_full_dps(full_dps::calculate_prepared(
-            build, &prepared, data, options,
+            build,
+            &prepared,
+            data,
+            options,
+            context.trigger_memo.clone(),
         )?);
     }
     Ok(session)
@@ -1095,7 +1107,7 @@ fn stage_create_session(ctx: &StageCtx<'_>, cfg: CalcConfig) -> SourceWriter {
     // stage is gated by `cfg.mode_combat` — default false (B4's automatic activation is
     // its own behavior commit), so this injection is a zero behavior change.
     session.set_buff_definitions(data.buff_definitions.clone());
-    session.set_buff_handler_registry(std::sync::Arc::new(crate::handlers::build_registry()));
+    session.set_buff_handler_registry(crate::handlers::shared_registry());
     // Injects the curse priority data (the data source for env_finalize stage 4
     // buff_pass's curse priority/limit, following the buff_definitions channel's
     // precedent). The whole stage is gated by `cfg.mode_buffs` — default false, so this

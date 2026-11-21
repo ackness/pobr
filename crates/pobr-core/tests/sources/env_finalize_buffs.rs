@@ -180,3 +180,83 @@ fn repeated_perform_does_not_double_count() {
     assert_eq!(session.output().action_rate, 2.4);
     assert_eq!(session.all_mods().len(), modifier_count);
 }
+
+/// Stage 5 buff-granted keystones and Stage 6 misc buffs can add or activate
+/// EnemyModifier entries; the post-Stage-6 forwarding pass delivers them
+/// without duplicating entries already forwarded in earlier stages.
+#[test]
+fn post_stage6_forwards_enemy_modifiers_from_keystones_and_misc_buffs() {
+    use pobr_core::ModValue;
+    use pobr_core::calc::env_finalize::env_finalize;
+    use pobr_core::calc::{Actor, ActorBaseStats, BuffKind, BuffSpec, Env};
+
+    let enemy_mod = |amount: f64| {
+        Modifier::new(
+            "EnemyModifier",
+            ModType::List,
+            ModValue::NestedMods(vec![
+                Modifier::number("DamageTaken", ModType::Inc, amount)
+                    .with_tag(ModTag::condition("Effective", false)),
+            ]),
+        )
+    };
+
+    let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
+    env.cfg = CalcConfig::attack()
+        .with_mode_combat(true)
+        .with_mode_buffs(true)
+        .with_mode_effective(true);
+
+    // Stage 2 baseline EnemyModifier (must not be duplicated by later passes).
+    env.player.mod_db.add_mod(enemy_mod(10.0));
+
+    // Stage 4 buff grants a keystone whose Stage 5 expansion adds an EnemyModifier.
+    env.buff_skills.push(BuffSpec {
+        name: "KeystoneGrant".to_string(),
+        kind: BuffKind::Buff,
+        skill_id: "KeystoneGrantBuff".to_string(),
+        mods: vec![Modifier::new(
+            "Keystone",
+            ModType::List,
+            ModValue::Text("TestEnemyKeystone".to_string()),
+        )],
+        magnitude: 1.0,
+        slot: None,
+        socket_index: 1,
+        is_mark: false,
+        ignore_curse_limit: false,
+        local_effect_inc: 0.0,
+        local_effect_more: 1.0,
+        skill_types: pobr_data::skill::SkillTypes::NONE,
+    });
+    env.keystone_mods
+        .insert("TestEnemyKeystone".to_string(), vec![enemy_mod(20.0)]);
+
+    // Stage 6 misc buff sets a condition activating a gated EnemyModifier.
+    env.player.mod_db.add_mod(Modifier::flag("Stage6Trigger"));
+    env.player
+        .mod_db
+        .add_mod(enemy_mod(30.0).with_tag(ModTag::condition("Stage6Active", false)));
+    env.buff_definitions.push(BuffDef {
+        id: "Stage6Trigger".to_string(),
+        trigger_flag: "Stage6Trigger".to_string(),
+        mode_gate: BuffModeGate::Combat,
+        effect: None,
+        mods: Vec::new(),
+        conditions_set: vec!["Stage6Active".to_string()],
+        handler_id: None,
+        verified: true,
+        vendor_ref: vendor_ref(),
+        notes: None,
+    });
+
+    env_finalize(&mut env);
+
+    assert_eq!(
+        env.enemy
+            .mod_db
+            .sum(ModType::Inc, &env.cfg, &[ModName::from("DamageTaken")]),
+        60.0,
+        "10 (Stage 2) + 20 (Stage 5 keystone) + 30 (Stage 6 condition), with no duplicates"
+    );
+}

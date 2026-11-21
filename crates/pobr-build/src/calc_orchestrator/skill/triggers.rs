@@ -99,8 +99,9 @@ impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
         sub_build.socket_groups[group_index].main_active_skill = Some(active_pos);
 
         if let Some(memo) = &self.context.trigger_memo
-            && let Some(stats) = memo.borrow_mut().get(&sub_build)
+            && let Some((stats, support_limits)) = memo.borrow_mut().get(&sub_build)
         {
+            self.context.support_limits.extend(support_limits);
             return Some(stats);
         }
         // Only its selection differs from the build being calculated, so it reads the
@@ -115,6 +116,11 @@ impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
         let session = result.ok()?;
         // These limits describe the calculated trigger source, not the main host's
         // damage payload. The child already assigned explicit TriggerSource scope.
+        let memo_limits = self
+            .context
+            .trigger_memo
+            .is_some()
+            .then(|| child.support_limits.clone());
         self.context
             .support_limits
             .append(&mut child.support_limits);
@@ -137,7 +143,8 @@ impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
             use_rate: session.own_skill_use_rate(),
         };
         if let Some(memo) = &self.context.trigger_memo {
-            memo.borrow_mut().insert(sub_build, stats);
+            memo.borrow_mut()
+                .insert(sub_build, stats, memo_limits.unwrap_or_default());
         }
         Some(stats)
     }
@@ -418,5 +425,64 @@ mod support_judgement_tests {
             mods.is_empty(),
             "a rejected support must not inject any modifier"
         );
+    }
+}
+
+#[cfg(test)]
+mod trigger_memo_tests {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    use super::{CalculationContext, DataOrchestratorOptions, trigger_source_stats};
+    use crate::build::{Build, SocketGroup};
+    use crate::build_data::BuildData;
+    use crate::calc_cache::TriggerMemo;
+
+    #[test]
+    fn trigger_memo_hit_replays_support_limits() {
+        let data = BuildData::empty();
+        let options = DataOrchestratorOptions::default();
+        let build = Build::new()
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_gem_skill("SourceSkill", 10)
+                    .with_gem_skill("TriggeredSkill", 10)
+                    .with_main_active_skill(2),
+            )
+            .with_main_socket_group(1);
+
+        let mut expected_sub = build.clone();
+        expected_sub.main_socket_group = Some(1);
+        expected_sub.socket_groups[0].main_active_skill = Some(1);
+        let cached_stats = pobr_core::calc::TriggerSourceStats {
+            action_rate: 2.5,
+            hit_chance: 1.0,
+            crit_chance: 0.5,
+            ..Default::default()
+        };
+        let memo = Rc::new(RefCell::new(TriggerMemo::new(4)));
+        memo.borrow_mut().insert(
+            expected_sub,
+            cached_stats,
+            vec!["TriggerSource: cached support limit".into()],
+        );
+
+        let mut context = CalculationContext::new(&data, &options);
+        context.trigger_memo = Some(Rc::clone(&memo));
+        let stats = trigger_source_stats(
+            &mut context,
+            &build,
+            &data,
+            &options,
+            &build.socket_groups[0],
+            &build.socket_groups[0].gem_skills[0],
+            "TriggeredSkill",
+        );
+        assert_eq!(stats, Some(cached_stats));
+        assert_eq!(
+            context.support_limits,
+            vec!["TriggerSource: cached support limit".to_string()]
+        );
+        assert_eq!(memo.borrow().hits, 1);
     }
 }
