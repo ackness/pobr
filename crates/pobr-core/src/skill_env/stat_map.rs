@@ -580,44 +580,27 @@ pub fn debuff_stat_modifiers(
     skill_id: &str,
     set_key: Option<&str>,
 ) -> Vec<Modifier> {
+    let merged = stats.merged();
     let mut mods = Vec::new();
-    // The engine's own definitions come first. Quality adds to the stat the
-    // skill already has: one debuff of the total strength.
-    let mut own: Vec<(&str, f64)> = Vec::new();
-    for ds in stats.all() {
-        if skill_stats::debuff_modifiers(&ds.stat, 0.0).is_none() {
+    for ds in &merged {
+        if ds.value == 0.0 {
             continue;
         }
-        match own.iter_mut().find(|(stat, _)| *stat == ds.stat) {
-            Some((_, value)) => *value += ds.value,
-            None => own.push((ds.stat.as_str(), ds.value)),
-        }
-    }
-    for (stat, value) in own {
-        if value == 0.0 {
-            continue;
-        }
-        let origin = ModifierSource::new(SourceId::new(
-            SourceKind::SkillGem,
-            format!("debuff.{skill_id}.{stat}"),
-        ))
-        .with_raw_text(format!("debuff {skill_id} {stat} ({value})"));
-        mods.extend(
-            skill_stats::debuff_modifiers(stat, value)
-                .into_iter()
-                .flatten()
-                .map(|modifier| modifier.with_origin(origin.clone())),
-        );
-    }
-    let Some(catalog) = ctx.catalog else {
-        return mods;
-    };
-    for ds in stats.all() {
-        if ds.value == 0.0 || skill_stats::debuff_modifiers(&ds.stat, 0.0).is_some() {
-            continue;
-        }
-        let outcome =
-            stat_map_engine::map_debuff_stat(catalog, skill_id, set_key, &ds.stat, ds.value);
+        let outcome = match (
+            skill_stats::debuff_modifiers(&ds.stat, ds.value),
+            ctx.catalog,
+        ) {
+            (Some(modifiers), _) => MappedOutcome::Mapped(
+                modifiers
+                    .into_iter()
+                    .map(|modifier| MappedItem::Modifier(Box::new(modifier)))
+                    .collect(),
+            ),
+            (None, Some(catalog)) => {
+                stat_map_engine::map_debuff_stat(catalog, skill_id, set_key, &ds.stat, ds.value)
+            }
+            (None, None) => MappedOutcome::Unknown,
+        };
         if let Some((classification, detail)) = classify_outcome(&outcome, "debuff") {
             ctx.record(
                 &ds.stat,
@@ -652,15 +635,20 @@ pub fn has_debuff_payload(
     skill_id: &str,
     set_key: Option<&str>,
 ) -> bool {
-    let Some(catalog) = catalog else {
-        return false;
-    };
-    stats.all().any(|ds| {
-        ds.value != 0.0
-            && matches!(
-                stat_map_engine::map_debuff_stat(catalog, skill_id, set_key, &ds.stat, ds.value),
-                MappedOutcome::Mapped(items) if !items.is_empty()
-            )
+    stats.merged().into_iter().any(|ds| {
+        if ds.value == 0.0 {
+            return false;
+        }
+        if let Some(modifiers) = skill_stats::debuff_modifiers(&ds.stat, ds.value) {
+            return !modifiers.is_empty();
+        }
+        let Some(catalog) = catalog else {
+            return false;
+        };
+        matches!(
+            stat_map_engine::map_debuff_stat(catalog, skill_id, set_key, &ds.stat, ds.value),
+            MappedOutcome::Mapped(items) if !items.is_empty()
+        )
     })
 }
 
@@ -851,5 +839,93 @@ mod tests {
         );
         // The skill itself reads nothing from the stat.
         assert_eq!(skill_stats::skill_modifiers(OIL, 20.0), Some(Vec::new()));
+        // Native skill_stats debuffs also report a debuff payload without a catalog.
+        assert!(has_debuff_payload(None, &stats, "OilBarragePlayer", None));
+        let cancelled = EffectStats {
+            base: vec![stat(OIL, 20.0)],
+            quality: vec![stat(OIL, -20.0)],
+        };
+        assert!(!has_debuff_payload(
+            None,
+            &cancelled,
+            "OilBarragePlayer",
+            None
+        ));
+        assert!(
+            debuff_stat_modifiers(
+                &mut StatMapCtx::data(None),
+                &cancelled,
+                "OilBarragePlayer",
+                None
+            )
+            .is_empty()
+        );
+    }
+
+    #[test]
+    fn catalog_debuff_merges_base_and_quality_and_skips_zero_total() {
+        const EXPOSURE: &str = "active_skill_fire_exposure_magnitude";
+        let catalog = StatMapCatalog::new(
+            serde_json::from_str(
+                r#"{
+              "global": {
+                "active_skill_fire_exposure_magnitude": {
+                  "mods": [
+                    {
+                      "kind": "mod",
+                      "name": "FireExposure",
+                      "mod_type": "BASE",
+                      "tags": [{ "type": "GlobalEffect", "effectType": "Debuff" }]
+                    }
+                  ]
+                }
+              },
+              "per_stat_set": {}
+            }"#,
+            )
+            .expect("parse StatMapCatalog"),
+        );
+
+        // Base 20 + quality 5 must merge into ONE FireExposure BASE 25 modifier.
+        let merged = EffectStats {
+            base: vec![stat(EXPOSURE, 20.0)],
+            quality: vec![stat(EXPOSURE, 5.0)],
+        };
+        assert!(has_debuff_payload(
+            Some(&catalog),
+            &merged,
+            "FrostBombPlayer",
+            None
+        ));
+        let mods = debuff_stat_modifiers(
+            &mut StatMapCtx::data(Some(&catalog)),
+            &merged,
+            "FrostBombPlayer",
+            None,
+        );
+        assert_eq!(mods.len(), 1);
+        assert_eq!(mods[0].name.as_str(), "FireExposure");
+        assert_eq!(mods[0].value.as_number(), Some(25.0));
+
+        // Base 20 + quality -20 cancel to 0 -> no modifiers and has_debuff_payload == false.
+        let cancelled = EffectStats {
+            base: vec![stat(EXPOSURE, 20.0)],
+            quality: vec![stat(EXPOSURE, -20.0)],
+        };
+        assert!(!has_debuff_payload(
+            Some(&catalog),
+            &cancelled,
+            "FrostBombPlayer",
+            None
+        ));
+        assert!(
+            debuff_stat_modifiers(
+                &mut StatMapCtx::data(Some(&catalog)),
+                &cancelled,
+                "FrostBombPlayer",
+                None,
+            )
+            .is_empty()
+        );
     }
 }
