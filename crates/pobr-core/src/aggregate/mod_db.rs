@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
 use pobr_data::catalog::high_precision_mods::HighPrecisionModsDef;
 use pobr_data::prelude::*;
@@ -37,13 +38,15 @@ fn pob_round(value: f64, dec: i32) -> f64 {
 /// branch.
 #[derive(Debug, Clone, Default)]
 pub struct HighPrecisionRules {
-    def: Option<HighPrecisionModsDef>,
+    def: Option<Arc<HighPrecisionModsDef>>,
 }
 
 impl HighPrecisionRules {
     /// Constructs from the on-disk table (pobr-gamedata's `RuleSet::high_precision_mods` → here).
     pub fn from_def(def: HighPrecisionModsDef) -> Self {
-        Self { def: Some(def) }
+        Self {
+            def: Some(Arc::new(def)),
+        }
     }
 
     /// `data.highPrecisionMods[name][type]` (vendor `ModStore.lua:69` /
@@ -123,11 +126,11 @@ fn apply_global_limits(
                 .get_or_insert_with(HashMap::new)
                 .entry(key.clone())
                 .or_insert(0.0);
-            if *used + value > *limit {
+            if value > 0.0 && *used + value > *limit {
                 if clamped_from.is_none() {
                     clamped_from = Some(value);
                 }
-                value = *limit - *used;
+                value = (*limit - *used).max(0.0);
             }
             *used += value;
         }
