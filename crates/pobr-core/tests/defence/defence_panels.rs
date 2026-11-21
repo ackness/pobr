@@ -363,3 +363,57 @@ fn cannot_gain_spirit_from_equipment_suppresses_item_base() {
     flagged.add_mod(pobr_core::Modifier::flag("CannotGainSpiritFromEquipment"));
     assert_eq!(calc::calc_spirit_pool(&flagged, &cfg), 30.0);
 }
+
+#[test]
+fn spell_block_max_override_is_independent_of_attack_block_max() {
+    let mut db = ModDb::new();
+    db.add_list([
+        pobr_core::Modifier::number("BlockChanceMax", ModType::Override, 60.0),
+        pobr_core::Modifier::number("SpellBlockChanceMax", ModType::Override, 70.0),
+        pobr_core::Modifier::number("ShieldBlockChance", ModType::Base, 65.0),
+        pobr_core::Modifier::number("SpellBlockChance", ModType::Base, 65.0),
+    ]);
+    let cfg = CalcConfig::new();
+    let block = calc::calc_block(&db, &cfg);
+
+    assert_eq!(block.block_chance_max, 60.0);
+    assert_eq!(block.block_chance, 60.0);
+    assert_eq!(block.spell_block_chance_max, 70.0);
+    assert_eq!(block.spell_block_chance, 65.0);
+}
+
+#[test]
+fn negative_block_chances_clamp_to_zero_before_unlucky_squaring() {
+    let mut db = ModDb::new();
+    db.add_list([
+        pobr_core::Modifier::number("BlockChance", ModType::Base, -30.0),
+        pobr_core::Modifier::number("ProjectileBlockChance", ModType::Base, -20.0),
+        pobr_core::Modifier::number("SpellBlockChance", ModType::Base, -40.0),
+        pobr_core::Modifier::flag("BlockChanceIsUnlucky"),
+        pobr_core::Modifier::flag("ProjectileBlockChanceIsUnlucky"),
+        pobr_core::Modifier::flag("SpellBlockChanceIsUnlucky"),
+        pobr_core::Modifier::flag("SpellProjectileBlockChanceIsUnlucky"),
+    ]);
+    let cfg = CalcConfig::new();
+    let block = calc::calc_block(&db, &cfg);
+
+    assert_eq!(block.block_chance, 0.0);
+    assert_eq!(block.projectile_block_chance, 0.0);
+    assert_eq!(block.spell_block_chance, 0.0);
+    assert_eq!(block.spell_projectile_block_chance, 0.0);
+    assert_eq!(block.effective_block_chance, 0.0);
+    assert_eq!(block.effective_projectile_block_chance, 0.0);
+    assert_eq!(block.effective_spell_block_chance, 0.0);
+    assert_eq!(block.effective_spell_projectile_block_chance, 0.0);
+
+    // Negative max override floors at 0 without panicking in clamp.
+    let mut neg_max = ModDb::new();
+    neg_max.add_mod(pobr_core::Modifier::number(
+        "BlockChanceMax",
+        ModType::Override,
+        -10.0,
+    ));
+    let clamped = calc::calc_block(&neg_max, &cfg);
+    assert_eq!(clamped.block_chance_max, 0.0);
+    assert_eq!(clamped.block_chance, 0.0);
+}

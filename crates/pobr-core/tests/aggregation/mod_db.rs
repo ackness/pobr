@@ -915,6 +915,33 @@ fn global_limit_accumulates_and_truncates_within_one_query() {
     assert_eq!(db2.sum(ModType::Base, &cfg, &names), 65.0);
 }
 
+#[test]
+fn global_limit_descending_limits_never_subtract() {
+    let cfg = CalcConfig::new();
+    let names = [ModName::from("DoubleDamageChance")];
+    let limit = |value: f64| ModTag::GlobalLimit {
+        value,
+        key: "SharedKey".into(),
+    };
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("DoubleDamageChance", ModType::Base, 50.0).with_tag(limit(100.0)));
+    // Second modifier has a lower limit (20) than already used (50): remaining
+    // headroom clamps to 0 instead of adding (20 - 50) = -30.
+    db.add_mod(Modifier::number("DoubleDamageChance", ModType::Base, 30.0).with_tag(limit(20.0)));
+    // Third modifier still has headroom under limit 100 (used remains 50).
+    db.add_mod(Modifier::number("DoubleDamageChance", ModType::Base, 30.0).with_tag(limit(100.0)));
+
+    assert_eq!(db.sum(ModType::Base, &cfg, &names), 80.0);
+
+    let contributions = db.contributions(ModType::Base, &cfg, &names);
+    assert_eq!(contributions[0].value, 50.0);
+    assert_eq!(contributions[0].clamped_from, None);
+    assert_eq!(contributions[1].value, 0.0);
+    assert_eq!(contributions[1].clamped_from, Some(30.0));
+    assert_eq!(contributions[2].value, 30.0);
+    assert_eq!(contributions[2].clamped_from, None);
+}
+
 /// GlobalLimit also accounts within MORE aggregation (vendor ModDB.lua:159-169 MoreInternal
 /// passes globalLimits; the clamp applies to the percentage value, before it's folded into
 /// the multiplier).
