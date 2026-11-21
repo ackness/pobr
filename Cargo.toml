@@ -10,7 +10,6 @@ members = [
     "apps/pobr-cli",
     "apps/pobr-wasm",
     # Tools
-    "tools/sync-pob-catalog",
     "tools/precompile-mods",
 ]
 resolver = "2"

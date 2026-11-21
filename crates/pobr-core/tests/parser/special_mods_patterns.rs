@@ -1,19 +1,18 @@
 //! Raw curated-rule validation, including entries shadowed by a version override.
-//! The effective merged rule set is checked by pobr-core's special_mods gate.
+//! The effective merged rule set is checked by [`super::special_mods_gate`].
 
 use pobr_core::rules::{HandlerRegistry, SpecialModRules};
 use pobr_data::catalog::parser_rules::{SpecialModsDef, SpecialTemplateDef};
 
-/// The two special_mods layers (tools/sync-pob-catalog/ -> up two levels to
-/// the repo root): the version-independent curation layer
-/// `data/overlay-common/` (P1-3, the bulk with 133 entries) plus the version
-/// layer `data/<ver>/overlay/`. Their union covers every curated pattern.
+/// The two raw curated `special_mods` layers: the version-independent curation
+/// layer `data/overlay-common/` plus the version layer `data/<ver>/overlay/`.
+/// Their union covers every curated pattern, including entries shadowed by a
+/// version override.
 fn special_mods_paths() -> Vec<std::path::PathBuf> {
-    let data = pobr_gamedata::repo_data_root();
+    let dir = crate::support::test_data_dir();
     vec![
-        data.join("overlay-common/special_mods.json"),
-        data.join(pobr_gamedata::data_version())
-            .join("overlay/special_mods.json"),
+        dir.join("../overlay-common/special_mods.json"),
+        dir.join("overlay/special_mods.json"),
     ]
 }
 
@@ -45,9 +44,7 @@ fn load_entries() -> Vec<SpecialTemplateDef> {
 fn raw_curated_layers_compile_clean() {
     let layers = load_layers();
     assert!(layers.iter().any(|(_, doc)| !doc.entries.is_empty()));
-    pobr_gamedata::GameData::new(pobr_gamedata::current_data_dir())
-        .install_skill_type_names()
-        .expect("install the prepared package's skill type names");
+    crate::support::install_test_skill_types();
     let mut registry = HandlerRegistry::new();
     pobr_core::rules::register_special_handlers(&mut registry).expect("register special handlers");
     for (path, doc) in layers {

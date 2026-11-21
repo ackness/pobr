@@ -290,7 +290,11 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         spec = importlib.util.spec_from_file_location("check_pr", REPO / "devs/scripts/check-pr.py")
         check = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(check)
-        self.assertEqual(",".join(f"{name}/{feature}" for name, feature in check.CLIPPY_FEATURES.items()), features)
+        self.assertEqual(
+            ",".join(f"{name}/{feature}" for name, feats in check.CLIPPY_FEATURES.items() for feature in feats),
+            features,
+        )
+        self.assertIn("pobr-wasm/wasm", features.split(","))
         result = self.run_script("devs/scripts/driver.sh", "full")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [
@@ -299,6 +303,17 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
              features, "--", "-D", "warnings"],
             ["test", "--workspace"],
         ])
+
+    def test_rust_cache_save_if_is_restricted_to_default_branch(self):
+        expected = "${{ github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch }}"
+        ci_lines = [line.strip() for line in (REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8").splitlines()
+                    if line.strip().startswith("save-if:")]
+        self.assertEqual(len(ci_lines), 3)
+        for line in ci_lines:
+            self.assertEqual(line, f"save-if: {expected}")
+        pr_lines = [line.strip() for line in (REPO / ".github/workflows/pr.yml").read_text(encoding="utf-8").splitlines()
+                    if line.strip().startswith("save-if:")]
+        self.assertEqual(pr_lines, ["save-if: 'false'"])
 
     def test_full_stops_at_failure_without_retrying_tests(self):
         for command in ["fmt", "clippy", "test"]:
@@ -424,12 +439,14 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         self.assertFalse((self.root / "target/debug/incremental").exists())
         self.assertTrue((source / "target/debug/incremental/state").is_file())
 
-    def test_gate_apps_includes_sync_pob_catalog(self):
+    def test_gate_apps_tests_remaining_libraries_and_apps(self):
         result = self.run_script("devs/scripts/driver.sh", "gate", "--only", "apps")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         [call] = self.calls()
         self.assertEqual(call[:2], ["test", "-q"])
-        self.assertIn("sync-pob-catalog", call)
+        for pkg in ("pobr-data", "pobr-gamedata", "pobr-i18n", "pobr-tree", "pobr-item", "pobr-wasm", "pobr-cli"):
+            self.assertIn(pkg, call)
+        self.assertNotIn("sync-pob-catalog", call)
 
     def test_driver_resolves_relative_paths_against_caller_cwd(self):
         sub = self.root / "nested/work"

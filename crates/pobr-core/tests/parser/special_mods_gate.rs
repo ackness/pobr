@@ -13,7 +13,7 @@
 //!
 //! Optional missing layers are skipped; other I/O errors fail the gate.
 //! Raw curated layers and their capture-shape policy are checked separately by
-//! sync-pob-catalog, so shadowed entries retain independent validation.
+//! `special_mods_patterns`, so shadowed entries retain independent validation.
 
 use std::collections::BTreeMap;
 

@@ -95,9 +95,9 @@ jobs:
         with:
           shared-key: host-check
           cache-bin: 'false'
-          save-if: ${{ github.event_name != 'pull_request' }}
+          save-if: 'false'
       - run: cargo fmt --all --check
-      - run: cargo check --locked --workspace --all-targets
+      - run: cargo check --locked --workspace --all-targets --features pobr-wasm/wasm
 
   web:
     name: web typecheck + unit + worker
