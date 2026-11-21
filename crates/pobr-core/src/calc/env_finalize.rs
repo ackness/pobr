@@ -620,7 +620,14 @@ pub fn apply_nondamaging_ailments(env: &mut Env) {
 fn bridge_enemy_condition_flags(env: &mut Env) {
     // The flags retain their own gates: Zone of Control only hinders a cursed
     // enemy, and Daze's configured state is gated on the Effective view.
-    const BRIDGED: &[&str] = &["Intimidated", "Crushed", "Dazed", "Hindered"];
+    const BRIDGED: &[&str] = &[
+        "Intimidated",
+        "Crushed",
+        "Dazed",
+        "Hindered",
+        "BleedAggravated",
+        "Moving",
+    ];
     for cond in BRIDGED {
         let flag = ModName::from(format!("Condition:{cond}"));
         if env.enemy.mod_db.flag(&env.cfg, flag.as_str()) {

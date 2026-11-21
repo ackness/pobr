@@ -174,3 +174,73 @@ fn grenade_on_crossbow_is_exempt_from_reload() {
         );
     }
 }
+
+/// Crossbow firing effects (e.g. Galvanic Shards) have 0 own cost in game data;
+/// the Mana cost lives on the sibling CrossbowAmmoSkill and is paid once per
+/// magazine reload cycle.
+#[test]
+fn crossbow_firing_skill_inherits_ammo_sibling_mana_cost() {
+    let data = load_build_data();
+    let build = Build::new()
+        .with_character(CharacterIdentity {
+            level: 80,
+            class_name: "Mercenary".into(),
+            ascendancy_name: String::new(),
+        })
+        .add_socket_group(
+            SocketGroup::new()
+                .with_slot("weapon1")
+                .with_gem("Metadata/Items/Gem/SkillGemGalvanicShards")
+                .with_gem_skill("GalvanicShardsAmmoPlayer", 20),
+        )
+        .set_item(EquipmentSlot::Weapon1, bare_weapon("Makeshift Crossbow"));
+    let out = calculate_with_data(&build, &data, &opts()).expect("calculate");
+    // GalvanicShardsAmmoPlayer level 20 base cost is 44 Mana, paid once per reload cycle.
+    assert_eq!(out.mana_cost, 44.0, "should inherit lv20 ammo mana cost");
+    assert!(
+        out.mana_per_second_cost > 0.0 && out.mana_per_second_cost < 44.0 * out.action_rate,
+        "per-second mana cost should divide by the reload cycle: {}",
+        out.mana_per_second_cost
+    );
+}
+
+/// Fresh Clip II scales crossbow damage by 1% MORE per bolt reloaded in the
+/// past 8 seconds (computed from the reload cycle by default, and overridable
+/// via `multiplierBoltsReloadedPer8Seconds`).
+#[test]
+fn fresh_clip_scales_crossbow_damage_and_respects_override() {
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+
+    let data = load_build_data();
+    let mut effective_opts = opts();
+    effective_opts.mode_effective = true;
+
+    let base_build = crossbow_build();
+    let bare = calculate_with_data(&base_build, &data, &effective_opts).expect("bare");
+
+    let mut fresh_build = base_build;
+    fresh_build.socket_groups[0] = fresh_build.socket_groups[0]
+        .clone()
+        .with_gem_skill("SupportFreshClipPlayerTwo", 1);
+    let with_fresh = calculate_with_data(&fresh_build, &data, &effective_opts).expect("fresh");
+    assert!(
+        with_fresh.dps > bare.dps * 1.05,
+        "Fresh Clip II should increase crossbow DPS via computed bolts reloaded: {} vs {}",
+        with_fresh.dps,
+        bare.dps
+    );
+
+    fresh_build.config.raw_inputs.values.insert(
+        "multiplierBoltsReloadedPer8Seconds".into(),
+        ConfigInputValue::Number(50.0),
+    );
+    let overridden = calculate_with_data(&fresh_build, &data, &effective_opts).expect("override");
+    // Explicit override of 50 bolts gives +50% MORE (1.50x) over bare damage (ignoring small armour shift on higher hit).
+    assert!(
+        overridden.total_hit_avg > bare.total_hit_avg * 1.49
+            && overridden.total_hit_avg < bare.total_hit_avg * 1.51,
+        "override of 50 bolts should give 1.50x hit avg: {} vs {}",
+        overridden.total_hit_avg,
+        bare.total_hit_avg
+    );
+}

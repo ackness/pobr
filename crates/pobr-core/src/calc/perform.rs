@@ -258,6 +258,8 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         &env.enemy.mod_db,
         &mut env.cfg,
     );
+    super::utility::snapshot_flask_charges_consumed(env);
+    snapshot_crossbow_bolts_reloaded(env);
 
     let input = player_input(env);
     // The hand-pass entry point. When `hand_sources` is empty (non-attack skill / old entry
@@ -1562,6 +1564,68 @@ pub(super) fn leech_panel_terms(env: &Env) -> Vec<[super::survivability::LeechRe
 /// in the offence section, so they're scaled proportionally by the rate factor (equivalent to
 /// where vendor's multiplication happens); `effective_action_rate`/`skill_use_time.effective_rate`
 /// are synced to the cycle-average rate.
+/// Snapshots `BoltsReloadedPastSixSeconds` / `BoltsReloadedPastEightSeconds`
+/// into `env.cfg.multipliers` before hit damage runs so Fresh Clip I/II
+/// (`Multiplier:BoltsReloadedPastSix/EightSeconds`) scale hits and derived
+/// ailments. Respects explicit user OVERRIDE configuration when present.
+fn snapshot_crossbow_bolts_reloaded(env: &mut Env) {
+    let db = &env.player.mod_db;
+    let cfg = &env.cfg;
+    let base_reload = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("CrossbowReloadTimeBase")],
+    );
+    if base_reload <= 0.0 || db.flag(cfg, "CrossbowHasNoAmmo") {
+        return;
+    }
+    let input = player_input(env);
+    let hand = main_hand_scope(env);
+    let (rate_cfg, rate_input) = hand
+        .as_ref()
+        .map_or((cfg, &input), |(cfg, input)| (cfg, input));
+    let firing_rate = super::offence::resolve_use_rate(db, rate_cfg, rate_input);
+    if firing_rate <= 0.0 {
+        return;
+    }
+    let reload_time = super::skill_use_time::crossbow_reload_time(db, cfg, base_reload);
+    let bolt_count = db.sum(ModType::Base, cfg, &[ModName::from("CrossbowBoltCount")]);
+    let chance_not_consume = db.sum(
+        ModType::Base,
+        cfg,
+        &[ModName::from("ChanceToNotConsumeAmmo")],
+    );
+    let instant_reload = db.sum(ModType::Base, cfg, &[ModName::from("InstantReloadChance")]);
+    let reload = super::skill_use_time::apply_crossbow_reload(
+        firing_rate,
+        bolt_count,
+        reload_time,
+        chance_not_consume,
+        instant_reload,
+    );
+    for (var, window_s) in [
+        ("BoltsReloadedPastSixSeconds", 6.0),
+        ("BoltsReloadedPastEightSeconds", 8.0),
+    ] {
+        if env.cfg.multipliers.contains_key(var) {
+            continue;
+        }
+        let mod_name = format!("Multiplier:{var}");
+        let value = env
+            .player
+            .mod_db
+            .override_(&env.cfg, &mod_name)
+            .unwrap_or_else(|| {
+                super::skill_use_time::crossbow_bolts_reloaded_in_window(
+                    &reload, bolt_count, window_s,
+                )
+            });
+        if value > 0.0 {
+            env.cfg.multipliers.insert(var.into(), value);
+        }
+    }
+}
+
 fn fill_crossbow_reload(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;

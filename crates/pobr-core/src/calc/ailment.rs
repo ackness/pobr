@@ -258,7 +258,7 @@ pub fn ailment_duration_terms(
 ) -> Option<AilmentDurationTerms> {
     let base = resolved_ailment_base_duration(ailment, player, cfg)?;
     let scoped = ailment_scoped_cfg(cfg, ailment);
-    let names = duration_mod_names(ailment);
+    let names = duration_mod_names_for(ailment, player, cfg);
     let mut terms = AilmentDurationTerms {
         base,
         increased: player.sum(ModType::Inc, &scoped, &names),
@@ -289,18 +289,34 @@ pub fn ailment_base_duration(ailment: AilmentType, cfg: &CalcConfig) -> Option<f
 }
 
 /// The game's base duration with an applicable base replacement. Crimson
-/// Assault replaces Bleeding's five-second base with one second; duration
-/// increases, more multipliers and damage rate still apply afterwards.
+/// Assault replaces Bleeding's five-second base with one second; skills with
+/// `poison_duration_is_skill_duration` (e.g. Poisonburst Arrow's cloud) start
+/// from the skill's own base duration; duration increases, more multipliers
+/// and damage rate still apply afterwards.
 pub fn resolved_ailment_base_duration(
     ailment: AilmentType,
     player: &ModDb,
     cfg: &CalcConfig,
 ) -> Option<f64> {
+    let scoped = ailment_scoped_cfg(cfg, ailment);
     if ailment == AilmentType::Bleed
-        && let Some(duration) =
-            player.override_(&ailment_scoped_cfg(cfg, ailment), "BaseBleedingDuration")
+        && let Some(duration) = player.override_(&scoped, "BaseBleedingDuration")
     {
         return Some(duration);
+    }
+    if ailment == AilmentType::Poison && player.flag(&scoped, "PoisonDurationIsSkillDuration") {
+        let skill_base = player.sum(
+            ModType::Base,
+            cfg,
+            &[
+                ModName::from("SkillDurationBase"),
+                ModName::from("Duration"),
+                ModName::from("PrimaryDuration"),
+            ],
+        );
+        if skill_base > 0.0 {
+            return Some(skill_base);
+        }
     }
     ailment_base_duration(ailment, cfg)
 }
@@ -310,6 +326,26 @@ fn is_elemental_ailment(ailment: AilmentType) -> bool {
         ailment,
         AilmentType::Ignite | AilmentType::Shock | AilmentType::Chill | AilmentType::Freeze
     )
+}
+
+/// The modifier names [`ailment_duration`] scales the base duration by,
+/// including skill-effect duration when `PoisonDurationIsSkillDuration` is set.
+pub(crate) fn duration_mod_names_for(
+    ailment: AilmentType,
+    player: &ModDb,
+    cfg: &CalcConfig,
+) -> Vec<ModName> {
+    let mut names = duration_mod_names(ailment);
+    if ailment == AilmentType::Poison
+        && player.flag(
+            &ailment_scoped_cfg(cfg, ailment),
+            "PoisonDurationIsSkillDuration",
+        )
+    {
+        names.push(ModName::from("Duration"));
+        names.push(ModName::from("PrimaryDuration"));
+    }
+    names
 }
 
 /// The modifier names [`ailment_duration`] scales the base duration by.
@@ -340,7 +376,8 @@ pub(crate) fn duration_mod_names(ailment: AilmentType) -> Vec<ModName> {
         names.push(ModName::from("BaseBleedingDuration"));
     }
     // "Duration of Elemental Ailments on Enemies" affects Ignite, Shock and
-    // Chill, not Bleeding or Poison; skill-effect duration alone affects none.
+    // Chill, not Bleeding or Poison; skill-effect duration alone affects none
+    // unless `PoisonDurationIsSkillDuration` links Poison to skill duration.
     if is_elemental_ailment(ailment) {
         names.push(ModName::from("EnemyElementalAilmentDuration"));
     }
@@ -410,6 +447,19 @@ pub fn debuff_duration_mult(enemy_db: &ModDb, cfg: &CalcConfig) -> f64 {
     1.0 / aggregated.max(cfg.constants.game().buff_expiration_slow_cap)
 }
 
+/// PoE2 Bleed deals +100% MORE damage while the target is moving or when the
+/// Bleed is Aggravated (non-stacking), unless prevented by the corresponding
+/// prohibition flags (`CannotAggravate` / `NoExtraBleedDamageToMovingEnemy`).
+pub(crate) fn bleed_aggravated_multiplier(db: &ModDb, cfg: &CalcConfig) -> f64 {
+    let aggravated = cfg.condition("EnemyBleedAggravated")
+        && !db.flag(cfg, "CannotAggravate")
+        && !db.flag(cfg, "Condition:CannotAggravate");
+    let moving = cfg.condition("EnemyMoving")
+        && !db.flag(cfg, "NoExtraBleedDamageToMovingEnemy")
+        && !db.flag(cfg, "Condition:NoExtraBleedDamageToMovingEnemy");
+    if aggravated || moving { 2.0 } else { 1.0 }
+}
+
 /// Bleed instance: magnitude = 15% pre-mitigation physical hit/second, lasts 5s.
 pub fn bleed_instance(
     pre_mitigation_phys_hit: f64,
@@ -426,7 +476,8 @@ pub fn bleed_instance(
     // participate in damaging-ailment magnitude; `AilmentEffect` is applied as a separate factor
     // in finalize_ailment_dps (PoB2's effectMod, not double-counted).
     // Source: PoB2 CalcOffence.lua L5145-5146 / L5190.
-    let magnitude_dps = scale_magnitude(base_dps, db, cfg, &[ModName::from("AilmentMagnitude")]);
+    let magnitude_dps = scale_magnitude(base_dps, db, cfg, &[ModName::from("AilmentMagnitude")])
+        * bleed_aggravated_multiplier(db, cfg);
     let duration_secs = ailment_duration(AilmentType::Bleed, db, cfg);
     AilmentInstance {
         ailment: AilmentType::Bleed,
@@ -485,16 +536,12 @@ pub fn poison_instance(pre_mitigation_hit: f64, db: &ModDb, cfg: &CalcConfig) ->
     let base_dps = pre_mitigation_hit * gc.poison_base_fraction;
     // Keyword scope (vendor dotTypeCfg): mods with KeywordFlag.Poison (e.g. Deadly Poison's
     // `AilmentMagnitude MORE kw=Poison`) apply only to poison.
-    let cfg = &ailment_scoped_cfg(cfg, AilmentType::Poison);
+    let scoped = ailment_scoped_cfg(cfg, AilmentType::Poison);
     // PoE2 poison magnitude is scaled only by `AilmentMagnitude` (PoB2's ailmentPercentBase factor).
     // Source: PoB2 CalcOffence.lua L5145-5146.
-    let magnitude_dps = scale_magnitude(base_dps, db, cfg, &[ModName::from("AilmentMagnitude")]);
-    let duration_secs = scale_duration(
-        gc.poison_base_duration,
-        db,
-        cfg,
-        &duration_mod_names(AilmentType::Poison),
-    );
+    let magnitude_dps =
+        scale_magnitude(base_dps, db, &scoped, &[ModName::from("AilmentMagnitude")]);
+    let duration_secs = ailment_duration(AilmentType::Poison, db, cfg);
     AilmentInstance {
         ailment: AilmentType::Poison,
         magnitude_dps: round(magnitude_dps),
@@ -826,10 +873,15 @@ pub fn magnitude_scaling(ailment: AilmentType, db: &ModDb, cfg: &CalcConfig) -> 
     };
     let cfg = &ailment_scoped_cfg(cfg, ailment);
     let names = magnitude_mod_names(ailment);
+    let extra_more = if ailment == AilmentType::Bleed {
+        bleed_aggravated_multiplier(db, cfg)
+    } else {
+        1.0
+    };
     (
         fraction * 100.0,
         db.sum(ModType::Inc, cfg, &names),
-        db.more(cfg, &names),
+        db.more(cfg, &names) * extra_more,
     )
 }
 

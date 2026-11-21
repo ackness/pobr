@@ -1890,3 +1890,68 @@ fn critical_hit_magnitude_lines_apply_to_the_critical_share() {
         "{base} {crit}"
     );
 }
+
+#[test]
+fn poison_duration_uses_skill_duration_when_flagged() {
+    let cfg = CalcConfig::attack();
+    let mut db = ModDb::new();
+    db.add_list(vec![
+        Modifier::flag("PoisonDurationIsSkillDuration"),
+        Modifier::number("SkillDurationBase", ModType::Base, 3.0),
+        Modifier::number("Duration", ModType::Inc, 25.0),
+        Modifier::number("PoisonDuration", ModType::Inc, 40.0),
+    ]);
+    // Base 3.0s (not 2.0s) scaled by both Duration (+25%) and PoisonDuration (+40%) = 4.95s.
+    let inst = poison_instance(1000.0, &db, &cfg);
+    assert!(
+        (inst.duration_secs - 4.95).abs() < 1e-6,
+        "expected 4.95s, got {}",
+        inst.duration_secs
+    );
+}
+
+#[test]
+fn aggravated_or_moving_doubles_bleed_without_stacking_and_respects_prohibitions() {
+    let base_cfg = CalcConfig::attack();
+    let db = ModDb::new();
+    let base = bleed_instance(1000.0, &db, &base_cfg);
+    let aggravated = bleed_instance(
+        1000.0,
+        &db,
+        &base_cfg
+            .clone()
+            .with_condition("EnemyBleedAggravated", true),
+    );
+    let moving = bleed_instance(
+        1000.0,
+        &db,
+        &base_cfg.clone().with_condition("EnemyMoving", true),
+    );
+    let both = bleed_instance(
+        1000.0,
+        &db,
+        &base_cfg
+            .clone()
+            .with_condition("EnemyBleedAggravated", true)
+            .with_condition("EnemyMoving", true),
+    );
+    assert!((aggravated.magnitude_dps - base.magnitude_dps * 2.0).abs() < 1e-6);
+    assert!((moving.magnitude_dps - base.magnitude_dps * 2.0).abs() < 1e-6);
+    assert!(
+        (both.magnitude_dps - base.magnitude_dps * 2.0).abs() < 1e-6,
+        "aggravated and moving must not stack to 4x"
+    );
+
+    let mut blocked = ModDb::new();
+    blocked.add_mod(Modifier::flag("Condition:CannotAggravate"));
+    blocked.add_mod(Modifier::flag("Condition:NoExtraBleedDamageToMovingEnemy"));
+    let suppressed = bleed_instance(
+        1000.0,
+        &blocked,
+        &base_cfg
+            .clone()
+            .with_condition("EnemyBleedAggravated", true)
+            .with_condition("EnemyMoving", true),
+    );
+    assert!((suppressed.magnitude_dps - base.magnitude_dps).abs() < 1e-6);
+}

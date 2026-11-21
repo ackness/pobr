@@ -1118,7 +1118,14 @@ fn instantiate_template(
         let Some(name) = resolve_name(&m.name, captures, enums).filter(|n| !n.is_empty()) else {
             continue;
         };
-        let value = match instantiate_value(&m.value, captures, m.mod_type, enums, source) {
+        let value = match instantiate_value(
+            &m.value,
+            captures,
+            m.mod_type,
+            enums,
+            source,
+            name == "EnemyModifier",
+        ) {
             Some(v) => v,
             None => continue,
         };
@@ -1150,13 +1157,21 @@ fn instantiate_mod_def(
     captures: &[String],
     enums: &BTreeMap<u32, BTreeMap<String, String>>,
     source: &str,
+    in_enemy_modifier: bool,
 ) -> Option<Modifier> {
     let mod_type = parse_mod_type(&def.mod_type)?;
     let name = resolve_name(&def.name, captures, enums).filter(|n| !n.is_empty())?;
     // Same vendor→PoBR name translation as compile_template (on-demand
     // compile path for nested payloads).
     let (name, flag_names) = translate_vendor_name(&name, &def.flags);
-    let value = instantiate_value(&def.value, captures, mod_type, enums, source)?;
+    let value = instantiate_value(
+        &def.value,
+        captures,
+        mod_type,
+        enums,
+        source,
+        in_enemy_modifier || name == "EnemyModifier",
+    )?;
     let mut modifier = Modifier::new(name, mod_type, value).with_source(source);
     let flags = compile_flags(&flag_names);
     if !flags.is_empty() {
@@ -1167,7 +1182,21 @@ fn instantiate_mod_def(
         modifier = modifier.with_keyword_flags(keyword_flags);
     }
     for tag in def.tags.iter().filter_map(compile_tag) {
-        modifier = modifier.with_tag(tag.instantiate(captures)?);
+        let mut tag = tag.instantiate(captures)?;
+        // Inside an EnemyModifier payload, bare Condition tags (excluding
+        // view gates like Effective/Combat) describe the enemy's own state,
+        // which PoBR stores under the `Enemy<Var>` namespace.
+        if in_enemy_modifier
+            && let ModTag::Condition {
+                ref mut var,
+                actor: None,
+                ..
+            } = tag
+            && !matches!(var.as_str(), "Effective" | "Combat")
+        {
+            *var = normalize_enemy_cond_var(var);
+        }
+        modifier = modifier.with_tag(tag);
     }
     Some(modifier)
 }
@@ -1201,6 +1230,7 @@ fn instantiate_value(
     mod_type: ModType,
     enums: &BTreeMap<u32, BTreeMap<String, String>>,
     source: &str,
+    in_enemy_modifier: bool,
 ) -> Option<ModValue> {
     match value {
         TemplateValueDef::Flag(b) => Some(ModValue::Bool(*b)),
@@ -1234,7 +1264,7 @@ fn instantiate_value(
         TemplateValueDef::Nested { mods } => {
             let nested: Vec<Modifier> = mods
                 .iter()
-                .filter_map(|m| instantiate_mod_def(m, captures, enums, source))
+                .filter_map(|m| instantiate_mod_def(m, captures, enums, source, in_enemy_modifier))
                 .collect();
             if nested.is_empty() {
                 None
@@ -1789,5 +1819,29 @@ mod tests {
             assert_eq!(m.mods[0].value.as_number(), Some(value), "{line}");
             assert!(!m.verified);
         }
+    }
+
+    #[test]
+    fn enemy_modifier_inner_condition_tags_normalize_to_enemy_namespace() {
+        let d = def(
+            r#"{"id":"bleed_aggravated_cursed","pattern":"bleeding you inflict on cursed targets is aggravated","mods":[{"name":"EnemyModifier","type":"LIST","value":{"mods":[{"name":"Condition:BleedAggravated","type":"FLAG","value":true,"tags":[{"type":"Condition","var":"Cursed"},{"type":"Condition","var":"Effective"}]}]}}],"batch":"V0"}"#,
+        );
+        let r = rules(vec![d]);
+        let m = r
+            .try_match(
+                "bleeding you inflict on cursed targets is aggravated",
+                &HandlerRegistry::new(),
+            )
+            .expect("should match");
+        let ModValue::NestedMods(inner) = &m.mods[0].value else {
+            panic!("expected NestedMods");
+        };
+        assert_eq!(inner[0].name.as_str(), "Condition:BleedAggravated");
+        assert!(inner[0].tags.iter().any(
+            |t| matches!(t, ModTag::Condition { var, negated: false, actor: None } if var == "EnemyCursed")
+        ));
+        assert!(inner[0].tags.iter().any(
+            |t| matches!(t, ModTag::Condition { var, negated: false, actor: None } if var == "Effective")
+        ));
     }
 }

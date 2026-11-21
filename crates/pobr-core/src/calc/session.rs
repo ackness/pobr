@@ -1772,7 +1772,7 @@ impl CalculationSession {
         let (faster, slower) = ailment::rate_mod_names(name);
         Some(AilmentLines {
             chance: db.evaluate_names(&scoped, &ailment::chance_mod_names(name, from_hit_size)),
-            duration: db.evaluate_names(&scoped, &ailment::duration_mod_names(kind)),
+            duration: db.evaluate_names(&scoped, &ailment::duration_mod_names_for(kind, db, cfg)),
             effect: db.evaluate_names(cfg, &ailment::effect_mod_names()),
             rate: db.evaluate_names(cfg, &[faster, slower]),
         })
@@ -2005,7 +2005,7 @@ fn ailment_of(stat: &str) -> Option<AilmentType> {
 /// Conditions a pass of the calculation works out for itself, for the hit
 /// or hand it is computing or from what the character has in effect. Absent
 /// from the condition map, they do not hold; nothing is missing.
-pub const CONDITIONS_SET_BY_A_PASS: [&str; 28] = [
+pub const CONDITIONS_SET_BY_A_PASS: [&str; 29] = [
     // `calc::offence` and `calc::crit_pass`: the critical and the
     // non-critical half of a hit.
     "CriticalStrike",
@@ -2027,6 +2027,7 @@ pub const CONDITIONS_SET_BY_A_PASS: [&str; 28] = [
     "EnemyIntimidated",
     "EnemyCrushed",
     "EnemyHindered",
+    "EnemyBleedAggravated",
     // `calc::armour_break`: derived from the enemy's remaining Armour.
     "EnemyArmourBroken",
     "EnemyArmourFullyBroken",

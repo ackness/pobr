@@ -2014,3 +2014,164 @@ fn brutality_iii_ailment_destinations_preserve_scope_and_trace() {
         }
     }
 }
+
+/// A support player buff hosted by a weapon-restricted active skill (e.g.
+/// Window of Opportunity II on Bow-only Snipe) only applies when an equipped
+/// weapon can use the host skill.
+#[test]
+fn weapon_restricted_support_buff_requires_compatible_equipped_weapon() {
+    use pobr_build::{Build, CharacterIdentity, SocketGroup};
+    use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
+
+    let data = load_build_data();
+    let item = |base: &str| Item {
+        base: ItemBaseId::from(base),
+        rarity: ItemRarity::Normal,
+        quality: 0,
+        corrupted: false,
+        implicit_texts: vec![],
+        modifier_texts: vec![],
+        enchant_texts: vec![],
+        rolled_defence: RolledDefence::default(),
+        socketed: Vec::new(),
+        parsed_stats: vec![],
+    };
+    let build = |weapon_base: &str| {
+        Build::new()
+            .with_character(CharacterIdentity {
+                level: 80,
+                class_name: "Monk".into(),
+                ascendancy_name: String::new(),
+            })
+            .set_item(EquipmentSlot::Weapon1, item(weapon_base))
+            .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20))
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_gem_skill("SnipePlayer", 20)
+                    .with_gem_skill("SupportWindowOfOpportunityPlayerTwo", 1),
+            )
+            .with_main_socket_group(1)
+    };
+    let mut opts = panel_opts();
+    opts.extra_modifier_texts = vec!["+1000 to Evasion Rating".into()];
+
+    let with_bow = calculate_with_data(&build("Crude Bow"), &data, &opts).unwrap();
+    let with_talisman = calculate_with_data(&build("Ashbark Talisman"), &data, &opts).unwrap();
+    assert!(
+        with_bow.deflection_rating > with_talisman.deflection_rating + 100.0,
+        "Bow should activate Window of Opportunity II deflection buff: bow={} vs talisman={}",
+        with_bow.deflection_rating,
+        with_talisman.deflection_rating
+    );
+    assert_eq!(
+        with_talisman.deflection_rating, 0.0,
+        "Talisman cannot use Bow-only Snipe, so Window of Opportunity II must not apply"
+    );
+}
+
+/// Aggravated Bleeding on Cursed targets ("Bleeding you inflict on Cursed
+/// targets is Aggravated") and Concoct II (3% more Bleed magnitude per
+/// consumed Life Flask charge = floor(max_charges * 30%)) both scale BleedDPS.
+#[test]
+fn aggravated_bleed_on_cursed_target_and_concoct_flask_charges_scale_bleed() {
+    use pobr_build::{SocketGroup, parse_build};
+
+    let data = load_build_data();
+    let xml = r#"<PathOfBuilding2>
+<Build level="80" className="Witch" ascendClassName="Blood Mage" mainSocketGroup="1"/>
+<Items activeItemSet="1">
+<Item id="1">Rarity: NORMAL
+Crude Bow
+Implicits: 0
+Adds 100 to 100 Physical Damage
+</Item>
+<Item id="2">Rarity: MAGIC
+Ultimate Life Flask of the Ample
+Implicits: 0
+70% increased Charges
+</Item>
+<ItemSet id="1">
+<Slot name="Weapon 1" itemId="1"/>
+<Slot name="Flask 1" itemId="2" active="true"/>
+</ItemSet></Items>
+</PathOfBuilding2>"#;
+    let base_build = parse_build(xml)
+        .unwrap()
+        .add_socket_group(SocketGroup::new().with_gem_skill("MeleeBowPlayer", 20))
+        .add_socket_group(SocketGroup::new().with_gem_skill("DespairPlayer", 20))
+        .with_main_socket_group(1);
+
+    let mut opts = panel_opts();
+    opts.mode_effective = true;
+    opts.extra_modifier_texts = vec!["100% chance to inflict Bleeding on Hit".into()];
+    let bare = calculate_with_data(&base_build, &data, &opts).unwrap();
+    assert!(bare.bleed_dps > 0.0);
+
+    let mut agg_opts = opts.clone();
+    agg_opts
+        .extra_modifier_texts
+        .push("Bleeding you inflict on Cursed targets is Aggravated".into());
+    let aggravated = calculate_with_data(&base_build, &data, &agg_opts).unwrap();
+    assert!(
+        (aggravated.bleed_dps / bare.bleed_dps - 2.0).abs() < 1e-4,
+        "aggravated bleed should double BleedDPS: {} vs {}",
+        aggravated.bleed_dps,
+        bare.bleed_dps
+    );
+
+    let mut concoct_build = base_build;
+    concoct_build.socket_groups[0] = concoct_build.socket_groups[0]
+        .clone()
+        .with_gem_skill("SupportConcoctPlayerTwo", 1);
+    let both = calculate_with_data(&concoct_build, &data, &agg_opts).unwrap();
+    // Ultimate Life Flask: 75 base * 1.70 = 127 max charges -> floor(127 * 0.30) = 38 charges -> +114% MORE (2.14x).
+    assert!(
+        (both.bleed_dps / aggravated.bleed_dps - 2.14).abs() < 1e-3,
+        "Concoct II should add 38 * 3% = +114% MORE bleed: {} vs {}",
+        both.bleed_dps,
+        aggravated.bleed_dps
+    );
+}
+
+/// Exposure supports linked to a minion summoning skill (e.g. Ancestral
+/// Spirits + Fire Exposure + Potent Exposure) apply via the summoned minions'
+/// attack skills, enabling configured Fire Exposure and Potent Exposure's +20%
+/// exposure effect.
+#[test]
+fn minion_attack_skill_hosts_fire_and_potent_exposure_supports() {
+    use pobr_build::{Build, CharacterIdentity, SocketGroup};
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+
+    let data = load_build_data();
+    let mut build = Build::new()
+        .with_character(CharacterIdentity {
+            level: 90,
+            class_name: "Warrior".into(),
+            ascendancy_name: "Warbringer".into(),
+        })
+        .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20))
+        .with_main_socket_group(1);
+    build.config.raw_inputs.values.insert(
+        "conditionEnemyFireExposure".into(),
+        ConfigInputValue::Bool(true),
+    );
+    let mut opts = panel_opts();
+    opts.mode_effective = true;
+    let without_host = calculate_with_data(&build, &data, &opts).unwrap();
+
+    let with_spirits = build.add_socket_group(
+        SocketGroup::new()
+            .with_gem_skill("AncestralSpiritsPlayer", 20)
+            .with_gem_skill("SupportFireExposurePlayer", 1)
+            .with_gem_skill("SupportPotentExposurePlayer", 1),
+    );
+    let exposed = calculate_with_data(&with_spirits, &data, &opts).unwrap();
+    // Pinnacle boss has 50% Fire Resist and -50% ExposureEffectOnSelf:
+    // base 20% * 1.20 (Potent Exposure) * 0.50 = 12% -> Fire res drops 50% -> 38% (0.62 / 0.50 = 1.24x).
+    assert!(
+        (exposed.dps / without_host.dps - 1.24).abs() < 1e-3,
+        "Ancestral Spirits + Fire/Potent Exposure should apply -12% Fire Exposure (1.24x): {} vs {}",
+        exposed.dps,
+        without_host.dps
+    );
+}

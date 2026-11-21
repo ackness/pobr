@@ -250,6 +250,63 @@ fn factor(db: &ModDb, cfg: &CalcConfig, names: &[String]) -> f64 {
     (1.0 + sum(db, cfg, ModType::Inc, names) / 100.0).max(0.0) * more(db, cfg, names)
 }
 
+/// Computes `LifeFlaskChargeConsumed` and `ManaFlaskChargeConsumed` multipliers
+/// for supports that consume a percentage of an equipped Life/Mana Flask's
+/// maximum charges on skill use (e.g. Concoct I/II, Ambrosia I/II).
+pub(crate) fn snapshot_flask_charges_consumed(env: &mut Env) {
+    let db = &env.player.mod_db;
+    let cfg = &env.cfg;
+    let query_cfg = query_config(cfg);
+    let mut updates = Vec::new();
+    for (pct_mod, mult_key, is_life) in [
+        (
+            "Multiplier:LifeFlaskMaxChargesPercent",
+            "LifeFlaskChargeConsumed",
+            true,
+        ),
+        (
+            "Multiplier:ManaFlaskMaxChargesPercent",
+            "ManaFlaskChargeConsumed",
+            false,
+        ),
+    ] {
+        if cfg.multipliers.contains_key(mult_key) {
+            continue;
+        }
+        let pct = db.sum(ModType::Base, cfg, &[ModName::from(pct_mod)]);
+        if pct <= 0.0 {
+            continue;
+        }
+        let max_charges = env
+            .utility_items
+            .iter()
+            .filter(|item| {
+                !item.is_charm
+                    && if is_life {
+                        item.base.life > 0.0
+                    } else {
+                        item.base.mana > 0.0
+                    }
+            })
+            .map(|item| {
+                let slot = item.slot.replace(' ', "");
+                let names = vec![local_name(&slot, "FlaskCharges")];
+                let charges_base =
+                    item.base.charges_max + sum(db, &query_cfg, ModType::Base, &names);
+                let charges_mod = factor(db, &query_cfg, &names);
+                (charges_base * charges_mod).floor().max(0.0)
+            })
+            .fold(0.0_f64, f64::max);
+        let consumed = (max_charges * pct / 100.0).floor().max(0.0);
+        if consumed > 0.0 {
+            updates.push((mult_key, consumed));
+        }
+    }
+    for (mult_key, consumed) in updates {
+        env.cfg.multipliers.insert(mult_key.into(), consumed);
+    }
+}
+
 pub fn calculate(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &query_config(&env.cfg);
