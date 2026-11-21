@@ -68,7 +68,7 @@ def fetch_verified(address, digest, cache, fetcher, max_bytes):
         return raw
     raw = fetcher(address, max_bytes=max_bytes)
     require(imports.sha(raw) == digest, f"{address.asset} does not match SHA256SUMS")
-    imports.write(path, raw)
+    replace_atomically(path, raw)
     return raw
 
 
@@ -296,6 +296,7 @@ def main():
     require(args.asset is None or len(pairs) == 1, "--asset applies to a single owner")
     def install():
         subprocess.run([sys.executable, "-m", "pipeline.runtime.build_data", "--lock", str(args.lock),
+                        "--shared", str(args.data_root / "overlay-common"),
                         "--install", str(args.data_root), "--cache", str(args.cache)],
                        cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
     result = adopt(args.lock, pairs, args.cache, args.data_root, asset=args.asset,

@@ -383,7 +383,8 @@ def main():
         if args.install:
             owned = set(bundle.decode(regular(args.lock))["shared_files"])
             install(output, args.install, owned)
-            api_fixtures.install(fixtures)
+            if args.install.resolve() == (ROOT / "data").resolve():
+                api_fixtures.install(fixtures)
         return result
     if args.out:
         result = run(args.out)

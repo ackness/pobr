@@ -14,10 +14,9 @@
 use std::path::{Path, PathBuf};
 
 use pobr_build::{
-    BuildData, DataOrchestratorOptions, ImportedBuild, ModifierRef, compare_build_to_reference,
-    diagnose, import_build_from_code,
+    DataOrchestratorOptions, ImportedBuild, ModifierRef, compare_build_to_reference, diagnose,
+    import_build_from_code,
 };
-use pobr_gamedata::GameData;
 
 const TOL: f64 = 0.05;
 
@@ -109,8 +108,7 @@ fn from_config(modifier: &ModifierRef) -> bool {
 /// calculation, for every committed build.
 #[test]
 fn diagnosis_does_not_change_the_result() {
-    let data =
-        BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).expect("load BuildData");
+    let data = super::test_data();
     let options = DataOrchestratorOptions::against_reference_enemy();
     let codes = committed_codes();
     assert!(codes.len() >= 20, "{} committed builds", codes.len());
@@ -145,8 +143,7 @@ fn diagnose_build() {
     let (name, code) = build_code(&target);
     let ImportedBuild { build, report } =
         import_build_from_code(&code).unwrap_or_else(|e| panic!("{name}: import failed: {e}"));
-    let data =
-        BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).expect("load BuildData");
+    let data = super::test_data();
     // The build as the game plays it, against the enemy its reference values
     // were exported for: the inputs a calculation drops are asked of this one.
     let options = DataOrchestratorOptions::against_reference_enemy();

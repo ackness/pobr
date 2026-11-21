@@ -16,7 +16,6 @@ use pobr_build::{
 };
 use pobr_core::calc::{MinimalInput, OutputTable};
 use pobr_data::monster::EnemyTier;
-use pobr_gamedata::GameData;
 use std::collections::HashMap;
 
 const DEADEYE: &str = include_str!("../../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
@@ -44,10 +43,9 @@ fn between<'a>(s: &'a str, start: &str, end: &str) -> Option<&'a str> {
     Some(&rest[..j])
 }
 
-fn load_data() -> BuildData {
+fn load_data() -> &'static BuildData {
     // PoB2 reference values are recaptured for the active data version on every data update.
-    let data = GameData::new(pobr_gamedata::current_data_dir());
-    BuildData::load(&data).expect("load BuildData")
+    super::test_data()
 }
 
 /// (display label, PoB2 key, PoBR value)
