@@ -383,8 +383,10 @@ pub(crate) fn evaluate_source_lines<'a>(
     let mut convert_names = Vec::new();
     let mut gain = Vec::new();
     for &to in DAMAGE_TYPES.iter() {
-        convert_names.extend(conversion_names(damage_type, to, true));
-        convert_names.extend(conversion_names(damage_type, to, false));
+        if to != damage_type {
+            convert_names.extend(conversion_names(damage_type, to, true));
+            convert_names.extend(conversion_names(damage_type, to, false));
+        }
         gain.extend(gain_names(damage_type, to));
     }
     gain.push(ModName::from("DamageGainAsRandom"));
@@ -765,6 +767,9 @@ fn build_conversion_matrix(db: &ModDb, cfg: &CalcConfig, skill: bool) -> [[f64; 
     for (fi, &from) in DAMAGE_TYPES.iter().enumerate() {
         let mut total = 0.0;
         for (ti, &to) in DAMAGE_TYPES.iter().enumerate() {
+            if fi == ti {
+                continue;
+            }
             let names = conversion_names(from, to, skill);
             let pct = db.sum(ModType::Base, cfg, &names).max(0.0);
             matrix[fi][ti] = pct / 100.0;

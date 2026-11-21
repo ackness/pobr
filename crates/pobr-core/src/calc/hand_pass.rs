@@ -86,25 +86,31 @@ pub struct HandSource {
 }
 
 impl HandSource {
-    /// Main hand pass: sets the `MainHandAttack` condition (PoB2's weapon1Cfg).
+    /// Main hand pass: sets `MainHandAttack` true and `OffHandAttack` false (PoB2's weapon1Cfg).
     pub fn main_hand(weapon: WeaponBase) -> Self {
         Self {
             label: HandTag::MainHand,
             weapon,
             cfg_overrides: HandCfg {
-                conditions: vec![("MainHandAttack".to_string(), true)],
+                conditions: vec![
+                    ("MainHandAttack".to_string(), true),
+                    ("OffHandAttack".to_string(), false),
+                ],
             },
         }
     }
 
-    /// Off hand pass: sets the `OffHandAttack` condition (PoB2's weapon2Cfg;
+    /// Off hand pass: sets `OffHandAttack` true and `MainHandAttack` false (PoB2's weapon2Cfg;
     /// a non-weapon-attack source like Shield Wall is also off-hand, `CalcOffence.lua:2418-2431`).
     pub fn off_hand(weapon: WeaponBase) -> Self {
         Self {
             label: HandTag::OffHand,
             weapon,
             cfg_overrides: HandCfg {
-                conditions: vec![("OffHandAttack".to_string(), true)],
+                conditions: vec![
+                    ("MainHandAttack".to_string(), false),
+                    ("OffHandAttack".to_string(), true),
+                ],
             },
         }
     }
@@ -274,6 +280,17 @@ pub(crate) fn hand_scope(
         hand_input.base_action_rate = rate;
     }
     let mut hand_cfg = cfg.clone();
+    match hand.label {
+        HandTag::MainHand => {
+            hand_cfg.conditions.insert("MainHandAttack".into(), true);
+            hand_cfg.conditions.insert("OffHandAttack".into(), false);
+        }
+        HandTag::OffHand => {
+            hand_cfg.conditions.insert("MainHandAttack".into(), false);
+            hand_cfg.conditions.insert("OffHandAttack".into(), true);
+        }
+        HandTag::Single => {}
+    }
     for (name, enabled) in &hand.cfg_overrides.conditions {
         hand_cfg.conditions.insert(name.clone(), *enabled);
     }
@@ -446,7 +463,8 @@ fn combined_breakdown(
 }
 
 /// Cross-hand merge for `Stored<Type>CombinedAvg` (vendor `:4588`'s per-damage-type DPS mode).
-/// The two legs' type sets are aligned in MH order; a type missing from OH is folded in as 0 (vendor's `or 0` semantics).
+/// Merges the canonical [`super::damage::DAMAGE_TYPES`] union of types present in either hand;
+/// a type missing from one hand is folded in as 0 (vendor's `or 0` semantics).
 fn combine_stored_by_type(
     mh: &[(pobr_data::prelude::DamageType, f64)],
     oh: &[(pobr_data::prelude::DamageType, f64)],
@@ -454,16 +472,18 @@ fn combine_stored_by_type(
 ) -> Vec<(pobr_data::prelude::DamageType, f64)> {
     let mode = combine_mode_for("StoredCombinedAvg", double_hits)
         .expect("StoredCombinedAvg is in COMBINE_TABLE");
-    mh.iter()
-        .map(|(ty, mh_v)| {
-            let oh_v = oh
-                .iter()
-                .find(|(oh_ty, _)| oh_ty == ty)
-                .map_or(0.0, |(_, v)| *v);
+    super::damage::DAMAGE_TYPES
+        .iter()
+        .filter_map(|ty| {
+            let mh_v = mh.iter().find(|(mh_ty, _)| mh_ty == ty).map(|(_, v)| *v);
+            let oh_v = oh.iter().find(|(oh_ty, _)| oh_ty == ty).map(|(_, v)| *v);
+            if mh_v.is_none() && oh_v.is_none() {
+                return None;
+            }
             let combined = mode
-                .combine(&[*mh_v, oh_v])
+                .combine(&[mh_v.unwrap_or(0.0), oh_v.unwrap_or(0.0)])
                 .expect("DPS is a self-computing mode");
-            (*ty, combined)
+            Some((*ty, combined))
         })
         .collect()
 }
