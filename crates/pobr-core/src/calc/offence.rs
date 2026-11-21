@@ -1046,14 +1046,12 @@ impl HitPass {
                     .find(|c| c.damage_type == damage_type)
                 {
                     (&cfg_hit, component.avg())
-                } else if let Some(component) = pass
-                    .crit_components
-                    .iter()
-                    .find(|c| c.damage_type == damage_type)
-                {
-                    (&cfg_crit, component.avg())
                 } else {
-                    return None;
+                    let component = pass
+                        .crit_components
+                        .iter()
+                        .find(|c| c.damage_type == damage_type)?;
+                    (&cfg_crit, component.avg())
                 };
                 let terms = enemy_mitigation_terms(db, enemy_db, pass_cfg, damage_type, raw_hit);
                 Some(HitMitigationPart {
