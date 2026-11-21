@@ -189,7 +189,7 @@ impl PoolCtx {
     /// `(1 − preventedLifeLoss/100) × Σ LifeLossBelowHalfPrevented`.
     /// This is `reduce_pools`'s `:623` branch condition (≠0 takes the above/below-half segments).
     fn prevented_life_loss_below_half_effective(&self) -> f64 {
-        (1.0 - self.prevented_life_loss / 100.0) * self.life_loss_below_half_prevented
+        (1.0 - self.prevented_life_loss / 100.0).max(0.0) * self.life_loss_below_half_prevented
     }
 }
 
@@ -365,7 +365,7 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
         );
         // :585-586 the MoM ratio and the MoM pool.
         let mom_effect = (ctx.mom_shared + ctx.mom_by_type[idx]).min(100.0) / 100.0;
-        let mom_pool = if mom_effect < 1.0 {
+        let mom_pool = if mom_effect < 1.0 && life_hit_pool.is_finite() {
             (life_hit_pool / (1.0 - mom_effect) - life_hit_pool).min(mana)
         } else {
             mana
@@ -373,21 +373,25 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
         if energy_shield > 0.0 && ctx.eternal_life {
             // :587-594 the EternalLife branch: the bypass portion is
             // entirely waived (eternalLifePrevented), not passing through to life.
-            let temp = rem.min(energy_shield / (1.0 - es_bypass) / es_mult);
-            energy_shield -= temp * (1.0 - es_bypass) * es_mult;
+            let temp = if es_bypass >= 1.0 {
+                rem
+            } else {
+                rem.min(energy_shield / (1.0 - es_bypass) / es_mult)
+            };
+            let es_lost = if es_bypass >= 1.0 {
+                0.0
+            } else {
+                temp * (1.0 - es_bypass) * es_mult
+            };
+            energy_shield -= es_lost;
             es_pool_remaining = es_pool_remaining.min(energy_shield);
             rem -= temp;
-            lose(
-                &mut resources_lost,
-                dtype,
-                "energy_shield",
-                temp * (1.0 - es_bypass) * es_mult,
-            );
+            lose(&mut resources_lost, dtype, "energy_shield", es_lost);
             lose(
                 &mut resources_lost,
                 dtype,
                 "eternal_life_prevented",
-                temp * es_bypass,
+                temp * es_bypass.min(1.0),
             );
         } else if energy_shield > 0.0 && es_bypass < 1.0 {
             // :594-601 the normal branch: the ES amount available is limited
@@ -441,17 +445,25 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
         let below_half_eff = ctx.prevented_life_loss_below_half_effective();
         let mut exhausts_life = false;
         if ctx.prevented_life_loss > 0.0 || below_half_eff > 0.0 {
-            let half_life = ctx.max_life * 0.5;
+            let half_life = (ctx.max_life * 0.5).max(0.0);
             let life_over_half = (life - half_life).max(0.0);
-            let prevent_pct = ctx.prevented_life_loss / 100.0;
-            let pool_above_low = life_over_half / (1.0 - prevent_pct);
-            let prevent_below_half_pct = ctx.life_loss_below_half_prevented / 100.0;
+            let prevent_pct = (ctx.prevented_life_loss / 100.0).min(1.0);
+            let pool_above_low = if life_over_half <= 0.0 {
+                0.0
+            } else if prevent_pct >= 1.0 {
+                f64::INFINITY
+            } else {
+                life_over_half / (1.0 - prevent_pct)
+            };
+            let prevent_below_half_pct = (ctx.life_loss_below_half_prevented / 100.0).min(1.0);
             // :617-618 how much damage life (with prevention folded in) can
             // still take; the excess is recorded as overkill first.
-            let damage_that_life_can_still_take = pool_above_low
-                + life.min(half_life).max(0.0)
-                    / (1.0 - prevent_below_half_pct)
-                    / (1.0 - prevent_pct);
+            let damage_that_life_can_still_take = life_hit_pool_with_loss_prevention(
+                life,
+                ctx.max_life,
+                ctx.prevented_life_loss,
+                ctx.life_loss_below_half_prevented,
+            );
             exhausts_life = damage_that_life_can_still_take.is_finite()
                 && rem >= damage_that_life_can_still_take;
             if damage_that_life_can_still_take < rem {
@@ -496,7 +508,7 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
                 );
             } else {
                 // :643-647 above-half prevention only: a fixed ratio is redirected into deferred loss.
-                let temp = rem * ctx.prevented_life_loss / 100.0;
+                let temp = rem * prevent_pct;
                 life_loss_lost_over_time += temp;
                 rem -= temp;
                 lose(&mut resources_lost, dtype, "life_loss_prevented", temp);
@@ -632,10 +644,27 @@ pub fn life_hit_pool_with_loss_prevention(
     loss_prev_pct: f64,
     below_half_prev_pct: f64,
 ) -> f64 {
-    let half_life = max_life * 0.5;
+    if life <= 0.0 {
+        return 0.0;
+    }
+    let half_life = (max_life * 0.5).max(0.0);
     let above_low = (life - half_life).max(0.0);
-    above_low / (1.0 - loss_prev_pct / 100.0)
-        + life.min(half_life) / (1.0 - below_half_prev_pct / 100.0) / (1.0 - loss_prev_pct / 100.0)
+    let below_half = life.min(half_life);
+    let above_pool = if above_low <= 0.0 {
+        0.0
+    } else if loss_prev_pct >= 100.0 {
+        f64::INFINITY
+    } else {
+        above_low / (1.0 - loss_prev_pct / 100.0)
+    };
+    let below_pool = if below_half <= 0.0 {
+        0.0
+    } else if loss_prev_pct >= 100.0 || below_half_prev_pct >= 100.0 {
+        f64::INFINITY
+    } else {
+        below_half / (1.0 - below_half_prev_pct / 100.0) / (1.0 - loss_prev_pct / 100.0)
+    };
+    above_pool + below_pool
 }
 
 /// The max-hit TotalHitPool base: folds ES (bypass / chaos-doubling /
@@ -659,7 +688,13 @@ pub fn total_hit_pool_base(
     };
     if ctx.eternal_life {
         // :2948-2950 EternalLife: the bypass portion is waived → ES can actually cover ES/(1−bypass).
-        mom_hit_pool + energy_shield / (1.0 - es_bypass) / chaos_es_mult
+        if energy_shield <= 0.0 {
+            mom_hit_pool
+        } else if es_bypass >= 1.0 {
+            f64::INFINITY
+        } else {
+            mom_hit_pool + energy_shield / (1.0 - es_bypass) / chaos_es_mult
+        }
     } else if es_bypass < 1.0 {
         if es_bypass > 0.0 {
             // :2952-2955 bypass nesting: poolProtected = EScap/(1−bypass)×bypass/chaosMult.
@@ -863,5 +898,91 @@ mod tests {
         );
         assert_eq!(DamageType::Physical as usize, 0);
         assert_eq!(DamageType::Chaos as usize, 4);
+    }
+
+    #[test]
+    fn loss_prevention_at_or_above_100_avoids_nan_and_negative_pools() {
+        // Below half life (above_low == 0) with 100% prevention previously divided 0.0 / 0.0 = NaN.
+        assert_eq!(
+            life_hit_pool_with_loss_prevention(400.0, 1000.0, 100.0, 0.0),
+            f64::INFINITY
+        );
+        // Over-100% prevention previously produced negative denominators and negative pools.
+        assert_eq!(
+            life_hit_pool_with_loss_prevention(400.0, 1000.0, 120.0, 0.0),
+            f64::INFINITY
+        );
+        assert_eq!(
+            life_hit_pool_with_loss_prevention(1000.0, 1000.0, 0.0, 120.0),
+            f64::INFINITY
+        );
+        // Zero life with 100% prevention returns 0, never NaN.
+        assert_eq!(
+            life_hit_pool_with_loss_prevention(0.0, 1000.0, 100.0, 100.0),
+            0.0
+        );
+
+        // reduce_pools below half life with 100% and 120% prevention avoids NaN and negative pools.
+        for prev in [100.0, 120.0] {
+            let pools = PoolState {
+                life: 400.0,
+                ..PoolState::default()
+            };
+            let hit = TypedDamage {
+                physical: 500.0,
+                ..TypedDamage::default()
+            };
+            let ctx = PoolCtx {
+                max_life: 1000.0,
+                prevented_life_loss: prev,
+                life_loss_below_half_prevented: 50.0,
+                ..PoolCtx::default()
+            };
+            let after = reduce_pools(&pools, &hit, &ctx);
+            assert!(!after.overkill.is_nan(), "prev={prev}");
+            assert_eq!(after.overkill, 0.0, "prev={prev}");
+            assert_eq!(after.pools.life, 400.0, "prev={prev}");
+            assert_eq!(after.pools.life_loss_lost_over_time, 500.0, "prev={prev}");
+        }
+    }
+
+    #[test]
+    fn eternal_life_es_bypass_at_or_above_100_avoids_nan_and_negative_pools() {
+        let mut ctx = PoolCtx {
+            max_life: 1000.0,
+            eternal_life: true,
+            ..PoolCtx::default()
+        };
+        ctx.es_bypass_by_type[DamageType::Physical as usize] = 100.0;
+        // 0 ES + 100% bypass previously computed 0.0 / 0.0 = NaN.
+        assert_eq!(
+            total_hit_pool_base(DamageType::Physical, 1000.0, 0.0, &ctx),
+            1000.0
+        );
+        // Positive ES + 100% bypass waives all hit damage under Eternal Life.
+        assert_eq!(
+            total_hit_pool_base(DamageType::Physical, 1000.0, 500.0, &ctx),
+            f64::INFINITY
+        );
+        // >100% bypass must not flip negative.
+        ctx.es_bypass_by_type[DamageType::Physical as usize] = 120.0;
+        assert_eq!(
+            total_hit_pool_base(DamageType::Physical, 1000.0, 500.0, &ctx),
+            f64::INFINITY
+        );
+
+        let pools = PoolState {
+            life: 1000.0,
+            energy_shield: 500.0,
+            ..PoolState::default()
+        };
+        let hit = TypedDamage {
+            physical: 300.0,
+            ..TypedDamage::default()
+        };
+        let after = reduce_pools(&pools, &hit, &ctx);
+        assert_eq!(after.pools.energy_shield, 500.0);
+        assert_eq!(after.pools.life, 1000.0);
+        assert_eq!(after.overkill, 0.0);
     }
 }
