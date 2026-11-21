@@ -33,7 +33,8 @@ pub fn display_catalog_json() -> Result<String, String> {
             higher_is_better: definition.higher_is_better,
         })
         .collect();
-    serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))
+    serde_json::to_string(&entries)
+        .map_err(|e| super::ApiError::from(format!("serialize: {e}")).into_json())
 }
 
 // classify_item_lines_json (item text -> per-line categories, for Items panel coloring)
@@ -102,7 +103,8 @@ pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
         .filter(|line| line.kind == pobr_item::DisplayLineKind::Explicit);
     let mut inferred_tag = None;
     let tiers = if let Some((index, tags, domain, draft)) = tier_ctx {
-        let allowed_sources = state::special_affix_ids(&draft.header.base_name)?;
+        let allowed_sources = state::special_affix_ids(&draft.header.base_name)
+            .map_err(|e| super::ApiError::from(e).into_json())?;
         let selection = pobr_core::ingest::item_text::ItemSelection::new(text);
         let source_lines: Vec<_> = text.lines().collect();
         let catalyst = display_catalyst(&draft.catalyst);
@@ -220,7 +222,8 @@ pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
             }
         })
         .collect();
-    serde_json::to_string(&lines).map_err(|e| format!("serialize: {e}"))
+    serde_json::to_string(&lines)
+        .map_err(|e| super::ApiError::from(format!("serialize: {e}")).into_json())
 }
 
 fn equipment_tier_line(line: &str) -> String {
@@ -604,7 +607,8 @@ pub fn parse_localized_lines_json(lang: &str, lines_json: &str) -> Result<String
 /// The locales the data pack declares, with their fallback chains, as a JSON
 /// array of [`crate::locales::LocaleInfo`] (`[]` before initialization).
 pub fn available_locales_json() -> Result<String, String> {
-    serde_json::to_string(&crate::locales::available_locales()).map_err(|e| e.to_string())
+    serde_json::to_string(&crate::locales::available_locales())
+        .map_err(|e| super::ApiError::from(e.to_string()).into_json())
 }
 
 /// The `lang` name for `key` in the `kind` name table (`base_item` / `skill`,
@@ -696,7 +700,7 @@ pub fn minion_catalog_json() -> Result<String, String> {
         .collect();
     summoners.sort_by(|a, b| a.skill_id.cmp(&b.skill_id));
     serde_json::to_string(&serde_json::json!({"monsters": monsters, "summoners": summoners}))
-        .map_err(|e| format!("serialize minion catalog: {e}"))
+        .map_err(|e| super::ApiError::from(format!("serialize minion catalog: {e}")).into_json())
 }
 
 #[cfg(test)]

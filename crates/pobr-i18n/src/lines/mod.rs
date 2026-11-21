@@ -40,8 +40,9 @@ impl LineParser {
     /// A parser for the chain `packs`; `None` when no pack has templates.
     ///
     /// Whole-line names: each pack's base names (joined to English through
-    /// `english_bases`) and Words nouns; an earlier pack, and within a pack a
-    /// base over a Words noun, wins a localized name both use.
+    /// `english_bases`), Words nouns and passive node names; an earlier pack,
+    /// and within a pack base names over Words nouns over passive node names,
+    /// wins a localized name more than one uses.
     pub fn new<'a>(
         packs: &[&LocalePack],
         english_bases: impl IntoIterator<Item = (&'a str, &'a str)>,
@@ -64,6 +65,11 @@ impl LineParser {
                 }
             }
             for (english, localized) in pack.names(NameKind::Word) {
+                names
+                    .entry(localized.clone())
+                    .or_insert_with(|| english.clone());
+            }
+            for (english, localized) in pack.names(NameKind::PassiveNode) {
                 names
                     .entry(localized.clone())
                     .or_insert_with(|| english.clone());

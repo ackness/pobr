@@ -77,8 +77,10 @@ pub fn merge_active_sets(base: &str, edited: &str) -> String {
     }
 
     // Items: append to the item pool (renumbered) first, then replace this ItemSet
+    let item_id = sel.item.unwrap_or(1);
     if let Some(new_set) = nth_element(&renumbered, "ItemSet", 1)
-        && let Some(old) = nth_element(&out, "ItemSet", sel.item.unwrap_or(1))
+        && let Some(old) = element_by_id(&out, "ItemSet", item_id)
+            .or_else(|| nth_element(&out, "ItemSet", item_id))
     {
         let merged = merge_attrs(&out[old.clone()], &renumbered[new_set], "ItemSet");
         out.replace_range(old, &merged);
@@ -815,6 +817,7 @@ fn set_title(element: &str, tag: &str, title: &str) -> String {
     let escaped = title
         .replace('&', "&amp;")
         .replace('<', "&lt;")
+        .replace('>', "&gt;")
         .replace('"', "&quot;");
     let new_open = match open.find("title=\"") {
         Some(at) => {
@@ -1054,5 +1057,60 @@ mod tests {
         // itemId="0" = an empty slot; adding an offset would turn it into a reference to a nonexistent item.
         let out = renumber_items(r#"<Slot name="Belt" itemId="0"/>"#, 5);
         assert_eq!(out, r#"<Slot name="Belt" itemId="0"/>"#);
+    }
+
+    #[test]
+    fn merges_active_item_set_by_id_when_reordered_or_gapped() {
+        let base = r#"<PathOfBuilding2><Items activeItemSet="2"><Item id="1">OLD</Item><ItemSet id="2" title="First In Doc"><Slot name="Belt" itemId="1"/></ItemSet><ItemSet id="5" title="Gapped"><Slot name="Belt" itemId="1"/></ItemSet></Items></PathOfBuilding2>"#;
+        let edited = r#"<PathOfBuilding2><Items activeItemSet="1"><Item id="1">NEW</Item><ItemSet id="1"><Slot name="Belt" itemId="1"/></ItemSet></Items></PathOfBuilding2>"#;
+
+        let out = merge_active_sets(base, edited);
+        assert!(
+            out.contains(
+                r#"<ItemSet id="2" title="First In Doc"><Slot name="Belt" itemId="2"/></ItemSet>"#
+            ),
+            "active ItemSet id=2 at position 1 must be replaced: {out}"
+        );
+        assert!(
+            out.contains(
+                r#"<ItemSet id="5" title="Gapped"><Slot name="Belt" itemId="1"/></ItemSet>"#
+            ),
+            "inactive ItemSet id=5 must be untouched: {out}"
+        );
+
+        let base_gapped = base.replace(r#"activeItemSet="2""#, r#"activeItemSet="5""#);
+        let out_gapped = merge_active_sets(&base_gapped, edited);
+        assert!(
+            out_gapped.contains(
+                r#"<ItemSet id="2" title="First In Doc"><Slot name="Belt" itemId="1"/></ItemSet>"#
+            ),
+            "inactive ItemSet id=2 must be untouched: {out_gapped}"
+        );
+        assert!(
+            out_gapped.contains(
+                r#"<ItemSet id="5" title="Gapped"><Slot name="Belt" itemId="2"/></ItemSet>"#
+            ),
+            "active ItemSet id=5 must be replaced: {out_gapped}"
+        );
+    }
+
+    #[test]
+    fn escapes_greater_than_in_title_and_roundtrips_through_merge() {
+        let renamed = rename_set(TWO_SPECS, SetKind::Tree, 1, r#"A > B & "C""#).expect("rename");
+        assert!(
+            renamed.contains(r#"title="A &gt; B &amp; &quot;C&quot;""#),
+            "{renamed}"
+        );
+
+        let edited = r#"<Tree activeSpec="1"><Spec nodes="9,10"/></Tree>"#;
+        let merged = merge_active_sets(&renamed, edited);
+        assert!(
+            merged.contains(r#"<Spec nodes="9,10" title="A &gt; B &amp; &quot;C&quot;"/>"#),
+            "escaped title with > must roundtrip cleanly through merge_active_sets: {merged}"
+        );
+        assert!(
+            merged.contains(r#"<Spec title="B" nodes="2"/>"#),
+            "{merged}"
+        );
     }
 }

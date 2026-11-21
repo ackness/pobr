@@ -187,19 +187,99 @@ fn strip_colour_bullet(line: &str) -> &str {
     }
 }
 
-/// Rewrites an attribute-choice line `+N to any [Attributes|Attribute]` to
-/// `+N to <Strength|Dexterity|Intelligence>` for the chosen attribute.
-/// Returns `None` for any line that isn't an attribute-choice line.
+/// Rewrites an attribute-choice phrase ` to any [Attributes|Attribute]` or
+/// ` to any Attribute` to ` to <Strength|Dexterity|Intelligence>` while
+/// preserving any trailing text. Returns `None` for any line that isn't an
+/// attribute-choice line.
 fn rewrite_attribute_choice(text: &str, choice: AttributeChoice) -> Option<String> {
     let lower = text.to_ascii_lowercase();
-    let idx = lower.find(" to any ")?;
-    if !lower[idx..].contains("attribute") {
-        return None;
-    }
+    let (idx, matched_len) = lower.match_indices(" to any ").find_map(|(idx, prefix)| {
+        let after = &lower[idx + prefix.len()..];
+        if after.starts_with("[attributes|attribute]") {
+            Some((idx, prefix.len() + "[attributes|attribute]".len()))
+        } else if let Some(tail) = after.strip_prefix("attribute")
+            && !tail
+                .as_bytes()
+                .first()
+                .is_some_and(u8::is_ascii_alphanumeric)
+        {
+            Some((idx, prefix.len() + "attribute".len()))
+        } else {
+            None
+        }
+    })?;
     let attr = match choice {
         AttributeChoice::Strength => "Strength",
         AttributeChoice::Dexterity => "Dexterity",
         AttributeChoice::Intelligence => "Intelligence",
     };
-    Some(format!("{} to {attr}", &text[..idx]))
+    Some(format!(
+        "{} to {attr}{}",
+        &text[..idx],
+        &text[idx + matched_len..]
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rewrites_plain_and_bracketed_attribute_choice() {
+        assert_eq!(
+            rewrite_attribute_choice("+5 to any Attribute", AttributeChoice::Strength).as_deref(),
+            Some("+5 to Strength")
+        );
+        assert_eq!(
+            rewrite_attribute_choice(
+                "+5 to any [Attributes|Attribute]",
+                AttributeChoice::Dexterity
+            )
+            .as_deref(),
+            Some("+5 to Dexterity")
+        );
+    }
+
+    #[test]
+    fn preserves_trailing_text_after_attribute_choice() {
+        assert_eq!(
+            rewrite_attribute_choice(
+                "+5 to any Attribute while holding a Shield",
+                AttributeChoice::Intelligence
+            )
+            .as_deref(),
+            Some("+5 to Intelligence while holding a Shield")
+        );
+        assert_eq!(
+            rewrite_attribute_choice(
+                "+5 to any [Attributes|Attribute], +10 to maximum Life",
+                AttributeChoice::Strength
+            )
+            .as_deref(),
+            Some("+5 to Strength, +10 to maximum Life")
+        );
+    }
+
+    #[test]
+    fn ignores_unrelated_to_any_phrases() {
+        assert_eq!(
+            rewrite_attribute_choice(
+                "+10 to any Resistance per 5 Attributes",
+                AttributeChoice::Strength
+            ),
+            None
+        );
+        assert_eq!(
+            rewrite_attribute_choice("+5 to any attributable Stat", AttributeChoice::Dexterity),
+            None
+        );
+        assert_eq!(
+            rewrite_attribute_choice(
+                "Damage to any Enemy and +5 to any Attribute",
+                AttributeChoice::Intelligence
+            )
+            .as_deref(),
+            Some("Damage to any Enemy and +5 to Intelligence")
+        );
+    }
 }

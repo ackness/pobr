@@ -43,8 +43,8 @@ enum Command {
     /// Break one mod line all the way down: name, type and value plus the flags and
     /// tags that decide when it applies and how it scales, each explained in prose.
     ExplainMod(ExplainModArgs),
-    /// Parse raw item text from --text, --file or stdin. Not implemented yet; returns
-    /// an error.
+    /// Parse PoB or in-game clipboard item text from --text, --file or stdin,
+    /// printing the parsed item and its modifiers as JSON.
     ParseItem(ParseItemArgs),
     /// Decode a PoB build code into its XML.
     DecodeCode(CodeArgs),
@@ -205,7 +205,11 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
     match run(cli) {
         Ok(output) => {
-            println!("{output}");
+            if output.ends_with('\n') {
+                print!("{output}");
+            } else {
+                println!("{output}");
+            }
             ExitCode::SUCCESS
         }
         Err(err) => {
