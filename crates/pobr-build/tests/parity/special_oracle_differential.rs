@@ -43,8 +43,17 @@ fn oracle_available() -> bool {
     if !vendor_src().join("HeadlessWrapper.lua").exists() {
         return false;
     }
-    let luajit = std::env::var("POBR_LUAJIT").unwrap_or_else(|_| "/opt/homebrew/bin/luajit".into());
-    std::path::Path::new(&luajit).exists() || which(&luajit)
+    if let Ok(luajit) = std::env::var("POBR_LUAJIT")
+        && !luajit.is_empty()
+    {
+        return std::path::Path::new(&luajit).exists() || which(&luajit);
+    }
+    Command::new("bash")
+        .arg(repo_root().join("devs/scripts/pob2-luajit.sh"))
+        .arg("resolve")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
 }
 
 fn which(cmd: &str) -> bool {

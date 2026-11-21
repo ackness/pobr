@@ -14,19 +14,20 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+DATA_ROOT="${POBR_DATA_ROOT:-$ROOT/data}"
 
-PATCH="${POBR_PATCH:-}"
-if [[ -z "$PATCH" && -f "$ROOT/data/CURRENT" ]]; then
-    PATCH="$(head -1 "$ROOT/data/CURRENT" | tr -d '[:space:]')"
+PATCH="${POBR_PATCH:-${POBR_DATA_VERSION:-}}"
+if [[ -z "$PATCH" && -f "$DATA_ROOT/CURRENT" ]]; then
+    PATCH="$(head -1 "$DATA_ROOT/CURRENT" | tr -d '[:space:]')"
 fi
 if [[ -z "$PATCH" ]]; then
-    echo "regen-check: unable to determine version (missing data/CURRENT and POBR_PATCH is unset)" >&2
+    echo "regen-check: unable to determine version (missing $DATA_ROOT/CURRENT and POBR_PATCH is unset)" >&2
     exit 1
 fi
 
-COMMITTED_FLAT="$ROOT/data/$PATCH"
+COMMITTED_FLAT="$DATA_ROOT/$PATCH"
 if [[ ! -d "$COMMITTED_FLAT" ]]; then
-    echo "regen-check: data/$PATCH does not exist; run mise run data:prepare first" >&2
+    echo "regen-check: $COMMITTED_FLAT does not exist; run mise run data:prepare first" >&2
     exit 1
 fi
 
@@ -50,8 +51,8 @@ PC_ROOT="$TMP_OUT/precompile"
 PC_DATA="$PC_ROOT/data/$PATCH"
 mkdir -p "$PC_DATA"
 cp -RL "$COMMITTED_FLAT/." "$PC_DATA/"
-if [[ -d "$ROOT/data/overlay-common" ]]; then
-    cp -RL "$ROOT/data/overlay-common" "$PC_ROOT/data/overlay-common"
+if [[ -d "$DATA_ROOT/overlay-common" ]]; then
+    cp -RL "$DATA_ROOT/overlay-common" "$PC_ROOT/data/overlay-common"
 fi
 [[ ! -d "$ROOT/examples" ]] || ln -s "$ROOT/examples" "$PC_ROOT/examples"
 
@@ -63,22 +64,52 @@ if [[ ! -f "$COVERAGE" || ! -f "$BASELINE" ]]; then
     echo "regen-check: missing parse-coverage.json or baseline; cannot check ratchet" >&2
     exit 1
 fi
-CUR_RATIO="$(sed -n 's/.*"coverage_ratio"[[:space:]]*:[[:space:]]*\([0-9.]*\).*/\1/p' "$COVERAGE" | head -1)"
-BASE_RATIO="$(sed -n 's/.*"coverage_ratio"[[:space:]]*:[[:space:]]*\([0-9.]*\).*/\1/p' "$BASELINE" | head -1)"
-if [[ -z "$CUR_RATIO" || -z "$BASE_RATIO" ]]; then
-    echo "regen-check: unable to read coverage_ratio" >&2
-    exit 1
-fi
-# Floating-point comparison via awk.
-if awk "BEGIN { exit !(${CUR_RATIO} + 0.0000005 < ${BASE_RATIO}) }"; then
-    STATUS=1
-    echo ""
-    echo "regen-check: coverage ratchet failed -- current ${CUR_RATIO} < baseline ${BASE_RATIO}"
-    echo "Parse coverage must not decrease; if expected (e.g. expanded corpus), update devs/ci/parse-coverage-baseline.json in the same PR"
-elif awk "BEGIN { exit !(${CUR_RATIO} > ${BASE_RATIO} + 0.0000005) }"; then
-    echo "regen-check: note -- coverage ${CUR_RATIO} exceeds baseline ${BASE_RATIO}; you may raise the baseline in the same PR"
-else
+read_ratio() {
+    python3 - "$1" <<'PY'
+import json, math, sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    document = json.load(handle)
+
+value = None
+if isinstance(document, dict):
+    summary = document.get("summary")
+    if isinstance(summary, dict) and "coverage_ratio" in summary:
+        value = summary["coverage_ratio"]
+    elif "coverage_ratio" in document:
+        value = document["coverage_ratio"]
+
+if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value):
+    raise SystemExit(f"regen-check: unable to read coverage_ratio from {sys.argv[1]}")
+
+print(repr(float(value)))
+PY
+}
+CUR_RATIO="$(read_ratio "$COVERAGE")"
+BASE_RATIO="$(read_ratio "$BASELINE")"
+if python3 - "$CUR_RATIO" "$BASE_RATIO" <<'PY'
+import sys
+cur, base = float(sys.argv[1]), float(sys.argv[2])
+if cur + 0.0000005 < base:
+    sys.exit(1)
+if cur > base + 0.0000005:
+    sys.exit(2)
+sys.exit(0)
+PY
+then
     echo "regen-check: OK -- coverage ratchet met (current ${CUR_RATIO}, baseline ${BASE_RATIO})"
+else
+    cmp_rc=$?
+    if [[ "$cmp_rc" -eq 1 ]]; then
+        STATUS=1
+        echo ""
+        echo "regen-check: coverage ratchet failed -- current ${CUR_RATIO} < baseline ${BASE_RATIO}"
+        echo "Parse coverage must not decrease; if expected (e.g. expanded corpus), update devs/ci/parse-coverage-baseline.json in the same PR"
+    elif [[ "$cmp_rc" -eq 2 ]]; then
+        echo "regen-check: note -- coverage ${CUR_RATIO} exceeds baseline ${BASE_RATIO}; you may raise the baseline in the same PR"
+    else
+        exit "$cmp_rc"
+    fi
 fi
 
 exit "$STATUS"

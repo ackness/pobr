@@ -3,7 +3,9 @@
 import hashlib
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import io
+import os
 from pathlib import Path
+import subprocess
 import tempfile
 import threading
 import unittest
@@ -251,6 +253,57 @@ class ReleaseTransportTests(unittest.TestCase):
                     f"{digest}  a.zip\n{digest}  a.zip\n".encode(), b"xyz  a.zip\n"):
             with self.subTest(raw=raw), self.assertRaises(ValueError):
                 imports.parse_sums(raw)
+
+    def test_git_inputs_defaults_timeout_and_retries_transient_errors(self):
+        git = imports.GitInputs(self.root / "git", attempts=2, backoff=0)
+        self.assertEqual(git.timeout, 120)
+        self.assertIsNone(imports.GitInputs(self.root / "git2", timeout=None).timeout)
+        calls = []
+        def flaky():
+            calls.append(1)
+            if len(calls) == 1:
+                raise subprocess.TimeoutExpired(["git"], 1)
+            return b"ok"
+        self.assertEqual(git._run_with_retry(flaky, "fetch"), b"ok")
+        self.assertEqual(len(calls), 2)
+
+    def test_gh_transport_enforces_max_bytes_and_retries_transient_failures(self):
+        gh = imports.ReleaseInputs(transport="gh", attempts=2, backoff=0)
+        address = imports.release_address({"repository": "ackness/repoe", "tag": TAG, "asset": ASSET})
+        script_dir = self.root / "bin"
+        script_dir.mkdir()
+        counter = self.root / "gh-count"
+        fake_gh = script_dir / "gh"
+        fake_gh.write_text(
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            f"from pathlib import Path\n"
+            f"c = Path({str(counter)!r})\n"
+            "n = int(c.read_text()) if c.exists() else 0\n"
+            "c.write_text(str(n + 1))\n"
+            "if n == 0:\n"
+            "    sys.stderr.write('temporary 503\\n')\n"
+            "    sys.exit(1)\n"
+            "sys.stdout.buffer.write(b'payload123')\n",
+            encoding="utf-8",
+        )
+        fake_gh.chmod(0o755)
+        old_path = os.environ.get("PATH", "")
+        os.environ["PATH"] = f"{script_dir}:{old_path}"
+        try:
+            self.assertEqual(gh(address, max_bytes=10), b"payload123")
+            self.assertEqual(int(counter.read_text()), 2)
+            with self.assertRaisesRegex(ValueError, "size limit"):
+                gh(address, max_bytes=4)
+        finally:
+            os.environ["PATH"] = old_path
+
+    def test_check_data_ownership_rejects_web_public_data(self):
+        from pipeline.imports import check_data_ownership
+        lock = {"shared_files": {"local_mods.json": {}}}
+        check_data_ownership.check(["data/CURRENT", "data/overlay-common/local_mods.json"], lock)
+        with self.assertRaisesRegex(ValueError, "web/public/data/manifest.json"):
+            check_data_ownership.check(["data/CURRENT", "web/public/data/manifest.json"], lock)
 
 
 if __name__ == "__main__":

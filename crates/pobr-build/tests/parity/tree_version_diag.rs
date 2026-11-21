@@ -10,12 +10,10 @@
 
 use pobr_build::{Build, BuildData, diagnose_tree_version, parse_build_from_code};
 use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
-use pobr_gamedata::{GameData, repo_data_root};
 use std::path::Path;
 
-fn load_data() -> BuildData {
-    let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
-    BuildData::load(&data).expect("load BuildData")
+fn load_data() -> &'static BuildData {
+    super::test_data()
 }
 
 fn real_code() -> String {
