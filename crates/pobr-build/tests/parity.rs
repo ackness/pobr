@@ -19,6 +19,19 @@
 //! or load no data) as the source of truth.
 #![allow(clippy::all)]
 
+/// One immutable snapshot per test process, matching `skills.rs`.
+/// `multi_version.rs` and `output_snapshot.rs` load explicitly for multi-version
+/// and lock-identity checks.
+fn test_data() -> &'static pobr_build::BuildData {
+    static DATA: std::sync::LazyLock<pobr_build::BuildData> = std::sync::LazyLock::new(|| {
+        pobr_build::BuildData::load(&pobr_gamedata::GameData::new(
+            pobr_gamedata::current_data_dir(),
+        ))
+        .expect("load current repository game data")
+    });
+    &DATA
+}
+
 // A) Recorded PoB2 reference (active data version)
 #[path = "parity/coc_trigger_golden.rs"]
 mod coc_trigger_golden;

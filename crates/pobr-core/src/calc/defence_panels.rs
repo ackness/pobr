@@ -114,7 +114,8 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
                 + db.sum(ModType::Base, cfg, &[ModName::from("BaseBlockChanceMax")])
                 + db.sum(ModType::Base, cfg, &[ModName::from("BlockChanceMax")])
         })
-        .min(cap);
+        .min(cap)
+        .max(0.0);
 
     // :975-980 shield base (injected by the build layer; dual-shield = sum of both slots, matching vendor's addition).
     // Renly's Training: "Gain 35% Base Chance to Block from Equipped Shield
@@ -129,7 +130,7 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
         * scaling_mod(db, cfg, &block_names)
         + 0.5)
         .floor();
-    let mut block = total_block.min(block_max);
+    let mut block = total_block.clamp(0.0, block_max);
 
     // :994 projectile attack block chance (the incremental BASE also picks up the BlockChance factor).
     let mut projectile = (block
@@ -138,13 +139,13 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
             cfg,
             &[ModName::from("ProjectileBlockChance")],
         ) * scaling_mod(db, cfg, &block_names))
-    .min(block_max);
+    .clamp(0.0, block_max);
 
     // :995-998 spell block chance ceiling.
     let spell_max = if db.flag(cfg, "SpellBlockChanceMaxIsBlockChanceMax") {
         block_max
     } else {
-        db.override_(cfg, "BlockChanceMax")
+        db.override_(cfg, "SpellBlockChanceMax")
             .unwrap_or_else(|| {
                 inherent_max
                     + db.sum(
@@ -155,6 +156,7 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
                     + db.sum(ModType::Base, cfg, &[ModName::from("SpellBlockChanceMax")])
             })
             .min(cap)
+            .max(0.0)
     };
 
     // :1003-1014 spell / spell projectile block chance.
@@ -163,7 +165,7 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
         (block, projectile)
     } else {
         let spell = (db.sum(ModType::Base, cfg, &spell_names) * scaling_mod(db, cfg, &spell_names))
-            .min(spell_max);
+            .clamp(0.0, spell_max);
         let spell_proj = (spell
             + db.sum(
                 ModType::Base,

@@ -66,7 +66,7 @@ _SPEC.loader.exec_module(lookup)
 DEFAULT_SETS = ("examples/wasm-benchmark/builds", "examples/reference-builds/tuned/builds")
 KNOWN_DIFFERENCES = REPO / "devs/scripts/known-differences.json"
 # The bases whose granted skill reserves no Spirit (game table ItemInherentSkills).
-RESERVATION_FREE = REPO / "data/overlay-common/item_granted_skills.json"
+RESERVATION_FREE_FILE = "item_granted_skills.json"
 # The engine's Spirit reservation of each skill (origin `spirit.<skill id>`).
 SKILL_RESERVATION = "SkillSpiritReservationBase"
 SPIRIT_REASON = ("the skill an Absent, Lament or Portent Amulet grants reserves no Spirit "
@@ -154,13 +154,50 @@ def skill_key(name: str) -> str:
 _SKILL_NAMES = {}
 
 
+def _data_root() -> Path:
+    given = os.environ.get("POBR_DATA_ROOT")
+    return Path(given) if given else REPO / "data"
+
+
+def _active_data_dir():
+    root = _data_root()
+    version = os.environ.get("POBR_DATA_VERSION")
+    if not version:
+        current = root / "CURRENT"
+        try:
+            lines = current.read_text(encoding="utf-8").split()
+        except OSError:
+            return None
+        if not lines:
+            return None
+        version = lines[0]
+    return root / version
+
+
+def _item_granted_skills_path():
+    """Match GameData::load_overlay_or_common: version overlay first, then overlay-common."""
+    candidates = []
+    directory = _active_data_dir()
+    if directory is not None:
+        candidates.append(directory / "overlay" / RESERVATION_FREE_FILE)
+    candidates.append(_data_root() / "overlay-common" / RESERVATION_FREE_FILE)
+    for path in candidates:
+        if path.is_file():
+            return path
+    return None
+
+
 def skill_names() -> dict:
     """Each effect's game display name, falling back to its gem's metadata
     name when a snapshot has no display name."""
-    if not _SKILL_NAMES:
-        version = (REPO / "data/CURRENT").read_text(encoding="utf-8").strip()
+    directory = _active_data_dir()
+    if directory is None:
+        return {}
+    key = directory.resolve()
+    if key not in _SKILL_NAMES:
+        names = {}
         try:
-            gems = json.loads((REPO / f"data/{version}/base/skill_gems.json").read_text(encoding="utf-8"))
+            gems = json.loads((directory / "base/skill_gems.json").read_text(encoding="utf-8"))
         except (OSError, ValueError):
             gems = []
         for gem in gems if isinstance(gems, list) else []:
@@ -168,22 +205,26 @@ def skill_names() -> dict:
             name = re.sub(r"^SkillGem", "", name)
             for effect in [gem.get("granted_effect_id"), *(gem.get("additional_granted_effect_ids") or [])]:
                 if effect and name:
-                    _SKILL_NAMES.setdefault(effect, name)
+                    names.setdefault(effect, name)
         try:
-            effects = json.loads((REPO / f"data/{version}/base/granted_effects.json").read_text(encoding="utf-8"))
+            effects = json.loads((directory / "base/granted_effects.json").read_text(encoding="utf-8"))
         except (OSError, ValueError):
             effects = []
         for effect in effects if isinstance(effects, list) else []:
             name = effect.get("displayed_name")
             if effect.get("id") and name and "{" not in name:
-                _SKILL_NAMES[effect["id"]] = name
-    return _SKILL_NAMES
+                names[effect["id"]] = name
+        _SKILL_NAMES[key] = names
+    return _SKILL_NAMES[key]
 
 
 def reservation_free_skills(xml: str) -> set:
     """The skills the build's amulets of a reservation-free base grant."""
+    path = _item_granted_skills_path()
+    if path is None:
+        return set()
     try:
-        bases = json.loads(RESERVATION_FREE.read_text(encoding="utf-8")).get("reservation_free_bases") or []
+        bases = json.loads(path.read_text(encoding="utf-8")).get("reservation_free_bases") or []
     except (OSError, ValueError):
         return set()
     found = set()
@@ -641,7 +682,8 @@ def usage_token(binary: Path) -> str:
     Snapshot file metadata avoids hashing the entire game data on every run.
     Code contents are hashed separately for each build; oracle inputs play no part.
     """
-    digest = hashlib.sha256(binary.read_bytes())
+    with binary.open("rb") as handle:
+        digest = hashlib.file_digest(handle, "sha256")
     digest.update(Path(__file__).read_bytes())
     directory = lookup.data_dir()
     for root in (directory, directory.parent / "overlay-common"):

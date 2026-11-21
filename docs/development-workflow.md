@@ -47,9 +47,9 @@ setup 检查 Git、make、C 编译器；macOS 的 Apple SDK/Command Line Tools �
 | PoB2 对照、triage、词条审计 | 对应任务依赖 `setup:oracle`，自动准备固定 LuaJIT commit 与固定 vendor；重复运行复用缓存 |
 | 浏览器回归 | `mise run e2e [smoke\|affected\|default\|release]`（见[浏览器测试](#浏览器测试)）：先检查并按需重建 WASM、同步数据与 dist；缺浏览器时提示 `mise run setup:e2e`（安装 lockfile 对应的 Playwright 浏览器与系统依赖） |
 
-`setup:oracle` 将兼容的 LuaJIT 暴露到 `.cache/runtime/bin`；mise 为任务配置 PATH、
-`POBR_LUAJIT` 与 vendor 的 `LUA_PATH`，无需各自修改 shell。
-默认安装使用固定上游 commit，保留显式 runtime override 的调试用途。
+`setup:oracle` 将兼容的 LuaJIT 暴露到 `.cache/runtime/bin`；mise 将该目录加入 PATH
+并配置 vendor 的 `LUA_PATH`，无需各自修改 shell。
+默认安装使用固定上游 commit，保留 `POBR_LUAJIT` / `LUAJIT` 显式覆盖的调试用途。
 PoB2 的固定仓库与 commit 由 `devs/reference-sources.json` 管理，独立于 owner 包中解析规则
 `_meta` 记录的历史 vendor 版本。PoBR 不从 vendor 生成数据；需要 PoB2 解析对照时运行
 `mise exec -- bash pipeline/diagnostics/modifier-audit.sh`，没有 vendor 时用 `--offline`，报告明确不含对照。

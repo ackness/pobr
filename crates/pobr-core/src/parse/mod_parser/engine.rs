@@ -332,12 +332,12 @@ fn parse_mod_engine_impl(
             m = m.with_tag(ModTag::condition(cond.clone(), false));
         }
         if form_result.hand_attack_condition {
-            // GRANTS/REMOVES local: the `{Hand}Attack` condition — pobr has no hand-placeholder
-            // instantiation context here (hand is only known at item ingest time), so the
-            // engine records a bare var for now (to be instantiated downstream). This batch
-            // conservatively uses the fixed `MainHandAttack` (whether it matches legacy
-            // behaviour is decided by dual-run; see report §2.4 D5).
-            m = m.with_tag(ModTag::condition("MainHandAttack", false));
+            // GRANTS/REMOVES local: emit the `{Hand}Attack` placeholder so item ingest binds
+            // it to MainHandAttack or OffHandAttack based on the equipped weapon slot.
+            m = m.with_tag(ModTag::condition(
+                crate::ingest::item::HAND_ATTACK_PLACEHOLDER,
+                false,
+            ));
         }
         mods.push(m);
     }

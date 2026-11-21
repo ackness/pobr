@@ -14,6 +14,8 @@ import math
 import os
 from pathlib import Path
 import re
+import selectors
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -135,12 +137,24 @@ def git_address(source, name):
 class GitInputs:
     """Fetch only fixed shallow commits and requested blobs, without a checkout."""
 
-    def __init__(self, root, timeout=None):
+    def __init__(self, root, timeout=120, attempts=3, backoff=1.0):
         require(timeout is None or (type(timeout) in (int, float) and math.isfinite(timeout) and timeout > 0),
                 "Invalid Git input timeout")
+        require(type(attempts) is int and attempts > 0, "Invalid Git attempt count")
         self.root = root
         self.repositories = {}
         self.timeout = timeout
+        self.attempts = attempts
+        self.backoff = backoff
+
+    def _run_with_retry(self, run, description):
+        for attempt in range(1, self.attempts + 1):
+            try:
+                return run()
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as error:
+                if attempt == self.attempts:
+                    raise ValueError(f"Git {description} failed after {attempt} attempts: {error}") from error
+                time.sleep(self.backoff * 2 ** (attempt - 1))
 
     def __call__(self, address, *, max_bytes=None):
         require(max_bytes is None or (type(max_bytes) is int and max_bytes > 0), "Invalid Git blob size limit")
@@ -149,25 +163,33 @@ class GitInputs:
         env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
         if key not in self.repositories:
             root = self.root / str(len(self.repositories))
-            root.mkdir(parents=True)
-            def git(*args):
-                subprocess.run(["git", "-C", str(root), *args], env=env, check=True,
-                               stdout=subprocess.DEVNULL, timeout=self.timeout)
-            git("init", "--bare", "--quiet")
-            git("remote", "add", "origin", url)
-            git("config", "remote.origin.promisor", "true")
-            git("config", "remote.origin.partialclonefilter", "blob:none")
-            git("fetch", "--quiet", "--no-tags", "--depth=1", "--filter=blob:none", "origin", revision)
-            actual = subprocess.check_output(["git", "-C", str(root), "rev-parse", "FETCH_HEAD"],
-                                             env=env, timeout=self.timeout)
-            require(actual.decode().strip() == revision, "Git revision mismatch")
+            def fetch_repo():
+                if root.exists():
+                    shutil.rmtree(root)
+                root.mkdir(parents=True)
+                def git(*args):
+                    subprocess.run(["git", "-C", str(root), *args], env=env, check=True,
+                                   stdout=subprocess.DEVNULL, timeout=self.timeout)
+                git("init", "--bare", "--quiet")
+                git("remote", "add", "origin", url)
+                git("config", "remote.origin.promisor", "true")
+                git("config", "remote.origin.partialclonefilter", "blob:none")
+                git("fetch", "--quiet", "--no-tags", "--depth=1", "--filter=blob:none", "origin", revision)
+                actual = subprocess.check_output(["git", "-C", str(root), "rev-parse", "FETCH_HEAD"],
+                                                 env=env, timeout=self.timeout)
+                require(actual.decode().strip() == revision, "Git revision mismatch")
+            self._run_with_retry(fetch_repo, f"fetch {url}@{revision}")
             self.repositories[key] = root
         if max_bytes is not None:
-            size = subprocess.check_output(["git", "-C", str(self.repositories[key]), "cat-file", "-s",
-                                            f"{revision}:{name}"], env=env, timeout=self.timeout)
+            size = self._run_with_retry(
+                lambda: subprocess.check_output(["git", "-C", str(self.repositories[key]), "cat-file", "-s",
+                                                 f"{revision}:{name}"], env=env, timeout=self.timeout),
+                f"stat {revision}:{name}")
             require(int(size) <= max_bytes, "Git metadata blob exceeds size limit")
-        return subprocess.check_output(["git", "-C", str(self.repositories[key]), "cat-file", "blob",
-                                        f"{revision}:{name}"], env=env, timeout=self.timeout)
+        return self._run_with_retry(
+            lambda: subprocess.check_output(["git", "-C", str(self.repositories[key]), "cat-file", "blob",
+                                             f"{revision}:{name}"], env=env, timeout=self.timeout),
+            f"read {revision}:{name}")
 
 
 class ReleaseInputs:
@@ -193,21 +215,78 @@ class ReleaseInputs:
     def __call__(self, address, *, max_bytes=None):
         require(isinstance(address, ReleaseAsset), "Release transport needs a Release asset address")
         require(max_bytes is None or (type(max_bytes) is int and max_bytes > 0), "Invalid download size limit")
-        if self.transport == "gh":
-            raw = subprocess.check_output(
-                ["gh", "release", "download", address.tag, "--repo", address.repository,
-                 "--pattern", address.asset, "--output", "-"],
-                env={**os.environ, "GH_PROMPT_DISABLED": "1"}, timeout=self.timeout)
-            require(max_bytes is None or len(raw) <= max_bytes, f"Release asset exceeds size limit: {address.asset}")
-            return raw
+        runner = self.download_gh if self.transport == "gh" else self.download
         for attempt in range(1, self.attempts + 1):
             try:
-                return self.download(address, max_bytes)
+                return runner(address, max_bytes)
             except TransientDownload as error:
                 if attempt == self.attempts:
                     raise ValueError(f"Cannot download {address.repository} {address.tag} {address.asset} "
                                      f"after {attempt} attempts: {error}") from error
                 time.sleep(self.backoff * 2 ** (attempt - 1))
+
+    def download_gh(self, address, max_bytes):
+        cmd = ["gh", "release", "download", address.tag, "--repo", address.repository,
+               "--pattern", address.asset, "--output", "-"]
+        env = {**os.environ, "GH_PROMPT_DISABLED": "1"}
+        proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        deadline = None if self.timeout is None else time.monotonic() + self.timeout
+        chunks = []
+        stderr_chunks = []
+        total = 0
+        oversized = False
+        try:
+            with selectors.DefaultSelector() as sel:
+                sel.register(proc.stdout, selectors.EVENT_READ, "stdout")
+                sel.register(proc.stderr, selectors.EVENT_READ, "stderr")
+                while sel.get_map():
+                    remaining = None if deadline is None else max(0.0, deadline - time.monotonic())
+                    if remaining == 0.0:
+                        proc.kill()
+                        proc.wait()
+                        raise TransientDownload(f"gh timed out after {self.timeout}s")
+                    events = sel.select(remaining)
+                    if not events and deadline is not None and time.monotonic() >= deadline:
+                        proc.kill()
+                        proc.wait()
+                        raise TransientDownload(f"gh timed out after {self.timeout}s")
+                    for key, _ in events:
+                        chunk = os.read(key.fd, 65536)
+                        if not chunk:
+                            sel.unregister(key.fileobj)
+                            continue
+                        if key.data == "stdout":
+                            total += len(chunk)
+                            if max_bytes is not None and total > max_bytes:
+                                oversized = True
+                                proc.kill()
+                                sel.unregister(proc.stdout)
+                                break
+                            chunks.append(chunk)
+                        else:
+                            if sum(len(part) for part in stderr_chunks) < MAX_METADATA:
+                                stderr_chunks.append(chunk)
+                    if oversized:
+                        break
+            proc.wait(timeout=5)
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            proc.stdout.close()
+            proc.stderr.close()
+        if oversized:
+            raise ValueError(f"Release asset exceeds size limit: {address.asset}")
+        if proc.returncode != 0:
+            err = b"".join(stderr_chunks).decode("utf-8", errors="replace").strip()
+            lowered = err.lower()
+            permanent = any(marker in lowered for marker in (
+                "not found", "404", "401", "403", "unauthorized", "forbidden",
+                "no assets match", "not logged into", "authentication"))
+            if permanent:
+                raise ValueError(f"Cannot download {address.repository} {address.tag} {address.asset}: {err}")
+            raise TransientDownload(err or f"gh exited with {proc.returncode}")
+        return b"".join(chunks)
 
     def download(self, address, max_bytes):
         request = urllib.request.Request(self.url(address), headers={"User-Agent": "pobr-data-import"})
@@ -271,9 +350,9 @@ def acquire(source, name, pin, cache, offline, fetcher):
     # A Release download is bounded by its pin; Git blobs are read whole by the Git transport.
     raw = pinned(fetcher(address, max_bytes=pin["bytes"]) if isinstance(address, ReleaseAsset) else fetcher(address),
                  pin)
-    # Verify the complete blob before caching. Any interrupted cache write fails
-    # its pin on reuse. Declared size is checked without an arbitrary byte cap.
-    write(path, raw)
+    # Verify the complete blob before caching, then install atomically so concurrent
+    # checkouts or interrupted writes never leave a corrupt cache entry.
+    replace_atomically(path, raw)
     return raw
 
 

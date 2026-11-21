@@ -188,20 +188,26 @@ where
 
     let c = crit.chance;
 
-    // Stored family (pre-resist, `:4047-4057`).
+    // Stored family (pre-resist, `:4047-4057`), merged by damage type union so
+    // crit-only or non-crit-only damage types are preserved and never mis-paired.
     let stored_crit_avg = crit_leg.avgs.clone();
     let stored_hit_avg = non_crit.avgs.clone();
-    let stored_combined_avg: Vec<(DamageType, f64)> = non_crit
+    let mut stored_combined_avg: Vec<(DamageType, f64)> = non_crit
         .avgs
         .iter()
-        .zip(crit_leg.avgs.iter())
-        .map(|((ty, hit_avg), (_, crit_avg))| (*ty, crit_avg * c + hit_avg * (1.0 - c)))
+        .map(|(ty, hit_avg)| (*ty, hit_avg * (1.0 - c)))
         .collect();
-    // Stored min/max family (`:4050-4056`): non-crit leg's range plus the
-    // crit leg's range for the same type (folded in as 0 if the crit leg
-    // lacks that type, matching vendor's `or 0` semantics; min/max are not
-    // folded by lucky).
-    let stored_ranges: Vec<StoredDamageRange> = non_crit
+    for (ty, crit_avg) in &crit_leg.avgs {
+        if let Some((_, value)) = stored_combined_avg.iter_mut().find(|(kind, _)| kind == ty) {
+            *value += crit_avg * c;
+        } else {
+            stored_combined_avg.push((*ty, crit_avg * c));
+        }
+    }
+    // Stored min/max family (`:4050-4056`): union of non-crit and crit leg
+    // ranges by damage type (missing side folded in as 0, matching vendor's
+    // `or 0` semantics; min/max are not folded by lucky).
+    let mut stored_ranges: Vec<StoredDamageRange> = non_crit
         .components
         .iter()
         .map(|component| {
@@ -218,6 +224,20 @@ where
             }
         })
         .collect();
+    for crit_component in &crit_leg.components {
+        if !stored_ranges
+            .iter()
+            .any(|range| range.damage_type == crit_component.damage_type)
+        {
+            stored_ranges.push(StoredDamageRange {
+                damage_type: crit_component.damage_type,
+                hit_min: 0.0,
+                hit_max: 0.0,
+                crit_min: crit_component.min,
+                crit_max: crit_component.max,
+            });
+        }
+    }
 
     // Per-type mitigated averages of both legs, filled where the legs are
     // mitigated below.

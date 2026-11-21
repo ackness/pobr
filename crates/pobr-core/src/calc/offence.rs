@@ -1027,38 +1027,44 @@ impl HitPass {
         enemy_db: &ModDb,
     ) -> Option<Vec<HitMitigationPart>> {
         let pass = &self.crit_pass;
-        if pass.mitigated_avg.is_empty()
-            || pass.mitigated_avg.len() != pass.stored_combined_avg.len()
-            || pass.mitigated_avg.len() != pass.non_crit_components.len()
-        {
+        if pass.mitigated_avg.is_empty() {
             return None;
         }
         let cfg_hit = super::crit_pass::non_crit_cfg(&self.cfg);
-        Some(
-            pass.stored_combined_avg
-                .iter()
-                .zip(&pass.mitigated_avg)
-                .zip(&pass.non_crit_components)
-                .map(|(((damage_type, average), (_, mitigated)), component)| {
-                    let terms = enemy_mitigation_terms(
-                        db,
-                        enemy_db,
-                        &cfg_hit,
-                        *damage_type,
-                        component.avg(),
-                    );
-                    HitMitigationPart {
-                        damage_type: *damage_type,
-                        average: *average,
-                        mitigated: *mitigated,
-                        resist: terms.resist,
-                        reduction: terms.reduction,
-                        taken: terms.taken,
-                        invert: terms.invert,
-                    }
+        let cfg_crit = cfg_hit.clone().with_condition("CriticalStrike", true);
+        pass.mitigated_avg
+            .iter()
+            .map(|&(damage_type, mitigated)| {
+                let average = pass
+                    .stored_combined_avg
+                    .iter()
+                    .find(|(ty, _)| *ty == damage_type)
+                    .map(|(_, avg)| *avg)?;
+                let (pass_cfg, raw_hit) = if let Some(component) = pass
+                    .non_crit_components
+                    .iter()
+                    .find(|c| c.damage_type == damage_type)
+                {
+                    (&cfg_hit, component.avg())
+                } else {
+                    let component = pass
+                        .crit_components
+                        .iter()
+                        .find(|c| c.damage_type == damage_type)?;
+                    (&cfg_crit, component.avg())
+                };
+                let terms = enemy_mitigation_terms(db, enemy_db, pass_cfg, damage_type, raw_hit);
+                Some(HitMitigationPart {
+                    damage_type,
+                    average,
+                    mitigated,
+                    resist: terms.resist,
+                    reduction: terms.reduction,
+                    taken: terms.taken,
+                    invert: terms.invert,
                 })
-                .collect(),
-        )
+            })
+            .collect()
     }
 
     /// Non-crit average, then the share of hits that crit, ending at the

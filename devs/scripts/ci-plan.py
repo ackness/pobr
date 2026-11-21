@@ -20,6 +20,7 @@ FULL_FILES = {
     "devs/scripts/install-actionlint.py",
     "devs/scripts/ci-rust-tests.py",
     "devs/scripts/setup-environment.sh", "devs/scripts/pob2-luajit.sh",
+    "devs/ci/parse-coverage-baseline.json",
 }
 DOCUMENTATION_SIDECARS = {"apps/pobr-wasm/tests/fixtures/pob2-planner.md"}
 DATA_LOCK = "pipeline/data.lock.json"
@@ -50,7 +51,9 @@ def classify(files):
             plan["full"] = True
         elif name.startswith(("crates/", "apps/", "tools/", "data/", "examples/")):
             plan["rust"] = True
-            if name.startswith("data/"):
+            if (name.startswith(("data/", "tools/pob2-oracle/"))
+                    or (name.startswith("crates/pobr-gamedata/src/domains/config_options/")
+                        and name.endswith(".json"))):
                 plan["scripts"] = True
         elif name.startswith(("devs/scripts/", "devs/ci/")):
             plan["scripts"] = True
@@ -62,8 +65,6 @@ def classify(files):
             if (name.startswith(("web/scripts/", "web/public/", "web/worker-tests/"))
                     or name in DATA_DERIVED_WEB):
                 plan["scripts"] = True
-        elif name.endswith(".txt") and "/fixtures/" not in name:
-            continue
         elif name.startswith(".github/ISSUE_TEMPLATE/") or name in {
             ".github/pull_request_template.md", ".gitignore", "LICENSE", "LICENSE.md",
         }:

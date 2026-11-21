@@ -23,7 +23,6 @@
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::{MinimalInput, OutputTable};
 use pobr_data::monster::EnemyTier;
-use pobr_gamedata::GameData;
 use std::path::{Path, PathBuf};
 
 const BUILDS: &[&str] = &[
@@ -56,11 +55,7 @@ fn run_build(dir: &Path, data: &BuildData) -> OutputTable {
 
 #[test]
 fn stored_family_holds_vendor_identities_on_three_real_builds() {
-    let data = {
-        // PoB2 reference values are recaptured for the active data version on every data update.
-        let game_data = GameData::new(pobr_gamedata::current_data_dir());
-        BuildData::load(&game_data).expect("load BuildData")
-    };
+    let data = super::test_data();
 
     for name in BUILDS {
         let out = run_build(&builds_dir().join(name), &data);

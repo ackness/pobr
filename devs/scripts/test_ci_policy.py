@@ -191,12 +191,20 @@ class RoutingTests(unittest.TestCase):
         # Generated from game data and checked against it by the automation contracts.
         self.assertTrue(plan.classify(["web/src/lib/configGameRelevance.json"])["scripts"])
         self.assertTrue(plan.classify(["web/src/lib/configGameRelevance.json"])["web"])
+        # Config-option catalogs and pob2-oracle scripts are exercised by both Rust and script contracts.
+        for name in ("crates/pobr-gamedata/src/domains/config_options/archon_config_options.json",
+                     "tools/pob2-oracle/run.sh", "tools/pob2-oracle/oracle.lua",
+                     "tools/pob2-oracle/shim/lua-utf8.lua"):
+            with self.subTest(name=name):
+                self.assertEqual(plan.classify([name]),
+                                 {"rust": True, "web": False, "scripts": True, "full": False})
 
     def test_shared_or_unknown_inputs_select_full_without_duplicate_light_checks(self):
         for name in ["Cargo.lock", "crates/new/Cargo.toml", "mise.toml", "web/package.json",
                      ".github/workflows/ci.yml", "devs/scripts/ci-plan.py",
                      "devs/scripts/tool-versions.py", "devs/scripts/install-actionlint.py",
-                     "devs/scripts/setup-environment.sh", "new-runtime.conf", "docs/hidden-executable.py"]:
+                     "devs/scripts/setup-environment.sh", "devs/ci/parse-coverage-baseline.json",
+                     "new-runtime.conf", "docs/hidden-executable.py", "requirements.txt", "devs/notes.txt"]:
             with self.subTest(name=name):
                 self.assertEqual(plan.classify([name, "web/src/App.tsx"]),
                                  {area: area == "full" for area in plan.AREAS})
@@ -263,6 +271,18 @@ class RoutingTests(unittest.TestCase):
         runs = re.findall(r"playwright test[^\n]*", workflow)
         self.assertEqual(runs, ["playwright test data-bump-smoke.spec.ts"])
         web = workflow.split("\n  web:\n", 1)[1].split("\n  runtime:\n", 1)[0]
+        # Standalone WASM packaging and upload run before the Playwright data-bump smoke.
+        steps = [
+            "Package standalone WASM and report size",
+            "Standalone WASM package smoke",
+            "Upload WASM release assets",
+            "Select data-bump smoke",
+            "Install Playwright",
+            "Data-bump smoke",
+            "Upload E2E failure artifacts",
+        ]
+        positions = [web.index(f"- name: {step}\n") for step in steps]
+        self.assertEqual(positions, sorted(positions))
         for step in ("Install Playwright", "Data-bump smoke"):
             block = web.split(f"- name: {step}\n", 1)[1].split("      - name: ", 1)[0]
             self.assertIn("if: steps.data-smoke.outputs.run == 'true'", block, step)

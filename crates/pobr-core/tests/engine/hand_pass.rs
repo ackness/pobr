@@ -410,3 +410,136 @@ fn combine_table_modes_match_vendor_call_sites() {
     );
     assert_eq!(combine_mode_for("NotAStat", false), None);
 }
+
+#[test]
+fn dual_wield_preserves_off_hand_only_damage_types() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::flag("CannotBeEvaded"));
+    db.add_mod(Modifier::number(
+        "CriticalStrikeChance",
+        ModType::Base,
+        50.0,
+    ));
+    db.add_mod(
+        Modifier::number("FireDamageMin", ModType::Base, 100.0)
+            .with_tag(ModTag::condition("OffHandAttack", false)),
+    );
+    db.add_mod(
+        Modifier::number("FireDamageMax", ModType::Base, 100.0)
+            .with_tag(ModTag::condition("OffHandAttack", false)),
+    );
+    let enemy = ModDb::new();
+    let cfg = CalcConfig::attack().with_mode_effective(true);
+    let input = MinimalInput {
+        base_action_rate: 1.0,
+        ..MinimalInput::default()
+    };
+    let weapon = WeaponBase {
+        hit_min: 100.0,
+        hit_max: 100.0,
+        attack_rate: Some(1.0),
+        crit_chance: 0.0,
+        flags: ModFlags::NONE,
+    };
+    let passes = [HandSource::main_hand(weapon), HandSource::off_hand(weapon)];
+
+    let find_type = |slice: &[(DamageType, f64)], ty: DamageType| -> Option<f64> {
+        slice.iter().find(|(t, _)| *t == ty).map(|(_, v)| *v)
+    };
+    let eps = 1e-9;
+
+    // Alternating: MH=[Phys 150], OH=[Phys 150, Fire 150] -> combined Phys=150, Fire=75.
+    let alt = run_hand_passes(&db, &enemy, &cfg, &passes, &input, false);
+    assert!(
+        (find_type(&alt.combined.stored_combined_avg, DamageType::Physical).unwrap() - 150.0).abs()
+            < eps
+    );
+    assert!(
+        (find_type(&alt.combined.stored_combined_avg, DamageType::Fire).unwrap() - 75.0).abs()
+            < eps
+    );
+    assert!((find_type(&alt.combined.mitigated_avg, DamageType::Fire).unwrap() - 75.0).abs() < eps);
+    assert!((find_type(&alt.combined.crit_avg, DamageType::Fire).unwrap() - 50.0).abs() < eps);
+
+    // Double hits: MH=[Phys 150], OH=[Phys 150, Fire 150] -> combined Phys=300, Fire=150.
+    let dbl = run_hand_passes(&db, &enemy, &cfg, &passes, &input, true);
+    assert!(
+        (find_type(&dbl.combined.stored_combined_avg, DamageType::Physical).unwrap() - 300.0).abs()
+            < eps
+    );
+    assert!(
+        (find_type(&dbl.combined.stored_combined_avg, DamageType::Fire).unwrap() - 150.0).abs()
+            < eps
+    );
+    assert!(
+        (find_type(&dbl.combined.mitigated_avg, DamageType::Fire).unwrap() - 150.0).abs() < eps
+    );
+    assert!((find_type(&dbl.combined.crit_avg, DamageType::Fire).unwrap() - 100.0).abs() < eps);
+}
+
+#[test]
+fn preset_hand_conditions_do_not_leak_across_passes() {
+    use pobr_core::HandTag;
+    use pobr_core::calc::HandCfg;
+
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::flag("CannotBeEvaded"));
+    db.add_mod(
+        Modifier::number("PhysicalDamage", ModType::Inc, 100.0)
+            .with_tag(ModTag::condition("MainHandAttack", false)),
+    );
+    db.add_mod(
+        Modifier::number("PhysicalDamage", ModType::Inc, 200.0)
+            .with_tag(ModTag::condition("OffHandAttack", false)),
+    );
+    let enemy = ModDb::new();
+    // Both hand conditions pre-set on the caller's config.
+    let cfg = CalcConfig::attack()
+        .with_condition("MainHandAttack", true)
+        .with_condition("OffHandAttack", true);
+    let input = MinimalInput {
+        base_action_rate: 1.0,
+        ..MinimalInput::default()
+    };
+    let weapon = WeaponBase {
+        hit_min: 100.0,
+        hit_max: 100.0,
+        attack_rate: Some(1.0),
+        crit_chance: 0.0,
+        flags: ModFlags::NONE,
+    };
+
+    let out = run_hand_passes(
+        &db,
+        &enemy,
+        &cfg,
+        &[HandSource::main_hand(weapon), HandSource::off_hand(weapon)],
+        &input,
+        false,
+    );
+    let mh = out.main_hand.as_ref().unwrap();
+    let oh = out.off_hand.as_ref().unwrap();
+    assert!(
+        (mh.average_hit - 200.0).abs() < 1e-9,
+        "MH={}",
+        mh.average_hit
+    );
+    assert!(
+        (oh.average_hit - 300.0).abs() < 1e-9,
+        "OH={}",
+        oh.average_hit
+    );
+
+    // Even a raw HandSource without explicit cfg_overrides clears the opposite hand flag.
+    let raw_oh = HandSource {
+        label: HandTag::OffHand,
+        weapon,
+        cfg_overrides: HandCfg::default(),
+    };
+    let single_oh = run_hand_passes(&db, &enemy, &cfg, &[raw_oh], &input, false);
+    assert!(
+        (single_oh.combined.total_hit_avg - 300.0).abs() < 1e-9,
+        "raw OH={}",
+        single_oh.combined.total_hit_avg
+    );
+}

@@ -437,8 +437,9 @@ pub(crate) fn auras_on_minion(
             .clone()
             .with_skill_types(spec.skill_types.clone())
             .with_keyword_flags(crate::skill_env::skill_keyword_flags(&spec.skill_types));
-        let inc = player.sum(ModType::Inc, &aura_cfg, &effect) + minion_inc;
-        let more = player.more(&aura_cfg, &effect) * minion_more * spec.magnitude;
+        let inc = player.sum(ModType::Inc, &aura_cfg, &effect) + spec.local_effect_inc + minion_inc;
+        let more =
+            player.more(&aura_cfg, &effect) * spec.local_effect_more * minion_more * spec.magnitude;
         let mag_mult = (1.0 + player.sum(ModType::Inc, &aura_cfg, &magnitude) / 100.0)
             * player.more(&aura_cfg, &magnitude);
         let mult = (1.0 + inc / 100.0) * more * mag_mult;
@@ -601,25 +602,45 @@ pub fn buff_pass(env: &mut Env) {
                     .clone()
                     .with_skill_types(spec.skill_types.clone())
                     .with_keyword_flags(crate::skill_env::skill_keyword_flags(&spec.skill_types));
-                let names: Vec<ModName> = AURA_SELF_EFFECT_NAMES
-                    .iter()
-                    .map(|n| ModName::from(*n))
-                    .collect();
-                let inc = env.player.mod_db.sum(ModType::Inc, &aura_cfg, &names);
-                let more = env.player.mod_db.more(&aura_cfg, &names) * spec.magnitude;
-                // `Magnitude` is an independent factor (vendor `:2205`'s
-                // trailing `× calcLib.mod(skillCfg, "Magnitude")` -- kept in
-                // its own bucket separate from the AuraEffect name set, each
-                // forming `(1+Σinc/100)×Πmore` and then **multiplied
-                // together**, not summed into the same bucket. E.g. the mod
-                // "Aura Skills have N% increased Magnitudes" → Magnitude INC + a SkillTypes(Aura) tag).
                 let mag_names = [ModName::from("Magnitude")];
-                let mag_mult = (1.0
-                    + env.player.mod_db.sum(ModType::Inc, &aura_cfg, &mag_names) / 100.0)
-                    * env.player.mod_db.more(&aura_cfg, &mag_names);
                 let mult = if party.is_some() {
                     received_effect(&env.player.mod_db, &aura_cfg, true) * spec.magnitude
+                } else if owner.is_some() {
+                    let caster_names = [ModName::from("AuraEffect"), ModName::from("BuffEffect")];
+                    let on_self = [
+                        ModName::from("BuffEffectOnSelf"),
+                        ModName::from("AuraEffectOnSelf"),
+                    ];
+                    let inc = caster.mod_db.sum(ModType::Inc, &caster_cfg, &caster_names)
+                        + spec.local_effect_inc
+                        + env.player.mod_db.sum(ModType::Inc, &env.cfg, &on_self);
+                    let more = caster.mod_db.more(&caster_cfg, &caster_names)
+                        * spec.local_effect_more
+                        * env.player.mod_db.more(&env.cfg, &on_self)
+                        * spec.magnitude;
+                    let mag_mult = (1.0
+                        + caster.mod_db.sum(ModType::Inc, &caster_cfg, &mag_names) / 100.0)
+                        * caster.mod_db.more(&caster_cfg, &mag_names);
+                    (1.0 + inc / 100.0) * more * mag_mult
                 } else {
+                    let names: Vec<ModName> = AURA_SELF_EFFECT_NAMES
+                        .iter()
+                        .map(|n| ModName::from(*n))
+                        .collect();
+                    let inc = env.player.mod_db.sum(ModType::Inc, &aura_cfg, &names)
+                        + spec.local_effect_inc;
+                    let more = env.player.mod_db.more(&aura_cfg, &names)
+                        * spec.local_effect_more
+                        * spec.magnitude;
+                    // `Magnitude` is an independent factor (vendor `:2205`'s
+                    // trailing `× calcLib.mod(skillCfg, "Magnitude")` -- kept in
+                    // its own bucket separate from the AuraEffect name set, each
+                    // forming `(1+Σinc/100)×Πmore` and then **multiplied
+                    // together**, not summed into the same bucket. E.g. the mod
+                    // "Aura Skills have N% increased Magnitudes" → Magnitude INC + a SkillTypes(Aura) tag).
+                    let mag_mult = (1.0
+                        + env.player.mod_db.sum(ModType::Inc, &aura_cfg, &mag_names) / 100.0)
+                        * env.player.mod_db.more(&aura_cfg, &mag_names);
                     (1.0 + inc / 100.0) * more * mag_mult
                 };
                 // vendor :2107-2110: sets the conditions.
@@ -816,10 +837,23 @@ pub fn buff_pass(env: &mut Env) {
                 if !env.cfg.mode_effective {
                     continue;
                 }
-                let names = [ModName::from("DebuffEffect")];
-                let inc = env.player.mod_db.sum(ModType::Inc, &env.cfg, &names);
-                let more = env.player.mod_db.more(&env.cfg, &names) * spec.magnitude;
-                let mult = (1.0 + inc / 100.0) * more;
+                let mult = if party.is_some() {
+                    spec.magnitude
+                } else {
+                    let debuff_cfg = caster_cfg
+                        .clone()
+                        .with_skill_types(spec.skill_types.clone())
+                        .with_keyword_flags(crate::skill_env::skill_keyword_flags(
+                            &spec.skill_types,
+                        ));
+                    let names = [ModName::from("DebuffEffect")];
+                    let inc = caster.mod_db.sum(ModType::Inc, &debuff_cfg, &names)
+                        + spec.local_effect_inc;
+                    let more = caster.mod_db.more(&debuff_cfg, &names)
+                        * spec.local_effect_more
+                        * spec.magnitude;
+                    (1.0 + inc / 100.0) * more
+                };
                 conditions.push(affected_by_condition(&spec.name));
                 let source_id = format!("buff.{}", spec.skill_id);
                 let scaled = spec
@@ -1880,6 +1914,175 @@ mod tests {
                 .sum(ModType::Base, &env.cfg, &[ModName::from("EnergyShield")]),
             100.0,
             "same-name buff, same-parameter mods take the strongest, not stacked"
+        );
+    }
+
+    #[test]
+    fn aura_honors_local_effect_inc_and_more_on_player_and_minions() {
+        let mut env = buffed_env();
+        env.player
+            .mod_db
+            .add_mod(Modifier::number("AuraEffect", ModType::Inc, 20.0));
+        let mut spec = aura_spec("Discipline", 100.0);
+        spec.local_effect_inc = 30.0;
+        spec.local_effect_more = 1.5;
+        env.buff_skills.push(spec);
+
+        let mut minion_db = ModDb::new();
+        minion_db.add_mod(Modifier::number("AuraEffectOnSelf", ModType::Inc, 10.0));
+        let (minion_mods, _) = auras_on_minion(&env, &minion_db, &env.cfg);
+        let minion_es: f64 = minion_mods
+            .iter()
+            .filter(|m| m.name.as_str() == "EnergyShield")
+            .filter_map(|m| m.value.as_number())
+            .sum();
+        // (1 + (20 + 30 + 10)/100) * 1.5 = 2.4 -> 100 * 2.4 = 240.
+        assert_eq!(minion_es, 240.0);
+
+        buff_pass(&mut env);
+        // (1 + (20 + 30)/100) * 1.5 = 2.25 -> 100 * 2.25 = 225.
+        assert_eq!(
+            env.player
+                .mod_db
+                .sum(ModType::Base, &env.cfg, &[ModName::from("EnergyShield")]),
+            225.0
+        );
+    }
+
+    #[test]
+    fn minion_aura_uses_caster_effect_and_recipient_on_self() {
+        let mut env = buffed_env();
+        // Player's own caster-side AuraEffect must not scale a minion's aura;
+        // recipient-side AuraEffectOnSelf / BuffEffectOnSelf must apply.
+        env.player
+            .mod_db
+            .add_mod(Modifier::number("AuraEffect", ModType::Inc, 100.0));
+        env.player
+            .mod_db
+            .add_mod(Modifier::number("AuraEffectOnSelf", ModType::Inc, 20.0));
+        env.player
+            .mod_db
+            .add_mod(Modifier::number("BuffEffectOnSelf", ModType::More, 50.0));
+
+        let mut minion = Actor::new(80, ActorBaseStats::default());
+        minion
+            .mod_db
+            .add_mod(Modifier::number("AuraEffect", ModType::Inc, 30.0));
+        minion
+            .mod_db
+            .add_mod(Modifier::number("BuffEffect", ModType::More, 20.0));
+        env.minions.push(minion);
+
+        let mut spec = aura_spec("MinionDiscipline", 100.0);
+        spec.local_effect_inc = 10.0;
+        spec.local_effect_more = 1.25;
+        env.minion_buff_skills.push((0, spec));
+
+        buff_pass(&mut env);
+
+        // inc = 30 (caster) + 10 (local) + 20 (player on-self) = 60 -> 1.6;
+        // more = 1.2 (caster) * 1.25 (local) * 1.5 (player on-self) = 2.25;
+        // mult = 1.6 * 2.25 = 3.6 -> 100 * 3.6 = 360.
+        assert_eq!(
+            env.player
+                .mod_db
+                .sum(ModType::Base, &env.cfg, &[ModName::from("EnergyShield")]),
+            360.0
+        );
+    }
+
+    #[test]
+    fn debuff_honors_local_effect_skill_types_caster_and_party() {
+        let debuff_spec = |name: &str, amount: f64, skill_types: SkillTypes| BuffSpec {
+            name: name.to_string(),
+            kind: BuffKind::Debuff,
+            skill_id: format!("{name}Player"),
+            mods: vec![Modifier::number("DamageTaken", ModType::Inc, amount)],
+            magnitude: 1.0,
+            slot: None,
+            socket_index: 1,
+            is_mark: false,
+            ignore_curse_limit: false,
+            local_effect_inc: 0.0,
+            local_effect_more: 1.0,
+            skill_types,
+        };
+
+        // Player debuff honors local_effect_inc/more and spec.skill_types.
+        let mut player_env = buffed_env();
+        player_env.player.mod_db.add_mod(
+            Modifier::number("DebuffEffect", ModType::Inc, 20.0)
+                .with_tag(ModTag::SkillTypes(SkillTypes::WARCRY)),
+        );
+        player_env.player.mod_db.add_mod(
+            Modifier::number("DebuffEffect", ModType::Inc, 500.0)
+                .with_tag(ModTag::SkillTypes(SkillTypes::BANNER)),
+        );
+        let mut spec = debuff_spec("WarcryDebuff", 20.0, SkillTypes::WARCRY);
+        spec.local_effect_inc = 30.0;
+        spec.local_effect_more = 1.5;
+        player_env.buff_skills.push(spec);
+        buff_pass(&mut player_env);
+        // (1 + (20 + 30)/100) * 1.5 = 2.25 -> 20 * 2.25 = 45.
+        assert_eq!(
+            player_env.enemy.mod_db.sum(
+                ModType::Inc,
+                &player_env.cfg,
+                &[ModName::from("DamageTaken")]
+            ),
+            45.0
+        );
+
+        // Minion debuff queries caster (minion), not player's DebuffEffect.
+        let mut minion_env = buffed_env();
+        minion_env
+            .player
+            .mod_db
+            .add_mod(Modifier::number("DebuffEffect", ModType::Inc, 200.0));
+        let mut minion = Actor::new(80, ActorBaseStats::default());
+        minion
+            .mod_db
+            .add_mod(Modifier::number("DebuffEffect", ModType::Inc, 50.0));
+        minion_env.minions.push(minion);
+        let mut minion_spec = debuff_spec("MinionDebuff", 20.0, SkillTypes::NONE);
+        minion_spec.local_effect_inc = 10.0;
+        minion_spec.local_effect_more = 1.5;
+        minion_env.minion_buff_skills.push((0, minion_spec));
+        buff_pass(&mut minion_env);
+        // (1 + (50 + 10)/100) * 1.5 = 2.4 -> 20 * 2.4 = 48.
+        assert_eq!(
+            minion_env.enemy.mod_db.sum(
+                ModType::Inc,
+                &minion_env.cfg,
+                &[ModName::from("DamageTaken")]
+            ),
+            48.0
+        );
+
+        // Party debuff uses only spec.magnitude and is not scaled by player's DebuffEffect.
+        let mut party_env = buffed_env();
+        party_env
+            .player
+            .mod_db
+            .add_mod(Modifier::number("DebuffEffect", ModType::Inc, 200.0));
+        let mut party_spec = debuff_spec("PartyDebuff", 20.0, SkillTypes::NONE);
+        party_spec.magnitude = 1.5;
+        party_env
+            .party_buff_skills
+            .push(super::super::session::PartyBuffSpec {
+                member: 0,
+                curse_limit: 1.0,
+                spec: party_spec,
+            });
+        buff_pass(&mut party_env);
+        // 20 * 1.5 = 30.
+        assert_eq!(
+            party_env.enemy.mod_db.sum(
+                ModType::Inc,
+                &party_env.cfg,
+                &[ModName::from("DamageTaken")]
+            ),
+            30.0
         );
     }
 }
