@@ -26,10 +26,9 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use pobr_build::{
-    BuildData, DataOrchestratorOptions, ImportedBuild, ReferenceRow, calculate_with_data_session,
+    DataOrchestratorOptions, ImportedBuild, ReferenceRow, calculate_with_data_session,
     compare_build_to_reference, damage_row, import_build_from_code,
 };
-use pobr_gamedata::GameData;
 
 const TOL: f64 = 0.05;
 
@@ -107,8 +106,7 @@ struct Agreement {
 /// Compares every build under `root`; `verbose` prints each build's misses.
 fn corpus_agreement(root: &Path, verbose: bool, impact: bool) -> Agreement {
     let verbose = verbose && !root.components().any(|part| part.as_os_str() == "holdout");
-    let data =
-        BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).expect("load BuildData");
+    let data = super::test_data();
     // The same convention as `ninja_parity`: the conditions the references
     // were exported under.
     let options = DataOrchestratorOptions::reference_conditions();
@@ -571,8 +569,7 @@ fn amulet_granted_skills_do_not_overdraw_spirit() {
         "warrior-titan-his-scattering-calamity",
         "witch-blood-mage-impending-doom",
     ];
-    let data =
-        BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).expect("load BuildData");
+    let data = super::test_data();
     let options = DataOrchestratorOptions::reference_conditions();
     let mut checked = 0;
     for dir in builds_in(&repo_path("examples/wasm-benchmark/builds")) {
@@ -595,8 +592,7 @@ fn amulet_granted_skills_do_not_overdraw_spirit() {
 
 #[test]
 fn sanguimantic_rituals_regeneration_matches_build_references() {
-    let data =
-        BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).expect("load BuildData");
+    let data = super::test_data();
     let options = DataOrchestratorOptions::reference_conditions();
     for (path, life, mana) in [
         (

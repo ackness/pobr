@@ -20,7 +20,6 @@
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::MinimalInput;
 use pobr_data::monster::EnemyTier;
-use pobr_gamedata::GameData;
 use std::path::{Path, PathBuf};
 
 fn build_dir(name: &str) -> PathBuf {
@@ -31,10 +30,9 @@ fn build_dir(name: &str) -> PathBuf {
         .expect("build dir exists")
 }
 
-fn load_data() -> BuildData {
+fn load_data() -> &'static BuildData {
     // PoB2 reference values are recaptured for the active data version on every data update.
-    let data = GameData::new(pobr_gamedata::current_data_dir());
-    BuildData::load(&data).expect("load BuildData")
+    super::test_data()
 }
 
 fn golden_stat(dir: &Path, key: &str) -> Option<f64> {
