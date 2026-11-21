@@ -463,7 +463,7 @@ gate_step() {
     build)    cargo test -q -p pobr-build --lib --test skills --test codec --test dualrun --test tree_convert ;;
     parity)   cargo test -q -p pobr-build --test parity ;;
     apps)     cargo test -q -p pobr-data -p pobr-gamedata -p pobr-i18n -p pobr-tree -p pobr-item \
-                -p pobr-wasm -p pobr-cli -p sync-pob-catalog ;;
+                -p pobr-wasm -p pobr-cli ;;
     web)      pnpm --dir web i18n:check && pnpm --dir web typecheck && pnpm --dir web test ;;
     accuracy) cmd_accuracy ;;
   esac

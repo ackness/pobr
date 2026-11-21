@@ -3,8 +3,8 @@
 //!
 //! Only checks the data shape and curation discipline (unique id /
 //! verified:false / batch marker / mods and handler are mutually
-//! exclusive); regex compilation checks live on the sync-pob-catalog test
-//! side (that crate has the regex dependency); interpreter wiring belongs
+//! exclusive); regex compilation and capture-shape checks live in
+//! `pobr-core`'s `parser::special_mods_patterns` test; interpreter wiring belongs
 //! to B-2/B-3.
 
 use pobr_data::catalog::parser_rules::{
