@@ -107,7 +107,7 @@ pub fn compare_outputs(
     let mut diffs = Vec::new();
     for (name, b, a) in fields {
         let delta = a - b;
-        if a != b && !(delta.abs() <= epsilon) {
+        if a.is_nan() || b.is_nan() || (a != b && delta.abs() > epsilon) {
             diffs.push(FieldDiff {
                 field: name,
                 before: b,
