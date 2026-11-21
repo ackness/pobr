@@ -117,12 +117,27 @@ pub(crate) fn support_buff_specs(
     build: &Build,
     data: &BuildData,
 ) -> Vec<BuffSpec> {
+    let active_weapon_class = build
+        .items
+        .get(&pobr_data::item::EquipmentSlot::Weapon1)
+        .and_then(|item| data.base_item(&item.base.to_string()))
+        .map(|base| base.item_class.as_str());
     let mut ctx = context.stat_map_ctx();
-    pobr_core::skill_env::support_buff_specs(
+    pobr_core::skill_env::support_buff_specs_filtered(
         &mut ctx,
         build,
         data,
         super::resolve::gemling_quality_flag(build, data),
+        |group, active_id| {
+            let Some(effect) = data.granted_effects.get(active_id) else {
+                return true;
+            };
+            let Some(required) = super::resolve::required_weapon_classes(effect) else {
+                return true;
+            };
+            group.active_in_weapon_set
+                && active_weapon_class.is_some_and(|class| required.contains(&class))
+        },
     )
 }
 
