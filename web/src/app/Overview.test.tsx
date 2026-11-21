@@ -133,6 +133,14 @@ it('explains mapping beside the DPS only when the result confirms an energy trig
   expect(summary({})).not.toContain('刷图按单个普通怪');
 });
 
+it('explains a missing energy source beside the DPS when a meta trigger falls back to own rate', () => {
+  const energy_trigger = { maximum_energy: 100, source: null, at_own_rate: true, missing_source: 'EnergyNeedsDodgeRolls' } as NonNullable<CalculateBuildResponse['energy_trigger']>;
+  const html = summary({}, { lang: 'zh-CN', extra: { energy_trigger } });
+  const damage = html.match(/<div[^>]+class="ov-figure is-dps"[\s\S]*?<\/div>/)![0];
+  expect(damage).toContain('当前使用法术自身频率。请在配置设置每秒闪避翻滚次数，以计算能量触发。');
+  expect(damage).not.toContain('刷图按单个普通怪');
+});
+
 it.each([
   ['en-US', 'Energy trigger rate is not modelled', 'DPS is shown as 0. Average hit is still calculated.'],
   ['zh-CN', '尚未建模能量触发频率', 'DPS 显示为 0。平均击中伤害仍会计算。'],

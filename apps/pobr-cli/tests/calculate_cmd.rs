@@ -933,7 +933,7 @@ fn exporter_absent_rules_are_reported_without_changing_reference_agreement() {
         },
     )
     .unwrap();
-    let reference = report.reference.unwrap();
+    let reference = report.reference.as_ref().unwrap();
     assert!(reference.exporter_absent_rules_omitted);
     assert!(reference.differing.iter().all(|row| row.stat != "ManaCost"));
     assert!(
@@ -942,10 +942,78 @@ fn exporter_absent_rules_are_reported_without_changing_reference_agreement() {
             .iter()
             .any(|rule| rule.rule_id == "spell_mana_cost_efficiency" && rule.changed_rows > 0)
     );
-    let usage = serde_json::to_string(&report.usage.unwrap()).unwrap();
+    let usage = serde_json::to_string(report.usage.as_ref().unwrap()).unwrap();
     assert!(
         usage.contains("ManaCostEfficiency"),
         "game-mode usage keeps the absent rule"
+    );
+    let text = render_breakdowns(&report);
+    assert!(text.contains("== beyond PoB2"), "{text}");
+    assert!(text.contains("spell_mana_cost_efficiency"), "{text}");
+}
+
+#[test]
+fn render_breakdowns_surfaces_cast_on_dodge_own_rate_and_configured_rate() {
+    let xml = r#"<PathOfBuilding2><Build level="90" className="Mercenary"/>
+        <Skills mainSocketGroup="1">
+            <Skill enabled="true" mainActiveSkill="2">
+                <Gem skillId="MetaCastOnDodgePlayer" level="20" quality="0" enabled="true"/>
+                <Gem skillId="FireballPlayer" level="20" quality="0" enabled="true"/>
+            </Skill>
+        </Skills>
+    </PathOfBuilding2>"#;
+    let request = CalculateBuildRequest {
+        code: pobr_build::encode_pob_code(xml).unwrap(),
+        data_dir: repo_data_dir(),
+        enemy_level: 0,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    };
+    let unconfigured = calculate_build_detailed(
+        &request,
+        &BuildDetail {
+            breakdown: vec!["CombinedDPS".into()],
+            ..BuildDetail::default()
+        },
+    )
+    .unwrap();
+    assert!(unconfigured.output.dps > 0.0);
+    let text = render_breakdowns(&unconfigured);
+    assert!(
+        text.contains("energy trigger: using skill's own rate"),
+        "{text}"
+    );
+    assert!(
+        text.contains("missing source: EnergyNeedsDodgeRolls"),
+        "{text}"
+    );
+
+    let configured_xml = r#"<PathOfBuilding2><Build level="90" className="Mercenary"/>
+        <Config activeConfigSet="1"><ConfigSet id="1">
+            <Input name="energyDodgeRollsPerSecond" number="1"/>
+        </ConfigSet></Config>
+        <Skills mainSocketGroup="1">
+            <Skill enabled="true" mainActiveSkill="2">
+                <Gem skillId="MetaCastOnDodgePlayer" level="20" quality="0" enabled="true"/>
+                <Gem skillId="FireballPlayer" level="20" quality="0" enabled="true"/>
+            </Skill>
+        </Skills>
+    </PathOfBuilding2>"#;
+    let configured = calculate_build_detailed(
+        &CalculateBuildRequest {
+            code: pobr_build::encode_pob_code(configured_xml).unwrap(),
+            ..request
+        },
+        &BuildDetail {
+            breakdown: vec!["CombinedDPS".into()],
+            ..BuildDetail::default()
+        },
+    )
+    .unwrap();
+    let configured_text = render_breakdowns(&configured);
+    assert!(
+        configured_text.contains("energy trigger: source DodgeRoll"),
+        "{configured_text}"
     );
 }
 

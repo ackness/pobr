@@ -35,6 +35,17 @@ it('explains energy-trigger mapping beside the enemy tier only for a confirmed t
 });
 
 it.each([
+  ['en-US', 'Using the spell&#x27;s own rate. Set Dodge rolls per second in Configuration to calculate Energy triggers.'],
+  ['zh-CN', '当前使用法术自身频率。请在配置设置每秒闪避翻滚次数，以计算能量触发。'],
+  ['zh-TW', '目前使用法術自身頻率。請在「設定」頁設定每秒閃避翻滾次數，以計算能量觸發。'],
+] as const)('surfaces the missing energy source hint when a meta trigger falls back to own rate in %s', (lang, note) => {
+  const energy_trigger = { maximum_energy: 100, source: null, at_own_rate: true, missing_source: 'EnergyNeedsDodgeRolls' } as NonNullable<CalculateBuildResponse['energy_trigger']>;
+  const html = render('skills', { lang, extra: { energy_trigger } });
+  expect(html).toContain(note);
+  expect(html).not.toContain('clearing packs');
+});
+
+it.each([
   ['en-US', 'DPS is shown as 0. Average hit is still calculated.'],
   ['zh-CN', 'DPS 显示为 0。平均击中伤害仍会计算。'],
   ['zh-TW', 'DPS 顯示為 0。仍會計算平均擊中傷害。'],
