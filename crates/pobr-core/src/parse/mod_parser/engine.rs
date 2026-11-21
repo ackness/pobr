@@ -545,11 +545,35 @@ fn prefix_enemy_condition(tag: ModTag) -> ModTag {
             var,
             negated,
             actor,
-        } if !var.starts_with("Enemy") => ModTag::Condition {
-            var: format!("Enemy{var}"),
-            negated,
-            actor,
-        },
+        } if !var.starts_with("Enemy") => {
+            // Inferred pre_flag `^enemies you (%a+) have ` captures present-tense
+            // verb stems ("curse", "mark", "shock", ...); normalize them to the
+            // canonical enemy state names (`EnemyCursed`, `EnemyMarked`, ...).
+            let canonical = match var.as_str() {
+                "Curse" => "Cursed",
+                "Mark" => "Marked",
+                "Shock" => "Shocked",
+                "Ignite" => "Ignited",
+                "Chill" => "Chilled",
+                "Freeze" => "Frozen",
+                "Poison" => "Poisoned",
+                "Bleed" => "Bleeding",
+                "Electrocute" => "Electrocuted",
+                "Blind" => "Blinded",
+                "Pin" => "Pinned",
+                "Daze" => "Dazed",
+                "Taunt" => "Taunted",
+                "Intimidate" => "Intimidated",
+                "Crush" => "Crushed",
+                "Hinder" => "Hindered",
+                other => other,
+            };
+            ModTag::Condition {
+                var: format!("Enemy{canonical}"),
+                negated,
+                actor,
+            }
+        }
         other => other,
     }
 }
@@ -996,6 +1020,46 @@ mod tests {
                 m.exporter_rule.as_ref().map(|rule| rule.exporter),
                 Some(pobr_data::source::ExporterCoverage::Absent),
                 "{line}"
+            );
+        }
+    }
+
+    #[test]
+    fn enemies_you_verb_stem_normalizes_to_past_participle_enemy_condition() {
+        let r = real_rules();
+        for (line, expected_stat, expected_cond) in [
+            (
+                "Enemies you Curse have -5% to Chaos Resistance",
+                "ChaosResistance",
+                "EnemyCursed",
+            ),
+            (
+                "Enemies you Shock have -10% to Lightning Resistance",
+                "LightningResistance",
+                "EnemyShocked",
+            ),
+        ] {
+            let o = parse_mod_engine(line, &r);
+            assert_eq!(o.status, ParseStatus::Parsed, "{line}: {:?}", o.unparsed);
+            let outer = o
+                .mods
+                .iter()
+                .find(|m| m.name.as_str() == "EnemyModifier")
+                .unwrap_or_else(|| panic!("expected EnemyModifier for {line}: {:?}", o.mods));
+            let inner = outer
+                .value
+                .as_nested_mods()
+                .expect("EnemyModifier should carry nested mods");
+            let m = inner
+                .iter()
+                .find(|m| m.name.as_str() == expected_stat)
+                .unwrap_or_else(|| panic!("expected {expected_stat} in {inner:?}"));
+            assert!(
+                m.tags.iter().any(
+                    |t| matches!(t, ModTag::Condition { var, negated: false, .. } if var == expected_cond)
+                ),
+                "{line} should tag with {expected_cond}, got {:?}",
+                m.tags
             );
         }
     }
