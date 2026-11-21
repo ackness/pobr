@@ -441,10 +441,6 @@ fn unmodelled_meta_gems_report_their_gain_stats_instead_of_self_casting() {
     let data = data();
     for (meta, gain_stats) in [
         (
-            "MetaCastOnDodgePlayer",
-            &["cast_on_dodge_roll_gain_X_centienergy_per_unit_travelled_while_dodge_rolling"][..],
-        ),
-        (
             "MetaReapersInvocationPlayer",
             &["melee_kill_invocation_gain_X_centienergy_per_monster_power_on_melee_kill"][..],
         ),
@@ -1201,6 +1197,7 @@ fn meta_gems_keep_their_own_rate_and_explain_missing_energy_sources() {
         "MetaCastOnCritPlayer",
         "MetaCastOnElementalAilmentPlayer",
         "MetaCastOnBlockPlayer",
+        "MetaCastOnDodgePlayer",
         "MetaSpellslingerPlayer",
         "MetaCastOnMinionDeathPlayer",
         "MetaElementalInvocationPlayer",
@@ -1241,6 +1238,75 @@ fn meta_gems_keep_their_own_rate_and_explain_missing_energy_sources() {
             "{meta}"
         );
     }
+}
+
+#[test]
+fn cast_on_dodge_uses_dodge_roll_distance_and_supports_zero_and_cannot_dodge() {
+    let data = data();
+    // Base DodgeRollPlayer travel distance = 46 decimetres (4.6 m).
+    // Cast on Dodge L20: 2 Energy/m * 4.6 m * (1 + 57%) = 14.444 Energy/roll.
+    // Comet requires 300 Energy -> ceil(300 / 14.444) = 21 rolls/trigger.
+    // At 2.0 rolls/s -> 2.0 / 21.0 triggers/s.
+    let base_xml = meta_xml(
+        "MetaCastOnDodgePlayer",
+        &[],
+        &[("energyDodgeRollsPerSecond", 2.0)],
+    );
+    let base = calculate(&data, &base_xml, &options(BOSS.0, &[]));
+    let terms = base.energy_trigger.as_ref().unwrap();
+    assert!(!terms.at_own_rate);
+    assert_eq!(terms.source.as_deref(), Some("DodgeRoll"));
+    assert!((terms.energy_per_event - 2.0 * 4.6 * 1.57).abs() < 1e-6);
+    assert!((terms.triggers_per_second - 2.0 / 21.0).abs() < 1e-6);
+    assert!(base.dps > 0.0);
+
+    // Bonus Dodge Roll distance from equipment/runes (+0.3 m -> 4.9 m):
+    // 2 * 4.9 * 1.57 = 15.386 Energy/roll -> ceil(300 / 15.386) = 20 rolls/trigger.
+    let extended = calculate(
+        &data,
+        &base_xml,
+        &options(BOSS.0, &["+0.3 metres to Dodge Roll distance"]),
+    );
+    let ext_terms = extended.energy_trigger.as_ref().unwrap();
+    assert!((ext_terms.energy_per_event - 2.0 * 4.9 * 1.57).abs() < 1e-6);
+    assert!((ext_terms.triggers_per_second - 2.0 / 20.0).abs() < 1e-6);
+    assert!(extended.dps > base.dps);
+
+    // Gemling alt quality (Advanced Thaumaturgy, node 14429) on Cast on Dodge
+    // (20% Q * 0.5 = 10 decimetres = +1.0 m -> 5.6 m):
+    // 2 * 5.6 * 1.57 = 17.584 Energy/roll -> ceil(300 / 17.584) = 18 rolls/trigger.
+    let mut gemling_build = parse_build(&base_xml).unwrap();
+    gemling_build.socket_groups[0].gem_skills[0].quality = 20;
+    gemling_build
+        .tree
+        .allocated_nodes
+        .push(pobr_data::passive_tree::NodeId(14429));
+    let gemling = calculate_with_data(&gemling_build, &data, &options(BOSS.0, &[])).unwrap();
+    let gemling_terms = gemling.energy_trigger.as_ref().unwrap();
+    assert!((gemling_terms.energy_per_event - 2.0 * 5.6 * 1.57).abs() < 1e-6);
+    assert!((gemling_terms.triggers_per_second - 2.0 / 18.0).abs() < 1e-6);
+
+    // Explicit 0 stops triggering.
+    let zero_xml = meta_xml(
+        "MetaCastOnDodgePlayer",
+        &[],
+        &[("energyDodgeRollsPerSecond", 0.0)],
+    );
+    let zero = calculate(&data, &zero_xml, &options(BOSS.0, &[]));
+    assert!(!zero.energy_trigger.as_ref().unwrap().at_own_rate);
+    assert_eq!(zero.dps, 0.0);
+    assert_eq!(zero.skill_trigger_rate, 0.0);
+
+    // Cannot Dodge Roll (Unwavering Stance) falls back to own rate with EnergyNeedsDodgeRoll.
+    let no_dodge = calculate(
+        &data,
+        &base_xml,
+        &options(BOSS.0, &["Cannot Dodge Roll or Sprint"]),
+    );
+    let no_dodge_terms = no_dodge.energy_trigger.as_ref().unwrap();
+    assert!(no_dodge_terms.at_own_rate);
+    assert_eq!(no_dodge_terms.missing_source, Some("EnergyNeedsDodgeRoll"));
+    assert!(no_dodge.dps > 0.0);
 }
 
 #[test]

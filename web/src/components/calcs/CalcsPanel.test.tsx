@@ -93,6 +93,8 @@ test.each([
 test.each([
   ['EnergyNeedsIncomingHits', 'Incoming blockable hits per second'],
   ['EnergyNeedsMinionDeaths', 'Minions killed per second'],
+  ['EnergyNeedsDodgeRolls', 'Dodge rolls per second'],
+  ['EnergyNeedsDodgeRoll', 'Dodge Roll'],
   ['EnergyNeedsSpellCasts', 'self-cast spell'],
   ['EnergyNeedsAilments', 'Ignite, Shock or Freeze'],
   ['EnergyNeedsCriticalHits', 'critically hit'],

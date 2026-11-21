@@ -379,6 +379,11 @@ fn energy_trigger_details_config_and_full_dps_share_the_calculated_rate() {
             vec![],
         ),
         (
+            "MetaCastOnDodgePlayer",
+            json!({"energyDodgeRollsPerSecond":2}),
+            vec![],
+        ),
+        (
             "MetaElementalInvocationPlayer",
             json!({}),
             vec!["100% chance to Shock"],
@@ -456,6 +461,11 @@ fn missing_energy_sources_explain_the_own_rate_fallback_and_explicit_zero_stops(
             Some("energyMinionDeathsPerSecond"),
         ),
         (
+            "MetaCastOnDodgePlayer",
+            "EnergyNeedsDodgeRolls",
+            Some("energyDodgeRollsPerSecond"),
+        ),
+        (
             "MetaSpellslingerPlayer",
             "EnergyNeedsSpellCasts",
             Some("energyInvocationUsesPerSecond"),
@@ -521,6 +531,7 @@ fn energy_config_context_uses_meta_gems_anywhere_in_the_build() {
     init();
     let metas = [
         "MetaCastOnBlockPlayer",
+        "MetaCastOnDodgePlayer",
         "MetaCastOnMinionDeathPlayer",
         "MetaSpellslingerPlayer",
         "MetaElementalInvocationPlayer",

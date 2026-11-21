@@ -93,10 +93,10 @@ describe('energy-trigger note eligibility', () => {
     expect(hasEnergyTrigger(calc, active)).toBe(false);
     expect(hasEnergyTrigger(response({ main_skill, energy_trigger: energy, main_minion_index: 3, minions: [minion()] }), groups('MetaCastOnCritPlayer'))).toBe(false);
   });
-  it.each(['Block', 'MinionDeath'])('suppresses the pack explanation for %s even with a known meta gem', source => {
+  it.each(['Block', 'MinionDeath', 'DodgeRoll'])('suppresses the pack explanation for %s even with a known meta gem', source => {
     expect(hasEnergyTrigger(response({ main_skill, energy_trigger: { ...energy, source } }), groups('MetaCastOnCritPlayer'))).toBe(false);
   });
-  it.each(['SpellslingerPlayer', 'MetaSpellslingerPlayer', 'MetaBarrierInvocationPlayer', 'MetaReapersInvocationPlayer', 'MetaCastOnBlockPlayer', 'MetaCastOnMinionDeathPlayer', 'MetaUnknownPlayer'])('suppresses unrelated or uncertain generation for %s', meta => {
+  it.each(['SpellslingerPlayer', 'MetaSpellslingerPlayer', 'MetaBarrierInvocationPlayer', 'MetaReapersInvocationPlayer', 'MetaCastOnBlockPlayer', 'MetaCastOnDodgePlayer', 'MetaCastOnMinionDeathPlayer', 'MetaUnknownPlayer'])('suppresses unrelated or uncertain generation for %s', meta => {
     expect(hasEnergyTrigger(response({ main_skill, energy_trigger: energy }), groups(meta))).toBe(false);
   });
 });

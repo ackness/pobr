@@ -346,6 +346,11 @@ fn energy_trigger_modifiers<S: TriggerSubCalc>(
             100.0,
         ),
         (
+            "cast_on_dodge_roll_gain_X_centienergy_per_unit_travelled_while_dodge_rolling",
+            energy::ENERGY_PER_DODGE_METRE,
+            100.0,
+        ),
+        (
             "spellslinger_invocation_gain_X_centienergy_per_10ms_base_cast_time",
             energy::ENERGY_PER_CAST_MS,
             1000.0,
@@ -423,10 +428,15 @@ fn energy_trigger_modifiers<S: TriggerSubCalc>(
     let spellslinger = gains
         .iter()
         .any(|m| m.name.as_str() == energy::ENERGY_PER_CAST_MS);
+    let dodge_roll = gains
+        .iter()
+        .any(|m| m.name.as_str() == energy::ENERGY_PER_DODGE_METRE);
     let external = gains.iter().any(|m| {
         matches!(
             m.name.as_str(),
-            energy::ENERGY_PER_BLOCK | energy::ENERGY_PER_MINION_POWER
+            energy::ENERGY_PER_BLOCK
+                | energy::ENERGY_PER_MINION_POWER
+                | energy::ENERGY_PER_DODGE_METRE
         )
     });
     let triggered =
@@ -456,6 +466,21 @@ fn energy_trigger_modifiers<S: TriggerSubCalc>(
         "generic_ongoing_trigger_maximum_energy",
     );
     let mut mods = gains;
+    if dodge_roll {
+        let base_decimetres: f64 = data
+            .effect_stats("DodgeRollPlayer", 1, 0, None)
+            .all()
+            .filter(|stat| stat.stat == "dodge_roll_base_travel_distance")
+            .map(|stat| stat.value)
+            .sum();
+        if base_decimetres > 0.0 {
+            mods.push(mk_trigger_mod(
+                energy::DODGE_ROLL_DISTANCE,
+                base_decimetres / 10.0,
+                "dodge_roll_base_travel_distance",
+            ));
+        }
+    }
     mods.push(mk_trigger_mod(
         energy::MAXIMUM_ENERGY,
         capacity.unwrap_or(cost),

@@ -2428,7 +2428,7 @@ fn unmodelled_meta_trigger_has_structured_main_and_per_skill_limits() {
                 .unwrap();
         let skills = report["skills"].as_array().unwrap();
         let row = skills.iter().find(|row| row["skill_id"] == host).unwrap();
-        let modelled = meta == "MetaCastOnCritPlayer";
+        let modelled = matches!(meta, "MetaCastOnCritPlayer" | "MetaCastOnDodgePlayer");
         assert_eq!(response["main_skill"]["skill_id"], host);
         assert_eq!(row["status"], "calculated");
         assert!(row["metrics"]["average_hit"].as_f64().unwrap() > 0.0);
@@ -2477,7 +2477,7 @@ fn unmodelled_meta_trigger_has_structured_main_and_per_skill_limits() {
         "main_socket_group": 0,
         "socket_groups": [
             { "main_active_skill": 2, "gems": [
-                { "skill_id": "MetaCastOnDodgePlayer", "level": 20 },
+                { "skill_id": "MetaCastWhenStunnedPlayer", "level": 20 },
                 { "skill_id": "CometPlayer", "level": 20 },
             ] },
             { "main_active_skill": 2, "gems": [
@@ -2493,7 +2493,7 @@ fn unmodelled_meta_trigger_has_structured_main_and_per_skill_limits() {
         serde_json::from_str(&pobr_wasm::skill_metrics_json(&request.to_string()).unwrap())
             .unwrap();
     for (group, meta) in [
-        Some("MetaCastOnDodgePlayer"),
+        Some("MetaCastWhenStunnedPlayer"),
         Some("MetaReapersInvocationPlayer"),
         None,
         None,
@@ -2555,7 +2555,7 @@ fn unmodelled_meta_trigger_has_structured_main_and_per_skill_limits() {
     assert_eq!(
         response["unmodelled_meta_trigger"],
         serde_json::json!({
-            "meta_gem_id": "MetaCastOnDodgePlayer", "host_skill_id": "CometPlayer",
+            "meta_gem_id": "MetaCastWhenStunnedPlayer", "host_skill_id": "CometPlayer",
         })
     );
 }

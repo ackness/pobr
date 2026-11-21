@@ -441,7 +441,7 @@ fn calculate_build_compares_unmodelled_meta_triggers_at_their_own_rate() {
   <PlayerStat stat="Speed" value="0.5"/>
 </Build>
 <Skills><Skill enabled="true" mainActiveSkill="2">
-  <Gem skillId="MetaCastOnDodgePlayer" level="20" quality="0" enabled="true"/>
+  <Gem skillId="MetaCastWhenStunnedPlayer" level="20" quality="0" enabled="true"/>
   <Gem skillId="CometPlayer" level="20" quality="0" enabled="true"/>
 </Skill></Skills>
 </PathOfBuilding2>"#;
@@ -460,7 +460,7 @@ fn calculate_build_compares_unmodelled_meta_triggers_at_their_own_rate() {
         report
             .unsupported_modifiers
             .iter()
-            .any(|limit| limit.starts_with("MetaTrigger:MetaCastOnDodgePlayer:"))
+            .any(|limit| limit.starts_with("MetaTrigger:MetaCastWhenStunnedPlayer:"))
     );
     let reference = report.reference.as_ref().expect("exported reference rows");
     assert_eq!(reference.compared, 2);

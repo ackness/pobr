@@ -48,7 +48,9 @@
 //! Cast on Elemental Ailment uses ignite/shock/freeze events (not chill).
 //! Ignite Energy scales by the ignite's total damage / ailment threshold;
 //! shock gives 1 and freeze 10 Energy per Power. Cast on Block gives 25 per
-//! block; Cast on Minion Death gives 50 per Power of the killed minion.
+//! block; Cast on Minion Death gives 50 per Power of the killed minion; Cast
+//! on Dodge gives 2 Energy per metre travelled while dodge rolling (from
+//! Dodge Roll's base travel distance plus any bonus distance).
 //! Spellslinger gains 0.2 Energy per 10 ms base cast time of self-cast spells.
 //! Its and Elemental Invocation's 500-Energy capacity is separate from the
 //! socketed spells' cost: manual activations can spend several cycles.
@@ -76,6 +78,10 @@ pub const REFUND_HALF_CHANCE: &str = "EnergyRefundHalfChance";
 /// Energy event rules resolved from the meta gem's game stats.
 pub const ENERGY_PER_BLOCK: &str = "EnergyPerBlock";
 pub const ENERGY_PER_MINION_POWER: &str = "EnergyPerMinionPower";
+pub const ENERGY_PER_DODGE_METRE: &str = "EnergyPerDodgeMetre";
+/// Total Dodge Roll travel distance in metres (base from `DodgeRollPlayer`
+/// plus Cast on Dodge quality and item/passive bonuses).
+pub const DODGE_ROLL_DISTANCE: &str = "DodgeRollDistance";
 pub const ENERGY_PER_CAST_MS: &str = "EnergyPerCastMillisecond";
 pub const ENERGY_PER_IGNITE_POWER: &str = "EnergyPerIgnitePower";
 pub const ENERGY_PER_SHOCK_POWER: &str = "EnergyPerShockPower";
@@ -401,6 +407,24 @@ pub fn apply_energy_trigger(env: &mut Env) {
                 "MinionDeath".into(),
                 deaths,
                 sum(ENERGY_PER_MINION_POWER) * minion_power,
+            );
+        }
+    } else if sum(ENERGY_PER_DODGE_METRE) > 0.0 {
+        let cannot_dodge =
+            db.flag(cfg, "Condition:CannotDodgeRoll") || cfg.condition("CannotDodgeRoll");
+        let distance = sum(DODGE_ROLL_DISTANCE).max(0.0);
+        missing_source = if cfg.multiplier_if_set("EnergyDodgeRollsPerSecond").is_some() {
+            "EnergyNeedsDodgeRoll"
+        } else {
+            "EnergyNeedsDodgeRolls"
+        };
+        if let Some(rolls) = cfg.multiplier_if_set("EnergyDodgeRollsPerSecond")
+            && (rolls == 0.0 || (!cannot_dodge && distance > 0.0))
+        {
+            consider(
+                "DodgeRoll".into(),
+                rolls,
+                sum(ENERGY_PER_DODGE_METRE) * distance,
             );
         }
     } else {

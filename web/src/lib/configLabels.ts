@@ -87,6 +87,7 @@ export const CONFIG_LABEL_ZH: Record<string, string> = {
   cadiroArrow: '卡迪罗的赌局箭矢：',
   conditionMinionsOnConsecratedGround: '你的召唤物位于奉献地面？',
   energyIncomingHitRate: '每秒可格挡来袭命中数：',
+  energyDodgeRollsPerSecond: '每秒闪避翻滚次数：',
   energyMinionDeathsPerSecond: '每秒被击杀召唤物数：',
   energyMinionPower: '被击杀召唤物的平均威能：',
   energyInvocationUsesPerSecond: '每秒手动触发次数：',
