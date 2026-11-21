@@ -203,7 +203,7 @@ it('renders library comparisons through the shared before/after card and invalid
   harness.compare.mockResolvedValue({ stats: [{ id: 'CombinedDPS', value: 150 }, { id: 'TotalEHP', value: 180 }, { id: 'Life', value: 100 }] });
   render(current); button('Ring 1').onClick!({} as never);
   render(current); button('Compare').onClick!({} as never);
-  await vi.waitFor(() => expect(harness.compare).toHaveBeenCalledOnce());
+  await vi.waitFor(() => expect(harness.compare).toHaveBeenCalledWith(expect.objectContaining({ breakdowns: [] })));
   await Promise.resolve();
   const html = render(current);
   expect(html).toContain('data-stat="CombinedDPS"');

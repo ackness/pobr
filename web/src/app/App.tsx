@@ -1,6 +1,6 @@
 import { DataVersionNotice } from './DataVersionNotice';
 import { buildDisplayName, stageDisplayName } from '../lib/workspaceNames';
-import { Fragment, lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { LayoutDashboard, Library, Network, Gem, Swords, TrendingUp, Calculator, SlidersHorizontal, Columns2, Settings2, Menu, Undo2, Redo2, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Search, Check, LoaderCircle, Download, BookmarkPlus } from 'lucide-react';
 import { useBuildSession, type SyncNotice } from '../hooks/useBuildSession';
 import { UpgradeGoalProvider } from '../hooks/useUpgradeGoal';
@@ -15,7 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { ItemsPanel } from '../components/items/ItemsPanel';
 import { SkillsPanel } from '../components/skills/SkillsPanel';
 import { ConfigPanel } from '../components/config/ConfigPanel';
-import { bindT, bootMessageLabel, messages, t, type Lang } from '../lib/i18n';
+import { bindT, bootErrorLabel, bootMessageLabel, messages, t, type Lang } from '../lib/i18n';
 import { buildImportErrorMessage } from '../api/import';
 import { LEGACY_STORAGE, STORAGE, uiStorageKey } from '../lib/sessionStorage';
 import { initializeStorage } from './storage';
@@ -105,7 +105,7 @@ export default function App() {
 function Recovery({ lang, error }: { lang: Lang; error: string }) {
   let raw: string | null = null;
   try { raw = localStorage.getItem(STORAGE.workspace) ?? localStorage.getItem(LEGACY_STORAGE.workspace); } catch { /* Storage access itself can fail. */ }
-  return <div className="shell-boot" role="alert"><BrandMark className="shell-brand-mark" detailed /><h1>{t(lang, 'shell.recoveryTitle')}</h1><p>{t(lang, 'shell.recoveryDetail')}</p><pre>{error}</pre>
+  return <div className="shell-boot" role="alert"><BrandMark className="shell-brand-mark" detailed /><h1>{t(lang, 'shell.recoveryTitle')}</h1><p>{t(lang, 'shell.recoveryDetail')}</p><pre>{bootErrorLabel(lang, error)}</pre>
     {raw && <Button onClick={() => download(raw!, 'pobr-recovery.json')}><Download />{t(lang, 'shell.downloadOriginalSave')}</Button>}</div>;
 }
 
@@ -170,10 +170,12 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
     const heading = main.current?.querySelector<HTMLElement>('#ov-title[tabindex]');
     if (heading) { heading.focus({ preventScroll: true }); focusImportedBuild.current = false; }
   }, [route, stageKey, reviewStage?.scope]);
-  const navigate = (next: Route) => {
-    const commit = () => { if (next !== route) history.pushState(null, '', routePath(next)); setRoute(next); setMenuOpen(false); setStatsOpen(false); };
-    if (next === route) commit(); else withViewTransition(commit);
-  };
+  const routeRef = useRef(route);
+  routeRef.current = route;
+  const navigate = useCallback((next: Route) => {
+    const commit = () => { if (next !== routeRef.current) history.pushState(null, '', routePath(next)); setRoute(next); setMenuOpen(false); setStatsOpen(false); };
+    if (next === routeRef.current) commit(); else withViewTransition(commit);
+  }, []);
   const openImport = () => {
     setNotesFocusRequest(undefined); setShareFocusRequest(undefined);
     setImportFocusRequest(value => value + 1);
@@ -195,23 +197,25 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   /** A number opens the calculation behind it beside the page you are on; the skill overview is a page of its own. */
   const inspectStat = (id: string) => { if (id === 'skill-metrics') focusStat(id); else { setStatsOpen(false); setInspect(id); } };
   const dialogOpen = paletteOpen || helpOpen || settingsOpen || menuOpen || statsOpen || (!docked && inspect !== null);
+  const onKeyRef = useRef<(event: KeyboardEvent) => void>(() => {});
+  onKeyRef.current = (event: KeyboardEvent) => {
+    // A page that used the key for itself (the tree's 1/2/3 on an attribute node) has marked it handled.
+    if (event.defaultPrevented) return;
+    const action = shortcutAction(event, isTyping(event.target));
+    if (!action) return;
+    if (action.type === 'palette') { event.preventDefault(); setPaletteOpen(open => !open); return; }
+    if (dialogOpen) return;
+    if (action.type === 'help') setHelpOpen(true);
+    else if (action.type === 'rail') toggleRail();
+    else if (action.type === 'close') setInspect(null);
+    else if (action.type === 'undo') { event.preventDefault(); if (session.canUndo) session.undoEdit(); }
+    else if (action.type === 'redo') { event.preventDefault(); if (session.canRedo) session.redoEdit(); }
+    else navigate(action.route);
+  };
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      // A page that used the key for itself (the tree's 1/2/3 on an attribute node) has marked it handled.
-      if (event.defaultPrevented) return;
-      const action = shortcutAction(event, isTyping(event.target));
-      if (!action) return;
-      if (action.type === 'palette') { event.preventDefault(); setPaletteOpen(open => !open); return; }
-      if (dialogOpen) return;
-      if (action.type === 'help') setHelpOpen(true);
-      else if (action.type === 'rail') toggleRail();
-      else if (action.type === 'close') setInspect(null);
-      else if (action.type === 'undo') { event.preventDefault(); if (session.canUndo) session.undoEdit(); }
-      else if (action.type === 'redo') { event.preventDefault(); if (session.canRedo) session.redoEdit(); }
-      else navigate(action.route);
-    };
+    const onKey = (event: KeyboardEvent) => onKeyRef.current(event);
     addEventListener('keydown', onKey); return () => removeEventListener('keydown', onKey);
-  });
+  }, []);
   const retained = (page: Route) => route === page || !stageChanged && visited.scope === stageKey && visited.pages.includes(page);
   if (session.bootError) return <Recovery lang={lang} error={session.bootError} />;
   if (session.bootMessage || !session.character) return <div className="shell-boot" role="status" aria-busy="true"><BrandMark className="shell-brand-mark" detailed /><h1>PoBR</h1><p>{bootMessageLabel(lang, session.bootMessage ?? '初始化…')}</p><Skeleton className="h-2 w-56" /></div>;
@@ -288,7 +292,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
           {/* Separate Suspense and error boundaries keep retained planners mounted when another page loads or fails. */}
             {route === 'calcs' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><Suspense fallback={panelLoading}><CalcsPanel session={session} lang={lang} settledCalc={view.calc} focus={stageChanged ? null : calcsFocus} onFocusConsumed={() => setCalcsFocus(null)} /></Suspense></PageErrorBoundary>}
             {route === 'compare' && <PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><Suspense fallback={panelLoading}><ComparePanel key={`${session.comparisonRevision}:${session.workspace?.activeBuild}:${session.workspace?.builds.find(build => build.id === session.workspace?.activeBuild)?.activeStage}`} session={session} lang={lang} onShare={openShare} /></Suspense></PageErrorBoundary>}
-            {retained('tree') && <div hidden={route !== 'tree'}><PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><PanelActivity active={route === 'tree'}><Suspense fallback={panelLoading}><TreePanel session={session} lang={lang} active={route === 'tree'} focusPlanner={stageChanged ? undefined : treeFocus} onJewelSearch={socket => { setUpgradeFocus({ slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius' }); navigate('trade'); }} /></Suspense></PanelActivity></PageErrorBoundary></div>}
+            {retained('tree') && <div hidden={route !== 'tree'}><PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><PanelActivity active={route === 'tree'}><Suspense fallback={panelLoading}><TreePanel session={session} lang={lang} active={route === 'tree'} settledCalc={view.calc} focusPlanner={stageChanged ? undefined : treeFocus} onJewelSearch={socket => { setUpgradeFocus({ slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius' }); navigate('trade'); }} /></Suspense></PanelActivity></PageErrorBoundary></div>}
             {retained('skills') && <div hidden={route !== 'skills'}><PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><PanelActivity active={route === 'skills'}><SkillsPanel session={session} lang={lang} active={route === 'skills'} onFullDps={() => focusStat('full-dps')} focusOptimizer={stageChanged ? undefined : skillFocus} focusSpirit={stageChanged ? undefined : spiritFocus} /></PanelActivity></PageErrorBoundary></div>}
             {retained('trade') && <div hidden={route !== 'trade'}><PageErrorBoundary lang={lang} exportWorkspace={session.exportWorkspace}><PanelActivity active={route === 'trade'}><Suspense fallback={panelLoading}><TradePanel session={session} lang={lang} active={route === 'trade'} focus={stageChanged ? undefined : upgradeFocus} onSkills={openSupportPlanner} onTree={node => { if (node === undefined) openPlanner(); else { setTreeFocus({ nonce: Date.now(), node }); navigate('tree'); } }} /></Suspense></PanelActivity></PageErrorBoundary></div>}
         </div></UiProvider>

@@ -17,6 +17,7 @@ export function formatMessage(template: string, values: MessageValues): string {
 /** Look up UI copy. */
 export function t(lang: Lang, key: UiKey, values?: MessageValues): string {
   const template = messages(lang, 'ui')[key];
+  if (template === undefined) return key;
   return values ? formatMessage(template, values) : template;
 }
 
@@ -35,6 +36,38 @@ export function bootMessageLabel(lang: Lang, message: string): string {
     return t(lang, 'boot.loadingGameData', { loaded: progress[1], total: progress[2] });
   }
   return message;
+}
+
+/** Localize structured backend boot errors on the UI thread; raw diagnostics stay intact. */
+export function bootErrorLabel(lang: Lang, error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  const json = raw.startsWith('Error: ') ? raw.slice('Error: '.length) : raw;
+  if (json.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(json) as {
+        bootError?: unknown;
+        error?: unknown;
+        expected?: unknown;
+        actual?: unknown;
+      };
+      if (parsed.bootError === 'wasmNotBuilt' && typeof parsed.error === 'string') {
+        return t(lang, 'bootError.wasmNotBuilt', { error: parsed.error });
+      }
+      if (
+        parsed.bootError === 'schemaMismatch'
+        && typeof parsed.expected === 'number'
+        && typeof parsed.actual === 'number'
+      ) {
+        return t(lang, 'bootError.schemaMismatch', {
+          expected: String(parsed.expected),
+          actual: String(parsed.actual),
+        });
+      }
+    } catch {
+      // Not a structured boot error; preserve the raw diagnostic below.
+    }
+  }
+  return String(error);
 }
 
 // ---------------------------------------------------------------------------

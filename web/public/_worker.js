@@ -40,7 +40,7 @@ function itemFields(item, depth = 0) {
     'properties', 'requirements', 'implicitMods', 'explicitMods', 'runeMods', 'enchantMods', 'craftedMods',
     'fracturedMods', 'desecratedMods', 'mutatedMods', 'corrupted', 'support', 'socket', 'sockets'];
   const result = Object.fromEntries(keys.filter(k => k in item).map(k => [k, item[k]]));
-  if (item.socketedItems) result.socketedItems = item.socketedItems.map(i => itemFields(i, depth + 1));
+  if (Array.isArray(item.socketedItems)) result.socketedItems = item.socketedItems.map(i => itemFields(i, depth + 1));
   return result;
 }
 
@@ -170,10 +170,12 @@ export async function fetchTradeMarket(input, fetcher = fetch) {
   const listings = [];
   for (let start = 0; start < ids.length; start += 10) {
     const data = await upstream(`/api/trade2/fetch/${ids.slice(start, start + 10).join(',')}?query=${encodeURIComponent(search.id)}`);
-    for (const entry of data.result ?? []) {
+    for (const entry of Array.isArray(data?.result) ? data.result : []) {
       const price = entry?.listing?.price;
       if (!entry?.item || !price || !Number.isFinite(price.amount) || !ids.includes(entry.id)) continue;
-      const requiredLevel = entry.item.requirements?.find(req => /^(Level|等级|等級)$/.test(req.name))?.values?.[0]?.[0];
+      const requiredLevel = Array.isArray(entry.item.requirements)
+        ? entry.item.requirements.find(req => req && /^(Level|等级|等級)$/.test(req.name))?.values?.[0]?.[0]
+        : undefined;
       if (maxLevel && Number.parseInt(requiredLevel, 10) > maxLevel) continue;
       // Like PoB2's Buy action, narrow the link to this seller, base/name and exact price.
       // Keep account/whisper objects out of the response; the account filter is only in the buying URL.

@@ -20,7 +20,7 @@ import { TreeConversionControls, useTreeConversion } from './TreeConversionContr
 import { formatApiError } from '../../api/error';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { getBackend } from '../../api/backend';
-import type { AttributeChoice, PassiveAllocationGrant, PassiveNode, TreeAllocationMode } from '../../api/types';
+import type { AttributeChoice, CalculateBuildResponse, PassiveAllocationGrant, PassiveNode, TreeAllocationMode } from '../../api/types';
 import { useTreeEditPreview } from '../../hooks/useTreeEditPreview';
 import { treeAllocationRequest } from '../../lib/weaponSets';
 import type { BuildSession } from '../../hooks/useBuildSession';
@@ -52,6 +52,8 @@ interface Props {
   session: BuildSession;
   lang: Lang;
   active: boolean;
+  /** Display only; diff baselines and edit calculations still use the current session. */
+  settledCalc?: CalculateBuildResponse | null;
   focusPlanner?: { nonce: number; node?: number };
   onJewelSearch?: (socket: number) => void;
 }
@@ -59,6 +61,9 @@ interface Props {
 interface RoutePreview { plan: PassivePlan }
 
 const JEWEL_TEMPLATE = 'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
+const ATTRIBUTE_KEYMAP: Record<string, AttributeChoice> = {
+  s: 'str', d: 'dex', i: 'int', '1': 'str', '2': 'dex', '3': 'int',
+};
 
 /** Passive tree viewer: SVG rendering + allocated highlights + pan/zoom / hover mods + click-to-allocate recalc. */
 export function TreePanel(props: Props) {
@@ -76,7 +81,7 @@ export function TreePanel(props: Props) {
 }
 
 /** Retain planner inputs and complete receipts, never the interactive canvas. */
-function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch, conversion }: Props & { conversion?: ReactNode }) {
+function EditableTreePanel({ session, lang, active, settledCalc, focusPlanner, onJewelSearch, conversion }: Props & { conversion?: ReactNode }) {
   const [allocationMode, setAllocationMode] = useState<TreeAllocationMode>(0);
   const mode = allocationMode === 0 ? 0 : session.activeWeaponSet;
   const changeMode = (next: TreeAllocationMode) => {
@@ -84,7 +89,8 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
     if (next !== 0) session.setWeaponSet(next);
   };
   const [rawNodes, setNodes] = useState<PassiveNode[] | null>(null);
-  const treeEffects = session.calc?.tree_effects;
+  const displayCalc = session.calcError ? null : session.calc ?? settledCalc ?? null;
+  const treeEffects = displayCalc?.tree_effects;
   // Recalculation clears the result before replacing it, often with identical node changes.
   const displayChangesKey = useMemo(() => JSON.stringify(treeEffects?.nodes ?? {}), [treeEffects?.nodes]);
   const nodes = useMemo(() => rawNodes?.map(node => {
@@ -140,7 +146,7 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch,
   const canvasContext = JSON.stringify([activeBuild?.id, activeBuild?.activeStage,
     session.activeLoadout, session.activeWeaponSet, session.socketGroupRevision,
     session.character?.class_name, session.character?.ascendancy_name]);
-  return <TreeCanvas key={canvasContext} session={session} lang={lang} onJewelSearch={onJewelSearch}
+  return <TreeCanvas key={canvasContext} session={session} lang={lang} settledCalc={settledCalc} onJewelSearch={onJewelSearch}
     consumedLocation={consumedLocation} ascendancyFocus={ascendancyFocus} socketLabels={socketLabels} onSearch={setNameSearch}
     graph={graph} startSkill={startSkill} implicitStarts={implicitStarts} grants={grants} allocated={allocated} pointSummary={pointSummary}
     importCheckReason={importCheck?.reason} focusNode={located && located.nonce > (focusPlanner?.nonce ?? -1) ? located : focusPlanner?.node !== undefined ? focusPlanner : undefined} allocationMode={mode} onAllocationMode={changeMode} nodes={rawNodes ? nodes : null} nodeNames={nodeNames} error={error} routePreview={routePreview} planner={planner} conversion={conversion} overlayReset={overlayReset} />;
@@ -154,6 +160,7 @@ interface CanvasProps {
   onAllocationMode: (mode: TreeAllocationMode) => void;
   session: BuildSession;
   lang: Lang;
+  settledCalc?: CalculateBuildResponse | null;
   onJewelSearch?: (socket: number) => void;
   nodes: PassiveNode[] | null;
   nodeNames: PassiveNodeNames;
@@ -175,7 +182,7 @@ interface CanvasProps {
   overlayReset: number;
 }
 
-function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMode, onAllocationMode, session, lang, onJewelSearch, nodes, nodeNames, socketLabels, onSearch, error, routePreview, graph, startSkill, implicitStarts, grants, allocated, pointSummary, importCheckReason, planner, conversion, overlayReset }: CanvasProps) {
+function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMode, onAllocationMode, session, lang, settledCalc, onJewelSearch, nodes, nodeNames, socketLabels, onSearch, error, routePreview, graph, startSkill, implicitStarts, grants, allocated, pointSummary, importCheckReason, planner, conversion, overlayReset }: CanvasProps) {
   const plannedNodes = routePreview?.plan ?? null;
   const routeText = messages(lang, 'treeOptimizer');
   const tt = bindT(lang);
@@ -187,7 +194,8 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
   const { hover, setHover, hoverNode, keepHover, leaveHover, onFocus: focusHover, onBlur: blurHover } = useTreeHover();
   const dialogs = useAppDialogs(lang);
   const captureAction = useSessionAction(session);
-  const treeEffects = session.calc?.tree_effects;
+  const displayCalc = session.calcError ? null : session.calc ?? settledCalc ?? null;
+  const treeEffects = displayCalc?.tree_effects;
   const canvasGeneration = useRef(0);
   useLayoutEffect(() => () => { canvasGeneration.current += 1; }, []);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -427,9 +435,9 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
       'MainMinionDPS', 'TotalDPS', 'Life', 'EnergyShield', 'TotalEHP', 'Mana',
       'Armour', 'Evasion', 'Spirit',
     ];
-    const present = new Set((session.calc?.stats ?? []).filter(s => Number.isFinite(s.value)).map((s) => s.id));
+    const present = new Set((displayCalc?.stats ?? []).filter(s => Number.isFinite(s.value)).map((s) => s.id));
     return CANDIDATES.filter((id) => present.has(id));
-  }, [session.calc]);
+  }, [displayCalc]);
 
   // Stable ID of active ascendancy (e.g. `Warrior3`). PoB2 semantics: render only the chosen
   // ascendancy's cluster; hide all others (they overlap on the same main-tree plane).
@@ -645,13 +653,35 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
             y1={e.y1}
             x2={e.x2}
             y2={e.y2}
-            className={`${e.active ? 'edge-active' : 'edge'}${previewNodes.path.has(e.from) && previewNodes.path.has(e.to) ? ' edge-preview' : ''}${previewNodes.removed.has(e.from) && previewNodes.removed.has(e.to) ? ' edge-refund' : ''}${plannedEdge(e.from, e.to)}`}
+            className={`${e.active ? 'edge-active' : 'edge'}${plannedEdge(e.from, e.to)}`}
           />
         ))}
       </g>
     ),
-    [edges, previewNodes, plannedEdge],
+    [edges, plannedEdge],
   );
+
+  const previewEdgesEl = useMemo(() => {
+    if (previewNodes.path.size === 0 && previewNodes.removed.size === 0) return null;
+    const lines: ReactNode[] = [];
+    for (let i = 0; i < edges.length; i++) {
+      const e = edges[i];
+      const isPreview = previewNodes.path.has(e.from) && previewNodes.path.has(e.to);
+      const isRefund = previewNodes.removed.has(e.from) && previewNodes.removed.has(e.to);
+      if (!isPreview && !isRefund) continue;
+      lines.push(
+        <line
+          key={i}
+          x1={e.x1}
+          y1={e.y1}
+          x2={e.x2}
+          y2={e.y2}
+          className={`${isPreview ? 'edge-preview' : ''}${isPreview && isRefund ? ' ' : ''}${isRefund ? 'edge-refund' : ''}`}
+        />,
+      );
+    }
+    return lines.length > 0 ? <g className="tree-edges tree-preview-edges">{lines}</g> : null;
+  }, [edges, previewNodes]);
 
   const filledJewelSockets = useMemo(
     () => new Set(session.jewels.map((j) => j.socket_node)),
@@ -672,6 +702,10 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     return () => clearTimeout(timer);
   }, [allocated]);
 
+  const nodesGroupRef = useRef<SVGGElement | null>(null);
+  const circlesBySkillRef = useRef<Map<number, SVGCircleElement>>(new Map());
+  const previewHighlightedRef = useRef<SVGCircleElement[]>([]);
+
   const nodesEl = useMemo(() => {
     /** Heatmap fill: positive delta goes dark red -> bright gold (`sqrt` separates small gains); negative = cool blue; empty = unstyled. */
     const heatFill = (skill: number): string | undefined => {
@@ -683,7 +717,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
       return `hsl(${Math.round(20 + t * 25)} ${Math.round(70 + t * 30)}% ${Math.round(28 + t * 32)}%)`;
     };
     return (
-      <g className="tree-nodes">
+      <g ref={nodesGroupRef} className="tree-nodes">
         {placed.map((node) => {
           const r = NODE_RADIUS[node.kind] ?? 40;
           const isAlloc = allocated.has(node.skill);
@@ -697,7 +731,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
                 cy={node.y}
                 r={r}
                 style={heat ? { fill: heat } : undefined}
-                className={`node node-${node.kind}${node.ascendancy_id ? ' node-asc' : ''}${isAlloc ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}${selectedSkill === node.skill ? ' node-selected' : ''}${freeNodes.has(node.skill) ? ' node-jewel-allocatable' : ''}${treeEffects?.nodes[String(node.skill)] ? ' node-transformed' : ''}${plannedNodes?.allocate.includes(node.skill) ? ' node-planned-add' : ''}${plannedNodes?.deallocate.includes(node.skill) ? ' node-planned-remove' : ''}${owner.has(node.skill) ? ` node-weapon-${owner.get(node.skill)}` : ''}${previewNodes.added.has(node.skill) ? ' node-preview-add' : ''}${previewNodes.promoted.has(node.skill) ? ' node-preview-promote' : ''}${previewNodes.removed.has(node.skill) ? ' node-preview-refund' : ''}`}
+                className={`node node-${node.kind}${node.ascendancy_id ? ' node-asc' : ''}${isAlloc ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}${selectedSkill === node.skill ? ' node-selected' : ''}${freeNodes.has(node.skill) ? ' node-jewel-allocatable' : ''}${treeEffects?.nodes[String(node.skill)] ? ' node-transformed' : ''}${plannedNodes?.allocate.includes(node.skill) ? ' node-planned-add' : ''}${plannedNodes?.deallocate.includes(node.skill) ? ' node-planned-remove' : ''}${owner.has(node.skill) ? ` node-weapon-${owner.get(node.skill)}` : ''}`}
                 onPointerEnter={(e) => {
                   if (dragRef.current?.moved) return;
                   hoverNode(node);
@@ -717,7 +751,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
         })}
       </g>
     );
-  }, [placed, allocated, pulse, filledJewelSockets, searchHits, selectedSkill, heatStat, heatData, heatMax, handleNodeClick, plannedNodes, freeNodes, treeEffects, owner, previewNodes]);
+  }, [placed, allocated, pulse, filledJewelSockets, searchHits, selectedSkill, heatStat, heatData, heatMax, handleNodeClick, plannedNodes, freeNodes, treeEffects, owner]);
 
   const fullExtent = useMemo(() => treeExtent(placed), [placed]);
 
@@ -830,7 +864,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     let cancelled = false;
     setHoverCalculating(true);
     const timer = setTimeout(() => {
-      getBackend().then(backend => backend.calculateBuild(treeAllocationRequest(editRequest, hoverPreview.result!.allocation)))
+      getBackend().then(backend => backend.calculateBuild({ ...treeAllocationRequest(editRequest, hoverPreview.result!.allocation), breakdowns: [] }))
         .then(next => {
           if (cancelled) return;
           setHoverDiff(diffStats(session.calc!.stats, next.stats));
@@ -842,15 +876,12 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
 
   // Hotkeys S/D/I (or 1/2/3): select inside popover when open; directly allocate or switch hovered travel attribute node.
   useLayoutEffect(() => {
-    const KEYMAP: Record<string, AttributeChoice> = {
-      s: 'str', d: 'dex', i: 'int', '1': 'str', '2': 'dex', '3': 'int',
-    };
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
       // Hover shortcuts belong to the canvas (or the page body when nothing is focused), not tools.
       if (target && target !== document.body && !target.closest('.tree-canvas')) return;
-      const choice = KEYMAP[e.key.toLowerCase()];
+      const choice = ATTRIBUTE_KEYMAP[e.key.toLowerCase()];
       if (!choice) return;
       if (attrPicker) {
         actOnNode(attrPicker.node.skill, 'allocate', choice);
@@ -865,10 +896,49 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     // Capturing, so that the key is handled (and marked so) before the shell reads 1/2/3 as page numbers.
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  });
-
+  }, [attrPicker, hover, actOnNode]);
 
   const view = viewBox ?? fullExtent;
+  const hasCanvas = Boolean(!error && nodes && view);
+
+  useLayoutEffect(() => {
+    const map = new Map<number, SVGCircleElement>();
+    const group = nodesGroupRef.current;
+    if (group) {
+      for (const circle of group.querySelectorAll<SVGCircleElement>('circle[data-skill-id]')) {
+        map.set(Number(circle.dataset.skillId), circle);
+      }
+    }
+    circlesBySkillRef.current = map;
+    return () => {
+      circlesBySkillRef.current.clear();
+      previewHighlightedRef.current = [];
+    };
+  }, [placed, hasCanvas]);
+
+  useLayoutEffect(() => {
+    for (const el of previewHighlightedRef.current) {
+      el.classList.remove('node-preview-add', 'node-preview-promote', 'node-preview-refund');
+    }
+    const next: SVGCircleElement[] = [];
+    const seen = new Set<SVGCircleElement>();
+    const mark = (skills: ReadonlySet<number>, cls: string) => {
+      for (const skill of skills) {
+        const el = circlesBySkillRef.current.get(skill)
+          ?? nodesGroupRef.current?.querySelector<SVGCircleElement>(`circle[data-skill-id="${skill}"]`);
+        if (!el) continue;
+        el.classList.add(cls);
+        if (!seen.has(el)) {
+          seen.add(el);
+          next.push(el);
+        }
+      }
+    };
+    mark(previewNodes.added, 'node-preview-add');
+    mark(previewNodes.promoted, 'node-preview-promote');
+    mark(previewNodes.removed, 'node-preview-refund');
+    previewHighlightedRef.current = next;
+  }, [previewNodes, nodesEl, hasCanvas]);
 
   const focusNodeOnTree = (node: PassiveNode) => {
     if (!view) return;
@@ -1200,6 +1270,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
               fillRule="evenodd" d={`${circle(ring.outer)} ${ring.inner > 0 ? circle(ring.inner) : ''}`} />;
           })}
           {edgesEl}
+          {previewEdgesEl}
           {nodesEl}
           {plannedNodes && routeScale > 0 && <g className="tree-route-markers" aria-hidden="true">
             {(['add', 'remove'] as const).flatMap(scope => routeNodes[scope].map(node =>

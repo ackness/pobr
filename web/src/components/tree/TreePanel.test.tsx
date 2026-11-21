@@ -112,3 +112,25 @@ test('changed conquered stats refresh the cache and removing the transformation 
   expect(passiveNodeMatches(canvas.nodes[0], '暴击', canvas.nodeNames)).toBe(true);
   expect(backend.translateLines).toHaveBeenCalledTimes(3);
 });
+
+test('settledCalc retains transformed tree display during recalculation and clears on calcError', async () => {
+  const conqueredCalc = { ...session.calc!, tree_effects: { ...session.calc!.tree_effects!, nodes: {
+    1: { name: 'Conquered Power', stats: ['30% increased Spirit'], replace: true },
+  } } } as BuildSession['calc'];
+  const renderWithSettled = (current: BuildSession, settledCalc: BuildSession['calc']) => render(() => {
+    const element = TreePanel({ session: current, lang: 'en-US', active: true, settledCalc })!;
+    const Editable = element.type as (props: ComponentProps<typeof TreePanel>) => ReactElement<CanvasProps>;
+    return Editable(element.props).props;
+  });
+
+  renderWithSettled({ ...session, calc: conqueredCalc }, conqueredCalc);
+  await flush();
+  const stable = renderWithSettled({ ...session, calc: null, busy: true }, conqueredCalc);
+  expect(stable.nodes[0].name).toBe('Conquered Power');
+  expect(stable.nodes[0].stats).toEqual(['30% increased Spirit']);
+
+  const failed = renderWithSettled({ ...session, calc: null, calcError: 'Failed calculation' }, conqueredCalc);
+  expect(failed.nodes[0].name).toBe('Critical Power');
+  expect(failed.nodes[0].stats).toEqual(['10% increased Critical Hit Chance']);
+});
+

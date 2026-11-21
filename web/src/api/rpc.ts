@@ -73,6 +73,7 @@ export interface RpcClient {
 
 export function createRpcClient(endpoint: Endpoint): RpcClient {
   let nextId = 1;
+  let failed: Error | null = null;
   let dataVersion: string | undefined;
   let dataInfo: PobrBackend['dataInfo'];
   const waiting = new Map<number, {
@@ -99,8 +100,9 @@ export function createRpcClient(endpoint: Endpoint): RpcClient {
       call.reject(error);
     }
   };
-  const send = (method: string, args: unknown[], onProgress?: (message: string) => void) =>
-    new Promise<unknown>((resolve, reject) => {
+  const send = (method: string, args: unknown[], onProgress?: (message: string) => void) => {
+    if (failed) return Promise.reject(failed);
+    return new Promise<unknown>((resolve, reject) => {
       const id = nextId++;
       waiting.set(id, { resolve, reject, onProgress });
       try {
@@ -111,6 +113,7 @@ export function createRpcClient(endpoint: Endpoint): RpcClient {
         reject(error instanceof Error ? error : new Error(String(error)));
       }
     });
+  };
   const backend = new Proxy({} as PobrBackend, {
     get(_target, property) {
       // Not a thenable: the backend is returned from async functions and awaited.
@@ -125,7 +128,8 @@ export function createRpcClient(endpoint: Endpoint): RpcClient {
     backend,
     ready: () => send(READY, []).then(() => undefined),
     fail(error) {
-      for (const call of waiting.values()) call.reject(error);
+      failed ??= error;
+      for (const call of waiting.values()) call.reject(failed);
       waiting.clear();
     },
   };

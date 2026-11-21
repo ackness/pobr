@@ -653,7 +653,7 @@ function LibrarySection({
     const origin = { id: entry.id, slot: selectedSlot, source: session.currentRequest };
     try {
       const before = session.calc.stats;
-      const next = await (await getBackend()).calculateBuild(candidate);
+      const next = await (await getBackend()).calculateBuild({ ...candidate, breakdowns: [] });
       setComparison({ ...origin, before, after: next.stats });
     } catch (error) {
       setComparison({ ...origin, before: [], after: [], error: formatApiError(error) });

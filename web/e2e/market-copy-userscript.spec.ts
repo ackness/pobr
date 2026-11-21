@@ -40,6 +40,7 @@ test('the userscript reads only a clicked item and preserves full CN modifiers w
   const count = await setup(page, { ...ring, sockets: [{ type: 'rune' }, { type: 'rune' }],
     socketedItems: [{ socket: 0, baseType: 'Storm Rune' }], runeMods: ['+14% to Lightning Resistance'],
     enchantMods: ['+20 to maximum Mana'], craftedMods: ['+10 to Strength'], fracturedMods: ['+15 to Dexterity'],
+    desecratedMods: ['+25 to maximum Life'], mutatedMods: ['10% increased Attack Speed'],
     unknownMods: ['100% more Damage'] });
   expect(count()).toBe(0);
   await page.getByRole('button', { name: '复制到 PoBR', exact: true }).click();
@@ -55,6 +56,10 @@ test('the userscript reads only a clicked item and preserves full CN modifiers w
   expect(text).toContain('{enchant}+20 to maximum Mana');
   expect(text).toContain('{crafted}+10 to Strength');
   expect(text).toContain('{fractured}+15 to Dexterity');
+  expect(text).toContain('{desecrated}+25 to maximum Life');
+  expect(text).toContain('{mutated}10% increased Attack Speed');
+  expect(text).not.toContain('Unmodeled market effect (desecratedMods)');
+  expect(text).not.toContain('Unmodeled market effect (mutatedMods)');
   expect(text).toContain('Unmodeled market effect (unknownMods): 100% more Damage');
   expect(text).not.toMatch(/PRIVATE_|T1|Do not copy/);
   expect(count()).toBe(1);

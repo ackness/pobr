@@ -41,15 +41,32 @@ describe('undo and redo keys', () => {
 });
 
 describe('looksLikeBuild', () => {
-  it('accepts a long PoB code and links to build hosts', () => {
+  it('accepts a long PoB code and https links to exact supported build hosts', () => {
     expect(looksLikeBuild('eNrt'.repeat(30))).toBe(true);
-    expect(looksLikeBuild('https://pobb.in/abc123')).toBe(true);
-    expect(looksLikeBuild('https://poe.ninja/poe2/pob/xyz')).toBe(true);
+    for (const url of [
+      'https://pobb.in/abc123',
+      'https://poe.ninja/poe2/pob/xyz',
+      'https://poe2.ninja/pob/xyz',
+      'https://pastebin.com/raw/abc123',
+      'https://pastebinp.com/abc123',
+      'https://rentry.co/abc123',
+      'https://poe2db.tw/pob/abc123',
+      'https://maxroll.gg/poe2/pob/abc123',
+      'https://www.wegame.com.cn/helper/poe2/#/share/1234567890abcdef',
+    ]) {
+      expect(looksLikeBuild(url), url).toBe(true);
+    }
   });
-  it('ignores ordinary text, short strings and other links', () => {
+  it('ignores ordinary text, short strings, http links, arbitrary subdomains and unsupported hosts', () => {
     expect(looksLikeBuild('hello world')).toBe(false);
     expect(looksLikeBuild('abc123')).toBe(false);
     expect(looksLikeBuild('https://example.com/page')).toBe(false);
+    expect(looksLikeBuild('http://pobb.in/abc123')).toBe(false);
+    expect(looksLikeBuild('https://sub.pobb.in/abc123')).toBe(false);
+    expect(looksLikeBuild('https://www.pathofexile.com/trade2/search/poe2/Standard')).toBe(false);
+    expect(looksLikeBuild('https://pathofexile.com/forum/view-thread/123')).toBe(false);
+    expect(looksLikeBuild('https://rentry.org/abc123')).toBe(false);
+    expect(looksLikeBuild('https://wegame.com.cn/helper/poe2/#/share/1234567890abcdef')).toBe(false);
     expect(looksLikeBuild('')).toBe(false);
     expect(looksLikeBuild('Rarity: RARE\nItem Name\n' + 'x'.repeat(100))).toBe(false);
   });

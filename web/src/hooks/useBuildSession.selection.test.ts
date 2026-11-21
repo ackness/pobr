@@ -9,6 +9,9 @@ import { STORAGE } from '../lib/sessionStorage';
 const harness = vi.hoisted(() => ({ calculate: vi.fn<(request: CalculateBuildRequest) => Promise<CalculateBuildResponse>>(),
   metrics: vi.fn<() => Promise<SkillMetricsResponse>>(),
   decode: vi.fn<(code: string) => Promise<BuildJson>>(),
+  manageLoadout: vi.fn<() => Promise<string>>(),
+  switchLoadout: vi.fn<() => Promise<BuildJson & { code: string }>>(),
+  init: vi.fn<() => Promise<void>>(),
   meta: vi.fn<() => Promise<PassiveTreeMeta>>(),
 }));
 const hooks = await vi.hoisted(async () => {
@@ -19,7 +22,8 @@ vi.mock('react', () => hooks.mockReact());
 vi.mock('../api/backend', () => ({ getBackend: async () => ({
   calculateBuild: harness.calculate, skillMetrics: harness.metrics,
   decodeBuild: harness.decode, decodeBuildFile: harness.decode,
-  init: async () => {}, gameLocales: async () => [], loadClassNames: async () => ({ classes: {}, ascendancies: {} }),
+  manageLoadout: harness.manageLoadout, switchLoadout: harness.switchLoadout,
+  init: harness.init, gameLocales: async () => [], loadClassNames: async () => ({ classes: {}, ascendancies: {} }),
   dataVersion: '1.0.0.1', dataInfo: { data_version: '1.0.0.1', tree_version: 'future_tree', locales: [] },
   loadPassiveTree: async () => [],
   loadTreeMeta: harness.meta,
@@ -30,9 +34,9 @@ function deferred<T>() {
   const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
   return { promise, resolve, reject };
 }
-function renderSession() {
+function renderSession(lang: 'en-US' | 'zh-CN' | 'zh-TW' = 'zh-CN') {
   hooks.beginRender();
-  return useBuildSession();
+  return useBuildSession(false, lang);
 }
 async function bootStoredSession(saved: SavedSession) {
   localStorage.setItem(STORAGE.workspace, workspaceEnvelope(createWorkspace(saved)));
@@ -57,6 +61,8 @@ function importWithoutSelection() {
 beforeEach(() => {
   hooks.reset();
   harness.calculate.mockReset(); harness.metrics.mockReset(); harness.decode.mockReset();
+  harness.manageLoadout.mockReset(); harness.switchLoadout.mockReset();
+  harness.init.mockReset().mockResolvedValue(undefined);
   harness.meta.mockResolvedValue({ tree: 'Default', classes: [{ name: 'Wayfarer', base_str: 30, base_dex: 7, base_int: 7 }] });
   const storage = new Map<string, string>();
   vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null,
@@ -447,3 +453,123 @@ it('applies a complete code import and assigns collected equipment to the newly 
   expect(imported.library.items[0].text).toBe('Future relic');
   expect(localStorage.getItem(STORAGE.workspace)).toBe(imported.exportWorkspace());
 });
+
+it('manageLoadout reloads into the current stage instead of creating a new workspace build', async () => {
+  harness.calculate.mockResolvedValue(initial);
+  const saved = defaultStarterSession('Wayfarer');
+  saved.state.pobCode = 'original-code';
+  harness.decode.mockResolvedValueOnce({
+    character: { class_name: 'Wayfarer', level: 80, ascendancy_name: '' },
+    tree: { allocated_nodes: [], attribute_choices: {} },
+    socket_groups: [], notes: 'Original notes', config_inputs: {},
+    items: { equipped: [] },
+  } as unknown as BuildJson);
+  const { cleanups } = await bootStoredSession(saved);
+  expect(renderSession().workspace?.builds).toHaveLength(1);
+  harness.manageLoadout.mockResolvedValue('updated-loadout-code');
+  harness.decode.mockResolvedValue({
+    character: { class_name: 'Wayfarer', level: 82, ascendancy_name: '' },
+    tree: { allocated_nodes: [], attribute_choices: {} },
+    socket_groups: [], notes: 'Renamed loadout', config_inputs: {},
+    items: { equipped: [] },
+  } as unknown as BuildJson);
+  await renderSession().manageLoadout('rename', 'Mapping');
+  const after = renderSession();
+  expect(after.workspace?.builds).toHaveLength(1);
+  expect(after.character?.level).toBe(82);
+  expect(after.notes).toBe('Renamed loadout');
+  cleanups.forEach(cleanup => cleanup?.());
+});
+
+it('switchLoadout and newBuild persist atomically without writing torn state/notes pairs', async () => {
+  harness.calculate.mockResolvedValue(initial);
+  const saved = defaultStarterSession('Witch');
+  saved.state.pobCode = 'base-code';
+  saved.state.character.level = 50;
+  saved.notes = 'Old notes';
+  harness.decode.mockResolvedValueOnce({
+    character: { class_name: 'Witch', level: 50, ascendancy_name: '' },
+    tree: { allocated_nodes: [], attribute_choices: {} },
+    socket_groups: [], notes: 'Old notes', config_inputs: {},
+    items: { equipped: [] },
+  } as unknown as BuildJson);
+  const { cleanups } = await bootStoredSession(saved);
+  const writes: string[] = [];
+  const originalSet = localStorage.setItem;
+  localStorage.setItem = (key: string, value: string) => {
+    if (key === STORAGE.workspace) writes.push(value);
+    originalSet(key, value);
+  };
+
+  harness.switchLoadout.mockResolvedValue({
+    code: 'switched-code',
+    character: { class_name: 'Witch', level: 90, ascendancy_name: '' },
+    tree: { allocated_nodes: [], attribute_choices: {} },
+    socket_groups: [], notes: 'Switched notes', config_inputs: {},
+    items: { equipped: [] },
+  } as unknown as BuildJson & { code: string });
+  await renderSession().switchLoadout({ tree: 1 });
+  expect(writes).toHaveLength(1);
+  const switched = JSON.parse(writes[0]);
+  expect(switched.state.character.level).toBe(90);
+  expect(switched.notes).toBe('Switched notes');
+
+  writes.length = 0;
+  renderSession().newBuild('Ranger', '');
+  expect(writes).toHaveLength(1);
+  const reset = JSON.parse(writes[0]);
+  expect(reset.state.character.class_name).toBe('Ranger');
+  expect(reset.state.character.level).toBe(1);
+  expect(reset.notes).toBe('');
+  cleanups.forEach(cleanup => cleanup?.());
+});
+
+it('falls back to starter session when localStorage.getItem throws at boot, while corrupt JSON still triggers bootError', async () => {
+  harness.calculate.mockResolvedValue(initial);
+  vi.stubGlobal('window', { addEventListener: vi.fn(), removeEventListener: vi.fn() });
+  vi.stubGlobal('localStorage', {
+    getItem: () => { throw new Error('Storage blocked'); },
+    setItem: () => { throw new Error('Storage blocked'); },
+  });
+  renderSession('en-US');
+  const cleanups = hooks.runEffects();
+  await vi.waitFor(() => expect(renderSession('en-US').character?.class_name).toBe('Wayfarer'));
+  expect(renderSession('en-US').bootError).toBeNull();
+  expect(renderSession('en-US').storageFailed).toBe(true);
+  cleanups.forEach(cleanup => cleanup?.());
+
+  hooks.reset();
+  const storage = new Map([[STORAGE.workspace, '{not valid json']]);
+  vi.stubGlobal('localStorage', {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => storage.set(key, value),
+  });
+  renderSession('en-US');
+  const badCleanups = hooks.runEffects();
+  await vi.waitFor(() => expect(renderSession('en-US').bootError).toBeTruthy());
+  badCleanups.forEach(cleanup => cleanup?.());
+});
+
+it('consecutive setter calls on the same snapshot read stateRef.current and keep both edits', async () => {
+  harness.calculate.mockResolvedValue(initial);
+  const { cleanups } = await bootStoredSession(defaultStarterSession('Witch'));
+  const snapshot = renderSession();
+  snapshot.setCharacter({ level: 77 });
+  snapshot.setConfigInput('conditionFullLife', true);
+  snapshot.setAnnotation('item:ring1', 'Keep');
+  const after = renderSession();
+  expect(after.character?.level).toBe(77);
+  expect(after.calcParams.config_inputs.conditionFullLife).toBe(true);
+  expect(after.annotations['item:ring1']).toBe('Keep');
+  cleanups.forEach(cleanup => cleanup?.());
+});
+
+it('localizes structured backend boot errors using the session language', async () => {
+  harness.init.mockRejectedValue(new Error(JSON.stringify({ bootError: 'schemaMismatch', expected: 4, actual: 2 })));
+  vi.stubGlobal('window', { addEventListener: vi.fn(), removeEventListener: vi.fn() });
+  renderSession('en-US');
+  const cleanups = hooks.runEffects();
+  await vi.waitFor(() => expect(renderSession('en-US').bootError).toContain('frontend 4, WASM 2'));
+  cleanups.forEach(cleanup => cleanup?.());
+});
+
