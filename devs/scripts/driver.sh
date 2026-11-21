@@ -352,7 +352,7 @@ EOF
 cmd_full() {
   say "Full workspace gate: fmt, clippy, tests (including doctests)"
   cargo fmt --all --check &&
-    cargo clippy --workspace --all-targets --features pobr-core/benchmarks,pobr-build/benchmarks,pobr-wasm/diagnostics -- -D warnings &&
+    cargo clippy --workspace --all-targets --features pobr-core/benchmarks,pobr-build/benchmarks,pobr-wasm/diagnostics,pobr-wasm/wasm -- -D warnings &&
     cargo test --workspace
 }
 

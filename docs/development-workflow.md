@@ -291,8 +291,7 @@ PoBR 自有的 `*_config_options.json` 在 `crates/pobr-gamedata/src/domains/con
 ### CI 恢复与跳过
 
 Rust 使用 `Swatinem/rust-cache`，按平台、工具链与用途隔离；PR 的 `cargo check` 和完整 Clippy
-共用 `host-check` 依赖缓存，三个测试分片分别缓存。PR 只读 Rust 缓存，避免每个 merge ref
-保存一份其他 PR 无法复用的副本；master 与手动运行负责更新。兼容前缀命中后仍由 Cargo 判断需要重编译的内容。
+共用 `host-check` 依赖缓存，三个测试分片分别缓存。PR、特性分支手动 CI 与 tag 构建只读 Rust 缓存，避免为不可复用引用消耗 10 GiB 配额；仅默认分支 `master` 上的运行（合并 push、手动运行与定时回归）负责更新。兼容前缀命中后仍由 Cargo 判断需要重编译的内容。
 完整 key 命中时不重复保存同一份缓存是正常行为。核查时看恢复 key、命中结果、保存结果和实际构建日志，
 不因工作流使用了 cache Action 就认定已经复用。
 

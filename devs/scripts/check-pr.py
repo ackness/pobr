@@ -16,9 +16,9 @@ spec = importlib.util.spec_from_file_location("ci_plan", ROOT / "devs/scripts/ci
 planner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(planner)
 CLIPPY_FEATURES = {
-    "pobr-core": "benchmarks",
-    "pobr-build": "benchmarks",
-    "pobr-wasm": "diagnostics",
+    "pobr-core": ("benchmarks",),
+    "pobr-build": ("benchmarks",),
+    "pobr-wasm": ("diagnostics", "wasm"),
 }
 
 
@@ -72,14 +72,15 @@ def steps_for(plan, packages, root=ROOT, quick=False):
     steps = []
     if packages:
         selectors = [arg for name in packages for arg in ("-p", name)]
-        features = [f"{name}/{feature}" for name, feature in CLIPPY_FEATURES.items()
-                    if name in packages]
+        features = [f"{name}/{feature}" for name, feats in CLIPPY_FEATURES.items()
+                    if name in packages for feature in feats]
+        check_features = ["--features", "pobr-wasm/wasm"] if "pobr-wasm" in packages else []
         steps.append(("Rust fmt", root, ["cargo", "fmt", "--all", "--check"]))
         if quick:
-            steps.append(("Rust check", root, ["cargo", "check", "--offline", "--locked", *selectors, "--all-targets"]))
+            steps.append(("Rust check", root, ["cargo", "check", "--offline", "--locked", *selectors, "--all-targets", *check_features]))
         else:
             steps += [
-                ("Rust check", root, ["cargo", "check", "--offline", "--locked", "--workspace", "--all-targets"]),
+                ("Rust check", root, ["cargo", "check", "--offline", "--locked", "--workspace", "--all-targets", "--features", "pobr-wasm/wasm"]),
                 ("Rust clippy", root, ["cargo", "clippy", "--offline", "--locked", *selectors,
                                        "--all-targets", *(["--features", ",".join(features)] if features else []),
                                        "--", "-D", "warnings"]),
