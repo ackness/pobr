@@ -1,6 +1,6 @@
 /**
- * 实时保存与恢复：每次编辑自动写入 localStorage，刷新后完整恢复
- * （角色等级 / 笔记 / 当前页面）；内置配置目录可搜索可开关。
+ * Live persistence and restore: edits auto-save to localStorage and survive reloads
+ * (character level, notes, and active page); the built-in config catalog is searchable and toggleable.
  */
 
 import { expect, test } from '@playwright/test';
@@ -19,7 +19,7 @@ test('edits persist across reload; builtin config toggles recalc', SMOKE, async 
   await openBuild(page);
   await expect(page.getByRole('heading', { name: 'Character' })).toBeVisible({ timeout: 90_000 });
 
-  // 编辑等级 → 即改即存。
+  // Edit level -> auto-saves immediately.
   const lifeValue = statValue(page, /^Life$/).first();
   await expect(lifeValue).not.toHaveText('—');
   const lifeAtStart = await stableText(lifeValue);
@@ -28,10 +28,10 @@ test('edits persist across reload; builtin config toggles recalc', SMOKE, async 
   await expect(lifeValue).not.toHaveText(lifeAtStart!, { timeout: 30_000 });
   const lifeAt90 = await stableText(lifeValue);
 
-  // 笔记逐键保存（笔记就在 Build 页）。
+  // Notes save on every keystroke (inline on the Build page).
   await page.getByRole('textbox', { name: 'Notes' }).fill('my build notes 我的笔记');
 
-  // 内置配置：搜索定位 + 勾选一个开关 → 触发重算（busy 出现后消退，无错误）。
+  // Built-in config: search + toggle an option -> triggers recalculation (busy appears then settles with no errors).
   await pageLink(page, 'Configuration').click();
   await page.getByLabel('Search config options…').fill('Onslaught');
   const firstCheck = page.locator('.config-item input[type="checkbox"]').first();
@@ -39,7 +39,7 @@ test('edits persist across reload; builtin config toggles recalc', SMOKE, async 
   await firstCheck.check();
   await expect(page.locator('.shell-alert')).toHaveCount(0);
 
-  // 刷新：等级 / 笔记 / 配置覆盖 / 当前页签全部恢复。
+  // Reload: level, notes, config overrides, and active tab all restore.
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Configuration' })).toBeVisible({
     timeout: 90_000,

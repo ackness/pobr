@@ -182,7 +182,7 @@ describe('current data localization coverage', () => {
       for (const kind of kinds) expect(originKindLabel(lang, kind), kind).toMatch(/[\u3400-\u9fff]/u);
       for (const type of types) expect(modTypeLabel(lang, type), type).toMatch(/[\u3400-\u9fff]/u);
       expect(originLabel(lang, 'item.weapon1.explicit')).toContain('主手');
-      expect(originLabel(lang, 'flask.charm1')).toContain(lang === 'zh-CN' ? '护符' : '護符');
+      expect(originLabel(lang, 'flask.charm1')).toContain(lang === 'zh-CN' ? '咒符' : '護符');
       expect(originLabel(lang, 'unknown.raw_source_ID')).toBe('unknown.raw_source_ID');
     }
     expect(modTypeLabel('zh-CN', 'INC')).toBe('提高／降低');

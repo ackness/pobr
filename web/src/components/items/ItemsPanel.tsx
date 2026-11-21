@@ -46,9 +46,9 @@ interface Props {
   lang: Lang;
 }
 
-// 行提取/翻译工具已收口在 hooks/useLocalizedLines（树页珠宝选择器共用）。
+// Line extraction and translation utilities live in `hooks/useLocalizedLines` (shared with tree jewel selector).
 
-/** 紧凑物品行（物品库/珠宝列表共用）：一行名称+槽位+操作，点击行头展开完整词条。 */
+/** Compact item row (shared by item library and jewel list): name + slot + actions; clicking header expands full mods. */
 function ItemRow({
   text,
   name,
@@ -104,7 +104,7 @@ const CHARM_TEMPLATE = 'Rarity: MAGIC\nRuby Charm';
 /** Equipped PoB utility slots, including unselected items. */
 const UTILITY_SLOTS = ['Flask 1', 'Flask 2', 'Charm 1', 'Charm 2', 'Charm 3'];
 const isUtilitySlot = (slot: string) => slot.startsWith('Flask') || slot.startsWith('Charm');
-/** 超越肢体槽（与 wasm 契约的 limb 槽 id 一致）：与装备并列的一组栏位，没有符文孔，不进市集。 */
+/** Graft/limb slots (matches wasm contract limb slot IDs): sibling row alongside gear, no rune sockets, excluded from trade. */
 const LIMB_SLOTS = ['arm1', 'arm2', 'leg1', 'leg2'];
 const isLimbSlot = (slot: string) => LIMB_SLOTS.includes(slot);
 /** Equipment proper: the slots with rune sockets and market searches. */
@@ -115,7 +115,7 @@ const ALL_SLOTS = [...DOLL_SLOTS, ...UTILITY_SLOTS, ...LIMB_SLOTS];
 const itemDraftKey = (slot: string, weaponSet: number) =>
   `item:${slot.startsWith('weapon') ? weaponSet : 0}:${slot}`;
 
-/** 装备页：PoB2 式人形槽位布局；点槽位在下方编辑 PoB 文本，保存即重算。 */
+/** Items page: PoB2-style paper-doll layout; clicking a slot edits PoB text below and saving recalculates. */
 export function ItemsPanel({ session, lang, onUpgrade }: Props) {
   // Slots pulse when their item changes after the page is up, never on the first render.
   const shown = useRef(false);
@@ -146,7 +146,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
     const rest = list.filter((item) => item.slot !== slot);
     setList(text === null ? rest : [...rest, { slot, text }]);
   };
-  // 槽位按钮上的物品显示名「名称·基底」（一批送翻译；中文界面显示本地化名）。
+  // Item display names `"Name·Base"` on slot buttons (batched for translation; localized in Chinese UI).
   const slotNames = useItemDisplayNames(ALL_SLOTS.map((slot) => textOf(slot)), lang);
   const slotName = (slot: string) => slotNames[ALL_SLOTS.indexOf(slot)] || null;
   const templateOf = (slot: string) =>
@@ -190,7 +190,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
     setEditing(false);
   };
 
-  /** 把库中某件物品直接装进当前选中槽位（PoB2 式下拉切换）。 */
+  /** Equip an item directly from the library into the active slot (PoB2-style dropdown swap). */
   const switchTo = (text: string) => {
     if (!selected) return;
     equip(selected, text);
@@ -202,7 +202,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
   const { draft: craftingDraft, error: craftingError } = useEquippedItemDraft(
     selected && isEquipmentSlot(selected) ? selectedText : undefined);
 
-  /** 槽位 → 注释键（药剂/护符与装备分域，避免槽名撞车）。 */
+  /** Slot -> annotation key (separate `flask:` namespace avoids slot name collisions with equipment). */
   const noteKey = (slot: string) => `${isUtilitySlot(slot) ? 'flask' : 'item'}:${slot}`;
   const hasNote = (slot: string) => Boolean(session.annotations[noteKey(slot)]?.trim());
 
@@ -320,8 +320,8 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
     void reforge(runes, sockets);
   };
 
-  // 槽位切换候选：只收库中槽位明确匹配（族归一，ring1/2 互通）的装备。
-  // 未记录槽位的旧库条目不进候选（防止项链装进主手）；重新导入 build 会回填 slot。
+  // Slot swap candidates: collect only library items with an explicit matching slot (normalized by family; ring1/2 share).
+  // Legacy entries lacking a recorded slot are skipped (so an amulet is not offered for main hand); re-importing backfills slots.
   const candidates = selected
     ? session.library.items.filter(
         (i) => i.kind === 'item' && i.slot != null && slotFamily(i.slot) === slotFamily(selected),
@@ -565,7 +565,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
   );
 }
 
-/** 珠宝列表（来自导入 build，只读；编辑走天赋树页插槽）。 */
+/** Jewel list (read-only from imported build; edit via sockets on the Tree page). */
 function JewelList({ texts, lang }: { texts: string[]; lang: Lang }) {
   const [openIdx, setOpenIdx] = useState<number | null>(null);
   const names = useItemDisplayNames(texts, lang);
@@ -592,7 +592,7 @@ function slotFamily(slot: string): string {
   return /^weapon[12]$/.test(normalized) ? normalized : normalized.replace(/\s*\d+$/, '');
 }
 
-/** 物品库：存起来的装备/珠宝，可搜索/按选中槽位过滤，对比差异并一键装备。 */
+/** Item library: saved gear and jewels; search/filter by selected slot, compare diffs, and equip in one click. */
 function LibrarySection({
   session,
   lang,
@@ -614,7 +614,7 @@ function LibrarySection({
   const [slotOnly, setSlotOnly] = useState(true);
   const [buildOnly, setBuildOnly] = useState(false);
   const all = session.library.items.filter((i) => i.kind === 'item');
-  // 显示名「名称·基底」一批送翻译（中文界面搜索可同时命中中英文名与基底名）。
+  // Translate `"Name·Base"` display names in batch so Chinese UI search matches both localized and English names.
   const names = useItemDisplayNames(
     all.map((i) => i.text),
     lang,
@@ -622,7 +622,7 @@ function LibrarySection({
   const q = query.trim().toLowerCase();
   const items = all.filter((entry, i) => {
     if (buildOnly && (!entry.sourceBuild || entry.sourceBuild.id !== session.workspace?.activeBuild)) return false;
-    // 勾选「只看当前槽位」时，未记录槽位的旧库条目一并隐藏（槽位未知≠槽位匹配）。
+    // When "Selected slot only" is checked, hide legacy items lacking a recorded slot (unknown slot != matching slot).
     if (
       slotOnly &&
       selectedSlot &&

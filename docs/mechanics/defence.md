@@ -40,7 +40,7 @@ Smith of Kitava 的 `modifiers_to_fire_resistance_also_apply_to_cold_lightning_r
 
 先合计可复制的词条，再乘比例，保留半点等小数；到最终抗性和最大抗性时才向零截断，最后求超上限抗性（`calc::offence::resolve_resistance`）。
 
-“Body Armour grants” 系列只在穿普通稀有度胸甲时生效，包括 Kitavan Engraving（`body_armour_grants_x_maximum_life_+%`）、Leather Bindings（`body_armour_grants_x_life_regeneration_rate_per_minute_%`），以及 Tribute to Utula、Support Straps、Tantalum Alloy、Flowing Metal、Molten Symbol 的精魄、力量、晕眩门槛、抗性、最大火抗、护甲作用于元素伤害、物理命中改以火焰承受。
+“Body Armour grants” 系列只在穿普通稀有度胸甲时生效，包括 Kitavan Engraving（`body_armour_grants_x_maximum_life_+%`）、Leather Bindings（`body_armour_grants_x_life_regeneration_rate_per_minute_%`），以及 Tribute to Utula、Support Straps、Tantalum Alloy、Flowing Metal、Molten Symbol 的精魂、力量、晕眩门槛、抗性、最大火抗、护甲作用于元素伤害、物理命中改以火焰承受。
 
 Crystallised Immunities（5332）读取 `immune_to_chill_if_majority_blue_supports_socketed`、`immune_to_ignite_if_majority_red_supports_socketed`、`immune_to_shock_if_majority_green_supports_socketed`。按启用组中辅助宝石的 `SkillGems.GemColour` 统计：红／力量、绿／敏捷、蓝／智力。某色必须**严格超过全部辅助的一半**，空集、平局或仅数量最多都不够。效果进入 `ChillImmune` / `IgniteImmune` / `ShockImmune`，给 100% 避免。PoB2 用严格相对多数，规则为 `exporter: "differs"`。依据为活动版本 `base/stats.json`、`base/passive_tree.json` 和 `base/skill_gems.json`。
 
@@ -96,11 +96,11 @@ Oisin 的 `mana_leech_from_elemental_instead` 使用元素魔力偷取并排除�
 
 普通生命吸纳对全部受伤类型生效。`PhysicalLifeRecoup`、`FireLifeRecoup`、`ColdLifeRecoup`、`LightningLifeRecoup` 只加到对应类型；“元素伤害吸纳为生命”展开为后三种，不能再乘全部受伤。ES 的 `recoup_%_elemental_damage_as_energy_shield` 同理展开为 `Fire/Cold/LightningEnergyShieldRecoup`。`LifeRecoupRate` / `EsRecoupRate` 明细与实际计算共用逐类型输入。[Sacrosanctum 的文本](https://poe2db.tw/us/Sacrosanctum)对应 `life_recoup_also_applies_to_energy_shield` 当前只复制通用 `LifeRecoup` 比例，ES 保留自己的时间和恢复速率；代码没有把新增的类型限定生命吸纳一并复制，不能写成全部吸纳效果均已转移。
 
-“防止的物理伤害吸纳为生命”（`physical_damage_prevented_recouped_as_life_%`，[Made to Last](https://poe2db.tw/us/Made_to_Last) 5%，Wandering Reliquary 50%）使用单独的防止量：进入物理减伤阶段的伤害，减去护甲、额外物理减伤、上限及压制处理后的伤害。转为其他类型承受的部分和后续承伤倍率不算；格挡、偏斜不计，部分承伤格挡也不计，闪避不进入成功受击循环。
+“防止的物理伤害吸纳为生命”（`physical_damage_prevented_recouped_as_life_%`，[Made to Last](https://poe2db.tw/us/Made_to_Last) 5%，Wandering Reliquary 50%）使用单独的防止量：进入物理减伤阶段的伤害，减去护甲、额外物理减伤、上限及压制处理后的伤害。转为其他类型承受的部分和后续承伤倍率不算；格挡、偏转不计，部分承伤格挡也不计，闪避不进入成功受击循环。
 
 该定义参考 [Iron Ward](https://poe2db.tw/us/Iron_Ward) 对护甲或其他减伤的描述，是实现假设，**没有游戏内实测**。[2024 年 bug report](https://www.pathofexile.com/forum/view-thread/3661840)和[2025 年讨论](https://www.pathofexile.com/forum/view-thread/3882155)只是待验证线索，不是开发者裁定。EHP 循环累计防止量，`survivability::life_recoup_terms` 与普通／类型限定吸纳相加，共用生命时长和恢复速率。规则为 `absent`。
 
-Forsaken Bangle 的混沌防止量沿用这一边界，但用混沌抗性与减伤，分别回复生命和魔力；具体假设见[药剂与护符](items.md#药剂与护符)。实现与回归见 [survivability.rs](../../crates/pobr-core/src/calc/survivability.rs)、[recovery.rs](../../crates/pobr-core/tests/defence/recovery.rs)。
+Forsaken Bangle 的混沌防止量沿用这一边界，但用混沌抗性与减伤，分别回复生命和魔力；具体假设见[药剂与咒符](items.md#药剂与咒符)。实现与回归见 [survivability.rs](../../crates/pobr-core/src/calc/survivability.rs)、[recovery.rs](../../crates/pobr-core/tests/defence/recovery.rs)。
 
 ### 能量护盾充能
 
@@ -108,7 +108,7 @@ Forsaken Bangle 的混沌防止量沿用这一边界，但用混沌抗性与减�
 
 `energy_shield_recharge_rate_+%` / `virtual_energy_shield_recharge_rate_+%` 读取 `EnergyShieldRecharge`；`energy_shield_delay_-%_while_affected_by_archon` 读取 `EnergyShieldRechargeFaster`。`MovementSpeedAppliesToEnergyShieldRecharge` 只复制移速 INC，保留条件和明细，不复制基础移速、MORE、行动速度或移动惩罚，也不建立充能覆盖率。
 
-Thawing Charm 的 `charm_energy_shield_recharge_starts_when_used` 沿用“启用且未超槽位的护符效果当前生效”约定：`UsingCharm` 下 `EnergyShieldRechargeBase = 0`，视为立即开始充能，不模拟护符触发或覆盖率（`absent`）。[Scarred Faith](https://poe2db.tw/us/Scarred_Faith) 的 `keystone_alternate_es_recovery` 则将充能量、速率、延迟都置零；其独立禁止再生条款使没有其他得失时净 ES 再生为零。当前 EHP 受击资源池不计充能。
+Thawing Charm 的 `charm_energy_shield_recharge_starts_when_used` 沿用“启用且未超槽位的咒符效果当前生效”约定：`UsingCharm` 下 `EnergyShieldRechargeBase = 0`，视为立即开始充能，不模拟咒符触发或覆盖率（`absent`）。[Scarred Faith](https://poe2db.tw/us/Scarred_Faith) 的 `keystone_alternate_es_recovery` 则将充能量、速率、延迟都置零；其独立禁止再生条款使没有其他得失时净 ES 再生为零。当前 EHP 受击资源池不计充能。
 
 ## 充能与资源事件
 
@@ -118,7 +118,7 @@ Thawing Charm 的 `charm_energy_shield_recharge_starts_when_used` 沿用“启�
 
 Conduit（33979，`keystone_conduit`）把获得的球改给 Presence 友军，沿用上述快照：玩家三类球只留最小值，与 Resonance 同用也如此。最小球视为一直持有而非新获得，这一交互未实测。友军实际获球及其效果未建模；规则为 `absent`。两者都不模拟获得触发、消耗或持续时间线。
 
-“近期消耗耐力球”的新计数与持有球数分开，见[配置输入](snapshots.md#配置项与敌人配置)。旧的暴击球近期消耗条件仍用可移除球数近似，见[装备与天赋](items.md#暗金珠宝与天赋文本)，不能把两种约定当成同一个事件模型。
+“近期消耗耐力球”的新计数与持有球数分开，见[配置输入](snapshots.md#配置项与敌人配置)。旧的暴击球近期消耗条件仍用可移除球数近似，见[装备与天赋](items.md#传奇珠宝与天赋文本)，不能把两种约定当成同一个事件模型。
 
 [Event Horizon](https://poe2db.tw/us/Event_Horizon)（`chaos33_`，`lose_%_of_life_and_energy_shield_when_you_use_a_chaos_skill`）按玩家亲自使用的所选混沌技能，每次流失最终最大生命和 ES 的 3%。沿用费用频率，每个重复序列付一次；触发和代理不计。它进入净恢复及 `TotalBuildDegen`，不是可减免伤害，也不受费用修正。轮转中的其他技能、引导起止未模拟。此规则与 Scarred Faith 新识别的禁止再生文本均为 `absent`。
 

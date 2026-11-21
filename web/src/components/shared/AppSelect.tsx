@@ -5,9 +5,9 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 export interface AppSelectOption {
   value: string;
   label: string;
-  /** 可选分组标题（相邻同组只渲染一次，对应原生 optgroup）。 */
+  /** Optional section heading (rendered once per adjacent group, like native `<optgroup>`). */
   group?: string;
-  /** 可选副行说明（面板选项内 label 下方的弱化小字；触发按钮不显示）。 */
+  /** Optional secondary description shown below the option label in the popover; hidden on the trigger button. */
   hint?: string;
 }
 
@@ -17,13 +17,13 @@ interface Props {
   onChange: (value: string) => void;
   disabled?: boolean;
   ariaLabel: string;
-  /** 无匹配 value 时触发按钮上显示的文案。 */
+  /** Fallback text shown on the trigger button when no option matches `value`. */
   placeholder?: string;
 }
 
 /**
- * 应用统一风格的下拉选择器（替代系统原生 select；面板视觉与 GemPicker 一致）。
- * 键盘：↑↓ 移动高亮、Enter/Space 打开或选中、Esc 关闭；点击组件外关闭。
+ * Shared dropdown selector with unified app styling (replaces native `<select>`, matching GemPicker's popover).
+ * Keyboard: Up/Down moves highlight, Enter/Space opens or selects, Esc closes; clicking outside closes.
  */
 export function AppSelect({ value, options, onChange, disabled, ariaLabel, placeholder }: Props) {
   const active = usePanelActive();

@@ -1,9 +1,10 @@
 import type { ApiErrorJson } from './types';
 
 /**
- * wasm 接口的 Err 侧是 JSON 编码的 `{code, message, slot?}`（JsError 只能携带
- * 字符串）；解析回类型化错误。非 JSON（旧 wasm 构建 / 非 wasm 来源异常）归入
- * `internal`，原文作 message——调用侧永远拿到可用的结构。
+ * Errors returned by the wasm boundary are JSON-encoded `{code, message, slot?}`
+ * because `JsError` only carries strings; parse them back into typed errors.
+ * Non-JSON values (legacy wasm builds or non-wasm exceptions) fall back to
+ * `internal` with the raw text as `message` so callers always get a usable shape.
  */
 export function parseApiError(err: unknown): ApiErrorJson {
   const raw = err instanceof Error ? err.message : String(err);
@@ -18,12 +19,12 @@ export function parseApiError(err: unknown): ApiErrorJson {
       return parsed as ApiErrorJson;
     }
   } catch {
-    // 非 JSON，走 internal 兜底。
+    // Non-JSON: fall back to `internal`.
   }
   return { code: 'internal', message: raw };
 }
 
-/** 展示用单行文本（有 slot 时带槽位前缀）。 */
+/** Single-line display string (prefixed with the slot name when present). */
 export function formatApiError(err: unknown): string {
   const e = parseApiError(err);
   return e.slot ? `[${e.slot}] ${e.message}` : e.message;

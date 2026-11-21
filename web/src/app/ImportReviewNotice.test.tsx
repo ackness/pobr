@@ -50,7 +50,7 @@ it('links to the permanent diagnostics rather than repeating results or raw modi
     expect(html).not.toContain('Gain an unknown buff');
     expect(html).not.toContain('Check import notes');
     expect(html).toContain(lang === 'en-US' ? 'View 2 modifiers not included in calculation'
-      : lang === 'zh-CN' ? '查看 2 条未计入计算的词缀' : '查看 2 條未計入計算的詞綴');
+      : lang === 'zh-CN' ? '查看 2 条未计入计算的词缀' : '檢視 2 條未計入計算的詞綴');
   }
   expect(renderToStaticMarkup(<ImportReviewNotice {...props()} modifierCount={0} />)).not.toContain('#ov-unincluded');
   expect(renderToStaticMarkup(<ImportReviewNotice {...props('build')} />)).not.toContain('#ov-unincluded');

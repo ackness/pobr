@@ -1858,7 +1858,7 @@ fn traced_empty_enemy_equals_legacy_entry() {
     // Even with an enemy mod supplied, mode_effective=false (panel mode) keeps both paths' DPS equal and introduces no enemy interaction.
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("DamageTaken", ModType::Inc, 99.0));
-    let cfg = CalcConfig::attack(); // 非有效
+    let cfg = CalcConfig::attack(); // non-effective (panel scope)
 
     let legacy = calculate_minimal_traced(&player, &cfg, &input);
     let vs_empty = calculate_minimal_traced_vs_enemy(&player, &ModDb::new(), &cfg, &input);

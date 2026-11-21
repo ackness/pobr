@@ -1,8 +1,8 @@
 import { AppButton, AppInput } from './controls';
 /**
- * 寻优框架共享 UI 套件：目标/约束编辑器 + 进度条 + 结果表。
- * 宝石（Skills）/ 装备（Items）/ 天赋（Tree）三个寻优面板共用；
- * 结果表基于已评估的属性值即时重排——切换目标不重算。
+ * Shared optimizer UI kit: objective/constraint editor + progress bar + results table.
+ * Reused by Gems (Skills), Items, and Passives (Tree) optimizers; the results table
+ * re-ranks cached stat values immediately when objectives change—no recalculation needed.
  */
 
 import type { VariantStats } from '../../api/types';
@@ -19,7 +19,7 @@ import { AppSelect } from './AppSelect';
 import type { DamageHeadline } from '../../lib/mainMinion';
 import { tradeAnalysisText } from '../../lib/tradeAnalysisText';
 
-/** 目标编辑器的受控状态（字符串态便于输入框直绑；objectiveOf 再解析）。 */
+/** Controlled objective editor state (string fields bind directly to inputs; parsed via `objectiveOf`). */
 export interface ObjectiveState {
   preset: string;
   cStat: string;
@@ -40,7 +40,7 @@ export const DEFAULT_OBJECTIVE_STATE: ObjectiveState = {
   resistanceTarget: 75,
 };
 
-/** 编辑态 → 打分目标。 */
+/** Editor state -> scoring objective. */
 export function objectiveOf(state: ObjectiveState, baseline?: Record<string, number>): Objective {
   const preset = OBJECTIVE_PRESETS.find((p) => p.id === state.preset) ?? OBJECTIVE_PRESETS[0];
   const constraints =
@@ -85,7 +85,7 @@ interface EditorProps {
   disabled?: boolean;
 }
 
-/** 目标预设 + 单条约束（属性 / 下限 / 上限）。 */
+/** Objective preset + single hard constraint (stat, min, max). */
 export function ObjectiveEditor({ value, onChange, lang, disabled, constraintsOnly, baseline, statName, damage }: EditorProps) {
   const tt = bindT(lang);
   const nameOf = statName ?? ((id: string) => statLabel(id, lang));
@@ -167,7 +167,7 @@ interface ProgressProps {
   lang: Lang;
 }
 
-/** 评估进度 + 取消（批间让出主线程时得以绘制/响应）。 */
+/** Evaluation progress + cancel button (paints and responds while yielding between batches). */
 export function OptimizerProgress({ done, total, onCancel, lang }: ProgressProps) {
   const tt = bindT(lang);
   return (
@@ -183,7 +183,7 @@ export function OptimizerProgress({ done, total, onCancel, lang }: ProgressProps
 
 interface ResultsProps {
   baseline: Record<string, number>;
-  /** 已排序结果（rankVariants 输出），由调用方截断。 */
+  /** Sorted results (`rankVariants` output), truncated by caller. */
   ranked: VariantStats[];
   objective: Objective;
   onApply: (variant: VariantStats) => void;
@@ -191,7 +191,7 @@ interface ResultsProps {
   disabled?: boolean;
 }
 
-/** 结果表：基线行 + 逐变体（得分 / 相对基线 / 应用）。 */
+/** Results table: baseline row + per-variant entries (score / vs baseline / apply). */
 export function OptimizerResults({
   baseline,
   ranked,

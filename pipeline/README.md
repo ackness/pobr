@@ -73,7 +73,7 @@ mise exec -- bash pipeline/diagnostics/modifier-audit.sh
 没有 vendor 时用 `--offline`，报告明确不含 PoB2 对照。
 可用 `--data data/<version>` 指定数据，`--baseline <audit.json>` 指定历史审计。
 
-语料来源包括 StatDescriptions 的稳定 stat ID、装备/珠宝/药剂/护符词缀、特殊制作词缀、
+语料来源包括 StatDescriptions 的稳定 stat ID、装备/珠宝/药剂/咒符词缀、特殊制作词缀、
 基底隐式、传奇装备各变体、天赋树，以及中文导入实际输出的英文模板。
 数值范围抽取低/高样本，复合描述使用不同的占位值；特殊规则的 `examples` 也进入语料，无法渲染的条目另计数。
 这是**解析样本覆盖率**，包含地图和怪物描述，不能当作玩家机制或 DPS 覆盖率。
@@ -126,7 +126,7 @@ Web 的宝石选择器与辅助推荐共用说明面板，按稳定 ID 和完整
 成功观察到一个补丁号也不能认证全部原料、机制或改变 CURRENT。
 
 ```sh
-mise run data:bump ackness/repoe game/0.5.5.5-3   # 把锁改到 owner 的 Release，校验 SHA256SUMS 后导入
+mise run data:bump ackness/repoe game/0.5.5.8-1   # 把锁改到 owner 的 Release，校验 SHA256SUMS 后导入
 mise run data:version                   # 本地选中版本
 mise run data:prepare                   # 临时导入当前固定目标，不更改 CURRENT
 mise run data:check                     # 离线检查：跟踪数据归属，导入后工作树干净

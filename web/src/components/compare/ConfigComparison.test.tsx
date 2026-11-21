@@ -18,7 +18,7 @@ vi.mock('../../hooks/useLocalizedLines', async original => ({
   ...await original<typeof import('../../hooks/useLocalizedLines')>(),
   useLocalizedLines: vi.fn((lines: string[], lang: string) => {
     const labels: Record<string, Record<string, string>> = {
-      'zh-CN': { '+10% to Cold Resistance': '+10% 冰冷抗性', '+10 to maximum Life': '+10 最大生命',
+      'zh-CN': { '+10% to Cold Resistance': '+10% 冰霜抗性', '+10 to maximum Life': '+10 最大生命',
         '+5 to Strength': '+5 力量', 'All Damage is taken from Mana before Life': '受到的所有伤害在扣除生命前优先从魔力扣除，魔力回复速度总降 50%',
         '50% less Mana Recovery Rate': '魔力回复速度总降 50%' },
       'zh-TW': { '+10% to Cold Resistance': '+10% 冰冷抗性', '+10 to maximum Life': '+10 最大生命',
@@ -39,7 +39,7 @@ test('configuration displays labels, yes/no, localized enemy tiers and quests wi
     { key: 'Custom modifiers', before: [], after: [{ title: 'Test', enabled: false, text: '+10 to maximum Life' }], action: { kind: 'modifiers' } },
   ]} />);
   expect(html).toContain('第一章：净空林地');
-  expect(html).toContain('+10% 冰冷抗性');
+  expect(html).toContain('+10% 冰霜抗性');
   expect(html).toContain('巅峰 Boss');
   expect(html).toContain('刷图');
   expect(html).toContain('>是</div>');

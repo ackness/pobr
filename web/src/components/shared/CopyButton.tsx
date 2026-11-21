@@ -5,13 +5,13 @@ import { bindT, type Lang } from '../../lib/i18n';
 interface Props {
   text: string;
   lang: Lang;
-  /** 可选文案覆盖（默认「复制」）。 */
+  /** Optional label override (defaults to "Copy"). */
   label?: string;
-  /** 图标尺寸的静默按钮（文案仅作无障碍标签与悬停提示）。 */
+  /** Icon-sized quiet button (label is used only for aria/title attributes). */
   compact?: boolean;
 }
 
-/** 一键把原始文本写入剪贴板（复制物品词条等）；成功后短暂显示「已复制」。 */
+/** One-click clipboard copy for raw text (item mods, etc.); briefly shows "Copied" on success. */
 export function CopyButton({ text, lang, label, compact }: Props) {
   const tt = bindT(lang);
   const [status, setStatus] = useState<'idle' | 'done' | 'error'>('idle');

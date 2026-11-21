@@ -14,10 +14,10 @@ upgrade path.
 mise run data:update --lock pipeline/data.lock.json --out .cache/update-review
 # Optional --patch only checks the lock's target; it cannot relabel old data.
 mise run data:update --lock pipeline/data.lock.json \
-  --patch 0.5.5.5 --out .cache/update-review-2 --offline
+  --patch 0.5.5.8 --out .cache/update-review-2 --offline
 # Explicit local selection, including a same-version refresh:
 mise run data:update --lock pipeline/data.lock.json --out .cache/update-select \
-  --activate --expected-current 0.5.5.5
+  --activate --expected-current 0.5.5.8
 ```
 
 `--lock` and a fresh `--out` are required. `--activate` and `--expected-current`

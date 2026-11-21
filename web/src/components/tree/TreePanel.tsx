@@ -60,7 +60,7 @@ interface RoutePreview { plan: PassivePlan }
 
 const JEWEL_TEMPLATE = 'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
 
-/** 天赋树查看器：SVG 渲染 + 已加点高亮 + 缩放平移 / hover 词条 + 点选加点重算。 */
+/** Passive tree viewer: SVG rendering + allocated highlights + pan/zoom / hover mods + click-to-allocate recalc. */
 export function TreePanel(props: Props) {
   const { session, lang, active } = props;
   const conversion = useTreeConversion(session, lang, active);
@@ -192,14 +192,14 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
   useLayoutEffect(() => () => { canvasGeneration.current += 1; }, []);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [hoverStats, setHoverStats] = useState<string[] | null>(null);
-  /** hover 节点名的中文翻译（词典命中才有；null = 显示英文原名）。 */
+  /** Localized hovered node name (when matched in dictionary; null = show English name). */
   const [hoverName, setHoverName] = useState<string | null>(null);
-  /** 节点搜索串（名称/词条子串匹配，高亮命中节点）。 */
+  /** Node search query (substring match against name/mods; highlights matching nodes). */
   const [search, setSearch] = useState('');
   const [reportSearch, setReportSearch] = useState('');
   useEffect(() => { onSearch(search.trim() || reportSearch); }, [onSearch, search, reportSearch]);
   useEffect(() => () => onSearch(''), [onSearch]);
-  /** 「下一个命中」轮转下标（搜索串变化时归零）。 */
+  /** Cyclic index for "Next hit" (resets when search query changes). */
   const [hitIndex, setHitIndex] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
   const nextHitRef = useRef<HTMLButtonElement>(null);
@@ -212,11 +212,11 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
   const [attributeDraft, setAttributeDraft] = useState<{
     skill: number; saved?: AttributeChoice; choice: AttributeChoice;
   } | null>(null);
-  /** 属性小点三选一弹窗（node + 屏幕坐标）。 */
+  /** 3-way attribute choice popover (`node` + screen coordinates). */
   const [attrPicker, setAttrPicker] = useState<{ node: PassiveNode; x: number; y: number } | null>(
     null,
   );
-  /** 珠宝插槽编辑器（正在编辑的插槽节点 id + 草稿）。 */
+  /** Jewel socket editor (active socket node ID + draft text). */
   const toolsRef = useRef<HTMLDivElement>(null);
   const jewelRef = useRef<HTMLDivElement>(null);
   const applyJewelRef = useRef<HTMLButtonElement>(null);
@@ -260,7 +260,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
       if (activeJewelEdit.current === jewelEdit) closeJewelEditor(focusSkill);
     });
   };
-  /** hover 节点的加点/取消收益（防抖重算；按 stateVersion 失效的缓存）。 */
+  /** Allocate/refund delta for hovered node (debounced recalc, invalidated per `stateVersion`). */
   const [refundReceipt, setRefundReceipt] = useState<RefundReceipt | null>(null);
   const [hoverGain, setHoverGain] = useState<number | null>(null);
   const [hoverCalculating, setHoverCalculating] = useState(false);
@@ -298,7 +298,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
   const dragRafRef = useRef<number | null>(null);
   const suppressClickRef = useRef(false);
   const clickResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** 滚轮缩放的 rAF 合帧暂存（一帧最多提交一次 viewBox）。 */
+  /** Coalesced rAF target viewBox for wheel zoom (commits at most once per frame). */
   const wheelPendingRef = useRef<ViewBox | null>(null);
   const wheelRafRef = useRef<number | null>(null);
   /** Clear the scene offset in the same commit as the final viewBox. */
@@ -333,8 +333,8 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     return () => target.removeEventListener('wheel', consume);
   }, [nodes]);
 
-  // 珠宝库（插槽编辑器的切换下拉）；显示名「名称·基底」批量送翻译。
-  // ⚠️hook 必须在下方 early return 之前（React #310）。
+  // Jewel library (swap dropdown inside socket editor); display names `"Name·Base"` translate in batch.
+  // Note: hooks must execute before the early return below (React #310).
   const jewelLib = session.library.items.filter((i) => i.kind === 'jewel');
   const jewelNames = useItemDisplayNames(
     jewelLib.map((e) => e.text),
@@ -351,11 +351,11 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
   const [heatComplete, setHeatComplete] = useState(false);
   const [heatError, setHeatError] = useState(false);
   const [reportStat, setReportStat] = useState('');
-  /** 上次计算时的 stateVersion（build 变动后提示「已过期」而非自动重算）。 */
+  /** `stateVersion` when heatmap last ran (build changes show "stale" instead of auto-recomputing). */
   const [heatVersion, setHeatVersion] = useState(-1);
-  /** 每步算多少个候选：步间让出 Worker，进度可见，编辑不必排到整张热力图之后。 */
+  /** Batch size per worker yield: keeps progress visible without blocking edits behind the full heatmap. */
   const [heatProgress, setHeatProgress] = useState<{ done: number; total: number } | null>(null);
-  /** 当前这一轮热力图计算的编号；放弃（改属性、编辑、再点计算）就换号，旧的一轮在下一步前收手。 */
+  /** Generation token for the active heatmap run; changing stats/editing/re-running bumps it so old work stops before the next step. */
   const heatRun = useRef(0);
   const heatAbort = useRef<AbortController | null>(null);
   useEffect(() => () => heatAbort.current?.abort(), []);
@@ -365,7 +365,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     setHeatBusy(false);
     setHeatProgress(null);
   };
-  // 构筑一改，进行中的计算就是在算旧构筑：放弃它，已算出的部分留着并提示已过期。
+  // Any build edit renders the in-flight heatmap stale: abort it, keeping computed values marked outdated.
   useEffect(() => { cancelHeat(); }, [session.stateVersion]);
   const runHeat = () => {
     if (!heatStat || heatBusy) return;
@@ -421,7 +421,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     return max;
   }, [heatData]);
 
-  /** 热力图可选属性（按当前计算结果里实际存在的展示量过滤）。 */
+  /** Available heatmap stats (filtered to display stats present in the active calc output). */
   const heatStatOptions = useMemo(() => {
     const CANDIDATES = [
       'MainMinionDPS', 'TotalDPS', 'Life', 'EnergyShield', 'TotalEHP', 'Mana',
@@ -431,8 +431,8 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     return CANDIDATES.filter((id) => present.has(id));
   }, [session.calc]);
 
-  // 当前升华的稳定 id（如 `Warrior3`）——PoB2 语义：只渲染所选升华的节点簇，
-  // 其它升华整簇隐藏（它们与主树平面重叠，全显示会一团乱）。
+  // Stable ID of active ascendancy (e.g. `Warrior3`). PoB2 semantics: render only the chosen
+  // ascendancy's cluster; hide all others (they overlap on the same main-tree plane).
   const currentAscId = useMemo(() => {
     const name = session.character?.ascendancy_name;
     if (!name) return null;
@@ -458,7 +458,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
 
   const freeNodes = useMemo(() => allocationAccess(graph, allocated, startSkill, grants).free,
     [graph, allocated, startSkill, grants]);
-  /** 搜索命中集（名称 + 词条文本，剥 `[a|b]` 标记后不分大小写子串匹配）。 */
+  /** Search match set (case-insensitive substring over node names + mods after stripping `[a|b]` tags). */
   const searchHits = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (q.length < 2) return null;
@@ -542,7 +542,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     (nextHitRef.current ?? searchRef.current)?.focus({ preventScroll: true });
   };
 
-  /** 已加点的属性小点（升序，批量调配的确定性分配序）。 */
+  /** Allocated travel attribute nodes (ascending ID order for deterministic bulk redistribution). */
   const allocatedAttrNodes = useMemo(
     () =>
       session.allocatedNodes
@@ -571,10 +571,10 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     active: allocated.has(edge.from) && allocated.has(edge.to),
   })), [placed, allocated]);
 
-  // ── 渲染性能：节点/连线子树 memo 化 ─────────────────────────────────────
-  // 拖拽/缩放/悬停每帧都 setState；若子树不 memo，React 每帧要 diff 近万个
-  // SVG 元素（拖动卡顿的根因）。memo 后这些帧只更新 svg viewBox 与 tooltip。
-  // 点击回调经 sessionRef 取最新会话，避免 memo 闭包捕获过期 state。
+  // ── Rendering perf: memoize node/edge subtrees ───────────────────────────
+  // Pan, zoom, and hover call setState every frame; without memoizing these subtrees React diffs
+  // nearly ten thousand SVG elements per frame (root cause of drag stutter). With memo, frames update
+  // only the SVG viewBox and tooltip. Click handlers read the latest session via `sessionRef` to avoid stale closures.
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
@@ -673,7 +673,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
   }, [allocated]);
 
   const nodesEl = useMemo(() => {
-    /** 热力上色：正增量 暗红→亮金（√ 拉开低值区分度）；负增量冷蓝；无数据不覆盖。 */
+    /** Heatmap fill: positive delta goes dark red -> bright gold (`sqrt` separates small gains); negative = cool blue; empty = unstyled. */
     const heatFill = (skill: number): string | undefined => {
       if (!heatStat || !heatData || allocated.has(skill)) return undefined;
       const delta = heatData.get(skill);
@@ -763,8 +763,8 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     return () => cancelAnimationFrame(frame);
   }, [routePreview, planner.containerRef]);
 
-  // 中文界面下把 hover 节点名 + 词条经词典/模板反查翻成简中（异步，结果晚到时
-  // 校验仍是当前节点）。
+  // In Chinese UI, batch-translate hovered node name and mod lines via native catalog + mod templates
+  // (async; verify the hover target still matches when late responses arrive).
   useEffect(() => {
     if (!hover) {
       setHoverStats(null);
@@ -840,7 +840,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
     return () => { cancelled = true; clearTimeout(timer); };
   }, [hover, hoverPreview, session.stateVersion, session.busy, heatStat]);
 
-  // 快捷键 S/D/I（或 1/2/3）：弹窗打开时选择；hover 属性小点时直接加点或改选。
+  // Hotkeys S/D/I (or 1/2/3): select inside popover when open; directly allocate or switch hovered travel attribute node.
   useLayoutEffect(() => {
     const KEYMAP: Record<string, AttributeChoice> = {
       s: 'str', d: 'dex', i: 'int', '1': 'str', '2': 'dex', '3': 'int',
@@ -1049,7 +1049,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
                 setAttributeDraft(null);
                 setAttrPicker(null);
                 focusDetailsRef.current = true;
-                // 保持当前缩放（过远时收到能看清节点簇的档位）平移到命中节点。
+                // Pan to matched node while preserving zoom (narrowing only when zoomed too far out to see clusters).
                 const w = Math.min(view.w, 14000);
                 const h = (w / view.w) * view.h;
                 setViewBox({ x: node.x! - w / 2, y: node.y! - h / 2, w, h });
@@ -1388,7 +1388,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
                 onChange={(e) => {
                   const value = Math.max(0, Math.min(allocatedAttrNodes.length, Number(e.target.value) || 0));
                   const next = { ...attrCounts, [key]: value };
-                  // 超额时压缩其它两项（保持总和 ≤ 已加点数）。
+                  // Trim the other two attributes on overflow so total stays <= allocated travel nodes.
                   const order: AttributeChoice[] = ['str', 'dex', 'int'];
                   let overflow = next.str + next.dex + next.int - allocatedAttrNodes.length;
                   for (const other of order.filter((o) => o !== key)) {
@@ -1623,7 +1623,7 @@ function TreeCanvas({ focusNode, consumedLocation, ascendancyFocus, allocationMo
   );
 }
 
-/** 跟随鼠标的节点 tooltip（贴右下角偏移，靠近画布右/下缘时翻转）。 */
+/** Cursor-following node tooltip (offset bottom-right, flips near canvas right/bottom edges). */
 function TreeTooltip({
   node,
   name,
@@ -1634,7 +1634,7 @@ function TreeTooltip({
   onPointerEnter, onPointerLeave, onFocus, onBlur,
 }: {
   node: PassiveNode;
-  /** 本地化节点名（词典命中才给；null = 显示英文原名）。 */
+  /** Localized node name (present when matched in dictionary; null = show English name). */
   name: string | null;
   stats: string[];
   pos: { x: number; y: number };

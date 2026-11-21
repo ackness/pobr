@@ -6,7 +6,7 @@
 
 ## 数据来源现状与退出顺序
 
-本地活动版本为 `0.5.5.5`，由唯一[数据锁](../pipeline/data.lock.json)从 RePoE 与翻译库的 Release 临时导入
+活动目标为 `0.5.5.8`，由唯一[数据锁](../pipeline/data.lock.json)从 RePoE 与翻译库的 Release 临时导入
 （见[构建数据](../pipeline/runtime/build-data.md)），再由[运行包组合](../pipeline/runtime/runtime-bundle.md)打成精简发行包；
 发布与采用状态见[数据现状](data-status.md)。下面的路径相对 `data/<版本>/`，共享输入位于 `data/overlay-common/`。
 `_meta.generator`／`_meta.vendor_commit` 保留原生成身份，不能单凭文件名或旧 metadata
@@ -15,16 +15,16 @@
 ### 直接来自游戏的数据
 
 - 普通领域 adapter 从固定 RePoE 客户端事实生成物品基底、词缀、stat、技能及等级；普通天赋树使用 DAT／PSG、CSD 与明确保留的兼容字段。字段所有权和未知项分别记录，不把整个 `base/` 目录视为已完成自主迁源。`ActiveSkills.DisplayedName` 用于 buff 名、`AffectedBy<名字>` 条件和诅咒优先级（`skill_env::buff_skill_name`）。
-- stat set 保留 `base_is_projectile` 等无值 stat；召唤物技能另保留按使用者等级成长的效能。
+- stat set 保留 `base_is_projectile` 等无值 stat；召唤生物技能另保留按使用者等级成长的效能。
 - `base/skill_gems.json` 的效果链接、宝石标签来自 `GemEffects` / `GemTags`；各宝石等级所需角色等级来自 `ItemExperiencePerLevel`。品质另由 `overlay/gem_quality_stats.json` 提供。
 - 技能类型名表来自 `base/active_skill_types.json`（`ActiveSkillType` 行序，PoB2 `SkillType.<Id>` = 行号 + 1），引擎不再内嵌副本；基础最大怒气来自 `base/game_constants.json` 的 `base_maximum_rage`。珠宝范围读数据包的 `base/jewel_radii.json`，但数值仍转录自 PoB2（见下表）。引擎仍保留的表及理由见 `crates/pobr-data/tests/no_embedded_data.rs`。
-- `base/monster_resistances.json` 连接 `MonsterVarieties → MonsterTypes → MonsterResistances`，取普通稀有度的 `Fire1/Cold1/Lightning1/Chaos1`，合并链接并保留负弱点，供召唤物基础抗性使用。
+- `base/monster_resistances.json` 连接 `MonsterVarieties → MonsterTypes → MonsterResistances`，取普通稀有度的 `Fire1/Cold1/Lightning1/Chaos1`，合并链接并保留负弱点，供召唤生物基础抗性使用。
 - `item_granted_skills.json`、`boss_poise_thresholds.json` 和 `totem_varieties.json` 的版本 overlay 已有目标事实 producer；PoBR 保留筛选和解释责任。授予技能只迁可证字段，`ItemInherentSkills.IsWeapon` 按固定社区政策解释为 NoReservation，字段命名与官方语义未独立认证；Boss 选择仍是显式模型（[授予技能契约](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/docs/ordinary-item-grants.md)）。
 
 ### 冻结输入与退出顺序
 
 仍依赖 PoB2 或手工整理的输入只在这里维护一份清单。权威的冻结队列是 RePoE 的
-[`release/0.5.5.5-3/frozen-inputs.json`](https://github.com/ackness/repoe/blob/master/release/0.5.5.5-3/frozen-inputs.json)，
+[`release/0.5.5.8/frozen-inputs.json`](https://github.com/ackness/repoe/blob/master/release/0.5.5.8/frozen-inputs.json)，
 它按成员记录类别、字节与摘要、原因和退出方式；本表不复制摘要。
 表中标“冻结”的是该队列的全部成员，它们以固定字节随游戏包发布，没有 RePoE producer 或缺固定输入。
 标“重放”的已有 RePoE adapter，但从固定的 `0.5.5.4.2` codec 或 prepared 政策重放 PoB2 解释，不在冻结队列中，退出同样按本表顺序。
@@ -44,8 +44,8 @@
 | 6 | `overlay/mod_scalability.json`、`overlay-common/high_precision_mods.json`（冻结） | 词条随效果倍率缩放与数值精度 | 缩放：RePoE 从客户端 Mods／Stats 生成；精度：PoBR 自有规则 |
 | 7 | `base/weapon_types.json`（冻结，逐行迁自 PoB2） | 攻击技能的武器类型参数 | RePoE：从客户端 `WeaponTypes`／`ItemClasses` 生成 |
 | 8 | `overlay/trigger_configs.json`、`overlay/mirage_configs.json`（冻结）；`overlay/stat_set_labels.json` 与分支 codec、`overlay/skill_overrides.json` 未迁移的 prepared 解释、`overlay/gem_effects.json` 的历史显示顺序与 owner 兼容（重放） | 触发、幻影与分支选择相关的技能 | 触发与幻影：PoBR 自有规则。构筑码兼容需要的 PoB 编号保留为历史 codec；其余解释改由 RePoE 原生事实 |
-| 9 | `overlay/minions.json`、`overlay/spectres.json` 的目录成员、effect→variety aliases、限制与装备关系（重放） | 召唤物与幽魂的选择 | RePoE：需要独立依据；目录身份不能仅由 monster hash 反推，actor 数值已迁源 |
-| 10 | `overlay/uniques.json`（冻结） | 暗金的词缀归属、roll 与变体；导入的物品原文不经它 | RePoE：保留兼容模板，实际刷新时按[已登记兼容来源](data-architecture.md#已登记兼容来源)处理；客户端只验证可证连接，完整 `unique_relations.json` 采用另议 |
+| 9 | `overlay/minions.json`、`overlay/spectres.json` 的目录成员、effect→variety aliases、限制与装备关系（重放） | 召唤生物与灵体的选择 | RePoE：需要独立依据；目录身份不能仅由 monster hash 反推，actor 数值已迁源 |
+| 10 | `overlay/uniques.json`（冻结） | 传奇的词缀归属、roll 与变体；导入的物品原文不经它 | RePoE：保留兼容模板，实际刷新时按[已登记兼容来源](data-architecture.md#已登记兼容来源)处理；客户端只验证可证连接，完整 `unique_relations.json` 采用另议 |
 | 11 | `overlay/passive_jewels.json`（冻结）；`base/jewel_radii.json` 的数值（重放） | 珠宝与范围珠宝 | RePoE：从客户端天赋与珠宝事实生成 |
 | 12 | 版本 overlay 的 `base/unarmed_data.json`、`overlay/catalysts.json`、`overlay/item_granted_skills.json`、`overlay/passive_jewel_slots.json`（冻结：已有 producer，缺固定输入） | 无：producer 重放的值与当前文件一致 | RePoE：把所需输入（player-context 归档或选表补充）发布为输入包 Release（`inputs/<patch>-<n>`）并声明对应 job |
 | 13 | `overlay/trade_catalog.json`、`overlay/trade_stat_map.json`（冻结） | 无：只用于交易与打造界面 | RePoE：从客户端 Mods／BaseItemTypes 与固定的交易站 stats 来源生成 |
@@ -58,12 +58,12 @@
 
 `buff_definitions` 的 `vendor_ref` 记录的 15 个 PoB2 行段在当前参考中逐字节相同，但 RePoE 的[固定来源对账](https://github.com/ackness/repoe/blob/db7f3d5d129d82e5788990658795d5a4ad15a4df/RePoE/docs/buff_source_reconciliation.md)
 核对的七个完整上下文中，调用者、defence 和 reservation 的上游条件已有变化，整体等价未确立，验证器保持 `guard_eligible=false`；
-运行定义因此不更新，也不据此认证官方 buff 或 charm 语义。
+运行定义因此不更新，也不据此认证官方 buff 或咒符语义。
 
 PoBR 不从 vendor 生成或刷新上述文件，修改属于 owner 仓库；缺失来源时没有本地回退。解析规则与 PoB2 parser 的对照见[词条审计](../pipeline/README.md#词条审计)。
 `examples/demo-bd-test/builds/*/meta.json` 的回归对照值由 `tools/pob2-oracle` 重录，用于防回归，不是独立游戏真值。
 
-这些依赖限制部分新版本数据的接入，但不限制 PoBR 只能计算 PoB2 已支持的机制。`rules/skill_stats.rs` 的自有映射和带 `game_source` 的规则已支持若干导出器缺失的效果；`exporter: "absent"` 就是对此的明确记录。不要再把“仍依赖部分数据”写成“机制覆盖不会超过 PoB2”。
+这些依赖仅限制部分新版本数据接入，不代表 PoBR 只能计算 PoB2 已支持的机制：`rules/skill_stats.rs` 的自有映射与带 `game_source` 的规则已覆盖多项导出器缺失效果，并在审计中以 `exporter: "absent"` 登记。
 
 ## 已知的有意差异
 
@@ -87,11 +87,11 @@ PoB2 用自己的符文表覆盖物品原文；PoBR 以物品原文为准。同�
 
 同一个诅咒由两个技能组施加时，敌人身上只有最强的那一份（“Debuffs of the same type do not stack, and only the copy with the strongest effect applies”，[Curse](https://www.poe2wiki.net/wiki/Curse)），比较的是各份自身与其辅助宝石的诅咒效果（`skill_env::buff_specs::curse_strength`）。PoB2 按自己的优先级表挑，光环来源优先：tuned 组的 Acolyte of Chayula（Decompose）有 Doedre's Undoing 组和 Blasphemy 组两份 Despair，PoB2 用后者（敌人混沌抗性 −31），PoBR 用更强的前者（−58）。
 
-### Ribrattle 的弱化与防御
+#### Ribrattle 的弱化与防御
 
-Ribrattle 自身可施加三个诅咒，不能借用玩家的诅咒上限。其怪物 Enfeeble 的原生 stat 是 `accuracy_rating_+% = -60` 与 `base_skill_buff_damage_+%_final_to_apply = -60`，没有另一条 Unique 目标数值；Pinnacle 的 50% less curse effect 使它提供 30% reduced Accuracy 和 30% less Damage。当前参考工具按玩家上限选择幽魂诅咒，并把该伤害降低限定到非 Unique 目标，低估了这一选定状态的防御。
+Ribrattle 自身可施加三个诅咒，不能借用玩家的诅咒上限。其怪物 Enfeeble 的原生 stat 是 `accuracy_rating_+% = -60` 与 `base_skill_buff_damage_+%_final_to_apply = -60`，没有另一条 Unique 目标数值；Pinnacle 的 50% less curse effect 使它提供 30% reduced Accuracy 和 30% less Damage。当前参考工具按玩家上限选择灵体诅咒，并把该伤害降低限定到非 Unique 目标，低估了这一选定状态的防御。
 
-2026-11-03 固定的 Smith of Kitava 构筑（XML SHA-256 `ff6431d438f30bfe4e2cfbb8b2e411d6e13a99eea2aed5e45079ed9ef07caccf`）在参考口径下 EHP 为 2,012,602；只关闭 `raiseSpectreEnableCurses` 后为 871,516，准确复现原导出值，生命、能盾、护甲、闪避值与抗性都不变。诅咒降低来袭伤害，同时改善护甲减伤和闪避率，所以 EHP 增幅大于单独除以 0.7。这里假设幽魂在场且诅咒已经施加，不表示实战始终覆盖。原生怪物数值来自 `base/granted_effect_stat_sets.json`，幽魂技能与上限来自 `overlay/spectres.json`；回归见 `tests/skills/minion_curses.rs`。
+2026-11-03 固定的 Smith of Kitava 构筑（XML SHA-256 `ff6431d438f30bfe4e2cfbb8b2e411d6e13a99eea2aed5e45079ed9ef07caccf`）在参考口径下 EHP 为 2,012,602；只关闭 `raiseSpectreEnableCurses` 后为 871,516，准确复现原导出值，生命、能盾、护甲、闪避值与抗性都不变。诅咒降低来袭伤害，同时改善护甲减伤和闪避率，所以 EHP 增幅大于单独除以 0.7。这里假设灵体在场且诅咒已经施加，不表示实战始终覆盖。原生怪物数值来自 `base/granted_effect_stat_sets.json`，灵体技能与上限来自 `overlay/spectres.json`；回归见 `tests/skills/minion_curses.rs`。
 
 ### 尸体伤害类型
 
@@ -115,15 +115,15 @@ Bonestorm（“Channel to conjure a swarm of bone spikes in the air, then releas
 
 ### Withered 的施加者
 
-“Minions have 10% chance to inflict Withered on Hit” 在没有召唤物的构筑上，PoB2 把这条词条当作玩家自己能施加 Withered，并按配置的层数给敌人加混沌承伤；PoBR 把它交给召唤物，角色自己的技能、Presence 或已有的召唤物能施加 Withered 时才计入配置的层数（`calc/withered.rs`），所以这类构筑会比参考值低。每层 5%、最多 10 层两边一致。
+“Minions have 10% chance to inflict Withered on Hit” 在没有召唤生物的构筑上，PoB2 把这条词条当作玩家自己能施加 Withered，并按配置的层数给敌人加混沌承伤；PoBR 把它交给召唤生物，角色自己的技能、Presence 或已有的召唤生物能施加 Withered 时才计入配置的层数（`calc/withered.rs`），所以这类构筑会比参考值低。每层 5%、最多 10 层两边一致。
 
-### 不保留精魄的物品授予
+### 不保留精魂的物品授予
 
-Lament / Portent / Absent Amulet 授予的技能不保留精魄（`ItemInherentSkills.IsWeapon` 按固定[社区解释政策](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/item-grants/0.5.5.5-community-semantics-policy.json)映射为 `NoReservation`，官方字段语义未独立认证；三个基底列在 `overlay-common/item_granted_skills.json`）。PoB2 导入角色时把这个技能再列成一个普通宝石组并按宝石保留 30 / 60 / 100 精魄，所以这类构筑码自带的 `SpiritUnreserved` 常为负数，而游戏里保留量不可能超过精魄总量。
+Lament / Portent / Absent Amulet 授予的技能不保留精魂（`ItemInherentSkills.IsWeapon` 按固定[社区解释政策](https://github.com/ackness/repoe/blob/master/tools/pobr-data-adapter/policies/item-grants/0.5.5.5-community-semantics-policy.json)映射为 `NoReservation`，官方字段语义未独立认证；三个基底列在 `overlay-common/item_granted_skills.json`）。PoB2 导入角色时把这个技能再列成一个普通宝石组并按宝石保留 30 / 60 / 100 精魂，所以这类构筑码自带的 `SpiritUnreserved` 常为负数，而游戏里保留量不可能超过精魂总量。
 
-PoBR 把“排在组首、等级与授予等级相同、无品质、未腐化”的那个普通组认作被授予的技能本身，不计保留，也按授予技能的需求降级（见[授予技能](mechanics/items.md#宝石等级品质与授予技能)）；其余同名宝石照常保留（`calc_orchestrator/granted_skills.rs`）。其他物品授予、需要保留精魄的技能也是这样认出的同一个技能，只保留一次；PoB2 的物品组和宝石组各保留一次（tuned 组 Gemling Legionnaire Frostbolt 与 Oracle Grim Pillars 胸甲授予的 Blink：PoB2 120，PoBR 60）。
+PoBR 把“排在组首、等级与授予等级相同、无品质、未腐化”的那个普通组认作被授予的技能本身，不计保留，也按授予技能的需求降级（见[授予技能](mechanics/items.md#宝石等级品质与授予技能)）；其余同名宝石照常保留（`calc_orchestrator/granted_skills.rs`）。其他物品授予、需要保留精魂的技能也是这样认出的同一个技能，只保留一次；PoB2 的物品组和宝石组各保留一次（tuned 组 Gemling Legionnaire Frostbolt 与 Oracle Grim Pillars 胸甲授予的 Blink：PoB2 120，PoBR 60）。
 
-PoB2 只对仅由物品授予的技能（`fromItem`，如 Purity of Ice）这样合并，所以 Absent Amulet 的 Eternal Rage 在 PoB2 里是两个组：降级的物品组和未降级的宝石组。该技能上的辅助宝石追加的精魄也一并免除，PoB2 仍计入：依据是权杖授予的技能在游戏数据里以 `reservation_multiplier = -100` 表达“不保留”，辅助的追加量随之归零；这一点没有游戏内实测。
+PoB2 只对仅由物品授予的技能（`fromItem`，如 Purity of Ice）这样合并，所以 Absent Amulet 的 Eternal Rage 在 PoB2 里是两个组：降级的物品组和未降级的宝石组。该技能上的辅助宝石追加的精魂也一并免除，PoB2 仍计入：依据是权杖授予的技能在游戏数据里以 `reservation_multiplier = -100` 表达“不保留”，辅助的追加量随之归零；这一点没有游戏内实测。
 
 ### 箭雨与 Hailstorm Rounds
 
@@ -215,7 +215,7 @@ The Vertex 的 “Equipment has no Attribute Requirements”（游戏 stat `glob
 
 ### 授予技能属性需求
 
-物品授予的技能（例如 “Grants Skill: Level N Eternal Rage”）的属性需求只决定它降到哪一级（见[授予技能](mechanics/items.md#宝石等级品质与授予技能)），不计入 `ReqStr` / `ReqDex` / `ReqInt`；构筑码另列的同等级普通组被认作同一技能，也不计入（`calc_orchestrator::requirements::requirement_snapshots`）。PoB2 按宝石计入，因此 Wolf Pack / Eternal Rage 抬高参考值的力量需求，Trinity 抬高敏捷需求，Blink / Cast on Critical 抬高智力需求；权杖的 Purity of Ice 和护身符的 Time of Need 也适用。
+物品授予的技能（例如 “Grants Skill: Level N Eternal Rage”）的属性需求只决定它降到哪一级（见[授予技能](mechanics/items.md#宝石等级品质与授予技能)），不计入 `ReqStr` / `ReqDex` / `ReqInt`；构筑码另列的同等级普通组被认作同一技能，也不计入（`calc_orchestrator::requirements::requirement_snapshots`）。PoB2 按宝石计入，因此 Wolf Pack / Eternal Rage 抬高参考值的力量需求，Trinity 抬高敏捷需求，Blink / Cast on Critical 抬高智力需求；权杖的 Purity of Ice 和项链的 Time of Need 也适用。
 
 ### Energy 触发频率
 
@@ -235,7 +235,7 @@ Cast on Critical 里的法术，PoBR 按宝石触发它的频率计算 DPS 和�
 
 Cast on Elemental Ailment、Cast on Block、Cast on Minion Death、Spellslinger、Elemental Invocation 同样按 Energy 计算（`skill_env::triggers::energy_trigger_modifiers`、`calc::energy::apply_energy_trigger`）。
 
-格挡每次给 25，召唤物被击杀时每点 Power 给 50；Spellslinger 按自施法的基础使用时间每 10 ms 给 0.2，Total use time 的加法同样计双倍。元素事件只有点燃、感电、冻结，没有冰缓；每点敌人 Power 的感电给 1、冻结给 10，点燃再乘新实例完整减伤前伤害与异常阈值之比，不封顶。20 级前四族自带 57% increased Energy，Elemental Invocation 为 68%；兼容 meta 的增益与半额返还辅助作用于 meta 本身，不要求能辅助 payload。
+格挡每次给 25，召唤生物被击杀时每点 Power 给 50；Spellslinger 按自施法的基础使用时间每 10 ms 给 0.2，Total use time 的加法同样计双倍。元素事件只有点燃、感电、冻结，没有冰缓；每点敌人 Power 的感电给 1、冻结给 10，点燃再乘新实例完整减伤前伤害与异常阈值之比，不封顶。20 级前四族自带 57% increased Energy，Elemental Invocation 为 68%；兼容 meta 的增益与半额返还辅助作用于 meta 本身，不要求能辅助 payload。
 
 Spellslinger 与 Elemental Invocation 的 500 储能和每轮法术消耗分开，后者每品质加 5 储能；自动触发的容量按同组被支持法术的总消耗计算。
 
@@ -271,7 +271,7 @@ Purity of Fire 这类光环的技能类型（`Buff`、`Aura` 等）里没有 `Sp
 
 ### Crystalline Phylactery
 
-Lich 的 Crystalline Phylactery 让其中的珠宝按两倍计（见 [`Build.jewels`](build-model.md#导入与构筑结构)），The Adorned 不作用于它。PoB2 不解析 “Effect of bonuses gained from Socketed Jewel”，并把 The Adorned 用在护符匣里的珠宝上，构筑码自带的参考值也是这样算的：tuned 组四个护符匣构筑（Abyssal Lich Twister 4028 / 9d1c、Lich Spark ce24 / 0a17）的伤害、暴击与个别抗性随之与参考值不同。
+Lich 的 Crystalline Phylactery 让其中的珠宝按两倍计（见 [`Build.jewels`](build-model.md#导入与构筑结构)），The Adorned 不作用于它。PoB2 不解析 “Effect of bonuses gained from Socketed Jewel”，并把 The Adorned 用在 Crystalline Phylactery 里的珠宝上，构筑码自带的参考值也是这样算的：tuned 组四个 Crystalline Phylactery 构筑（Abyssal Lich Twister 4028 / 9d1c、Lich Spark ce24 / 0a17）的伤害、暴击与个别抗性随之与参考值不同。
 
 ### 熊形态护甲
 
@@ -279,25 +279,25 @@ Bear form 按游戏的形态说明 “+10 to Armour per level” 给 10 × 角�
 
 ### Predator’s Mark 与召狼
 
-Pounce 的 Predator's Mark（“Marked target takes {0}% increased damage for each of its enemies within 6 metres of it, up to {1}%”，`skill_wolf_mark_damage_taken_+%_per_nearby_enemy` / `skill_wolf_mark_damage_taken_+%_cap`，品质加在等级值上，20 品质为 4% / 60%）按角色在 Presence 内已有的召唤物计数：计算中创建的召唤物，或配置的 “# of Minions in your Presence”（`MinionPresenceCount`，`skill_stats::curse_modifiers`）。
+Pounce 的 Predator's Mark（“Marked target takes {0}% increased damage for each of its enemies within 6 metres of it, up to {1}%”，`skill_wolf_mark_damage_taken_+%_per_nearby_enemy` / `skill_wolf_mark_damage_taken_+%_cap`，品质加在等级值上，20 品质为 4% / 60%）按角色在 Presence 内已有的召唤生物计数：计算中创建的召唤生物，或配置的 “# of Minions in your Presence”（`MinionPresenceCount`，`skill_stats::curse_modifiers`）。
 
-计算 Pounce、Predator's Mark 或其他主技能时，不计 Pounce 在被标记的敌人死亡时召唤的狼：被计算的敌人活着时它们还不存在。显式选择 Pounce 的第三个效果 `WolfPounceSummonWolfPlayer` 为主技能时，创建该效果的主召唤物（`WolfMinion`，默认使用 `MeleeAtAnimationSpeedWolfCompanion`），继承来源宝石的有效等级与辅助。
+计算 Pounce、Predator's Mark 或其他主技能时，不计 Pounce 在被标记的敌人死亡时召唤的狼：被计算的敌人活着时它们还不存在。显式选择 Pounce 的第三个效果 `WolfPounceSummonWolfPlayer` 为主技能时，创建该效果的主召唤生物（`WolfMinion`，默认使用 `MeleeAtAnimationSpeedWolfCompanion`），继承来源宝石的有效等级与辅助。
 
 数量按一次激活的一只狼加游戏 stat `skill_cross_slash_triggered_summon_+_wolves_if_rare` / `_if_unique` 的稀有度加成（Rare +0、Unique +1），即普通／稀有敌人一只、独特敌人两只；不是假设达到 20 级 `number_of_wolves_allowed` 的六只上限。只有这个效果是所选主技能时，这些狼才计入 `MinionPresenceCount` / `SummonedMinion`；不推算击杀频率或持续累积的狼数。
 
-所选召唤效果的最小 sweep 仍有差异：PoBR 的两只狼使同颗宝石的 Mark 增加 6% 承伤，单只狼 DPS 为 49.8971；只保留召唤效果、去掉 Mark 时为 47.0728，钉定 PoB2 为 46.9565（剩余约 0.25% 来自伤害区间与敌人护甲取整）。这里保留现有 Mark 应用规则，不按参考值补伤害倍率。tuned 组的 Witchhunter 构筑上这个数是 0：它的 Living Lightning II 所在组没有能被辅助的技能，不会出现 Living Lightning；构筑码自带的参考值按 8 只计（+32%），比 PoBR 高。辅助宝石授予的召唤物在辅助能生效时也还没有创建。
+所选召唤效果的最小 sweep 仍有差异：PoBR 的两只狼使同颗宝石的 Mark 增加 6% 承伤，单只狼 DPS 为 49.8971；只保留召唤效果、去掉 Mark 时为 47.0728，钉定 PoB2 为 46.9565（剩余约 0.25% 来自伤害区间与敌人护甲取整）。这里保留现有 Mark 应用规则，不按参考值补伤害倍率。tuned 组的 Witchhunter 构筑上这个数是 0：它的 Living Lightning II 所在组没有能被辅助的技能，不会出现 Living Lightning；构筑码自带的参考值按 8 只计（+32%），比 PoBR 高。辅助宝石授予的召唤生物在辅助能生效时也还没有创建。
 
 ### Minion Pact 与 Presence
 
-Presence 内的召唤物数（`MinionPresenceCount`）计入计算中创建的每个召唤物，包括没有数量上限 stat 的同伴，例如 Rhoa Mount 的 Rhoa（技能类型 `Minion` / `Companion`）；PoB2 只计入技能带数量上限 stat 的召唤物。所以 Minion Pact（“Supported Skills remove {0}% of your maximum Life from a nearby Minion on use to deal {1}% more damage”，`support_minion_pact_user_life_%_removed_from_nearby_minion` / `support_minion_pact_damage_+%_final`）在只有这类召唤物的构筑上，PoBR 计入、参考值不计：benchmark 组的 Chaos Inoculation Deadeye 最大生命为 1，每次只从 4182 生命的 Rhoa 抽 1.5 点，35% 更多伤害生效。
+Presence 内的召唤生物数（`MinionPresenceCount`）计入计算中创建的每个召唤生物，包括没有数量上限 stat 的同伴，例如 Rhoa Mount 的 Rhoa（技能类型 `Minion` / `Companion`）；PoB2 只计入技能带数量上限 stat 的召唤生物。所以 Minion Pact（“Supported Skills remove {0}% of your maximum Life from a nearby Minion on use to deal {1}% more damage”，`support_minion_pact_user_life_%_removed_from_nearby_minion` / `support_minion_pact_damage_+%_final`）在只有这类召唤生物的构筑上，PoBR 计入、参考值不计：benchmark 组的 Chaos Inoculation Deadeye 最大生命为 1，每次只从 4182 生命的 Rhoa 抽 1.5 点，35% 更多伤害生效。
 
-宝石说明里的 “Only takes effect if you have a Minion with enough life to drain the full amount” 还没有建模（PoB2 也不检查），召唤物生命不够抽取时两边都会多算。
+宝石说明里的 “Only takes effect if you have a Minion with enough life to drain the full amount” 还没有建模（PoB2 也不检查），召唤生物生命不够抽取时两边都会多算。
 
 ### Wolf Pack 数量
 
-Wolf Pack 召唤的狼数按游戏的 `skill_wolf_pack_size` 随有效宝石等级取值（1 / 18 / 20 级为 3 / 5 / 6 只），整群狼都计入召唤物数，并假设都在 Presence 内（**没有游戏内实测**）。Licking Wounds（天赋 55375，“5% increased Life and Mana Regeneration Rate for each Minion in your Presence, up to a maximum of 40%”）因此按整群计：tuned 组 Ritualist Purity of Fire（d557864ceebc）的 `LifeRegenRecovery` / `ManaRegenRecovery` 为 104.4 / 40.8，参考值 91.2 / 33.2。
+Wolf Pack 召唤的狼数按游戏的 `skill_wolf_pack_size` 随有效宝石等级取值（1 / 18 / 20 级为 3 / 5 / 6 只），整群狼都计入召唤生物数，并假设都在 Presence 内（**没有游戏内实测**）。Licking Wounds（天赋 55375，“5% increased Life and Mana Regeneration Rate for each Minion in your Presence, up to a maximum of 40%”）因此按整群计：tuned 组 Ritualist Purity of Fire（d557864ceebc）的 `LifeRegenRecovery` / `ManaRegenRecovery` 为 104.4 / 40.8，参考值 91.2 / 33.2。
 
-侧栏的 `ActiveMinionLimit` 是主技能实际创建的召唤物上限，没有上限 stat 的召唤物为 1；PoB2 对这类主技能输出 0：tuned 组三个 Spirit Walker（Zekoa the Headcrusher）构筑 PoBR 为 1，参考值为 0。
+侧栏的 `ActiveMinionLimit` 是主技能实际创建的召唤生物上限，没有上限 stat 的召唤生物为 1；PoB2 对这类主技能输出 0：tuned 组三个 Spirit Walker（Zekoa the Headcrusher）构筑 PoBR 为 1，参考值为 0。
 
 ### 敌人额外混沌伤害
 
@@ -307,7 +307,7 @@ Evergrasping Ring 的 “Enemies in your Presence Gain (6-12)% of Damage as Extr
 
 ### 最强致盲效果
 
-技能自己或它的辅助宝石带的 “increased Blind Effect”（`blind_effect_+%`，例如 Blind II 的 20%）只作用于这个技能施加的致盲。致盲不叠加，敌人身上只有一个，PoBR 取角色和已启用召唤技能所产生的最强致盲（`skill_env::strongest_skill_blind`），转给敌人，与角色自己的 “increased Blind Effect” 相加。Wolf Pack、Wild Protector 的辅助兼容性按召唤物的每个攻击单独检查，不能用不造成伤害的召唤动作排除 Blind II，也不能跨不同攻击合并辅助或按召唤数量叠加效果。此处仍要求选定敌人已致盲，不推算召唤物命中频率或覆盖率。PoB2 把这条加成按每个被辅助的技能各算一次、全部加到角色身上：tuned 组的 Amazon（Rain of Arrows）有五个技能带 Blind II，PoB2 的致盲是 −40% 命中，PoBR 是 −24%，闪避率 72% 对参考值 76%，TotalEHP 随之较低。
+技能自己或它的辅助宝石带的 “increased Blind Effect”（`blind_effect_+%`，例如 Blind II 的 20%）只作用于这个技能施加的致盲。致盲不叠加，敌人身上只有一个，PoBR 取角色和已启用召唤技能所产生的最强致盲（`skill_env::strongest_skill_blind`），转给敌人，与角色自己的 “increased Blind Effect” 相加。Wolf Pack、Wild Protector 的辅助兼容性按召唤生物的每个攻击单独检查，不能用不造成伤害的召唤动作排除 Blind II，也不能跨不同攻击合并辅助或按召唤数量叠加效果。此处仍要求选定敌人已致盲，不推算召唤生物命中频率或覆盖率。PoB2 把这条加成按每个被辅助的技能各算一次、全部加到角色身上：tuned 组的 Amazon（Rain of Arrows）有五个技能带 Blind II，PoB2 的致盲是 −40% 命中，PoBR 是 −24%，闪避率 72% 对参考值 76%，TotalEHP 随之较低。
 
 ### 最低元素抗性
 
@@ -319,17 +319,17 @@ Vile Effusion 按目标上不同混沌 DoT 类型数发射，类型与状态假�
 
 [公开 Lich 样本 `27c94`](https://poe.ninja/poe2/pob/27c94) 的原始配置有四种有效类型，修复后的单图腾命中 DPS 为 50,262.84，与原参考接近。该样本的原生 Vile Effusion 混沌命中还能由兼容的 Poison II（`base_chance_to_poison_on_hit_% = 60`）施加中毒；游戏技能没有禁止中毒的 stat。[技能与辅助说明](https://www.poe2wiki.net/wiki/Dark_Effegy)也允许这一组合。PoBR 保留 2,464.24 的中毒 DPS，原参考和钉定 PoB2 此项为零。原生禁止中毒、无有效伤害或零持续时间仍使结果为零；回归见 `tests/skills/dark_effigy.rs`。这里的持续状态假设不证明实际战斗中的覆盖率。
 
-### 护符生效与参考口径
+### 咒符生效与参考口径
 
-熊灵的 `SpiritOfTheBearPossessedPlayer` 提供 20% increased maximum Life，`SpiritPossessedStrPlayer` 提供 20% reduced Damage taken，数值来自 owner 的 `base/mods.json`。在护符生效的选定状态下，PoBR 保留这两项；规则为 `exporter: absent`，参考口径才排除它们。公开驱炎使样本 `2491d` 的标准 EHP 为 24,772.22，参考口径为 19,053.87，原存档参考为 18,540.74。较高的标准 EHP 不能仅因不接近参考而下调，也不代表护符永久生效。
+熊灵的 `SpiritOfTheBearPossessedPlayer` 提供 20% increased maximum Life，`SpiritPossessedStrPlayer` 提供 20% reduced Damage taken，数值来自 owner 的 `base/mods.json`。在咒符生效的选定状态下，PoBR 保留这两项；规则为 `exporter: absent`，参考口径才排除它们。公开驱炎使样本 `2491d` 的标准 EHP 为 24,772.22，参考口径为 19,053.87，原存档参考为 18,540.74。较高的标准 EHP 不能仅因不接近参考而下调，也不代表咒符永久生效。
 
 ## 冻结语料中逐行解释的参考值差异
 
-以下数字保留原调查的冻结语料含义，本次文档审查没有重跑数值。详细豁免仍以 `known-differences.json` 的构筑、stat 和输入 hash 为准；解释一行不能推及整个 DPS 或 EHP。
+以下数值保留对应冻结语料的记录口径。详细豁免仍以 `known-differences.json` 的构筑、stat 和输入 hash 为准；单条差异解释不能推及整个 DPS 或 EHP。
 
 ### 致盲、图腾与受击池
 
-冻结 `amazon-02` 的 8993 闪避对 82 级敌人 2114 命中，最强 Blind II 的单份 20% 效果使敌人少 24% 命中，得到取整后 55% 闪避、16% Deflect。PoB2 从 Pounce 三个主动效果重复计辅助，得少 32% 命中、58% 闪避、18% Deflect。只将闪避／偏斜行归因为致盲；独立的 ES／恢复容量问题已通过按 Discipline 自己武器组的树检查需求修复，不能把整个 EHP 归为致盲差异。
+冻结 `amazon-02` 的 8993 闪避对 82 级敌人 2114 命中，最强 Blind II 的单份 20% 效果使敌人少 24% 命中，得到取整后 55% 闪避、16% Deflect。PoB2 从 Pounce 三个主动效果重复计辅助，得少 32% 命中、58% 闪避、18% Deflect。只将闪避／偏转行归因为致盲；独立的 ES／恢复容量问题已通过按 Discipline 自己武器组的树检查需求修复，不能把整个 EHP 归为致盲差异。
 
 2026-10-26 语料还显示：Spell Totem 游戏等级上限可到 3、施放时间 0.5 秒；钉定导出器隐藏辅助把上限覆盖为 2，并用 0.6 秒放置回退。Mortar Cannon 原生为 1 秒。非图腾主技能没有“当前所选图腾”容量；容量本身也不能建立召唤数量状态。
 
@@ -341,7 +341,7 @@ Lich02 的 Storm Mage 在识别按名 +3 等级后达宝石 38／怪物 76。基
 
 ### 授予技能需求与装备来源
 
-冻结 top-ten 调查有 23 条剩余属性需求差异，参考值恰等于护身符授予技能（Eternal Rage、Wolf Pack、Trinity、Cast on Critical、Cast on Elemental Ailment）的名义需求。与授予匹配的普通导出组是同一技能，不是额外装备的宝石，不进 `ReqStr/ReqDex/ReqInt`；可用等级另检查，独立真宝石仍计需求。回归覆盖十种授予／等级组合和 Gemling 8% reduced。
+冻结 top-ten 调查有 23 条剩余属性需求差异，参考值恰等于项链授予技能（Eternal Rage、Wolf Pack、Trinity、Cast on Critical、Cast on Elemental Ailment）的名义需求。与授予匹配的普通导出组是同一技能，不是额外装备的宝石，不进 `ReqStr/ReqDex/ReqInt`；可用等级另检查，独立真宝石仍计需求。回归覆盖十种授予／等级组合和 Gemling 8% reduced。
 
 Witchhunter10 的 Megalomaniac 授予 Leather Bound Gauntlets（51446），1323 手套护甲给 1323 基础闪避，影响护甲／闪避、Sorcery Ward 和后续防御；导出器漏该天赋。Infernalist03 的 Runeseeker 导入行是 45% less Life，PoB2 重建为两条 MORE 再乘和取整，PoBR 保留原文。四个 Warbringer 的六条防御行使用现有选定图腾数，不假设额外图腾。
 

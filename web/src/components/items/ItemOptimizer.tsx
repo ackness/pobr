@@ -20,21 +20,21 @@ import {
 interface Props {
   session: BuildSession;
   lang: Lang;
-  /** 选中的装备槽 id（工具槽 Flask/Charm 不进此组件）。 */
+  /** Selected equipment slot ID (utility slots Flask/Charm do not enter this component). */
   slot: string;
-  /** 物品库中槽位匹配的候选（ItemsPanel 已过滤）。 */
+  /** Slot-matching candidates from the item library (pre-filtered by ItemsPanel). */
   candidates: LibraryItem[];
-  /** 与 candidates 对齐的本地化显示名。 */
+  /** Localized display names aligned with `candidates`. */
   candidateNames: string[];
-  /** 当前槽内文本（空槽为 undefined）。 */
+  /** Current text in the slot (`undefined` when empty). */
   currentText: string | undefined;
-  /** 应用结果：null = 摘下，string = 换装该文本。 */
+  /** Apply handler: `null` removes the item, `string` swaps to that text. */
   onApply: (text: string | null) => void;
 }
 
 /**
- * 槽位候选装备寻优：物品库同槽候选逐件试穿（含「摘下」变体）走通用变体
- * 框架完整重算，按目标/约束排名，一键换装。
+ * Per-slot candidate optimizer: trials each library item matching the slot (plus an "Unequip" variant)
+ * through full variant recalculation, ranks by objective/constraints, and applies with one click.
  */
 export function ItemOptimizer({
   session,

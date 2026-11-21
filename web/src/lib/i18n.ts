@@ -14,13 +14,13 @@ export function formatMessage(template: string, values: MessageValues): string {
   return template.replace(/\{(\w+)\}/g, (match, key: string) => Object.hasOwn(values, key) ? String(values[key]) : match);
 }
 
-/** 取 UI 文案。 */
+/** Look up UI copy. */
 export function t(lang: Lang, key: UiKey, values?: MessageValues): string {
   const template = messages(lang, 'ui')[key];
   return values ? formatMessage(template, values) : template;
 }
 
-/** 组件便捷绑定：`const tt = bindT(lang)`。 */
+/** Convenience component binder: `const tt = bindT(lang)`. */
 export function bindT(lang: Lang): (key: UiKey, values?: MessageValues) => string {
   return (key, values) => t(lang, key, values);
 }
@@ -38,11 +38,11 @@ export function bootMessageLabel(lang: Lang, message: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// 动态键标签（槽位 / 配置分区 / 敌人档位 / 聚合属性名）——键来自数据，
-// 不进 ui 命名空间；查不到回退原键。
+// Dynamic keyed labels (slots, config sections, enemy tiers, aggregated stats) —
+// keys come from game data, outside `ui`; unknown keys fall back verbatim.
 // ---------------------------------------------------------------------------
 
-/** 装备槽稳定 id → 本地化槽位名。 */
+/** Canonical equipment slot id -> localized slot label. */
 export function slotLabel(lang: Lang, slotId: string): string {
   const utility = /^(flask|charm)([1-3])$/i.exec(slotId);
   const canonical = utility ? `${utility[1].toLowerCase() === 'flask' ? 'Flask' : 'Charm'} ${utility[2]}` : slotId;
@@ -50,9 +50,9 @@ export function slotLabel(lang: Lang, slotId: string): string {
 }
 
 /**
- * 附赠技能组来源标注（PoB2 自动生成的组：`source="Item:14:Plague Edge, Akoyan Spear"`
- * 或 `"Tree:11641"`）→ 简短徽标文本；玩家手动组（无 source）返回 null。
- * 同一技能多次出现多半来自这类附赠组——标注让重复行可解释。
+ * Granted skill-group source badge (PoB2 auto-generated groups such as
+ * `source="Item:14:Plague Edge, Akoyan Spear"` or `"Tree:11641"`) -> short badge label;
+ * manual groups without a source return null. Duplicate skills usually come from granted sources.
  */
 export function grantedSourceLabel(
   lang: Lang,
@@ -70,17 +70,17 @@ export function grantedSourceLabel(
   return source;
 }
 
-/** Config 分区名（数据原名）→ 本地化。 */
+/** Config section name (raw catalog name) -> localized label. */
 export function configSectionLabel(lang: Lang, section: string): string {
   return lookup(lang, 'configSection', section) ?? section;
 }
 
-/** 敌人档位 → 本地化。 */
+/** Enemy tier -> localized label. */
 export function enemyTierLabel(lang: Lang, tier: string): string {
   return lookup(lang, 'enemyTier', tier) ?? tier;
 }
 
-/** 词条来源类别（SourceKind 名）→ 本地化。 */
+/** Modifier origin category (`SourceKind` name) -> localized label. */
 export function originKindLabel(lang: Lang, kind: string): string {
   return lookup(lang, 'originKind', kind) ?? kind;
 }
@@ -112,9 +112,9 @@ export function originLabel(lang: Lang, source: string): string {
   return source;
 }
 
-/** 聚合属性名（breakdown 键 / 归因字段 / diff 列表）→ 本地化。
- * 回退链：breakdown 名表（modName）→ 侧栏展示目录标签 → 侧栏目录之外的
- * 补充译名（statExtra：diff 列表 / Calcs 分节里的长尾字段）→ detail → 原 id。 */
+/** Aggregated stat name (breakdown key, attribution field, or diff row) -> localized label.
+ * Fallback chain: breakdown names (`modName`) -> sidebar display catalog label -> supplementary
+ * translations outside sidebar (`statExtra`, long-tail diff/Calcs entries) -> `detail` -> raw ID. */
 export function statNameLabel(lang: Lang, id: string): string {
   const utility = /^(Flask|Charm)([1-3])(.+)$/.exec(id);
   if (utility) {
@@ -141,12 +141,12 @@ export function statNameLabel(lang: Lang, id: string): string {
   return lookup(lang, 'detail', id) ?? id;
 }
 
-/** 伤害类型名（契约 `main_skill.hit_damage[].damage_type`）→ 本地化。 */
+/** Damage type name (contract `main_skill.hit_damage[].damage_type`) -> localized label. */
 export function damageTypeLabel(lang: Lang, damageType: string): string {
   return lookup(lang, 'damageType', damageType) ?? damageType;
 }
 
-/** display_catalog 分类名 → 本地化（Calcs 分节标题）。 */
+/** `display_catalog` category name -> localized label (Calcs section heading). */
 export function statCategoryLabel(lang: Lang, category: string): string {
   return lookup(lang, 'statCategory', category) ?? category;
 }

@@ -68,7 +68,7 @@ test('catalog defaults are checked, translated, recalculable and resettable', as
     ['conditionLowRunicWard', '处于低符文结界状态？'],
     ['conditionMissingRunicWard', '符文结界未满？'],
     ['conditionNoRunicWard', '符文结界已耗尽？'],
-    ['configBossFaceBroken', '毁面首领数量：'],
+    ['configBossFaceBroken', '已击败的首领数量：'],
     ['onLeyline', '位于地脉上？'],
     ['TotalCompanionLife', '同伴总生命覆盖值：'],
   ]) {

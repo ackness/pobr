@@ -34,7 +34,7 @@ async function chooseSocket(page: Page, id: number) {
 
 async function chooseUnique(page: Page, name: string) {
   await editor(page).getByRole('button', { name: 'Choose a unique jewel' }).click();
-  const catalog = editor(page).getByRole('region', { name: 'Unique catalogue' });
+  const catalog = editor(page).getByRole('region', { name: 'Unique catalog' });
   await catalog.getByRole('searchbox').fill(name);
   await catalog.locator('.unique-result').filter({ hasText: name }).click();
   return catalog;

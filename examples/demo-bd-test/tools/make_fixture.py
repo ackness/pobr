@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""从 PoB2 build code 生成统一格式的测试 fixture。
+"""Generate a normalized test fixture from a PoB2 build code.
 
-用法:
-    python3 make_fixture.py <fixture_dir>            # 读 <dir>/code.txt
-    python3 make_fixture.py <fixture_dir> --code <c> # 直接传码并写入 code.txt
+Usage:
+    python3 make_fixture.py <fixture_dir>            # read <dir>/code.txt
+    python3 make_fixture.py <fixture_dir> --code <c> # pass build code inline and write code.txt
 
-产物（写入 <fixture_dir>/）:
-    code.txt     原始 PoB2 code（单行，URL-safe Base64(zlib(XML))）
-    decoded.xml  解码后的 PathOfBuilding2 XML
-    meta.json    结构化元数据：职业/升华/等级/主技能/技能组/全部 PlayerStat
-                 （已存在的 meta.json 中 source / notes 字段会被保留）
+Outputs (written to <fixture_dir>/):
+    code.txt     raw PoB2 build code (single line, URL-safe Base64(zlib(XML)))
+    decoded.xml  decoded PathOfBuilding2 XML
+    meta.json    structured metadata: class/ascendancy/level/main skill/skill groups/PlayerStat
+                 (existing source / notes fields in meta.json are preserved)
 
-与 Rust 侧对应: pobr-build::decode_pob_code（URL-safe Base64, padding 容错, zlib inflate）。
+Matches Rust-side decoding: pobr-build::decode_pob_code (URL-safe Base64, tolerant padding, zlib inflate).
 """
 
 import argparse
@@ -48,7 +48,7 @@ def extract_meta(xml_bytes: bytes) -> dict:
         },
     }
 
-    # 技能组（active SkillSet 中的 Skill 列表）
+    # Skill groups (Skill elements inside the active SkillSet)
     skills_el = root.find("Skills")
     groups = []
     main_skill = None
@@ -87,8 +87,8 @@ def extract_meta(xml_bytes: bytes) -> dict:
                     mas = int(g["main_active_skill"] or "1")
                 except ValueError:
                     mas = 1
-                # mainActiveSkill 按“非 support gem”序号计；poe.ninja 导出把主动技能
-                # 放在前面，这里取第 mas 个非 SupportGem 名称作为主技能。
+                # mainActiveSkill indexes non-support gems; poe.ninja exports put active gems
+                # first, so take the mas-th non-SupportGem name as the main skill.
                 actives = [
                     gem["name"]
                     for gem in g["gems"]
@@ -99,7 +99,7 @@ def extract_meta(xml_bytes: bytes) -> dict:
     meta["character"]["main_skill"] = main_skill
     meta["skill_groups"] = groups
 
-    # 全量 PlayerStat（PoB 计算的黄金数值，测试断言用）
+    # All PlayerStat entries (golden PoB values for test assertions)
     stats = {}
     for ps in build.findall("PlayerStat"):
         name, value = ps.get("stat"), ps.get("value")
@@ -109,7 +109,7 @@ def extract_meta(xml_bytes: bytes) -> dict:
             stats[name] = value
     meta["player_stats"] = stats
 
-    # 物品数量（粗略 sanity 信息）
+    # Item count (coarse sanity summary)
     items_el = root.find("Items")
     meta["item_count"] = len(items_el.findall("Item")) if items_el is not None else 0
     return meta
@@ -118,7 +118,7 @@ def extract_meta(xml_bytes: bytes) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("fixture_dir", type=Path)
-    ap.add_argument("--code", help="PoB2 code 字符串（省略则读 <dir>/code.txt）")
+    ap.add_argument("--code", help="Inline PoB2 code string (defaults to <dir>/code.txt)")
     args = ap.parse_args()
 
     d = args.fixture_dir
@@ -142,7 +142,7 @@ def main() -> None:
         },
     }
     meta_file = d / "meta.json"
-    if meta_file.exists():  # 保留手工维护字段
+    if meta_file.exists():  # preserve hand-maintained metadata fields
         old = json.loads(meta_file.read_text())
         for key in ("source", "notes"):
             if key in old:

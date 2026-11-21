@@ -258,7 +258,7 @@ test('cancelling a report retains completed rows and counts skipped and unproces
   click('Cancel report'); expect(signal.aborted).toBe(true);
   release(); await running;
   const cancelled = render(make).html;
-  expect(cancelled).toContain('Report cancelled; rankings are provisional');
+  expect(cancelled).toContain('Report canceled; rankings are provisional');
   expect(cancelled).toContain('Not yet evaluated: 1');
   expect(cancelled.match(/data-status="ready"/g)).toHaveLength(1);
 });

@@ -1,10 +1,10 @@
 /**
- * PoB 文本颜色码解析（`^N` 单数字 / `^xRRGGBB` 十六进制）。
+ * PoB text color code parser (`^N` single digit / `^xRRGGBB` hex).
  *
- * Notes 页着色预览用；调色板与 SimpleGraphic 引擎的 `^0`–`^9` 内置色一致。
+ * Used for Notes preview highlighting; the palette matches SimpleGraphic's built-in `^0`–`^9` colors.
  */
 
-/** SimpleGraphic 内置 `^0`–`^9` 十色。 */
+/** SimpleGraphic built-in `^0`–`^9` palette. */
 const DIGIT_PALETTE: Record<string, string> = {
   '0': '#000000',
   '1': '#ff0000',
@@ -21,18 +21,18 @@ const DIGIT_PALETTE: Record<string, string> = {
 const CODE_RE = /\^x([0-9A-Fa-f]{6})|\^([0-9])/g;
 
 export interface ColorSegment {
-  /** CSS 颜色；null = 未指定（用默认前景色）。 */
+  /** CSS color; null = unspecified (inherit default foreground color). */
   color: string | null;
   text: string;
 }
 
-/** 文本是否含颜色码（决定 Notes 页要不要显示着色预览）。 */
+/** Whether the text contains color codes (gates whether Notes shows colored preview). */
 export function hasPobColorCodes(text: string): boolean {
   CODE_RE.lastIndex = 0;
   return CODE_RE.test(text);
 }
 
-/** 把带颜色码的文本切成着色段（颜色码自身被吃掉，后续文本继承该色直到下一个码）。 */
+/** Split text with color codes into styled segments (codes are stripped and apply to following text until the next code). */
 export function parsePobColorText(text: string): ColorSegment[] {
   const segments: ColorSegment[] = [];
   let color: string | null = null;

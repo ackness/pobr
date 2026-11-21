@@ -1,6 +1,6 @@
 /**
- * 技能名本地化 hook：宝石目录中文名 → 回退 id 美化。
- * 侧边栏主技能下拉与 Calcs 页技能视图共用。
+ * Skill name localization hook: gem catalog localized name -> prettified ID fallback.
+ * Shared by the sidebar main-skill selector and the Calcs skills view.
  */
 
 import { useEffect, useMemo, useState } from 'react';

@@ -60,7 +60,7 @@ parity 下降说明需要调查新版差异，不能为通过而降低基线。
 不会生成会话级 native 诊断或降级成字段缺省；重新封存错误 JSON 的哈希也不能使其符合 schema。
 可空的 `tree_version` 缺省或为 null 后，仍须通过使用时的版本匹配。
 
-数据包为每个符合条件的节点都带包，不按引擎是否认识其 stat 筛选（路线图 2.4）。
+数据包为每个符合条件的节点都带包，不按引擎是否认识其 stat 筛选。
 包里有 `passive_stats::map_stat` 不认识的 stat 时，这个包不是给本引擎的：节点按没有包处理，
 走文本路径，不记诊断，也不再检查其他拒绝原因（`ingest::passive::native_packet_known`）。
 
@@ -111,7 +111,7 @@ Sinister、带孔核心，以及珠宝的 `Allocates <插槽>` 都可授予孔�
 例如 Megalomaniac 的 `Allocates Zarokh's Gift`。
 “珠宝插槽天赋效果”只缩放树上真正的珠宝插槽天赋。
 
-非珠宝孔节点按自身规则处理。例如 Lich 的 Crystalline Phylactery 允许插入非暗金基础珠宝，
+非珠宝孔节点按自身规则处理。例如 Lich 的 Crystalline Phylactery 允许插入非传奇基础珠宝，
 并使其加成效果提高 100%，所以该珠宝按两倍计算；The Adorned 的
 `Jewel Socket Passive Skills containing Corrupted Rare Jewels` 不适用于它。
 实现为 `calc_orchestrator::collect::jewel_socket_increase`，原文见 [Lich](https://poe2db.tw/us/Lich)。
@@ -148,21 +148,21 @@ Rigwald's Ferocity 的 `support_rigwald_*_in_weapon_set_*` 等只在对应组生
 导入、计算、目录和导出共用该顺序。
 
 `<Gem enabled="false">` 留在 `Build` 的 `GemSkillRef::enabled`，到
-`calc_orchestrator::stage_build_view` 才移除。辅助、技能、buff、精魄、触发和召唤物都看不到它，
+`calc_orchestrator::stage_build_view` 才移除。辅助、技能、buff、精魂、触发和召唤生物都看不到它，
 主动效果序号只数剩余效果。
 
-## 武器组与精魄保留
+## 武器组与精魂保留
 
-精魄按当前计算组保留。绑定另一组的技能及其辅助追加量不保留，
+精魂按当前计算组保留。绑定另一组的技能及其辅助追加量不保留，
 除非游戏 stat `display_skill_reserves_in_all_weapon_sets` 要求所有组保留，如 Blink、Convalescence、Eternal Rage。
-Svalinn 的 Cast on Block 自身没有基础保留；Direstrike II 和 Herbalism II 的 40／30 精魄
+Svalinn 的 Cast on Block 自身没有基础保留；Direstrike II 和 Herbalism II 的 40／30 精魂
 只在持盾组计入，再应用保留效率。
 
 tuned Titan His Scattering Calamity 的主技能在第一组，其他常驻技能绑定平时持有的第二组，
 所以算第一组时保留为 0。来源参考值按另一组保留，与钉定 PoB2 不同。
 这里仅改变保留量。另一组常驻技能的 buff／光环仍按生效处理，与 PoB2 和参考值一致。
 切武器后这些 buff 在游戏中是否保持，尚无说明或实测，不能据此推断游戏行为。
-超出精魄池时的输出规则见[精魄保留](calc-outputs.md#精魄保留)。
+超出精魂池时的输出规则见[精魂保留](calc-outputs.md#精魂保留)。
 
 ## 存档格式、技能／配置集与队伍
 
@@ -204,7 +204,7 @@ adapter 读到原表后应改为生成。WeGame 不提供主技能、授予来�
 导出启用成员的合并标准块，用可忽略 PoBRMember 保留成员边界与停用状态。
 `party::import_member`／WASM `import_party_member_json(code)` 先清掉成员的队伍输入，
 再算资源、属性及已支持的外放光环／诅咒。可重算的同名效果替换导出值，其余沿用原始块。
-效果走 `calc::buff_pass` 的接收者缩放、召唤物投递、最强副本和各施法者诅咒上限；
+效果走 `calc::buff_pass` 的接收者缩放、召唤生物投递、最强副本和各施法者诅咒上限；
 敌人效果用既有敌人路径。来源为 `party.<成员>.<目标>.<来源>`，进入缓存身份与逐行归因。
 战吼、链接等仍依赖导出块或手填。只支持简单 parent／partyMembers 资源属性缩放；
 嵌套 LIST、复杂标签、未知 GlobalEffect 保留并诊断，不剥限制。PoB2 再存可能丢成员边界。
@@ -217,7 +217,7 @@ adapter 读到原表后应改为生成。WeGame 不提供主技能、授予来�
 攻击／法术／近战标志来自含辅助修改的技能类型；投射物／范围命中标志来自所选 stat set 的
 `base_is_projectile`／`is_area_damage`，旧快照缺 stat 时退回技能类型。
 `skill_env::stat_set_hit_flags`、`skill_keyword_flags` 分别处理这些标志与关键字。
-Warcry、Movement、Aura、AppliesCurse、伤害类型等限制各自技能；主技能、buff、战吼、召唤物各用自己的类型。
+Warcry、Movement、Aura、AppliesCurse、伤害类型等限制各自技能；主技能、buff、战吼、召唤生物各用自己的类型。
 规则和 stat 映射共用 `KeywordFlags::from_name`，未知名报错；丢关键字会把限定伤害错加给所有技能。
 
 `CalculationContext` 显式携带 stat-map 目录、观察模式和触发子计算状态，热路径不使用线程局部上下文。
@@ -225,7 +225,7 @@ Warcry、Movement、Aura、AppliesCurse、伤害类型等限制各自技能；�
 旧 `take_stat_map_compare_records` 已移除。
 
 来源阶段只能持有 `sources.rs::SourceWriter`，不开放 mod_db、聚合读取或 Deref。
-`finish_sources` 消费写入器后才读；精魄读取含额外词条的完整来源，召唤数量在属性准备与条件桥接后读取。
+`finish_sources` 消费写入器后才读；精魂读取含额外词条的完整来源，召唤生物数量在属性准备与条件桥接后读取。
 保持线性流程，不为每个注入函数加状态类型。
 `prepare_player_stats` 派生属性和初始资源；build 补装备事实／计数／来源，再 `bridge_player_conditions`。
 初始快照在 buff 前，perform 在防御转换后刷新 Life／Mana stats 与 multipliers，两处共用资源池计算。
@@ -311,7 +311,7 @@ WASM `preview_tree_conversion_json({ code, all_specs })` 返回新码及逐 Spec
 节点同时匹配编号、种类、身份：两边有 slug 用 slug，否则比较去标记旧名和升华身份。
 词条数值变化不删节点，缺历史目录报错。当前与未选 Spec 原文不变；
 存续孔、组专属点、属性、不透明 XML 保留，失效孔珠宝留在物品池。
-连通按当前树与珠宝授权判断，断路先保留；明确修复／退款后仍经 AllocationTree::edit 验证连通和预算。
+连通按当前树与珠宝授权判断，断路先保留；明确修复／退点后仍经 AllocationTree::edit 验证连通和预算。
 
 `node_power_json` 显式 nodes 每次最多 16 个，返回单点 delta、distance: 0，不保证合法路线。
 省略 nodes 时按邻接搜索，max_depth 默认 5、最多 12。Web 完整变体另算路线／每点收益。

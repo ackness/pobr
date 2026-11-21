@@ -22,7 +22,7 @@ test-pins = []
 [dev-dependencies]
 # Test-only: hand-written MinionDef fixtures compared against the loaded minions.
 pobr-data = { workspace = true, features = ["test-fixtures"] }
-# 仅测试用：load_jewel_radii 逐值对照 pobr-tree 现有 Rust 准源常量（搬迁不变式）。
+# Test-only: verify load_jewel_radii matches pobr-tree canonical Rust constants.
 pobr-tree.workspace = true
-# 仅测试用：load_base_player_mods 逐值对照 pobr-core 现有 Rust 准源（搬迁不变式）。
+# Test-only: verify load_base_player_mods matches pobr-core canonical Rust definitions.
 pobr-core.workspace = true

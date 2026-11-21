@@ -26,7 +26,7 @@
 ### 每行词条的状态
 
 `pobr_build::usage::line_usage`（CLI `calculate-build --usage [--json]`，WASM `line_usage_json`）
-回答每行输入用在哪里。它列物品各区段、肢体、药剂／护符、珠宝、天赋、任务奖励、自定义块、配置、宝石 stat，
+回答每行输入用在哪里。它列物品各区段、肢体、药剂／咒符、珠宝、天赋、任务奖励、自定义块、配置、宝石 stat，
 带来源 id、持有者名、解析出的 modifier 和状态。
 
 | 状态 | 含义 |
@@ -43,7 +43,7 @@
 
 inactive 可带 `read_gate: { state, config_option }`，无控件时 config_option 为 null。
 `condition_configs` 列引用条件的配置入口，包含已设 false 或由计算推导的条件。
-给召唤物的 MinionModifier 按召唤物是否读取内部名字判断，没有召唤物时为 unread。
+给召唤生物的 MinionModifier 按召唤生物是否读取内部名字判断，没有召唤生物时为 unread。
 `Condition:<X>`／`Multiplier:<X>` 经条件表消费：有其他词条等待 X，或计算问过 X
 （CalcConfig::read_variables）时算读取。
 
@@ -77,7 +77,7 @@ AdditionalRingSlot、GemlingQuality 由构筑预处理读天赋原文，分别�
    查游戏记录用 `mise run lookup <id 或名字>`。
 4. 再用 `mise run compare <构筑> [Stat ...]` 对照 PoB2 的总值、比值、BASE／INC／MORE 和逐来源词条。
    省略 stat 时取参考值中不一致的行；ActionRate 优先对 HitSpeed，否则 Speed。
-   召唤物为 `Minion:<stat>`。更细值可用 tools/pob2-oracle/run.sh。
+   召唤生物为 `Minion:<stat>`。更细值可用 tools/pob2-oracle/run.sh。
 5. 以游戏文本和数据判断谁对，不把参考或 PoB2 当真值。有意差异记录到
    [PoB2 差异](pob2-differences.md)与 devs/scripts/known-differences.json。
 
@@ -88,10 +88,10 @@ triage 按三方数值把差异行分为：
 | engine | PoB2 与构筑码参考值一致，PoBR 不同。 |
 | both | 三方都不同。 |
 | reference | PoBR 与当前 PoB2 一致，来源参考来自另一版本，通常无需改引擎。 |
-| known | 已登记的有意差异；PoB2 额外保留护身符授予技能精魄也自动归入。 |
+| known | 已登记的有意差异；PoB2 额外保留项链授予技能精魂也自动归入。 |
 
 engine／both 的汇总包括：按来源／类型对齐的词条差异、已存未生效词条、伤害因子、敌人抗性／穿透／承伤、
-资源池、逐技能精魄，以及按模板合并的未解析行。EHP／最大承伤还比敌人伤害、转换、资源池、命中次数，
+资源池、逐技能精魂，以及按模板合并的未解析行。EHP／最大承伤还比敌人伤害、转换、资源池、命中次数，
 并列 PoB2 `enemyMitigation.gainMods` 的额外伤害来源。
 每个构筑还列本地未读且与差异 stat 同词的名字（如 EffectiveBlockChance／ReplaceShieldBlock），
 以及等级／品质不同的技能（PoBR usage.skills，PoB2 skillLevels）。
@@ -149,7 +149,7 @@ usage 缓存为 `.cache/build-usage/`，按构筑码、程序内容、脚本及�
 分类为 agree、known、differs、pobr_zero、pob2_zero、both_zero、error、pob2_other_skill，
 纯指令／占位另列。来源或附加效果在 vendor 缺失不算吻合。
 
-both_zero 不能证明 buff、无载荷幻影、无事件触发已实现；召唤物只看一个主召唤物。
+both_zero 不能证明 buff、无载荷幻影、无事件触发已实现；召唤生物只看一个主召唤生物。
 known 只适用于所选 stat set 的显示／无伤害规则、已写明的模型或可在 0.1% 内重建 DPS 比值的范围取整。
 保留值和原因，排除技能族的未解释差异排名。平均伤害显示只豁免 CombinedDPS，其余指标仍比。
 平均命中因口径不同只展示，不分类；速率优先 HitSpeed，并比 firing_rate／reload_time。
@@ -184,14 +184,14 @@ translateLinesDetailed，旧包没有时用 translateLines）
   - 名字总是由本 checkout 的 `web/src/lib` 生成；审计旧 Release 时 schema 不同会给出警告。
 - 构筑：`mise run builds:fetch <集合目录>` 抓的 poe.ninja 构筑（每个升华一个），或任何含 `<名字>/code.txt` 的目录。
 - 报告分节，严重的在前：
-  - Errors：导出报错、物品错误、主技能无法解析、非有限数值、生命与护盾都不大于 0、召唤物生命不大于 0。
+  - Errors：导出报错、物品错误、主技能无法解析、非有限数值、生命与护盾都不大于 0、召唤生物生命不大于 0。
   - Raw ids：名字里出现原始 ID 或占位文本，按 en-US／zh-CN／zh-TW 分别检查。
   - 未翻译的名字与词条行：天赋节点名（passive name）与天赋词条行（passive line）分开统计，另有职业／升华名；
-    召唤物名按网页的显示（`MonsterVarieties.Name` 按 variety id）检查。
-  - 补译文本（Supplement）：已翻译、但译文来自翻译仓库补译（origin 为 agent／human）的物品行、天赋名与行、召唤物名，
+    召唤生物名按网页的显示（`MonsterVarieties.Name` 按 variety id）检查。
+  - 补译文本（Supplement）：已翻译、但译文来自翻译仓库补译（origin 为 agent／human）的物品行、天赋名与行、召唤生物名，
     与官方文本分开列出，不算失败；`--json` 的 `counts` 在有补译时多 `<item|passive>_supplement_lines_<lang>`
-    （补译行数／已翻译行数）。今天的数据没有补译，这一节不出现。
-  - 计算覆盖：未支持与未解析的行、未用上的宝石 stat；主技能、召唤物与 Full DPS 合计为 0（主组是 buff／光环时属正常）。
+    （补译行数／已翻译行数）。当数据不含补译时，这一节不出现。
+  - 计算覆盖：未支持与未解析的行、未用上的宝石 stat；主技能、召唤生物与 Full DPS 合计为 0（主组是 buff／光环时属正常）。
   - 其他：未解析的宝石（技能页显示 “(unresolved)”）、目录里没有的技能。
 - `--strict`：Errors 或 Raw ids 非空，或宝石目录（全部技能，不限于这些构筑）里有原始 ID 名时，以 1 退出。
   `--json` 写出逐构筑明细；`--langs` 限定语言，`--samples N` 每项示例数，`--no-lines` 跳过逐行翻译检查。
@@ -218,7 +218,7 @@ text_channel 的 gem_property／granted_skill 说明有其他文本入口，不�
 每条接入路径都经 ParseOutcome::into_applicable，只在 is_complete 时应用整行。
 例如 `1% more Life Flask Recovery`／`2% more Mana Flask Recovery` 可能只读成最大生命／魔力，
 余下 Flask Recovery；这时整行记入未支持和 unparsed，不能应用错误片段。
-物品、药剂护符、天赋、宝石／辅助文本、extra_modifier_texts、珠宝、本地需求都遵守此规则。
+物品、药剂咒符、天赋、宝石／辅助文本、extra_modifier_texts、珠宝、本地需求都遵守此规则。
 仅显示残留要修解析规则，不在接入处放行。
 `1% increased speed of Recoup Effects` 现在已有独立规则，不再作为部分解析反例。
 dropped_pre_flag_tags（审计 Partial）仍是另一项诊断。
@@ -307,7 +307,7 @@ holdout 只报计数，不报身份。影响统计不证明正确性。
   不运行 triage／diagnose／compare，不按其差异挑修复。accuracy 默认报三组总数。
 
 reference_agreement_does_not_regress 要求每组吻合构筑数／行数不低于 reference_report.rs 基线。
-主技能召唤构筑的伤害看该召唤物 TotalDPS。提升后上调，不能为通过下调；
+主技能召唤构筑的伤害看该召唤生物 TotalDPS。提升后上调，不能为通过下调；
 升数据版需按 ninja_parity 重录，其他参考错误必须有游戏依据并记录影响。
 门禁防回退，不证明真值；新增展示字段使更多 PlayerStat 行进入比较，也不等于计算更准。
 新目标／赛季用 builds:fetch，旧 holdout 转 tuned，新批作 holdout，见[参考构筑说明](../examples/reference-builds/README.md)。

@@ -35,8 +35,8 @@ describe('rankVariants', () => {
     const ranked = rankVariants(
       [
         v(0, { TotalDPS: 900, ActionRate: 12 }),
-        v(1, { TotalDPS: 2000, ActionRate: 5 }), // 分高但不可行
-        v(2, {}, 'boom'), // 错误沉底
+        v(1, { TotalDPS: 2000, ActionRate: 5 }), // higher score but infeasible
+        v(2, {}, 'boom'), // errors sort last
         v(3, { TotalDPS: 1100, ActionRate: 11 }),
       ],
       obj,

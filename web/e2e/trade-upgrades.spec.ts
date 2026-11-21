@@ -41,7 +41,7 @@ Implicits: 0</Item>
     await page.locator('.trade-position').filter({ hasText: 'Body Armour' }).click();
     await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
     const reference = page.locator('.upgrade-score-reference');
-    await expect(reference).toContainText('All recognised modifiers scored', { timeout: 60_000 });
+    await expect(reference).toContainText('All recognized modifiers scored', { timeout: 60_000 });
     const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
     const sum = query.query.stats[0];
     const value = (id: string) => sum.filters.find((filter: { id: string }) => filter.id === id)?.value.weight;
@@ -85,7 +85,7 @@ test('alloy hybrid effects enter real-WASM weights and the crafted item market m
   await page.locator('.trade-position').filter({ hasText: /^Main Hand/ }).click();
   await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
   const reference = page.locator('.upgrade-score-reference');
-  await expect(reference).toContainText('All recognised modifiers scored');
+  await expect(reference).toContainText('All recognized modifiers scored');
   const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
   const sum = query.query.stats[0];
   const value = (id: string) => sum.filters.find((filter: { id: string }) => filter.id === id)?.value.weight;
@@ -142,7 +142,7 @@ test('imported PoB armour and belt use their full explicit Sum as the market min
     await page.locator('.trade-position').filter({ hasText: slot }).click();
     await page.getByRole('button', { name: 'Calculate modifier scores', exact: true }).click();
     const reference = page.locator('.upgrade-score-reference');
-    await expect(reference).toContainText('All recognised modifiers scored', { timeout: 60_000 });
+    await expect(reference).toContainText('All recognized modifiers scored', { timeout: 60_000 });
     const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
     const sum = query.query.stats[0];
     const lifeWeight = sum.filters.find((filter: { id: string }) => filter.id === 'explicit.stat_3299347043').value.weight;

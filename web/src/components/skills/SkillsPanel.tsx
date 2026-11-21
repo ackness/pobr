@@ -520,7 +520,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
   );
 }
 
-/** 技能组套装：整套保存/一键切换（切换后侧边栏即见差异）。 */
+/** Skill-group sets: save whole presets and switch in one click (sidebar updates immediately). */
 export function SkillSets({ session, lang, catalog }: { session: BuildSession; lang: Lang; catalog: ReadonlyMap<string, GemCatalogEntry> }) {
   const tt = bindT(lang);
   const [name, setName] = useState('');

@@ -18,9 +18,9 @@ CLI 完整构筑和 marginal（逐来源边际贡献）结果带数据版本、�
 | CLI 字段／选项 | 含义 |
 |---|---|
 | `missing_items` | 导入器无法读取的已用物品；数值来自缺少这些物品的角色。 |
-| `reference` | 与来源 PlayerStat 比较；主技能召唤物的 MinionStat 也列出，行名 Minion*，pob_key 为 `Minion:<stat>`。只在沿用导出条件时提供。 |
-| `output.minions` | 每个创建的召唤物：怪物 id、召唤来源、所用 skill_id、等级、DPS、防御。 |
-| `--breakdown <stats>` | 返回 breakdowns 和 main_skill，步骤／词条来自 pobr_build::breakdown。`Minion:<stat>` 选主技能召唤物，包含角色给它的词条。 |
+| `reference` | 与来源 PlayerStat 比较；主技能召唤生物的 MinionStat 也列出，行名 Minion*，pob_key 为 `Minion:<stat>`。只在沿用导出条件时提供。 |
+| `output.minions` | 每个创建的召唤生物：怪物 id、召唤来源、所用 skill_id、等级、DPS、防御。 |
+| `--breakdown <stats>` | 返回 breakdowns 和 main_skill，步骤／词条来自 pobr_build::breakdown。`Minion:<stat>` 选主技能召唤生物，包含角色给它的词条。 |
 | `--full-dps` | 返回 output.full_dps、full_dot_dps、full_dps_skills；请求 FullDPS／FullDotDPS 分解也会计算。未请求时字段缺省，不拿未算的零比参考。 |
 | `output.ehp` | 实际 EHP 输入与过程量：逐类型敌人伤害、转换后承伤、资源池、命中次数、伤害概率与避开概率。 |
 | `--reference-basis` | output 与分解改用参考口径，并标 reference_basis。 |
@@ -33,23 +33,23 @@ WASM `{ pob_code }` 请求把同类失败物品放入 `item_errors`。
 TotalEHP／各类型 MaximumHitTaken 的敌人命中输入不能相加，所以不再列为词条行。
 CalculationSession::enemy_hit_mods 可查敌人输入和来源；CLI 不输出 WASM 的 derived 明细。
 
-### 召唤物与明细请求
+### 召唤生物与明细请求
 
 WASM `calculateBuildJson` 的 minions 包含 index、minion_id、name、summoned_by、skill_id、level、
 dps、life、armour、evasion、energy_shield，以及 stats、breakdowns、breakdown_descriptors。
-每项是一个召唤物实例的快照，不乘数量。stats 包含火冰电混沌抗性、最大值和超上限值，
+每项是一个召唤生物实例的快照，不乘数量。stats 包含火冰电混沌抗性、最大值和超上限值，
 使用与角色相同的 *Resist／*ResistMax／*ResistOverCap id。四种最终抗性有逐步分解。
 未建模值缺省，不补 0。
 
 main_minion_index 由 reference_check::main_skill_minion 按提供效果的准确宝石和召唤来源定位。
-同名召唤宝石各有结果，主组停用时无主召唤物。明细均带 actor。
-stats 另含 `MainMinionDPS`（Offence）：主召唤物单只击中 DPS，不乘数量；无主召唤物时缺省。
+同名召唤宝石各有结果，主组停用时无主召唤生物。明细均带 actor。
+stats 另含 `MainMinionDPS`（Offence）：主召唤生物单只击中 DPS，不乘数量；无主召唤生物时缺省。
 节点强度、变体比较和归因也接受这个 id。
 
 | 请求字段 | 行为 |
 |---|---|
-| 省略 `breakdowns` | 角色 BREAKDOWN_STATS，加每个召唤物全部明细。 |
-| `breakdowns: []` | 不生成角色或召唤物明细。 |
+| 省略 `breakdowns` | 角色 BREAKDOWN_STATS，加每个召唤生物全部明细。 |
+| `breakdowns: []` | 不生成角色或召唤生物明细。 |
 | `breakdowns: [id, ...]` | 先去重，只生成所选 id；未知 id 为参数错。 |
 | `breakdown_actor` | `{kind: "player"}` 或 `{kind: "minion", index}`；index 属于本次响应，越界报错。 |
 | `include_descriptors: true` | 内联角色 breakdown_descriptors；默认不复制。 |
@@ -92,7 +92,7 @@ Web 据此决定百分比格式与对比的好坏方向；仓库内副本在 `we
 | `<类型>EnemyDamageMult／EnemyPen` | 敌人伤害倍率／穿透百分点；物理与混沌穿透输入为 0。 |
 | `<类型>ResistTakenHitMulti` | 穿透后的抗性倍率，穿透不作用于负抗性。 |
 | `<类型>AttackTakenHitMult／SpellTakenHitMult` | 攻击／法术承伤层，Average 类别取平均。 |
-| `<类型>AfterReductionTakenHitMulti` | 所选命中类别承伤倍率 × 偏斜倍率。 |
+| `<类型>AfterReductionTakenHitMulti` | 所选命中类别承伤倍率 × 偏转倍率。 |
 | `<类型>BaseTakenHitMult` | 抗性 × 减伤 × 减伤后倍率，不含固定承伤。 |
 | `<类型>DamageReductionMax` 及全局 `DamageReductionMax` | 对应减伤上限。 |
 | `<类型>ManaEffectiveLife／MoMHitPool／TotalHitPool` | Mind over Matter 分担后的生命／命中池与总命中资源池。 |
@@ -151,21 +151,21 @@ Infernalist Comet d7afa87a05ea 的生命／MoM 池随[符文原文差异](pob2-d
 | `DeflectEffect` | 偏转挡下伤害百分比 = 40 + BASE DeflectEffect，限 0–100；stat 为 base_damage_%_deflected，无游戏内实测。 |
 | `SecondMinimalMaximumHitTaken` | 五种 `<类型>MaxHit` 的第二小值。 |
 | `SelfChillEffect` | 玩家侧 (100 + INC) × MORE，与 SelfFreezeEffect／SelfPoisonEffect／SelfBlindDuration 同为[自身减益视图](mechanics/defence.md#自身减益减速与玩家一侧视图)。 |
-| `EffectiveLootRarityMod` | (1 + LootRarity INC/100) × MORE；LootQuantity 仍无输出。护符按启用约定计入，未使用护符的 PoB2 不计，benchmark Amazon 为 1.15 对 1.0。 |
+| `EffectiveLootRarityMod` | (1 + LootRarity INC/100) × MORE；LootQuantity 仍无输出。咒符按启用约定计入，未使用咒符的 PoB2 不计，benchmark Amazon 为 1.15 对 1.0。 |
 
 “increased amount of Mana Leeched” 改偷取量，不改速率上限，benchmark Oracle Lightning Bolt 为
 212.73 对 PoB2 266.0，见[偷取差异](pob2-differences.md#已知的有意差异)。
 当前每资源只允许一个偷取实例，不采用旧的每实例 10% 池上限，因此不输出 LifeLeechInstanceRate／MaxLifeLeechInstance。
 
-### 药剂、护符与明细边界
+### 药剂、咒符与明细边界
 
-两瓶药剂、三个护符（含未启用项）按槽位输出 `Flask<N>*`／`Charm<N>*`：总恢复、立即恢复、每秒持续恢复、
+两瓶药剂、三个咒符（含未启用项）按槽位输出 `Flask<N>*`／`Charm<N>*`：总恢复、立即恢复、每秒持续恢复、
 持续时间、最大充能、每次消耗、满充能使用次数、每秒充能。*ChargesGained 是获取倍率。
 游戏 Flasks 的 LifePerUse／ManaPerUse／RecoveryTime（十分之一秒）与 ComponentCharges 的 MaxCharges／PerCharge
-进入 base_items.json.utility，护符时间也用 RecoveryTime。品质提升药剂恢复或护符时间。
+进入 base_items.json.utility，咒符时间也用 RecoveryTime。品质提升药剂恢复或咒符时间。
 本地 local_* 只查该物品，不能放全局池。全局 FlaskEffect／*FlaskChargeGen 有来源查询，
 槽位数值用实际输入公式；CLI utility_stats 与 WASM 同源。
-只算单次使用和充能，不推触发／覆盖率，启用效果见[药剂护符](mechanics/items.md#药剂与护符)。
+只算单次使用和充能，不推触发／覆盖率，启用效果见[药剂咒符](mechanics/items.md#药剂与咒符)。
 
 Azmeri Brew 的额外跨资源恢复使用 `Flask<N>LifeRecovery` / `ManaRecovery`，以及
 `LifeInstantRecovery` / `ManaInstantRecovery`、`LifeRecoveryPerSecond` / `ManaRecoveryPerSecond`。
@@ -237,7 +237,7 @@ StrikeTargets 不乘单目标伤害。
 
 | 字段 | 定义 |
 |---|---|
-| `CharmLimit` | env_finalize::charm_slots 得到的可用护符栏。 |
+| `CharmLimit` | env_finalize::charm_slots 得到的可用咒符栏。 |
 | `EnemyCurseLimit／EnemyMarkLimit` | 玩家自己的 player_curse_limit／player_mark_limit，含 CurseLimitIsMaximumPowerCharges。内部 enemy_curse_limit 是所有施法者最大值，可能更高。 |
 | `LightRadiusMod／LifeRecoveryRateMod／ManaRecoveryRateMod／EnergyShieldRecoveryRateMod` | 对应 `(1 + INC/100) × MORE`；恢复倍率与 Recoup 共用 recoup_recovery_rate 查询。LightRadius 每行因此算已读，即使没有转换。 |
 | `GlobalGemAttributeRequirements／GlobalItemAttributeRequirements／GlobalWeaponAttributeRequirements` | 共用 global_requirement_modifiers 的各类需求倍率，含 GlobalAttributeRequirements，默认 1。 |
@@ -270,7 +270,7 @@ LifeCancellableReservation／ManaCancellableReservation 是技能保留可释放
 `max(100 − Σ BASE Extra<Pool>Reserved, 0)`，默认 100。
 Beidat's Hand／Gaze／Will、Midnight Bargain 等永久保留进入总保留与低资源百分比，
 Reservation Efficiency／ReservationMultiplier 只缩放技能部分，不能缩放永久部分。
-没有额外永久魔力／精魄游戏来源可据此扩展，所以不读取 ExtraSpiritReserved。
+没有额外永久魔力／精魂游戏来源可据此扩展，所以不读取 ExtraSpiritReserved。
 
 DurationMod 用 duration_modifier_terms 的 `max((1 + INC/100) × MORE, 0)`，
 合并 Duration／PrimaryDuration，与实际持续时间共用，默认 1。
@@ -283,7 +283,7 @@ StrikeTargets 仅在 MeleeSingleTarget（Strike）时为 `1 + Σ BASE Additional
 melee_attack_number_of_spirit_strikes 的额外附近目标不乘单目标 DPS；Slam 不是 Strike，见[关键词](https://poe2db.tw/us/Keywords)。
 祖灵增幅读取明确攻击快照，见[快照约定](mechanics/snapshots.md#祖灵增幅)，额外目标仍不乘伤害。
 
-## 精魄保留
+## 精魂保留
 
 SpiritReserved 显示启用技能请求的全部保留量，即使超过资源池。
 SpiritUnreserved = Spirit − SpiritReserved 可以为负，计算器不会自动停技能以适配容量。
@@ -301,7 +301,7 @@ output-coverage.py 仍直接比较该字段，并在截断对上列 oracle_befor
 `calc_orchestrator::full_dps::calculate` 由 DataOrchestratorOptions::full_dps 开启，默认关闭。
 它把 PoB includeInFullDPS 组中的每个启用效果相加，不模拟轮转。
 数量优先 groupCount，否则宝石 count，可有小数；非正或非有限数不计。
-每个效果用自己的武器、天赋、辅助和触发环境；召唤物用该宝石创建的实例。
+每个效果用自己的武器、天赋、辅助和触发环境；召唤生物用该宝石创建的实例。
 同一物品触发技能已有可编辑纳入组时，跳过自动重复行。
 
 命中 DPS 乘数量相加。流血、点燃、毒共用各自层数上限，allocate_stacks 先分给单层伤害较高者。
@@ -319,9 +319,9 @@ include_in_full_dps、group_count、count。Web 技能页编辑，只在有组�
 |---|---|
 | `ActiveTrapLimit／ActiveMineLimit` | 0.5 数据无 Trap／Mine 技能类型或辅助，只有旧 Trappable／Mineable 与 Hazard。旧上限 stat 无当前引用，游戏常数无 PoB2 的 15。Hazard 另用 ActiveHazardLimit：所选技能的 Σ BASE HazardRuneLimit，Conductive Runes 为 20，其余 0，当前无词条／节点修改。 |
 | `BloodCharges／BloodChargesMax／InspirationCharges／InspirationChargesMax` | 只余旧 stat，如 show_blood_charge_info、vaal_reap_additional_maximum_blood_charges、inspiration_charge_duration_+%，无当前使用。游戏球类型只有 Endurance／Frenzy／Power，PoB2 的 5 是默认设置。 |
-| `TTakenReflect` | PoB2 的 `<Type>TakenReflectMult`／AnyTakenReflect 写死 false，不输出。游戏只有权重 0 的 ReflectDamageTakenEssence1、无当前暗金使用的戒指词缀，以及地图等词缀；Bramblejack 反射给攻击者，不能当玩家反射承伤减免。 |
+| `<Type>TakenReflect` | PoB2 的 `<Type>TakenReflectMult`／AnyTakenReflect 写死 false，不输出。游戏只有权重 0 的 ReflectDamageTakenEssence1、无当前传奇使用的戒指词缀，以及地图等词缀；Bramblejack 反射给攻击者，不能当玩家反射承伤减免。 |
 | `OffensiveWarcryEffect／MaxOffensiveWarcryEffect／AilmentWarcryEffect／RallyingHitEffect` | 来自 PoE1 按友军数增伤的 Intimidating／Rallying Cry；当前 PoE2 无对应技能和 stat，Rallying Cry 只作为 LargeScarabBuff 显示名，旧快照恒 1，不能输出该常数。 |
 | `LifeLeechInstanceRate／MaxLifeLeechInstance` | 旧 PoB2 单实例上限，当前规则不采用，见上文偷取。 |
 
 图腾防御不沿用 PoB2 固定的 40 元素／20 混沌值，而按图腾宝石等级 stat 计算；
-其他图腾字段边界见[召唤物与图腾约定](mechanics/minions.md)。
+其他图腾字段边界见[召唤生物与图腾约定](mechanics/minions.md)。
