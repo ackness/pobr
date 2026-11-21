@@ -6,13 +6,14 @@ import { classDisplayName } from '../lib/nativeDisplayNames';
 import { gemDisplayName } from '../lib/skillNames';
 import { createHash } from 'node:crypto';
 import { itemClassLabel, itemClassName } from '../lib/itemCrafting';
+import { bootErrorLabel } from '../lib/i18n';
 
 const state = vi.hoisted(() => ({ gems: [] as GemCatalogEntry[], crafting: { bases: [] as unknown[], mods: [] as unknown[] },
-  detailed: false, ready: true }));
+  detailed: false, ready: true, schemaVersion: undefined as number | undefined }));
 
 // Match the runtime import URL even when no local WASM package exists.
 vi.mock('/src/wasm/pkg/pobr_wasm.js', () => ({
-  default: async () => {}, schemaVersion: () => EXPECTED_SCHEMA_VERSION,
+  default: async () => {}, schemaVersion: () => state.schemaVersion ?? EXPECTED_SCHEMA_VERSION,
   gemCatalogJson: () => JSON.stringify(state.gems),
   itemCraftingCatalogJson: () => JSON.stringify(state.crafting),
   isDataReady: () => state.ready,
@@ -31,7 +32,7 @@ vi.mock('/src/wasm/pkg/pobr_wasm.js', () => ({
   },
 }));
 
-afterEach(() => { vi.unstubAllGlobals(); state.gems = []; state.crafting = { bases: [], mods: [] }; state.detailed = false; state.ready = true; });
+afterEach(() => { vi.unstubAllGlobals(); state.gems = []; state.crafting = { bases: [], mods: [] }; state.detailed = false; state.ready = true; state.schemaVersion = undefined; });
 
 test('passive tree loading uses the WASM label for a 1.0 pack and keeps historical labels', async () => {
   const current = [{ skill: 1 }], historical = [{ skill: 2 }];
@@ -398,3 +399,18 @@ test('class name lookup reuses the pinned member bytes staged at initialization'
   expect(await backend.translateNames([{ kind: 'itemClass', id: 'Ring', name: 'Rings' }], 'zh-CN')).toEqual(['Rings']);
   expect(fetch.mock.calls.filter(([url]) => url.endsWith(path))).toHaveLength(1);
 });
+
+test('schema mismatch throws a structured boot error token localized on the main thread', async () => {
+  state.schemaVersion = EXPECTED_SCHEMA_VERSION - 1;
+  const err = await createWasmBackend().then(() => undefined, (error: unknown) => error);
+  expect(err).toBeInstanceOf(Error);
+  expect(JSON.parse((err as Error).message)).toEqual({
+    bootError: 'schemaMismatch',
+    expected: EXPECTED_SCHEMA_VERSION,
+    actual: EXPECTED_SCHEMA_VERSION - 1,
+  });
+  expect(bootErrorLabel('en-US', err)).toContain(`frontend ${EXPECTED_SCHEMA_VERSION}`);
+  expect(bootErrorLabel('zh-CN', err)).toContain(`前端 ${EXPECTED_SCHEMA_VERSION}`);
+  expect(bootErrorLabel('zh-TW', err)).toContain(`前端 ${EXPECTED_SCHEMA_VERSION}`);
+});
+

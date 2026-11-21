@@ -51,7 +51,7 @@ test('selected-node details expose the same full refund changes through keyboard
   expect(html).toContain('Combined DPS -20');
   expect(html).toContain('Also refunds 1 downstream nodes');
   expect(html).toContain('<summary class="disclosure">1 more changes</summary>');
-  expect(ui.calculate).toHaveBeenCalledWith(expect.objectContaining({ allocated_nodes: [1] }));
+  expect(ui.calculate).toHaveBeenCalledWith(expect.objectContaining({ allocated_nodes: [1], breakdowns: [] }));
 });
 
 test('selected-node changes discard stale results when the build or preview changes', async () => {

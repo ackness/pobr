@@ -178,3 +178,61 @@ test('anonymous complexity limit uses one explicit budget fallback and filters l
   assert.equal(response.status, 200, JSON.stringify(data));
   assert.equal(data.search_mode, 'budget'); assert.equal(data.listings.length, 1); assert.equal(searches, 2);
 });
+
+test('Worker guards non-array socketedItems, trade fetch results and malformed requirements', async t => {
+  const idA = 'c'.repeat(64), idB = 'd'.repeat(64);
+  const mf = new Miniflare({
+    modules: true, cf: false, compatibilityDate: '2026-07-30',
+    scriptPath: fileURLToPath(new URL('../public/_worker.js', import.meta.url)),
+    outboundService: async request => {
+      const target = new URL(request.url);
+      if (target.origin === 'https://www.wegame.com.cn') {
+        const method = target.pathname.replace('/api/v1/wegame.pallas.poe2.Profile/', '');
+        if (method === 'GetEquipments') {
+          return Response.json({ result: { error_code: 0 }, equipments: [{
+            baseType: 'Linen Belt', socketedItems: 'not-an-array',
+          }] });
+        }
+        return Response.json({ result: { error_code: 0 }, ...payloads[method] });
+      }
+      if (request.method === 'POST') {
+        const body = await request.json();
+        const emptyResult = body.query.filters.type_filters.filters.category.option === 'accessory.ring';
+        return Response.json({ id: emptyResult ? 'bad-result' : 'bad-reqs', result: emptyResult ? [idA] : [idA, idB], total: 2 });
+      }
+      if (target.searchParams.get('query') === 'bad-result') {
+        return Response.json({ result: 'not-an-array' });
+      }
+      return Response.json({ result: [
+        { id: idA, listing: { price: { amount: 10, currency: 'exalted' } },
+          item: { baseType: 'Amber Amulet', requirements: 'not-an-array', socketedItems: { bad: true } } },
+        { id: idB, listing: { price: { amount: 12, currency: 'exalted' } },
+          item: { baseType: 'Amber Amulet', requirements: [null, { name: 'Level', values: [['55', 0]] }] } },
+      ] });
+    },
+  });
+  t.after(() => mf.dispose());
+
+  const wegame = await mf.dispatchFetch('https://pobr.test/api/import/wegame', {
+    method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://pobr.test' },
+    body: JSON.stringify({ url }),
+  });
+  assert.equal(wegame.status, 200);
+  const wegameBody = await wegame.json();
+  assert.deepEqual(wegameBody.equipments, [{ baseType: 'Linen Belt' }]);
+
+  const badResult = await mf.dispatchFetch('https://pobr.test/api/trade/search', {
+    method: 'POST', body: JSON.stringify({ realm: 'intl', league: 'Standard', category: 'accessory.ring' }),
+  });
+  assert.equal(badResult.status, 200);
+  assert.deepEqual((await badResult.json()).listings, []);
+
+  const badReqs = await mf.dispatchFetch('https://pobr.test/api/trade/search', {
+    method: 'POST', body: JSON.stringify({ realm: 'intl', league: 'Standard', category: 'accessory.amulet', maxLevel: 60 }),
+  });
+  assert.equal(badReqs.status, 200);
+  const badReqsBody = await badReqs.json();
+  assert.equal(badReqsBody.listings.length, 2);
+  assert.equal('socketedItems' in badReqsBody.listings[0].item, false);
+});
+

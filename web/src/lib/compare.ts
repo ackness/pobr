@@ -97,8 +97,8 @@ export async function compareBuilds(a: CalculateBuildRequest, b: CalculateBuildR
   const backend = await getBackend();
   const [requestA, requestB] = comparisonRequests(a, b, basis);
   // One backend/data snapshot for both; serialized to avoid stacking engine work.
-  const before = await backend.calculateBuild(requestA);
-  const after = await backend.calculateBuild(requestB);
+  const before = await backend.calculateBuild({ ...requestA, breakdowns: [] });
+  const after = await backend.calculateBuild({ ...requestB, breakdowns: [] });
   return { before, after, stats: compareStats(comparisonStats(before), comparisonStats(after)) };
 }
 

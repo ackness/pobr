@@ -24,7 +24,7 @@ export function TreeNodeChanges({ request, preview, baseline, busy, allocated, l
     if (!open || !ready || resolved?.key === key) return;
     let cancelled = false;
     const timer = setTimeout(() => {
-      getBackend().then(backend => backend.calculateBuild(calculationRequest!))
+      getBackend().then(backend => backend.calculateBuild({ ...calculationRequest!, breakdowns: [] }))
         .then(next => { if (!cancelled) setResolved({ key, diffs: diffStats(baseline!.stats, next.stats) }); })
         .catch(() => { if (!cancelled) setResolved({ key, diffs: null }); });
     }, 300);

@@ -103,11 +103,13 @@ describe('engine RPC', () => {
     await expect(client.backend.decodeBuild('x')).rejects.toThrow('wasm module not built');
   });
 
-  it('fails everything still waiting when the worker is given up on', async () => {
+  it('fails everything still waiting when the worker is given up on, and rejects later calls immediately', async () => {
     const client = connect(new Promise<PobrBackend>(() => undefined));
     const stuck = client.backend.decodeBuild('x');
     client.fail(new Error('Engine worker failed'));
     await expect(stuck).rejects.toThrow('Engine worker failed');
+    await expect(client.backend.decodeBuild('y')).rejects.toThrow('Engine worker failed');
+    await expect(client.ready()).rejects.toThrow('Engine worker failed');
   });
 });
 

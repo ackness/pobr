@@ -156,7 +156,10 @@ let backendPromise: Promise<PobrBackend> | null = null;
 
 /** Get the active backend (lazy-loaded singleton). */
 export function getBackend(): Promise<PobrBackend> {
-  backendPromise ??= createBackend().then(withBreakdownDescriptors);
+  backendPromise ??= createBackend().then(withBreakdownDescriptors).catch((err: unknown) => {
+    backendPromise = null;
+    throw err;
+  });
   return backendPromise;
 }
 

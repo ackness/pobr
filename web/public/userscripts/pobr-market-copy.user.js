@@ -2,7 +2,7 @@
 // @name         PoBR - Market item copy
 // @name:zh-CN   PoBR - 市集装备一键复制
 // @namespace    https://github.com/ackness/pobr
-// @version      0.1.1
+// @version      0.1.2
 // @description Copy one market item as complete PoBR text, including requirements and socket effects.
 // @description:zh-CN 在商品旁添加「复制到 PoBR」，保留需求、隐式、符文和其他词缀，直接粘贴比较。
 // @match        https://poe.game.qq.com/trade2/search/*
@@ -85,7 +85,7 @@
     }
     const implicit = array(item.implicitMods).flatMap(linesOf);
     lines.push(separator, `Implicits: ${implicit.length}`, ...implicit, separator);
-    for (const [field, prefix] of [['enchantMods', '{enchant}'], ['runeMods', '{rune}'], ['explicitMods', ''], ['craftedMods', '{crafted}'], ['fracturedMods', '{fractured}']]) {
+    for (const [field, prefix] of [['enchantMods', '{enchant}'], ['runeMods', '{rune}'], ['explicitMods', ''], ['craftedMods', '{crafted}'], ['fracturedMods', '{fractured}'], ['desecratedMods', '{desecrated}'], ['mutatedMods', '{mutated}']]) {
       for (const line of array(item[field]).flatMap(linesOf)) lines.push(prefix + line);
     }
     // Keep unknown effects visible to PoBR instead of inventing a numerical benefit.
@@ -93,7 +93,7 @@
       // Search aggregates (Sum, combined resistance, etc.) duplicate item stats
       // or depend on the query; they are not item effects or unsupported mods.
       if (field === 'pseudoMods') continue;
-      if (field.endsWith('Mods') && !['implicitMods', 'enchantMods', 'runeMods', 'explicitMods', 'craftedMods', 'fracturedMods'].includes(field)) {
+      if (field.endsWith('Mods') && !['implicitMods', 'enchantMods', 'runeMods', 'explicitMods', 'craftedMods', 'fracturedMods', 'desecratedMods', 'mutatedMods'].includes(field)) {
         lines.push(...array(value).flatMap(linesOf).map(line => `Unmodeled market effect (${field}): ${line}`));
       }
     }

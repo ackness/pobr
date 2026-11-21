@@ -159,9 +159,17 @@ function formulaOperand(step: FormulaStep, stat?: string, lang: Lang = 'en-US', 
     case 'action_speed':
       return `×${n}`;
     case 'added_time':
+    case 'channel_release':
       return `${signed}s`;
     case 'hit_interval':
+    case 'channel_attack_time':
+    case 'channel_time':
       return `${n}s`;
+    case 'channel_maximum_stages':
+    case 'channel_default_stages':
+    case 'channel_requested_stages':
+    case 'channel_stages':
+      return n;
     case 'override':
       return `= ${n}`;
     case 'cap':
@@ -170,6 +178,8 @@ function formulaOperand(step: FormulaStep, stat?: string, lang: Lang = 'en-US', 
       return `≤ ${n}`;
     case 'floor':
       return `≥ ${n}`;
+    default:
+      return n;
   }
 }
 

@@ -1,5 +1,5 @@
 import { importedBuildName } from '../lib/workspaceNames';
-import { t, type Lang } from '../lib/i18n';
+import { bootErrorLabel, t, type Lang } from '../lib/i18n';
 import type { TreeEditResult } from '../api/types';
 /**
  * Build session state (PoB2 semantics: initializes with an editable empty build).
@@ -773,12 +773,12 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const syncedRef = useRef<{ raw: string | null; library: BuildWorkspace | null }>({ raw: null, library: null });
   const refreshViewRef = useRef<(library: BuildWorkspace) => void>(() => {});
   const [syncNotice, setSyncNotice] = useState<SyncNotice | null>(null);
-  const noticeTimer = useRef<number | undefined>(undefined);
-  const dismissSyncNotice = useCallback(() => { window.clearTimeout(noticeTimer.current); setSyncNotice(null); }, []);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const dismissSyncNotice = useCallback(() => { clearTimeout(noticeTimer.current); setSyncNotice(null); }, []);
   const announce = useCallback((kind: SyncNotice['kind']) => {
-    window.clearTimeout(noticeTimer.current);
+    clearTimeout(noticeTimer.current);
     setSyncNotice({ kind, id: Date.now() });
-    noticeTimer.current = window.setTimeout(() => setSyncNotice(null), 10_000);
+    noticeTimer.current = setTimeout(() => setSyncNotice(null), 10_000);
   }, []);
   const persistWorkspace = useCallback((next: BuildWorkspace, replaceStored = false) => {
     let write = next;
@@ -1010,7 +1010,13 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         if (!starterClass) throw new Error('No character classes available in the loaded data pack.');
         defaultStarterRef.current = defaultStarterSession(starterClass);
         setBootMessage(null);
-        const raw = localStorage.getItem(STORAGE.workspace) ?? '';
+        let raw: string | null = null;
+        try {
+          raw = localStorage.getItem(STORAGE.workspace);
+        } catch {
+          setStorageFailed(true);
+          raw = null;
+        }
         let saved: SavedSession | null = null;
         if (raw) {
           const envelope = JSON.parse(raw);
@@ -1046,9 +1052,10 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         }
         apply(defaultStarterRef.current.state);
       })
-      .catch((err) => !cancelled && setBootError(String(err)));
+      .catch((err) => !cancelled && setBootError(bootErrorLabel(lang, err)));
     return () => {
       cancelled = true;
+      clearTimeout(noticeTimer.current);
     };
     // `apply` is stable (`useCallback` has no changing deps); run boot initialization once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1188,7 +1195,8 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         const decoded = await (await getBackend()).switchLoadout(code, sel);
         setBuild(decoded);
         const { overview, annotations } = splitNotes(decoded.notes ?? '');
-        setNotes(overview);
+        notesRef.current = overview;
+        setNotesState(overview);
         apply({
           pobCode: decoded.code,
           character: {
@@ -1208,7 +1216,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         setPendingOperations(count => count - 1);
       }
     },
-    [apply, setNotes, state?.pobCode],
+    [apply, state?.pobCode],
   );
 
   /**
@@ -1238,7 +1246,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
             ? { tree: current.tree, item: current.item, skill: current.skill, config: current.config }
             : undefined,
         );
-        await importCode(nextCode);
+        await importCode(nextCode, { destination: 'currentStage' });
       } catch (err) {
         setOperationError(formatApiError(err));
       } finally {
@@ -1251,7 +1259,8 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const newBuild = useCallback(
     (className: string, ascendancyName: string) => {
       setBuild(null);
-      setNotes('');
+      notesRef.current = '';
+      setNotesState('');
       apply({
         pobCode: null,
         character: { level: 1, class_name: className, ascendancy_name: ascendancyName },
@@ -1266,48 +1275,53 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         params: { config_inputs: {} },
       }, { clean: true });
     },
-    [apply, setNotes],
+    [apply],
   );
 
   const setSocketGroups = useCallback(
     (socketGroups: SocketGroupInput[]) => {
-      if (!state) return;
-      apply({ ...state, socketGroups });
+      const current = stateRef.current;
+      if (!current) return;
+      apply({ ...current, socketGroups });
     },
-    [apply, state],
+    [apply],
   );
 
   const setWeaponSet = useCallback((set: 1 | 2) => {
-    if (!state) return;
-    const main = state.params.main_socket_group;
-    const next = switchWeapons(state, set);
+    const current = stateRef.current;
+    if (!current) return;
+    const main = current.params.main_socket_group;
+    const next = switchWeapons(current, set);
     // Explicitly switching the selected skill changes its exclusive binding too.
     apply({ ...next, socketGroups: next.socketGroups.map((group, i) =>
       i === main && group.weapon_set ? { ...group, weapon_set: set } : group) });
-  }, [apply, state]);
+  }, [apply]);
 
   const setItems = useCallback(
     (items: SlotItemInput[]) => {
-      if (!state) return;
-      apply({ ...state, items });
+      const current = stateRef.current;
+      if (!current) return;
+      apply({ ...current, items });
     },
-    [apply, state],
+    [apply],
   );
 
   const setFlasks = useCallback(
     (flasks: UtilitySlotInput[]) => {
-      if (!state) return;
-      apply({ ...state, flasks });
+      const current = stateRef.current;
+      if (!current) return;
+      apply({ ...current, flasks });
     },
-    [apply, state],
+    [apply],
   );
 
   const setLimbs = useCallback(
     (limbs: SlotItemInput[]) => {
-      if (!state) return;
-      apply({ ...state, limbs });
+      const current = stateRef.current;
+      if (!current) return;
+      apply({ ...current, limbs });
     },
-    [apply, state],
+    [apply],
   );
 
   const setJewels = useCallback(
@@ -1343,8 +1357,8 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         for (const set of sets) {
           const previous = switchWeapons(current, set);
           const candidate = switchWeapons(next, set);
-          const before = set === active && !busy && !calcError && calc ? calc : await backend.calculateBuild(toRequest(previous));
-          const after = await backend.calculateBuild(toRequest(candidate));
+          const before = set === active && !busy && !calcError && calc ? calc : await backend.calculateBuild({ ...toRequest(previous), breakdowns: [] });
+          const after = await backend.calculateBuild({ ...toRequest(candidate), breakdowns: [] });
           if (jewelSeqRef.current !== seq || stateRef.current !== current) return;
           views.push({ previous, candidate, before, after });
         }
@@ -1386,28 +1400,30 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
 
   const setCharacter = useCallback(
     (patch: Partial<CharacterState>) => {
-      if (!state) return;
-      apply({ ...state, character: { ...state.character, ...patch } });
+      const current = stateRef.current;
+      if (!current) return;
+      apply({ ...current, character: { ...current.character, ...patch } });
     },
-    [apply, state],
+    [apply],
   );
 
   const toggleNode = useCallback(
     (skill: number, choice?: AttributeChoice) => {
-      if (!state) return;
-      const has = state.allocatedNodes.includes(skill);
+      const current = stateRef.current;
+      if (!current) return;
+      const has = current.allocatedNodes.includes(skill);
       const allocatedNodes = has
-        ? state.allocatedNodes.filter((n) => n !== skill)
-        : [...state.allocatedNodes, skill];
-      const attributeChoices = { ...state.attributeChoices };
+        ? current.allocatedNodes.filter((n) => n !== skill)
+        : [...current.allocatedNodes, skill];
+      const attributeChoices = { ...current.attributeChoices };
       if (has) {
         delete attributeChoices[String(skill)];
       } else if (choice) {
         attributeChoices[String(skill)] = choice;
       }
-      apply({ ...state, allocatedNodes, attributeChoices }, { treeEdit: true });
+      apply({ ...current, allocatedNodes, attributeChoices }, { treeEdit: true });
     },
-    [apply, state],
+    [apply],
   );
 
   /** Apply a complete passive plan and travel-attribute choices atomically.
@@ -1415,15 +1431,16 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
    */
   const setAllocatedNodes = useCallback(
     (skills: number[], choices?: Record<string, AttributeChoice>) => {
-      if (!state) return;
+      const current = stateRef.current;
+      if (!current) return;
       const allocatedNodes = [...new Set(skills)];
       const kept = new Set(allocatedNodes);
       const attributeChoices = Object.fromEntries(
-        Object.entries({ ...state.attributeChoices, ...choices }).filter(([skill]) => kept.has(Number(skill))),
+        Object.entries({ ...current.attributeChoices, ...choices }).filter(([skill]) => kept.has(Number(skill))),
       );
-      apply({ ...state, allocatedNodes, attributeChoices }, { treeEdit: true });
+      apply({ ...current, allocatedNodes, attributeChoices }, { treeEdit: true });
     },
-    [apply, state],
+    [apply],
   );
 
   const applyTreeEdit = useCallback((result: TreeEditResult, expected: CalculateBuildRequest,
@@ -1440,10 +1457,11 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
 
   const setAttributeChoices = useCallback(
     (attributeChoices: Record<string, AttributeChoice>) => {
-      if (!state) return;
-      apply({ ...state, attributeChoices }, { treeEdit: true });
+      const current = stateRef.current;
+      if (!current) return;
+      apply({ ...current, attributeChoices }, { treeEdit: true });
     },
-    [apply, state],
+    [apply],
   );
 
   const applyTreeConversion = useCallback((decoded: BuildJson, code: string, expectedVersion: number) => {
@@ -1475,10 +1493,11 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
 
   const updateParams = useCallback(
     (patch: Partial<CalcParams>) => {
-      if (!state) return;
-      apply({ ...state, params: paramsFromConfigInputs(patch.config_inputs ?? state.params.config_inputs, { ...state.params, ...patch }) });
+      const current = stateRef.current;
+      if (!current) return;
+      apply({ ...current, params: paramsFromConfigInputs(patch.config_inputs ?? current.params.config_inputs, { ...current.params, ...patch }) });
     },
-    [apply, state],
+    [apply],
   );
 
   const inspectSkill = useCallback((groupIndex: number, activeSkillIndex: number, expectedVersion: number) => {
@@ -1496,48 +1515,51 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
 
   const setConfigInput = useCallback(
     (key: string, value: ConfigInputValue | null) => {
-      if (!state) return;
-      const config_inputs = { ...state.params.config_inputs };
+      const current = stateRef.current;
+      if (!current) return;
+      const config_inputs = { ...current.params.config_inputs };
       if (value === null) {
         delete config_inputs[key];
       } else {
         config_inputs[key] = value;
       }
-      apply({ ...state, params: { ...state.params, config_inputs } });
+      apply({ ...current, params: { ...current.params, config_inputs } });
     },
-    [apply, state],
+    [apply],
   );
 
   const setAnnotation = useCallback(
     (key: string, text: string) => {
-      if (!state) return;
-      const annotations = { ...state.annotations };
+      const current = stateRef.current;
+      if (!current) return;
+      const annotations = { ...current.annotations };
       if (text.trim()) {
         annotations[key] = text;
       } else {
         delete annotations[key];
       }
       // Annotations do not affect calculations: update state and persistence only without triggering a recalc.
-      const next = { ...state, annotations };
+      const next = { ...current, annotations };
       setState(next);
       stateRef.current = next;
       saveToStorage(next, notesRef.current);
     },
-    [state, saveToStorage],
+    [saveToStorage],
   );
 
   const removeSocketGroup = useCallback(
     (index: number) => {
-      if (!state) return;
+      const current = stateRef.current;
+      if (!current) return;
       setSocketGroupRevision(value => value + 1);
-      const socketGroups = state.socketGroups.filter((_, i) => i !== index);
+      const socketGroups = current.socketGroups.filter((_, i) => i !== index);
       // Keep the same selected group after compaction; replace it only if removed.
-      const main = state.params.main_socket_group;
+      const main = current.params.main_socket_group;
       const nextMain = main === undefined ? undefined : main === index ? socketGroups.findIndex(group => group.enabled)
         : main > index ? main - 1 : main;
       // `skill:<index>` annotation keys track group indices: drop deleted group keys and shift later ones down.
       const annotations: Annotations = {};
-      for (const [key, text] of Object.entries(state.annotations)) {
+      for (const [key, text] of Object.entries(current.annotations)) {
         const m = key.match(/^skill:(\d+)$/);
         if (!m) {
           annotations[key] = text;
@@ -1547,10 +1569,10 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
         if (i === index) continue;
         annotations[i > index ? `skill:${i - 1}` : key] = text;
       }
-      apply({ ...state, socketGroups, annotations, params: { ...state.params,
+      apply({ ...current, socketGroups, annotations, params: { ...current.params,
         main_socket_group: nextMain !== undefined && nextMain >= 0 && nextMain < socketGroups.length ? nextMain : undefined } });
     },
-    [apply, state],
+    [apply],
   );
 
   const exportSession = useCallback((): string => {

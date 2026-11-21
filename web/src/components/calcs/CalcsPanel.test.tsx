@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
-import type { Breakdown, BreakdownMod, CalculateBuildResponse, DetailKind } from '../../api/types';
+import type { Breakdown, BreakdownMod, CalculateBuildResponse, DetailKind, FormulaOp } from '../../api/types';
 import { BreakdownTable, CalcsPanel, followedActorKey } from './CalcsPanel';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { UiProvider } from '../shared/UiContext';
@@ -395,3 +395,42 @@ test('the followed actor key changes across a failed calculation, so a later pla
   // Each step differs from the one before, so the follow effect runs on recovery.
   expect(new Set(keys).size).toBe(3);
 });
+
+test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('Calcs renders all 7 channel formula steps cleanly in %s', lang => {
+  const tt = bindT(lang);
+  const breakdown: Breakdown = { ...empty, formula: {
+    steps: [
+      { op: 'channel_attack_time', operand: 0.85, result: 1.18 },
+      { op: 'channel_maximum_stages', operand: 6, result: 1.18 },
+      { op: 'channel_default_stages', operand: 6, result: 1.18 },
+      { op: 'channel_requested_stages', operand: 4, result: 1.18 },
+      { op: 'channel_stages', operand: 4, result: 1.18 },
+      { op: 'channel_time', operand: 1.5, result: 0.67 },
+      { op: 'channel_release', operand: 0.25, result: 0.57 },
+    ],
+    value: 0.57,
+  } };
+  const html = renderToStaticMarkup(<BreakdownTable breakdown={breakdown} lang={lang} />);
+  expect(html).not.toContain('undefined');
+  expect(html).toContain(`<tr class="formula-step formula-channel_attack_time"><th scope="row">${tt('calcs.step.channel_attack_time')}</th><td class="formula-operand">0.85s</td>`);
+  expect(html).toContain(`<tr class="formula-step formula-channel_maximum_stages"><th scope="row">${tt('calcs.step.channel_maximum_stages')}</th><td class="formula-operand">6</td>`);
+  expect(html).toContain(`<tr class="formula-step formula-channel_default_stages"><th scope="row">${tt('calcs.step.channel_default_stages')}</th><td class="formula-operand">6</td>`);
+  expect(html).toContain(`<tr class="formula-step formula-channel_requested_stages"><th scope="row">${tt('calcs.step.channel_requested_stages')}</th><td class="formula-operand">4</td>`);
+  expect(html).toContain(`<tr class="formula-step formula-channel_stages"><th scope="row">${tt('calcs.step.channel_stages')}</th><td class="formula-operand">4</td>`);
+  expect(html).toContain(`<tr class="formula-step formula-channel_time"><th scope="row">${tt('calcs.step.channel_time')}</th><td class="formula-operand">1.5s</td>`);
+  expect(html).toContain(`<tr class="formula-step formula-channel_release"><th scope="row">${tt('calcs.step.channel_release')}</th><td class="formula-operand">+0.25s</td>`);
+});
+
+test('unknown future formula ops fall back safely without rendering undefined', () => {
+  const breakdown: Breakdown = { ...empty, formula: {
+    steps: [
+      { op: 'base', operand: 10, result: 10 },
+      { op: 'future_unknown_op' as FormulaOp, operand: 42, result: 420 },
+    ],
+    value: 420,
+  } };
+  const html = renderToStaticMarkup(<BreakdownTable breakdown={breakdown} lang="en-US" />);
+  expect(html).not.toContain('undefined');
+  expect(html).toContain('<th scope="row">calcs.step.future_unknown_op</th><td class="formula-operand">42</td><td class="formula-result">420</td>');
+});
+
