@@ -92,4 +92,4 @@ PoB2 的固定数据写明 Circular Teachings 移除敏捷的固有收益，但�
 旧数据包的历史树若不含坐标，半径效果无法可靠计算；不会借用当前树坐标伪造结果。
 目前搜索覆盖已分配的普通树插槽，额外授予的特殊插槽可以计算已导入珠宝，搜索界面尚不枚举它们。
 
-代码核对入口：`pobr-tree` 的 `jewel_tree` / `allocation`、`pobr-build/tests/skills/passive_jewels.rs`、`web/src/lib/tradeOptimizer.ts`。种子缺失与未知词条仍保留诊断，搜索或自动规划不能将它们当作零效果。
+代码核对入口：`pobr-build` 的 `jewel_tree`、`pobr-tree` 的 `allocation`、`pobr-build/tests/skills/passive_jewels.rs`、`web/src/lib/tradeOptimizer.ts`。种子缺失与未知词条仍保留诊断，搜索或自动规划不能将它们当作零效果。

@@ -112,7 +112,7 @@ Ice Bite 的 `support_ice_bite_buff_grant_%_added_cold_attack_damage` 虽有历�
 
 ### 黑暗雕像
 
-Vile Effusion（`DarkEffigyProjectilePlayer`）按目标上不同混沌 DoT 类型数 `N` 发射，对单个图腾的命中 DPS 取 `N` 倍，没有额外基础一发。原生 targeting 数据的额外投射物 100 不表示单目标命中 101 次；普通额外投射物、连锁转换不能改写此数量。依据为 [Dark Effigy 游戏说明](https://poe2db.tw/us/Dark_Effigy)与 [Wiki 交互说明](https://www.poe2wiki.net/wiki/Dark_Effegy)。
+Vile Effusion（`DarkEffigyProjectilePlayer`）按目标上不同混沌 DoT 类型数 `N` 发射，对单个图腾的命中 DPS 取 `N` 倍，没有额外基础一发。原生 targeting 数据的额外投射物 100 不表示单目标命中 101 次；普通额外投射物、连锁转换不能改写此数量。依据为 [Dark Effigy 游戏说明](https://poe2db.tw/us/Dark_Effigy)与 [Wiki 交互说明](https://www.poe2wiki.net/wiki/Dark_Effigy)。
 
 类型来自实际进入既有减益／诅咒流程的 Contagion、Essence Drain、Soulrend、Profane Ritual 和 Decaying Hex。需要正值混沌 DoT、有效来源与兼容辅助；Decaying Hex 随通过限制、最强副本和 Hexproof 检查的诅咒生效。同一类型不重复计数，中毒不论多少层只计一种。
 

@@ -11,7 +11,7 @@
 | 环节 | 可能丢失的内容 | 记录位置 |
 |---|---|---|
 | XML → Build | 被拒物品、没有模型的装备栏 | ImportReport::skipped_items／unmodelled_slots |
-| 文本 → Modifier（计算词条） | 未解析行，或只解析一部分、仍有余文的行 | unsupported_modifier_texts；台账 unparsed |
+| 文本 → Modifier（计算词条） | 未解析行，或只解析一部分、仍有余文的行 | `CalculationSession::unsupported_modifier_texts`、`Diagnosis::unparsed_lines`；台账 `unparsed` |
 | 宝石 stat → Modifier | stat-map 有条目但引擎拒绝，或根本无条目 | Diagnosis::unmapped_stats／unknown_stats |
 | Modifier → 计算 | 名字从未查询、倍率无人赋值、条件无人设置 | unread_modifiers／unprovided_multipliers／unset_conditions |
 

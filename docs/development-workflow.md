@@ -132,7 +132,7 @@ mise run patch:status 0.5.5.8 --repoe /path/to/repoe --locale /path/to/poe2-zh-c
 
 该报告不替代 owner 发布资格检查（包括 D40）、ZIP 重现、L2 逐行归因、本地 `e2e release` 回执和发布后的严格显示审计。正式采用及上线仍按 [RELEASING.md](../RELEASING.md) 执行。
 
-基准和手动诊断按需编译，普通测试不编译 Criterion 或五个 WASM 诊断/fixture 生成目标：
+基准和手动诊断按需编译，普通测试不编译 Criterion 或八个 WASM 诊断/fixture 生成目标：
 
 ```bash
 mise exec -- cargo bench -p pobr-core --features benchmarks --bench mod_db_bench

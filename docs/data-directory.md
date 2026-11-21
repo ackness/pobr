@@ -7,8 +7,8 @@ See the [pipeline guide](../pipeline/README.md) for the source and adoption boun
 | Path | Purpose |
 | --- | --- |
 | `CURRENT` | Selected local game-data version; not a claim of upstream freshness |
-| Tracked `overlay-common/*.json` | PoBR-owned rules and curation |
-| Ignored `overlay-common/*.json` | Shared files supplied by the selected data lock |
+| Tracked `overlay-common/*.json` | PoBR-owned rules and curation (`local_mods.json`, `special_mods.json`) |
+| Ignored `overlay-common/*.json` | Shared inputs supplied by the selected data lock (`local_mods.json` and `special_mods.json` stay tracked) |
 | Ignored `<version>/` | Prepared runtime snapshot with a verified manifest |
 
 Prepare the selected combination with `mise run data:prepare`. This imports pinned

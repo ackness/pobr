@@ -77,7 +77,7 @@ parity/reference 基线由远端完整 CI 验证，调查性逐行记录和 accu
    `mise exec -- cargo test -q -p pobr-core --test golden display_catalog`。
 4. 如有未解决的数值疑问，用少量构筑交叉核对 PoB2，并复用已有 CLI：
    `target/debug/pobr calculate-build --file <code.txt> --json` 对照
-   `.cache/pob2-oracle/<hash>.json` 的 `calcsOutput.<PoB key>`。
+   `.cache/pob2-oracle/<code hash>-<inputs hash>.json` 的 `calcsOutput.<PoB key>`。
    完整 `output-coverage.py` 留给批次验证。
 
 <a id="implement-a-missing-mechanic"></a>
