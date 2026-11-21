@@ -469,13 +469,13 @@ mise run web:preview --port 4180 --tunnel --allow-wegame # 额外允许 WeGame �
 的写作提示，不由 CI 强制正文格式。只写实际执行的命令与结果；界面变化按需要给出前后证据，
 机制依据以游戏数据/stat ID 为准。draft 可用于提前获得反馈，不把它当作额外流程阶段。
 
-授权合并前可以运行 `mise run pr-ready <N>`：它只读 PR 当前状态、`PR gate`、其他失败/待定检查
+授权合并前可以运行 `mise run pr-ready <N>`（需要同时核对 `Full gate` 时可加 `--require-full`）：它只读 PR 当前状态、`PR gate`、其他失败/待定检查
 与冲突，并再次核对 head/base，输出带 `--match-head-commit` 的准确命令。它不评论、不合并、
 不验证“是否有独立推理”。这是减少误操作的辅助入口；维护者也可以直接核对同样的事实。
 合并默认用 merge commit，让分支原始提交继续可从 master 到达：review 证据与 `--match-head-commit`
 引用的 head SHA 在删除分支后仍能取回。其他仓库引用的 PoBR 提交（`contract/<n>.<m>`）由不可变 tag 保留，不依赖合并方式。
 Rust、data 或 pipeline 改动合并前须有绿色的 `mise run ci <branch>`，其他改动按风险选择。
-这是 review 规则，`pr-ready` 不强制执行。单独核对该 run 的
+这是 review 规则，`pr-ready` 默认不强制执行（可显式传 `--require-full`）。单独核对该 run 的
 `head_sha`、结果与当前 base；分支 head 的结果不证明之后变化的 merge commit。
 base 更新后的保障取决于已配置的服务端规则和必要复验，不能从本地文件推断 strict 已启用。
 
