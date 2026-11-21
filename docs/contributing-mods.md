@@ -19,7 +19,7 @@ PoBR 把 `35% increased Fire Damage` 这样的文本解析成 `Modifier`，再�
    `Modules/ModParser.lua` 转换而来，随 RePoE owner 包固定导入。它处理 `N% increased X`、`+N to X`、`N% more X`、
    按属性缩放和条件后缀等常见句式。通常无需修改它，见第 3 节。
 2. **特殊规则**（`overlay/special_mods.json`）是人工维护的整行匹配表，处理通用语法
-   无法表达的暗金、基石和特殊措辞。新增人工词条通常放在这里，见第 4 节。
+   无法表达的传奇、基石和特殊措辞。新增人工词条通常放在这里，见第 4 节。
 
 两层都读不懂的行记为 `ParseStatus::Unsupported`，保留在诊断和覆盖率报告中，
 不会因此崩溃。`pobr-build::build_data` 加载规则，再由
@@ -54,7 +54,7 @@ PoBR 把 `35% increased Fire Damage` 这样的文本解析成 `Modifier`，再�
 `vendor_name_aliases.json` 等人工数据。`buff_definitions` 与特殊规则一样按 `id` 合并；
 `high_precision_mods` 和 `local_mods` 则优先使用版本目录文件，缺失时才用共享文件，
 不会逐字段混合。非版本专用的修改应放在共享文件。
-其他 overlay（基底修正、暗金、宝石效果、诅咒、stat 描述等）使用 `pobr-data` 中各自的格式，
+其他 overlay（基底修正、传奇、宝石效果、诅咒、stat 描述等）使用 `pobr-data` 中各自的格式，
 不属于本文的解析规则检查范围；也可以通过 JSON 贡献，后续按实际需求扩展校验。
 
 **仅本地使用的修正无需提 PR。** 把文件放在
@@ -161,7 +161,7 @@ aho-corasick 预筛选使用的最长字面子串，后者记录 `^` 锚定。�
 | `game_source` | `absent` / `differs` 必填 | 游戏 stat id、原文或来源链接 |
 | `verified` | 新条目填 `false` | 只有 oracle 差分确认后才设 `true`；不改变运行时是否使用规则 |
 | `batch` | 必填 | 维护批次，例如 `S0` / `S1` / `S2` / `unmodelled` |
-| `source_note` | 非 S0 条目需有可追溯说明 | 暗金或基石名称、游戏依据；`unmodelled` 必须说明缺少的机制 |
+| `source_note` | 非 S0 条目需有可追溯说明 | 传奇或基石名称、游戏依据；`unmodelled` 必须说明缺少的机制 |
 | `examples` | 格式允许省略；新人工规则应填写 | 真实原文，用于逐规则匹配和重叠 / oracle 审计 |
 
 `"mods": []` 必须分清两种含义：
@@ -302,7 +302,7 @@ mise exec -- cargo run -p precompile-mods -- --data "data/$(cat data/CURRENT)" -
 - `StatId` 不是封闭列表。名称字面值和 enum 语法合法，不代表有代码读取它。
   新规则要说明读取方与计算阶段，数值测试覆盖开启、关闭和边界情况。
 - 跨角色条件读取 `CalcConfig.actor_multipliers`，由调用方提供角色快照。
-  本检查不能证明完整召唤物 Build 上下文已注入，或召唤物 DPS 已支持。
+  本检查不能证明完整召唤生物 Build 上下文已注入，或召唤生物 DPS 已支持。
 - 结构化 LIST 表和空名称的 PoB 配置发现标记会列为未参与计算的元数据。
   能识别文本不代表会计算。
 - 通用解析器平铺效果另有校验限制；特殊规则的严格标签检查不覆盖整套通用语言。
@@ -318,7 +318,7 @@ PoB2 的 `ItemCondition { Body Armour, NORMAL }` 对应现有的构筑条件
 `perform::fill_mechanics` 调用；它把额外暴击伤害减免之和限制到 0..100，再用于防御输出和 EHP。
 
 [完整 Build 回归](../crates/pobr-build/tests/skills/equipment_affix_effects.rs)在活动数据上
-覆盖不穿胸甲、普通、魔法、稀有、暗金胸甲，六个 roll 值及物品 `SourceId`。
+覆盖不穿胸甲、普通、魔法、稀有、传奇胸甲，六个 roll 值及物品 `SourceId`。
 预编译检查测试把解析规则 id 关联到共享文件哈希；WASM 契约和浏览器往返测试覆盖加载与装备编辑。
 这些断言和 parser-oracle 一致，只能证明所测范围，不能代替同版本的完整 Build 数值对照。
 

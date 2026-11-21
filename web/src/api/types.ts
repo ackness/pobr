@@ -1,5 +1,5 @@
 /**
- * pobr-wasm JSON 契约类型（与 `apps/pobr-wasm/src/build_api.rs` 一一对应）。
+ * pobr-wasm JSON contract types (1:1 mirror of `apps/pobr-wasm/src/build_api.rs`).
  *
  * Shared request DTOs are generated from Rust; remaining response/view types
  * are checked by contract_golden.rs and the real WASM request-conversion tests.
@@ -13,24 +13,24 @@ export type {
 } from './generated/request.js';
 
 /**
- * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
- * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
+ * JSON contract schema version paired with Rust `pobr_wasm::SCHEMA_VERSION`.
+ * Bump both on breaking shape changes; verified during boot handshake (see `wasmBackend.ts`).
  */
 export const EXPECTED_SCHEMA_VERSION = 22;
 
 // ---------------------------------------------------------------------------
-// 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
+// Error contract (returned on Err; parsed by `./error.ts::parseApiError`)
 // ---------------------------------------------------------------------------
 
 export type { DataInfo } from './generated/dataInfo.js';
 
 export type ApiErrorCode = 'not_initialized' | 'bad_request' | 'decode_error' | 'internal' | 'unknown_tree_version' | 'tree_version_mismatch';
 
-/** wasm Err 侧 JSON：`{code, message, slot?}`。 */
+/** Wasm error JSON payload: `{code, message, slot?}`. */
 export interface ApiErrorJson {
   code: ApiErrorCode;
   message: string;
-  /** 出错槽位（装备槽 id / Flask·Charm 槽名），供局部提示。 */
+  /** Failing slot (equipment slot ID or Flask/Charm slot name) for targeted alerts. */
   slot?: string;
 }
 
@@ -49,7 +49,7 @@ export type AttributeChoice = 'str' | 'dex' | 'int';
 export interface TreeJson {
   allocated_nodes: number[];
   tree_version: string | null;
-  /** 属性小点三选一（node skill id → str/dex/int）。 */
+  /** 3-way attribute choice per travel node (node skill id -> `str`/`dex`/`int`). */
   attribute_choices: Record<string, AttributeChoice>;
 }
 
@@ -59,7 +59,7 @@ export interface SlotItemJson {
 }
 
 // ---------------------------------------------------------------------------
-// classify_item_lines_json（物品文本 → 逐行类别，Items 面板上色）
+// classify_item_lines_json (item text -> per-line kind, for Items panel coloring)
 // ---------------------------------------------------------------------------
 
 export type ItemLineKind =
@@ -72,15 +72,15 @@ export type ItemLineKind =
   | 'rune'
   | 'class_req';
 
-/** 单条物品展示行：`text` 已剥标注，`kind` 决定前端上色。 */
+/** Single item display line: `text` has markup stripped; `kind` drives styling. */
 export interface ItemLineJson {
   text: string;
   kind: ItemLineKind;
-  /** 词缀档位（1 = 同池最强；仅 explicit 行且后端反查命中时给出）。 */
+  /** Affix tier (`1` = strongest in pool; emitted only for explicit mods resolved in backend lookup). */
   tier?: number;
-  /** 该基底可掷的同池总档数（与 tier 成对出现）。 */
+  /** Total tiers available in the same pool for this base (paired with `tier`). */
   tier_total?: number;
-  /** 已确认的前后缀。档位未知时也可给出。 */
+  /** Confirmed prefix/suffix side (may be present even when tier is unknown). */
   affix?: 'prefix' | 'suffix';
   modifier_sources?: ('crafted' | 'fractured' | 'desecrated' | 'mutated' | 'custom')[];
   /** Verified game modifier tags, using stable English IDs such as `cold`. */
@@ -88,7 +88,7 @@ export interface ItemLineJson {
 }
 
 export interface SocketJewelJson {
-  /** 珠宝插槽的树节点 skill id。 */
+  /** Passive tree node skill ID of the jewel socket. */
   socket_node: number;
   text: string;
 }
@@ -96,12 +96,12 @@ export interface SocketJewelJson {
 export interface ItemsJson {
   equipped: SlotItemJson[];
   jewels: string[];
-  /** 树插槽珠宝（天赋树页可编辑）。 */
+  /** Passive tree socketed jewels (editable on Tree page). */
   socket_jewels: SocketJewelJson[];
   /** Equipment socket jewels retain their exact PoB ItemSet slot names. */
   equipment_jewels?: SlotItemJson[];
   flasks: (SlotItemJson & { active: boolean })[];
-  /** 超越肢体（槽 `arm1`/`arm2`/`leg1`/`leg2`）：与装备并列的一组栏位，词条为全局词条。 */
+  /** Graft/limb slots (`arm1`/`arm2`/`leg1`/`leg2`): sibling slots next to gear whose mods apply globally. */
   limbs: SlotItemJson[];
 }
 
@@ -133,7 +133,7 @@ export interface SocketGroupJson {
   enabled: boolean;
   /** PoB's 1-based selection among this group's active skills. */
   main_active_skill?: number | null;
-  /** PoB 装备授予技能来源；手动组为 null。 */
+  /** Source granting this skill from PoB equipment/tree; `null` for manual groups. */
   source: string | null;
   active_skill_id: string | null;
   gems: GemJson[];
@@ -165,14 +165,14 @@ export interface BuildJson {
   tree: TreeJson;
   items: ItemsJson;
   socket_groups: SocketGroupJson[];
-  /** 0-based 主技能组下标；null = 未指定。 */
+  /** 0-based main socket group index; `null` = unspecified. */
   main_socket_group: number | null;
   config_inputs: Record<string, ConfigInputValue>;
-  /** `<Notes>` 自由文本（PoB 笔记页）。 */
+  /** Free-form `<Notes>` text (PoB Notes tab). */
   notes: string | null;
-  /** 成组切换清单（PoB2 loadout）；单套 build 恒为一条 Default。 */
+  /** Switchable loadout presets (PoB2 loadouts); a single-set build has one `Default` entry. */
   loadouts: LoadoutJson[];
-  /** 当前对应的 loadout 下标；无法判定为 null。 */
+  /** Index of the currently active loadout; `null` if indeterminate. */
   active_loadout: number | null;
 }
 
@@ -182,16 +182,17 @@ export interface SelectedLoadoutJson extends BuildJson {
 }
 
 /**
- * 一个可切换的 loadout —— PoB2 把天赋树 / 装备 / 技能按各自 `title` 的命名约定
- * 绑成一组（`Build.lua::SyncLoadouts`），因此零格式扩展、与 PoB2 双向兼容。
+ * A switchable loadout — PoB2 binds passive tree, items, and skills into a group
+ * via `title` naming conventions (`Build.lua::SyncLoadouts`), requiring zero format
+ * extensions and keeping bidirectional compatibility with PoB2.
  *
- * 建组方式：各类 title 取同名，或用花括号标识（`"升级期 {lvl30}"`，`{a,b}` 表示
- * 一套属多组）。某类只有一套时该类不参与绑定，对应字段为 null。
+ * Grouping syntax: matching set titles, or curly braces (e.g. `"Leveling {lvl30}"`;
+ * `{a,b}` binds one set to multiple loadouts). Categories with a single set stay unlinked (`null`).
  */
 export interface LoadoutJson {
   config?: number | null;
   name: string;
-  /** 1-based 文档序，回传 `switchLoadout` 用。 */
+  /** 1-based document index, sent back to `switchLoadout`. */
   tree: number;
   item: number | null;
   skill: number | null;
@@ -230,7 +231,7 @@ export interface MinionOutput {
   breakdown_descriptors?: Record<string, DetailKind>;
 }
 
-/** 宝石目录条目（gem_catalog_json）。 */
+/** Gem catalog entry (`gem_catalog_json`). */
 export interface SkillForm {
   index: number;
   id: string;
@@ -251,96 +252,96 @@ export interface GemCatalogEntry {
   name_zh_tw: string | null;
   /** Display name from locale data; English explicitly blocks an unresolved native name. */
   name_zh_cn: string | null;
-  /** 宝石颜色（红/绿/蓝 = str/dex/int；分类筛选用）。 */
+  /** Gem attribute color (`str` red / `dex` green / `int` blue, for picker filtering). */
   colour: 'str' | 'dex' | 'int' | null;
   is_support: boolean;
-  /** 血脉（Lineage）特殊辅助宝石（徽标 + 优化器候选筛选）。 */
+  /** Lineage special support gem (badge + optimizer candidate filtering). */
   is_lineage: boolean;
   /** Unique-granted effect hidden by the picker; retained for imported skill metadata. */
   is_unique_only: boolean;
   /**
-   * 技能标签（升序去重）。主动宝石＝granted effect 的 `skill_types`；辅助宝石＝
-   * `require_skill_types`（能辅助什么），已滤掉 AND/OR/NOT 逻辑算子。
-   * 含大量内部机制词，展示前过 `lib/gemTags` 的白名单。
+   * Skill tags (sorted, deduplicated). Active gems = granted effect's `skill_types`; support gems =
+   * `require_skill_types` (what it can support), with AND/OR/NOT logic operators stripped.
+   * Contains internal engine tokens; pass through `lib/gemTags` allowlist before rendering.
    */
   tags: string[];
 }
 
-/** 节点威力条目（node_power_json；PoB2 热力图语义）。 */
+/** Node power entry (`node_power_json`; PoB2 heatmap semantics). */
 export interface NodePowerEntry {
-  /** 节点 skill id。 */
+  /** Passive node skill ID. */
   skill: number;
-  /** 单点试加后目标属性的增量（可为负）。 */
+  /** Target stat delta after single-node trial allocation (may be negative). */
   delta: number;
-  /** 距已加点前沿的 BFS 步数（1 = 相邻；显式单点探测为 0，路线成本由 planner 提供）。 */
+  /** BFS step count from the allocated frontier (1 = adjacent; explicit probe = 0; path cost comes from planner). */
   distance: number;
 }
 
 export interface NodePowerResponse {
-  /** 基线属性值。 */
+  /** Baseline stat value. */
   base: number;
   entries: NodePowerEntry[];
-  /** 整个请求的候选节点数；只在请求带 `window` 时给出。 */
+  /** Total candidate count for the request; included only when `window` is specified. */
   total?: number;
 }
 
-/** 候选列表的一段：热力图分步计算，每步可报进度、可放弃。 */
+/** Window slice of candidate list: allows stepped heatmap calculation with progress reporting and cancellation. */
 export interface NodePowerWindow {
   offset: number;
   limit: number;
 }
 
 // ---------------------------------------------------------------------------
-// optimize_variants_json（通用变体评估：寻优框架的计算面）
+// optimize_variants_json (generic variant evaluation: compute side of optimizer)
 //
-// 分工契约：Rust 只算变体 → 属性值；打分/约束/排序在 `lib/optimize.ts`。
+// Boundary contract: Rust computes variant -> stat values; scoring/constraints/ranking live in `lib/optimize.ts`.
 // ---------------------------------------------------------------------------
 
-/** 属性约束（display_catalog 字段 id + 上下界，逐字段可缺省）。 */
+/** Stat constraint (`display_catalog` stat ID + optional lower/upper bounds). */
 export interface StatConstraint {
   stat: string;
   min?: number;
   max?: number;
 }
 
-/** 向技能组追加宝石（宝石组合寻优通道）。 */
+/** Append gems to a socket group (gem combination optimizer channel). */
 export interface AddGemsInput {
   group_index: number;
   gems: GemInput[];
 }
 
-/** 单个变体：各通道可任意叠加；全空 = 基线复算。 */
+/** Single variant: channels combine freely; all empty = baseline re-eval. */
 export interface VariantInput {
-  /** 回显标签（结果行展示用）。 */
+  /** Display label echoed into result rows. */
   label?: string;
   add_gems?: AddGemsInput;
-  /** 覆盖装备槽（text 为空 = 摘下该槽）。 */
+  /** Override equipment slots (empty `text` removes the item). */
   set_items?: SlotItemInput[];
   /** Whole-list replacements, preserving the ordinary edit/import validation. */
   jewels?: JewelInput[];
   flasks?: UtilitySlotInput[];
   socket_groups?: SocketGroupInput[];
-  /** 追加加点（不验证连通性——假设性试算）。 */
+  /** Speculative passive node allocations (skips connectivity validation). */
   allocate_nodes?: number[];
   deallocate_nodes?: number[];
-  /** 任意词条文本（「只要有词条就能算」的兜底通道）。 */
+  /** Arbitrary mod text fallback ("anything expressible as mods can be evaluated"). */
   extra_modifiers?: string[];
 }
 
 export interface OptimizeVariantsRequest {
   request: CalculateBuildRequest;
-  /** 要收集的展示属性 id（未知 id 记 0）。 */
+  /** Display stat IDs to collect (unknown IDs record 0). */
   stats: string[];
   variants: VariantInput[];
-  /** 缺省 true；分批调用时后续批关掉省一次基线计算。 */
+  /** Defaults to true; set false in subsequent batches to skip redundant baseline calculation. */
   include_baseline?: boolean;
 }
 
 export interface VariantStats {
-  /** 请求内下标（对回变体定义）。 */
+  /** Index within request (maps back to variant definition). */
   index: number;
   label: string | null;
-  /** 计算失败时为空表并给出 error。 */
+  /** Empty map when evaluation fails, with reason in `error`. */
   stats: Record<string, number>;
   error: string | null;
   unsupported?: string[];
@@ -351,9 +352,9 @@ export interface OptimizeVariantsResponse {
   variants: VariantStats[];
 }
 
-/** 符文/魂核目录条目（rune_catalog_json）。 */
+/** Rune / Soul Core catalog entry (`rune_catalog_json`). */
 export interface RuneCatalogEntry {
-  /** canonical 英文名（`Rune:` 行与 reforge 请求的键）。 */
+  /** Canonical English name (key for `Rune:` lines and reforge requests). */
   name: string;
   name_zh_tw: string | null;
   name_zh_cn: string | null;
@@ -362,7 +363,7 @@ export interface RuneCatalogEntry {
   required_level?: number;
   limit?: number;
   limit_id?: string;
-  /** 对请求物品基底适用的效果词条行（无物品上下文或不适用为空）。 */
+  /** Applicable effect mod lines for the supplied item base (empty when omitted or inapplicable). */
   lines: string[];
 }
 
@@ -376,7 +377,7 @@ export interface ItemAugmentInfo {
   options: RuneCatalogEntry[];
 }
 
-/** `pob_code` 与 `character` 至少给一个（无 code = PoB2 新建 build 语义）。 */
+/** Supply at least one of `pob_code` or `character` (no code = PoB2 "New Build" semantics). */
 export interface CalculateBuildRequest {
   /** Omitted: legacy defaults; []: no details; otherwise only the opened ids. */
   breakdowns?: string[];
@@ -393,24 +394,25 @@ export interface CalculateBuildRequest {
   tree_version?: string | null;
   pob_code?: string;
   character?: CharacterOverride;
-  /** 整份替换已加点集合（交互加点）。 */
+  /** Replace entire allocated node set (interactive tree allocation). */
   allocated_nodes?: number[];
-  /** 整份替换属性小点三选一。 */
+  /** Replace entire 3-way attribute choice map. */
   attribute_choices?: Record<string, AttributeChoice>;
-  /** 整份替换技能组（手动编辑）。 */
+  /** Replace entire socket group list (manual edits). */
   socket_groups?: SocketGroupInput[];
-  /** 整份替换装备槽（手动编辑）。 */
+  /** Replace entire equipment item list (manual edits). */
   items?: SlotItemInput[];
   /**
-   * `active` 是这次计算使用的武器组（1/2），“使用武器组 1/2 时”的词条按它生效；
-   * 另一组武器与武器组专属天赋只用于导出。省略时沿用构筑码的武器组（新构筑为 1）。
+   * `active` selects which weapon set (1 or 2) applies during this calculation, driving
+   * "while using weapon set 1/2" modifiers; the other weapon set and set-exclusive passives
+   * exist only for export. Omit to inherit from build code (new builds default to 1).
    */
   weapon_swap?: WeaponSwap | null;
   /** Omitted keeps baseline utilities; [] clears all. Selection defaults true for legacy entries. */
   flasks?: UtilitySlotInput[];
-  /** 整份替换超越肢体（槽 `arm1`/`arm2`/`leg1`/`leg2`）。 */
+  /** Replace all graft/limb slots (`arm1`/`arm2`/`leg1`/`leg2`). */
   limbs?: SlotItemInput[];
-  /** 整份替换树插槽珠宝。 */
+  /** Replace all passive tree socketed jewels. */
   jewels?: JewelInput[];
   /** Replace equipment-socket jewels independently of the passive tree. */
   equipment_jewels?: SlotItemInput[];
@@ -423,7 +425,7 @@ export interface CalculateBuildRequest {
   config_inputs?: Record<string, ConfigInputValue>;
 }
 
-/** display_catalog 类别（Rust `DisplayStatCategory` 的枚举名直出）。 */
+/** `display_catalog` category (verbatim Rust `DisplayStatCategory` enum variants). */
 export type DisplayStatCategory =
   | 'Offence'
   | 'HitDamage'
@@ -454,7 +456,7 @@ export interface DisplayCatalogEntry {
 
 export interface DisplayStatValue {
   id: string;
-  /** null = 计算侧标记为不可用（如 ChaosMaxHit 的 ∞）。 */
+  /** `null` = marked unavailable by the calculation side (e.g. `∞` for ChaosMaxHit). */
   value: number | null;
   category: DisplayStatCategory;
 }
@@ -765,9 +767,9 @@ export interface HitDamageTable {
   damage_effect: number;
 }
 
-/** 主技能击中伤害的单类型分量（非暴击腿、玩家侧敌减伤前；占比用 avg）。 */
+/** Single damage-type slice of main-skill hit damage (non-crit roll, before enemy mitigation; share uses `avg`). */
 export interface HitDamagePart {
-  /** Physical / Fire / Cold / Lightning / Chaos。 */
+  /** `Physical` / `Fire` / `Cold` / `Lightning` / `Chaos`. */
   damage_type: string;
   min: number;
   max: number;
@@ -776,18 +778,18 @@ export interface HitDamagePart {
 
 /** Current inspected skill identity and damage breakdown, refreshed on calculation. */
 export interface MainSkillInfo {
-  /** 选中技能组（0-based，与请求 socket_groups 对齐）。 */
+  /** Selected socket group (0-based, aligned with request `socket_groups`). */
   group_index: number;
   /** PoB's 1-based ordinal among all active effects in the group. */
   active_skill_index: number;
-  /** 该组主技能的授予效果 id。 */
+  /** Granted effect ID of this group's main active skill. */
   skill_id: string;
   hit_damage: HitDamagePart[];
-  /** 击中 DPS（TotalDPS）。 */
+  /** Hit DPS (`TotalDPS`). */
   hit_dps: number;
-  /** 持续伤害合计 DPS（TotalDotDPS）。 */
+  /** Total DoT DPS (`TotalDotDPS`). */
   dot_dps: number;
-  /** 综合 DPS（CombinedDPS）。 */
+  /** Combined DPS (`CombinedDPS`). */
   combined_dps: number;
 }
 
@@ -846,13 +848,13 @@ export interface CalculateBuildResponse {
    * as `Config: <line>`.
    */
   unsupported_modifiers: string[];
-  /** 键 = 聚合 ModName（Life / EnergyShield / FireResist / ...）。 */
+  /** Key = aggregated `ModName` (`Life` / `EnergyShield` / `FireResist` / ...). */
   breakdowns: Record<string, Breakdown>;
   /** Optional for older saved/mock responses. */
   breakdown_descriptors?: Record<string, DetailKind>;
-  /** 主技能分解（null = 无可解析的伤害主技能）。 */
+  /** Main skill breakdown (`null` = no resolvable damage main skill). */
   main_skill: MainSkillInfo | null;
-  /** 单件装备/药剂/珠宝文本解析失败的降级记录（据 slot 标红；空 = 全部成功）。 */
+  /** Parse failures per gear/flask/jewel slot (highlights slot in red; empty = all succeeded). */
   item_errors: SlotIssue[];
   tree_effects?: PassiveJewelState;
 }
@@ -885,9 +887,9 @@ export interface PassiveJewelState {
 // ---------------------------------------------------------------------------
 
 export interface AttributionRequest {
-  /** 完整计算请求（基线；与 node_power / optimize_variants 同形状）。 */
+  /** Full calculation request (baseline; same shape as `node_power` / `optimize_variants`). */
   request: CalculateBuildRequest;
-  /** display_catalog 字段 id；缺省 TotalDPS / Life / TotalEHP。 */
+  /** `display_catalog` field IDs; defaults to `TotalDPS` / `Life` / `TotalEHP`. */
   fields?: string[];
 }
 
@@ -895,9 +897,9 @@ export type AttributionSourceKind = 'item' | 'socket_group' | 'flask' | 'limb';
 
 export interface AttributionEntry {
   kind: AttributionSourceKind;
-  /** 装备槽 id / 技能组下标（字符串）/ 药剂槽名 / 肢体槽 id。 */
+  /** Equipment slot ID / socket group index string / flask slot name / limb slot ID. */
   id: string;
-  /** 字段 → 边际贡献（baseline - 移除后值；正 = 增益）。 */
+  /** Stat -> marginal contribution (`baseline - value_without`; positive = gain). */
   deltas: Record<string, number>;
 }
 
@@ -907,16 +909,17 @@ export interface AttributionResponse {
 }
 
 // ---------------------------------------------------------------------------
-// line_usage_json（请求同 calculate_build_json）：构筑每一行词条在计算中的去向
+// line_usage_json (same request as calculate_build_json): trace each mod line
 // ---------------------------------------------------------------------------
 
 /**
- * 一行的去向。有 modifier 入库时按它们：全部生效 `applied`、部分 `partial`、
- * 被读取但未计入或未到达已登记读取状态 `inactive`、从未被读取 `unread`。没有 modifier 时：
- * 入库前被拿走并由 `reason` 所写的读取方使用 `outside`（物品自身防御/伤害、宝石等级、珠宝半径），
- * 登记为不影响任何输出 `no_effect`，有规则识别但没有实现 `unmodelled`，
- * 没有规则能解析 `unparsed`，解析出了 modifier 却没有入库 `no_modifier`；
- * 被本次计算排除时为 `inactive` 并写明原因。
+ * Outcome of one line. When modifiers enter the store, status derives from them:
+ * all active `applied`, some `partial`, read but unused or unmet read gate `inactive`,
+ * never read `unread`. Without modifiers in store: consumed early by the reader named
+ * in `reason` (`outside` — local item defence/damage, gem level, jewel radius),
+ * registered no-op `no_effect`, recognized by parser but unimplemented `unmodelled`,
+ * unrecognized `unparsed`, parsed into modifiers that never entered store `no_modifier`;
+ * excluded from this calculation pass -> `inactive` with reason.
  */
 export type LineUsageStatus =
   | 'applied'
@@ -929,40 +932,40 @@ export type LineUsageStatus =
   | 'unparsed'
   | 'no_modifier';
 
-/** 一条入库 modifier 的去向；`outside` = 在 modifier 库之外被 `reason` 所写的消费者读取。 */
+/** Outcome of one stored modifier; `outside` = read directly outside the modifier store by the consumer in `reason`. */
 export type LineUsageModifierStatus = 'applied' | 'inactive' | 'unread' | 'outside';
 
 export interface LineUsageModifier {
   name: string;
-  /** BASE / INC / MORE / FLAG / OVERRIDE / LIST。 */
+  /** `BASE` / `INC` / `MORE` / `FLAG` / `OVERRIDE` / `LIST`. */
   mod_type: string;
-  /** 入库的值：数值、布尔、文本或 `[nested N]`。 */
+  /** Stored value: number, boolean, string, or `[nested N]`. */
   value: number | boolean | string;
-  /** 生效数值在主技能上下文中的值（已应用缩放 tag）；否则 null。 */
+  /** Effective value scaled in main skill context; otherwise `null`. */
   applied: number | null;
   status: LineUsageModifierStatus;
-  /** 已验证的读取方只在这个状态下运行；未到达时才返回。 */
+  /** Verified reader only runs under this state; returned only when the state was not reached. */
   read_gate?: { state: string; config_option: string | null };
-  /** inactive：未满足的条件；outside：消费者。 */
+  /** For `inactive`: unmet condition; for `outside`: consumer name. */
   reason: string | null;
-  /** 列出它（生效且非 0）的分解 stat id。 */
+  /** Breakdown stat IDs listing this modifier (active and non-zero). */
   used_in: string[];
 }
 
 export interface LineUsageLine {
-  /** 归因来源类别（ItemAffix / ItemImplicit / PassiveNode / Jewel / Flask / Config …）。 */
+  /** Attribution source kind (`ItemAffix` / `ItemImplicit` / `PassiveNode` / `Jewel` / `Flask` / `Config` ...). */
   source_kind: string | null;
-  /** 来源 id：`item.<槽>.<段>`、`node.<id>`、`jewel.<n>`、`flask.<槽>`、`quest`、`config.custom`。 */
+  /** Source ID: `item.<slot>.<section>`, `node.<id>`, `jewel.<n>`, `flask.<slot>`, `quest`, `config.custom`. */
   source_id: string | null;
   slot: string | null;
-  /** 持有者名称：天赋节点名、物品基底。 */
+  /** Holder label: passive node name, item base type. */
   holder: string | null;
-  /** 原文；不来自某一行的 modifier（如宝石 stat）为 null。 */
+  /** Raw text; `null` for modifiers not backed by a source line (e.g. gem stats). */
   text: string | null;
   status: LineUsageStatus;
-  /** 没有 modifier 入库的行：读取方、排除原因或解析结果。 */
+  /** For lines with no stored modifiers: reader name, exclusion reason, or parse outcome. */
   reason: string | null;
-  /** 任一 modifier 到达的分解 stat id。 */
+  /** Breakdown stat IDs reached by any modifier from this line. */
   used_in: string[];
   modifiers: LineUsageModifier[];
 }
@@ -983,7 +986,7 @@ export interface LineUsageUnparsed {
 export interface LineUsageGemStat {
   stat: string;
   owner: string;
-  /** `unmapped`：映射存在但被引擎拒绝（见 reason）；`unknown`：没有映射。 */
+  /** `unmapped`: mapping exists but engine rejected it (see `reason`); `unknown`: no mapping exists. */
   status: 'unmapped' | 'unknown';
   reason: string | null;
 }
@@ -992,13 +995,13 @@ export interface LineUsageRef {
   name: string;
   mod_type: string;
   value: string;
-  /** `<来源类别>:<来源 id> | <原文>`。 */
+  /** `<source_kind>:<source_id> | <raw_text>`. */
   source: string;
 }
 
 export interface LineUsageCondition {
   condition: string;
-  /** 能设置它、但构筑没有打开的配置项；null = 没有任何来源设置它。 */
+  /** Config option that sets this condition yet is inactive; `null` = no source sets it. */
   config_option: string | null;
   flagged: boolean;
   modifiers: LineUsageRef[];
@@ -1040,21 +1043,21 @@ export interface LineUsageSummary {
 
 export interface LineUsage {
   summary: LineUsageSummary;
-  /** 计算的主技能；原因按它的上下文给出。 */
+  /** Evaluated main skill; reasons are given relative to its context. */
   main_skill: string | null;
   lines: LineUsageLine[];
-  /** 计算记录的全部未解析行；构筑中的那些也以精确来源出现在 `lines`。 */
+  /** All unparsed lines recorded during calculation; build lines also appear under `lines` with exact sources. */
   unparsed: LineUsageUnparsed[];
   gem_stats: LineUsageGemStat[];
   conditions: LineUsageCondition[];
-  /** 被引用条件的配置入口，包含已设置或由计算阶段推导的条件。 */
+  /** Config options for referenced conditions, including active or calculation-derived conditions. */
   condition_configs?: Record<string, string>;
   /** Referenced conditions set by the build or a calc pass, even when unmet. */
   condition_states?: string[];
   multipliers: LineUsageMultiplier[];
-  /** 启用组里的每个主动效果，以及它实际使用的等级（含加成）与品质。 */
+  /** Each active effect in enabled groups along with its effective level (including bonuses) and quality. */
   skills: LineUsageSkill[];
-  /** 每个被读取的 modifier 名 → 读取它的查询（如 `INC Damage+FireDamage`）。 */
+  /** Each read modifier name -> queries reading it (e.g. `INC Damage+FireDamage`). */
   reads: Record<string, string[]>;
 }
 
@@ -1064,7 +1067,7 @@ export interface LineUsageResponse {
 }
 
 // ---------------------------------------------------------------------------
-// 树静态数据（web/public/data/<version>/base/passive_tree.json 直接加载）
+// Static passive tree data (loaded directly from web/public/data/<version>/base/passive_tree.json)
 // ---------------------------------------------------------------------------
 
 export type PassiveNodeKind =
@@ -1092,7 +1095,7 @@ export interface PassiveNode {
 }
 
 // ---------------------------------------------------------------------------
-// 职业/升华元数据（passive_tree_meta.json，新建 build 选择器用）
+// Class/ascendancy metadata (`passive_tree_meta.json`, for new build selector)
 // ---------------------------------------------------------------------------
 
 export interface PassiveAscendancy {
@@ -1113,7 +1116,7 @@ export interface PassiveTreeMeta {
   classes: PassiveClass[];
 }
 
-/** 职业/升华名的简中对照表（数据包 `i18n/zh-CN/classes.json`，英文名 → 简中名，如 `"Druid": "德鲁伊"`）。 */
+/** Simplified Chinese class/ascendancy lookup (`i18n/zh-CN/classes.json`, English -> zh-CN, e.g. `"Druid": "德鲁伊"`). */
 export interface ClassNames {
   classes: Record<string, string>;
   ascendancies: Record<string, string>;
@@ -1125,8 +1128,8 @@ export interface ClassNames {
 }
 
 // ---------------------------------------------------------------------------
-// 内置配置目录（overlay/config_options.json，静态资产直读——与计算侧
-// config_interpreter 消费同一份数据）
+// Built-in config catalog (`overlay/config_options.json`, static asset read —
+// shared with calculation-side `config_interpreter`)
 // ---------------------------------------------------------------------------
 
 export type ConfigInputType =
@@ -1146,12 +1149,12 @@ export interface ConfigListOption {
 export interface ConfigOption {
   var: string;
   input_type: ConfigInputType;
-  /** PoB2 Config 页分区名（如 "When In Combat"）。 */
+  /** PoB2 Config page section name (e.g. `"When In Combat"`). */
   section?: string;
   label?: string;
   tooltip?: string;
   visibility?: ConfigVisibility;
-  /** list 型的选项；default 的 {index} 是 1-based。 */
+  /** Options for `list` type; `default.index` is 1-based. */
   list_options?: ConfigListOption[];
   default?: { index?: number; state_bool?: boolean; state_number?: number; placeholder_number?: number } | number | boolean | string;
 }

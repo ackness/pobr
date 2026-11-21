@@ -90,6 +90,7 @@ does not estimate peak memory.
 | `translateLinesDetailed(lang, json)` | Same input as `translateLines` | JSON array of `{ text, origin }`: `text` equals `translateLines`; `origin` is `null` for official text (and lines kept in English) or `agent` / `human` when the template is the translation repository's own supplement |
 | `parseLocalizedLines(lang, json)` | Locale code and a JSON array of lines in that locale | JSON array of English canonical lines |
 | `availableLocales()` | No argument; data initialized | JSON `[{ code, fallback, chain, templates }]`: the data pack's locales, the fallbacks each `_meta.json` declares, the resolved chain, and whether its own pack has mod-line templates |
+| `dataInfo()` | No argument; data initialized | JSON `{ data_version, tree_version, locales }`: loaded game data version, PoBR passive-tree version label, and declared locales |
 | `gameName(lang, kind, id)` | Locale code, a name table (`base_item`, `skill`, `affix`, `passive_node`, `word`, `rare_word`) and its key (stable id for `base_item`/`skill`, English text otherwise) | The first name the locale's declared chain has, as that chain locale writes it (no script conversion), or `undefined` (also for `en-US` and undeclared locales: show the English name); an unknown `kind` throws |
 
 Translation uses the data pack's `i18n/<lang>/` templates and names (and the

@@ -1,29 +1,29 @@
--- PoB2 headless oracle：buildSkillInstanceStats 的**品质叠加段**中间值对拍（M1-T1）。
+-- PoB2 headless oracle: cross-check `buildSkillInstanceStats` quality scaling contributions (M1-T1).
 --
--- 对给定 (skillId, level, quality) 在 PoB2 真实数据 + 真实框架函数
--- （calcLib.buildSkillInstanceStats，Modules/CalcTools.lua:138）下分别以
--- quality=Q 与 quality=0 各跑一遍，输出两表的**逐 stat 差值** = 品质贡献
--- （即 PoBR `BuildData::effect_stats(..).quality` 段应得的值）。
+-- For a given `(skillId, level, quality)`, runs `calcLib.buildSkillInstanceStats`
+-- (`Modules/CalcTools.lua:138`) against real PoB2 data at `quality=Q` and `quality=0`,
+-- emitting the per-stat difference (the quality contribution expected from PoBR's
+-- `BuildData::effect_stats(..).quality`).
 --
--- 纯包装：不修改任何 vendor 源码。须从 vendor src/ 目录运行（同 oracle.lua）：
+-- Pure wrapper: modifies no vendor source. Run from `vendor/PathOfBuilding-PoE2/src` (like `oracle.lua`):
 --   cd vendor/PathOfBuilding-PoE2/src
 --   LUA_PATH="../runtime/lua/?.lua;../runtime/lua/?/init.lua;./?.lua;;" CI=true \
 --     luajit ../../../tools/pob2-oracle/quality_stats.lua <skillId> <level> <quality> [...]
 --
--- 参数为 (skillId, level, quality) 三元组的重复序列；JSON 输出到 stdout。
+-- Arguments repeat `(skillId, level, quality)` triples; JSON outputs to stdout.
 
 if #arg < 3 or #arg % 3 ~= 0 then
 	io.stderr:write("usage: quality_stats.lua <skillId> <level> <quality> [<skillId> <level> <quality> ...]\n")
 	os.exit(2)
 end
 
--- HeadlessWrapper 启动过程可能改写全局 arg——先快照。
+-- HeadlessWrapper startup may mutate global `arg`; snapshot it first.
 local queries = {}
 for i = 1, #arg do
 	queries[i] = arg[i]
 end
 
--- 静音 headless 启动噪声（同 oracle.lua 做法）。
+-- Silence headless startup noise (same pattern as `oracle.lua`).
 local realPrint = print
 _G.print = function() end
 dofile("HeadlessWrapper.lua")
@@ -51,7 +51,7 @@ for i = 1, #queries, 3 do
 		{ level = level, quality = quality, actorLevel = 90 }, grantedEffect, statSet)
 	local without = calcLib.buildSkillInstanceStats(
 		{ level = level, quality = 0, actorLevel = 90 }, grantedEffect, statSet)
-	-- 逐 stat 差值（quality 贡献）；按 stat 名排序保证输出确定性。
+	-- Per-stat delta (quality contribution); sort by stat name for deterministic output.
 	local keys = {}
 	for stat in pairs(withQ) do keys[#keys + 1] = stat end
 	table.sort(keys)

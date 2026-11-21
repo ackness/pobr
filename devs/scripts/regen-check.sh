@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# 已准备数据上词条规则预编译的检查（CI 数据防线）
+# Check precompiled modifier rule regeneration on prepared data (CI data guard).
 #
-# 在临时目录重跑 precompile-mods --report，不写入或恢复工作区文件；解析覆盖率
-# 不得低于 devs/ci/parse-coverage-baseline.json（棘轮）。
-# 游戏事实、keystone 派生规则与语言数据来自 owner 发布，由 data:prepare 按摘要校验；
-# keystone 规则与天赋树的一致性由 RePoE 的 mise run adapter:keystones 检查。
-# 缺少已准备数据时失败：先运行 mise run data:prepare。
+# Re-runs precompile-mods --report in a temporary directory without mutating the
+# working tree; parse coverage must not drop below devs/ci/parse-coverage-baseline.json.
+# Game facts, keystone derived rules, and language data come from owner releases
+# verified by data:prepare; keystone consistency is checked by RePoE `adapter:keystones`.
+# Fails when prepared data is missing: run `mise run data:prepare` first.
 #
-# 用法：
-#   devs/scripts/regen-check.sh                      # 版本取 data/CURRENT
-#   POBR_PATCH=0.5.5.5 devs/scripts/regen-check.sh   # 显式指定版本
+# Usage:
+#   devs/scripts/regen-check.sh                      # Version from data/CURRENT
+#   POBR_PATCH=0.5.5.5 devs/scripts/regen-check.sh   # Explicit version
 
 set -euo pipefail
 
@@ -20,31 +20,32 @@ if [[ -z "$PATCH" && -f "$ROOT/data/CURRENT" ]]; then
     PATCH="$(head -1 "$ROOT/data/CURRENT" | tr -d '[:space:]')"
 fi
 if [[ -z "$PATCH" ]]; then
-    echo "regen-check: 无法确定版本（缺 data/CURRENT，也未设 POBR_PATCH）" >&2
+    echo "regen-check: unable to determine version (missing data/CURRENT and POBR_PATCH is unset)" >&2
     exit 1
 fi
 
 COMMITTED_FLAT="$ROOT/data/$PATCH"
 if [[ ! -d "$COMMITTED_FLAT" ]]; then
-    echo "regen-check: data/$PATCH 不存在；先运行 mise run data:prepare" >&2
+    echo "regen-check: data/$PATCH does not exist; run mise run data:prepare first" >&2
     exit 1
 fi
 
 TMP_OUT="$(mktemp -d "${TMPDIR:-/tmp}/pobr-regen-check.XXXXXX")"
 trap 'rm -rf "$TMP_OUT"' EXIT
-echo "regen-check: patch=${PATCH}，输出临时目录 ${TMP_OUT}"
+echo "regen-check: patch=${PATCH}, temp output ${TMP_OUT}"
 
 STATUS=0
 
 # ============================================================================
-# 词条规则预编译与覆盖率棘轮
+# Modifier rule precompilation and coverage ratchet
 # ----------------------------------------------------------------------------
-# precompile-mods 写 <data>/generated/{parsed_mods.json,parse-coverage.json}。
-# 复制已准备数据到隔离目录后运行，避免改动工作区；dereference symlink，
-# 输出不能指回源目录。语料来自 examples/。
+# precompile-mods writes <data>/generated/{parsed_mods.json,parse-coverage.json}.
+# Copy prepared data to an isolated directory first to keep the checkout clean;
+# dereference symlinks so output cannot point back to the source directory.
+# Corpora come from examples/.
 # ============================================================================
 BASELINE="$ROOT/devs/ci/parse-coverage-baseline.json"
-echo "regen-check: 重跑 precompile-mods（词条规则预编译）……"
+echo "regen-check: running precompile-mods (modifier rule precompilation)..."
 PC_ROOT="$TMP_OUT/precompile"
 PC_DATA="$PC_ROOT/data/$PATCH"
 mkdir -p "$PC_DATA"
@@ -59,25 +60,25 @@ cargo run --quiet -p precompile-mods --manifest-path "$ROOT/Cargo.toml" -- \
 
 COVERAGE="$PC_DATA/generated/parse-coverage.json"
 if [[ ! -f "$COVERAGE" || ! -f "$BASELINE" ]]; then
-    echo "regen-check: 缺 parse-coverage.json 或覆盖率基线，无法检查棘轮" >&2
+    echo "regen-check: missing parse-coverage.json or baseline; cannot check ratchet" >&2
     exit 1
 fi
 CUR_RATIO="$(sed -n 's/.*"coverage_ratio"[[:space:]]*:[[:space:]]*\([0-9.]*\).*/\1/p' "$COVERAGE" | head -1)"
 BASE_RATIO="$(sed -n 's/.*"coverage_ratio"[[:space:]]*:[[:space:]]*\([0-9.]*\).*/\1/p' "$BASELINE" | head -1)"
 if [[ -z "$CUR_RATIO" || -z "$BASE_RATIO" ]]; then
-    echo "regen-check: 无法读取 coverage_ratio" >&2
+    echo "regen-check: unable to read coverage_ratio" >&2
     exit 1
 fi
-# 浮点比较走 awk。
+# Floating-point comparison via awk.
 if awk "BEGIN { exit !(${CUR_RATIO} + 0.0000005 < ${BASE_RATIO}) }"; then
     STATUS=1
     echo ""
-    echo "regen-check: 覆盖率棘轮失败 —— 当前 ${CUR_RATIO} < 基线 ${BASE_RATIO}"
-    echo "解析覆盖率不得降低；若属预期（语料扩面）请同 PR 更新 devs/ci/parse-coverage-baseline.json"
+    echo "regen-check: coverage ratchet failed -- current ${CUR_RATIO} < baseline ${BASE_RATIO}"
+    echo "Parse coverage must not decrease; if expected (e.g. expanded corpus), update devs/ci/parse-coverage-baseline.json in the same PR"
 elif awk "BEGIN { exit !(${CUR_RATIO} > ${BASE_RATIO} + 0.0000005) }"; then
-    echo "regen-check: 提示 —— 覆盖率 ${CUR_RATIO} 高于基线 ${BASE_RATIO}，可同 PR 抬高 baseline"
+    echo "regen-check: note -- coverage ${CUR_RATIO} exceeds baseline ${BASE_RATIO}; you may raise the baseline in the same PR"
 else
-    echo "regen-check: OK — 覆盖率棘轮达标（当前 ${CUR_RATIO}，基线 ${BASE_RATIO}）"
+    echo "regen-check: OK -- coverage ratchet met (current ${CUR_RATIO}, baseline ${BASE_RATIO})"
 fi
 
 exit "$STATUS"

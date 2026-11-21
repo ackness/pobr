@@ -12,9 +12,9 @@ export interface StatRowDef {
   id: string;
   /** Numeric precision or a multiplier conversion; percentage units come from the catalog. */
   format?: Exclude<StatFormat, 'percent'>;
-  /** CSS 变量名（不带 var()），用于数值着色。 */
+  /** CSS variable name (without `var()`) for numeric tinting. */
   colorVar?: string;
-  /** 值为 0 时隐藏（DoT 等可选输出）。 */
+  /** Hide when value is 0 (for optional outputs like DoT). */
   hideZero?: boolean;
 }
 
@@ -318,7 +318,7 @@ function roundTo(value: number, digits: number): number {
   return Math.round(value * scale) / scale;
 }
 
-/** stats 数组 → id 索引。 */
+/** Index `stats` entries by `id`. */
 export function statMap(stats: DisplayStatValue[]): Map<string, number | null> {
   return new Map(stats.map((s) => [s.id, s.value]));
 }

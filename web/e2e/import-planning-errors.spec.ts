@@ -43,12 +43,12 @@ interface Capture {
 }
 const labels = {
   'en-US': { title: 'Plan passive upgrades', points: 'Point budget', attribute: 'Route planner: new travel attributes', strength: 'Strength', run: 'Find upgrade routes', preview: 'Show on tree', apply: 'Apply plan' },
-  'zh-TW': { title: '天賦提升規劃', points: '可投入點數', attribute: '天賦規劃：新增過路屬性點', strength: '力量', run: '尋找提升路線', preview: '在樹上查看', apply: '套用方案' },
+  'zh-TW': { title: '天賦提升規劃', points: '可投入點數', attribute: '天賦規劃：新增過路屬性點', strength: '力量', run: '搜尋提升路線', preview: '在樹上檢視', apply: '套用方案' },
   'zh-CN': { title: '天赋提升规划', points: '可投入点数', attribute: '天赋规划：新增过路属性点', strength: '力量', run: '寻找提升路线', preview: '在树上查看', apply: '应用方案' },
 };
 const jointLabels = {
   'en-US': { title: 'Jewels and passive routes', text: 'Candidate jewel text', socket: 'Candidate socket', add: 'Add jewel placement', run: 'Find jewel and passive plans' },
-  'zh-TW': { title: '珠寶與天賦聯合規劃', text: '候選珠寶文字', socket: '候選珠寶孔', add: '加入珠寶位置', run: '尋找珠寶與天賦方案' },
+  'zh-TW': { title: '珠寶與天賦聯合規劃', text: '候選珠寶文字', socket: '候選珠寶孔', add: '加入珠寶位置', run: '搜尋珠寶與天賦方案' },
   'zh-CN': { title: '珠宝与天赋联合规划', text: '候选珠宝文本', socket: '候选珠宝孔', add: '添加珠宝位置', run: '寻找珠宝与天赋方案' },
 };
 const saved = (page: Page): Promise<Envelope> => page.evaluate(() => JSON.parse(localStorage.getItem('pobr-v2-build-state')!));

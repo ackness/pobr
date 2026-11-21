@@ -29,7 +29,7 @@
 
 ### 识别但没有事件模型的词条
 
-当前 `special_mods.json` 已识别多类事件词条，并标为 `batch: "unmodelled"`：Glory 生成、元素灌注持续／拾取、Seal 获得、Puppet Master、Volatility 获得／爆炸延迟、破甲时长／承受破甲、Offering 生命、尸体消耗、护符使用、点燃获怒、充能球获得／消耗、怒气保留／流失时序、法术命中 Hinder 几率／时长、招架时状态、普通 Slam 余震附加及分叉额外投射物等。
+当前 `special_mods.json` 已识别多类事件词条，并标为 `batch: "unmodelled"`：Glory 生成、元素灌注持续／拾取、Seal 获得、Puppet Master、Volatility 获得／爆炸延迟、破甲时长／承受破甲、Offering 生命、尸体消耗、咒符使用、点燃获怒、充能球获得／消耗、怒气保留／流失时序、法术命中 Hinder 几率／时长、招架时状态、普通 Slam 余震附加及分叉额外投射物等。
 
 识别后它们可离开“无法解析”列表，但仍留在逐行台账和缺口队列。下文某个显式事件视图已支持，不代表整个事件家族都已实现；例如 Volatility 恢复视图不模拟获层过程。也不能因为静态计算暂时不需要，就把它们改成 `no_effect` / S0。
 
@@ -59,13 +59,13 @@ Invigorating Archon 的移速和元素抗性受 Archon 效果及自身 buff 效�
 
 Nature's Archon 仍有证据冲突：关键词称 25% more 伤害，而 `ArchonNature` BuffTemplates 显示 `plant_skill_damage_+% = 25`（increased）。实现其固有伤害前需进一步核对，不能用关键词或 PoB2 任一方直接定案。
 
-## 地面与护符事件
+## 地面与咒符事件
 
 ### Olroth's Resolve 的 Guard
 
 [物品文本](https://poe2db.tw/us/Olroths_Resolve)的 `local_unique_flask_gain_%_of_current_ward_as_guard_when_flask_effect_ends` 表示药效结束后，以当时 Ward 获得持续 10 秒的 Guard。已装备药剂即使关闭也保留事件属性。
 
-`olrothGuard` 是用户输入的、先前使用后仍剩余的 Guard，已经考虑期间承伤且仍在十秒内；缺失或零不给 Guard。引擎不从当前／最大 Ward 或药剂覆盖率反推，重新用药也不自动移除旧 Guard。与护符 Guard 取最强，最高为 200% 最大生命，进入 EHP／最大承伤池，不改 Ward。
+`olrothGuard` 是用户输入的、先前使用后仍剩余的 Guard，已经考虑期间承伤且仍在十秒内；缺失或零不给 Guard。引擎不从当前／最大 Ward 或药剂覆盖率反推，重新用药也不自动移除旧 Guard。与咒符 Guard 取最强，最高为 200% 最大生命，进入 EHP／最大承伤池，不改 Ward。
 
 药效、品质、药剂持续时间不缩放这个结束事件。`Flask<N>GuardAfterEffect` / `GuardDuration` 显示该栏位输入经上限限制的值和名义时长，明细可还原，无伪造 PoB key。规则为 `absent`；没有游戏内时序实测。
 
@@ -73,9 +73,9 @@ Nature's Archon 仍有证据冲突：关键词称 25% more 伤害，而 `ArchonN
 
 当前 `UniqueCharmIgniteEnemiesInPresence1` 生成四秒地面，以最大生命的 500% 作为点燃来源火伤。[关键词](https://poe2db.tw/us/Keywords)给地面默认半径 2 米；非命中地面需将易燃累积到 50% 才点燃。[当前物品](https://poe2db.tw/us/Beiras_Anguish)已经替换 0.3 以前立即点燃附近敌人的行为。
 
-每件护符的 `IgnitedGroundDuration`、`IgnitedGroundRadiusMetres`、`IgnitedGroundSourceDamage`、`IgnitedGroundIgniteDPS`、`IgnitedGroundIgniteDuration` 显示潜力，已装备但关闭也可查看。创建快照取当前最大生命，包含保留部分；不借主技能命中、暴击、攻击／法术修正或本地辅助。全局点燃幅度、速度、时长、敌人抗性／承伤照常生效，命中穿透不生效。护符品质、效果和 buff 时长不缩放事件属性；未实测时序。
+每件咒符的 `IgnitedGroundDuration`、`IgnitedGroundRadiusMetres`、`IgnitedGroundSourceDamage`、`IgnitedGroundIgniteDPS`、`IgnitedGroundIgniteDuration` 显示潜力，已装备但关闭也可查看。创建快照取当前最大生命，包含保留部分；不借主技能命中、暴击、攻击／法术修正或本地辅助。全局点燃幅度、速度、时长、敌人抗性／承伤照常生效，命中穿透不生效。咒符品质、效果和 buff 时长不缩放事件属性；未实测时序。
 
-`conditionBeiraIgniteActive` 明确声明战斗中已建立且正在生效的地面点燃；仅装备或启用不给 DPS。`BeiraIgniteDPS` 取最强护符来源，`CombinedIgniteDPS` 和总 DoT 在它与主技能普通点燃间取强者，不相加。可选 Full DPS 在共享点燃上限内只计一次，与技能数量无关。
+`conditionBeiraIgniteActive` 明确声明战斗中已建立且正在生效的地面点燃；仅装备或启用不给 DPS。`BeiraIgniteDPS` 取最强咒符来源，`CombinedIgniteDPS` 和总 DoT 在它与主技能普通点燃间取强者，不相加。可选 Full DPS 在共享点燃上限内只计一次，与技能数量无关。
 
 若所选／纳入技能支持多个同时点燃，跨来源叠加未验证，Beira 值单列而不加总。使用频率、积累时间、位置、过期与覆盖率均不推算。规则为 `absent`，参考口径排除新来源。
 
@@ -83,9 +83,9 @@ TW 使用已核对的官方用语「貝伊拉的悲痛」「點燃地面」。CN
 
 ### 奉献地面
 
-`calc::consecrated_ground` 按[游戏关键词](https://poe2db.tw/us/Keywords)，让明确站在地面上的角色每秒再生当前最大生命的 5%，并获得 50% reduced 诅咒效果（`life_regeneration_rate_per_minute_%`、`curse_effect_on_self_+%`，buff `ground_consecration`）。玩家用 `conditionOnConsecratedGround` 或原生 `OnConsecratedGround` / `Condition:OnConsecratedGround` 声明战斗状态，重复来源只算一次。召唤物需独立的 `conditionMinionsOnConsecratedGround` 或自身条件，不能继承玩家位置。
+`calc::consecrated_ground` 按[游戏关键词](https://poe2db.tw/us/Keywords)，让明确站在地面上的角色每秒再生当前最大生命的 5%，并获得 50% reduced 诅咒效果（`life_regeneration_rate_per_minute_%`、`curse_effect_on_self_+%`，buff `ground_consecration`）。玩家用 `conditionOnConsecratedGround` 或原生 `OnConsecratedGround` / `Condition:OnConsecratedGround` 声明战斗状态，重复来源只算一次。召唤生物需独立的 `conditionMinionsOnConsecratedGround` 或自身条件，不能继承玩家位置。
 
-[Sanguis Heroum](https://poe2db.tw/us/Sanguis_Heroum) 与 `UniqueCharmCreateConsecratedGround1` 给 `charm_create_consecrated_ground_when_used_duration_ms = 4000`、`charm_create_consecrated_ground_when_used_radius = 14`（1.4 米）。关闭的已装备护符也显示 `Charm<N>ConsecratedGroundDuration` / `ConsecratedGroundRadiusMetres`；这不建立地面或把角色放上去。护符效果、品质和时长不缩放独立地面事件。来源规则为 `absent`，基础地面收益 PoB2 也实现。
+[Sanguis Heroum](https://poe2db.tw/us/Sanguis_Heroum) 与 `UniqueCharmCreateConsecratedGround1` 给 `charm_create_consecrated_ground_when_used_duration_ms = 4000`、`charm_create_consecrated_ground_when_used_radius = 14`（1.4 米）。关闭的已装备咒符也显示 `Charm<N>ConsecratedGroundDuration` / `ConsecratedGroundRadiusMetres`；这不建立地面或把角色放上去。咒符效果、品质和时长不缩放独立地面事件。来源规则为 `absent`，基础地面收益 PoB2 也实现。
 
 没有地面所有者／友军地面效果输入，因此 `ConsecratedGroundEffect` 有意不读取，避免把自己的地面修正用于友军地面。不推算使用率、持续覆盖或离地后保留，也未实测。TW 用[奉獻地面](https://poe2db.tw/tw/Keywords)、[嗜血英雄／止血護符](https://poe2db.tw/tw/Sanguis_Heroum)；其他说明和 CN 标签为应用文案，不声称是官方翻译。
 
@@ -104,7 +104,7 @@ TW 使用已核对的官方用语「貝伊拉的悲痛」「點燃地面」。CN
 | 5 | [Covetous](https://poe2db.tw/us/Covetous_Arrows) | 击杀给 600% increased 稀有度 |
 | 6 | [Blunt](https://poe2db.tw/us/Blunt_Arrows) | 600% increased 晕眩累积 |
 
-显式零／false／无效输入清除导入选择。只对战斗中的玩家弓攻击、所选 stat set 带 `skill_can_fire_arrows` 时生效；法术、弩、召唤物、代理、非箭次级效果不继承。
+显式零／false／无效输入清除导入选择。只对战斗中的玩家弓攻击、所选 stat set 带 `skill_can_fire_arrows` 时生效；法术、弩、召唤生物、代理、非箭次级效果不继承。
 
 Crescendo 用 `skillChainCount` / `Chain` 表示此前连锁次数，受容量限制，默认初击；它是 increased，不是 MORE 或额外单体命中。Diamond 保留第一次命中检查，跳过暴击闪避重检，但仍服从 `NeverCrit`。固定效果不因重复授予而叠加。`CadiroArrowReturn` / `CadiroArrowKillRarity` 保留来源明细，无 PoB key；返回几何／时序与掉落结果未建模。
 
@@ -134,7 +134,7 @@ XML、JSON 与原生输入一致；显式 false／零／无效原始输入清除
 
 `volatilityExplosionQuantity` / `VolatilityExplosionQuantity` 必须为有限正整数，受最终上限限制。Controlled Chaos 替换上限而非增加，亦见 [0.3.0 补丁](https://poe2db.tw/us/Version_0.3.0)。每次预期恢复为“封顶层数 × 总刷新几率（限制 0–100%）”。可选 `volatilityExplosionsPerSecond` / `VolatilityExplosionsPerSecond` 声明同样层数的合格爆炸频率，未填时每秒值为零，无效值和溢出拒绝。
 
-不从攻速或重置计时猜频率，恢复层数不反馈到无限链，即使几率 100% 也如此。当前层数、伤害、防御、Volatile Power、到期和覆盖率都不改变。没有来源时全部为零；有玩家来源时，几率和上限在非战斗或数量无效时仍可查看，事件结果为零；召唤物不适用。
+不从攻速或重置计时猜频率，恢复层数不反馈到无限链，即使几率 100% 也如此。当前层数、伤害、防御、Volatile Power、到期和覆盖率都不改变。没有来源时全部为零；有玩家来源时，几率和上限在非战斗或数量无效时仍可查看，事件结果为零；召唤生物不适用。
 
 显式原始 false／零／无效值清除原生旧设置，缺失则保留；两项配置均记录读取。两条规则为 `absent`，参考口径排除新视图，明细保留公式／来源且无伪造 PoB key。TW「[易爆](https://poe2db.tw/tw/Volatility)」、CN「[无常](https://poe2db.tw/cn/Volatility)」来自游戏词条；完整文案为应用用语。刷新是否绕过获层限制未实测，调用方必须提供合格事件。
 
@@ -146,6 +146,6 @@ XML、JSON 与原生输入一致；显式 false／零／无效原始输入清除
 
 视图描述**从空计数开始的一次成功、合格事件**，只读全局获得修正，不借接收技能自己的命中／施法频率。[Martial Adept](https://poe2db.tw/us/Martial_Adept)（41751）的 `additional_combo_gain_on_hit` 一次增加整数 a；`additional_combo_gain_chance_%` 合为 0–100% 的概率 p，成功只多一层。因此容量 c 下的期望为 `(1-p) × min(c, 1+a) + p × min(c, 2+a)`。计数输入为非负整数；相加、非递归的读法来自文本及共同 stat，但组合交互未实测。没有溢出机制，也不推算当前层数、衰减、频率、消耗、回复或 DPS。
 
-Practiced Combo 修改的是产生连击的那次攻击，不从别组借给接收技能，也不进入这个仅全局视图。Finality 禁止获得连击；`conditionFinality` / 原生 `Finality` 是当前状态，显式 false 清除旧 true，原生明确条件优先于 `Condition:Finality` 标志。无接收技能、非战斗、Finality 中或不支持的代理／召唤物时，获得为零且不读取全局增益。该控件不实现 Finality 的其他奖励。
+Practiced Combo 修改的是产生连击的那次攻击，不从别组借给接收技能，也不进入这个仅全局视图。Finality 禁止获得连击；`conditionFinality` / 原生 `Finality` 是当前状态，显式 false 清除旧 true，原生明确条件优先于 `Condition:Finality` 标志。无接收技能、非战斗、Finality 中或不支持的代理／召唤生物时，获得为零且不读取全局增益。该控件不实现 Finality 的其他奖励。
 
 新获得规则为 `absent`；参考口径保留原有 Culmination 选定层数倍率，但排除新生成视图。Calcs 公式可还原且无虚构 PoB key。TW 使用「[連擊／終極](https://poe2db.tw/tw/Combo)」，CN「连击／绝杀」取保留的 `i18n/zh-CN/stat_lines.json`；完整标签和帮助为应用文案。

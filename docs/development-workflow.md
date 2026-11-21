@@ -669,5 +669,9 @@ mise exec -- cargo run -p pobr-cli -- calculate-build --file <code.txt> --breakd
     同一个二进制重复运行却得到不同哈希时，先修复该构筑的非确定性，再比较版本。
   - `perf record --call-graph dwarf` 可查看上述运行的时间花在哪里。
     优化前先测当前版本，保留输入、工具链、主机与原始采样，避免沿用旧版热点结论。
-- `mise run web package-wasm`：将已准备 WASM 与同步数据打包到 `.cache/wasm-release/`；`mise run web smoke-wasm-package` 解压后执行真实计算。`build-wasm` 校验源码、工具链、构建设置和产物记录，未变时直接复用；`mise run web build-wasm --force` 显式重建但不清 Cargo 缓存。打包继续校验源码 / 绑定指纹、实际 schema 和数据快照，来源 commit 保留编译时值。脚本改动运行 `mise exec -- node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`；发布流程见 [WASM 打包说明](wasm-package.md)。release workflow 在完整门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
+- `mise run web package-wasm`：将已准备 WASM 与同步数据打包到 `.cache/wasm-release/`；
+  `mise run web smoke-wasm-package` 解压后执行真实计算。`build-wasm` 校验源码、工具链、构建设置和产物记录，未变时直接复用；
+  `mise run web build-wasm --force` 显式重建但不清 Cargo 缓存。打包继续校验源码／绑定指纹、实际 schema 和数据快照，
+  来源 commit 保留编译时值。脚本改动运行 `mise exec -- node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`；
+  发布流程见 [WASM 打包说明](wasm-package.md)。release workflow 在完整门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
 - `mise run web test:worker`：在实际 workerd 运行时测试 Worker，使用合成上游响应，无外网依赖。数据 bump 冒烟失败的截图与 trace 由 CI 上传为 `playwright-failure`；本地运行的报告在 `.cache/e2e/runs/<套件>/`。

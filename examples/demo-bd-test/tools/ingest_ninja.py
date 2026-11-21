@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""把 poe.ninja character API 抓取的 JSON 转成统一 fixture。
+"""Convert poe.ninja character API JSON into a normalized test fixture.
 
-输入: 一个 JSON 文件，含 poe.ninja /poe2/api/builds/<snapshot>/character 响应的精简字段:
+Input: a JSON file with compact fields from `/poe2/api/builds/<snapshot>/character`:
   account/name/league/class/level/lastSeenUtc/keystones/defensiveStats/skills/pob
 
-产物: builds/<class>-<ascendancy>-<main-skill>/
-  code.txt   = pob 码
-  stats.json = poe.ninja Stats 页数据（defensiveStats + 技能 DPS + keystones）
-  meta.json / decoded.xml = 由 make_fixture.py 生成
-  notes.md   = 自动生成的摘要
+Output: builds/<class>-<ascendancy>-<main-skill>/
+  code.txt   = PoB code
+  stats.json = poe.ninja Stats snapshot (defensiveStats + skill DPS + keystones)
+  meta.json / decoded.xml = generated via make_fixture.py
+  notes.md   = auto-generated summary
 """
 
 import json
@@ -38,7 +38,7 @@ def main(char_json: Path) -> None:
         filter(None, [slugify(ch["class"]), slugify(ch["ascendancy"]), slugify(ch["main_skill"] or "unknown")])
     )
     d = HERE / "builds" / slug
-    # 重名（同职业同主技能的不同角色）时追加序号，避免覆盖已有 fixture
+    # Disambiguate different characters with the same class and main skill by appending a suffix.
     n = 2
     while d.exists() and (d / "code.txt").exists() and (d / "code.txt").read_text().strip() != code:
         d = HERE / "builds" / f"{slug}-{n}"
@@ -79,18 +79,18 @@ def main(char_json: Path) -> None:
     dps_lines = []
     for s in c.get("skills", []):
         for dd in s.get("dps", []):
-            dps_lines.append(f"  - {dd['name']}: DPS {dd['dps']:,}（DoT {dd['dotDps']:,}）")
+            dps_lines.append(f"  - {dd['name']}: DPS {dd['dps']:,} (DoT {dd['dotDps']:,})")
     ds = c.get("defensiveStats", {})
     notes = f"""# {ch['class']} / {ch['ascendancy']} — {ch['main_skill']}
 
-- **来源**: [{c['account']} / {c['name']}]({url})
-- **联赛**: {c.get('league')}（0.5.0 Runes of Aldur），抓取于 {date.today().isoformat()}
-- **等级**: {ch['level']}
-- **主技能组**: {ch['main_skill']}（详见 meta.json `skill_groups`）
-- **防御**（poe.ninja Stats）: Life {ds.get('life')} / ES {ds.get('energyShield')} / EHP {ds.get('effectiveHealthPool')}，抗性 {ds.get('fireResistance')}/{ds.get('coldResistance')}/{ds.get('lightningResistance')}/{ds.get('chaosResistance')}
-- **技能 DPS**（poe.ninja 计算）:
-{chr(10).join(dps_lines) if dps_lines else '  - 无'}
-- **Keystones**: {', '.join(c.get('keystones') or []) or '无'}
+- **Source**: [{c['account']} / {c['name']}]({url})
+- **League**: {c.get('league')} (0.5.0 Runes of Aldur), fetched {date.today().isoformat()}
+- **Level**: {ch['level']}
+- **Main skill**: {ch['main_skill']} (see meta.json `skill_groups`)
+- **Defence** (poe.ninja Stats): Life {ds.get('life')} / ES {ds.get('energyShield')} / EHP {ds.get('effectiveHealthPool')}, Res {ds.get('fireResistance')}/{ds.get('coldResistance')}/{ds.get('lightningResistance')}/{ds.get('chaosResistance')}
+- **Skill DPS** (poe.ninja):
+{chr(10).join(dps_lines) if dps_lines else '  - None'}
+- **Keystones**: {', '.join(c.get('keystones') or []) or 'None'}
 """
     (d / "notes.md").write_text(notes)
     print(slug)

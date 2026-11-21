@@ -3,7 +3,7 @@ import { expect, test, type Locator } from '@playwright/test';
 test(`item roll ranges preserve keyboard edits, endpoints and disabled state`, async ({ page }, testInfo) => {
   // The fixture patches one backend method; the worker backend is an RPC proxy that ignores patches, so run on the page.
   await page.goto('/e2e/fixtures/ranges.html?engine=main');
-  const catalogue = page.getByRole('region', { name: 'Unique catalogue', exact: true });
+  const catalogue = page.getByRole('region', { name: 'Unique catalog', exact: true });
   await catalogue.getByRole('searchbox', { name: 'Search unique names and modifiers' }).fill('Astramentis');
   await catalogue.getByRole('button', { name: /^Astramentis/ }).click();
   await catalogue.getByRole('combobox', { name: 'Variant', exact: true }).click();

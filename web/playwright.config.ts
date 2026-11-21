@@ -33,7 +33,7 @@ export default defineConfig({
     trace: traces ? 'retain-on-failure' : 'off',
   },
   webServer: {
-    // preview 用已构建的 dist（含 wasm + public/data）；先 pnpm build + sync-data（`mise run e2e` 自动检查并重建）。
+    // preview serves the built dist (with WASM + public/data); `mise run e2e` builds and syncs if stale.
     command: `pnpm preview --host 127.0.0.1 --port ${port} --strictPort`,
     url: baseURL,
     // A server already on the port may be another worktree's preview of another build. Reuse it only when asked

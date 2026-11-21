@@ -20,8 +20,8 @@ test('find a unique by modifier, choose a variant and rolls, then save and equip
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
   const life = lifeValue(page);
   const before = await settledText(life);
-  await page.getByRole('button', { name: 'Unique catalogue', exact: true }).click();
-  const catalogue = page.getByRole('region', { name: 'Unique catalogue', exact: true });
+  await page.getByRole('button', { name: 'Unique catalog', exact: true }).click();
+  const catalogue = page.getByRole('region', { name: 'Unique catalog', exact: true });
   await catalogue.getByRole('searchbox', { name: 'Search unique names and modifiers' }).fill('all attributes');
   await catalogue.getByRole('combobox', { name: 'Item class', exact: true }).click();
   await page.getByRole('option', { name: 'Amulet', exact: true }).click();
@@ -66,7 +66,7 @@ for (const member of [false, true]) {
     await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
     await page.locator('.import-submit').click();
     await openItemsAfterImport(page);
-    await page.getByRole('button', { name: 'Unique catalogue', exact: true }).click();
+    await page.getByRole('button', { name: 'Unique catalog', exact: true }).click();
     const classes = page.locator('.unique-catalogue .item-crafter-fields [role="combobox"]').first();
     await classes.click();
     await page.getByRole('option', { name: 'Body Armour', exact: true }).click();

@@ -82,7 +82,7 @@
   stroke: var(--accent-gold-bright);
 }
 
-/* 搜索命中：亮青描边（未加点节点也醒目，且不与金色加点态混淆） */
+/* Search hits: bright cyan stroke (stands out even on unallocated nodes without clashing with gold) */
 .node-search-hit {
   stroke: var(--color-cold);
   stroke-width: 24;
@@ -98,7 +98,7 @@
   width: 160px;
 }
 
-/* 热力图控件（属性选择 + 深度） */
+/* Heatmap controls (stat picker + depth) */
 .tree-heat {
   display: flex;
   align-items: center;
@@ -153,7 +153,7 @@
   cursor: pointer;
 }
 
-/* 升华小盘 */
+/* Ascendancy sub-wheel */
 .tree-asc-picker {
   display: flex;
   align-items: center;
@@ -179,7 +179,7 @@
   stroke: var(--accent-gold-bright);
 }
 
-/* 属性小点三选一弹窗 */
+/* 3-way attribute choice popover */
 .attr-picker {
   position: absolute;
   z-index: 30;
@@ -208,7 +208,7 @@
   color: var(--text-muted);
 }
 
-/* 未选升华引导 */
+/* Prompt when no ascendancy is chosen */
 .asc-hint {
   position: absolute;
   top: var(--space-3);
@@ -223,7 +223,7 @@
   pointer-events: none;
 }
 
-/* 属性点批量调配 */
+/* Bulk attribute redistribution */
 .attr-distribute {
   display: flex;
   align-items: center;
@@ -281,7 +281,7 @@
   padding-left: var(--space-3);
 }
 
-/* 珠宝插槽编辑 */
+/* Jewel socket editor */
 .jewel-editor {
   margin-top: var(--space-2);
   background: var(--surface-card);
@@ -303,7 +303,7 @@
   stroke: var(--accent-gold-bright);
 }
 
-/* 天赋点收益 */
+/* Passive point benefit */
 .tooltip-benefit {
   margin-top: var(--space-2);
   padding-top: var(--space-1);

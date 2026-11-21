@@ -18,7 +18,7 @@ PR 轻量检查与 master 完整 CI 的职责见[开发工作流](development-wo
 | 要查什么 | 命令 |
 |----------|------|
 | 一行文本的游戏 stat id、完整原文、来源、逐行使用记录和附近规则 | `mise run gap "<line or template>"`；新 worktree 先设置下文的 `POBR_BIN` 和 `POBR_CACHE_DIR`，避免编译 CLI 或重算记录 |
-| 游戏数据里的技能、stat、基底、节点或暗金 | `mise run lookup <id or name>` |
+| 游戏数据里的技能、stat、基底、节点或传奇 | `mise run lookup <id or name>` |
 | 哪些代码读取 modifier 名称 `X` | `rg -n '"X"' crates/pobr-core/src crates/pobr-build/src`；常见读取形式是 `named("X")`、`sum(.., "X")`、`flag(.., "X")` |
 | 类似文本是否已有规则 | `rg -n -i '<a distinctive word>' data/overlay-common/special_mods.json` |
 | 技能 stat 是否已有含义映射 | `rg -n '<stat_id>' crates/pobr-core/src/rules/skill_stats.rs` |
@@ -26,7 +26,7 @@ PR 轻量检查与 master 完整 CI 的职责见[开发工作流](development-wo
 
 <a id="add-one-game-line-item-passive-jewel-flaskcharm-text"></a>
 
-## 添加一行游戏词条（物品、天赋、珠宝、药剂或护符）
+## 添加一行游戏词条（物品、天赋、珠宝、药剂或咒符）
 
 1. 按上表查游戏 stat id 和现有读取方。
 2. 根据词条选择位置：

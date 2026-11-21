@@ -32,9 +32,9 @@ it('leads with the main minion gain when player hit and combined DPS do not chan
   const before = [{ id: 'TotalDPS', value: 0 }, { id: 'CombinedDPS', value: 0 }, { id: 'MainMinionDPS', value: 100.4 }];
   const after = before.map(row => ({ ...row, value: row.id === 'MainMinionDPS' ? 150.6 : row.value }));
   const html = renderToStaticMarkup(<SwapGainCard before={before} after={after} lang="zh-CN"
-    damage={{ stat: 'MainMinionDPS', label: '召唤物击中 DPS', note: minionDpsNote('zh-CN', '狼', 7) }} />);
+    damage={{ stat: 'MainMinionDPS', label: '召唤生物击中 DPS', note: minionDpsNote('zh-CN', '狼', 7) }} />);
   const headline = html.match(/data-stat="MainMinionDPS"[\s\S]*?<\/div>/)![0];
-  expect(headline).toContain('召唤物击中 DPS');
+  expect(headline).toContain('召唤生物击中 DPS');
   expect(headline).toContain('狼 · 单只 · 上限 7 只');
   expect(headline).toContain('+50.0%');
   expect(headline).toContain('100.4</span> → <b class="swap-after">150.6');

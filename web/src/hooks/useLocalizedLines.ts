@@ -1,6 +1,7 @@
 /**
- * 物品文本行的中文显示翻译（Items 面板 / 树页珠宝选择器共用）：
- * 结构标注行走本地前缀词典，其余行批量送 wasm en→zh 翻译层；翻不中原样显示。
+ * Chinese item-text line translation (shared by the Items panel and passive-tree jewel selector):
+ * structural label lines use a local prefix table, while remaining lines batch through the wasm en->zh
+ * translator (unrecognized lines display verbatim).
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -10,7 +11,7 @@ import { legacyGameLocale } from '../lib/gameLocales';
 import { lineText, mergeModifierContinuations } from '../lib/continuedLines';
 import type { GameNameRequest } from '../lib/nativeDisplayNames';
 
-/** PoB 结构标注行的键 → 本地化（词条模板翻译层不认识这些行）。 */
+/** PoB structural label keys -> localization (the mod-template translation layer does not handle these lines). */
 const STRUCT_LINE_KEYS: Record<string, { 'zh-TW': string; 'zh-CN': string }> = {
   'Item Level': { 'zh-TW': '物品等級', 'zh-CN': '物品等级' },
   'LevelReq': { 'zh-TW': '需求等級', 'zh-CN': '需求等级' },
@@ -35,7 +36,7 @@ const STRUCT_LINE_KEYS: Record<string, { 'zh-TW': string; 'zh-CN': string }> = {
   'Block chance': { 'zh-TW': '格擋機率', 'zh-CN': '格挡几率' },
   'Block Chance': { 'zh-TW': '格擋機率', 'zh-CN': '格挡几率' },
   'Ward': { 'zh-TW': '結界', 'zh-CN': '结界' },
-  'Charm Slots': { 'zh-TW': '護符插槽', 'zh-CN': '护符插槽' },
+  'Charm Slots': { 'zh-TW': '護符插槽', 'zh-CN': '咒符插槽' },
   'Radius': { 'zh-TW': '範圍', 'zh-CN': '范围' },
   'Limited to': { 'zh-TW': '限裝', 'zh-CN': '限装' },
   'Sockets': { 'zh-TW': '插槽', 'zh-CN': '插槽' },
@@ -52,10 +53,10 @@ const STRUCT_VALUES: Record<string, { 'zh-TW': string; 'zh-CN': string }> = {
   Split: { 'zh-TW': '已分割', 'zh-CN': '已分割' },
 };
 
-/** 符文/魂核命名行前缀（值是物品名，需单独送翻译）。 */
+/** Rune / Soul Core socketed name prefix (value is an item name and translated separately). */
 const RUNE_PREFIXES: Record<string, { 'zh-TW': string; 'zh-CN': string }> = {
   'Rune': { 'zh-TW': '符文', 'zh-CN': '符文' },
-  'Soul Core': { 'zh-TW': '魂核', 'zh-CN': '魂核' },
+  'Soul Core': { 'zh-TW': '靈魂核心', 'zh-CN': '灵核' },
 };
 
 function runeLineParts(line: string): { prefix: string; name: string } | null {
@@ -63,13 +64,13 @@ function runeLineParts(line: string): { prefix: string; name: string } | null {
   return m ? { prefix: m[1], name: m[2].trim() } : null;
 }
 
-/** 从 PoB 原始文本块提取稀有度（`Rarity: RARE` 行；XML 导入的该行带缩进）。 */
+/** Extract rarity from a raw PoB item block (`Rarity: RARE`; XML imports indent this line). */
 export function rarityOf(text: string): string {
   const m = text.match(/^\s*Rarity:\s*(\w+)/im);
   return (m?.[1] ?? 'normal').toLowerCase();
 }
 
-/** 展示用：剥掉行内 `{tags}` 与 `[A|B]` 标注（PoB 词条内部标注语法）。 */
+/** Strip inline `{tags}` and `[A|B]` annotations (PoB internal mod markup) for display. */
 export function cleanLine(line: string): string {
   return line
     .replace(/\{[^}]*\}/g, '')
@@ -78,7 +79,7 @@ export function cleanLine(line: string): string {
     .trim();
 }
 
-/** 物品文本 → 展示行（剥标注、滤 Rarity 行）。 */
+/** Item text -> display lines (annotations stripped, `Rarity:` lines filtered out). */
 export function itemLines(text: string): string[] {
   return text
     .split('\n')
@@ -86,8 +87,8 @@ export function itemLines(text: string): string[] {
     .filter((l) => l && !/^Rarity:/i.test(l));
 }
 
-/** 展示名行对：RARE/UNIQUE 物品 = [随机名, 基底]（玩家光看随机名不知道是什么装备）；
- * MAGIC/NORMAL 名称行本身含基底，只取首行。 */
+/** Display name parts: RARE/UNIQUE items = `[random name, base type]` (random name alone hides what base it is);
+ * MAGIC/NORMAL name lines already include the base type, so take only the first line. */
 export function nameParts(text: string): string[] {
   const lines = itemLines(text);
   const rarity = rarityOf(text);
@@ -97,8 +98,8 @@ export function nameParts(text: string): string[] {
   return lines[0] ? [lines[0]] : [];
 }
 
-/** 批量物品显示名「名称·基底」（已本地化；空文本 → 空串）。
- * 库行/槽位按钮/切换下拉等所有名称展示点共用。 */
+/** Batch item display names `"Name·Base"` (localized; empty text -> empty string).
+ * Shared by library rows, slot buttons, and swap dropdowns. */
 export function useItemDisplayNames(texts: (string | undefined)[], lang: Lang): string[] {
   const parts = texts.map((t) => (t ? nameParts(t) : []));
   // The second part of a rare/unique pair is the item format's base line, resolved by base identity.
@@ -108,7 +109,7 @@ export function useItemDisplayNames(texts: (string | undefined)[], lang: Lang): 
   return parts.map((p) => p.map((_, index) => index === 0 ? translated[name++] : bases[base++]).join('·'));
 }
 
-/** 结构行本地化：`Item Level: 83` → `物品等级: 83`；非结构行返回 null。 */
+/** Structural line localization: `Item Level: 83` -> `物品等级: 83`; returns null for non-structural lines. */
 export function localizeStructLine(line: string, lang: Lang): string | null {
   const locale = legacyGameLocale(lang);
   if (!locale) return null;
@@ -129,7 +130,7 @@ const BONDED_PREFIX_PROBE = 'Bonded: {0}';
 const CATALYST_QUALITY = /^(Quality \([^)]+ Modifiers\)):\s*(.+)$/;
 
 /** What {@link useLocalizedLines} sends `translateLines` for `lines`: one entry per line, in order.
- * 符文命名行只送名称部分（"Rune: X" 整行不在词条模板里，X 是基底名可直译）。A blank line, or one
+ * For rune/soul-core lines ("Rune: X"), only send the name X (the full line is absent from mod templates while X translates as a base name). A blank line, or one
  * translated locally, is sent blank: it still separates its neighbours, so lines that were not
  * adjacent never translate as one description. A `Bonded:` line is sent whole; after the lines,
  * each one's effect and {@link BONDED_PREFIX_PROBE} follow (each after a blank), for a line the
@@ -195,7 +196,7 @@ export function localizedLines(lines: string[], lang: Lang, translated: readonly
 /** No answer yet: one shared array, so the memo below keeps its value across renders. */
 const NO_TRANSLATIONS: readonly (string | undefined)[] = [];
 
-/** 中文界面：词条行批量反查翻译（结构行走本地词典；翻译不中原样显示）。One output per input; a line a
+/** Chinese UI: batch reverse-lookup line translations (structural lines use the local dictionary; unknown lines fall back verbatim). One output per input; a line a
  * multi-line description covered comes back `""`, which consumers drop or replace through
  * `lib/continuedLines`. */
 export function useLocalizedLines(lines: string[], lang: Lang): string[] {

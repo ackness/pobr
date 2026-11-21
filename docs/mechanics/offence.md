@@ -8,7 +8,7 @@ Wildsurge Incantation（49363，`keystone_wildsurge_incantation`）的标题和�
 
 技能的无值 stat `global_always_hit`（“Your Hits can't be Evaded”，掌套的隐式 stat 也是它）让命中不检查闪避（`CannotBeEvaded`），暴击也不再按命中率折算。Mace Strike 的 `skill_double_hits_when_dual_wielding` 在双持时两把武器各命中一次：DPS 按两次命中计，每次命中的伤害与暴击率不变。所选 stat set 带 `base_deal_no_damage` 时该效果不造成伤害（`DealNoDamage`），武器与附加伤害也不能把 buff、放置动作或技能容器变成命中：Conductive Runes 的放置、Rolling Slam、Spearfield、Tempest Bell 的主 stat set 与 Hollow Focus 的 Bells 为 0，伤害分别在同一技能另选的 Explosion、Slam、Hazard、Shockwave、Nova stat set。
 
-Explosive Demise 引爆生命低于阈值的友方召唤物（`command_minion_target_ally_below_x_life`），没有召唤物时不造成伤害（以上见 `rules::skill_stats::skill_modifiers`）。Raise Shield 与 Parry 用盾牌的伤害攻击（`replace_off_hand_unarmed_attack_stats_with_shield_type`，盾牌每满 N 点护甲或闪避为一组，两者的 N 为 5），主手武器不提供伤害或攻击时间（`skill_env::weapon::weapon_contribution`）。
+Explosive Demise 引爆生命低于阈值的友方召唤生物（`command_minion_target_ally_below_x_life`），没有召唤生物时不造成伤害（以上见 `rules::skill_stats::skill_modifiers`）。Raise Shield 与 Parry 用盾牌的伤害攻击（`replace_off_hand_unarmed_attack_stats_with_shield_type`，盾牌每满 N 点护甲或闪避为一组，两者的 N 为 5），主手武器不提供伤害或攻击时间（`skill_env::weapon::weapon_contribution`）。
 
 Raise Shield 的说明 “Release immediately after Blocking when an enemy is close to perform a Shield Bash” 要求先格挡，它的 250 毫秒最短引导与 35 毫秒释放是举盾的过程、不是盾击频率，所以不走引导周期，按自己 550 毫秒的攻击时间计，假设每次能盾击时都有一次可格挡的命中到达；Parry 没有引导阶段的 stat，按等级行的 750 毫秒（`base_parry_duration_ms` 是敌人身上减益的持续时间）。
 
@@ -26,7 +26,7 @@ Blackflame Covenant（42680，`keystone_fire_spells_become_chaos_spells`）只�
 
 剩余连锁加成只描述所选命中：可连锁次数减已用次数，再限制到零与容量之间，不用假想目标数乘 DPS。Twisted Empyrean 按最终最大魔力给该手别附加冰伤；沿用 `PercentStat` 约定，各端点先向上取整再乘伤害效用。当前 `with Mace Skills` 的火转冰用通用转换矩阵，超过 100% 时归一化。导出器只识别旧的 `of ... skills`，此规则为 `exporter: "absent"`。
 
-Brutality 的禁止元素／混沌 stat 经玩家和召唤物共用映射进入 `DealNo*`。转换后移除被禁止的伤害，保留物理 MORE 和辅助范围。异常按最终造成的类型检查：禁止混沌时，物理命中也不能产生毒；普通点燃检查火，Covenant 点燃检查混沌。被禁止的异常不保留伤害或层数，但保留限制来源的归因。
+Brutality 的禁止元素／混沌 stat 经玩家和召唤生物共用映射进入 `DealNo*`。转换后移除被禁止的伤害，保留物理 MORE 和辅助范围。异常按最终造成的类型检查：禁止混沌时，物理命中也不能产生毒；普通点燃检查火，Covenant 点燃检查混沌。被禁止的异常不保留伤害或层数，但保留限制来源的归因。
 
 “几率忽略物理减伤”仍报告未支持，没有概率减伤模型。Second Wind 的额外使用次数也未支持；已有调查语料选择的是 Convalescence 不兼容的保留效果，不能为了生效而自动改选主动效果。
 
@@ -38,7 +38,7 @@ Dimensional Weakspot（2344，`treat_enemy_resistances_as_negated_on_elemental_d
 
 `cannot_penetrate_or_ignore_elemental_resistances` 同时阻止元素穿透与忽略抗性，仍允许反转，混沌穿透不受影响。上述例子在禁止元素穿透时为 `0.85 × 0.5 + 0.15 × 1.5 = 0.65`。
 
-Doryani's Prototype（`enemies_in_presence_lightning_resist_equal_to_yours`、`UniqueNearbyEnemyLightningResistanceEqual1`）用玩家经过 buff、充能和资源派生后的最终电抗，覆盖附近敌人的电抗及诅咒／曝露减抗。召唤物、DoT、Sacred Flame 都读取同一敌人值。`EnemyInPresence = false` 关闭它；显式敌人覆盖与敌人最大抗性仍优先。玩家 +80%、敌人封顶 +75% 的正抗性交互是保守实现假设，未实测。冻结 `chronomancer-10` 的玩家电抗为 −184%，不涉及此上限。
+Doryani's Prototype（`enemies_in_presence_lightning_resist_equal_to_yours`、`UniqueNearbyEnemyLightningResistanceEqual1`）用玩家经过 buff、充能和资源派生后的最终电抗，覆盖附近敌人的电抗及诅咒／曝露减抗。召唤生物、DoT、Sacred Flame 都读取同一敌人值。`EnemyInPresence = false` 关闭它；显式敌人覆盖与敌人最大抗性仍优先。玩家 +80%、敌人封顶 +75% 的正抗性交互是保守实现假设，未实测。冻结 `chronomancer-10` 的玩家电抗为 −184%，不涉及此上限。
 
 The Coming Calamity 的敌人抗性覆盖保留 `EnemyInPresence` 条件，嵌套词条也不能变成 `EnemyEnemyInPresence`。Legacy of Northpaw 的 7% 武器基础暴击率先替换本地修正后的基础，再加额外暴击率与全局增加；每把实际武器分别处理。空手、盾牌、法术及自带技能基础暴击率的攻击保留各自基值。
 
@@ -52,7 +52,7 @@ Styrn's Ferocity 的 “Supported Skills Crush targets they Hit for 8 seconds”
 
 Culling Strike（Reap 的 `kill_enemy_on_hit_if_under_10%_life`，游戏文本即 “Culling Strike”）在敌人生命降到按稀有度取的阈值时击杀（游戏常量 `culling_strike_<稀有度>_threshold`：普通 35%、魔法 20%、稀有 10%、独特 5%），“increased Culling Strike Threshold” 提高阈值。需要打掉的只是阈值以上的生命，所以 CombinedDPS 乘 100 ÷ (100 − 阈值)（`calc::skill_dot::cull_multiplier`），`TotalDPS` 不变，侧栏的 `CullingDPS` 是这一倍率额外贡献的 DPS。Detonate Living 的 `spells_have_culling_strike`（“Your Spells have Culling Strike”）只给法术。
 
-敌人的 `<Element>Resistance` 与 `<Element>Resist` 在减免及明细中是同义名字。因此 Xoph 的 Presence 减抗可与曝露合计；若有获胜的显式抗性覆盖，仍跳过这些基础修正。命中、DoT、召唤物和 Sacred Flame 共用结果。
+敌人的 `<Element>Resistance` 与 `<Element>Resist` 在减免及明细中是同义名字。因此 Xoph 的 Presence 减抗可与曝露合计；若有获胜的显式抗性覆盖，仍跳过这些基础修正。命中、DoT、召唤生物和 Sacred Flame 共用结果。
 
 ## 条件、buff 与光环
 
@@ -68,7 +68,7 @@ Daze 时长、攻击 Maim 几率见[命中效果视图](ailments.md#破甲与命
 
 武器上的 “+N to Accuracy Rating” 是游戏的本地 stat `local_accuracy_rating`，只计入用这把武器的攻击（`ingest::item::apply_weapon_hand_conditions`）：Shield Wall 用盾攻击，主手武器的命中值不计入。写明 “this Weapon” 的词条（“Attacks with this Weapon Penetrate 15% Elemental Resistances”）解析时带待定的手别条件 `{Hand}Attack`，由武器所在的栏位定为主手或副手（同一函数）。“Damage with Maces” 这类武器类型伤害和主手武器的类型标志只作用于用武器攻击的技能：技能类型有 `Attack` 而没有 `NonWeaponAttack`（`conditions::attacks_with_weapon`）。
 
-Shield Wall 与 Raise Shield 用盾自己的伤害攻击，法术不用武器，都不计入；“while wielding a Mace” 这类持有条件不受影响。Fire Spell on Hit 这类 meta 宝石触发的技能带 `no_cost`，技能本身没有消耗，meta 宝石仍保留精魄。
+Shield Wall 与 Raise Shield 用盾自己的伤害攻击，法术不用武器，都不计入；“while wielding a Mace” 这类持有条件不受影响。Fire Spell on Hit 这类 meta 宝石触发的技能带 `no_cost`，技能本身没有消耗，meta 宝石仍保留精魂。
 
 `buff_time_passed_+%_only_buff_category` 改变 buff 的时间流逝。10% slower 让所选 Buff 技能时长与名义 `ArchonDuration` 在持续时间修正后再除以 0.9；不影响非 Buff 技能、敌人减益或 Archon 恢复期。沿用效果过期减慢的上限，不推算覆盖率。PoB2 将其当增加持续时间，所以标为 `differs`。
 
@@ -80,9 +80,9 @@ Into the Breach 的紫色火焰（“7% of damage as extra Chaos … stacks up t
 
 同名普通 buff 先比较所有启用副本的同类词条，再去重，不能直接保留第一份。冻结 Gemling08 的 Cast on Critical 分别有 22% 和 50% 增加暴击率，应只保留 50% 及其来源；关闭的组或宝石不参与。持续 buff 沿用既有另一武器组行为，冻结语料没有显式 false 的 `enableGlobal1/2`，不能用它证明旧状态完全正确。
 
-同名 buff 中相同的 `ExtraAura` 列表，在效果缩放后逐个数值子项取强者，而不是叠加重复 Offering。子项先继承原包装的来源，胜出的子项仍留在该来源下，被替换子项和空包装移除。召唤物明细与外层词条台账都应保留获胜来源；其他 LIST 类型仍追加。
+同名 buff 中相同的 `ExtraAura` 列表，在效果缩放后逐个数值子项取强者，而不是叠加重复 Offering。子项先继承原包装的来源，胜出的子项仍留在该来源下，被替换子项和空包装移除。召唤生物明细与外层词条台账都应保留获胜来源；其他 LIST 类型仍追加。
 
-Mana Remnants 的常驻再生 buff 与拾取残骸是两件事，`RemnantEffect` 不放大常驻再生；普通 `BuffEffect` 和辅助资格仍适用。Clarity II 能否借另一召唤物效果满足 `Persistent AND Buff` 尚未验证，不因 PoB2 结果而放行。Melting Maelstrom 只报告有限的单次药剂回复，不假设永久覆盖。Time of Need / Ghost Dance 的重复间隔也不等于激活冷却。
+Mana Remnants 的常驻再生 buff 与拾取残骸是两件事，`RemnantEffect` 不放大常驻再生；普通 `BuffEffect` 和辅助资格仍适用。Clarity II 能否借另一召唤生物效果满足 `Persistent AND Buff` 尚未验证，不因 PoB2 结果而放行。Melting Maelstrom 只报告有限的单次药剂回复，不假设永久覆盖。Time of Need / Ghost Dance 的重复间隔也不等于激活冷却。
 
 War Banner 的 `base_skill_buff_banner_attack_speed_+%_to_apply` 经插旗光环提供攻击速度，要求 `BannerPlanted` 快照，玩家和友军攻击沿用正常光环缩放。不推算 Glory、插旗频率或覆盖率。钉定导出器漏掉速度 stat，所以参考口径只关闭速度，保留原有伤害与命中加成。
 
@@ -108,7 +108,7 @@ Focused Thrust（9227，`projectile_damage_+%_with_spears_while_there_no_enemies
 
 `FlameWallAddedDamage` 取已启用、当前武器组可用的 Flame Wall 投射物 buff：固定火伤始终参与；明确选择 `FlameWallInfused` 才另加其闪电伤害。先解来源有效等级，再走受益投射物自己的伤害效用和伤害流程；同名副本取最强。墙自身的伤害与辅助不能直接加到受益技能。两项开关在 buff 构造前解析，表示所选穿墙／灌注快照，不模拟穿墙事件或覆盖率。
 
-Ice Bite 的 `support_ice_bite_buff_grant_%_added_cold_attack_damage` 虽有历史 `attack_damage` 后缀，游戏效果是全局获得冰冷伤害，法术与攻击都受益。兼容的辅助来源在 `FrozenEnemyRecently` 明确选中时提供同名 Ice Bite buff，多份只取最强；不会由配置推断具体冻结来源或六秒覆盖率。
+Ice Bite 的 `support_ice_bite_buff_grant_%_added_cold_attack_damage` 虽有历史 `attack_damage` 后缀，游戏效果是全局获得冰霜伤害，法术与攻击都受益。兼容的辅助来源在 `FrozenEnemyRecently` 明确选中时提供同名 Ice Bite buff，多份只取最强；不会由配置推断具体冻结来源或六秒覆盖率。
 
 ### 黑暗雕像
 

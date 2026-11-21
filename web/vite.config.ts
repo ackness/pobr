@@ -63,16 +63,16 @@ export default defineConfig({
   plugins: [panelStyles(), react(), tailwindcss(), importService()],
   resolve: { alias: { '@': resolve(process.cwd(), 'src') } },
   test: {
-    // e2e/ 归 Playwright；vitest 只跑 src 内单测。
+    // e2e/ belongs to Playwright; Vitest runs only unit tests under src/.
     include: ['src/**/*.test.{ts,tsx}'],
   },
-  // wasm-pack 产物（src/wasm/pkg）以 ES module + wasm 文件形式被引用。
+  // The wasm-pack output (src/wasm/pkg) is imported as ES modules + .wasm assets.
   assetsInclude: ['**/*.wasm'],
   // The engine runs in a module worker that loads the WASM package by dynamic import.
   worker: { format: 'es' },
   server: {
     fs: {
-      // 允许引用仓库根（wasm pkg 在 web/ 内，无需越界；保守放开上一级备用）。
+      // Allow referencing one level above web/ (WASM pkg stays inside web/; kept conservatively).
       allow: ['..'],
     },
   },

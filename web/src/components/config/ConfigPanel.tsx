@@ -61,7 +61,7 @@ const CHARGE_ACTORS: Record<string, 'config.player' | 'config.minions'> = {
   minionsOverrideEnduranceCharges: 'config.minions',
 };
 
-/** PoB2 Config 页分区展示顺序（目录里的 section 原名）。 */
+/** PoB2 Config page section display order (raw catalog section names). */
 const SECTION_ORDER = [
   'General',
   'Quest Rewards',
@@ -76,12 +76,12 @@ const RELEVANT_SECTION = 'Relevant to this build';
 /** Every group opens but quest rewards, which an import has already settled. */
 const DEFAULT_OPEN_SECTIONS = [RELEVANT_SECTION, 'General', 'Skill Options', 'When In Combat', 'For Effective DPS', 'Enemy Stats'];
 
-/** 剥 PoB 颜色码（`^xRRGGBB` / `^N`）。 */
+/** Strip PoB color codes (`^xRRGGBB` / `^N`). */
 function stripColorCodes(text: string): string {
   return text.replace(/\^x[0-9A-Fa-f]{6}|\^[0-9]/g, '');
 }
 
-/** 本地化配置标签：中文界面查汉化表（缺条目回退英文原文）。 */
+/** Localize config label: look up localized table in Chinese UI (falling back to raw English). */
 function optionLabel(lang: Lang, option: ConfigOption): string {
   const label = configLabel(lang, option);
   const actor = Object.hasOwn(CHARGE_ACTORS, option.var) ? CHARGE_ACTORS[option.var] : undefined;
@@ -211,7 +211,7 @@ export function OptionRow({
   );
 }
 
-/** Config 页：敌人档位 + 内置配置目录（分区/搜索）+ build 原始 `<Input>` 高级区。 */
+/** Config page: enemy tier + built-in config catalog (sections/search) + raw `<Input>` advanced section. */
 export function ConfigPanel({ session, lang, settledCalc }: Props) {
   const tt = bindT(lang);
   const presets = useEnemyPresets(session.dataVersion);
@@ -231,7 +231,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
   const [placed, setPlaced] = useState<Record<string, boolean>>({});
   const active = usePanelActive();
   const stage = session.workspace?.builds.find(build => build.id === session.workspace?.activeBuild)?.activeStage;
-  // 词条文本型 list 选项（如任务奖励 "+5 to all Attributes"）的反查翻译缓存。
+  // Reverse-lookup translation cache for mod-text list options (e.g., quest rewards like "+5 to all Attributes").
   const [listLabels, setListLabels] = useState<Record<string, string>>({});
   // Keep an edited Modified row available even after it returns to its default.
   // Reapply the filter only when the reader changes scope or search text.

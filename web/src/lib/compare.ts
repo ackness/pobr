@@ -1,6 +1,6 @@
 /**
- * 对比预览：把「改一处后的请求」再算一次，与当前结果逐字段求差。
- * PoB2 的装备对比 / 天赋点收益提示都用这一个原语。
+ * Comparison preview: re-evaluate a single-change variant request and diff each stat against the baseline.
+ * Shared primitive for PoB2-style item comparisons and passive node power tooltips.
  */
 
 import { skillFormName } from './skillNames';
@@ -19,7 +19,7 @@ export interface DiffEntry {
   delta: number;
 }
 
-/** 两份展示字段的非零差异（忽略 null/∞ 字段与 <0.005 的浮点噪声）。 */
+/** Non-zero differences between two stat sets (ignoring null/∞ entries and float noise < 0.005). */
 export function diffStats(before: DisplayStatValue[], after: DisplayStatValue[]): DiffEntry[] {
   return compareStats(before, after).filter(row => row.delta !== null && row.changed)
     .map(row => ({ id: row.id, before: row.before as number, after: row.after as number, delta: row.delta! }))

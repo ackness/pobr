@@ -93,8 +93,8 @@ it('labels a nonempty unrecognised group and preserves the raw gem name', () => 
   current.socketGroups[0].gems = [{ skill_id: '', name_spec: 'Imported Gem', level: 1, quality: 0 }];
   hooks.slots = [[fire, support], [], false, false];
   const html = render(current);
-  expect(html).toContain('(Unrecognised active skill)');
-  expect(html).toContain('The active gem in this group is unrecognised and is not calculated.');
+  expect(html).toContain('(Unrecognized active skill)');
+  expect(html).toContain('The active gem in this group is unrecognized and is not calculated.');
   expect(html).toContain('Imported Gem');
 });
 
@@ -132,11 +132,11 @@ it('labels triggered skills and resolves unique item source names through the ex
   current.socketGroups[0] = { ...current.socketGroups[0], main_active_skill: 2, source: 'Item:7:Known Unique, Sapphire Ring',
     gems: [{ skill_id: 'Trigger', level: 20, quality: 0 }, ...current.socketGroups[0].gems] };
   current.items = [{ slot: 'ring1', text: 'Rarity: UNIQUE\nKnown Unique\nSapphire Ring' }];
-  harness.localized['Known Unique'] = '语言包中的暗金名';
+  harness.localized['Known Unique'] = '语言包中的传奇名';
   hooks.slots = [[fire, support, trigger], [], false, false];
   const html = render(current);
   expect(html).toContain('Triggered by Trigger');
-  expect(html).toContain('from item · 语言包中的暗金名');
+  expect(html).toContain('from item · 语言包中的传奇名');
 });
 
 it.each([
@@ -173,7 +173,7 @@ it('keeps supported synthetic skills named even though they have no gem-catalog 
   hooks.slots = [[fire, support], [], false, false];
   const html = render(current);
   expect(html).toContain('Thorns');
-  expect(html).not.toContain('Unrecognised active skill');
+  expect(html).not.toContain('Unrecognized active skill');
 });
 
 

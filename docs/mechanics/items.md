@@ -1,6 +1,6 @@
 # 机制约定：装备、宝石与授予技能
 
-装备条件、暗金与珠宝、宝石等级与授予技能、属性需求与消耗、药剂与护符。索引与写法见[机制约定](README.md)，与 PoB2 的差异另见 [pob2-differences.md](../pob2-differences.md)。
+装备条件、传奇与珠宝、宝石等级与授予技能、属性需求与消耗、药剂与咒符。索引与写法见[机制约定](README.md)，与 PoB2 的差异另见 [pob2-differences.md](../pob2-differences.md)。
 
 ## 装备条件与物品读取
 
@@ -8,7 +8,7 @@
 
 Warbringer 的 Renly's Training “Gain 35% Base Chance to Block from Equipped Shield instead of the Shield's value”（`ReplaceShieldBlock`）在装备盾牌时替换盾牌自身的格挡值，再乘格挡的加成（`calc::defence_panels::calc_block`）。Gemling 的 Virtuous Barrier 的属性 Mote 上限按角色从宝石获得的技能计：每个启用组里的技能宝石按属性需求计（单属性 +2，多属性各 +1），授予技能的辅助宝石（标签 `grants_active_skill`，例如 Eonyr's Thunder）也计。
 
-物品或天赋授予的组不计，构筑里同一技能已另列一个组（`inject::virtuous_mote_counts`）。 [Virtuous Barrier 的游戏文本](https://poe2db.tw/us/Virtuous_Barrier) 按需要该属性的技能计，物品授予的技能也有自己的属性需求。tuned Gemling Twister（682f26ed1957）的权杖 Purity of Fire 因此计一次：Intelligence Mote 为 3 + Purity of Fire + Herald of Ice + Ghost Dance + Trinity = 7。
+物品或天赋授予的组不计，构筑里同一技能已另列一个组（`inject::virtuous_mote_counts`）。 [Virtuous Barrier 的游戏文本](https://poe2db.tw/us/Virtuous_Barrier)按需要该属性的技能计，物品授予的技能也有自己的属性需求。tuned Gemling Twister（682f26ed1957）的权杖 Purity of Fire 因此计一次：Intelligence Mote 为 3 + Purity of Fire + Herald of Ice + Ghost Dance + Trinity = 7。
 
 每点再生加成为 5% + floor(19 品质 × 0.125) = 7%，合计 49%。PoB2 跳过物品授予的技能，只有 6 点 / 42%。PoBR 的 LifeRegenRecovery 为 110.3391，构筑码参考值为 103.34，钉定 PoB2 为 101.76。
 
@@ -16,7 +16,7 @@ Warbringer 的 Renly's Training “Gain 35% Base Chance to Block from Equipped S
 
 装备读取以物品自己的数值为准，不能把角色全局加成再算一次。Strong Chin 的 `stun_threshold_+_from_lowest_of_base_helmet_evasion_rating_and_armour` 取头盔本地护甲／闪避较低值；stat 名中的 base 指全局缩放前的装备值，见[防御门槛](defence.md#抗性减伤与门槛)。
 
-Invoker 的 `cannot_gain_spirit_from_equipment` 只移除装备来源的 BASE 精魄，包括基底、显式 +N、镶嵌符文；天赋和任务精魄保留。诊断按 modifier 名称追踪读取，所以被抑制的装备行仍可能显示 applied，不能将这个状态当作最终有数值贡献。元素伤害吸纳 ES（`recoup_%_elemental_damage_as_energy_shield`）按类型计算，见[吸纳](defence.md#吸纳recoup)。
+Invoker 的 `cannot_gain_spirit_from_equipment` 只移除装备来源的 BASE 精魂，包括基底、显式 +N、镶嵌符文；天赋和任务精魂保留。诊断按 modifier 名称追踪读取，所以被抑制的装备行仍可能显示 applied，不能将这个状态当作最终有数值贡献。元素伤害吸纳 ES（`recoup_%_elemental_damage_as_energy_shield`）按类型计算，见[吸纳](defence.md#吸纳recoup)。
 
 Giant's Blood 使用节点 32349 和 `can_wield_2h_axe_sword_mace_in_one_hand`，允许双手斧、锤、剑分别作为双持攻击来源。装备预处理先列候选来源，全部词条及物品授予基石到齐后，`GiantsBlood` 才开启第二手和 `DualWielding`。无该标志时，未使用副手的本地修正不会变成全局收益。
 
@@ -24,13 +24,13 @@ Giant's Blood 使用节点 32349 和 `can_wield_2h_axe_sword_mace_in_one_hand`�
 
 导入魔法物品名称原样保留。基底查找先精确匹配目录，再找前缀与可选 ` of ...` 后缀之间最长的完整基底；Fists of Stone 等基底自身可含 of，仅出现在后缀中的基底名不算。武器与防御共用查找，已知基底时不再把导入防御显示值当基础重复加。
 
-Grand Spectrum 在所选已镶嵌珠宝的隐式、显式、附魔中识别计数，腐化可把识别行移到隐式。按“有电抗词条的装备”计数时，当前普通装备栏位每件最多一次；全元素抗性、负值和相互抵消词条仍算，条件不生效不抹掉词条本身。嵌套友军／召唤物授予、单独存放的珠宝／药剂／护符不计。Transcendent 肢体和仅最大抗性的资格尚无客户端验证。
+Grand Spectrum 在所选已镶嵌珠宝的隐式、显式、附魔中识别计数，腐化可把识别行移到隐式。按“有电抗词条的装备”计数时，当前普通装备栏位每件最多一次；全元素抗性、负值和相互抵消词条仍算，条件不生效不抹掉词条本身。嵌套友军／召唤生物授予、单独存放的珠宝／药剂／咒符不计。Transcendent 肢体和仅最大抗性的资格尚无客户端验证。
 
-Loreweave 的稀有度与排他条款在同一段相邻行合并后解析，原文不改。只保留它自己的稀有度来源，不是同物品所有稀有度。原生和参考口径都保留允许的 84%（1.84 倍）；钉定 PoB2 还加 15% 护符，得到 1.99。此部分支持标为 `differs`，不能在参考比较时把已支持数字一并丢掉。
+Loreweave 的稀有度与排他条款在同一段相邻行合并后解析，原文不改。只保留它自己的稀有度来源，不是同物品所有稀有度。原生和参考口径都保留允许的 84%（1.84 倍）；钉定 PoB2 还加 15% 咒符，得到 1.99。此部分支持标为 `differs`，不能在参考比较时把已支持数字一并丢掉。
 
-## 暗金、珠宝与天赋文本
+## 传奇、珠宝与天赋文本
 
-几条暗金词条接到已有的计算入口（`overlay-common/special_mods.json`）：Blackheart 的 `base_armour_%_applies_to_chaos_damage` 让这一比例的护甲也用于混沌命中的减伤。Vigilant View 的 `maximum_chance_to_evade_is_50%` 与 Goregirdle 的 `maximum_physical_damage_reduction_is_50%` 限制闪避率与物理命中减伤。
+几条传奇词条接到已有的计算入口（`overlay-common/special_mods.json`）：Blackheart 的 `base_armour_%_applies_to_chaos_damage` 让这一比例的护甲也用于混沌命中的减伤。Vigilant View 的 `maximum_chance_to_evade_is_50%` 与 Goregirdle 的 `maximum_physical_damage_reduction_is_50%` 限制闪避率与物理命中减伤。
 
 Matsya 的 “Skills reserve 50% less Spirit”（`unique_spirit_reservations_are_halved`）乘在保留量上，不是保留效率。Plaguefinger 的 `all_damage_can_poison` 让元素命中也计入中毒的伤害，不提供中毒几率。`ignore_hexproof`（“Curses you inflict can affect Hexproof Enemies”）让诅咒越过敌人的 Hexproof。
 
@@ -40,11 +40,11 @@ Parry 的 “increased Parry Damage”（`parry_damage_+%`，Silverthorne 与天
 
 Chober Chaber、Trenchtimbre、Crown of Eyes 的 “increases and reductions … also …” 只复制相应的 INC 词条：
 
-- `minion_damage_increases_and_reductions_also_affects_you`：召唤物伤害增加／减少也给角色伤害。
-- `additive_modifiers_to_minion_attack_speed_also_affect_you`：召唤物攻击速度增加／减少也给角色攻击速度。
+- `minion_damage_increases_and_reductions_also_affects_you`：召唤生物伤害增加／减少也给角色伤害。
+- `additive_modifiers_to_minion_attack_speed_also_affect_you`：召唤生物攻击速度增加／减少也给角色攻击速度。
 - `additive_spell_damage_modifiers_apply_to_attack_damage`：法术伤害增加／减少也给攻击伤害。
 
-复制保留来源和条件，不复制 MORE / LESS、点伤和只限定某类召唤物的词条。实现为 `calc::shared_modifiers::apply_shared_increases`。
+复制保留来源和条件，不复制 MORE / LESS、点伤和只限定某类召唤生物的词条。实现为 `calc::shared_modifiers::apply_shared_increases`。
 
 Berek's Grip/Pass/Respite 和 The Taming 的 `wind_skills_count_as_empowered_by_{ignited,shocked,chilled}_ground` 合并两行文本后，设置 `Condition:TwisterFire/Lightning/Cold`。`CalculationSession::bridge_player_conditions` 将其传到条件表，供 Twister 的 `SkillDamageGainAs` 读取，与配置框相同。物品复用 `collect::combine_wrapped`，台账只记合并后的一行。
 
@@ -73,9 +73,9 @@ Undying Hate 的明确“小型天赋额外获得”与种子特定显著天赋�
 
 空作用域表示该 effect 的所有分支；没有 metadata 的旧包保留 effect-wide 行为。显式记录内缺少某个通道、原生关系不一致或重复时，该通道停止注入并在 Compare 报告保留 `quality-applicability` 未支持原因。越界位置不否定同一数组中已明确匹配的位置：Snipe 普通品质 `[1,2,3]` 的 1、2 有效，3 无对应原生 set，单独报告。生产端 `_meta.compatibility.excluded_effects` 的原因也进入该诊断；排除不代表无效果。q0 不产生品质值或品质适用性诊断。TimeSnap／MetaMirageArcher 虽没有投影出的基础 stat set，空作用域品质仍可读取。
 
-主技能、辅助、辅助授予效果、buff／诅咒／光环、预留、召唤物与战吼使用相同的品质适用性查询；额外 effect 继承原宝石有效品质，但使用自己的主分支。召唤物本体和其兼容辅助在已有静态伤害／生命映射前合并原始 stat，保留品质与父来源；Raging Spirits 的额外品质进入已有召唤物伤害 MORE。战吼本体和辅助也接收额外品质，已有冷却 modifier 能读取 Lunar Blessing 的品质值。装填 effect 的额外品质进入射击技能的既有装填速度和弹匣容量，图腾本体品质进入已有数量上限；不把上限当作同时输出数量。这里没有推导召唤频率、战吼覆盖率或新的 stat 映射。回归见 [gem_quality_applicability.rs](../../crates/pobr-build/tests/skills/gem_quality_applicability.rs)。
+主技能、辅助、辅助授予效果、buff／诅咒／光环、预留、召唤生物与战吼使用相同的品质适用性查询；额外 effect 继承原宝石有效品质，但使用自己的主分支。召唤生物本体和其兼容辅助在已有静态伤害／生命映射前合并原始 stat，保留品质与父来源；Raging Spirits 的额外品质进入已有召唤生物伤害 MORE。战吼本体和辅助也接收额外品质，已有冷却 modifier 能读取 Lunar Blessing 的品质值。装填 effect 的额外品质进入射击技能的既有装填速度和弹匣容量，图腾本体品质进入已有数量上限；不把上限当作同时输出数量。这里没有推导召唤频率、战吼覆盖率或新的 stat 映射。回归见 [gem_quality_applicability.rs](../../crates/pobr-build/tests/skills/gem_quality_applicability.rs)。
 
-未选分支按各自作用域合并普通和额外品质，再执行既有 global-only 筛选与已选分支去重。该通用 mapper 仍不翻译 `GlobalEffect` 标签，Compare 会报告未支持，不能据此宣称已有全局 buff 输出；没有兼容显示编号的原生分支仍不参与这条路径。完整的品质事实也不等于全部品质机制已实现：Twister 的额外旋风重叠、Ghost Dance 层数上限、Combat Frenzy 冷却、Trinity 共鸣供给、Barrage 弹幕时序，以及没有既有映射的召唤物攻击速度／生命 final 等，仍按各自消费者边界处理，不据此新增事件历史。
+未选分支按各自作用域合并普通和额外品质，再执行既有 global-only 筛选与已选分支去重。该通用 mapper 仍不翻译 `GlobalEffect` 标签，Compare 会报告未支持，不能据此宣称已有全局 buff 输出；没有兼容显示编号的原生分支仍不参与这条路径。完整的品质事实也不等于全部品质机制已实现：Twister 的额外旋风重叠、Ghost Dance 层数上限、Combat Frenzy 冷却、Trinity 共鸣供给、Barrage 弹幕时序，以及没有既有映射的召唤生物攻击速度／生命 final 等，仍按各自消费者边界处理，不据此新增事件历史。
 
 Uhtred 系辅助（“+2 to Level of Supported Skills if exactly one other Support is modifying them”）只把辅助宝石算作辅助：meta 宝石（Cast on Elemental Ailment）的触发效果是技能宝石的第二个效果，不算；只辅助 meta 宝石的辅助（Boundless Energy II 要求 `GeneratesEnergy`）也不修改被触发的技能（`skill_env::resolve::support_granted_gem_levels`）。“Skills from Corrupted Gems have …” 在主技能取等级的那颗宝石已腐化时生效（条件 `GemCorrupted`，`calc_orchestrator::skill::resolve::from_corrupted_gem`）。
 
@@ -83,9 +83,9 @@ Uhtred 系辅助（“+2 to Level of Supported Skills if exactly one other Suppo
 
 种类有两种写法，“all Cold Skills”和“all Nova Skill Gems”，含义相同。种类按宝石标签判定（游戏表 `GemEffects.GemTags`，adapter 写进 `base/skill_gems.json`；每个标签对应一条 `<标签>_skill_gem_level_+` stat），种类里的每个词都要是宝石的标签：Rain of Arrows 带 `projectile` 标签，尽管它的技能不是 `Projectile` 类型；Shockwave Totem 带它的图腾所用 Slam 的 `slam` / `melee` / `nova` 标签。“Elemental”不是标签，指火、冰、电三种之一（`elemental_skill_gem_level_+`）。
 
-辅助宝石的标签描述它辅助的技能和它授予的技能，它本身没有等级，所以不按标签判定；没有标签的旧快照也退回按技能类型判定，种类名与技能类型不同的（Totem → `SummonsTotem`、Curse → `AppliesCurse`、Strike → `MeleeSingleTarget`、Crossbow、Elemental）列在 `skill_env::mods::kind_skill_types`（`skill_env::mods::gem_tags_match_category` / `gem_level_category_matches`）。“increased bonuses gained from Equipped Rings and Amulets”（Ritualist 的 Mystic Attunement）放大戒指和护身符上的其他词条，也放大其中的宝石等级与品质加成，向下取整：+4 在 25% 下为 5（`skill::resolve::scale_slot_gem_property_bonuses`）。
+辅助宝石的标签描述它辅助的技能和它授予的技能，它本身没有等级，所以不按标签判定；没有标签的旧快照也退回按技能类型判定，种类名与技能类型不同的（Totem → `SummonsTotem`、Curse → `AppliesCurse`、Strike → `MeleeSingleTarget`、Crossbow、Elemental）列在 `skill_env::mods::kind_skill_types`（`skill_env::mods::gem_tags_match_category` / `gem_level_category_matches`）。“increased bonuses gained from Equipped Rings and Amulets”（Ritualist 的 Mystic Attunement）放大戒指和项链上的其他词条，也放大其中的宝石等级与品质加成，向下取整：+4 在 25% 下为 5（`skill::resolve::scale_slot_gem_property_bonuses`）。
 
-槽位词条增幅也作用于物品授予敌人、召唤物或友方的嵌套数值，而非只作用于最外层的玩家数值。反射戒指先取对侧原文，再按实际佩戴槽的增幅独立缩放；第三戒指只有全局戒指增幅，没有左／右增幅。沿用先四舍五入到两位小数再向零截断的物品数值规则；布尔标记、条件、包装与原文来源不变。数值在入库前缩放一次，不追加数值差额副本：20% more 在 50% 增幅下应为 30% more，不是 20% more 再乘 10% more。回归见 `equipment_affix_effects.rs`。
+槽位词条增幅也作用于物品授予敌人、召唤生物或友方的嵌套数值，而非只作用于最外层的玩家数值。反射戒指先取对侧原文，再按实际佩戴槽的增幅独立缩放；第三戒指只有全局戒指增幅，没有左／右增幅。沿用先四舍五入到两位小数再向零截断的物品数值规则；布尔标记、条件、包装与原文来源不变。数值在入库前缩放一次，不追加数值差额副本：20% more 在 50% 增幅下应为 30% more，不是 20% more 再乘 10% more。回归见 `equipment_affix_effects.rs`。
 
 按技能名写的等级词条（Cursecarver 的 “+4 to Level of Despair Skills”，不带 all）走同一通道，按游戏的 `ActiveSkills.DisplayedName`（`GrantedEffectDef.displayed_name`，不分大小写）匹配，Sniper's Mark 这类带标点、不能从 id 还原的名字也能匹配（`skill_env::mods::parse_gem_property_bonus`、`skill_env::resolve::gem_property_applies`）；只接受完整的 “Skills” / “Skill Gems” 写法，“Socketed”、“Supported” 和带其他条件的写法有各自的作用域，不当作全局等级加成。
 
@@ -107,9 +107,9 @@ Uhtred 系辅助（“+2 to Level of Supported Skills if exactly one other Suppo
 
 全局品质也作用于[授予技能](https://www.poe2wiki.net/wiki/Granted_skill)，包括没有品质效果的 Raise Shield；导出器合成的 Thorns / Enemy Explode 没有游戏技能定义，不加品质。台账列全部启用导入组，PoB2 会合并部分物品组并补默认攻击，因而仍可能多出低等级 Mirror of Refraction / The Stars Answer、另一武器组 Spear Throw 或 PoB2 的 Spear Stab。清单不同不等于有效等级计算错误。
 
-召唤物兼容辅助可影响召唤宝石的辅助等级加成和保留量，但仍遵守相同资格和不借其他效果类型的规则。暗金授予的技能用 `ModGrantedSkills` 附着关系匹配，不按显示名碰撞先后选择。目录保留 Coming Calamity 的三种 `UniqueHeraldOf*Player` 和 Sands of Silk 的 `BlinkSandPlayer`；只规范确认对应的计算组，原导入身份和独立宝石保留。
+召唤生物兼容辅助可影响召唤宝石的辅助等级加成和保留量，但仍遵守相同资格和不借其他效果类型的规则。传奇授予的技能用 `ModGrantedSkills` 附着关系匹配，不按显示名碰撞先后选择。目录保留 Coming Calamity 的三种 `UniqueHeraldOf*Player` 和 Sands of Silk 的 `BlinkSandPlayer`；只规范确认对应的计算组，原导入身份和独立宝石保留。
 
-这些原生变体基础精魄保留为零，但不自动免除辅助的追加保留；护甲授予组保留激活武器组，效果列表改变时仍保留用户所选效果的含义。它们的原生属性占比也为零：Oracle Grim Pillars `0a7cf6c82619` 不再被 Sands 授予的普通 Blink 20 误抬到 157 智力，独立 Mana Tempest 19 / Temporal Chains 19 仍要求 147。冻结 Deadeye01 则由 16 个红辅助要求 80 力量，而不是普通 Herald of Ash 的 157；其他十六个技能记录不变。只对确切需求行登记参考差异。
+这些原生变体基础精魂保留为零，但不自动免除辅助的追加保留；护甲授予组保留激活武器组，效果列表改变时仍保留用户所选效果的含义。它们的原生属性占比也为零：Oracle Grim Pillars `0a7cf6c82619` 不再被 Sands 授予的普通 Blink 20 误抬到 157 智力，独立 Mana Tempest 19 / Temporal Chains 19 仍要求 147。冻结 Deadeye01 则由 16 个红辅助要求 80 力量，而不是普通 Herald of Ash 的 157；其他十六个技能记录不变。只对确切需求行登记参考差异。
 
 ## 属性需求与消耗
 
@@ -119,13 +119,13 @@ Uhtred 系辅助（“+2 to Level of Supported Skills if exactly one other Suppo
 
 游戏把这类技能的基础时间标为 “Cast Time”，PoB2 与构筑码参考值也这样计，**没有找到游戏对施法速度作用范围的正式说明，也没有游戏内实测**。`ChannelTime` 只含引导阶段，不含释放与冷却。
 
-Spell Mana Cost Efficiency（`base_spell_mana_cost_efficiency_+%`）只降低法术魔力消耗，效率 INC 与通用效率相加后，以 `1 + 效率 / 100` 除消耗；它标为 absent。The Fall of the Axe 的 “Grants Onslaught during effect”（`charm_gain_onslaught_during_effect`）同样标为 absent；按 [游戏 Onslaught 定义](https://poe2db.tw/us/Onslaught) 增加 20% Skill Speed 与 10% Movement Speed。沿用 flask/charm 约定：构筑中启用且可生效的护符视为效果激活；“Used when you are affected by a Slow” 不建模为 uptime，另一件生效的物品不会激活被关闭或超出槽位的护符。
+Spell Mana Cost Efficiency（`base_spell_mana_cost_efficiency_+%`）只降低法术魔力消耗，效率 INC 与通用效率相加后，以 `1 + 效率 / 100` 除消耗；它标为 absent。The Fall of the Axe 的 “Grants Onslaught during effect”（`charm_gain_onslaught_during_effect`）同样标为 absent；按 [游戏 Onslaught 定义](https://poe2db.tw/us/Onslaught) 增加 20% Skill Speed 与 10% Movement Speed。沿用 flask/charm 约定：构筑中启用且可生效的咒符视为效果激活；“Used when you are affected by a Slow” 不建模为 uptime，另一件生效的物品不会激活被关闭或超出槽位的咒符。
 
 [Derange](https://poe2db.tw/us/Derange) 的 `gain_energy_shield_cost_equal_to_intelligence` 给所选兼容技能追加等于最终智力的 ES 费用，经 `ESCostNoMult` 处理。辅助的基础费用倍率不乘这一追加量，其他适用费用修正仍生效。
 
 Culling Strike I/II 原生的稀有／独特敌人条件，需同时处于 Effective 模式。配置可见性会在条件尚未激活时识别来源，允许显示已有稀有度控件，但不会自动勾选。
 
-## 药剂与护符
+## 药剂与咒符
 
 `life_recovery_from_flasks_also_recovers_energy_shield`（Shavronne's Satchel）追加 `Flask{1,2}EnergyShieldRecovery`、`EnergyShieldInstantRecovery`、`EnergyShieldRecoveryPerSecond`。复用生命药剂总量、品质、药剂恢复和瞬间比例，缓回部分使用 ES 恢复速率；魔力药剂不复制，`CannotGainEnergyShield` 禁止复制回复。
 
@@ -137,7 +137,7 @@ Reverie（Shaman Mantle）的 `unique_body_armour_life_flask_life_recovery_+%_fi
 
 ### 启用状态与单次使用
 
-护符／药剂的“Used when ...”（`local_flask_use_on_*`、`local_charm_trigger_when_cursed`）按启用物品约定识别，不计算触发频率。只有启用且未超槽位的护符才视为当前生效；`charm_effect_+%` 不放大关闭护符。
+咒符／药剂的“Used when ...”（`local_flask_use_on_*`、`local_charm_trigger_when_cursed`）按启用物品约定识别，不计算触发频率。只有启用且未超槽位的咒符才视为当前生效；`charm_effect_+%` 不放大关闭咒符。
 
 `charm_recover_X_mana_when_used`（`Mods.CharmGainManaOnUse1..8`）给 `Charm<N>ManaRecoveryOnUse`；生命同类 `charm_recover_X_life_when_used`（`CharmGainLifeOnUse1..8`）给 `Charm<N>LifeRecoveryOnUse`。两者是每次使用的局部量，不受品质或再生影响。魔力药剂溢出最大魔力的 `local_unique_flask_mana_flask_recovery_can_overcap_mana_during_flask_effect` 暂不改输出，因为已有恢复量未封顶，也未模拟当前魔力。
 
@@ -151,20 +151,20 @@ Reverie（Shaman Mantle）的 `unique_body_armour_life_flask_life_recovery_+%_fi
 
 “从另一资源扣掉本次恢复量的一部分”使用 `local_flask_removes_%_of_life_recovery_from_mana_on_use` / `..._mana_recovery_from_life_on_use`，规则 `flask_removes_life_recovery_from_mana_on_use` / `flask_removes_mana_recovery_from_life_on_use`。局部属性是 `UtilityLifeRecoveryRemovedFromMana` / `UtilityManaRecoveryRemovedFromLife`。
 
-生命药剂给 `Flask<N>ManaRemovedOnUse`，魔力药剂给 `Flask<N>LifeRemovedOnUse`；另一方向和没有词条的药剂为零，护符无这些字段。公式是 `UtilityRecovery × UtilityRemovedPercent / 100`（`calc::utility`），其中恢复量包含药剂自身修正后的瞬间和缓回总和，不减少药剂本来回复，也不是旧的 −N `FlaskRecovery`。这是每次量，不推算频率、当前资源或净消耗，不从 `Net*Regen` 扣除。
+生命药剂给 `Flask<N>ManaRemovedOnUse`，魔力药剂给 `Flask<N>LifeRemovedOnUse`；另一方向和没有词条的药剂为零，咒符无这些字段。公式是 `UtilityRecovery × UtilityRemovedPercent / 100`（`calc::utility`），其中恢复量包含药剂自身修正后的瞬间和缓回总和，不减少药剂本来回复，也不是旧的 −N `FlaskRecovery`。这是每次量，不推算频率、当前资源或净消耗，不从 `Net*Regen` 扣除。
 
-Forsaken Bangle 的 `charm_x%_of_chaos_damage_from_hits_prevented_recouped_as_life_and_mana_during_effect` 给 `ChaosDamagePreventedLifeRecoup` 和 `ChaosDamagePreventedManaRecoup` 各 N。它采用“转为其他类型承受之后，进入混沌减免的伤害减去抗性和混沌减伤后伤害”的防止量，最低零；负抗性不算防止。固定承伤和后续承伤倍率、格挡（含部分格挡）、偏斜不计，闪避不进入命中循环。
+Forsaken Bangle 的 `charm_x%_of_chaos_damage_from_hits_prevented_recouped_as_life_and_mana_during_effect` 给 `ChaosDamagePreventedLifeRecoup` 和 `ChaosDamagePreventedManaRecoup` 各 N。它采用“转为其他类型承受之后，进入混沌减免的伤害减去抗性和混沌减伤后伤害”的防止量，最低零；负抗性不算防止。固定承伤和后续承伤倍率、格挡（含部分格挡）、偏转不计，闪避不进入命中循环。
 
 游戏文字没有明说抗性是否属于 prevention，因此这是**未实测假设**。EHP 的 `EhpTerms::prevented` 累计此量，`survivability::life_recoup_terms` / `mana_recoup_terms` 按各自时长、RecoupSpeed 与恢复速率回复，后者也给 `ManaRecoupRate` 明细。魔力基础八秒，`4SecondManaRecoup` / `4SecondRecoup` 可改四秒；普通 `ManaRecoup` 共用。防止物理伤害仍只回复生命。上述低资源、资源扣除、混沌防止三类规则为 S2、`absent`。
 
-### 护符 Guard 与附身
+### 咒符 Guard 与附身
 
-`charm_gain_X_guard_for_duration`（`CharmGuardWhileActive1..6`）为启用且在槽位内的护符给 Guard。护符效果缩放，多个授予取最强，先于 Life/ES 吸收 100% 命中伤害，上限为最大生命的 200%（[Guard 定义](https://poe2db.tw/us/Guard)）。不模拟再次使用或持续覆盖；生命使用恢复与 Guard 两条规则均为 `absent`。
+`charm_gain_X_guard_for_duration`（`CharmGuardWhileActive1..6`）为启用且在槽位内的咒符给 Guard。咒符效果缩放，多个授予取最强，先于 Life/ES 吸收 100% 命中伤害，上限为最大生命的 200%（[Guard 定义](https://poe2db.tw/us/Guard)）。不模拟再次使用或持续覆盖；生命使用恢复与 Guard 两条规则均为 `absent`。
 
-Rite of Passage 的 Bear / Boar / Cat / Owl / Ox / Primate / Serpent / Stag / Wolf 附身读取游戏 `base/mods.json` 的 `SpiritOfThe*PossessedPlayer`（Primate 对 Monkey，Serpent 对 Snake）及 `SpiritPossessedStr/Dex/IntPlayer`。独立固定 buff 给力量系 20% reduced 承伤、敏捷系 30% 技能速度和 15% 移速、智力系 80% 伤害，再加灵体本身效果（`calc::charm_spirits`）。同家族奖励一次，护符效果／品质不缩放。
+Rite of Passage 的 Bear / Boar / Cat / Owl / Ox / Primate / Serpent / Stag / Wolf 附身读取游戏 `base/mods.json` 的 `SpiritOfThe*PossessedPlayer`（Primate 对 Monkey，Serpent 对 Snake）及 `SpiritPossessedStr/Dex/IntPlayer`。独立固定 buff 给力量系 20% reduced 承伤、敏捷系 30% 技能速度和 15% 移速、智力系 80% 伤害，再加灵体本身效果（`calc::charm_spirits`）。同家族奖励一次，咒符效果／品质不缩放。
 
 游戏 Mods 优先于仍写 10% 技能速度／5% 移速的 [Wolf 提示](https://poe2db.tw/us/Spirit_Of_The_Wolf#SpiritOfTheWolfPossessedPlayerRef)。Cat 的 `critical_strike_chance_+% = 100` 是 INC：5% 基础变为 10%；Bear 的 `hit_damage_stun_multiplier_+% = 60` 进入重度晕眩，Ox 的减速效力在受减速时读取，门槛加成进 `AilmentThreshold`。
 
-规则为 `absent`，所有附身数值名都有读取覆盖，但周期性灵体攻击、Wolf 的 Maim／命中破甲尚未模拟。Thawing Charm 的“使用时开始 ES 充能”已按启用护符约定支持，见[充能说明](defence.md#能量护盾充能)，不能再笼统写成完全不支持；真正的触发时序仍未模拟。点燃／奉献地面使用独立[事件快照](snapshots.md#地面与护符事件)。
+规则为 `absent`，所有附身数值名都有读取覆盖，但周期性灵体攻击、Wolf 的 Maim／命中破甲尚未模拟。Thawing Charm 的“使用时开始 ES 充能”已按启用咒符约定支持，见[充能说明](defence.md#能量护盾充能)，真正的触发时序仍未模拟。点燃／奉献地面使用独立[事件快照](snapshots.md#地面与咒符事件)。
 
 `BleedFaster` / `IgniteFaster` / `PoisonFaster` 继续影响对应异常 DPS 和时长，台账检查所选技能能否施加。攻击致盲 `attacks_chance_to_blind_on_hit_%` 给 `BlindUptime`，实际致盲仍看配置状态。`keystone_ancestral_bond` 以 `ActiveTotemLimit` MORE 100 将图腾上限翻倍（`absent`），不是自动召唤满额。`soul_core_cannot_roll_no_outcome_with_corruption` 仅影响制作，归 S0。

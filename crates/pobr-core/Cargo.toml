@@ -6,28 +6,28 @@ edition.workspace = true
 [features]
 # Keep benchmark-only dependencies out of ordinary tests.
 benchmarks = ["dep:criterion"]
-# 测试专用规则加载 helper（`mod_parser::test_compiled_rules`）。仅供下游集成测试
-# （独立 crate）取 `CompiledParserRules`——读仓库 `data/<version>/` 的 parser/special
-# 规则文件，故引入 serde_json + fs I/O。**默认 off**：开启才破 pobr-core「本体零 I/O
-# / 不依赖 serde_json」不变式，生产构建恒不启用此 feature，零 I/O 铁律不变。
+# Test-only rule loader helper (`mod_parser::test_compiled_rules`) for downstream integration
+# tests (separate crates) to load `CompiledParserRules` from `data/<version>/` parser/special
+# rule files, pulling in serde_json + fs I/O. **Off by default**: enabling it breaks
+# pobr-core's zero-I/O / no-serde_json invariant, so production builds never enable it.
 test-rules = ["dep:serde_json"]
 
 [dependencies]
 serde.workspace = true
 pobr-data.workspace = true
-# special 词条模板的整行锚定匹配（M5b rules::special_mod，载入期编译 RegexSet）。
+# Full-line anchored matching for special mod templates (rules::special_mod, RegexSet built on load).
 regex.workspace = true
 # Parses a special pattern to count its capture groups at load, without compiling it.
 regex-syntax = "0.8"
-# 数据驱动 parser 引擎（plain 短语索引 + literal 预过滤）——无条件依赖。
+# Data-driven parser engine (plain phrase index + literal prefilter) — unconditional dependency.
 aho-corasick.workspace = true
-# test-rules 专用（规则文件反序列化）；feature 关时不编译，零 I/O 不变式不破。
+# Test-rules only (deserializes rule files); omitted when the feature is off to keep zero I/O.
 serde_json = { workspace = true, optional = true }
 criterion = { version = "0.8", default-features = false, optional = true }
 
 [dev-dependencies]
 pobr-data = { workspace = true, features = ["runtime-constant-query-probe", "test-fixtures"] }
-# 仅测试侧反序列化 statmap 条目 fixture（lib 本体维持零 I/O / 零 serde_json）。
+# Test-only deserialization for statmap entry fixtures (keeps lib zero I/O and serde_json-free).
 serde_json.workspace = true
 
 [[bench]]
@@ -35,7 +35,7 @@ name = "mod_db_bench"
 harness = false
 required-features = ["benchmarks"]
 
-# M6-B parser 引擎 vs legacy 中位耗时 bench（蓝图 §9，engine ≤ 1.10× legacy）。
+# M6-B parser engine vs legacy median latency benchmark (target: engine <= 1.10x legacy).
 [[bench]]
 name = "mod_parser_bench"
 harness = false

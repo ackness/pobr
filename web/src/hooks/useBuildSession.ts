@@ -1,12 +1,13 @@
 import { importedBuildName } from '../lib/workspaceNames';
-import type { Lang } from '../lib/i18n';
+import { t, type Lang } from '../lib/i18n';
 import type { TreeEditResult } from '../api/types';
 /**
- * Build 会话状态（PoB2 语义：启动即有一个可编辑的空 build）。
+ * Build session state (PoB2 semantics: initializes with an editable empty build).
  *
- * 可编辑面：角色身份（职业/升华/等级）、已加点集合（树交互加点）、主技能组、
- * config 覆盖；导入 build code 则整体替换基线。每次编辑触发重算，带请求序号
- * 防止乱序返回覆盖新状态。所有后端交互经 `api/backend`。
+ * Editable surface: character identity (class/ascendancy/level), allocated passive set, main socket
+ * group, and config overrides; importing a build code replaces the baseline. Each edit triggers
+ * recalculation with a monotonic sequence token so out-of-order responses never overwrite newer
+ * state. All backend calls route through `api/backend`.
  */
 
 import { recordWorkspaceBaseline, activeWorkspaceStage, addWorkspaceBuild, appendImportedBuild, createWorkspace, defaultStarterSession, duplicateWorkspaceStage, duplicateWorkspaceBuild, isStarterWorkspace, parseWorkspace, removeWorkspaceBuild, removeWorkspaceStage, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, replaceComparedStage, type StageSnapshot, type BuildWorkspace } from '../lib/buildWorkspace';
@@ -53,13 +54,13 @@ export interface CalcParams {
   main_socket_group?: number;
   enemy_tier?: EnemyTier;
   config_inputs: Record<string, ConfigInputValue>;
-  /** 额外全局 modifier 文本（Config 页自定义词缀，一行一条）。 */
+  /** Extra global modifier text (custom modifiers on Config page, one line per entry). */
   extra_modifiers?: string[];
   custom_modifier_blocks?: CustomModifierBlock[];
   party?: import('../api/types').Party;
 }
 
-/** 会话完整可编辑状态（重算请求由此派生）。 */
+/** Full editable session state (recalculation requests derive from this). */
 interface BuildState {
   plannerSource?: string;
   /** Complete edited snapshot: source XML is metadata, not a source of missing overrides. */
@@ -69,21 +70,21 @@ interface BuildState {
   pobCode: string | null;
   character: CharacterState;
   allocatedNodes: number[];
-  /** 属性小点三选一（skill id → str/dex/int）。 */
+  /** 3-way attribute choice per travel node (skill id -> `str`/`dex`/`int`). */
   attributeChoices: Record<string, AttributeChoice>;
-  /** 技能组（导入时物化，手动可增删改；始终以整份覆盖上行）。 */
+  /** Socket groups (materialized on import, editable afterward; always uploaded as a full replacement). */
   socketGroups: SocketGroupInput[];
-  /** 装备槽原始文本（同上）。 */
+  /** Raw text per equipment slot (same full-replacement semantics). */
   items: SlotItemInput[];
-  /** 已装备药剂/护符及选用状态（槽名 `Flask 1/2`、`Charm 1..3` + PoB 文本；整份覆盖上行）。 */
+  /** Equipped flasks/charms and active flags (slots `Flask 1/2`, `Charm 1..3` + PoB text; full replacement). */
   flasks: UtilitySlotInput[];
-  /** 超越肢体（槽 `arm1`/`arm2`/`leg1`/`leg2` + PoB 文本；与装备并列的一组栏位，整份覆盖上行）。 */
+  /** Graft/limb slots (`arm1`/`arm2`/`leg1`/`leg2` + PoB text; sibling group alongside gear, full replacement). */
   limbs: SlotItemInput[];
-  /** 树插槽珠宝（插槽号 + PoB 文本；插槽加点才生效）。 */
+  /** Passive tree socketed jewels (socket node ID + PoB text; active only when socket node is allocated). */
   jewels: JewelInput[];
   /** Exact PoB equipment socket names; undefined only in older saved states. */
   equipmentJewels?: SlotItemInput[];
-  /** 局部注释（key 约定见 lib/annotations）；不参与计算，分享时嵌入 <Notes>。 */
+  /** Per-entity annotations (key format in `lib/annotations`); excluded from calculation, embedded into `<Notes>` on share. */
   annotations: Annotations;
   params: CalcParams;
 }
@@ -181,10 +182,10 @@ export interface BuildSession {
   setWeaponSet: (set: 1 | 2) => void;
   bootMessage: string | null;
   bootError: string | null;
-  /** 解码出的原始 build（珠宝/药剂等只读展示；白手 build 为 null）。 */
+  /** Decoded source build (read-only view for jewels/flasks, etc.; null for scratch builds). */
   build: BuildJson | null;
   treeMeta: PassiveTreeMeta | null;
-  /** 职业/升华名的简中对照表（英文名 → 简中名；空表时界面显示英文原名）。 */
+  /** Simplified Chinese class/ascendancy lookup table (English -> zh-CN; UI keeps English names when empty). */
   classNames: ClassNames;
   character: CharacterState | null;
   allocatedNodes: number[];
@@ -205,44 +206,44 @@ export interface BuildSession {
   calcError: string | null;
   /** Rejected source/edit operation; does not invalidate the unchanged calculation. */
   operationError: string | null;
-  /** 笔记（本地持久化；导入 build 时被其 <Notes> 覆盖）。 */
+  /** Free-form notes (persisted locally; overwritten by imported build's `<Notes>`). */
   notes: string;
   setNotes: (text: string) => void;
   /** Unapplied item text, retained across tabs until saved, cancelled or the build is replaced. */
   editorDrafts: Record<string, string>;
   setEditorDraft: (key: string, text: string | null) => void;
-  /** 局部注释（装备/技能组/珠宝旁的说明；随分享 code 与存档往返）。 */
+  /** Per-entity annotations (next to gear/socket groups/jewels; round-tripped in codes and saves). */
   annotations: Annotations;
-  /** 写/清一条局部注释（空文本 = 删除；不触发重算）。 */
+  /** Set or clear a single annotation (empty string removes; does not trigger recalculation). */
   setAnnotation: (key: string, text: string) => void;
-  /** 删技能组并顺移 `skill:<index>` 注释键（Skills 页删除入口）。 */
+  /** Delete a socket group and shift subsequent `skill:<index>` annotation keys (Skills delete handler). */
   removeSocketGroup: (index: number) => void;
-  /** 导出完整会话（build 状态 + 笔记）为 JSON 文本。 */
+  /** Export complete session (build state + notes) as JSON text. */
   exportSession: () => string;
-  /** 编辑态 → PoB2 分享 code（可粘回 PoB2 / 二次导入）。 */
+  /** Editable state -> PoB2 share code (importable back into PoB2 or PoBR). */
   exportCode: () => Promise<string>;
   exportBuildFiles: (name: string, all: boolean) => Promise<import('../api/types').BuildPlannerExport>;
-  /** 从导出的 JSON 恢复会话；非法输入抛错。 */
+  /** Restore session from exported JSON; throws on invalid input. */
   importSession: (json: string, destination?: ImportDestination) => void;
   importCode: (code: string, options?: ImportOptions) => Promise<boolean>;
   /** Source of the last successful import, for the transient review notice only. */
   importSource: 'wegame' | null;
   /** Whether the library holds only the untouched default stage. */
   isStarterWorkspace: boolean;
-  /** 切到指定 loadout（成组换天赋/装备/技能）；会覆盖本地编辑。 */
+  /** Switch to a different loadout (bulk swap tree/gear/skills); overwrites local edits. */
   switchLoadout: (sel: SetSelection) => Promise<void>;
-  /** 当前 build 的 loadout 清单（导入后可用；手搓 build 为空）。 */
+  /** Available loadouts for current build (available after import; empty for scratch builds). */
   loadouts: LoadoutJson[];
   changeNamedSet: (kind: 'config' | 'skill', op: 'select' | 'create' | 'duplicate' | 'rename' | 'remove', id: number, name?: string) => Promise<void>;
-  /** 当前选中的 loadout 下标。 */
+  /** Index of currently active loadout. */
   activeLoadout: number | null;
-  /** 复制 / 重命名 / 删除当前 loadout（同名写进三类 set；随后整份重载）。 */
+  /** Duplicate / rename / delete current loadout (writes matching title to all 3 sets, then reloads whole build). */
   manageLoadout: (op: 'duplicate' | 'rename' | 'remove', name?: string) => Promise<void>;
   newBuild: (className: string, ascendancyName: string) => void;
   setCharacter: (patch: Partial<CharacterState>) => void;
-  /** 点选加点/取消；属性小点加点时带三选一。 */
+  /** Toggle allocate/refund for a passive node; travel attribute nodes include a 3-way choice. */
   toggleNode: (skill: number, choice?: AttributeChoice) => void;
-  /** 整体替换加点集合（树寻路一次点亮/熄灭整条路径）。 */
+  /** Replace entire allocated node set (tree pathfinder activates/refunds a full path at once). */
   setAllocatedNodes: (skills: number[], choices?: Record<string, AttributeChoice>) => void;
   canUndoTree: boolean;
   /** Every edit, not only the tree's: step back and forward through this stage's changes. Replacing the whole build or switching stage starts a new history. */
@@ -253,34 +254,34 @@ export interface BuildSession {
   undoTree: () => void;
   applyTreeConversion: (decoded: BuildJson, code: string, expectedVersion: number) => boolean;
   applyTreeEdit: (result: TreeEditResult, request: CalculateBuildRequest, choices?: Record<string, AttributeChoice>) => boolean;
-  /** 整表替换属性三选一（批量调配 / 快捷键改单点）。 */
+  /** Replace the full attribute-choice map (used by bulk distribution / hotkey tweaks). */
   setAttributeChoices: (choices: Record<string, AttributeChoice>) => void;
-  /** 当前完整计算请求（对比预览用：克隆后改一处再算一次）。 */
+  /** Build current full calculation request (used by comparison preview: clone and tweak one field). */
   currentRequest: () => CalculateBuildRequest | null;
   /** Cache namespace: calculation versions are only unique within one session. */
   calculationScope: object;
   /** Calculation input revision; annotations, notes and unapplied drafts leave it unchanged. */
   stateVersion: number;
-  /** 自上次导入 / 切换 loadout 以来是否有编辑（切换会整份覆盖，据此提醒）。 */
+  /** Whether any edits occurred since last import / loadout switch (prompts before full overwrite). */
   isDirty: boolean;
   /** Whether starting over would discard character progress, including restored saves. */
   hasBuildContent: boolean;
-  /** 物品/珠宝/技能组套装库（独立持久化，跨 build 复用）。 */
+  /** Reusable library of items, jewels, and skill sets (persisted separately across builds). */
   library: Library;
   saveLibraryItem: (kind: 'item' | 'jewel', text: string, slot?: string) => void;
   removeLibraryItem: (id: string) => void;
   saveSkillSet: (name: string) => void;
   applySkillSet: (id: string) => void;
   removeSkillSet: (id: string) => void;
-  /** 整份替换技能组（Skills 编辑器）。 */
+  /** Replace full socket groups (Skills editor). */
   setSocketGroups: (groups: SocketGroupInput[]) => void;
-  /** 整份替换装备（Items 编辑器）。 */
+  /** Replace full equipment items (Items editor). */
   setItems: (items: SlotItemInput[]) => void;
-  /** 整份替换已装备药剂/护符及选用状态（Items 编辑器）。 */
+  /** Replace full equipped flasks/charms and active flags (Items editor). */
   setFlasks: (flasks: UtilitySlotInput[]) => void;
-  /** 整份替换超越肢体（Items 编辑器）。 */
+  /** Replace full graft/limb slots (Items editor). */
   setLimbs: (limbs: SlotItemInput[]) => void;
-  /** 整份替换树插槽珠宝（Tree 页珠宝编辑器）。 */
+  /** Replace full tree jewel sockets (Tree jewel editor). */
   setJewels: (jewels: JewelInput[], onApplied?: () => void) => void;
   /** Apply a complete shared-tree jewel/passive plan against its original request. */
   applyTreePlan: (expectedRequest: CalculateBuildRequest, plan: TreePlan) => boolean;
@@ -295,9 +296,9 @@ export interface BuildSession {
   runSkillMetrics: () => Promise<SkillMetricsResponse>;
 }
 
-// 计算请求不带 pob_code：导入时 XML 内容已全量物化进 state（materialize +
-// config_inputs/main_socket_group），再带 code 只是让 Rust 每次重算都白解码
-// 一遍然后立刻被覆盖项冲掉。state.pobCode 仅存档用（恢复会话时重建 build 视图）。
+// Omit `pob_code` from calc requests: XML content is already materialized into state (`materialize` +
+// `config_inputs`/`main_socket_group`), so resending the code would just re-decode in Rust and immediately
+// be shadowed by overrides. `state.pobCode` is only retained for saves (to restore build views on reload).
 // Preserve user-enabled groups; weapon_swap.active names their equipment/passive context.
 export function toRequest(state: BuildState): CalculateBuildRequest {
   return {
@@ -386,14 +387,14 @@ export function paramsFromDecoded(decoded: BuildJson): CalcParams {
   });
 }
 
-/** 库条目：可复用的装备/珠宝（PoB 文本）。 */
+/** Library entry: reusable gear or jewel (PoB item text). */
 export interface LibraryItem {
   id: string;
   kind: 'item' | 'jewel';
-  /** 展示名（取文本第二行，即物品名）。 */
+  /** Display name (second line of PoB item text, i.e., the item name). */
   name: string;
   text: string;
-  /** 来源装备槽（导入/保存时记录；旧条目缺失 → 不参与槽位过滤）。 */
+  /** Source equipment slot (recorded on import/save; missing on legacy entries -> excluded from slot filter). */
   slot?: string;
   sourceBuild?: { id: string; name: string };
 }
@@ -409,7 +410,7 @@ export function createLibraryItem(kind: LibraryItem['kind'], text: string, slot:
   return { id: createId(), kind, name: itemName(text), text, slot, sourceBuild: librarySourceBuild(workspace) };
 }
 
-/** 技能组套装：整套 socket_groups 快照，可随时切换。 */
+/** Skill-group set: full `socket_groups` snapshot for one-click switching. */
 export interface SkillSet {
   id: string;
   name: string;
@@ -417,7 +418,7 @@ export interface SkillSet {
   main_socket_group?: number;
 }
 
-/** 库（独立于单个 build 持久化——换 build 仍可复用）。 */
+/** Library (persisted independently from individual builds—reusable across builds). */
 export interface Library {
   items: LibraryItem[];
   skillSets: SkillSet[];
@@ -442,9 +443,9 @@ function readStoredLibrary(raw: string | null): Library | null {
   }
 }
 
-/** 本地存档信封（localStorage / 导出文件共用同一形状）。 */
+/** Local save envelope (shared schema between `localStorage` and JSON export files). */
 export interface SavedSession {
-  /** 存档格式版本（前向兼容闸门）。 */
+  /** Save format version (forward-compatibility gate). */
   version: 1;
   /** Game data used when this stage was saved; absent in legacy saves. */
   data_version?: string;
@@ -456,7 +457,7 @@ function isCharacterLevel(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 100;
 }
 
-/** 解析并校验存档信封（导入文件 / localStorage 共用）；非法返回 null。 */
+/** Parse and validate save envelope (shared between file import and `localStorage`); returns `null` if invalid. */
 export function parseSaved(json: string): SavedSession | null {
   try {
     const record = (value: unknown): value is Record<string, unknown> =>
@@ -584,7 +585,7 @@ export function parseSaved(json: string): SavedSession | null {
   }
 }
 
-/** 库展示名：取第一条非 Rarity 行（即物品名）。 */
+/** Library display name: first non-Rarity line (the item name). */
 function itemName(text: string): string {
   return (
     text
@@ -595,8 +596,9 @@ function itemName(text: string): string {
 }
 
 /**
- * 旧会话迁移：calc 请求已不带 pob_code（见 toRequest），此前靠 code 在 Rust 侧
- * 兜底的 XML config / 主技能组，恢复会话时从解码结果回填（已保存的显式值优先）。
+ * Legacy session migration: calc requests no longer include `pob_code` (see `toRequest`),
+ * so XML config and main socket group previously backed by Rust-side decoding are backfilled
+ * from decoded data on restore (saved explicit values win).
  */
 export function backfillFromDecoded(state: BuildState, decoded: BuildJson): BuildState {
   // This field was not stored by earlier clients, including ones that already
@@ -655,7 +657,7 @@ export function backfillFromDecoded(state: BuildState, decoded: BuildJson): Buil
   };
 }
 
-/** 解码结果 → 可编辑技能组/装备状态（物化，之后全走覆盖）。 */
+/** Decoded build -> editable socket-group/item state (materialized once, full-replacement thereafter). */
 export function materialize(
   decoded: BuildJson,
 ): Pick<BuildState, 'plannerSource' | 'treeVersion' | 'socketGroups' | 'items' | 'flasks' | 'limbs' | 'jewels' | 'equipmentJewels' | 'weaponSwap'> {
@@ -859,13 +861,13 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const calcMs = calculated?.version === stateVersion ? calculated.ms : null;
   const [socketGroupRevision, setSocketGroupRevision] = useState(0);
   /**
-   * 「干净」基线：导入 / 切换 loadout 落地时记下当时的版本号。之后每次编辑
-   * `stateVersion` 递增，超过基线即视为有未保存改动——切换 loadout 会整份重解码
-   * 覆盖状态，切之前要据此提醒。
+   * Clean baseline: records the version stamp when an import or loadout switch lands.
+   * Subsequent edits bump `stateVersion`; exceeding this baseline marks unsaved edits
+   * so switching loadouts warns before overwriting the entire build state.
    */
   const cleanVersionRef = useRef(0);
   const cleanNotesRef = useRef(notes);
-  /** `stateVersion` 的同步副本（apply 内自增，避免在 setState updater 里做副作用）。 */
+  /** Synchronous mirror of `stateVersion` (incremented inside `apply` to avoid side effects in setState updaters). */
   const versionRef = useRef(0);
 
   /** Keeps what another tab saved since this one last looked, writes the result, and returns it. */
@@ -885,12 +887,12 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       localStorage.setItem(STORAGE.library, raw);
       librarySyncedRef.current = { raw, library: write };
     } catch {
-      // 配额失败静默。
+      // Ignore storage quota errors silently.
     }
     return write;
   }, []);
 
-  // 重算请求序号：只应用最新一次的结果（快速连点加点时防乱序覆盖）。
+  // Recalculation sequence token: applies only the latest response (prevents out-of-order overwrite on rapid clicks).
   const seqRef = useRef(0);
   // Jewel preflight may be rejected without superseding the current baseline calculation.
   const jewelSeqRef = useRef(0);
@@ -921,7 +923,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     if (configContextActive && stateRef.current) recalc(stateRef.current);
   }, [configContextActive, recalc]);
 
-  /** 应用新状态并触发重算 + 自动保存到浏览器。 */
+  /** Commit new build state, trigger recalculation, and auto-save to browser storage. */
   const apply = useCallback(
     (next: BuildState, opts?: { clean?: boolean; treeEdit?: boolean; undo?: boolean; auto?: boolean; replaceStored?: boolean }) => {
       const previous = stateRef.current;
@@ -947,7 +949,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       stateRef.current = next;
       versionRef.current += 1;
       setStateVersion(versionRef.current);
-      // 整份替换（导入 / 切 loadout）落地即为新基线，不算「未保存改动」。
+      // Wholesale replacement (import / loadout switch) establishes a clean baseline, not "unsaved changes".
       if (opts?.clean) {
         setSocketGroupRevision(value => value + 1);
         cleanVersionRef.current = versionRef.current;
@@ -983,7 +985,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   applyRef.current = apply;
 
 
-  // 启动：初始化后端 → 加载职业元数据 → 以首个职业开一个空 build（PoB2 新建语义）。
+  // Boot sequence: init backend -> load class metadata -> open an empty build with the first class (PoB2 New Build semantics).
   useEffect(() => {
     let cancelled = false;
     getBackend()
@@ -1015,7 +1017,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
           saved = parseSaved(raw);
           const restored = envelope.workspace === undefined ? saved && createWorkspace(saved)
             : parseWorkspace(envelope.workspace, parseSaved, () => retainWorkspaceRecovery(raw));
-          if (!restored) throw new Error('浏览器工作区格式无效，原始数据已保留。请下载原始存档备份以便修复。');
+          if (!restored) throw new Error(t(lang, 'shell.invalidWorkspaceFormat'));
           saved = activeWorkspaceStage(restored).saved;
           workspaceRef.current = restored;
           setWorkspace(restored);
@@ -1028,7 +1030,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
           notesRef.current = current.notes;
           setNotesState(current.notes);
           if (current.state.pobCode) {
-            // 等解码完成再 apply：旧会话的 XML config 需要回填后才能进首次计算。
+            // Wait for decoding before `apply`: legacy sessions backfill XML config prior to initial calculation.
             backend
               .decodeBuild(current.state.pobCode)
               .then((decoded) => {
@@ -1048,7 +1050,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
     return () => {
       cancelled = true;
     };
-    // apply 稳定（useCallback 无依赖变化）；仅挂载时启动一次。
+    // `apply` is stable (`useCallback` has no changing deps); run boot initialization once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1074,8 +1076,8 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
 
     {
       const prev = libraryRef.current;
-      // 同文本的旧条目若缺 slot（记 slot 功能之前存的），借本次导入回填——
-      // 否则永远进不了槽位切换候选。
+      // Backfill slot on legacy library entries with matching text (saved before slot tracking),
+      // otherwise they would never enter slot-swap candidate lists.
       const slotByText = new Map(imported.filter((i) => i.slot).map((i) => [i.text, i.slot]));
       let backfilled = false;
       const existing = prev.items.map((i) => {
@@ -1121,7 +1123,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
           : await backend.decodeBuild(code);
         if (!isCharacterLevel(decoded.character.level)) throw new Error('build.invalidLevel');
         const source = isBuildFile && JSON.parse(code).format === 'wegame' ? 'wegame' : null;
-        // <Notes> 里可能带 PoBR 注释标记段：拆成总览笔记 + 局部注释。
+        // `<Notes>` may contain a PoBR annotation section: split into overview notes + per-entity annotations.
         const { overview, annotations } = splitNotes(decoded.notes ?? '');
         const importedState: BuildState = {
           pobCode: isBuildFile ? null : code,
@@ -1134,8 +1136,8 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
           attributeChoices: decoded.tree.attribute_choices ?? {},
           ...materialize(decoded),
           annotations,
-          // XML 的 <Config> 与主技能组一并物化——calc 请求不再回传 pob_code，
-          // 这里就是它们唯一的入口（Config 页也因此能直接显示导入值）。
+          // Materialize XML `<Config>` and main socket group—calc requests no longer carry `pob_code`,
+          // so this is their sole ingress (allowing Config to display imported values directly).
           params: { ...paramsFromDecoded(decoded), main_socket_group: decoded.main_socket_group ?? undefined },
         };
         let nextWorkspace = workspaceRef.current;
@@ -1166,14 +1168,15 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   );
 
   /**
-   * 切到另一个 loadout（成组换天赋/装备/技能）。
+   * Switch to another loadout (bulk swap passive tree / items / skills).
    *
-   * 实现上等价于「用同一份 code 换个视角重新导入」——切换在 wasm 的 XML 层完成
-   * （改写三个 active 属性后重解析），所以结果与在 PoB2 里手动切三个下拉一致。
+   * Equivalent to re-importing the same code from a different set perspective—performed at the wasm
+   * XML layer (mutating the three active attributes and re-decoding), so results match manually
+   * switching the three dropdowns in PoB2.
    *
-   * 因此**会丢弃导入后的本地编辑**：整份状态由重解码结果覆盖，与 importCode 同
-   * 语义。调用方负责在有未保存改动时先提示。无 `pobCode`（手搓/国服 .build 导入）
-   * 时无从重解析，直接忽略。
+   * Consequently **discards local edits made since import**: the whole state is overwritten by
+   * re-decoded data, matching `importCode` semantics. Callers must warn when `isDirty` is true.
+   * No-op when `pobCode` is absent (scratch builds or `.build` imports cannot re-decode).
    */
   const switchLoadout = useCallback(
     async (sel: SetSelection) => {
@@ -1209,13 +1212,13 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   );
 
   /**
-   * 组管理：复制 / 重命名 / 删除当前 loadout，然后按新 code 重新载入。
+   * Loadout set management: duplicate / rename / remove active loadout, then reload from new code.
    *
-   * `name` 会同时写进天赋树 / 装备 / 技能三类 set 的 title——**同名即成组**，所以
-   * 用户只需要起个阶段名（"1-30级"、"mapping"），不必知道 `{tag}` 绑定语法。
+   * `name` writes into tree / item / skill set titles together—**matching titles form a group**,
+   * letting users pick stage names ("lvl1-30", "mapping") without knowing `{tag}` binding syntax.
    *
-   * 与切换同样是整份重载，因此同样会丢弃未保存编辑；调用方负责先确认。
-   * 无 `pobCode`（手搓 build）时无从操作，直接忽略。
+   * Like switching, performs a full reload and discards unsaved edits; callers must confirm first.
+   * No-op when `pobCode` is absent (scratch builds).
    */
   const manageLoadout = useCallback(
     async (op: 'duplicate' | 'rename' | 'remove', name?: string) => {
@@ -1225,7 +1228,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       setOperationError(null);
       try {
         const backend = await getBackend();
-        // 目标 = 当前选中组（后端缺省即 active，这里显式传以免竞态）。
+        // Target = active loadout (backend defaults to active, passed explicitly to avoid races).
         const current = build?.loadouts?.[build?.active_loadout ?? 0];
         const nextCode = await backend.manageLoadout(
           code,
@@ -1514,7 +1517,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       } else {
         delete annotations[key];
       }
-      // 注释不影响计算：只落状态与存档，不触发重算。
+      // Annotations do not affect calculations: update state and persistence only without triggering a recalc.
       const next = { ...state, annotations };
       setState(next);
       stateRef.current = next;
@@ -1532,7 +1535,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       const main = state.params.main_socket_group;
       const nextMain = main === undefined ? undefined : main === index ? socketGroups.findIndex(group => group.enabled)
         : main > index ? main - 1 : main;
-      // `skill:<index>` 注释键跟随组序号：删除组的注释一并删，后续组的键前移。
+      // `skill:<index>` annotation keys track group indices: drop deleted group keys and shift later ones down.
       const annotations: Annotations = {};
       for (const [key, text] of Object.entries(state.annotations)) {
         const m = key.match(/^skill:(\d+)$/);
@@ -1559,8 +1562,8 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
   const exportCode = useCallback(async (): Promise<string> => {
     if (!state) throw new Error('build not ready');
     const backend = await getBackend();
-    // encode 走全量覆盖（toRequest 本就不带 pob_code——分享内容 = 当前编辑态本身）；
-    // 局部注释嵌入 <Notes> 标记段随 code 往返（PoB2 里显示为普通笔记）。
+    // encode does a full overwrite (toRequest omits pob_code, so the shared payload is the current edited state);
+    // per-target annotations round-trip inside the <Notes> marker block (shown as plain notes in PoB2).
     // The base code includes the latest loadout selection; merge edits there while
     // preserving all other loadouts.
     const request = toRequest(state);
@@ -1868,7 +1871,7 @@ export function useBuildSession(configContextActive = false, lang: Lang = 'en-US
       const set = library.skillSets.find((s) => s.id === id);
       if (!set) return;
       setSocketGroupRevision(value => value + 1);
-      // 整套换组后旧的 `skill:<index>` 注释指向已不存在的组——一并清掉。
+      // After replacing all socket groups, old `skill:<index>` annotations point to removed groups — clear them too.
       const annotations = Object.fromEntries(
         Object.entries(state.annotations).filter(([key]) => !key.startsWith('skill:')),
       );

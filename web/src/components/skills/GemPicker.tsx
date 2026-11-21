@@ -11,7 +11,7 @@ import { gemTagLabels, gemTagMatches } from '../../lib/gemTags';
 import { normalizeGemName, gemDisplayName } from '../../lib/skillNames';
 export { gemDisplayName } from '../../lib/skillNames';
 
-/** 宝石颜色 → 语义 CSS 变量（tokens.css）。 */
+/** Gem color -> semantic CSS variable (`tokens.css`). */
 const COLOUR_VAR: Record<string, string> = {
   str: 'color-life',
   dex: 'color-positive',
@@ -32,8 +32,8 @@ interface Props {
 }
 
 /**
- * 自定义宝石选择器：应用同风格下拉面板（非系统 datalist），
- * 中英文子串搜索 + 颜色分类筛选 + 键盘导航（↑↓/Enter/Esc）。
+ * Custom gem picker: styled dropdown popover matching the app theme (not browser `<datalist>`),
+ * supporting English/Chinese substring search, color filtering, and keyboard nav (Up/Down/Enter/Esc).
  */
 export function rankGemResults(entries: GemCatalogEntry[], query: string, colour: ColourFilter, lang: Lang): GemCatalogEntry[] {
   let collator = collators.get(lang);
@@ -71,7 +71,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listId = useId();
 
-  // 点击组件外关闭。
+  // Close on outside pointer down.
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
@@ -165,7 +165,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
               const primary = gemDisplayName(entry, lang);
               const secondary = primary === entry.name
                 ? (lang === 'en-US' && entry.name_zh_tw !== entry.name ? entry.name_zh_tw : null) : entry.name;
-              // 限 3 个：列表项是单行 flex，再多会挤掉宝石名。
+              // Cap at 3: list items are single-row flex, so more tags crowd out the gem name.
               const tags = gemTagLabels(entry.tags, lang, 3);
               return (
                 <li

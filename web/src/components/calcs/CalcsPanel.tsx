@@ -63,9 +63,9 @@ interface Props {
   lang: Lang;
   /** Display only; requests and mutations still use the current session. */
   settledCalc?: CalculateBuildResponse | null;
-  /** 侧边栏点击跳转：要展开的 breakdown（对象引用每次点击新建，作为 effect 触发键）。 */
+  /** Sidebar click jump target: breakdown to expand (fresh object identity on every click triggers the effect). */
   focus?: { id: string } | null;
-  /** 跳转消费完毕的回调（父级清空 focus，防止页签切回时重复触发滚动）。 */
+  /** Callback after consuming the jump target (parent clears `focus` so switching back does not re-scroll). */
   onFocusConsumed?: () => void;
 }
 
@@ -1035,7 +1035,7 @@ export function AttributionView({ session, lang }: { session: BuildSession; lang
   );
 }
 
-/** Calcs 页：字段点击展开 breakdown（消费 0.3）+ 归因视图（消费 0.4）。 */
+/** Calcs page: expandable per-stat breakdowns + attribution view. */
 /** One actor in the picker: a minion's index alone can repeat across recalculations of a changed build. */
 function actorKey(minion: MinionOutput) {
   return `${minion.index}:${minion.minion_id}:${minion.summoned_by}`;
@@ -1128,9 +1128,9 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
     return () => { cancelled = true; };
   }, [calc, open, actor, selectedMinion, actorBreakdowns, session.currentRequest, session.busy, retry, view]);
 
-  // 侧边栏跳转：展开目标 breakdown 并滚动到可视区（渲染提交后再滚）。
-  // 消费后立即让父级清空 focus——否则切走再切回本页签会带着旧 focus 重新
-  // 挂载，scrollIntoView 再次触发，页面整体错位。
+  // Sidebar jump: expand target breakdown and scroll into view after render commits.
+  // Clear `focus` in parent right after consuming—otherwise switching tabs away and back remounts
+  // with stale `focus`, re-triggering `scrollIntoView` and jumping the layout.
   useEffect(() => {
     if (!focus) return;
     const targetView = focus.id === 'skill-metrics' ? 'skills' : focus.id === 'full-dps' ? 'full-dps' : 'metrics';
@@ -1159,8 +1159,8 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
 
   const [query, setQuery] = useState('');
 
-  // 分节：按 display_catalog 分类分组全部聚合量（不在目录里的进「其他聚合量」），
-  // 组内保持 stats 的目录顺序，目录外条目按名称排序垫底。
+  // Group stats into sections by display_catalog category (unlisted stats go to "Other Stats"),
+  // preserving catalog order inside each group and sorting unlisted entries by name at the end.
   const sections = useMemo(() => {
     if (!calc) return [];
     const catOf = new Map<string, DisplayStatCategory>(calc.stats.map((s) => [s.id, s.category]));

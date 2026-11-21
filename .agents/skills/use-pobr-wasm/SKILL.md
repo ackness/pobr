@@ -5,9 +5,9 @@ description: Integrate the standalone PoBR WebAssembly calculation engine in Nod
 
 # Use PoBR WASM
 
-Use a matching PoBR release engine/data pair. The package is a `wasm-pack
---target web` ES module; Node.js can load the same binary through `initSync`.
-It does not need Lua, the PoBR website or the Pages Worker.
+Use a matching PoBR release engine/data pair. The package is a
+`wasm-pack --target web` ES module; Node.js can load the same binary through
+`initSync`. It does not need Lua, the PoBR website or the Pages Worker.
 
 ## Obtain and verify the package
 

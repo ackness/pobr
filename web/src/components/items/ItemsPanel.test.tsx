@@ -229,7 +229,7 @@ it('passes the main minion headline and per-minion note to a saved-item comparis
 });
 
 
-it.each(['Craft item', 'Unique catalogue'])('keeps %s mounted with the same identity while inspecting other slots', label => {
+it.each(['Craft item', 'Unique catalog'])('keeps %s mounted with the same identity while inspecting other slots', label => {
   const current = session();
   render(current); button('Ring 1').onClick!({} as never);
   render(current); button(label).onClick!({} as never);

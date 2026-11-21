@@ -3,7 +3,7 @@
   font-size: var(--text-sm);
 }
 
-/* 技能组：单列手风琴列表（收起=单行摘要，展开=宝石编辑器）。 */
+/* Skill groups: single-column accordion list (collapsed = single-line summary, expanded = gem editor). */
 .skill-groups {
   display: flex;
   flex-direction: column;
@@ -45,7 +45,7 @@
   gap: var(--space-2);
 }
 
-/* 设主技能的星标按钮（点亮=当前主技能组）。 */
+/* Star button to set main skill (lit = active main skill group). */
 .skill-main-toggle {
   flex: none;
   background: none;
@@ -95,7 +95,7 @@
   color: var(--text-primary);
 }
 
-/* 编辑器控件 */
+/* Editor controls */
 .skills-toolbar {
   display: flex;
   align-items: center;
@@ -125,7 +125,7 @@
   background: transparent;
 }
 
-/* 收起态的辅助宝石内联摘要（溢出省略）。 */
+/* Inline support gem summary in collapsed view (ellipsized on overflow). */
 .skill-group-supports {
   color: var(--text-muted);
   font-size: var(--text-xs);
@@ -174,7 +174,7 @@
   font-size: var(--text-xs);
 }
 
-/* 自定义宝石选择器 */
+/* Custom gem picker */
 .gem-picker {
   position: relative;
   min-width: 0;
@@ -260,7 +260,7 @@
   margin-top: var(--space-2);
 }
 
-/* 技能组套装 */
+/* Skill-group sets */
 .skill-sets {
   display: flex;
   align-items: center;
@@ -295,8 +295,8 @@
   padding: 0 var(--space-1);
 }
 
-/* 血脉（Lineage）辅助宝石徽标 */
-/* 技能标签组：推到行尾，与宝石名争空间时名字优先。 */
+/* Lineage support gem badge */
+/* Skill tag chips: pushed to row end; gem name wins when horizontal space is tight. */
 .gem-tags {
   margin-left: auto;
   display: flex;
@@ -322,7 +322,7 @@
   flex: none;
 }
 
-/* 辅助宝石寻优 */
+/* Support gem optimizer */
 .gem-optimizer {
   margin-top: var(--space-2);
   border-top: 1px dashed var(--border-subtle);
