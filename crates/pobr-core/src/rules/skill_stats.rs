@@ -179,13 +179,15 @@ pub fn corpse_explosion_damage(stat: &str, value: f64) -> Option<(DamageType, f6
 
 /// The stats that set the count or limit used for a summoning skill's
 /// minion snapshot, for each kind of minion it summons.
-const SUMMONED_MINION_COUNTS: [&str; 3] = [
+const SUMMONED_MINION_COUNTS: [&str; 4] = [
     // Cackling Companions: "Summons {0} Hyenas".
     "skill_hyena_cackle_size",
     // Wolf Pack: pack size grows from 3 at gem level 1 to 6 at level 20.
     "skill_wolf_pack_size",
     // Raise Zombie: the skill's base limit, before temporary-minion bonuses.
     "base_number_of_zombies_allowed",
+    // Living Lightning (SupportLivingLightningPlayer[Two]): base limit (5 / 8).
+    "base_number_of_living_lightning_allowed",
 ];
 
 /// Whether the stat `stat` supplies the count or limit of a summoning
