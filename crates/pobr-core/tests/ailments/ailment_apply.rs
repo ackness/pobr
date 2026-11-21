@@ -577,3 +577,80 @@ fn effect_multiplier_updates_incrementally() {
         "existing 30 >= 20, no update"
     );
 }
+
+#[test]
+fn enemy_chill_isolates_enemy_chilled_from_player_chilled_bidirectionally() {
+    use pobr_core::ModTag;
+
+    // 1. Enemy Chill (Condition:Chilled + ChillVal) sets EnemyChilled, activates
+    //    enemy ActionSpeed / Bonechill debuffs, and does NOT trigger player "while Chilled".
+    let mut env = effective_env();
+    enemy_condition(&mut env, "Chilled");
+    env.enemy
+        .mod_db
+        .add_mod(Modifier::number("ChillVal", ModType::Base, 25.0));
+    env.player.mod_db.add_list([
+        Modifier::flag("HasBonechill"),
+        Modifier::number("Damage", ModType::Inc, 100.0)
+            .with_tag(ModTag::condition("Chilled", false)),
+        Modifier::number("Damage", ModType::Inc, 50.0)
+            .with_tag(ModTag::condition("EnemyChilled", false)),
+    ]);
+    perform(&mut env).expect("enemy chill perform");
+    assert!(env.cfg.condition("EnemyChilled"));
+    assert!(
+        !env.cfg.condition("Chilled"),
+        "enemy Chill must not mark the player Chilled"
+    );
+    assert_eq!(enemy_inc(&env, "ActionSpeed"), -25.0);
+    assert_eq!(enemy_inc(&env, "ColdDamageTaken"), 25.0);
+    // Baseline hit DPS = 150; only +50% EnemyChilled applies (= 225), NOT +100% player Chilled.
+    assert!((env.player.output.dps - 225.0).abs() < 1e-9);
+
+    // 2. Player self-Chill (cfg.conditions["Chilled"] = true) must NOT activate
+    //    enemy Chill debuffs even when enemy ChillVal is present without enemy Chilled.
+    let mut self_chill = effective_env();
+    self_chill.cfg.conditions.insert("Chilled".into(), true);
+    self_chill
+        .enemy
+        .mod_db
+        .add_mod(Modifier::number("ChillVal", ModType::Base, 25.0));
+    self_chill
+        .player
+        .mod_db
+        .add_mod(Modifier::flag("HasBonechill"));
+    apply_nondamaging_ailments(&mut self_chill);
+    assert!(!self_chill.cfg.condition("EnemyChilled"));
+    assert_eq!(
+        enemy_inc(&self_chill, "ActionSpeed"),
+        0.0,
+        "player self-Chill must not activate enemy ActionSpeed debuff"
+    );
+    assert_eq!(
+        enemy_inc(&self_chill, "ColdDamageTaken"),
+        0.0,
+        "player self-Chill must not activate enemy Bonechill debuff"
+    );
+
+    // 3. ChillOverride sets enemy Condition:Chilled and bridges EnemyChilled (never Chilled).
+    let mut ov = effective_env();
+    ov.player
+        .mod_db
+        .add_mod(Modifier::number("ChillOverride", ModType::Base, 30.0));
+    apply_nondamaging_ailments(&mut ov);
+    assert!(ov.enemy.mod_db.flag(&ov.cfg, "Condition:Chilled"));
+    assert!(ov.cfg.condition("EnemyChilled"));
+    assert!(!ov.cfg.condition("Chilled"));
+    assert_eq!(enemy_inc(&ov, "ActionSpeed"), -30.0);
+
+    // 4. EnemyChilled without ChillVal/Override/Base/Minimum does NOT invent a default magnitude.
+    let mut no_val = effective_env();
+    no_val.cfg.conditions.insert("EnemyChilled".into(), true);
+    enemy_condition(&mut no_val, "Chilled");
+    perform(&mut no_val).expect("no-val chill perform");
+    assert_eq!(enemy_inc(&no_val, "ActionSpeed"), 0.0);
+    assert_eq!(
+        pobr_core::display_catalog::display_value(&no_val.player.output, "CurrentChill"),
+        0.0
+    );
+}

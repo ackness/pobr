@@ -2018,7 +2018,7 @@ pub const CONDITIONS_SET_BY_A_PASS: [&str; 29] = [
     "CanGainRage",
     "HaveMaximumRage",
     // `calc::ailment_apply`: Chill and Shock on the enemy.
-    "Chilled",
+    "EnemyChilled",
     "EnemyShocked",
     // `calc::buff_pass`: curses and marks on the enemy.
     "EnemyCursed",
