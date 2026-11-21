@@ -396,6 +396,132 @@ fn calc_regen_stacks_rate_and_recovery_rate_inc() {
     assert_eq!(calc_regen(&db, &cfg, 0.0, "LifeRegen"), 20.0);
 }
 
+#[test]
+fn shared_regen_transfer_does_not_double_count_combined_or_paired_buff_modifiers() {
+    use pobr_data::source::{ModifierSource, SourceId, SourceKind};
+
+    let mut db = ModDb::new();
+    let cfg = CalcConfig::new();
+    db.add_mod(make_modifier("ManaRegen", ModType::Base, 100.0));
+    db.add_mod(Modifier::flag("LifeRegenAppliesToManaRegen"));
+
+    // 1. Virtuous Barrier blue-gem buff emits paired Life and Mana regen stats
+    //    for one in-game "increased Life and Mana Regeneration Rate" effect.
+    let vb_life = ModifierSource::new(SourceId::new(
+        SourceKind::SkillGem,
+        "buff.VirtuousBarrierPlayer.gem_barrier_blue_grants_life_regeneration_rate_+%",
+    ));
+    let vb_mana = ModifierSource::new(SourceId::new(
+        SourceKind::SkillGem,
+        "buff.VirtuousBarrierPlayer.gem_barrier_blue_grants_mana_regeneration_rate_+%",
+    ));
+    db.add_mod(Modifier::number("LifeRegen", ModType::Inc, 200.0).with_origin(vb_life));
+    db.add_mod(Modifier::number("ManaRegen", ModType::Inc, 200.0).with_origin(vb_mana));
+
+    // 2. Single combined passive/item line emits both LifeRegen and ManaRegen
+    //    with the same origin and raw text: must count once (+15%, not +30%).
+    let combined = ModifierSource::new(SourceId::new(SourceKind::PassiveNode, "node.1234"))
+        .with_raw_text("15% increased Life and Mana Regeneration Rate");
+    db.add_mod(
+        Modifier::number("LifeRegen", ModType::Inc, 15.0)
+            .with_source("15% increased Life and Mana Regeneration Rate")
+            .with_origin(combined.clone()),
+    );
+    db.add_mod(
+        Modifier::number("ManaRegen", ModType::Inc, 15.0)
+            .with_source("15% increased Life and Mana Regeneration Rate")
+            .with_origin(combined),
+    );
+
+    // 3. Two distinct affixes on the same item have the same source_id and slot
+    //    but different raw_text: BOTH must apply (+20% transferred + +30% direct).
+    let ring_life =
+        ModifierSource::new(SourceId::new(SourceKind::ItemAffix, "item.ring1.explicit"))
+            .with_slot("ring1")
+            .with_raw_text("20% increased Life Regeneration Rate");
+    let ring_mana =
+        ModifierSource::new(SourceId::new(SourceKind::ItemAffix, "item.ring1.explicit"))
+            .with_slot("ring1")
+            .with_raw_text("30% increased Mana Regeneration Rate");
+    db.add_mod(
+        Modifier::number("LifeRegen", ModType::Inc, 20.0)
+            .with_source("20% increased Life Regeneration Rate")
+            .with_origin(ring_life),
+    );
+    db.add_mod(
+        Modifier::number("ManaRegen", ModType::Inc, 30.0)
+            .with_source("30% increased Mana Regeneration Rate")
+            .with_origin(ring_mana),
+    );
+
+    // 4. Standalone SkillGem LifeRegen buff (Time of Need) still transfers (+50%).
+    let ton_life = ModifierSource::new(SourceId::new(
+        SourceKind::SkillGem,
+        "buff.TimeOfNeedPlayer.time_of_need_global_life_regeneration_rate_granted_+%",
+    ));
+    db.add_mod(Modifier::number("LifeRegen", ModType::Inc, 50.0).with_origin(ton_life));
+
+    // Direct ManaRegen INC = 200 (Virtuous Barrier) + 15 (combined) + 30 (ring) = 245%
+    // Non-duplicate transferred LifeRegen INC = 20 (ring) + 50 (Time of Need) = 70%
+    // Total INC = 315% -> 100 * 4.15 = 415.0 (would be 630.0 if double-counted).
+    assert_eq!(calc_regen(&db, &cfg, 0.0, "ManaRegen"), 415.0);
+
+    // LifeRegen itself still receives all of its own increases: 200 + 15 + 20 + 50 = 285%.
+    db.add_mod(make_modifier("LifeRegen", ModType::Base, 100.0));
+    assert_eq!(calc_regen(&db, &cfg, 0.0, "LifeRegen"), 385.0);
+}
+
+#[test]
+fn rage_regen_transfer_deduplicates_combined_mana_and_rage_line_and_matches_detail_groups() {
+    use pobr_core::calc::{CalculationSession, MinimalInput};
+    use pobr_data::source::{ModifierSource, SourceId, SourceKind};
+
+    let combined = ModifierSource::new(SourceId::new(SourceKind::PassiveNode, "node.9999"))
+        .with_raw_text("25% increased Mana and Rage Regeneration Rate");
+    let standalone_mana =
+        ModifierSource::new(SourceId::new(SourceKind::ItemAffix, "item.ring1.explicit"))
+            .with_slot("ring1")
+            .with_raw_text("40% increased Mana Regeneration Rate");
+    let mods = vec![
+        make_modifier("RageRegen", ModType::Base, 10.0),
+        Modifier::flag("ManaRegenAppliesToRageRegen"),
+        Modifier::number("ManaRegen", ModType::Inc, 25.0)
+            .with_source("25% increased Mana and Rage Regeneration Rate")
+            .with_origin(combined.clone()),
+        Modifier::number("RageRegen", ModType::Inc, 25.0)
+            .with_source("25% increased Mana and Rage Regeneration Rate")
+            .with_origin(combined),
+        Modifier::number("ManaRegen", ModType::Inc, 40.0)
+            .with_source("40% increased Mana Regeneration Rate")
+            .with_origin(standalone_mana),
+    ];
+
+    let mut db = ModDb::new();
+    db.add_list(mods.clone());
+    // Direct 25% + transferred standalone 40% = 65% -> 10 * 1.65 = 16.5 (not 19.0).
+    let cfg = CalcConfig::new();
+    assert_eq!(calc_regen(&db, &cfg, 0.0, "RageRegen"), 16.5);
+
+    let mut session = CalculationSession::new(MinimalInput::default());
+    session.add_modifiers(mods);
+    session.perform_minimal().unwrap();
+    let shared_mana = session
+        .detail_sources("RageRegen")
+        .into_iter()
+        .find(|group| group.name == "ManaRegen")
+        .expect("shared ManaRegen source group");
+    assert_eq!(shared_mana.totals.1, 40.0);
+    assert_eq!(
+        shared_mana
+            .rows
+            .iter()
+            .filter(|row| row.active)
+            .map(|row| row.value)
+            .collect::<Vec<_>>(),
+        vec![Some(40.0)]
+    );
+}
+
 // Leech constants
 
 #[test]

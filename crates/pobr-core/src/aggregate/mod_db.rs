@@ -808,6 +808,40 @@ impl ModDb {
             .sum()
     }
 
+    /// Like [`sum`](Self::sum), keeping only modifiers accepted by `keep`,
+    /// while preserving `GlobalLimit` accounting and read tracking.
+    pub(crate) fn sum_where<'a>(
+        &self,
+        mod_type: ModType,
+        ctx: impl Into<EvalContext<'a>>,
+        names: &[ModName],
+        mut keep: impl FnMut(&Modifier) -> bool,
+    ) -> f64 {
+        let ctx = ctx.into();
+        let has_limits = self.names_have_global_limit(names);
+        let mut limits: GlobalLimits = None;
+        let query = Query::Of(mod_type, names);
+        let mut total = 0.0;
+        for name in names {
+            for modifier in self.bucket(name.as_str(), query).into_iter().flatten() {
+                if modifier.mod_type != mod_type || !modifier.matches(ctx.cfg) || !keep(modifier) {
+                    continue;
+                }
+                let Some(value) = modifier.effective_number_ref(&ctx) else {
+                    continue;
+                };
+                let value = if has_limits {
+                    apply_global_limits(modifier, value, &mut limits).0
+                } else {
+                    value
+                };
+                self.note_counted(modifier, value);
+                total += value;
+            }
+        }
+        total
+    }
+
     /// The GlobalLimit accounting slow path for [`sum`](Self::sum) (vendor's
     /// SumInternal passes a `globalLimits` table, ModDB.lua:131-154).
     /// Value-equal to the fast path for mods without a GlobalLimit tag (the
