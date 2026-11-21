@@ -1,6 +1,8 @@
 //! Optional aggregation of the active effects a build marks for Full DPS.
 
+use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::rc::Rc;
 
 use pobr_core::calc::AilmentStageTerms;
 use pobr_core::calc::ailment::apply_dot_dps_cap;
@@ -9,9 +11,10 @@ use pobr_data::constants::{AilmentType, DOT_DPS_CAP};
 use pobr_data::item::EquipmentSlot::{Weapon1, Weapon2};
 
 use super::{
-    CalculationContext, DataOrchestratorOptions, calculate_prepared_with_context,
+    CalculationContext, DataOrchestratorOptions, StatMapMode, calculate_prepared_with_context,
     group_active_effects, prepared_build_view,
 };
+use crate::calc_cache::TriggerMemo;
 use crate::{Build, BuildData, BuildError, WeaponSet, build::JewelSocket};
 
 /// Evaluates only included groups. Preparation is shared by all effects using
@@ -23,7 +26,7 @@ pub fn calculate(
     options: &DataOrchestratorOptions,
 ) -> Result<FullDpsOutput, BuildError> {
     let prepared = prepared_build_view(build, data, options);
-    calculate_prepared(build, &prepared, data, options)
+    calculate_prepared(build, &prepared, data, options, None)
 }
 
 pub(super) fn calculate_prepared(
@@ -31,6 +34,7 @@ pub(super) fn calculate_prepared(
     prepared: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
+    trigger_memo: Option<Rc<RefCell<TriggerMemo>>>,
 ) -> Result<FullDpsOutput, BuildError> {
     let needs_other = prepared.socket_groups.iter().any(|group| {
         group.enabled
@@ -43,6 +47,11 @@ pub(super) fn calculate_prepared(
         let swapped = other_weapon_set(build);
         prepared_build_view(&swapped, data, options).into_owned()
     });
+    let trigger_memo = (options.stat_map_mode != StatMapMode::Compare)
+        .then(|| trigger_memo.unwrap_or_else(|| Rc::new(RefCell::new(TriggerMemo::new(64)))));
+    let mut primary = prepared.clone();
+    // Every primary-set effect is calculated from this one build, whose selection alone changes.
+    let _primary_scope = super::selection_memo::SelectionScope::enter(&primary, data);
     let mut result = FullDpsOutput::default();
     let mut ailments: [Vec<StackSource>; 3] = std::array::from_fn(|_| Vec::new());
     let mut skill_dots: BTreeMap<String, Vec<StackSource>> = BTreeMap::new();
@@ -53,18 +62,29 @@ pub(super) fn calculate_prepared(
         if !group.enabled || !group.include_in_full_dps {
             continue;
         }
-        let view = if group
+        let use_other = group
             .weapon_set
             .is_some_and(|set| set != build.weapon_set.number())
-        {
-            other.as_ref().unwrap_or(prepared)
+            && other.is_some();
+        let view = if use_other {
+            other.as_ref().expect("other weapon set prepared")
         } else {
             prepared
         };
-        let mut scoped = view.clone();
-        scoped.main_socket_group = Some(group_index + 1);
-        // Each effect of the group is calculated from this build, whose selection alone changes.
-        let _scope = super::selection_memo::SelectionScope::enter(&scoped, data);
+        // Alternate-weapon-set groups have different equipment/passives and must
+        // never be adopted into `primary`'s SelectionScope.
+        let mut other_scoped: Option<Build> = None;
+        let (_other_scope, scoped): (Option<super::selection_memo::SelectionScope>, &mut Build) =
+            if use_other {
+                let other_build = other_scoped.insert(view.clone());
+                other_build.main_socket_group = Some(group_index + 1);
+                let scope = super::selection_memo::SelectionScope::enter(other_build, data);
+                (Some(scope), other_build)
+            } else {
+                primary.main_socket_group = Some(group_index + 1);
+                (None, &mut primary)
+            };
+        let saved_active_skill = scoped.socket_groups[group_index].main_active_skill;
         for effect in group_active_effects(data, &view.socket_groups[group_index]) {
             // An item's InbuiltTrigger is one intrinsic ability. Exports can retain
             // its generated Item: row beside the editable group holding its supports.
@@ -136,12 +156,9 @@ pub(super) fn calculate_prepared(
                     .get(effect.skill_id)
                     .is_some_and(|levels| !levels.is_empty());
             let calculation = if resolved {
-                calculate_prepared_with_context(
-                    &scoped,
-                    data,
-                    options,
-                    &mut CalculationContext::new(data, options),
-                )
+                let mut context = CalculationContext::new(data, options);
+                context.trigger_memo = trigger_memo.clone();
+                calculate_prepared_with_context(scoped, data, options, &mut context)
             } else {
                 Err(BuildError::Calc(format!(
                     "Cannot resolve included effect {}",
@@ -269,15 +286,15 @@ pub(super) fn calculate_prepared(
                                     });
                             }
                         }
-                        let uncull = out.dps + out.total_dot_dps;
-                        if uncull > 0.0 {
-                            cull = cull.max(out.combined_dps / uncull);
+                        if let Some(skill_cull) = skill_cull_multiplier(out) {
+                            cull = cull.max(skill_cull);
                         }
                     }
                 }
             }
             result.skills.push(row);
         }
+        scoped.socket_groups[group_index].main_active_skill = saved_active_skill;
     }
     // Cross-source multi-Ignite budgets are unverified, as in the selected
     // skill view. Ordinary Ignites compete for one enemy-wide instance.
@@ -445,6 +462,14 @@ pub(super) fn other_weapon_set(build: &Build) -> Build {
     swapped
 }
 
+/// Exact cull/reservation DPS multiplier for a damaging skill; returns `None` when
+/// the skill deals no hit or DoT damage so untriggered 0-DPS skills cannot donate
+/// local Culling Strike to the rest of Full DPS.
+fn skill_cull_multiplier(out: &pobr_core::calc::OutputTable) -> Option<f64> {
+    let uncull = out.dps + out.total_dot_dps;
+    (uncull > 0.0).then_some(out.cull_multiplier * out.reservation_dps_multiplier)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -481,5 +506,36 @@ mod tests {
         allocate_stacks(&mut sources, &mut rows);
         assert_eq!(rows[1].dot_dps, 150.0);
         assert_eq!(rows[0].dot_dps, 15.0);
+    }
+
+    #[test]
+    fn skill_cull_multiplier_uses_exact_multipliers_and_ignores_zero_dps_skills() {
+        let zero_dps = pobr_core::calc::OutputTable {
+            dps: 0.0,
+            total_dot_dps: 0.0,
+            cull_multiplier: 1.25,
+            reservation_dps_multiplier: 1.1,
+            ..Default::default()
+        };
+        assert_eq!(skill_cull_multiplier(&zero_dps), None);
+
+        let damaging = pobr_core::calc::OutputTable {
+            dps: 100.0,
+            total_dot_dps: 25.0,
+            combined_dps: 126.0, // rounded combined_dps must not perturb exact multiplier
+            cull_multiplier: 1.0,
+            reservation_dps_multiplier: 1.0,
+            ..Default::default()
+        };
+        assert_eq!(skill_cull_multiplier(&damaging), Some(1.0));
+
+        let culled = pobr_core::calc::OutputTable {
+            dps: 100.0,
+            total_dot_dps: 0.0,
+            cull_multiplier: 1.25,
+            reservation_dps_multiplier: 1.2,
+            ..Default::default()
+        };
+        assert!((skill_cull_multiplier(&culled).unwrap() - 1.5).abs() < 1e-12);
     }
 }

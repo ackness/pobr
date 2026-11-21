@@ -201,7 +201,7 @@ fn compute_slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(Equ
         }
     }
     for t in &texts {
-        // Two prefixes: increased (positive) and reduced (negative, vendor only has this for the focus variant).
+        // Two prefixes: increased (positive) and reduced (negative).
         const INC_NEEDLE: &str = "% increased bonuses gained from ";
         const RED_NEEDLE: &str = "% reduced bonuses gained from ";
         let (idx, needle, sign) = match t.find(INC_NEEDLE) {
@@ -220,17 +220,15 @@ fn compute_slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(Equ
         // variant (`EffectOfBonusesFromQuiver`, consumed at CalcSetup.lua:1366-1373's
         // Weapon 2 quiver special case) + :4867's focus variant
         // (`EffectOfBonusesFromFocus` INC -N, consumed at CalcSetup.lua:1209-1220's
-        // Focus item special case. Numeric values, including nested actor
+        // Focus item special case). Numeric values, including nested actor
         // bonuses, are scaled once at item ingestion; flags remain unchanged.
-        match (target, sign > 0.0) {
-            ("equipped rings and amulets", true) => {
-                add(&[Ring1, Ring2, Ring3, Amulet], num / 100.0)
-            }
-            ("equipped rings", true) => add(&[Ring1, Ring2, Ring3], num / 100.0),
-            ("left equipped ring", true) => add(&[Ring1], num / 100.0),
-            ("right equipped ring", true) => add(&[Ring2], num / 100.0),
-            ("equipped quiver", true) if weapon2_is_quiver => add(&[Weapon2], num / 100.0),
-            ("equipped focus", false) if weapon2_is_focus => add(&[Weapon2], num / 100.0),
+        match target {
+            "equipped rings and amulets" => add(&[Ring1, Ring2, Ring3, Amulet], num / 100.0),
+            "equipped rings" => add(&[Ring1, Ring2, Ring3], num / 100.0),
+            "left equipped ring" => add(&[Ring1], num / 100.0),
+            "right equipped ring" => add(&[Ring2], num / 100.0),
+            "equipped quiver" if weapon2_is_quiver => add(&[Weapon2], num / 100.0),
+            "equipped focus" if weapon2_is_focus => add(&[Weapon2], num / 100.0),
             _ => {}
         }
     }
@@ -239,10 +237,51 @@ fn compute_slot_bonus_effect_scales(build: &Build, data: &BuildData) -> Vec<(Equ
 
 #[cfg(test)]
 mod tests {
-    use super::scale_item_bonuses;
+    use super::{scale_item_bonuses, slot_bonus_effect_scales};
+    use crate::build::Build;
+    use crate::build_data::BuildData;
     use pobr_core::{ModTag, ModValue, Modifier};
+    use pobr_data::catalog::BaseItemDef;
+    use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
     use pobr_data::modifier::ModType;
     use pobr_data::source::{ModifierSource, SourceId, SourceKind};
+
+    fn test_base(name: &str, item_class: &str) -> BaseItemDef {
+        BaseItemDef {
+            id: name.to_string(),
+            name: name.to_string(),
+            item_class: item_class.to_string(),
+            drop_level: 1,
+            width: 1,
+            height: 1,
+            tags: vec![],
+            implicits: vec![],
+            mod_domain: 1,
+            weapon: None,
+            armour: None,
+            spirit: None,
+            charm_buff: vec![],
+            utility: None,
+            req_str: 0,
+            req_dex: 0,
+            req_int: 0,
+        }
+    }
+
+    fn test_item(base: &str, mods: &[&str]) -> Item {
+        Item {
+            base: ItemBaseId::from(base),
+            rarity: ItemRarity::Rare,
+            quality: 0,
+            corrupted: false,
+            implicit_texts: vec![],
+            modifier_texts: mods.iter().map(|s| (*s).to_string()).collect(),
+            enchant_texts: vec![],
+            rolled_defence: RolledDefence::default(),
+            socketed: vec![],
+            parsed_stats: vec![],
+        }
+    }
 
     #[test]
     fn slot_scaling_preserves_wrappers_flags_sources_and_conditions() {
@@ -282,5 +321,65 @@ mod tests {
             scale_item_bonuses(&mut mods, scale);
             assert_eq!(mods, vec![wrap(expected)]);
         }
+    }
+
+    #[test]
+    fn slot_bonus_effect_scales_supports_both_increased_and_reduced_across_slots() {
+        let mut data = BuildData::empty();
+        data.base_items.insert(
+            "Broadhead Quiver".into(),
+            test_base("Broadhead Quiver", "Quiver"),
+        );
+        data.base_items
+            .insert("Twig Focus".into(), test_base("Twig Focus", "Focus"));
+
+        let quiver_build = Build::new()
+            .set_item(EquipmentSlot::Weapon2, test_item("Broadhead Quiver", &[]))
+            .set_item(
+                EquipmentSlot::Belt,
+                test_item(
+                    "Rawhide Belt",
+                    &[
+                        "25% reduced bonuses gained from Equipped Rings",
+                        "20% reduced bonuses gained from Equipped Rings and Amulets",
+                        "10% reduced bonuses gained from Left Equipped Ring",
+                        "15% reduced bonuses gained from Right Equipped Ring",
+                        "30% reduced bonuses gained from Equipped Quiver",
+                    ],
+                ),
+            );
+        let scales = slot_bonus_effect_scales(&quiver_build, &data);
+        let scale_of = |slot: EquipmentSlot| {
+            scales
+                .iter()
+                .find(|(s, _)| *s == slot)
+                .map(|(_, v)| *v)
+                .unwrap_or(0.0)
+        };
+        assert!((scale_of(EquipmentSlot::Ring1) - -0.55).abs() < 1e-12);
+        assert!((scale_of(EquipmentSlot::Ring2) - -0.60).abs() < 1e-12);
+        assert!((scale_of(EquipmentSlot::Ring3) - -0.45).abs() < 1e-12);
+        assert!((scale_of(EquipmentSlot::Amulet) - -0.20).abs() < 1e-12);
+        assert!((scale_of(EquipmentSlot::Weapon2) - -0.30).abs() < 1e-12);
+
+        let focus_build = Build::new()
+            .set_item(EquipmentSlot::Weapon2, test_item("Twig Focus", &[]))
+            .set_item(
+                EquipmentSlot::Belt,
+                test_item(
+                    "Rawhide Belt",
+                    &[
+                        "40% increased bonuses gained from Equipped Focus",
+                        "15% reduced bonuses gained from Equipped Focus",
+                    ],
+                ),
+            );
+        let focus_scales = slot_bonus_effect_scales(&focus_build, &data);
+        let focus_scale = focus_scales
+            .iter()
+            .find(|(s, _)| *s == EquipmentSlot::Weapon2)
+            .map(|(_, v)| *v)
+            .unwrap_or(0.0);
+        assert!((focus_scale - 0.25).abs() < 1e-12);
     }
 }

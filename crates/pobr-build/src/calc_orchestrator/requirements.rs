@@ -34,42 +34,12 @@ pub(super) fn requirement_snapshots(build: &Build, data: &BuildData) -> Vec<(Str
                 }
             }
         }
-        let cfg = CalcConfig::new();
         let raw = [
             base.req_str as f64,
             base.req_dex as f64,
             base.req_int as f64,
         ];
-        let conversion = ["Strength", "Dexterity", "Intelligence"].map(|attr| {
-            local.sum(
-                ModType::Base,
-                &cfg,
-                &[ModName::from(format!(
-                    "AttributeRequirementsConvertedTo{attr}"
-                ))],
-            ) / 100.0
-        });
-        let total: f64 = raw.iter().sum();
-        let converted: f64 = conversion.iter().sum();
-        let requirements = std::array::from_fn(|i| {
-            if local.flag(&cfg, "NoAttributeRequirements") {
-                return 0.0;
-            }
-            let names = [ModName::from(format!(
-                "{}Requirement",
-                ["Str", "Dex", "Int"][i]
-            ))];
-            // Requirement conversion changes the base item's requirements;
-            // a local flat requirement is added in its own attribute afterwards.
-            let base = raw[i] * (1.0 - converted)
-                + total * conversion[i]
-                + local.sum(ModType::Base, &cfg, &names);
-            (base
-                * (1.0 + local.sum(ModType::Inc, &cfg, &names) / 100.0)
-                * local.more(&cfg, &names))
-            .max(0.0)
-            .floor()
-        });
+        let requirements = item_attribute_requirements(raw, &local);
         let category = if base.weapon.is_none() {
             "Item"
         } else if ["Bow", "Crossbow", "Wand", "Staff", "Sceptre"]
@@ -126,7 +96,8 @@ pub(super) fn requirement_snapshots(build: &Build, data: &BuildData) -> Vec<(Str
                 .or_else(|| {
                     data.skill_gems
                         .values()
-                        .find(|gem| gem.granted_effect_id.as_deref() == Some(id))
+                        .filter(|gem| gem.granted_effect_id.as_deref() == Some(id))
+                        .min_by(|a, b| a.id.cmp(&b.id))
                 });
             let Some(gem) = gem else {
                 continue;
@@ -154,10 +125,50 @@ pub(super) fn requirement_snapshots(build: &Build, data: &BuildData) -> Vec<(Str
     values.into_iter().collect()
 }
 
+fn item_attribute_requirements(raw: [f64; 3], local: &ModDb) -> [f64; 3] {
+    let cfg = CalcConfig::new();
+    let mut conversion = ["Strength", "Dexterity", "Intelligence"].map(|attr| {
+        (local.sum(
+            ModType::Base,
+            &cfg,
+            &[ModName::from(format!(
+                "AttributeRequirementsConvertedTo{attr}"
+            ))],
+        ) / 100.0)
+            .max(0.0)
+    });
+    let total: f64 = raw.iter().sum();
+    let mut converted: f64 = conversion.iter().sum();
+    if converted > 1.0 {
+        for c in &mut conversion {
+            *c /= converted;
+        }
+        converted = 1.0;
+    }
+    std::array::from_fn(|i| {
+        if local.flag(&cfg, "NoAttributeRequirements") {
+            return 0.0;
+        }
+        let names = [ModName::from(format!(
+            "{}Requirement",
+            ["Str", "Dex", "Int"][i]
+        ))];
+        // Requirement conversion changes the base item's requirements;
+        // a local flat requirement is added in its own attribute afterwards.
+        let base = raw[i] * (1.0 - converted)
+            + total * conversion[i]
+            + local.sum(ModType::Base, &cfg, &names);
+        (base * (1.0 + local.sum(ModType::Inc, &cfg, &names) / 100.0) * local.more(&cfg, &names))
+            .max(0.0)
+            .floor()
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::build::SocketGroup;
+    use pobr_core::Modifier;
     use pobr_data::catalog::SkillGemDef;
 
     #[test]
@@ -198,5 +209,76 @@ mod tests {
         assert_eq!(values["GemRequirementStr"], 42.0);
         assert_eq!(values["GemRequirementInt"], 106.0);
         assert_eq!(values["SupportRequirementDex"], 10.0);
+    }
+
+    #[test]
+    fn attribute_requirement_conversion_clamps_negative_and_normalizes_above_full() {
+        // Over-100% conversion normalizes proportionally and never subtracts from local flat requirements.
+        let mut over = ModDb::new();
+        over.add_mod(Modifier::number(
+            "AttributeRequirementsConvertedToDexterity",
+            ModType::Base,
+            60.0,
+        ));
+        over.add_mod(Modifier::number(
+            "AttributeRequirementsConvertedToIntelligence",
+            ModType::Base,
+            90.0,
+        ));
+        over.add_mod(Modifier::number("StrRequirement", ModType::Base, 20.0));
+        assert_eq!(
+            item_attribute_requirements([100.0, 0.0, 0.0], &over),
+            [20.0, 40.0, 60.0]
+        );
+
+        // Negative conversion components are clamped to zero instead of inflating unconverted base.
+        let mut negative = ModDb::new();
+        negative.add_mod(Modifier::number(
+            "AttributeRequirementsConvertedToStrength",
+            ModType::Base,
+            -50.0,
+        ));
+        negative.add_mod(Modifier::number(
+            "AttributeRequirementsConvertedToIntelligence",
+            ModType::Base,
+            50.0,
+        ));
+        assert_eq!(
+            item_attribute_requirements([100.0, 0.0, 0.0], &negative),
+            [50.0, 0.0, 50.0]
+        );
+    }
+
+    #[test]
+    fn granted_effect_fallback_picks_smallest_gem_id_deterministically() {
+        let mut data = BuildData::empty();
+        let gem_b = SkillGemDef {
+            id: "GemB".into(),
+            gem_type: Some(0),
+            gem_colour: Some(1),
+            min_level_req: 1,
+            str_pct: 100,
+            dex_pct: 0,
+            int_pct: 0,
+            is_support: false,
+            gem_effect_id: None,
+            granted_effect_id: Some("SharedSkill".into()),
+            additional_granted_effect_ids: vec![],
+            gem_tags: vec![],
+            level_requirements: vec![78],
+        };
+        let mut gem_a = gem_b.clone();
+        gem_a.id = "GemA".into();
+        gem_a.gem_colour = Some(3);
+        gem_a.str_pct = 0;
+        gem_a.int_pct = 100;
+        data.skill_gems.insert(gem_b.id.clone(), gem_b);
+        data.skill_gems.insert(gem_a.id.clone(), gem_a);
+
+        let build =
+            Build::new().add_socket_group(SocketGroup::new().with_gem_skill("SharedSkill", 1));
+        let values: BTreeMap<_, _> = requirement_snapshots(&build, &data).into_iter().collect();
+        assert_eq!(values["GemRequirementStr"], 0.0);
+        assert!(values["GemRequirementInt"] > 0.0);
     }
 }

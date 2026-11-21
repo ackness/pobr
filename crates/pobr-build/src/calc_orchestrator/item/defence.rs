@@ -20,7 +20,7 @@ use pobr_core::skill_env::{item_local_defences, parse_local_block_chance};
 pub(crate) fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     let mut mods = Vec::new();
     let level = build.character.level;
-    for (slot, item) in &build.items {
+    for (slot, item) in build.equipped_items() {
         let slot_id = slot.id();
         // ArmourTypes.dat supplies the inherent movement penalty separately
         // from the item's explicit movement modifiers.
@@ -128,7 +128,7 @@ pub(crate) fn is_local_spirit_mod(clean: &str) -> bool {
 /// `calculate_with_data`'s drop-spirit step.
 pub(crate) fn item_spirit_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     let mut mods = Vec::new();
-    for (slot, item) in &build.items {
+    for (slot, item) in build.equipped_items() {
         let base_spirit = data
             .base_item(&item.base.to_string())
             .and_then(|b| b.spirit);
@@ -178,7 +178,7 @@ pub(crate) fn item_spirit_modifiers(build: &Build, data: &BuildData) -> Vec<Modi
 /// the data has no Runic Ward for.
 pub(crate) fn item_ward_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     let mut mods = Vec::new();
-    for (slot, item) in &build.items {
+    for (slot, item) in build.equipped_items() {
         let armour = data.armour_base(&item.base.to_string());
         let base = armour.map_or(0, |a| a.ward);
         // Elsewhere, on a weapon, the line is the character's.
@@ -223,7 +223,7 @@ pub(crate) fn item_ward_modifiers(build: &Build, data: &BuildData) -> Vec<Modifi
 pub(crate) fn per_slot_defence_multipliers(build: &Build, data: &BuildData) -> Vec<(String, f64)> {
     let mut out = Vec::new();
     let level = build.character.level;
-    for (slot, item) in &build.items {
+    for (slot, item) in build.equipped_items() {
         let Some(values) = item_local_defences(item, data, level) else {
             continue;
         };
@@ -257,11 +257,88 @@ pub(crate) fn per_slot_defence_multipliers(build: &Build, data: &BuildData) -> V
 /// slot id for `{SlotName}`). Generic: keyed by slot, never by a specific item.
 pub(crate) fn per_slot_socket_multipliers(build: &Build) -> Vec<(String, f64)> {
     let mut out = Vec::new();
-    for (slot, item) in &build.items {
+    for (slot, item) in build.equipped_items() {
         let filled = item.socketed.len();
         if filled > 0 {
             out.push((format!("RunesSocketedIn{}", slot.id()), filled as f64));
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pobr_data::item::{ItemBaseId, ItemRarity, RolledDefence};
+
+    fn test_item(base: &str) -> Item {
+        Item {
+            base: ItemBaseId::from(base),
+            rarity: ItemRarity::Rare,
+            quality: 0,
+            corrupted: false,
+            implicit_texts: vec![],
+            modifier_texts: vec![],
+            enchant_texts: vec![],
+            rolled_defence: RolledDefence {
+                armour: Some(100.0),
+                evasion: None,
+                energy_shield: None,
+                spirit: Some(50.0),
+                ward: Some(25.0),
+            },
+            socketed: vec!["Iron Rune".into()],
+            parsed_stats: vec![],
+        }
+    }
+
+    #[test]
+    fn defence_helpers_iterate_equipped_items_in_slot_id_order() {
+        let build = Build::new()
+            .set_item(EquipmentSlot::Weapon1, test_item("Weapon"))
+            .set_item(EquipmentSlot::Helmet, test_item("Helm"))
+            .set_item(EquipmentSlot::BodyArmour, test_item("Chest"));
+        let data = BuildData::empty();
+        let expected_slots = ["bodyarmour", "helmet", "weapon1"];
+
+        let slot_tags = |mods: Vec<Modifier>| -> Vec<String> {
+            mods.into_iter()
+                .filter_map(|m| {
+                    m.tags.into_iter().find_map(|t| match t {
+                        ModTag::SlotName(slot) => Some(slot),
+                        _ => None,
+                    })
+                })
+                .collect()
+        };
+
+        assert_eq!(
+            slot_tags(defence_base_modifiers(&build, &data)),
+            expected_slots
+        );
+        assert_eq!(
+            slot_tags(item_spirit_modifiers(&build, &data)),
+            expected_slots
+        );
+        assert_eq!(
+            slot_tags(item_ward_modifiers(&build, &data)),
+            expected_slots
+        );
+        assert_eq!(
+            per_slot_defence_multipliers(&build, &data),
+            vec![
+                ("ArmourOnbodyarmour".to_string(), 100.0),
+                ("ArmourOnhelmet".to_string(), 100.0),
+                ("ArmourOnweapon1".to_string(), 100.0),
+            ]
+        );
+        assert_eq!(
+            per_slot_socket_multipliers(&build),
+            vec![
+                ("RunesSocketedInbodyarmour".to_string(), 1.0),
+                ("RunesSocketedInhelmet".to_string(), 1.0),
+                ("RunesSocketedInweapon1".to_string(), 1.0),
+            ]
+        );
+    }
 }
