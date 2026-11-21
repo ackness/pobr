@@ -107,7 +107,7 @@ pub fn compare_outputs(
     let mut diffs = Vec::new();
     for (name, b, a) in fields {
         let delta = a - b;
-        if delta.abs() > epsilon {
+        if a != b && !(delta.abs() <= epsilon) {
             diffs.push(FieldDiff {
                 field: name,
                 before: b,
@@ -184,5 +184,41 @@ mod tests {
         };
         let cmp = compare_outputs(&before, &after, DEFAULT_EPSILON);
         assert!(cmp.is_unchanged());
+    }
+
+    #[test]
+    fn nan_values_are_always_reported_as_diffs() {
+        let nan_out = OutputTable {
+            dps: f64::NAN,
+            ..OutputTable::default()
+        };
+        let finite_out = OutputTable {
+            dps: 100.0,
+            ..OutputTable::default()
+        };
+        for (before, after) in [
+            (&nan_out, &finite_out),
+            (&finite_out, &nan_out),
+            (&nan_out, &nan_out),
+        ] {
+            let cmp = compare_outputs(before, after, DEFAULT_EPSILON);
+            let diff = cmp.field("dps").expect("NaN must produce a diff");
+            assert!(diff.delta.is_nan());
+        }
+
+        let pos_inf = OutputTable {
+            dps: f64::INFINITY,
+            ..OutputTable::default()
+        };
+        let neg_inf = OutputTable {
+            dps: f64::NEG_INFINITY,
+            ..OutputTable::default()
+        };
+        assert!(compare_outputs(&pos_inf, &pos_inf, DEFAULT_EPSILON).is_unchanged());
+        assert!(
+            compare_outputs(&pos_inf, &neg_inf, DEFAULT_EPSILON)
+                .field("dps")
+                .is_some()
+        );
     }
 }
