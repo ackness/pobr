@@ -438,9 +438,33 @@ fn scan_gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemProperty
     bonuses
 }
 
-/// These attack families require their weapon class (game skill descriptions:
-/// Rend requires Talismans, bow skills require Bows, grenades and crossbow
-/// ammunition require Crossbows, Boneshatter and Mace Strike require Maces).
+/// Weapon item classes required by weapon-restricted attack families
+/// (game skill descriptions: Shapeshift requires Talismans, spears require
+/// Spears, bow skills require Bows, grenades and crossbow ammunition require
+/// Crossbows, Boneshatter and Mace Strike require Maces).
+pub(crate) fn required_weapon_classes(
+    effect: &pobr_data::catalog::GrantedEffectDef,
+) -> Option<&'static [&'static str]> {
+    let has = |kind| effect.skill_types.iter().any(|t| t == kind);
+    if has("Shapeshift") {
+        Some(&["Talisman"])
+    } else if has("Spear") || effect.id == "SpearThrowPlayer" {
+        Some(&["Spear"])
+    } else if has("Bow") {
+        Some(&["Bow"])
+    } else if has("CrossbowSkill") || has("CrossbowAmmoSkill") || has("Grenade") {
+        Some(&["Crossbow"])
+    } else if matches!(
+        effect.id.as_str(),
+        "BoneshatterPlayer" | "Melee1HMacePlayer"
+    ) {
+        Some(&["One Hand Mace", "Two Hand Mace"])
+    } else {
+        None
+    }
+}
+
+/// These attack families require their weapon class (see [`required_weapon_classes`]).
 /// An unbound group uses the only set that can use it.
 pub(crate) fn bind_required_weapon_sets(build: &Build, data: &BuildData) -> Option<Build> {
     use pobr_data::item::EquipmentSlot::Weapon1;
@@ -464,21 +488,7 @@ pub(crate) fn bind_required_weapon_sets(build: &Build, data: &BuildData) -> Opti
             .as_deref()
             .and_then(|id| data.granted_effects.get(id));
         let Some(effect) = effect else { continue };
-        let has = |kind| effect.skill_types.iter().any(|t| t == kind);
-        let required: &[&str] = if has("Shapeshift") {
-            &["Talisman"]
-        } else if has("Spear") || effect.id == "SpearThrowPlayer" {
-            &["Spear"]
-        } else if has("Bow") {
-            &["Bow"]
-        } else if has("CrossbowSkill") || has("CrossbowAmmoSkill") || has("Grenade") {
-            &["Crossbow"]
-        } else if matches!(
-            effect.id.as_str(),
-            "BoneshatterPlayer" | "Melee1HMacePlayer"
-        ) {
-            &["One Hand Mace", "Two Hand Mace"]
-        } else {
+        let Some(required) = required_weapon_classes(effect) else {
             continue;
         };
         if !here.is_some_and(|class| required.contains(&class))

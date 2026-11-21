@@ -90,3 +90,43 @@ fn styrns_ferocity_crushes_the_enemy_for_the_other_skills() {
     let plain = dps(&shield_wall(false), &data, &[]);
     assert!(crushed > plain * 1.1, "{crushed} > {plain}");
 }
+
+#[test]
+fn weapon_restricted_exposure_debuffs_require_a_compatible_active_weapon() {
+    let data = data();
+    // Flameblast on a Staff with Oil Grenade enabled and a Crossbow only in the swap set:
+    // Oil Grenade cannot fire in the Staff weapon set, so it must not apply Fire Exposure.
+    let staff_only = build("FlameblastPlayer")
+        .set_item(EquipmentSlot::Weapon1, item("Ashen Staff", &[]))
+        .add_socket_group(SocketGroup::new().with_gem_skill("OilGrenadePlayer", 20));
+    let mut staff_with_swap = staff_only.clone();
+    staff_with_swap
+        .other_weapons
+        .insert(EquipmentSlot::Weapon1, item("Siege Crossbow", &[]));
+    let no_oil =
+        build("FlameblastPlayer").set_item(EquipmentSlot::Weapon1, item("Ashen Staff", &[]));
+    assert_eq!(dps(&staff_only, &data, &[]), dps(&no_oil, &data, &[]));
+    assert_eq!(dps(&staff_with_swap, &data, &[]), dps(&no_oil, &data, &[]));
+
+    // When a Crossbow IS held in the active weapon set, Oil Grenade applies its Fire Exposure.
+    let crossbow_plain = build("ExplosiveGrenadePlayer")
+        .set_item(EquipmentSlot::Weapon1, item("Siege Crossbow", &[]));
+    let crossbow_with_oil = crossbow_plain
+        .clone()
+        .add_socket_group(SocketGroup::new().with_gem_skill("OilGrenadePlayer", 20));
+    assert!(
+        dps(&crossbow_with_oil, &data, &[]) > dps(&crossbow_plain, &data, &[]) * 1.1,
+        "Oil Grenade applies exposure when a Crossbow is active"
+    );
+
+    // Oil Barrage requires a Talisman: holding a Mace with no Talisman must not apply exposure.
+    let mace_plain =
+        build("FireballPlayer").set_item(EquipmentSlot::Weapon1, item("Wooden Club", &[]));
+    let mace_with_oil_barrage = mace_plain
+        .clone()
+        .add_socket_group(SocketGroup::new().with_gem_skill("OilBarragePlayer", 20));
+    assert_eq!(
+        dps(&mace_with_oil_barrage, &data, &[]),
+        dps(&mace_plain, &data, &[])
+    );
+}
