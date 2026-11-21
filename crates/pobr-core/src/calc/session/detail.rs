@@ -330,7 +330,6 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "ElementalAilmentImmune",
             "ShockAvoidAppliesToElementalAilments",
             "AvoidShock",
-            "ShockImmune",
         ],
         "AvoidChill" => &[
             "AvoidChill",
@@ -339,7 +338,6 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "ElementalAilmentImmune",
             "ShockAvoidAppliesToElementalAilments",
             "AvoidShock",
-            "ShockImmune",
         ],
         "AvoidFreeze" => &[
             "AvoidFreeze",
@@ -348,9 +346,13 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "ElementalAilmentImmune",
             "ShockAvoidAppliesToElementalAilments",
             "AvoidShock",
-            "ShockImmune",
         ],
-        "AvoidShock" => &["AvoidShock", "ShockImmune", "ElementalAilmentImmune"],
+        "AvoidShock" => &[
+            "AvoidShock",
+            "ShockImmune",
+            "AvoidElementalAilments",
+            "ElementalAilmentImmune",
+        ],
         "AvoidPoison" => &["AvoidPoison", "PoisonImmune"],
         "AvoidBleeding" => &["AvoidBleeding", "BleedImmune"],
         "CritExtraDamageReduction" => &["ReduceCritExtraDamage"],

@@ -105,12 +105,13 @@ fn fill_regeneration(env: &mut Env) {
     }
     // Zealot's Oath: excess Life regeneration is applied to Energy Shield.
     if db.flag(cfg, "ZealotsOath") && recovery[0] > 0.0 {
+        let transfer = (recovery[0]
+            - base(db, cfg, "LifeRecovery") * factor(db, cfg, "LifeRecoveryRate"))
+        .max(0.0);
         if !cannot_gain(db, cfg, "EnergyShield") {
-            recovery[2] += (recovery[0]
-                - base(db, cfg, "LifeRecovery") * factor(db, cfg, "LifeRecoveryRate"))
-            .max(0.0);
+            recovery[2] += transfer;
         }
-        recovery[0] = 0.0;
+        recovery[0] -= transfer;
     }
     [
         out.life_regen_recovery,
