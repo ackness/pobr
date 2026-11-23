@@ -4,6 +4,43 @@ Notable changes to PoBR, the browser build planner at [pobr.win](https://pobr.wi
 
 Versions follow [SemVer](https://semver.org/). While the version is 0.0.x, any release may change behaviour; changes that need action from WASM, CLI or data consumers are listed under **Breaking changes**. How a release section is written: [RELEASING.md](RELEASING.md#4-发版上线).
 
+## [0.0.57] - 2026-11-23
+
+Choose, craft and replace jewels directly in passive sockets. This release also corrects damage, recovery and defence calculations across a range of builds, and preserves more weapon-set details on import and export. Game data remains at 0.5.5.8.
+
+### Breaking changes
+
+- Several WASM endpoints now return structured JSON errors where they previously returned plain text. Integrations that match error messages should read the structured error payload. (#400)
+- PoB build-code encoding and decoding now cap inputs at 16 MiB. The decode limit includes whitespace in the encoded input. (#400)
+- Legacy `.build` imports reject passive or skill weapon-set values outside 0, 1 and 2, and reject a passive assigned exclusively to both sets. (#396)
+
+### Added
+
+- Search for unique jewels in English or Chinese, configure their rolls, or craft a jewel for the selected passive socket. Preview the change before applying it, and undo the replacement and any dependent passive refunds together. (#392)
+- Calculate Cast on Dodge using dodge rolls per second. The Web and CLI explain when a triggered skill is shown at its own rate because the Energy input is missing. (#394)
+
+### Changed
+
+- Passive reports make node details easier to scan, and workspace and startup errors use the selected interface language. (#391, #393)
+- The command palette uses built-in keyboard navigation, and frequently used calculation queries avoid allocating temporary modifier names. (#408, #409)
+
+### Fixed
+
+- Count regeneration transfers once, apply debuffs and support buffs only on compatible weapon sets, and calculate Poison duration, Aggravated Bleeding, Living Lightning and crossbow costs and reload effects from their relevant skill inputs. (#394, #395)
+- Apply rarity-specific armour break, culling and Wolf Pounce rules. Keep weapon-set assignments when sharing planner files and recognise the alternate weapon set in supported `.build` imports. (#396)
+- Preserve explicit XML config values and apply quest and condition defaults when the corresponding input is absent. Keep item selection and dual sockets through item edits, and preserve passive route ordering. (#400, #407)
+- Correct dual-wield damage and critical hit breakdowns, Energy Shield recovery, Shock avoidance, spell block, Full DPS multipliers, max hit, damaging ailments and fractional item bonuses. Keep enemy Chill separate from self-Chill. (#399, #401, #403)
+- Update the current stage when switching loadouts, recover from failed worker startup, show channel formulas in Calcs, and keep tree hover responsive. Late equipment comparisons no longer cancel newer comparisons, and support capacity respects manual edits until occupancy changes. (#397, #408)
+
+### For developers
+
+- Build with Rust 1.100.0, mise 2026.11.12, Node 26.13.1 and pnpm 12.21.0. Public `ModDb` and `ModList` query signatures remain compatible. (#407, #409)
+- Data acquisition and developer tools handle failed transports and invalid inputs more consistently. The retired PoB2 catalog sync task is removed. (#398, #404)
+
+### Internal
+
+- Verify the full CI gate on the exact PR commit, share pinned-data preparation across workflows, and lint the WASM feature in CI. Remove obsolete assets, scripts and unused Web dependencies. (#402, #404, #405, #406, #408)
+
 ## [0.0.56] - 2026-11-20
 
 The Overview now guides you from importing a build to planning upgrades, keeping a baseline and sharing the current stage. Passive previews show exactly where to add or refund points, and applied support and equipment changes stay easy to review and undo. This release uses game data 0.5.5.8.
@@ -437,6 +474,7 @@ pobr.win now calculates with game data 0.5.5.5 (was 0.5.5.4.2), imported from th
 
 Notes for 0.0.43 and earlier are on [GitHub Releases](https://github.com/ackness/pobr/releases).
 
+[0.0.57]: https://github.com/ackness/pobr/compare/v0.0.56...v0.0.57
 [0.0.56]: https://github.com/ackness/pobr/compare/v0.0.55...v0.0.56
 [0.0.55]: https://github.com/ackness/pobr/compare/v0.0.54...v0.0.55
 [0.0.54]: https://github.com/ackness/pobr/compare/v0.0.53...v0.0.54
