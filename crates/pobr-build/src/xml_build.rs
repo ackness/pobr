@@ -30,10 +30,11 @@
 //! for `<Item>`, etc. are left for later.
 
 use quick_xml::Reader;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use quick_xml::events::{BytesRef, BytesStart, Event};
 
+use crate::build_config::BuildConfig;
 use pobr_core::CampaignProgress;
 use pobr_core::item_text::parse_pob_xml_item;
 use pobr_core::rules::config_interpreter::{ConfigInputValue, RawConfigInputs};
@@ -265,12 +266,8 @@ fn parse_build_with_allocated_nodes_impl(
         build = build.add_socket_group(group);
     }
 
-    // Combat config: the raw three-typed `<Input>` key-values are captured losslessly
-    // into `raw_inputs` (consumed by `config_resolve::resolve_config` →
-    // `config_interpreter::interpret` when a ConfigCatalog is available). Project those
-    // already-parsed raw inputs into the fallback/quest fields without re-scanning XML.
-    build.config.raw_inputs = parse_config_inputs(xml);
-    populate_config_from_raw_inputs(&mut build.config);
+    let (raw_inputs, _) = parse_config_document(xml, Some(&mut build.config));
+    build.config.raw_inputs = raw_inputs;
 
     Ok(ImportedBuild { build, report })
 }
@@ -352,19 +349,23 @@ pub fn default_quest_stat_reward_texts(
 /// Placeholder fallback" (e.g. `enemyLevel`, ConfigTab.lua:872-877); the interpreter's
 /// main flow doesn't read this table.
 pub fn parse_config_inputs(xml: &str) -> RawConfigInputs {
-    parse_config_document(xml).0
+    parse_config_document(xml, None).0
 }
 
 /// Returns the selected ConfigSet's editable custom modifier groups. Legacy
 /// `customMods` Input text is migrated to a Default group as PoB2 does.
 pub fn parse_custom_modifier_blocks(xml: &str) -> Vec<CustomModifierBlock> {
-    parse_config_document(xml).1
+    parse_config_document(xml, None).1
 }
 
 /// Scan Inputs and custom groups together so calculation and editing share
 /// the same selected-set, XML entity, and legacy migration semantics.
-fn parse_config_document(xml: &str) -> (RawConfigInputs, Vec<CustomModifierBlock>) {
+fn parse_config_document(
+    xml: &str,
+    mut fallback: Option<&mut BuildConfig>,
+) -> (RawConfigInputs, Vec<CustomModifierBlock>) {
     let mut inputs = RawConfigInputs::new();
+    let mut seen_inputs = HashSet::new();
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut in_config = false;
@@ -429,6 +430,11 @@ fn parse_config_document(xml: &str) -> (RawConfigInputs, Vec<CustomModifierBlock
                 let Some(name) = attr_value(&e, b"name") else {
                     continue;
                 };
+                let is_input = element_name(&e) == "Input";
+                if is_input && let Some(config) = fallback.as_deref_mut() {
+                    apply_fallback_config_input(config, &name, &e);
+                    seen_inputs.insert(name.clone());
+                }
                 let value = if let Some(b) = attr_value(&e, b"boolean") {
                     ConfigInputValue::Bool(b == "true")
                 } else if let Some(n) =
@@ -440,7 +446,7 @@ fn parse_config_document(xml: &str) -> (RawConfigInputs, Vec<CustomModifierBlock
                 } else {
                     continue;
                 };
-                if element_name(&e) == "Input" {
+                if is_input {
                     inputs.values.insert(name, value);
                 } else {
                     inputs.placeholders.insert(name, value);
@@ -486,62 +492,62 @@ fn parse_config_document(xml: &str) -> (RawConfigInputs, Vec<CustomModifierBlock
             ConfigInputValue::Text(active_blocks.join("\n")),
         );
     }
+    if let Some(config) = fallback {
+        apply_omitted_config_defaults(config, &seen_inputs);
+    }
     (inputs, blocks)
 }
 
-/// Projects `config.raw_inputs` into `BuildConfig`'s fallback fields and quest
-/// reward text channel without re-scanning the XML.
-///
-/// **Omission = default value** (PoB2's `defaultState`): absent boolean entries in
-/// [`DEFAULT_TRUE_CONDITIONS`] (except skill-dependent `companionInPresence`) fill
-/// in `true`, and absent Stat-type quest rewards in [`DEFAULT_QUEST_STAT_REWARDS`]
-/// are treated as claimed.
-fn populate_config_from_raw_inputs(config: &mut crate::build_config::BuildConfig) {
-    let values = &config.raw_inputs.values;
-    for (name, value) in values {
-        if let Some(var) = name.strip_prefix("condition")
-            && let ConfigInputValue::Bool(b) = value
+fn apply_fallback_config_input(config: &mut BuildConfig, name: &str, element: &BytesStart<'_>) {
+    if let Some(var) = name.strip_prefix("condition")
+        && let Some(value) = attr_value(element, b"boolean")
+    {
+        config.conditions.insert(var.to_string(), value == "true");
+    } else if let Some(charge_cond) = use_charge_condition(name)
+        && let Some(value) = attr_value(element, b"boolean")
+    {
+        config
+            .conditions
+            .insert(charge_cond.to_string(), value == "true");
+    } else if let Some((_, cond_var)) = DEFAULT_TRUE_CONDITIONS.iter().find(|(key, _)| *key == name)
+        && let Some(value) = attr_value(element, b"boolean")
+    {
+        config
+            .conditions
+            .insert((*cond_var).to_string(), value == "true");
+    } else if let Some(var) = name.strip_prefix("multiplier")
+        && let Some(value) =
+            attr_value(element, b"number").and_then(|value| value.parse::<f64>().ok())
+    {
+        config.multipliers.insert(var.to_string(), value);
+    } else if name == "enemyIsBoss" {
+        config.enemy_tier =
+            attr_value(element, b"string").and_then(|value| EnemyTier::from_pob_str(&value));
+    } else if name == "resistancePenalty" {
+        config.campaign_progress = attr_value(element, b"number")
+            .and_then(|value| value.parse::<f64>().ok())
+            .and_then(CampaignProgress::from_resistance_penalty);
+    } else if name.starts_with("quest") {
+        if let Some(text) = attr_value(element, b"string") {
+            push_quest_lines(&mut config.global_modifier_texts, &text);
+        } else if attr_bool(element, b"boolean")
+            && let Some((_, text)) = DEFAULT_QUEST_STAT_REWARDS
+                .iter()
+                .find(|(key, _)| *key == name)
         {
-            config.conditions.insert(var.to_string(), *b);
-        } else if let Some(charge_cond) = use_charge_condition(name)
-            && let ConfigInputValue::Bool(b) = value
-        {
-            // PoB2 ConfigOptions: the `useXCharges` checkbox → `Condition:UseXCharges` FLAG.
-            // Full-stack charge default (current = max) only takes effect when this condition is true.
-            config.conditions.insert(charge_cond.to_string(), *b);
-        } else if let Some((_, cond_var)) = DEFAULT_TRUE_CONDITIONS.iter().find(|(n, _)| *n == name)
-            && let ConfigInputValue::Bool(b) = value
-        {
-            // A defaultState=true entry that appears explicitly takes its own value.
-            config.conditions.insert((*cond_var).to_string(), *b);
-        } else if let Some(var) = name.strip_prefix("multiplier")
-            && let ConfigInputValue::Number(n) = value
-        {
-            config.multipliers.insert(var.to_string(), *n);
-        } else if name == "enemyIsBoss" {
-            config.enemy_tier = match value {
-                ConfigInputValue::Text(v) => EnemyTier::from_pob_str(v),
-                _ => None,
-            };
-        } else if name == "resistancePenalty" {
-            config.campaign_progress = match value {
-                ConfigInputValue::Number(n) => CampaignProgress::from_resistance_penalty(*n),
-                _ => None,
-            };
-        } else if name.starts_with("quest")
-            && let ConfigInputValue::Text(s) = value
-        {
-            push_quest_lines(&mut config.global_modifier_texts, s);
+            push_quest_lines(&mut config.global_modifier_texts, text);
         }
     }
+}
 
+fn apply_omitted_config_defaults(config: &mut BuildConfig, seen_inputs: &HashSet<String>) {
     // PoB2 `defaultState = true`: fill in true for entries the XML omits (doesn't override explicit entries).
     for (xml_name, cond_var) in DEFAULT_TRUE_CONDITIONS {
         // Skill-dependent default, resolved after the enabled skills are known.
         if *xml_name == "companionInPresence" {
             continue;
         }
-        if !values.contains_key(*xml_name) {
+        if !seen_inputs.contains(*xml_name) {
             config
                 .conditions
                 .entry((*cond_var).to_string())
@@ -554,9 +560,7 @@ fn populate_config_from_raw_inputs(config: &mut crate::build_config::BuildConfig
     config
         .global_modifier_texts
         .extend(default_quest_stat_reward_texts(|key| {
-            values
-                .get(key)
-                .map(|v| matches!(v, ConfigInputValue::Bool(true)))
+            seen_inputs.contains(key).then_some(false)
         }));
 }
 
@@ -2145,6 +2149,56 @@ Item Level: 80
         assert!(texts.iter().any(|t| t == "+5% to Fire Resistance"));
         // Default entries not mentioned are still there.
         assert!(texts.iter().any(|t| t == "+10% to Cold Resistance"));
+    }
+
+    #[test]
+    fn explicit_untyped_inputs_do_not_receive_omission_defaults() {
+        let xml = r#"<PathOfBuilding2>
+    <Build level="92" className="Ranger" ascendClassName="Deadeye" viewMode="TREE"/>
+    <Config activeConfigSet="2">
+        <ConfigSet id="1">
+            <Input name="questAct 3Jiquani's MachinariumBlackjaw" boolean="false"/>
+        </ConfigSet>
+        <ConfigSet id="2">
+            <Input name="questAct 1ClearfellBeira"/>
+            <Input name="targetBrandedEnemy" number="invalid"/>
+            <Input name="questAct 1Ogham ManorCandlemass" boolean="true" string="+1 to maximum Life"/>
+        </ConfigSet>
+    </Config>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        let config = &build.config;
+        assert!(
+            !config
+                .raw_inputs
+                .values
+                .contains_key("questAct 1ClearfellBeira")
+        );
+        assert!(!config.conditions.contains_key("TargetingBrandedEnemy"));
+        assert!(
+            !config
+                .global_modifier_texts
+                .iter()
+                .any(|text| text == "+10% to Cold Resistance")
+        );
+        assert!(
+            !config
+                .global_modifier_texts
+                .iter()
+                .any(|text| text == "+20 to maximum Life")
+        );
+        assert!(
+            config
+                .global_modifier_texts
+                .iter()
+                .any(|text| text == "+1 to maximum Life")
+        );
+        assert!(
+            config
+                .global_modifier_texts
+                .iter()
+                .any(|text| text == "+10% to Fire Resistance")
+        );
     }
 
     #[test]
