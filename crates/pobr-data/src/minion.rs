@@ -495,7 +495,7 @@ mod tests {
     #[test]
     fn limit_id_custom_unknown() {
         let custom = MinionLimitId::from_pob2("SomeUnknownLimit");
-        assert!(matches!(custom, MinionLimitId::Custom(ref s) if s == "SomeUnknownLimit"));
+        std::assert_matches!(custom, MinionLimitId::Custom(ref s) if s == "SomeUnknownLimit");
     }
 
     #[test]

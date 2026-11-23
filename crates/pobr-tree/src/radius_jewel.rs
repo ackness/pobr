@@ -88,9 +88,7 @@ impl JewelRadius {
                     .values()
                     .flatten()
                     .find(|band| band.label == label)
-                    .map_or(0.0, |band| {
-                        f64::from(band.outer) * fallback.distance_multiplier
-                    })
+                    .map_or_default(|band| f64::from(band.outer) * fallback.distance_multiplier)
             })
     }
 }

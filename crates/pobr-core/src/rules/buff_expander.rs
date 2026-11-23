@@ -378,7 +378,12 @@ pub(crate) fn expand_one(
     };
 
     for template in &def.mods {
-        let Some(mod_type) = parse_mod_type(&template.mod_type) else {
+        let Some(mod_type) = template.mod_type.parse::<ModType>().ok().filter(|mt| {
+            matches!(
+                mt,
+                ModType::Base | ModType::Inc | ModType::More | ModType::Flag
+            )
+        }) else {
             out.diagnostics.push(format!(
                 "buff.{}: unknown mod_type `{}` (mod {} skipped)",
                 def.id, template.mod_type, template.name
@@ -516,16 +521,6 @@ fn map_mod_flag(name: &str) -> Option<ModFlags> {
         "Melee" => Some(ModFlags::MELEE),
         "Projectile" => Some(ModFlags::PROJECTILE),
         "Area" => Some(ModFlags::AREA),
-        _ => None,
-    }
-}
-
-fn parse_mod_type(literal: &str) -> Option<ModType> {
-    match literal {
-        "BASE" => Some(ModType::Base),
-        "INC" => Some(ModType::Inc),
-        "MORE" => Some(ModType::More),
-        "FLAG" => Some(ModType::Flag),
         _ => None,
     }
 }

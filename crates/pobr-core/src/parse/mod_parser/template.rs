@@ -228,7 +228,7 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
         }
         "SkillType" => {
             let name = f.get("skill_type").and_then(|v| field_text(v, captures))?;
-            let bare = name.strip_prefix("SkillType:").unwrap_or(&name);
+            let bare = name.trim_prefix("SkillType:");
             // Full enum table (data-driven, A1): the rule JSON's names come from a reverse
             // lookup against the vendor enum, so a miss means corrupted data — debug builds
             // assert loudly (surfaced for A2), release builds conservatively drop the tag.
@@ -266,7 +266,7 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
         }
         "DamageType" => {
             let name = f.get("damageType").and_then(|v| field_text(v, captures))?;
-            damage_type_bit(&name).map(ModTag::DamageType)
+            name.parse::<DamageType>().ok().map(ModTag::DamageType)
         }
         "SlotName" => {
             // Vendor slot names (`Body Armour`/`Weapon 2`/`Helmet`…) → legacy's stable slot ID
@@ -603,17 +603,6 @@ pub(crate) fn slot_name_to_id(name: &str) -> String {
         "weapon" | "weapons" | "main hand" | "weapon 1" => "weapon1".to_string(),
         other => other.replace(' ', ""),
     }
-}
-
-fn damage_type_bit(name: &str) -> Option<DamageType> {
-    Some(match name {
-        "Physical" => DamageType::Physical,
-        "Fire" => DamageType::Fire,
-        "Cold" => DamageType::Cold,
-        "Lightning" => DamageType::Lightning,
-        "Chaos" => DamageType::Chaos,
-        _ => return None,
-    })
 }
 
 #[cfg(test)]

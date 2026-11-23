@@ -171,19 +171,16 @@ mod tests {
     fn poe1_root_rejected() {
         // PoE2-only: the PoE1 `PathOfBuilding` root is no longer accepted (matches PoB2 upstream).
         let xml = r#"<PathOfBuilding><Build level="1" className="Witch"/></PathOfBuilding>"#;
-        assert!(matches!(
+        std::assert_matches!(
             parse_build_header(xml),
             Err(XmlError::NotPobRoot(name)) if name == "PathOfBuilding"
-        ));
+        );
     }
 
     #[test]
     fn rejects_non_pob_root() {
         let xml = "<NotPoB><Build/></NotPoB>";
-        assert!(matches!(
-            parse_build_header(xml),
-            Err(XmlError::NotPobRoot(_))
-        ));
+        std::assert_matches!(parse_build_header(xml), Err(XmlError::NotPobRoot(_)));
     }
 
     #[test]

@@ -313,7 +313,7 @@ enum ComparableItem {
 }
 
 fn fmt_value(v: f64) -> String {
-    format!("{:.6}", v)
+    format!("{v:.6}")
 }
 
 fn engine_comparable(items: &[MappedItem]) -> Vec<ComparableItem> {

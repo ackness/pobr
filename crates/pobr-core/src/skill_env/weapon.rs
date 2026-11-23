@@ -258,21 +258,20 @@ pub fn non_weapon_attack_contribution(
             "off_hand_weapon_maximum_physical_damage" => phys_max += ds.value,
             // "Physical Damage per N Armour/Evasion on Shield": each
             // complete group contributes to the shield attack's base damage.
-            stat => {
-                if let Some((is_max, mult)) = per_shield_defence_scale(stat, equipment, data) {
-                    if is_max {
-                        phys_max += ds.value * mult;
-                    } else {
-                        phys_min += ds.value * mult;
-                    }
+            stat if let Some((is_max, mult)) = per_shield_defence_scale(stat, equipment, data) => {
+                if is_max {
+                    phys_max += ds.value * mult;
+                } else {
+                    phys_min += ds.value * mult;
                 }
             }
+            _ => {}
         }
     }
     let attack_rate = skill
         .use_time_s
         .filter(|&t| t > 0.0)
-        .map_or(0.0, |t| 1.0 / t);
+        .map_or_default(|t| 1.0 / t);
     WeaponContribution {
         phys_min,
         phys_max,
@@ -390,7 +389,7 @@ pub fn off_hand_defence(
     let Some(item) = equipment.item(EquipmentSlot::Weapon2) else {
         return 0.0;
     };
-    item_local_defences(item, data, equipment.player_level()).map_or(0.0, |values| values[idx])
+    item_local_defences(item, data, equipment.player_level()).map_or_default(|values| values[idx])
 }
 
 /// Unarmed weapon contribution (PoB2's `data.unarmedWeaponData[classId]`): the attack

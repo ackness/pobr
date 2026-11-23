@@ -358,7 +358,7 @@ pub fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
     let clean = clean_grant_text(text);
     let body = clean.strip_prefix('+')?;
     let (num, rest) = body.split_once(" to ")?;
-    let num = num.strip_suffix('%').unwrap_or(num);
+    let num = num.trim_suffix('%');
     let value: u32 = num.trim().parse().ok()?;
     let (kind, rest) = if let Some(r) = rest.strip_prefix("level of ") {
         let target = if let Some(category) = r.strip_prefix("all ") {
@@ -515,7 +515,7 @@ fn names_skill(category: &str, skill_id: &str) -> bool {
 /// convention (`Export/Scripts/skills.lua`: id = display name with spaces stripped +
 /// an actor suffix), used by `gem_level_category_matches`'s skill-name category branch.
 pub fn skill_name_from_id(skill_id: &str) -> String {
-    let stem = skill_id.strip_suffix("Player").unwrap_or(skill_id);
+    let stem = skill_id.trim_suffix("Player");
     let mut out = String::with_capacity(stem.len() + 4);
     for (i, ch) in stem.chars().enumerate() {
         if ch.is_ascii_uppercase() && i > 0 {
@@ -579,7 +579,7 @@ impl CorruptedJewelEffect {
                 continue;
             }
             let lines = &jewel.modifier_texts;
-            let wrapped = lines.windows(2).map(|pair| pair.join(" "));
+            let wrapped = lines.array_windows::<2>().map(|pair| pair.join(" "));
             for line in lines.iter().cloned().chain(wrapped) {
                 match Self::parse_line(&line) {
                     Some((pobr_data::item::ItemRarity::Magic, n)) => effect.magic = Some(n),

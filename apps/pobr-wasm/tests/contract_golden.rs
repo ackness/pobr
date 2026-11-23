@@ -1046,7 +1046,7 @@ fn check_formula(
                     .iter()
                     .find(|source| source["damage_type"] == row["damage_type"]);
                 for end in ["min", "max"] {
-                    let start = source.map_or(0.0, |source| source[end].as_f64().unwrap());
+                    let start = source.map_or_default(|source| source[end].as_f64().unwrap());
                     assert!(
                         close(n(&format!("base_{end}")), start),
                         "{at}: {} base {end} != its range before conversion {start}",

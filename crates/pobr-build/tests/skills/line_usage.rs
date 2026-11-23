@@ -1009,11 +1009,8 @@ fn curse_on_self_count_gates_per_curse_damage() {
                     "{modifier:?}"
                 );
                 let gate = modifier.read_gate.as_ref().unwrap();
-                assert!(matches!(gate.state, std::borrow::Cow::Owned(_)));
-                assert!(matches!(
-                    gate.config_option,
-                    Some(std::borrow::Cow::Owned(_))
-                ));
+                std::assert_matches!(gate.state, std::borrow::Cow::Owned(_));
+                std::assert_matches!(gate.config_option, Some(std::borrow::Cow::Owned(_)));
                 assert_eq!(
                     serde_json::to_value(gate).unwrap(),
                     serde_json::json!({

@@ -106,7 +106,7 @@ fn extract_path_key(input: &str, host_marker: &str) -> Option<String> {
     // Strip query string and anchor.
     let after = after.split(['?', '#']).next().unwrap_or("");
     // Common pastebin raw/ prefix.
-    let after = after.strip_prefix("raw/").unwrap_or(after);
+    let after = after.trim_prefix("raw/");
     let key = after.trim_matches('/').split('/').next().unwrap_or("");
     if key.is_empty() {
         None

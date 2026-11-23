@@ -180,7 +180,7 @@ pub(crate) fn item_ward_modifiers(build: &Build, data: &BuildData) -> Vec<Modifi
     let mut mods = Vec::new();
     for (slot, item) in build.equipped_items() {
         let armour = data.armour_base(&item.base.to_string());
-        let base = armour.map_or(0, |a| a.ward);
+        let base = armour.map_or_default(|a| a.ward);
         // Elsewhere, on a weapon, the line is the character's.
         let flat = if armour.is_some() {
             pobr_core::skill_env::item_local_ward_flat(item)

@@ -4,8 +4,8 @@ version = "0.0.29"
 edition.workspace = true
 
 [features]
-# Keep benchmark-only dependencies out of ordinary tests.
-benchmarks = ["dep:criterion"]
+# Gate benchmark target compilation out of ordinary tests.
+benchmarks = []
 # Test-only rule loader helper (`mod_parser::test_compiled_rules`) for downstream integration
 # tests (separate crates) to load `CompiledParserRules` from `data/<version>/` parser/special
 # rule files, pulling in serde_json + fs I/O. **Off by default**: enabling it breaks
@@ -23,12 +23,12 @@ regex-syntax = "0.8"
 aho-corasick.workspace = true
 # Test-rules only (deserializes rule files); omitted when the feature is off to keep zero I/O.
 serde_json = { workspace = true, optional = true }
-criterion = { version = "0.8", default-features = false, optional = true }
 
 [dev-dependencies]
 pobr-data = { workspace = true, features = ["runtime-constant-query-probe", "test-fixtures"] }
 # Test-only deserialization for statmap entry fixtures (keeps lib zero I/O and serde_json-free).
 serde_json.workspace = true
+criterion = { version = "0.8", default-features = false }
 
 [[bench]]
 name = "mod_db_bench"
@@ -40,4 +40,7 @@ required-features = ["benchmarks"]
 name = "mod_parser_bench"
 harness = false
 required-features = ["benchmarks"]
+
+[lints]
+workspace = true
 

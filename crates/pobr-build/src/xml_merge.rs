@@ -91,7 +91,7 @@ pub fn merge_active_sets(base: &str, edited: &str) -> String {
         && let Some(at) = out.find("<ItemSet")
     {
         // Match the indentation of the line at the insertion point.
-        let indent = out[..at].rfind('\n').map_or(0, |nl| at - nl - 1);
+        let indent = out[..at].rfind('\n').map_or_default(|nl| at - nl - 1);
         let pad = " ".repeat(indent);
         out.insert_str(at, &format!("{blocks}{pad}"));
     }
@@ -810,15 +810,19 @@ fn normalize_ids(xml: &str, kind: SetKind) -> String {
     out
 }
 
+/// Escapes an XML attribute value (`&`, `<`, `>`, `"`).
+pub fn escape_xml_attr(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
 /// Sets `title` on an element's start tag (replaces it if already present).
 fn set_title(element: &str, tag: &str, title: &str) -> String {
     let end = element.find('>').unwrap_or(element.len());
     let open = &element[..end];
-    let escaped = title
-        .replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;");
+    let escaped = escape_xml_attr(title);
     let new_open = match open.find("title=\"") {
         Some(at) => {
             let vs = at + "title=\"".len();

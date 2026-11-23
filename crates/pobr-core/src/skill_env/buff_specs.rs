@@ -577,9 +577,9 @@ pub fn buff_skill_specs(
                             }
                             let origin = ModifierSource::new(SourceId::new(
                                 SourceKind::SkillGem,
-                                format!("aura.{}.{}", gem.skill_id, stat),
+                                format!("aura.{}.{stat}", gem.skill_id),
                             ))
-                            .with_raw_text(format!("aura {} {} ({})", gem.skill_id, stat, value));
+                            .with_raw_text(format!("aura {} {stat} ({value})", gem.skill_id));
                             mods.push(
                                 Modifier::number(mapped.mod_name.as_str(), mapped.mod_type, value)
                                     .with_origin(origin),
@@ -1217,7 +1217,7 @@ pub fn warcry_skill_specs(
                         (
                             r.cooldown_s.unwrap_or(0.0),
                             // Matching vendor's `skillData.storedUses or 0` (CalcOffence.lua:3236).
-                            r.stored_uses.map_or(0.0, f64::from),
+                            r.stored_uses.map_or_default(f64::from),
                         )
                     })
                     .unwrap_or((0.0, 0.0));

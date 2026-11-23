@@ -229,7 +229,7 @@ fn projectile_behavior_all_active_order() {
     .collect();
     // Confirm every behavior is present and indices are increasing (ordered)
     assert_eq!(order.len(), 4);
-    assert!(order.windows(2).all(|w| w[0] < w[1]));
+    assert!(order.array_windows().all(|[a, b]| a < b));
 }
 
 /// AdditionalProjectilesAddSplitsInstead: extra projectiles convert to Split.

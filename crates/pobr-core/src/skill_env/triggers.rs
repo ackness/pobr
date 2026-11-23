@@ -453,7 +453,7 @@ fn energy_trigger_modifiers<S: TriggerSubCalc>(
             cast_time_ms: data
                 .effect(&gem.skill_id)
                 .and_then(|effect| effect.cast_time)
-                .map_or(0.0, f64::from),
+                .map_or_default(f64::from),
             added_total_cast_time_ms: stat_of(gem, &gem.skill_id, ADDED_TOTAL_CAST_TIME_MS)
                 .unwrap_or(0.0),
         })
@@ -585,7 +585,7 @@ fn energy_trigger_modifiers<S: TriggerSubCalc>(
             let cast_time = data
                 .effect(&gem.skill_id)
                 .and_then(|effect| effect.cast_time)
-                .map_or(0.0, f64::from)
+                .map_or_default(f64::from)
                 + 2.0 * stat_of(gem, &gem.skill_id, ADDED_TOTAL_CAST_TIME_MS).unwrap_or(0.0);
             candidates.push((
                 other_index,
@@ -693,7 +693,7 @@ fn channel_energy_modifiers(
             cast_time_ms: data
                 .effect(&gem.skill_id)
                 .and_then(|effect| effect.cast_time)
-                .map_or(0.0, f64::from),
+                .map_or_default(f64::from),
             added_total_cast_time_ms: stat(gem, &gem.skill_id, ADDED_TOTAL_CAST_TIME_MS)
                 .unwrap_or(0.0),
         })

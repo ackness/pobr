@@ -355,7 +355,7 @@ fn finish_rejects_a_session_performed_through_the_legacy_api() {
     // In particular, a legacy caller cannot change a completed input and then
     // bless the stale output as a new read-only completed calculation.
     s.set_condition("LowLife", true);
-    assert!(matches!(s.finish(), Err(CalcError::AlreadyPerformed)));
+    std::assert_matches!(s.finish(), Err(CalcError::AlreadyPerformed));
 }
 
 #[test]

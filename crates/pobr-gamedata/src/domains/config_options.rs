@@ -62,7 +62,7 @@ impl GameData {
     /// options on top of it.
     ///
     /// When the table is missing, the caller tolerates it and falls back
-    /// to the old path (`xml_build::parse_config`'s existing branch).
+    /// to the fields populated on `BuildConfig` at import time.
     pub fn config_options(&self) -> Result<ConfigOptionsDef, LoadError> {
         let mut catalog: ConfigOptionsDef =
             self.load_json_at(self.overlay_path("config_options.json"))?;
@@ -142,6 +142,6 @@ mod tests {
         // A var repeated in the catalog keeps only its later entry.
         assert_eq!(options.iter().filter(|o| o.var == "zzRepeated").count(), 1);
         assert_eq!(label("zzRepeated").as_deref(), Some("second"));
-        assert!(options.windows(2).all(|pair| pair[0].var <= pair[1].var));
+        assert!(options.array_windows().all(|[a, b]| a.var <= b.var));
     }
 }

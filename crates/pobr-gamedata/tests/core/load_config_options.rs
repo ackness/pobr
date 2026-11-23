@@ -36,12 +36,8 @@ fn volume_and_sorted_by_var() {
         "entry count {} is suspiciously low",
         doc.options.len()
     );
-    for pair in doc.options.windows(2) {
-        assert!(
-            pair[0].var <= pair[1].var,
-            "not sorted by var: {}",
-            pair[1].var
-        );
+    for [a, b] in doc.options.array_windows() {
+        assert!(a.var <= b.var, "not sorted by var: {}", b.var);
     }
 }
 

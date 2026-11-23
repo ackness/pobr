@@ -268,11 +268,13 @@ fn damage_per_different_companion_counts_prepared_identities_in_presence() {
 fn companion_presence_default_requires_an_enabled_companion_skill() {
     for enabled in [None, Some(false), Some(true)] {
         for explicit in [None, Some(false), Some(true)] {
-            let skill = enabled.map_or(String::new(), |enabled| format!(
-                r#"<Skill enabled="{enabled}"><Gem skillId="WolfPackPlayer" level="20" enabled="true"/></Skill>"#,
-            ));
-            let input = explicit.map_or(String::new(), |value| {
-                format!(r#"<Input name="companionInPresence" boolean="{value}"/>"#,)
+            let skill = enabled.map_or_default(|enabled| {
+                format!(
+                    r#"<Skill enabled="{enabled}"><Gem skillId="WolfPackPlayer" level="20" enabled="true"/></Skill>"#,
+                )
+            });
+            let input = explicit.map_or_default(|value| {
+                format!(r#"<Input name="companionInPresence" boolean="{value}"/>"#)
             });
             let xml = format!(
                 r#"<PathOfBuilding2><Build level="80" className="Druid" mainSocketGroup="1"/>

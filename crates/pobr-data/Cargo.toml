@@ -14,3 +14,6 @@ test-fixtures = []
 serde.workspace = true
 # Opaque physical source columns/diagnostics are retained as data, never validity or policy.
 serde_json.workspace = true
+
+[lints]
+workspace = true
