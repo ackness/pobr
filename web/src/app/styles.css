@@ -1,7 +1,7 @@
 @layer theme, base, panels, components, utilities, app;
 @import "tailwindcss" source(none);
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "./shadcn-variants.css";
 @import "./control-consistency.css";
 
 @source "..";
