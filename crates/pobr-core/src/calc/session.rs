@@ -581,7 +581,10 @@ impl CalculationSession {
     /// minions, so zero behavior effect on existing non-minion builds.
     /// `perform_minimal` runs the same offence/defence pipeline for each
     /// minion at the end, landing the result in `OutputTable.minions`.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "public session facade forwarding Env::add_minion_from_def parameters"
+    )]
     pub fn add_minion_from_def(
         &mut self,
         def: &super::MinionDef,

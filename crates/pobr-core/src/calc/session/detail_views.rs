@@ -1242,7 +1242,7 @@ impl CalculationSession {
                         "FallbackUseRate",
                         out.skill_use_time
                             .as_ref()
-                            .map_or(0.0, |t| t.effective_rate),
+                            .map_or_default(|t| t.effective_rate),
                     )
                 }
             }
@@ -1459,7 +1459,7 @@ impl CalculationSession {
                     let duration = self
                         .ailment_stage_terms(&id)
                         .and_then(|t| t.passes.first())
-                        .map_or(0.0, |(_, t)| t.duration);
+                        .map_or_default(|(_, t)| t.duration);
                     (
                         format!("round({id} * AilmentDuration, 9)"),
                         vec![

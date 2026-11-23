@@ -1041,7 +1041,6 @@ fn build_gain_matrix(db: &ModDb, cfg: &CalcConfig) -> [[f64; 5]; 5] {
 /// - `convert_path[from][to]` = the set of intermediate types this from→to
 ///   flow passed through (excluding from / to), used to accumulate
 ///   double-dip increased along the way (e.g. the fire from Phys→Cold→Fire carries a Cold tag).
-#[allow(clippy::type_complexity)]
 fn fold_conversion_stages(
     skill: &[[f64; 5]; 5],
     global: &[[f64; 5]; 5],

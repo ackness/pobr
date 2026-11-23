@@ -842,8 +842,7 @@ impl CalculationSession {
                     )],
                     context: terms
                         .missing_source
-                        .map(|reason| vec![(reason.into(), 1.0)])
-                        .unwrap_or_default(),
+                        .map_or_default(|reason| vec![(reason.into(), 1.0)]),
                 });
             }
             if stat == "SkillTriggerRate" {

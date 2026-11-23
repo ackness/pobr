@@ -689,7 +689,7 @@ pub const GIGANTIC: &str = "Gigantic";
 /// Records the created population for "per Minion" and Presence modifiers.
 /// The calculation bridges these source values once before either actor is evaluated.
 pub fn write_summoned_minion_multipliers(player_db: &mut ModDb, limit: u32, def_id: &str) {
-    let src = SourceId::new(SourceKind::GameConstant, format!("minion.limit.{}", def_id));
+    let src = SourceId::new(SourceKind::GameConstant, format!("minion.limit.{def_id}"));
     let origin = ModifierSource::new(src);
     player_db.add_mod(
         Modifier::number("Multiplier:SummonedMinion", ModType::Base, limit as f64)

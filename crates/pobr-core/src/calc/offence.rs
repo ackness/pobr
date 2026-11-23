@@ -173,33 +173,27 @@ impl MinimalOutput {
             stored_crit_avg: output
                 .main_hand
                 .as_ref()
-                .map(|hand| hand.stored_crit_avg.clone())
-                .unwrap_or_default(),
+                .map_or_default(|hand| hand.stored_crit_avg.clone()),
             stored_hit_avg: output
                 .main_hand
                 .as_ref()
-                .map(|hand| hand.stored_hit_avg.clone())
-                .unwrap_or_default(),
+                .map_or_default(|hand| hand.stored_hit_avg.clone()),
             stored_combined_avg: output
                 .main_hand
                 .as_ref()
-                .map(|hand| hand.stored_combined_avg.clone())
-                .unwrap_or_default(),
+                .map_or_default(|hand| hand.stored_combined_avg.clone()),
             mitigated_avg: output
                 .main_hand
                 .as_ref()
-                .map(|hand| hand.mitigated_avg.clone())
-                .unwrap_or_default(),
+                .map_or_default(|hand| hand.mitigated_avg.clone()),
             crit_avg: output
                 .main_hand
                 .as_ref()
-                .map(|hand| hand.crit_avg.clone())
-                .unwrap_or_default(),
+                .map_or_default(|hand| hand.crit_avg.clone()),
             stored_ranges: output
                 .main_hand
                 .as_ref()
-                .map(|hand| hand.stored_ranges.clone())
-                .unwrap_or_default(),
+                .map_or_default(|hand| hand.stored_ranges.clone()),
             breakdown: breakdown.steps().to_vec(),
         }
     }
@@ -1096,7 +1090,7 @@ impl HitPass {
                     .stored_crit_avg
                     .iter()
                     .find(|(ty, _)| *ty == component.damage_type)
-                    .map_or(0.0, |(_, avg)| *avg),
+                    .map_or_default(|(_, avg)| *avg),
             })
             .collect();
         Some(HitDamageTerms {
@@ -1868,13 +1862,7 @@ fn enemy_mitigation_terms(
     damage_type: DamageType,
     raw_hit: f64,
 ) -> EnemyMitigationTerms {
-    let type_prefix = match damage_type {
-        DamageType::Physical => "Physical",
-        DamageType::Fire => "Fire",
-        DamageType::Cold => "Cold",
-        DamageType::Lightning => "Lightning",
-        DamageType::Chaos => "Chaos",
-    };
+    let type_prefix = super::damage_type_prefix(damage_type);
     let type_cfg = cfg.clone().with_damage_type(damage_type);
 
     // The damage-taken chain: generic + per-type DamageTaken (INC + MORE)

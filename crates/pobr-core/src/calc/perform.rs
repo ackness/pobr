@@ -1443,7 +1443,7 @@ fn fill_mechanics(env: &mut Env) {
             .output
             .ehp_terms
             .as_ref()
-            .map_or_else(Default::default, |terms| terms.prevented());
+            .map_or_default(|terms| terms.prevented());
         (
             super::survivability::life_recoup_terms(db, cfg, recoupable_by_type, prevented)
                 .rate_per_second,
@@ -2194,7 +2194,10 @@ struct AilmentPassResult {
 ///    ailmentStacks (uptime), it isn't multiplied into DPS directly. When the estimate's signal
 ///    is missing (no rate, a pure single-hit build), falls back to the old conservative
 ///    `chance × magnitude` convention + the full-stacks upper bound (backward compatible).
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "internal per-pass damaging ailment helper mirroring pass context and actor inputs"
+)]
 fn damaging_ailment_for_pass(
     kind: AilmentType,
     ctx: &AilmentPassCtx,
@@ -2259,7 +2262,7 @@ fn damaging_ailment_for_pass(
     // time, so fewer instances are active at once.
     let rate = ailment_rate_mod(player, enemy, cfg, name);
     let duration_before_rate = ailment_duration_terms(kind, player, Some(enemy), cfg)
-        .map_or(0.0, |t| round(t.value().max(0.0)));
+        .map_or_default(|t| round(t.value().max(0.0)));
     let duration = duration_before_rate * debuff_duration_mult(enemy, cfg)
         / if rate > 0.0 { rate } else { 1.0 };
     let stack = resolve_stack_config(
@@ -2381,7 +2384,6 @@ fn damaging_ailment_for_pass(
 /// `:2498-2533` + `:5738`). A single pass passes straight through; the dual pass computes
 /// `max×s + min×(1−s)`, `s = min(1, stacks/max)`. The last element is the merge of the two
 /// passes' DPS (`None` for a single pass).
-#[allow(clippy::type_complexity)]
 fn merge_ailment_passes(
     results: &[AilmentPassResult],
 ) -> Option<(f64, f64, f64, f64, Option<HandAilmentMerge>)> {
@@ -2836,7 +2838,6 @@ fn finalize_ailment_dps(expected_dps: f64, effect: f64, rate: f64, dot_dps_cap: 
 /// local_hits_with_this_weapon_ignore_poison_limit bypasses that ceiling for
 /// its own hand only. Without a rate, uncapped poison reports a single
 /// instance, never an invented infinite population.
-#[allow(clippy::too_many_arguments)]
 fn resolve_stack_config(
     db: &ModDb,
     cfg: &CalcConfig,

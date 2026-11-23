@@ -70,13 +70,11 @@ pub(crate) fn scaled_damage_effect_for_target(
     let triple_on_crit = db
         .sum(ModType::Base, cfg, &["TripleDamageChanceOnCrit"])
         .min(100.0);
-    let enemy_self_triple = if let Some(enemy) = enemy {
+    let enemy_self_triple = enemy.map_or_default(|enemy| {
         #[cfg(test)]
         super::hit_read_probe::dependency("enemy scaled damage");
         enemy.sum(ModType::Base, cfg, &["SelfTripleDamageChance"])
-    } else {
-        0.0
-    };
+    });
     let triple_chance = (db.sum(ModType::Base, cfg, &["TripleDamageChance"])
         + enemy_self_triple
         + triple_on_crit * crit_chance)
@@ -85,13 +83,11 @@ pub(crate) fn scaled_damage_effect_for_target(
     let double_on_crit = db
         .sum(ModType::Base, cfg, &["DoubleDamageChanceOnCrit"])
         .min(100.0);
-    let enemy_self_double = if let Some(enemy) = enemy {
+    let enemy_self_double = enemy.map_or_default(|enemy| {
         #[cfg(test)]
         super::hit_read_probe::dependency("enemy scaled damage");
         enemy.sum(ModType::Base, cfg, &["SelfDoubleDamageChance"])
-    } else {
-        0.0
-    };
+    });
     let mut double_chance = (db.sum(ModType::Base, cfg, &["DoubleDamageChance"])
         + enemy_self_double
         + double_on_crit * crit_chance)

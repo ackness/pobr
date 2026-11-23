@@ -161,7 +161,6 @@ struct TraceSink<'a> {
     node_id: Option<TraceNodeId>,
 }
 
-#[allow(clippy::too_many_arguments)]
 fn resolve_crit_impl(
     player: &ModDb,
     enemy: Option<&ModDb>,
@@ -453,13 +452,13 @@ pub(crate) fn crit_chance_terms(
     // The source base and mod contributions are both in percentage points;
     // all arithmetic stays in percentage-point space (matching PoB2).
     let player_flat = player.sum(ModType::Base, cfg, &crit_chance_names);
-    let enemy_flat = enemy.map_or(0.0, |enemy| {
+    let enemy_flat = enemy.map_or_default(|enemy| {
         #[cfg(test)]
         super::hit_read_probe::dependency("enemy critical chance");
         enemy.sum(ModType::Base, cfg, &self_crit_chance)
     });
     let player_inc = player.sum(ModType::Inc, cfg, &crit_chance_names);
-    let enemy_inc = enemy.map_or(0.0, |enemy| {
+    let enemy_inc = enemy.map_or_default(|enemy| {
         #[cfg(test)]
         super::hit_read_probe::dependency("enemy critical chance");
         enemy.sum(ModType::Inc, cfg, &self_crit_chance)

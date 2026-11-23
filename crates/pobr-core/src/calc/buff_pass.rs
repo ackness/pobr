@@ -204,13 +204,11 @@ pub fn determine_curse_priority(
 ) -> i64 {
     let base = data.curse_base.get(curse_name).copied().unwrap_or(0);
     let socket = i64::from(socket_index.clamp(1, SOCKET_INDEX_CAP)) * data.socket_priority_base;
-    let slot_key = slot
-        .map(|s| {
-            s.trim_end_matches(" (Swap)")
-                .trim_end_matches(" Swap")
-                .to_string()
-        })
-        .unwrap_or_default();
+    let slot_key = slot.map_or_default(|s| {
+        s.trim_end_matches(" (Swap)")
+            .trim_end_matches(" Swap")
+            .to_string()
+    });
     let mut slot_weight = data.slot_weights.get(&slot_key).copied().unwrap_or(0);
     if source == CurseSourceWeight::Equipment {
         let ring = |name: &str| data.slot_weights.get(name).copied();
@@ -788,7 +786,7 @@ pub fn buff_pass(env: &mut Env) {
                     && !spec.is_mark;
                 curses.push(CurseEntry {
                     owner: party.map_or_else(
-                        || owner.map_or(0, |index| index + 1),
+                        || owner.map_or_default(|index| index + 1),
                         |p| 1 + env.minions.len() + p.member,
                     ),
                     name: spec.name.clone(),

@@ -1274,7 +1274,7 @@ fn prevented_recoup_terms(
     let physical_prevented = prevented.physical.max(0.0);
     let chaos_prevented = prevented.chaos.max(0.0);
     let prevented_percent = |name: &str| db.sum(ModType::Base, cfg, &[name]).max(0.0);
-    let physical_prevented_percent = physical_mod.map_or(0.0, prevented_percent);
+    let physical_prevented_percent = physical_mod.map_or_default(prevented_percent);
     let chaos_prevented_percent = prevented_percent(chaos_mod);
     let duration = recoup_duration(db, cfg, resource);
     let recovery = recoup_recovery_rate(db, cfg, resource).max(0.0);

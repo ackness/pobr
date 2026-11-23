@@ -991,11 +991,7 @@ pub fn duration_terms(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig, stat: &str) -
         ),
     };
     let base = db.sum(ModType::Base, cfg, &[base_name])
-        + if let Some(scope) = scope {
-            db.sum(ModType::Base, cfg, &["Duration", scope])
-        } else {
-            0.0
-        };
+        + scope.map_or_default(|scope| db.sum(ModType::Base, cfg, &["Duration", scope]));
     DurationTerms {
         base,
         modifier: duration_modifier_terms(db, cfg, scope).value(),

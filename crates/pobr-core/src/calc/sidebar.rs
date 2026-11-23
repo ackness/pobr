@@ -183,7 +183,7 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     };
     out.gem_level = env
         .main_skill_level
-        .map_or(0.0, |(level, bonus)| f64::from(level) + f64::from(bonus));
+        .map_or_default(|(level, bonus)| f64::from(level) + f64::from(bonus));
     out.effective_movement_speed_mod = (movement * action_speed * 1000.0).round() / 1000.0;
     if cfg.skill_types.intersects(SkillTypes::USABLE_WHILE_MOVING)
         || db.flag(cfg, "UsableWhileMoving")

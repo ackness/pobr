@@ -465,7 +465,7 @@ fn inject_ehp_damage_placeholder(
     // presets only set the three elements). Only the new EHP pipeline
     // (`ehp::fill_ehp_pob2`) consumes this ModName group.
     let presets = &constants.enemy_presets;
-    let pen = presets.tier_for(tier).map_or(0.0, |preset| preset.pen);
+    let pen = presets.tier_for(tier).map_or_default(|preset| preset.pen);
     if pen != 0.0 {
         for name in ["EnemyFirePen", "EnemyColdPen", "EnemyLightningPen"] {
             push_enemy_number(db, name, ModType::Base, pen, "boss_ele_pen_placeholder");

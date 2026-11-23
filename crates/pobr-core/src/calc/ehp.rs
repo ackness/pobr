@@ -365,10 +365,7 @@ const DAMAGE_TYPE_BY_INDEX: [DamageType; 5] = [
     DamageType::Chaos,
 ];
 
-/// Vendor's `round` (Modules/Common.lua: `m_floor(val + 0.5)`).
-fn vendor_round(value: f64) -> f64 {
-    (value + 0.5).floor()
-}
+use super::vendor_round;
 
 /// Scalar multiplication of a damage vector (vendor's `Damage[t] = DamageIn[t] × k` shape).
 fn scale_damage(damage: &TypedDamage, factor: f64) -> TypedDamage {
@@ -1058,7 +1055,6 @@ fn hits_to_die_with_recoup(
 
 /// `numberOfHitsToDie`'s recursive body (`cycles`/`iterations` correspond to
 /// vendor DamageIn's same-named keys; `iterations`'s budget is shared across recursion).
-#[allow(clippy::too_many_arguments)]
 fn hits_to_die_inner(
     damage_in: &TypedDamage,
     pools_full: &PoolState,

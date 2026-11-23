@@ -229,7 +229,7 @@ fn ailment_keyword(ailment: AilmentType) -> KeywordFlags {
 /// parameter) can read it before an instance is constructed.
 /// Supports the damaging ailments, Shock and Chill; other types return 0.
 pub fn ailment_duration(ailment: AilmentType, db: &ModDb, cfg: &CalcConfig) -> f64 {
-    ailment_duration_terms(ailment, db, None, cfg).map_or(0.0, |t| round(t.value()))
+    ailment_duration_terms(ailment, db, None, cfg).map_or_default(|t| round(t.value()))
 }
 
 /// The inputs of an inflicted ailment's duration before the enemy's debuff
@@ -788,16 +788,7 @@ fn taken_mod_names(damage_type: DamageType) -> &'static [&'static str] {
     }
 }
 
-/// `DamageType` → modifier name prefix.
-fn type_prefix(damage_type: DamageType) -> &'static str {
-    match damage_type {
-        DamageType::Physical => "Physical",
-        DamageType::Fire => "Fire",
-        DamageType::Cold => "Cold",
-        DamageType::Lightning => "Lightning",
-        DamageType::Chaos => "Chaos",
-    }
-}
+use super::damage_type_prefix as type_prefix;
 
 // High level: chance + crit weighting + magnitude + effMult (with TraceGraph attribution)
 
@@ -1207,7 +1198,10 @@ fn flat_chance_traced(
 
 /// Chance-derived chance (ignite/shock) with trace. Returns `(chance_on_hit, chance_on_crit, chance_node)`
 /// (percentage points + node).
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "internal traced threshold-chance helper passing actor dbs and ailment inputs directly"
+)]
 fn threshold_chance_traced(
     source: &AilmentSource,
     player: &ModDb,
@@ -1267,7 +1261,10 @@ fn threshold_chance_traced(
 /// Chains the chance node, magnitude's inc/more contributions, and effMult's enemy
 /// resistance/taken contributions all into the final `<Ailment>DPS` node, making the output
 /// traceable (gap: ailment-trace-attribution-missing).
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "internal damaging-ailment core helper shared by bleed, ignite, and poison"
+)]
 fn compute_damaging_ailment(
     source: &AilmentSource,
     player: &ModDb,
@@ -1970,7 +1967,7 @@ pub(crate) fn pin_terms(
             let crit_damage = crit_share
                 .iter()
                 .find(|(crit_kind, _)| *crit_kind == kind)
-                .map_or(0.0, |(_, value)| value.min(damage));
+                .map_or_default(|(_, value)| value.min(damage));
             let opted_in = |leg: &CalcConfig| {
                 player.flag(leg, "CanPin") || player.flag(leg, can_pin_flag(kind))
             };
@@ -2185,7 +2182,7 @@ impl StackConfig {
 
     /// Finite display contract: zero means no ceiling for an applying ailment.
     pub fn displayed_max(&self) -> f64 {
-        self.max_stacks.map_or(0.0, f64::from)
+        self.max_stacks.map_or_default(f64::from)
     }
 
     /// Instances doing damage, rather than potential instances competing for a cap.

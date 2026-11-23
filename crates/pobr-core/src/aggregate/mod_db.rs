@@ -1487,7 +1487,7 @@ impl ModDb {
             let input_label = winning
                 .source
                 .clone()
-                .unwrap_or_else(|| format!("{} OVERRIDE {:?}", winning.name, value));
+                .unwrap_or_else(|| format!("{} OVERRIDE {value:?}", winning.name));
             let input_node = trace.add_source_node(input_label, value.unwrap_or(0.0), source);
             trace.add_edge(input_node, override_node);
         }
@@ -1581,7 +1581,7 @@ impl ModList {
         let parent = self
             .parent
             .as_ref()
-            .map_or(0.0, |parent| parent.sum(mod_type, cfg, names));
+            .map_or_default(|parent| parent.sum(mod_type, cfg, names));
         local + parent
     }
 }

@@ -126,10 +126,10 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
 
     // :1033-1036 attack block chance, rounded to a whole percent before the cap.
     let block_names = ["BlockChance"];
-    let total_block = ((shield_base + db.sum(ModType::Base, cfg, &block_names))
-        * scaling_mod(db, cfg, &block_names)
-        + 0.5)
-        .floor();
+    let total_block = super::vendor_round(
+        (shield_base + db.sum(ModType::Base, cfg, &block_names))
+            * scaling_mod(db, cfg, &block_names),
+    );
     let mut block = total_block.clamp(0.0, block_max);
 
     // :994 projectile attack block chance (the incremental BASE also picks up the BlockChance factor).

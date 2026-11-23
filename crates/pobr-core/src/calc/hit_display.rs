@@ -256,7 +256,7 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
                     vec![
                         ("HitTypePresent", if p.present(kind) { 1.0 } else { 0.0 }),
                         ("EnemyTakenFactor", t.map_or(1.0, |t| t.taken)),
-                        ("HitReduction", t.map_or(0.0, |t| t.reduction)),
+                        ("HitReduction", t.map_or_default(|t| t.reduction)),
                     ],
                 )
             } else {

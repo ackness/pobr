@@ -455,7 +455,7 @@ fn uptime_terms(env: &Env, hit_rate: f64) -> [DebuffUptimeTerms; 3] {
             chance,
             hit_rate,
             base_duration,
-            increased_duration: duration.map_or(0.0, |name| db.sum(ModType::Inc, &cfg, &[name])),
+            increased_duration: duration.map_or_default(|name| db.sum(ModType::Inc, &cfg, &[name])),
             enemy_duration: super::ailment::debuff_duration_mult(enemy, &env.cfg),
             enabled: !db.flag(&cfg, cannot) && !immune.is_some_and(|flag| enemy.flag(&cfg, flag)),
         }

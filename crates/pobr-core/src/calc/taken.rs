@@ -50,11 +50,7 @@ const DAMAGE_TYPE_BY_INDEX: [DamageType; 5] = [
     DamageType::Chaos,
 ];
 
-/// Vendor's `round(val)` (`Modules/Common.lua`: `m_floor(val + 0.5)`, rounds to the nearest integer).
-/// [`taken_hit_from_damage`]'s final taken damage is rounded at the same point as vendor (CalcDefence.lua:442).
-fn vendor_round(value: f64) -> f64 {
-    (value + 0.5).floor()
-}
+use super::vendor_round;
 
 // damage shift table (13-G1)
 
