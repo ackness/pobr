@@ -44,7 +44,6 @@ export function requestSkillMetrics(session: BuildSession): Promise<SkillMetrics
 export function useSkillMetrics(session: BuildSession, enabled: boolean, delay = 250): SkillMetricsSnapshot | null {
   const [snapshot, setSnapshot] = useState<SkillMetricsSnapshot | null>(null);
   const hasGroups = session.socketGroups.length > 0;
-  useEffect(() => { if (!hasGroups) setSnapshot(null); }, [hasGroups]);
   useEffect(() => {
     if (!enabled || session.busy || session.calcError || !hasGroups) return;
     let stale = false;
@@ -57,5 +56,5 @@ export function useSkillMetrics(session: BuildSession, enabled: boolean, delay =
     // The version number is the change signal; the request is read at the moment it is sent.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, session.stateVersion, session.busy, session.calcError, hasGroups, delay]);
-  return snapshot;
+  return hasGroups ? snapshot : null;
 }

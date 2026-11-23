@@ -15,7 +15,7 @@ import { compareBuilds, comparisonGemForm, hasComparisonSource, isPercentageStat
 import { bindT, slotLabel, statCategoryLabel, statNameLabel, t, type Lang } from '../../lib/i18n';
 import { activeSkillEffects } from '../../lib/skillSelection';
 import { skillDisplayName } from '../../lib/skillNames';
-import { displayStatDefinition, formatNumber, STAT_SECTIONS, statFormat, formatStatValue, type StatFormat, statRowLabel, statSectionLabel } from '../../lib/statDisplay';
+import { displayStatDefinition, formatSignedNumber, STAT_SECTIONS, statFormat, formatStatValue, type StatFormat, statRowLabel, statSectionLabel } from '../../lib/statDisplay';
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { PageHeader } from '../shared/PageHeader';
 import { Button } from '../ui/button';
@@ -277,7 +277,7 @@ export function ComparePanel({ session, lang, onShare }: { session: BuildSession
                 return <tr key={row.id} data-stat={row.id}>
                   <th scope="row">{def.label}</th>{[row.before, row.after].map((number, i) => <td key={i} data-label={i === 0 ? 'A' : 'B'}>{typeof number === 'number' && Number.isFinite(number) ? formatComparisonValue(number, format, lang, unrounded) : number === Infinity ? '∞' : number === -Infinity ? '−∞' : <span role="img" aria-label={tt('compare.unavailable')}>—</span>}</td>)}
                   <td className="cmp-delta" data-tone={tone} data-label={tt(isPercentageStat(format) ? 'compare.points' : 'compare.delta')} aria-label={isPercentageStat(format) ? `${tt('compare.points')}${colon(lang)}${delta}` : undefined}>{delta}</td>
-                  <td className="cmp-delta" data-tone={tone} data-label={tt('compare.percent')}>{row.percent === null ? '—' : `${row.percent > 0 ? '+' : ''}${formatNumber(row.percent, 1, 1)}%`}</td>
+                  <td className="cmp-delta" data-tone={tone} data-label={tt('compare.percent')}>{row.percent === null ? '—' : `${formatSignedNumber(row.percent, 1, 1)}%`}</td>
                 </tr>;
               })}</tbody>;
             })}</table></div>}

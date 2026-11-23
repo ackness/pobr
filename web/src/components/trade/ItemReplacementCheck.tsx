@@ -1,6 +1,6 @@
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { SwapGainCard } from '../items/SwapGainCard';
-import { formatNumber, formatStat } from '../../lib/statDisplay';
+import { formatNumber, formatSignedNumber, formatStat } from '../../lib/statDisplay';
 import { useNavigateToPage } from '../../app/pages/navigate';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
@@ -115,8 +115,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   const selectedItem = selected?.variant.set_items?.length === 1 ? selected.variant.set_items[0] : undefined;
   const alreadyAdded = !!report && !!selectedItem && equipmentCandidates.some(candidate =>
     candidate.itemId === report.text && candidate.slot === selectedItem.slot && candidate.text === selectedItem.text);
-  const format = (value: number) => formatNumber(value);
-  const deltaText = (value: number) => `${value > 0 ? '+' : ''}${format(value)}`;
+  const deltaText = (value: number) => formatSignedNumber(value);
   const positionLabel = (slot: string) => slot.startsWith('Jewel@') ? socketLabel?.(Number(slot.slice(6))) ?? ut('jewelPosition') : slotLabel(lang, slot);
   const errorText = useCallback((message: string) => ({
     'unknown-required-level': craftT(lang, 'unknownRequirement'),

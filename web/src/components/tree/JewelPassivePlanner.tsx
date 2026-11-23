@@ -1,6 +1,6 @@
 import { colon } from '../../app/text';
 import { DisclosureChevron } from '../shared/DisclosureChevron';
-import { formatNumber, formatStat } from '../../lib/statDisplay';
+import { formatSignedNumber, formatStat } from '../../lib/statDisplay';
 import { useHeadlineDamage } from '../../hooks/useMainMinion';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { AppButton, AppTextarea } from '../shared/controls';
@@ -208,9 +208,9 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
   const budgetText = messages(lang, 'treeOptimizer');
   const damage = useHeadlineDamage(session.calc, lang);
   const separator = colon(lang);
-  const format = (value: number) => formatNumber(value);
-  const delta = (value: number, baseline: number) => baseline === 0 ? `${value >= 0 ? '+' : ''}${format(value)}`
-    : `${value >= baseline ? '+' : ''}${format((value / baseline - 1) * 100)}%`;
+  const delta = (value: number, baseline: number) => baseline === 0
+    ? formatSignedNumber(value, 2, 0, true)
+    : `${formatSignedNumber((value / baseline - 1) * 100, 2, 0, true)}%`;
   const [open, setOpen] = useState(true);
   return <section className="jewel-passive-planner" aria-label={text.title}>
     <AppButton className="tree-planner-toggle disclosure" data-disclosure-level="section" aria-expanded={open} onClick={() => { if (open) stop(); setOpen(!open); }}><DisclosureChevron />{text.title}</AppButton>

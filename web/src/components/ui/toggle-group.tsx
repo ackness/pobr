@@ -1,13 +1,11 @@
-"use client"
-
-import * as React from "react"
+import { createContext, useContext, useMemo, type ComponentProps, type CSSProperties } from "react"
 import { type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui"
 
 import { toggleVariants } from "@/components/ui/toggle"
 
-const ToggleGroupContext = React.createContext<
+const ToggleGroupContext = createContext<
   VariantProps<typeof toggleVariants> & {
     spacing?: number
     orientation?: "horizontal" | "vertical"
@@ -27,11 +25,16 @@ function ToggleGroup({
   orientation = "horizontal",
   children,
   ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Root> &
+}: ComponentProps<typeof ToggleGroupPrimitive.Root> &
   VariantProps<typeof toggleVariants> & {
     spacing?: number
     orientation?: "horizontal" | "vertical"
   }) {
+  const contextValue = useMemo(
+    () => ({ variant, size, spacing, orientation }),
+    [variant, size, spacing, orientation]
+  )
+
   return (
     <ToggleGroupPrimitive.Root
       data-slot="toggle-group"
@@ -39,18 +42,16 @@ function ToggleGroup({
       data-size={size}
       data-spacing={spacing}
       data-orientation={orientation}
-      style={{ "--gap": spacing } as React.CSSProperties}
+      style={{ "--gap": spacing } as CSSProperties}
       className={cn(
         "group/toggle-group flex w-fit flex-row items-center gap-[--spacing(var(--gap))] data-[spacing=0]:data-[variant=outline]:rounded-2xl data-vertical:flex-col data-vertical:items-stretch",
         className
       )}
       {...props}
     >
-      <ToggleGroupContext.Provider
-        value={{ variant, size, spacing, orientation }}
-      >
+      <ToggleGroupContext value={contextValue}>
         {children}
-      </ToggleGroupContext.Provider>
+      </ToggleGroupContext>
     </ToggleGroupPrimitive.Root>
   )
 }
@@ -61,9 +62,9 @@ function ToggleGroupItem({
   variant = "default",
   size = "default",
   ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Item> &
+}: ComponentProps<typeof ToggleGroupPrimitive.Item> &
   VariantProps<typeof toggleVariants>) {
-  const context = React.useContext(ToggleGroupContext)
+  const context = useContext(ToggleGroupContext)
 
   return (
     <ToggleGroupPrimitive.Item

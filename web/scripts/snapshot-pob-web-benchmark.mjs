@@ -2,23 +2,33 @@
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const options = { input: resolve(root, '.cache/pob-web-performance.json') };
 try {
+  const { values, tokens } = parseArgs({
+    options: { help: { type: 'boolean' }, input: { type: 'string' }, output: { type: 'string' } },
+    strict: true,
+    allowPositionals: false,
+    tokens: true,
+  });
   const seen = new Set();
-  for (let index = 2; index < process.argv.length; index++) {
-    const flag = process.argv[index];
-    if (flag === '--help' && process.argv.length === 3) {
-      console.log('Usage: node web/scripts/snapshot-pob-web-benchmark.mjs [--input REPORT] --output FILE');
-      process.exit(0);
+  for (const token of tokens) {
+    if (token.kind !== 'option') continue;
+    if (token.inlineValue || seen.has(token.name) || (token.value !== undefined && (!token.value.trim() || token.value.startsWith('--')))) {
+      throw new Error(`Invalid option: ${token.rawName}`);
     }
-    const key = { '--input': 'input', '--output': 'output' }[flag];
-    const value = process.argv[++index];
-    if (!key || seen.has(key) || !value?.trim() || value.startsWith('--')) throw new Error(`Invalid option: ${flag}`);
-    seen.add(key);
-    options[key] = resolve(value);
+    seen.add(token.name);
   }
+  if (values.help) {
+    if (seen.size !== 1) throw new Error('Invalid option: --help');
+    console.log('Usage: node web/scripts/snapshot-pob-web-benchmark.mjs [--input REPORT] --output FILE');
+    process.exit(0);
+  }
+  const options = {
+    input: values.input ? resolve(values.input) : resolve(root, '.cache/pob-web-performance.json'),
+    output: values.output ? resolve(values.output) : undefined,
+  };
   // No default: a snapshot is a dated record, and a default path would silently replace an earlier one.
   if (!options.output) throw new Error('--output is required');
   const report = JSON.parse(readFileSync(options.input, 'utf8'));

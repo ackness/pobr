@@ -1,8 +1,8 @@
 import { DisclosureChevron } from '../shared/DisclosureChevron';
-import { useJobBeacon } from '../../app/jobs/useJobBeacon';
+import { useCancellableJob } from '../../app/jobs/useCancellableJob';
 import { AppButton } from '../shared/controls';
 import { formatApiError } from '../../api/error';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import type { VariantInput, VariantStats } from '../../api/types';
 import type { BuildSession, LibraryItem } from '../../hooks/useBuildSession';
@@ -32,6 +32,12 @@ interface Props {
   onApply: (text: string | null) => void;
 }
 
+interface EvaluatedItems {
+  baseline: Record<string, number>;
+  results: VariantStats[];
+  variants: VariantInput[];
+}
+
 /**
  * Per-slot candidate optimizer: trials each library item matching the slot (plus an "Unequip" variant)
  * through full variant recalculation, ranks by objective/constraints, and applies with one click.
@@ -49,18 +55,11 @@ export function ItemOptimizer({
   const damage = useHeadlineDamage(session.calc, lang);
   const [expanded, setExpanded] = useState(false);
   const { goal: objState, setGoal: setObjState } = useUpgradeGoal();
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  useJobBeacon(progress !== null);
-  const [error, setError] = useState<string | null>(null);
-  const [evaluated, setEvaluated] = useState<{
-    baseline: Record<string, number>;
-    results: VariantStats[];
-    variants: VariantInput[];
-  } | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const job = useCancellableJob<EvaluatedItems>();
+  const evaluated = job.result;
+  const error = job.error ? formatApiError(job.error) : null;
 
-  useEffect(() => { abortRef.current?.abort(); setEvaluated(null); setProgress(null); }, [session.currentRequest, slot]);
-  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => { job.reset(); }, [session.currentRequest, slot, job.reset]);
 
   const variantDefs = useMemo<VariantInput[]>(() => {
     const defs: VariantInput[] = candidates
@@ -76,6 +75,7 @@ export function ItemOptimizer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidates, candidateNames, currentText, slot, lang]);
 
+  const progress = job.running ? (job.progress ?? { done: 0, total: variantDefs.length }) : null;
   const objective = useMemo(() => resolveDamageObjective(objectiveOf(objState, evaluated?.baseline), session.calc), [objState, evaluated?.baseline, session.calc]);
   const ranked = useMemo(
     () => (evaluated ? rankVariants(evaluated.results, objective) : []),
@@ -83,33 +83,27 @@ export function ItemOptimizer({
     [evaluated, objective],
   );
 
-  const run = async () => {
+  const run = () => {
     const request = session.currentRequest();
     if (!request || variantDefs.length === 0) return;
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setProgress({ done: 0, total: variantDefs.length });
-    setError(null);
-    try {
+    const variants = variantDefs;
+    return job.start(async ({ signal, report }) => {
+      report(0, variants.length);
       const { baseline, results } = await evaluateVariants({
         request,
-        variants: variantDefs,
-        signal: controller.signal,
-        onProgress: (done, total) => { if (!controller.signal.aborted) setProgress({ done, total }); },
+        variants,
+        signal,
+        onProgress: report,
       });
-      if (!controller.signal.aborted) setEvaluated({ baseline, results, variants: variantDefs });
-    } catch (err: unknown) {
-      if (!controller.signal.aborted) { setEvaluated(null); setError(formatApiError(err)); }
-    } finally {
-      if (abortRef.current === controller) { setProgress(null); abortRef.current = null; }
-    }
+      return { baseline, results, variants };
+    });
   };
 
   const apply = (variant: VariantStats) => {
     const item = evaluated?.variants[variant.index]?.set_items?.[0];
     if (!item) return;
     onApply(item.text === '' ? null : item.text);
-    setEvaluated(null);
+    job.reset();
   };
 
   return (
@@ -145,7 +139,7 @@ export function ItemOptimizer({
             <OptimizerProgress
               done={progress.done}
               total={progress.total}
-              onCancel={() => abortRef.current?.abort()}
+              onCancel={job.cancel}
               lang={lang}
             />
           )}

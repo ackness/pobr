@@ -1,4 +1,5 @@
 import { configCopy } from './configCopy';
+import { stripPobColorCodes } from './pobColors';
 import { fallbackChain, SOURCE_LANG, translated, type Lang } from '../locales';
 import type { ConfigOption } from '../api/types';
 import helpTranslations from './configHelp.zh-CN.json' with { type: 'json' };
@@ -999,17 +1000,35 @@ export const LIST_OPTION_ZH: Record<string, string> = {
 
 /** Strip only PoB display markup; never change option values or variable IDs. */
 export function stripConfigMarkup(text: string): string {
-  return text.replace(/\^x[0-9a-fA-F]{6}|\^\d/g, '').trim();
+  return stripPobColorCodes(text).trim();
 }
 
-export const CONFIG_LABEL_ZH_TW: Record<string, string> = {
-  ...Object.fromEntries(Object.entries(CONFIG_LABEL_ZH).map(([id, label]) => [id, configCopy(label, 'zh-TW')])),
-  ...CONFIG_LABEL_TW_OVERRIDES,
-};
+const zhTwLabelCache = new Map<string, string>();
+function zhTwLabel(id: string): string | undefined {
+  if (Object.hasOwn(CONFIG_LABEL_TW_OVERRIDES, id)) return CONFIG_LABEL_TW_OVERRIDES[id];
+  if (!Object.hasOwn(CONFIG_LABEL_ZH, id)) return undefined;
+  let converted = zhTwLabelCache.get(id);
+  if (converted === undefined) {
+    converted = configCopy(CONFIG_LABEL_ZH[id], 'zh-TW');
+    zhTwLabelCache.set(id, converted);
+  }
+  return converted;
+}
+
+export const CONFIG_LABEL_ZH_TW: Record<string, string> = new Proxy({} as Record<string, string>, {
+  get: (_, prop) => (typeof prop === 'string' ? zhTwLabel(prop) : undefined),
+  has: (_, prop) => typeof prop === 'string' && (Object.hasOwn(CONFIG_LABEL_TW_OVERRIDES, prop) || Object.hasOwn(CONFIG_LABEL_ZH, prop)),
+  ownKeys: () => [...new Set([...Object.keys(CONFIG_LABEL_ZH), ...Object.keys(CONFIG_LABEL_TW_OVERRIDES)])],
+  getOwnPropertyDescriptor: (_, prop) => {
+    if (typeof prop !== 'string') return undefined;
+    const value = zhTwLabel(prop);
+    return value === undefined ? undefined : { configurable: true, enumerable: true, value };
+  },
+});
 
 export function configLabelTranslation(lang: Lang, variable: string): string | undefined {
   const locale = legacyConfigLocale(lang);
-  return locale === 'zh-TW' ? CONFIG_LABEL_ZH_TW[variable] : locale === 'zh-CN' ? CONFIG_LABEL_ZH[variable] : undefined;
+  return locale === 'zh-TW' ? zhTwLabel(variable) : locale === 'zh-CN' ? CONFIG_LABEL_ZH[variable] : undefined;
 }
 
 export function configLabel(lang: Lang, option: Pick<ConfigOption, 'var' | 'label'>): string {

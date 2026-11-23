@@ -19,9 +19,9 @@ test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('Full DPS empty state opens Skil
   const goTo = vi.fn();
   const tt = bindT(lang);
   for (const calc of [null, { full_dps: { dps: 0, dot_dps: 0, skills: [] } }]) {
-    const html = renderToStaticMarkup(<NavigateContext.Provider value={goTo}>
+    const html = renderToStaticMarkup(<NavigateContext value={goTo}>
       <FullDpsView calc={calc as CalculateBuildResponse | null} lang={lang} />
-    </NavigateContext.Provider>);
+    </NavigateContext>);
     expect(html).toContain(tt('calcs.goToSkills'));
     expect(html).not.toContain(tt('skills.fullDpsHint'));
     button.click!({} as never);

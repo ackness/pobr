@@ -9,7 +9,7 @@ import { AttributionView } from './CalcsPanel';
 const state = vi.hoisted(() => ({ click: undefined as ComponentProps<'button'>['onClick'] }));
 const hooks = await vi.hoisted(async () => {
   const { createHookHarness } = await import('../../testing/hookHarness');
-  return createHookHarness({ lazyState: false, functionalUpdates: false });
+  return createHookHarness({ functionalUpdates: false });
 });
 vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../../hooks/useSkillName', () => ({ useSkillName: () => (id: string) => id }));

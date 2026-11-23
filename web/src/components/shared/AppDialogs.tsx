@@ -14,10 +14,10 @@ export function AppDialogsProvider({ children, scope }: { children: ReactNode; s
   const requests = useMemo(() => new DialogRequests(), [scope]);
   const request = useSyncExternalStore(requests.subscribe, requests.snapshot, () => null);
   useLayoutEffect(() => { requests.activate(); return () => requests.dispose(); }, [requests]);
-  return <DialogContext.Provider value={requests}>
+  return <DialogContext value={requests}>
     {children}
     {request && <RequestDialog key={`${scope}:${request.id}`} request={request} requests={requests} />}
-  </DialogContext.Provider>;
+  </DialogContext>;
 }
 
 export function useAppDialogs(lang: Lang): {

@@ -1,7 +1,7 @@
 import type { DisplayStatValue } from '../../api/types';
 import { compareStats, formatComparisonDelta } from '../../lib/compare';
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
-import { formatNumber, statFormat, formatStat } from '../../lib/statDisplay';
+import { formatSignedNumber, statFormat, formatStat } from '../../lib/statDisplay';
 import { upgradeT } from '../../lib/upgradeText';
 import type { DamageHeadline } from '../../lib/mainMinion';
 import './swapGainCard.css';
@@ -22,7 +22,7 @@ export function SwapGainCard({ before, after, lang, damage }: { before: readonly
         <span>{label(id)}</span>
         {id === headline.stat && headline.note && <small>{headline.note}</small>}
         <strong className={(row?.delta ?? 0) < 0 ? 'delta-neg' : (row?.delta ?? 0) > 0 ? 'delta-pos' : ''}>
-          {row?.percent != null ? `${row.percent > 0 ? '+' : ''}${formatNumber(row.percent, 1, 1)}%` : row ? formatComparisonDelta(row.delta, statFormat(id), lang) : '—'}
+          {row?.percent != null ? `${formatSignedNumber(row.percent, 1, 1)}%` : row ? formatComparisonDelta(row.delta, statFormat(id), lang) : '—'}
         </strong>
         <span><span>{row?.before == null ? '—' : formatStat(id, row.before, lang)}</span> → <b className="swap-after">{row?.after == null ? '—' : formatStat(id, row.after, lang)}</b></span>
       </div>;

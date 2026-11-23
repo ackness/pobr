@@ -20,7 +20,7 @@ import { statColor, statLabel } from './inspector/statId';
 import { computeStatChanges, percentText, type StatChange } from './motion/statChanges';
 import type { SettledCalc } from './motion/useSettledCalc';
 import type { Route } from './routes';
-import { uiStorageKey } from '../lib/sessionStorage';
+import { readPreference, uiStorageKey, writePreference } from '../lib/sessionStorage';
 import { calculationVersion } from './calculationVersion';
 import { colon } from './text';
 import { calculatedSkillOptions } from './calculatedSkillOptions';
@@ -38,9 +38,9 @@ const DEFAULT_COLLAPSED = STAT_SECTIONS.map(section => section.id);
 const CHIP_MS = 4000;
 
 function readCollapsed(): string[] {
+  const raw = readPreference(COLLAPSED_KEY);
+  if (raw === null) return DEFAULT_COLLAPSED;
   try {
-    const raw = localStorage.getItem(COLLAPSED_KEY);
-    if (raw === null) return DEFAULT_COLLAPSED;
     const value = JSON.parse(raw); return Array.isArray(value) ? value.filter(item => typeof item === 'string') : DEFAULT_COLLAPSED;
   } catch { return DEFAULT_COLLAPSED; }
 }
@@ -172,7 +172,7 @@ export function ResultsRail({ route, session, view, lang, onStatClick, onNavigat
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const toggle = (key: string) => setCollapsed(previous => {
     const next = previous.includes(key) ? previous.filter(item => item !== key) : [...previous, key];
-    try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next)); } catch { /* A remembered fold is a convenience only. */ }
+    writePreference(COLLAPSED_KEY, JSON.stringify(next));
     return next;
   });
   const pinFor = (id: string) => ({ on: pinned.includes(id), toggle: () => onTogglePin(id), label: tt(pinned.includes(id) ? 'sidebar.unpinStat' : 'sidebar.pinStat', { stat: statLabel(lang, id) }) });

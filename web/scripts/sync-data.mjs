@@ -1,9 +1,9 @@
 // Publish a complete browser data directory from the runtime snapshot contract.
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { sha256 } from './wasm-build-inputs.mjs';
 
 /** Where a published file is also found by its content: `data/h/<first 16 digits of its SHA-256>/<path>`. */
 const ADDRESSED = 'h';
@@ -60,7 +60,7 @@ export function snapshotFiles({ dataRoot = process.env.POBR_DATA_ROOT ?? join(re
         throw new Error(`Invalid sealed snapshot path: ${rel}`);
       }
       const path = join(src, rel);
-      const actual = createHash('sha256').update(readFileSync(path)).digest('hex');
+      const actual = sha256(readFileSync(path));
       if (actual !== expected) throw new Error(`Snapshot fingerprint mismatch: ${rel}`);
       copies.set(rel, path);
     }
@@ -112,7 +112,7 @@ export function syncData({ dataRoot = process.env.POBR_DATA_ROOT ?? join(repoRoo
       const destination = join(stagedData, version, rel);
       mkdirSync(dirname(destination), { recursive: true });
       cpSync(path, destination);
-      digests[rel] = createHash('sha256').update(readFileSync(destination)).digest('hex');
+      digests[rel] = sha256(readFileSync(destination));
       // The same bytes where the path names them: `_headers` matches paths, not query strings, so a
       // file is only ever kept for good under a path that can never hold other content.
       const addressed = join(stagedData, ADDRESSED, digests[rel].slice(0, ADDRESS_LENGTH), rel);
@@ -149,7 +149,7 @@ export function syncRelease({ packRoot, destRoot, expectedId }, rename = renameS
   const checked = JSON.parse(execFileSync('python3', args, { cwd: repoRoot, encoding: 'utf8' }));
   const manifestRaw = readFileSync(join(packRoot, 'manifest.json'));
   const manifest = JSON.parse(manifestRaw);
-  if (manifest.release_id !== checked.release_id || createHash('sha256').update(manifestRaw).digest('hex') !== checked.manifest_sha256) {
+  if (manifest.release_id !== checked.release_id || sha256(manifestRaw) !== checked.manifest_sha256) {
     throw new Error('Runtime release changed during sync');
   }
   mkdirSync(dirname(destRoot), { recursive: true });
@@ -161,7 +161,7 @@ export function syncRelease({ packRoot, destRoot, expectedId }, rename = renameS
   try {
     for (const spec of manifest.blocks) {
       const raw = readFileSync(join(packRoot, safePath(spec.path)));
-      if (raw.length !== spec.bytes || createHash('sha256').update(raw).digest('hex') !== spec.sha256) {
+      if (raw.length !== spec.bytes || sha256(raw) !== spec.sha256) {
         throw new Error(`Runtime block changed during sync: ${spec.path}`);
       }
       const path = join(stagedData, ADDRESSED, spec.sha256.slice(0, ADDRESS_LENGTH), spec.path);

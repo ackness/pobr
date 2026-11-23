@@ -5,13 +5,13 @@ import type { Lang } from './i18n';
 
 // Script conversion is a display fallback, not an official game translation.
 // Callers must prefer the requested locale's game data before using this.
-const traditional = traditionalConverter({ from: 'cn', to: 'tw' });
-const simplified = simplifiedConverter({ from: 'tw', to: 'cn' });
+let traditional: ((text: string) => string) | undefined;
+let simplified: ((text: string) => string) | undefined;
 
 /** Writes `text` in `lang`'s script where a converter exists; other languages keep it as is. */
 export function chineseScript(text: string, lang: Lang): string {
-  if (lang === 'zh-TW') return traditional(text);
-  if (lang === 'zh-CN') return simplified(text);
+  if (lang === 'zh-TW') return (traditional ??= traditionalConverter({ from: 'cn', to: 'tw' }))(text);
+  if (lang === 'zh-CN') return (simplified ??= simplifiedConverter({ from: 'tw', to: 'cn' }))(text);
   return text;
 }
 

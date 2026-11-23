@@ -1,8 +1,8 @@
-import { formatNumber, formatStat } from '../../lib/statDisplay';
+import { formatSignedNumber, formatStat } from '../../lib/statDisplay';
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
-import { useJobBeacon } from '../../app/jobs/useJobBeacon';
+import { useCancellableJob } from '../../app/jobs/useCancellableJob';
 import { AppButton, AppSelectControl } from '../shared/controls';
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CalculateBuildRequest } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { planEquipmentUpgrades, EQUIPMENT_CANDIDATE_LIMIT, EQUIPMENT_MAX_REPLACEMENTS, type EquipmentCandidate, type EquipmentPlan, type EquipmentPlanningResult } from '../../lib/equipmentPlanner';
@@ -35,13 +35,12 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
 }) {
   const ut = (key: Parameters<typeof upgradeT>[1]) => upgradeT(lang, key);
   const preview = usePreview();
-  const [snapshot, setSnapshot] = useState<EquipmentSnapshot | null>(null);
-  const [busy, setBusy] = useState(false);
-  useJobBeacon(busy);
-  const [progress, setProgress] = useState({ done: 0, total: 0 });
-  const [error, setError] = useState('');
+  const job = useCancellableJob<EquipmentSnapshot>();
+  const snapshot = job.result;
+  const busy = job.running;
+  const progress = job.progress ?? { done: 0, total: 0 };
+  const error = job.error ?? '';
   const [maxReplacements, setMaxReplacements] = useState(2);
-  const controller = useRef<AbortController | null>(null);
   const key = useMemo(() => JSON.stringify([session.activeWeaponSet, session.currentRequest(), candidates, maxReplacements,
     objective, session.dataVersion, session.treeVersion]),
   [session.currentRequest, session.activeWeaponSet, candidates, maxReplacements, objective, session.dataVersion, session.treeVersion]);
@@ -49,18 +48,13 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
   latest.current = { active, key, catalog };
   const previousIdentity = useRef({ key, catalog });
   const result = snapshot?.key === key && snapshot.catalog === catalog ? snapshot.result : null;
-  const stop = useCallback(() => {
-    controller.current?.abort(); controller.current = null;
-    setBusy(false); setProgress({ done: 0, total: 0 });
-  }, []);
+  const stop = job.cancel;
   useLayoutEffect(() => {
     if (previousIdentity.current.key === key && previousIdentity.current.catalog === catalog) return;
     previousIdentity.current = { key, catalog };
-    stop(); setSnapshot(null); setError('');
-  }, [key, catalog, stop]);
-  useLayoutEffect(() => { if (!active) stop(); }, [active, stop]);
-  useLayoutEffect(() => () => stop(), [stop]);
-  const format = (value: number) => formatNumber(value);
+    job.reset();
+  }, [key, catalog, job.reset]);
+  useLayoutEffect(() => { if (!active) job.cancel(); }, [active, job.cancel]);
   const reasonText = (reason: string) => ({
     'wrong-slot': ut('wrongSlot'), 'weapon-type': ut('weaponType'), 'unknown-base': ut('unknownBase'),
     'item-level': ut('itemLevel'), 'unidentified-item': ut('unidentified'), 'augment-limit': ut('augmentLimit'),
@@ -72,27 +66,21 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
     ...result.plans.filter(plan => !plan.candidateIds.length)] : [];
   const rejected = result?.plans.filter(plan => plan.candidateIds.length && (plan.error || plan.warnings?.length || plan.unsupported.length)) ?? [];
 
-  const run = async () => {
+  const run = () => {
     const request = session.currentRequest();
     const runKey = JSON.stringify([session.activeWeaponSet, request, candidates, maxReplacements,
       objective, session.dataVersion, session.treeVersion]);
     if (!active || !latest.current.active || busy || session.busy || !request || !catalog
       || latest.current.key !== runKey || latest.current.catalog !== catalog) return;
-    stop();
-    const abort = new AbortController(); controller.current = abort;
-    const current = () => !abort.signal.aborted && controller.current === abort && latest.current.active
-      && latest.current.key === runKey && latest.current.catalog === catalog;
-    setBusy(true); setError(''); setSnapshot(null); setProgress({ done: 0, total: 0 });
-    try {
-      const result = await planEquipmentUpgrades({ request, candidates, maxReplacements, objective, signal: abort.signal,
-        onProgress: (done, total) => { if (current()) setProgress({ done, total }); } }, { catalog });
-      if (current()) setSnapshot({ key: runKey, result, request, objective, catalog,
-        dataVersion: session.dataVersion, treeVersion: session.treeVersion, candidates, maxReplacements });
-    } catch (error) {
-      if (current()) setError(error instanceof Error ? error.message : String(error));
-    } finally {
-      if (controller.current === abort) { setBusy(false); setProgress({ done: 0, total: 0 }); controller.current = null; }
-    }
+    return job.start(async ({ signal, report }) => {
+      const current = () => !signal.aborted && latest.current.active
+        && latest.current.key === runKey && latest.current.catalog === catalog;
+      const next = await planEquipmentUpgrades({ request, candidates, maxReplacements, objective, signal,
+        onProgress: (done, total) => { if (current()) report(done, total); } }, { catalog });
+      if (!current()) { job.cancel(); return null as never; }
+      return { key: runKey, result: next, request, objective, catalog,
+        dataVersion: session.dataVersion, treeVersion: session.treeVersion, candidates, maxReplacements };
+    });
   };
   const apply = (plan: EquipmentPlan) => {
     const currentKey = JSON.stringify([session.activeWeaponSet, session.currentRequest(), candidates, maxReplacements,
@@ -101,7 +89,7 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
       || snapshot.key !== latest.current.key || snapshot.catalog !== catalog || latest.current.catalog !== catalog
       || !result.plans.includes(plan) || !usable(plan) || !feasibleOf(plan.stats, objective) || !plan.items.length) return;
     session.setItems([...session.items.filter(item => !plan.items.some(next => next.slot === item.slot)), ...plan.items]);
-    stop(); setSnapshot(null);
+    job.reset();
   };
 
   return <section className="equipment-planner" aria-labelledby="equipment-planner-title">
@@ -118,7 +106,7 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
       <AppButton aria-label={`${ut('jointRemove')} ${candidate.label} · ${slotLabel(lang, candidate.slot)}`} disabled={!active || busy} onClick={() => onRemove(candidate.id)}>{ut('jointRemove')}</AppButton>
     </li>)}</ul>
     {!!candidates.length && <div className="replacement-actions">
-      <AppButton className={actionClassName} disabled={!active || busy || session.busy || !catalog} onClick={() => void run()}>
+      <AppButton className={actionClassName} disabled={!active || busy || session.busy || !catalog} onClick={run}>
         {maxReplacements === 2 ? ut('jointCompare') : maxReplacements === 1 ? ut('jointCompareOne')
           : `${ut('jointCompareMany')} ${maxReplacements} ${ut('jointItems')}`}</AppButton>
       {busy && <><span role="status">{ut('comparingPositions')} {progress.done} / {progress.total}</span>
@@ -140,7 +128,7 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
             const delta = after - before;
             return <div className="replacement-metric" key={stat}><span>{stat === damage.stat ? damage.label : statNameLabel(lang, stat)}</span>
               {stat === damage.stat && damage.note && <small>{damage.note}</small>}
-              <strong className={delta < 0 ? 'delta-neg' : delta > 0 ? 'delta-pos' : ''}>{delta > 0 ? '+' : ''}{format(before > 0 ? delta / before * 100 : delta)}{before > 0 ? '%' : ''}</strong>
+              <strong className={delta < 0 ? 'delta-neg' : delta > 0 ? 'delta-pos' : ''}>{formatSignedNumber(before > 0 ? delta / before * 100 : delta)}{before > 0 ? '%' : ''}</strong>
               <span>{formatStat(stat, before, lang)} → <b data-plan-stat={stat}>{formatStat(stat, after, lang)}</b></span></div>;
           })}</div>}
           {!plan.error && <p className="equipment-plan-resists">{['FireResist', 'ColdResist', 'LightningResist', 'ChaosResist'].map(stat =>

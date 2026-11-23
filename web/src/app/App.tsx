@@ -1,6 +1,6 @@
 import { DataVersionNotice } from './DataVersionNotice';
 import { buildDisplayName, stageDisplayName } from '../lib/workspaceNames';
-import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, lazy, Suspense, useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { LayoutDashboard, Library, Network, Gem, Swords, TrendingUp, Calculator, SlidersHorizontal, Columns2, Settings2, Menu, Undo2, Redo2, PanelRightOpen, PanelLeftClose, PanelLeftOpen, Search, Check, LoaderCircle, Download, BookmarkPlus } from 'lucide-react';
 import { useBuildSession, type SyncNotice } from '../hooks/useBuildSession';
 import { UpgradeGoalProvider } from '../hooks/useUpgradeGoal';
@@ -17,7 +17,7 @@ import { SkillsPanel } from '../components/skills/SkillsPanel';
 import { ConfigPanel } from '../components/config/ConfigPanel';
 import { bindT, bootErrorLabel, bootMessageLabel, messages, t, type Lang } from '../lib/i18n';
 import { buildImportErrorMessage } from '../api/import';
-import { LEGACY_STORAGE, STORAGE, uiStorageKey } from '../lib/sessionStorage';
+import { LEGACY_STORAGE, STORAGE, readPreference, uiStorageKey, writePreference } from '../lib/sessionStorage';
 import { initializeStorage } from './storage';
 import { DEFAULT_PREFERENCES, PREFERENCES_KEY, readPreferences, pageDisplayMode, type Preferences } from './preferences';
 import { NAV_GROUPS, readRoute, routePath, type Route } from './routes';
@@ -103,10 +103,9 @@ export default function App() {
 }
 
 function Recovery({ lang, error }: { lang: Lang; error: string }) {
-  let raw: string | null = null;
-  try { raw = localStorage.getItem(STORAGE.workspace) ?? localStorage.getItem(LEGACY_STORAGE.workspace); } catch { /* Storage access itself can fail. */ }
+  const raw = readPreference(STORAGE.workspace) ?? readPreference(LEGACY_STORAGE.workspace);
   return <div className="shell-boot" role="alert"><BrandMark className="shell-brand-mark" detailed /><h1>{t(lang, 'shell.recoveryTitle')}</h1><p>{t(lang, 'shell.recoveryDetail')}</p><pre>{bootErrorLabel(lang, error)}</pre>
-    {raw && <Button onClick={() => download(raw!, 'pobr-recovery.json')}><Download />{t(lang, 'shell.downloadOriginalSave')}</Button>}</div>;
+    {raw && <Button onClick={() => download(raw, 'pobr-recovery.json')}><Download />{t(lang, 'shell.downloadOriginalSave')}</Button>}</div>;
 }
 
 function Workspace({ preferences, onPreferences, preferencesFailed }: { preferences: Preferences; onPreferences: (next: Preferences) => void; preferencesFailed: boolean }) {
@@ -125,15 +124,13 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const { pinned, toggle: togglePin } = usePinnedStats();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [railHidden, setRailHidden] = useState(() => { try { return localStorage.getItem(RAIL_HIDDEN_KEY) === '1'; } catch { return false; } });
-  const toggleRail = () => setRailHidden(hidden => { try { localStorage.setItem(RAIL_HIDDEN_KEY, hidden ? '0' : '1'); } catch { /* A remembered layout is a convenience only. */ } return !hidden; });
+  const [railHidden, setRailHidden] = useState(() => readPreference(RAIL_HIDDEN_KEY) === '1');
+  const toggleRail = () => setRailHidden(hidden => { writePreference(RAIL_HIDDEN_KEY, hidden ? '0' : '1'); return !hidden; });
   const session = useBuildSession(route === 'config', lang);
   const activeBuild = session.workspace?.builds.find(build => build.id === session.workspace?.activeBuild);
   const stageKey = activeBuild ? `${activeBuild.id}:${activeBuild.activeStage}` : undefined;
   const view = useSettledCalc(session, stageKey);
-  const [visited, setVisited] = useState<{ scope?: string; pages: Route[] }>({ pages: [] });
-  // Retain planner state only within its owning stage; inactive planners receive active=false.
-  useEffect(() => { setVisited(previous => ({ scope: stageKey, pages: [...new Set([...(previous.scope === stageKey ? previous.pages : []), route])] })); }, [route, stageKey]);
+  const [visited, setVisited] = useState<{ scope?: string; pages: Route[] }>(() => ({ scope: stageKey, pages: [route] }));
   const [calcsFocus, setCalcsFocus] = useState<{ id: string } | null>(null);
   const [upgradeFocus, setUpgradeFocus] = useState<{ slot: string; nonce: number; jewelType?: 'base' | 'radius' }>();
   const [skillFocus, setSkillFocus] = useState<{ group: number; nonce: number }>();
@@ -145,21 +142,26 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const [shareFocusRequest, setShareFocusRequest] = useState<number>();
   const [reviewStage, setReviewStage] = useState<ImportReview | null>(null);
   const focusImportedBuild = useRef(false);
-  const previousStage = useRef(stageKey);
-  const stageChanged = previousStage.current !== stageKey;
-  useEffect(() => {
-    previousStage.current = stageKey;
+  const [prevStage, setPrevStage] = useState(stageKey);
+  const [prevRoute, setPrevRoute] = useState(route);
+  const stageChanged = prevStage !== stageKey;
+  // Retain planner state only within its owning stage; reset page focus/overlays synchronously on stage or route transitions.
+  if (visited.scope !== stageKey || !visited.pages.includes(route)) {
+    const pages = visited.scope === stageKey ? [...visited.pages, route] : [route];
+    setVisited({ scope: stageKey, pages });
+  }
+  if (stageChanged) {
+    setPrevStage(stageKey);
     setSpiritFocus(undefined); setCalcsFocus(null); setUpgradeFocus(undefined); setSkillFocus(undefined); setTreeFocus(undefined);
     setStatsOpen(false); setInspect(null); setNotesFocusRequest(undefined); setShareFocusRequest(undefined);
-  }, [stageKey]);
-  useEffect(() => {
+  }
+  if (prevRoute !== route) {
+    setPrevRoute(route);
     if (route !== 'build') { setNotesFocusRequest(undefined); setShareFocusRequest(undefined); }
     if (route === 'config') setReviewStage(null);
-  }, [route]);
-  useEffect(() => {
-    const next = advanceImportReview(reviewStage, stageKey, session);
-    if (next !== reviewStage) setReviewStage(next);
-  }, [reviewStage, stageKey, session.busy, session.calcError, session.calc, session.character, session.classNames, session.importSource]);
+  }
+  const nextReview = advanceImportReview(reviewStage, stageKey, session);
+  if (nextReview !== reviewStage) setReviewStage(nextReview);
   useEffect(() => {
     const pop = () => { setRoute(readRoute(location.pathname)); setMenuOpen(false); setStatsOpen(false); };
     addEventListener('popstate', pop); return () => removeEventListener('popstate', pop);
@@ -220,7 +222,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   if (session.bootError) return <Recovery lang={lang} error={session.bootError} />;
   if (session.bootMessage || !session.character) return <div className="shell-boot" role="status" aria-busy="true"><BrandMark className="shell-brand-mark" detailed /><h1>PoBR</h1><p>{bootMessageLabel(lang, session.bootMessage ?? '初始化…')}</p><Skeleton className="h-2 w-56" /></div>;
   const tabLabel = (page: Route) => page === 'overview' || page === 'build' ? pageNames(lang)[page] : t(lang, `tab.${page}`);
-  const go = (page: Route) => (event: React.MouseEvent) => {
+  const go = (page: Route) => (event: MouseEvent) => {
     if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault(); navigate(page);
   };
@@ -242,7 +244,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
     modifierCount={view.calc?.unsupported_modifiers.length ?? 0}
     onDismiss={() => setReviewStage(null)} onReview={() => { setReviewStage(null); navigate('config'); }}
     onReviewNotes={() => { setReviewStage(null); setNotesFocusRequest(Date.now()); navigate('build'); }} />;
-  return <AppDialogsProvider scope={stageKey}><PreviewProvider session={session} view={view} route={route}><NavigateContext.Provider value={navigate}><div className="shell-root" ref={setShellEl}>
+  return <AppDialogsProvider scope={stageKey}><PreviewProvider session={session} view={view} route={route}><NavigateContext value={navigate}><div className="shell-root" ref={setShellEl}>
     <a href="#shell-main" className="shell-skip-link">{t(lang, 'a11y.skipToContent')}</a>
     <header className="shell-topbar">
       <TopbarAction hint={t(lang, 'a11y.openMenu')} className="shell-menu-button" size="icon" variant="ghost" aria-label={t(lang, 'a11y.openMenu')} onClick={() => setMenuOpen(true)}><Menu /></TopbarAction>
@@ -311,5 +313,5 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
     </SheetContent></Sheet>
     <Sheet open={statsOpen} onOpenChange={setStatsOpen}><SheetContent className="shell-stat-sheet"><SheetHeader><SheetTitle>{tt('shell.characterStats')}</SheetTitle><SheetDescription>{tt('shell.characterStatsHint')}</SheetDescription></SheetHeader>{rail}</SheetContent></Sheet>
     <Settings open={settingsOpen} onOpenChange={setSettingsOpen} preferences={preferences} onChange={onPreferences} version={calculationVersion(lang, view.calc?.provenance?.data_version ?? session.dataVersion, view.calc?.provenance?.engine_version, session.calcMs)} />
-  </div></NavigateContext.Provider></PreviewProvider></AppDialogsProvider>;
+  </div></NavigateContext></PreviewProvider></AppDialogsProvider>;
 }

@@ -14,6 +14,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
 
 export const SOURCE = 'en-US';
 const PLACEHOLDER = /\{[A-Za-z0-9_]+\}/g;
@@ -97,9 +98,13 @@ export function checkLocales(dir, { registry = readFileSync(join(dir, 'index.ts'
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const args = process.argv.slice(2);
-  const allowMissing = args.includes('--allow-missing');
-  const dir = args.find(arg => !arg.startsWith('--')) ?? join(dirname(fileURLToPath(import.meta.url)), '../src/locales');
+  const { values, positionals } = parseArgs({
+    options: { 'allow-missing': { type: 'boolean' } },
+    strict: true,
+    allowPositionals: true,
+  });
+  const allowMissing = values['allow-missing'] === true;
+  const dir = positionals[0] ?? join(dirname(fileURLToPath(import.meta.url)), '../src/locales');
   const { errors, warnings, summary } = checkLocales(dir, { allowMissing });
   for (const { lang, keys, missing } of summary) console.log(`${lang}: ${keys} keys${missing ? `, ${missing} missing` : ''}`);
   for (const warning of warnings) console.warn(`warning: ${warning}`);

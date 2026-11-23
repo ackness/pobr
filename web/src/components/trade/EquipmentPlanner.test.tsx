@@ -13,7 +13,6 @@ const hooks = await vi.hoisted(async () => {
 });
 vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 
-vi.mock('../../app/jobs/useJobBeacon', () => ({ useJobBeacon: () => {} }));
 vi.mock('../shared/PreviewContext', () => ({ usePreview: () => null }));
 vi.mock('../shared/controls', () => ({ AppButton: (props: ComponentProps<'button'>) => { ui.buttons.push(props); return <button {...props} />; },
   AppSelectControl: (props: ComponentProps<'select'>) => <select {...props} /> }));
