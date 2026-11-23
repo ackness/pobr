@@ -614,6 +614,83 @@ else:
         with self.assertRaises(SystemExit):
             ready.parse_args(["123", "--unknown"])
 
+    def test_require_full_verifies_workflow_dispatch_full_gate_on_head_commit(self):
+        pr = {"draft": False, "state": "open", "mergeable": True,
+              "head": {"sha": "a" * 40}, "base": {"sha": "b" * 40}}
+        pr_only = [{"name": "PR gate", "bucket": "pass"}]
+        # Missing Full gate on head commit is rejected.
+        with self.assertRaisesRegex(ValueError, "Full gate"):
+            ready.assess(pr, pr_only, require_full=True, commit_checks=[
+                {"id": 1, "name": "PR gate", "status": "completed", "conclusion": "success"},
+            ])
+        # Retry success (higher id) after an earlier failure passes.
+        ready.assess(pr, pr_only, require_full=True, commit_checks=[
+            {"id": 10, "name": "Full gate", "status": "completed", "conclusion": "failure"},
+            {"id": 20, "name": "Full gate", "status": "completed", "conclusion": "success"},
+        ])
+        # Newer failure after an earlier success fails.
+        with self.assertRaisesRegex(ValueError, "Full gate"):
+            ready.assess(pr, pr_only, require_full=True, commit_checks=[
+                {"id": 10, "name": "Full gate", "status": "completed", "conclusion": "success"},
+                {"id": 20, "name": "Full gate", "status": "completed", "conclusion": "failure"},
+            ])
+        # Pending check-run on head commit fails even if an earlier Full gate passed.
+        with self.assertRaisesRegex(ValueError, "pending"):
+            ready.assess(pr, pr_only, require_full=True, commit_checks=[
+                {"id": 10, "name": "Full gate", "status": "completed", "conclusion": "success"},
+                {"id": 25, "name": "Rust tests (build)", "status": "in_progress", "conclusion": None},
+            ])
+        # Paginated slurp payload flattens all pages.
+        flattened = ready.flatten_check_runs([
+            {"check_runs": [{"id": 1, "name": "PR gate", "status": "completed", "conclusion": "success"}]},
+            {"check_runs": [{"id": 2, "name": "Full gate", "status": "completed", "conclusion": "success"}]},
+        ])
+        self.assertEqual([run["name"] for run in flattened], ["PR gate", "Full gate"])
+
+    def test_cli_require_full_reads_paginated_head_commit_check_runs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            gh = root / "gh"
+            gh.write_text("""#!/usr/bin/env python3
+import json, os, sys
+args = sys.argv[1:]
+with open(os.environ["CALLS"], "a") as out: out.write(json.dumps(args) + "\\n")
+if args[:2] == ["repo", "view"]:
+    print(json.dumps({"nameWithOwner": "fixture/repo"}))
+elif args[:2] == ["pr", "checks"]:
+    # gh pr checks omits workflow_dispatch Full gate; only PR gate appears here.
+    print(json.dumps([{"name": "PR gate", "bucket": "pass"}]))
+elif args[:1] == ["api"] and any("check-runs" in arg for arg in args):
+    if os.environ.get("MISSING_FULL"):
+        print(json.dumps([{"check_runs": [{"id": 1, "name": "PR gate", "status": "completed", "conclusion": "success"}]}]))
+    else:
+        print(json.dumps([
+            {"check_runs": [{"id": 1, "name": "PR gate", "status": "completed", "conclusion": "success"}]},
+            {"check_runs": [{"id": 2, "name": "Full gate", "status": "completed", "conclusion": "success"}]},
+        ]))
+elif args[:1] == ["api"]:
+    print(json.dumps({"draft": False, "state": "open", "mergeable": True,
+                      "head": {"sha": "a" * 40}, "base": {"sha": "b" * 40}}))
+else:
+    raise SystemExit("Unexpected write operation")
+""")
+            gh.chmod(0o755)
+            env = {"PATH": str(root) + os.pathsep + os.environ["PATH"], "CALLS": str(root / "calls")}
+            command = [sys.executable, str(HERE / "pr-ready.py"), "123", "--require-full"]
+            ok = subprocess.run(command, env=env, capture_output=True, text=True)
+            self.assertEqual(ok.returncode, 0, ok.stderr)
+            self.assertIn("a" * 40, ok.stdout)
+            fail = subprocess.run(command, env={**env, "MISSING_FULL": "1"}, capture_output=True, text=True)
+            self.assertNotEqual(fail.returncode, 0)
+            self.assertIn("Full gate", fail.stderr)
+            calls = [json.loads(line) for line in (root / "calls").read_text().splitlines()]
+            self.assertTrue(any(
+                args[:3] == ["api", "--paginate", "--slurp"]
+                and args[3] == f"repos/fixture/repo/commits/{'a' * 40}/check-runs?per_page=100"
+                for args in calls
+            ))
+            self.assertTrue(all(args[0] in {"repo", "pr", "api"} and args[:2] != ["pr", "merge"] for args in calls))
+
 
 if __name__ == "__main__":
     unittest.main()
