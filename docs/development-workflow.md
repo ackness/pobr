@@ -184,7 +184,7 @@ mise run check:workflows                             # Automation contracts; no 
 | `target/` | 本 worktree 的编译复用目录；按下文存储决策保留 warm 产物 |
 | `web/node_modules/` | frozen Web 依赖；`mise run setup` 准备 |
 | `data/<版本>/`、外部 shared 文件、`web/src/fixtures/*.json` | 固定 owner 输入；`mise run data:prepare` 准备当前组合，旧版仅按显式历史锁准备 |
-| `web/src/wasm/pkg/`、`web/public/data/`、`web/public/build-references/` | Web 构建、数据同步与打包准备物；入口见 [Web 安装说明](../web/README.md) |
+| `web/src/wasm/pkg/`、`web/public/data/` | Web 构建、数据同步与打包准备物；入口见 [Web 安装说明](../web/README.md) |
 | `vendor/` | 按 `devs/reference-sources.json` 固定的 PoB2 参考检出；`mise run vendor` 准备 |
 | `.cache/`、可选的 `study/` | 临时导入、报告与本地研究；不维护第二份“当前产品说明” |
 
@@ -393,7 +393,7 @@ tag 与 nightly 不选，分支范围无法比较时保守选中。它不进入 
 | 层级 | 运行什么 | 何时用 |
 | --- | --- | --- |
 | `smoke` | 带 `@smoke` 的约 20 个用例：每个顶层页面与核心流程一次，真实 WASM，只取代表格（本机约 35 秒） | 任何 UI 改动后先跑；挑选规则见 [e2e/tags.ts](../web/e2e/tags.ts) |
-| `affected`（默认） | `@smoke` 加上由变更映射到的 spec：变更范围同 `check:pr`（merge-base 到 HEAD 加未提交文件），映射表在 `e2e.py` 的 `AFFECTED`。改动的 spec 跑它自己，spec 读取的示例文件跑读取它的 spec，`examples/demo-bd-test/builds` 另跑 build-guidance；表里没有的 Web 文件跑 `default`；引擎、WASM 输入与数据锁跑 calc/import 类 spec；文档和脚本不跑并说明原因 | 日常改动，推送前 |
+| `affected`（默认） | `@smoke` 加上由变更映射到的 spec：变更范围同 `check:pr`（merge-base 到 HEAD 加未提交文件），映射表在 `e2e.py` 的 `AFFECTED`。改动的 spec 跑它自己，spec 读取的示例文件跑读取它的 spec；表里没有的 Web 文件跑 `default`；引擎、WASM 输入与数据锁跑 calc/import 类 spec；文档和脚本不跑并说明原因 | 日常改动，推送前 |
 | `default` | 今天的默认集（不含 `@extended`／`@quarantine`，本机约 8.5 分钟，接近串行用例时间除以 4 个 worker 的下限） | 共享代码（hooks、lib、locales）或大改动 |
 | `release` | 全部矩阵格（`POBR_E2E_ALL=1 --grep-invert @quarantine`），再依次运行三个独立配置（calcs-config、item-display、controls），合并汇总（本机约 12 分钟） | 每次发版前，见 [RELEASING.md](../RELEASING.md#4-发版上线) |
 
