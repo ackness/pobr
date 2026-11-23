@@ -66,7 +66,7 @@ pub fn calculate(env: &mut Env) {
     let interval = env
         .player
         .mod_db
-        .max_of(
+        .max_of_by_name(
             ModType::Base,
             &cfg,
             &["ThaumaturgicalDynamismChargeInterval"],

@@ -317,12 +317,12 @@ fn skill_dot_eff_mult(enemy: &ModDb, taken_cfg: &CalcConfig, damage_type: Damage
     }
     let type_cfg = taken_cfg.clone().with_damage_type(damage_type);
     let taken_names = dot_taken_names(damage_type);
-    let taken_inc = enemy.sum(ModType::Inc, &type_cfg, taken_names);
-    let taken_more = enemy.more(&type_cfg, taken_names);
+    let taken_inc = enemy.sum_by_name(ModType::Inc, &type_cfg, taken_names);
+    let taken_more = enemy.more_by_name(&type_cfg, taken_names);
 
     let resist = if damage_type == DamageType::Physical {
         enemy
-            .sum(ModType::Base, &type_cfg, &["PhysicalDamageReduction"])
+            .sum_by_name(ModType::Base, &type_cfg, &["PhysicalDamageReduction"])
             .clamp(
                 0.0,
                 type_cfg
@@ -398,7 +398,7 @@ pub fn skill_dot_terms(
         && !cfg.skill_types.intersects(SkillTypes::REMOTE_MINED);
     let aura_magnitude = if is_dot_aura {
         let names = ["Magnitude"];
-        (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)
+        (1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0) * db.more_by_name(cfg, &names)
     } else {
         1.0
     };
@@ -413,7 +413,7 @@ pub fn skill_dot_terms(
         if !can_deal {
             continue;
         }
-        let base_val = db.sum(ModType::Base, &dot_type_cfg, &[dot_base_name(damage_type)]);
+        let base_val = db.sum_by_name(ModType::Base, &dot_type_cfg, &[dot_base_name(damage_type)]);
         if base_val <= 0.0 {
             continue;
         }
@@ -431,15 +431,15 @@ pub fn skill_dot_terms(
         let mult = db
             .override_(&dot_type_cfg, "DotMultiplier")
             .unwrap_or_else(|| {
-                db.sum(ModType::Base, &dot_type_cfg, &[generic_mult])
-                    + db.sum(ModType::Base, &dot_type_cfg, &[typed_mult])
+                db.sum_by_name(ModType::Base, &dot_type_cfg, &[generic_mult])
+                    + db.sum_by_name(ModType::Base, &dot_type_cfg, &[typed_mult])
             });
         // Vendor :6114: AuraEffect uses the per-type DoT config, while
         // Magnitude uses the original skill config (not the stripped dot config).
         let aura = if is_dot_aura {
             let names = ["AuraEffect"];
-            (1.0 + db.sum(ModType::Inc, &dot_type_cfg, &names) / 100.0)
-                * db.more(&dot_type_cfg, &names)
+            (1.0 + db.sum_by_name(ModType::Inc, &dot_type_cfg, &names) / 100.0)
+                * db.more_by_name(&dot_type_cfg, &names)
                 * aura_magnitude
         } else {
             1.0
@@ -539,7 +539,7 @@ pub(crate) fn cull_threshold_percent(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig
     } else {
         game.culling_strike_normal_threshold
     };
-    let percent = threshold * (1.0 + db.sum(ModType::Inc, cfg, &["CullPercent"]) / 100.0);
+    let percent = threshold * (1.0 + db.sum_by_name(ModType::Inc, cfg, &["CullPercent"]) / 100.0);
     (0.0..100.0).contains(&percent).then_some(percent)
 }
 
@@ -550,7 +550,7 @@ pub(crate) fn cull_threshold_percent(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig
 pub(crate) fn reserved_life_percent(enemy: &ModDb, cfg: &CalcConfig) -> f64 {
     if cfg.mode_effective {
         enemy
-            .max_of(ModType::Base, cfg, &["LifeReservationPercent"])
+            .max_of_by_name(ModType::Base, cfg, &["LifeReservationPercent"])
             .clamp(0.0, 99.0)
     } else {
         0.0

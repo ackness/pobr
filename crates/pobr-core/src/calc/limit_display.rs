@@ -106,7 +106,9 @@ pub(super) fn fill(env: &mut Env) {
     views.charm_limit = super::env_finalize::charm_slots(db, cfg);
     views.enemy_curse_limit = super::buff_pass::player_curse_limit(db, cfg);
     views.enemy_mark_limit = super::buff_pass::player_mark_limit(db, cfg);
-    views.hazard_rune_limit = db.sum(ModType::Base, cfg, &["HazardRuneLimit"]).max(0.0);
+    views.hazard_rune_limit = db
+        .sum_by_name(ModType::Base, cfg, &["HazardRuneLimit"])
+        .max(0.0);
     views.life_recovery_rate_mod =
         super::survivability::recoup_recovery_rate(db, cfg, RecoupResource::Life);
     views.mana_recovery_rate_mod =
@@ -136,7 +138,8 @@ pub(super) fn fill(env: &mut Env) {
     views.duration_more = duration.more;
     views.duration_mod = duration.value();
     views.strike_skill = cfg.skill_types.intersects(SkillTypes::MELEE_SINGLE_TARGET);
-    views.additional_strike_targets = db.sum(ModType::Base, cfg, &["AdditionalStrikeTarget"]);
+    views.additional_strike_targets =
+        db.sum_by_name(ModType::Base, cfg, &["AdditionalStrikeTarget"]);
     views.strike_targets = if views.strike_skill {
         1.0 + views.additional_strike_targets
     } else {

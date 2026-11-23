@@ -97,28 +97,28 @@ pub(crate) fn stun_threshold_terms(
 ) -> StunThresholdTerms {
     let names = ["StunThreshold"];
     let base = if db.flag(cfg, "StunThresholdBasedOnEnergyShieldInsteadOfLife") {
-        let pct = db.sum(ModType::Base, cfg, &["StunThresholdEnergyShieldPercent"]);
+        let pct = db.sum_by_name(ModType::Base, cfg, &["StunThresholdEnergyShieldPercent"]);
         inp.energy_shield * pct / 100.0
     } else if db.flag(cfg, "StunThresholdBasedOnManaInsteadOfLife") {
-        let pct = db.sum(ModType::Base, cfg, &["StunThresholdManaPercent"]);
+        let pct = db.sum_by_name(ModType::Base, cfg, &["StunThresholdManaPercent"]);
         inp.mana * pct / 100.0
     } else if inp.chaos_inoculation {
         // Life before CI (vendor `Sum("BASE","Life")`; pobr's life-pool BASE
         // mod is named MaximumLife, with the character's flat base supplied
         // via life_base_flat).
-        inp.life_base_flat + db.sum(ModType::Base, cfg, &["MaximumLife"])
+        inp.life_base_flat + db.sum_by_name(ModType::Base, cfg, &["MaximumLife"])
     } else {
         inp.life
     };
     let base = if db.flag(cfg, "AddESToStunThreshold") {
-        let pct = db.sum(ModType::Base, cfg, &["ESToStunThresholdPercent"]);
+        let pct = db.sum_by_name(ModType::Base, cfg, &["ESToStunThresholdPercent"]);
         base + inp.energy_shield * pct / 100.0
     } else {
         base
     };
-    let flat = db.sum(ModType::Base, cfg, &names);
-    let inc = 1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0;
-    let more = db.more(cfg, &names);
+    let flat = db.sum_by_name(ModType::Base, cfg, &names);
+    let inc = 1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0;
+    let more = db.more_by_name(cfg, &names);
     StunThresholdTerms {
         base,
         flat,
@@ -153,8 +153,8 @@ pub(crate) fn stun_duration_terms(
     } else {
         game.stun_base_duration_seconds
     };
-    let increase = 1.0 + db.sum(ModType::Inc, cfg, &["StunDuration"]) / 100.0;
-    let recovery = 1.0 + db.sum(ModType::Inc, cfg, &["StunRecovery"]) / 100.0;
+    let increase = 1.0 + db.sum_by_name(ModType::Inc, cfg, &["StunDuration"]) / 100.0;
+    let recovery = 1.0 + db.sum_by_name(ModType::Inc, cfg, &["StunRecovery"]) / 100.0;
     (duration, increase, recovery, game.server_tick_seconds)
 }
 

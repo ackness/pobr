@@ -169,7 +169,7 @@ pub fn lucky_hit_chance(
         DamageType::Lightning => "LightningLuckyHitsChance",
         DamageType::Chaos => "ChaosLuckyHitsChance",
     };
-    db.sum(ModType::Base, cfg, &[typed, "LuckyHitsChance"])
+    db.sum_by_name(ModType::Base, cfg, &[typed, "LuckyHitsChance"])
         .min(100.0)
         / 100.0
 }
@@ -273,14 +273,15 @@ fn base_flat(
     base_hit_max: f64,
 ) -> SourceTerms {
     let (min_name, max_name) = added_damage_names(damage_type);
-    let added_min = db.sum(ModType::Base, cfg, &[min_name]);
-    let added_max = db.sum(ModType::Base, cfg, &[max_name]);
+    let added_min = db.sum_by_name(ModType::Base, cfg, &[min_name]);
+    let added_max = db.sum_by_name(ModType::Base, cfg, &[max_name]);
 
     // Added damage effectiveness (addedMult = (1 + ΣINC/100) × ΠMORE): only
     // applies to external flat added damage, never the skill/weapon's own
     // base. Name set = `Added<Type>Damage` + `AddedDamage` (vendor's order).
     let eff_names = added_effect_names(damage_type);
-    let eff = (1.0 + db.sum(ModType::Inc, cfg, &eff_names) / 100.0) * db.more(cfg, &eff_names);
+    let eff = (1.0 + db.sum_by_name(ModType::Inc, cfg, &eff_names) / 100.0)
+        * db.more_by_name(cfg, &eff_names);
 
     let (min, max) = match damage_type {
         DamageType::Physical => {
@@ -412,11 +413,13 @@ pub(crate) fn evaluate_source_lines<'a>(
         gain.push("PhysicalDamageGainAsRandom");
     }
     SourceLines {
-        added_min: base_rows(db.evaluate_named(&type_cfg, min_name)),
-        added_max: base_rows(db.evaluate_named(&type_cfg, max_name)),
-        added_effect: scaling_rows(db.evaluate_names(&type_cfg, &added_effect_names(damage_type))),
-        convert: base_rows(db.evaluate_names(cfg, &convert_names)),
-        gain: base_rows(db.evaluate_names(cfg, &gain)),
+        added_min: base_rows(db.evaluate_by_name(&type_cfg, min_name)),
+        added_max: base_rows(db.evaluate_by_name(&type_cfg, max_name)),
+        added_effect: scaling_rows(
+            db.evaluate_names_by_name(&type_cfg, &added_effect_names(damage_type)),
+        ),
+        convert: base_rows(db.evaluate_names_by_name(cfg, &convert_names)),
+        gain: base_rows(db.evaluate_names_by_name(cfg, &gain)),
     }
 }
 
@@ -429,7 +432,7 @@ pub(crate) fn evaluate_range_more<'a>(
 ) -> (Vec<crate::ModEvaluation<'a>>, Vec<crate::ModEvaluation<'a>>) {
     let (min_name, max_name) = range_more_names(damage_type);
     let more_rows = |name: &str| -> Vec<crate::ModEvaluation<'a>> {
-        db.evaluate_named(cfg, name)
+        db.evaluate_by_name(cfg, name)
             .into_iter()
             .filter(|row| row.modifier.mod_type == ModType::More)
             .collect()
@@ -577,8 +580,8 @@ fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> Compo
     // carry no DamageType tag, matched by name against cfg (which carries
     // skill flags); with no such mod, more returns 1.0 and output is unchanged.
     let (min_name, max_name) = range_more_names(comp.damage_type);
-    let more_min = db.more(cfg, &[min_name]);
-    let more_max = db.more(cfg, &[max_name]);
+    let more_min = db.more_by_name(cfg, &[min_name]);
+    let more_max = db.more_by_name(cfg, &[max_name]);
     ComponentTerms {
         base_min: comp.min,
         base_max: comp.max,
@@ -639,7 +642,7 @@ pub(crate) fn evaluate_generic_scaling<'a>(
     db: &'a ModDb,
     cfg: &CalcConfig,
 ) -> Vec<crate::ModEvaluation<'a>> {
-    scaling_rows(db.evaluate_names(cfg, &generic_scaling_names(cfg)))
+    scaling_rows(db.evaluate_names_by_name(cfg, &generic_scaling_names(cfg)))
 }
 
 /// The INC / MORE lines [`aggregate_inc_more`] reads for `final_type` only:
@@ -651,9 +654,9 @@ pub(crate) fn evaluate_type_scaling<'a>(
     final_type: DamageType,
 ) -> Vec<crate::ModEvaluation<'a>> {
     let type_cfg = cfg.clone().with_damage_type(final_type);
-    let mut rows = db.evaluate_named(&type_cfg, damage_type_name(final_type));
+    let mut rows = db.evaluate_by_name(&type_cfg, damage_type_name(final_type));
     if final_type.is_elemental() {
-        rows.extend(db.evaluate_named(&type_cfg, "ElementalDamage"));
+        rows.extend(db.evaluate_by_name(&type_cfg, "ElementalDamage"));
     }
     scaling_rows(rows)
 }
@@ -678,17 +681,17 @@ pub(crate) fn aggregate_inc_more(
     let generic_names = generic_scaling_names(cfg);
 
     // The generic bucket is only counted once (not restricted to a damage type).
-    let mut inc = db.sum(ModType::Inc, cfg, &generic_names);
-    let mut more = db.more(cfg, &generic_names);
+    let mut inc = db.sum_by_name(ModType::Inc, cfg, &generic_names);
+    let mut more = db.more_by_name(cfg, &generic_names);
     if dbg_env!("POBR_DBG_BASES").is_some() && final_type == DamageType::Physical {
         eprintln!("[POBR_POOL_NAMES] {generic_names:?}");
-        for c in db.contributions(ModType::Inc, cfg, &generic_names) {
+        for c in db.contributions_by_name(ModType::Inc, cfg, &generic_names) {
             eprintln!(
                 "[POBR_POOL_SRC] {:?} {} src={:?}",
                 c.name, c.value, c.raw_text
             );
         }
-        for c in db.contributions(ModType::More, cfg, &generic_names) {
+        for c in db.contributions_by_name(ModType::More, cfg, &generic_names) {
             eprintln!(
                 "[POBR_POOL_MORE] {:?} {} src={:?}",
                 c.name, c.value, c.raw_text
@@ -708,13 +711,13 @@ pub(crate) fn aggregate_inc_more(
     // has Fire as its last entry).
     let type_cfg = cfg.clone().with_damage_type(final_type);
     let type_name = [damage_type_name(final_type)];
-    inc += db.sum(ModType::Inc, &type_cfg, &type_name);
-    more *= db.more(&type_cfg, &type_name);
+    inc += db.sum_by_name(ModType::Inc, &type_cfg, &type_name);
+    more *= db.more_by_name(&type_cfg, &type_name);
 
     if final_type.is_elemental() {
         let elem = ["ElementalDamage"];
-        inc += db.sum(ModType::Inc, &type_cfg, &elem);
-        more *= db.more(&type_cfg, &elem);
+        inc += db.sum_by_name(ModType::Inc, &type_cfg, &elem);
+        more *= db.more_by_name(&type_cfg, &elem);
     }
     (inc, more)
 }
@@ -789,7 +792,7 @@ fn build_conversion_matrix(db: &ModDb, cfg: &CalcConfig, skill: bool) -> [[f64; 
                 continue;
             }
             let names = conversion_names(from, to, skill);
-            let pct = db.sum(ModType::Base, cfg, names).max(0.0);
+            let pct = db.sum_by_name(ModType::Base, cfg, names).max(0.0);
             matrix[fi][ti] = pct / 100.0;
             total += pct;
         }
@@ -798,7 +801,7 @@ fn build_conversion_matrix(db: &ModDb, cfg: &CalcConfig, skill: bool) -> [[f64; 
         // (physMode's default): n/3 per element.
         if !skill && from == DamageType::Physical {
             let random = db
-                .sum(ModType::Base, cfg, &["PhysicalDamageConvertToRandom"])
+                .sum_by_name(ModType::Base, cfg, &["PhysicalDamageConvertToRandom"])
                 .max(0.0);
             if random > 0.0 {
                 for (ti, &to) in DAMAGE_TYPES.iter().enumerate() {
@@ -978,7 +981,9 @@ fn build_gain_matrix(db: &ModDb, cfg: &CalcConfig) -> [[f64; 5]; 5] {
     let mut matrix = [[0.0_f64; 5]; 5];
     for (fi, &from) in DAMAGE_TYPES.iter().enumerate() {
         for (ti, &to) in DAMAGE_TYPES.iter().enumerate() {
-            let pct = db.sum(ModType::Base, cfg, gain_names(from, to)).max(0.0);
+            let pct = db
+                .sum_by_name(ModType::Base, cfg, gain_names(from, to))
+                .max(0.0);
             matrix[fi][ti] = pct / 100.0;
         }
     }
@@ -989,9 +994,11 @@ fn build_gain_matrix(db: &ModDb, cfg: &CalcConfig) -> [[f64; 5]; 5] {
     // to every source type (vendor expands it into `DamageGainAs<Elem>`,
     // summed by buildGainTable for every from row); `PhysicalDamageGainAsRandom`
     // only applies to the physical source row (expanded into `PhysicalDamageGainAs<Elem>`).
-    let generic_random = db.sum(ModType::Base, cfg, &["DamageGainAsRandom"]).max(0.0);
+    let generic_random = db
+        .sum_by_name(ModType::Base, cfg, &["DamageGainAsRandom"])
+        .max(0.0);
     let phys_random = db
-        .sum(ModType::Base, cfg, &["PhysicalDamageGainAsRandom"])
+        .sum_by_name(ModType::Base, cfg, &["PhysicalDamageGainAsRandom"])
         .max(0.0);
     if generic_random > 0.0 || phys_random > 0.0 {
         for (fi, &from) in DAMAGE_TYPES.iter().enumerate() {

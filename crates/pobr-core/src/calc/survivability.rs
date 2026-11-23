@@ -104,7 +104,7 @@ pub fn permanent_reserved_percent(db: &ModDb, cfg: &CalcConfig, pool: &str) -> f
         "Spirit" => Cow::Borrowed("ExtraSpiritReserved"),
         _ => Cow::Owned(format!("Extra{pool}Reserved")),
     };
-    db.sum(ModType::Base, cfg, &[name])
+    db.sum_by_name(ModType::Base, cfg, &[name])
 }
 
 /// The percentage of a pool's reservation that can be cancelled by turning a
@@ -189,9 +189,9 @@ pub fn calc_regen(db: &ModDb, cfg: &CalcConfig, pool: f64, stat: &str) -> f64 {
     } else {
         cfg
     };
-    let flat = db.sum(ModType::Base, cfg, &[stat]);
+    let flat = db.sum_by_name(ModType::Base, cfg, &[stat]);
     let percent_name = regen_percent_name(stat);
-    let percent = db.sum(ModType::Base, cfg, &[percent_name]);
+    let percent = db.sum_by_name(ModType::Base, cfg, &[percent_name]);
     // inc/more: the bare `<stat>` name (vendor CalcDefence.lua:1642-1643's
     // `Sum("INC", nil, resource.."Regen", resource.."RecoveryRate")` --
     // mod_parser's "increased Mana Regeneration Rate" and the statmap buff
@@ -204,7 +204,7 @@ pub fn calc_regen(db: &ModDb, cfg: &CalcConfig, pool: f64, stat: &str) -> f64 {
     let shared_names = shared_regen_increase_names(db, cfg, stat);
     let base_names = [stat, rate_name.as_ref(), recovery_rate_name.as_ref()];
     let inc = if shared_names.is_empty() {
-        db.sum(ModType::Inc, cfg, &base_names)
+        db.sum_by_name(ModType::Inc, cfg, &base_names)
     } else {
         let keep_shared = shared_regen_increase_filter(db, cfg, stat);
         let mut inc_names = [""; 5];
@@ -215,9 +215,9 @@ pub fn calc_regen(db: &ModDb, cfg: &CalcConfig, pool: f64, stat: &str) -> f64 {
             !shared_names.contains(&modifier.name.as_str()) || keep_shared(modifier)
         })
     };
-    let more = db.more(cfg, &[stat])
-        * db.more(cfg, &[rate_name.as_ref()])
-        * db.more(cfg, &[recovery_rate_name.as_ref()]);
+    let more = db.more_by_name(cfg, &[stat])
+        * db.more_by_name(cfg, &[rate_name.as_ref()])
+        * db.more_by_name(cfg, &[recovery_rate_name.as_ref()]);
     regen(pool, flat, percent, inc, more)
 }
 
@@ -257,7 +257,7 @@ pub(crate) fn shared_regen_increase_filter<'a>(
     let rate_name = regen_rate_name(stat);
     let direct_names = [stat, rate_name.as_ref()];
     let direct: Vec<&crate::Modifier> = db
-        .evaluate_names(cfg, &direct_names)
+        .evaluate_names_by_name(cfg, &direct_names)
         .into_iter()
         .filter(|row| row.active && row.modifier.mod_type == ModType::Inc)
         .map(|row| row.modifier)
@@ -437,8 +437,8 @@ pub(crate) fn charge_duration_terms(
     let names = ["ChargeDuration", kind.duration_mod_name()];
     ChargeDurationTerms {
         base: DEFAULT_CHARGE_DURATION_SECONDS,
-        increased: db.sum(ModType::Inc, cfg, &names),
-        more: db.more(cfg, &names),
+        increased: db.sum_by_name(ModType::Inc, cfg, &names),
+        more: db.more_by_name(cfg, &names),
     }
 }
 
@@ -458,7 +458,7 @@ pub struct ChargeState {
 /// Source: agent-docs/recovery-charges-buffs.md §1.3;
 ///       PoB2 `CalcSetup.lua`: max base = 3, boosted by `XChargesMax` BASE mods.
 pub fn charge_maximum(db: &ModDb, cfg: &CalcConfig, kind: ChargeKind) -> u32 {
-    let extra = db.sum(ModType::Base, cfg, &[kind.max_mod_name_str()]);
+    let extra = db.sum_by_name(ModType::Base, cfg, &[kind.max_mod_name_str()]);
     let max_val = DEFAULT_MAX_CHARGES as f64 + extra;
     max_val.max(0.0) as u32
 }
@@ -479,7 +479,7 @@ pub fn charge_minimum(db: &ModDb, cfg: &CalcConfig, kind: ChargeKind, maximum: u
         return maximum;
     }
 
-    let min_val = db.sum(ModType::Base, cfg, &[kind.min_mod_name_str()]);
+    let min_val = db.sum_by_name(ModType::Base, cfg, &[kind.min_mod_name_str()]);
     (min_val.max(0.0) as u32).min(maximum)
 }
 
@@ -826,8 +826,8 @@ pub(crate) fn leech_cap_terms(
     LeechCapTerms {
         pool,
         default_percent: resource.max_rate_pct(),
-        increased: db.sum(ModType::Inc, cfg, &names),
-        more: db.more(cfg, &names),
+        increased: db.sum_by_name(ModType::Inc, cfg, &names),
+        more: db.more_by_name(cfg, &names),
     }
 }
 
@@ -848,7 +848,8 @@ pub(crate) fn leech_instance(amount: f64, speed: f64, cap: LeechCapTerms) -> Lee
 
 pub(crate) fn leech_modifier_factor(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
     let names = [name];
-    ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0)
+    ((1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0) * db.more_by_name(cfg, &names))
+        .max(0.0)
 }
 
 fn leech_source_percent(
@@ -916,7 +917,7 @@ fn leech_source_percent(
                 buf[len] = concat!("PhysicalDamage", $res, "Leech");
                 len += 1;
             }
-            db.sum(ModType::Base, cfg, &buf[..len])
+            db.sum_by_name(ModType::Base, cfg, &buf[..len])
         }};
     }
     match source {
@@ -1169,7 +1170,8 @@ fn recoup_duration(db: &ModDb, cfg: &CalcConfig, resource: RecoupResource) -> f6
         RECOUP_DURATION_DEFAULT
     };
     let names = ["RecoupSpeed"];
-    let speed = (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names);
+    let speed =
+        (1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0) * db.more_by_name(cfg, &names);
     if speed > 0.0 { base / speed } else { base }
 }
 
@@ -1181,21 +1183,21 @@ pub(crate) fn recoup_recovery_rate(db: &ModDb, cfg: &CalcConfig, resource: Recou
         RecoupResource::Mana => "ManaRecoveryRate",
         RecoupResource::EnergyShield => "EnergyShieldRecoveryRate",
     };
-    let inc = db.sum(ModType::Inc, cfg, &[name]);
-    (1.0 + inc / 100.0) * db.more(cfg, &[name])
+    let inc = db.sum_by_name(ModType::Inc, cfg, &[name]);
+    (1.0 + inc / 100.0) * db.more_by_name(cfg, &[name])
 }
 
 /// Generic recoup percentage for a resource: its `XRecoup` BASE, plus
 /// `LifeRecoup` for Energy Shield when `LifeRecoupAlsoAppliesToEnergyShield`
 /// (copies the percentage; the recipient keeps its own timing and recovery).
 fn recoup_base_percent(db: &ModDb, cfg: &CalcConfig, resource: RecoupResource) -> f64 {
-    let mut pct = db.sum(ModType::Base, cfg, &[resource.recoup_mod_name_str()]);
+    let mut pct = db.sum_by_name(ModType::Base, cfg, &[resource.recoup_mod_name_str()]);
     // life_recoup_also_applies_to_energy_shield copies the percentage;
     // the recipient retains its own recovery rate and recoup duration.
     if resource == RecoupResource::EnergyShield
         && db.flag(cfg, "LifeRecoupAlsoAppliesToEnergyShield")
     {
-        pct += db.sum(ModType::Base, cfg, &["LifeRecoup"]);
+        pct += db.sum_by_name(ModType::Base, cfg, &["LifeRecoup"]);
     }
     pct
 }
@@ -1273,7 +1275,7 @@ fn prevented_recoup_terms(
     let percent = recoup_base_percent(db, cfg, resource).max(0.0);
     let physical_prevented = prevented.physical.max(0.0);
     let chaos_prevented = prevented.chaos.max(0.0);
-    let prevented_percent = |name: &str| db.sum(ModType::Base, cfg, &[name]).max(0.0);
+    let prevented_percent = |name: &str| db.sum_by_name(ModType::Base, cfg, &[name]).max(0.0);
     let physical_prevented_percent = physical_mod.map_or_default(prevented_percent);
     let chaos_prevented_percent = prevented_percent(chaos_mod);
     let duration = recoup_duration(db, cfg, resource);
@@ -1322,7 +1324,7 @@ pub fn life_recoup_terms(
     .into_iter()
     .map(|(damage_type, name)| {
         recoupable_by_type[damage_type as usize].max(0.0)
-            * db.sum(ModType::Base, cfg, &[name]).max(0.0)
+            * db.sum_by_name(ModType::Base, cfg, &[name]).max(0.0)
     })
     .sum();
     prevented_recoup_terms(
@@ -1394,7 +1396,7 @@ pub fn es_recoup_terms(
     ];
     let mut percent_by_type = [base; 5];
     for (dtype, name) in specific {
-        percent_by_type[dtype as usize] += db.sum(ModType::Base, cfg, &[name]);
+        percent_by_type[dtype as usize] += db.sum_by_name(ModType::Base, cfg, &[name]);
     }
     let duration = recoup_duration(db, cfg, RecoupResource::EnergyShield);
     let recovery = recoup_recovery_rate(db, cfg, RecoupResource::EnergyShield);

@@ -213,7 +213,7 @@ pub fn damage_shift_table(db: &ModDb, cfg: &CalcConfig) -> [[f64; 5]; 5] {
             if dst == src {
                 continue;
             }
-            let pct = db.sum(ModType::Base, cfg, shift_names(src, dst));
+            let pct = db.sum_by_name(ModType::Base, cfg, shift_names(src, dst));
             shift[s][dst as usize] = pct / 100.0;
             total_pct += pct;
         }
@@ -241,7 +241,7 @@ pub fn armour_applies_pct(db: &ModDb, cfg: &CalcConfig, dtype: DamageType) -> f6
     let mut pct = if db.flag(cfg, names.armour_does_not_apply) {
         0.0
     } else {
-        let base = db.sum(ModType::Base, cfg, &[names.armour_applies]);
+        let base = db.sum_by_name(ModType::Base, cfg, &[names.armour_applies]);
         // Implicit physical BASE 100 (:1862-1863): implemented inline here, not written to ModDb.
         if dtype == DamageType::Physical {
             base + 100.0
@@ -250,7 +250,7 @@ pub fn armour_applies_pct(db: &ModDb, cfg: &CalcConfig, dtype: DamageType) -> f6
         }
     };
     if dtype.is_elemental() && !db.flag(cfg, "ArmourDoesNotApplyToElementalDamageTaken") {
-        pct += db.sum(ModType::Base, cfg, &["ArmourAppliesToElementalDamageTaken"]);
+        pct += db.sum_by_name(ModType::Base, cfg, &["ArmourAppliesToElementalDamageTaken"]);
     }
     pct
 }
@@ -301,12 +301,15 @@ fn effective_applied_armour_for_category(
     } else {
         &["ArmourDefense"]
     };
-    let armour_defense = db.max_of(ModType::Base, cfg, defence_names).max(0.0) / 100.0;
+    let armour_defense = db
+        .max_of_by_name(ModType::Base, cfg, defence_names)
+        .max(0.0)
+        / 100.0;
     let other_pct = |does_not_apply: &str, applies: &str| -> f64 {
         if db.flag(cfg, does_not_apply) {
             0.0
         } else {
-            db.sum(ModType::Base, cfg, &[applies])
+            db.sum_by_name(ModType::Base, cfg, &[applies])
         }
     };
     let from_armour = (inputs.armour * armour_pct / 100.0) * (1.0 + armour_defense);
@@ -423,7 +426,7 @@ pub struct MitigationInputs {
 /// The global damage reduction ceiling: the highest `DamageReductionMax`
 /// modifier (0 when absent) and the ceiling it gives, else the game constant.
 pub(crate) fn global_damage_reduction_max(db: &ModDb, cfg: &CalcConfig) -> (f64, f64) {
-    let modifier = db.max_of(ModType::Base, cfg, &["DamageReductionMax"]);
+    let modifier = db.max_of_by_name(ModType::Base, cfg, &["DamageReductionMax"]);
     let cap = if modifier > 0.0 {
         modifier
     } else {
@@ -442,7 +445,7 @@ pub(crate) fn type_damage_reduction_max(
     dt: DamageType,
     global_cap: f64,
 ) -> (f64, f64) {
-    let modifier = db.max_of(ModType::Base, cfg, &[TAKEN_TYPE_NAMES[dt as usize].dr_max]);
+    let modifier = db.max_of_by_name(ModType::Base, cfg, &[TAKEN_TYPE_NAMES[dt as usize].dr_max]);
     let cap = if modifier > 0.0 {
         modifier.min(global_cap)
     } else {
@@ -457,7 +460,7 @@ pub(crate) fn type_damage_reduction_max(
 /// alike: additional Physical Damage Reduction also reduces Bleeding, where
 /// Armour does not (agent-docs/armour.md).
 pub(crate) fn base_damage_reduction(db: &ModDb, cfg: &CalcConfig, dt: DamageType, cap: f64) -> f64 {
-    db.sum(ModType::Base, cfg, TAKEN_TYPE_NAMES[dt as usize].dr_names)
+    db.sum_by_name(ModType::Base, cfg, TAKEN_TYPE_NAMES[dt as usize].dr_names)
         .clamp(0.0, cap)
 }
 
@@ -499,12 +502,12 @@ pub(crate) fn build_mitigation_ctx_for_category(
             type_damage_reduction_max(db, cfg, dt, global_dr_max);
         ctx.flat_dr_pct[i] = base_damage_reduction(db, cfg, dt, ctx.dr_max_pct[i]);
         // Enemy overwhelm (pobr's `Enemy<X>Overwhelm` BASE mod; currently only physical has a source).
-        ctx.overwhelm_pct[i] = db.sum(ModType::Base, cfg, &[names.enemy_overwhelm]);
+        ctx.overwhelm_pct[i] = db.sum_by_name(ModType::Base, cfg, &[names.enemy_overwhelm]);
         // Resistance-taken multiplier (:2363; enemy penetration is left for config).
         ctx.resist_taken_multi[i] = 1.0 - inputs.resist_pct[i] / 100.0;
         // Flat damage taken follows the selected attack/spell and projectile
         // context; Average gives each of the four categories equal weight.
-        ctx.taken_flat[i] = db.sum(
+        ctx.taken_flat[i] = db.sum_by_name(
             ModType::Base,
             cfg,
             &[
@@ -513,19 +516,19 @@ pub(crate) fn build_mitigation_ctx_for_category(
                 "DamageTakenWhenHit",
                 names.taken_when_hit,
             ],
-        ) + db.sum(
+        ) + db.sum_by_name(
             ModType::Base,
             cfg,
             &["DamageTakenFromAttacks", names.taken_from_attacks],
         ) * category.select([1.0, 1.0, 0.0, 0.0], 0.0)
-            + db.sum(ModType::Base, cfg, &[names.taken_from_proj_attacks])
+            + db.sum_by_name(ModType::Base, cfg, &[names.taken_from_proj_attacks])
                 * category.select([0.0, 1.0, 0.0, 0.0], 0.0)
-            + db.sum(
+            + db.sum_by_name(
                 ModType::Base,
                 cfg,
                 &["DamageTakenFromSpells", names.taken_from_spells],
             ) * category.spell_share()
-            + db.sum(
+            + db.sum_by_name(
                 ModType::Base,
                 cfg,
                 &[

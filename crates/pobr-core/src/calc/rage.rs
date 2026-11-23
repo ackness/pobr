@@ -92,20 +92,20 @@ pub(crate) fn rage_state(db: &ModDb, cfg: &CalcConfig) -> Option<RageState> {
     let rage_name = ["RageRegen"];
     let can_gain = db.flag(cfg, "Condition:CanGainRage")
         || cfg.condition("CanGainRage")
-        || db.sum(ModType::Base, cfg, &rage_name) > 0.0;
+        || db.sum_by_name(ModType::Base, cfg, &rage_name) > 0.0;
     if !can_gain {
         return None;
     }
 
     let scaled = |name: &str, base: f64| {
         let names = [name];
-        (base + db.sum(ModType::Base, cfg, &names))
-            * (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0)
-            * db.more(cfg, &names)
+        (base + db.sum_by_name(ModType::Base, cfg, &names))
+            * (1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0)
+            * db.more_by_name(cfg, &names)
     };
     let maximum = scaled("MaximumRage", cfg.constants.game().base_maximum_rage).max(0.0);
     let minimum = db
-        .sum(ModType::Base, cfg, &["MinimumRage"])
+        .sum_by_name(ModType::Base, cfg, &["MinimumRage"])
         .clamp(0.0, maximum);
     // The stated Rage is a combat input for a character that can gain Rage:
     // read it in that context without switching either condition on for the
@@ -113,15 +113,15 @@ pub(crate) fn rage_state(db: &ModDb, cfg: &CalcConfig) -> Option<RageState> {
     let mut stated_cfg = cfg.clone();
     stated_cfg.conditions.insert("Combat".into(), true);
     stated_cfg.conditions.insert("CanGainRage".into(), true);
-    let stated =
-        db.sum(ModType::Base, &stated_cfg, &["Multiplier:RageStack"]) + cfg.multiplier("RageStack");
+    let stated = db.sum_by_name(ModType::Base, &stated_cfg, &["Multiplier:RageStack"])
+        + cfg.multiplier("RageStack");
     let rage = stated.clamp(minimum, maximum);
 
     let effect_names = ["RageEffect"];
     let effective = db.override_(cfg, "RageEffect").unwrap_or_else(|| {
         (rage
-            * (1.0 + db.sum(ModType::Inc, cfg, &effect_names) / 100.0)
-            * db.more(cfg, &effect_names))
+            * (1.0 + db.sum_by_name(ModType::Inc, cfg, &effect_names) / 100.0)
+            * db.more_by_name(cfg, &effect_names))
         .floor()
     });
     let flags = if db.flag(cfg, "Condition:RageSpellDamage") {
@@ -167,7 +167,7 @@ mod tests {
     /// The more-damage percentage `flags` sees.
     fn more_damage(env: &Env, flags: ModFlags) -> f64 {
         let cfg = env.cfg.clone().with_flags(flags);
-        (env.player.mod_db.more(&cfg, &["Damage"]) - 1.0) * 100.0
+        (env.player.mod_db.more_by_name(&cfg, &["Damage"]) - 1.0) * 100.0
     }
 
     #[test]

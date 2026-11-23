@@ -718,7 +718,7 @@ pub(crate) fn bridge_count_multipliers(db: &ModDb, cfg: &mut CalcConfig) {
         db.override_(&scope, mod_name)
             .or_else(|| scope.multiplier_if_set(var))
             .or_else(|| {
-                let count = db.sum(ModType::Base, &scope, &[mod_name]);
+                let count = db.sum_by_name(ModType::Base, &scope, &[mod_name]);
                 (count != 0.0).then_some(count)
             })
     };
@@ -747,7 +747,7 @@ pub(crate) fn bridge_count_multipliers(db: &ModDb, cfg: &mut CalcConfig) {
     {
         0.0
     } else {
-        db.sum(ModType::Base, &scope, &["DifferentCompanions"])
+        db.sum_by_name(ModType::Base, &scope, &["DifferentCompanions"])
     };
     cfg.multipliers
         .insert("DifferentCompanionsInPresence".into(), companion_kinds);
@@ -1063,7 +1063,9 @@ mod tests {
         );
         // Crit damage base = 30 (monster) + 70 (intrinsic) = 100
         let cfg = CalcConfig::attack();
-        let crit_mult = ctx.mod_db.sum(ModType::Base, &cfg, &["CritMultiplier"]);
+        let crit_mult = ctx
+            .mod_db
+            .sum_by_name(ModType::Base, &cfg, &["CritMultiplier"]);
         assert_eq!(crit_mult, 100.0);
         // Always hits
         assert!(ctx.mod_db.flag(&cfg, "CannotBeEvaded"));
@@ -1090,7 +1092,7 @@ mod tests {
         );
         let inc = ctx
             .mod_db
-            .sum(ModType::Inc, &CalcConfig::attack(), &["Damage"]);
+            .sum_by_name(ModType::Inc, &CalcConfig::attack(), &["Damage"]);
         assert_eq!(inc, 30.0);
     }
 
@@ -1113,7 +1115,7 @@ mod tests {
         );
         let inc = ctx
             .mod_db
-            .sum(ModType::Inc, &CalcConfig::attack(), &["Damage"]);
+            .sum_by_name(ModType::Inc, &CalcConfig::attack(), &["Damage"]);
         assert_eq!(inc, 0.0);
     }
 
@@ -1124,8 +1126,9 @@ mod tests {
         let mut player_db = ModDb::new();
         write_summoned_minion_multipliers(&mut player_db, 5, "RaisedZombie");
         let cfg = CalcConfig::attack();
-        let summ = player_db.sum(ModType::Base, &cfg, &["Multiplier:SummonedMinion"]);
-        let presence = player_db.sum(ModType::Base, &cfg, &["Multiplier:MinionPresenceCount"]);
+        let summ = player_db.sum_by_name(ModType::Base, &cfg, &["Multiplier:SummonedMinion"]);
+        let presence =
+            player_db.sum_by_name(ModType::Base, &cfg, &["Multiplier:MinionPresenceCount"]);
         // Both multipliers were written with the limit count
         assert_eq!(summ, 5.0);
         assert_eq!(presence, 5.0);
@@ -1137,7 +1140,7 @@ mod tests {
         // limit=0 → both multipliers are 0 (no summons)
         write_summoned_minion_multipliers(&mut player_db, 0, "NoLimit");
         let cfg = CalcConfig::attack();
-        let summ = player_db.sum(ModType::Base, &cfg, &["Multiplier:SummonedMinion"]);
+        let summ = player_db.sum_by_name(ModType::Base, &cfg, &["Multiplier:SummonedMinion"]);
         assert_eq!(summ, 0.0);
     }
 }

@@ -55,12 +55,12 @@ pub fn apply_withered(env: &mut Env) {
     let stated = env
         .enemy
         .mod_db
-        .sum(ModType::Base, cfg, &["Multiplier:WitheredStack"]);
+        .sum_by_name(ModType::Base, cfg, &["Multiplier:WitheredStack"]);
     let stacks = stated.clamp(0.0, WITHERED_MAXIMUM_STACKS);
     let magnitude = ["WitherEffect"];
     let per_stack = (WITHERED_CHAOS_DAMAGE_TAKEN_PER_STACK
-        * (1.0 + player.sum(ModType::Inc, cfg, &magnitude) / 100.0)
-        * player.more(cfg, &magnitude))
+        * (1.0 + player.sum_by_name(ModType::Inc, cfg, &magnitude) / 100.0)
+        * player.more_by_name(cfg, &magnitude))
     .floor();
     if stacks * per_stack == 0.0 {
         return;
@@ -105,7 +105,7 @@ mod tests {
         let cfg = env.cfg.clone().with_damage_type(DamageType::Chaos);
         env.enemy
             .mod_db
-            .sum(ModType::Inc, &cfg, &["ChaosDamageTaken"])
+            .sum_by_name(ModType::Inc, &cfg, &["ChaosDamageTaken"])
     }
 
     #[test]

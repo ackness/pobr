@@ -470,7 +470,12 @@ fn apply_resistance_scaled_defences(env: &mut Env) {
 /// and max-hit's extend_total_hit_pool).
 fn inject_companion_life(env: &mut Env) {
     let taken_name = ["TakenFromCompanionBeforeYou"];
-    if env.player.mod_db.sum(ModType::Base, &env.cfg, &taken_name) == 0.0 {
+    if env
+        .player
+        .mod_db
+        .sum_by_name(ModType::Base, &env.cfg, &taken_name)
+        == 0.0
+    {
         return;
     }
     if env
@@ -685,7 +690,7 @@ fn apply_main_hand_share(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env)
     let aura_share = if in_presence {
         minion
             .mod_db
-            .sum(ModType::Base, cfg, &["MainHandDamageToAllies"])
+            .sum_by_name(ModType::Base, cfg, &["MainHandDamageToAllies"])
     } else {
         0.0
     };
@@ -697,7 +702,7 @@ fn apply_main_hand_share(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env)
     // read tracking. Keep their evaluated contributions separate for details,
     // including their original rule, parent source and raw game text.
     let base_sources = |db: &ModDb, scope: &CalcConfig, name: &str| {
-        db.evaluate_named(scope, name)
+        db.evaluate_by_name(scope, name)
             .into_iter()
             .filter(|row| row.active && row.modifier.mod_type == ModType::Base)
             .filter_map(|row| Some((row.modifier.clone(), row.value?)))
@@ -709,7 +714,7 @@ fn apply_main_hand_share(minion: &mut super::Actor, cfg: &CalcConfig, env: &Env)
         let overridden = env
             .player
             .mod_db
-            .evaluate_named(&env.cfg, name)
+            .evaluate_by_name(&env.cfg, name)
             .into_iter()
             .rev()
             .filter(|row| row.active && row.modifier.mod_type == ModType::Override)
@@ -816,8 +821,8 @@ fn apply_extra_auras(minion: &mut super::Actor, cfg: &mut CalcConfig, env: &Env)
         auras.retain(|m| !is_unholy_might_grant(m));
     }
     let names = ["BuffEffectOnSelf", "AuraEffectOnSelf"];
-    let scale = (1.0 + minion.mod_db.sum(ModType::Inc, &*cfg, &names) / 100.0)
-        * minion.mod_db.more(&*cfg, &names);
+    let scale = (1.0 + minion.mod_db.sum_by_name(ModType::Inc, &*cfg, &names) / 100.0)
+        * minion.mod_db.more_by_name(&*cfg, &names);
     for aura in auras {
         minion
             .mod_db
@@ -1072,25 +1077,26 @@ fn pool_reservations(
     super::survivability::Reservation,
     super::survivability::Reservation,
 ) {
-    let reservation_mult = (db.more(cfg, &["ReservationMultiplier"]) * 10_000.0).floor() / 10_000.0;
+    let reservation_mult =
+        (db.more_by_name(cfg, &["ReservationMultiplier"]) * 10_000.0).floor() / 10_000.0;
     let res_eff_divisor = |eff_name: &str| -> f64 {
         let names = [eff_name, "ReservationEfficiency"];
-        let inc = db.sum(ModType::Inc, cfg, &names).max(-100.0);
-        ((1.0 + inc / 100.0) * db.more(cfg, &names)).max(1e-12)
+        let inc = db.sum_by_name(ModType::Inc, cfg, &names).max(-100.0);
+        ((1.0 + inc / 100.0) * db.more_by_name(cfg, &names)).max(1e-12)
     };
     let life_factor = reservation_mult / res_eff_divisor("LifeReservationEfficiency");
     let mana_factor = reservation_mult / res_eff_divisor("ManaReservationEfficiency");
     (
         reservation(
             life,
-            db.sum(ModType::Base, cfg, &["LifeReserved"]) * life_factor,
-            db.sum(ModType::Inc, cfg, &["LifeReservedPercent"]) * life_factor
+            db.sum_by_name(ModType::Base, cfg, &["LifeReserved"]) * life_factor,
+            db.sum_by_name(ModType::Inc, cfg, &["LifeReservedPercent"]) * life_factor
                 + super::survivability::permanent_reserved_percent(db, cfg, "Life"),
         ),
         reservation(
             mana,
-            db.sum(ModType::Base, cfg, &["ManaReserved"]) * mana_factor,
-            db.sum(ModType::Inc, cfg, &["ManaReservedPercent"]) * mana_factor
+            db.sum_by_name(ModType::Base, cfg, &["ManaReserved"]) * mana_factor,
+            db.sum_by_name(ModType::Inc, cfg, &["ManaReservedPercent"]) * mana_factor
                 + super::survivability::permanent_reserved_percent(db, cfg, "Mana"),
         ),
     )
@@ -1102,11 +1108,11 @@ fn fill_mechanics(env: &mut Env) {
     let enemy_crit_chance = env
         .enemy
         .mod_db
-        .sum(ModType::Base, &env.cfg, &["CritChance"]);
-    let enemy_crit_damage = env
-        .enemy
-        .mod_db
-        .sum(ModType::Base, &env.cfg, &["CritMultiplier"]);
+        .sum_by_name(ModType::Base, &env.cfg, &["CritChance"]);
+    let enemy_crit_damage =
+        env.enemy
+            .mod_db
+            .sum_by_name(ModType::Base, &env.cfg, &["CritMultiplier"]);
 
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
@@ -1308,11 +1314,11 @@ fn fill_mechanics(env: &mut Env) {
 
     // Defensive chances
     env.player.output.block_chance = super::block_chance(
-        db.sum(ModType::Base, cfg, &["BlockChance"]),
+        db.sum_by_name(ModType::Base, cfg, &["BlockChance"]),
         cfg.constants.game().block_chance_cap,
     );
     env.player.output.spell_block_chance = super::block_chance(
-        db.sum(ModType::Base, cfg, &["SpellBlockChance"]),
+        db.sum_by_name(ModType::Base, cfg, &["SpellBlockChance"]),
         cfg.constants.game().block_chance_cap,
     );
 
@@ -1564,7 +1570,7 @@ pub(super) fn leech_panel_terms(env: &Env) -> Vec<[super::survivability::LeechRe
 fn snapshot_crossbow_bolts_reloaded(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
-    let base_reload = db.sum(ModType::Base, cfg, &["CrossbowReloadTimeBase"]);
+    let base_reload = db.sum_by_name(ModType::Base, cfg, &["CrossbowReloadTimeBase"]);
     if base_reload <= 0.0 || db.flag(cfg, "CrossbowHasNoAmmo") {
         return;
     }
@@ -1578,9 +1584,9 @@ fn snapshot_crossbow_bolts_reloaded(env: &mut Env) {
         return;
     }
     let reload_time = super::skill_use_time::crossbow_reload_time(db, cfg, base_reload);
-    let bolt_count = db.sum(ModType::Base, cfg, &["CrossbowBoltCount"]);
-    let chance_not_consume = db.sum(ModType::Base, cfg, &["ChanceToNotConsumeAmmo"]);
-    let instant_reload = db.sum(ModType::Base, cfg, &["InstantReloadChance"]);
+    let bolt_count = db.sum_by_name(ModType::Base, cfg, &["CrossbowBoltCount"]);
+    let chance_not_consume = db.sum_by_name(ModType::Base, cfg, &["ChanceToNotConsumeAmmo"]);
+    let instant_reload = db.sum_by_name(ModType::Base, cfg, &["InstantReloadChance"]);
     let reload = super::skill_use_time::apply_crossbow_reload(
         firing_rate,
         bolt_count,
@@ -1614,7 +1620,7 @@ fn snapshot_crossbow_bolts_reloaded(env: &mut Env) {
 fn fill_crossbow_reload(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
-    let base_reload = db.sum(ModType::Base, cfg, &["CrossbowReloadTimeBase"]);
+    let base_reload = db.sum_by_name(ModType::Base, cfg, &["CrossbowReloadTimeBase"]);
     if base_reload <= 0.0 {
         return; // Non-crossbow skill / no reload data: no-op.
     }
@@ -1639,9 +1645,9 @@ fn fill_crossbow_reload(env: &mut Env) {
     }
     let reload_time = super::skill_use_time::crossbow_reload_time(db, cfg, base_reload);
     env.player.output.reload_time = reload_time;
-    let bolt_count = db.sum(ModType::Base, cfg, &["CrossbowBoltCount"]);
-    let chance_not_consume = db.sum(ModType::Base, cfg, &["ChanceToNotConsumeAmmo"]);
-    let instant_reload = db.sum(ModType::Base, cfg, &["InstantReloadChance"]);
+    let bolt_count = db.sum_by_name(ModType::Base, cfg, &["CrossbowBoltCount"]);
+    let chance_not_consume = db.sum_by_name(ModType::Base, cfg, &["ChanceToNotConsumeAmmo"]);
+    let instant_reload = db.sum_by_name(ModType::Base, cfg, &["InstantReloadChance"]);
     let reload = super::skill_use_time::apply_crossbow_reload(
         firing_rate,
         bolt_count,
@@ -1729,16 +1735,16 @@ pub(super) fn damage_view_terms(env: &Env) -> DamageViewTerms {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
     let repeats = super::offence::repeats(db, cfg);
-    let flickers = db.sum(ModType::Base, cfg, &["AdditionalFlickersPerPowerCharge"]);
+    let flickers = db.sum_by_name(ModType::Base, cfg, &["AdditionalFlickersPerPowerCharge"]);
     let removable = cfg.multiplier("RemovablePowerCharge");
     let burst = if flickers > 0.0 && removable > 0.0 {
-        let extra = db.sum(
+        let extra = db.sum_by_name(
             ModType::Base,
             cfg,
             &["Multiplier:ExtraConsumablePowerCharges"],
         );
         let doubled = db
-            .sum(ModType::Base, cfg, &["ConsumedChargeBenefitDoubleChance"])
+            .sum_by_name(ModType::Base, cfg, &["ConsumedChargeBenefitDoubleChance"])
             .clamp(0.0, 100.0);
         BurstTerms::Flickers {
             per_charge: flickers,
@@ -1857,9 +1863,9 @@ fn fill_trigger(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
 
-    let trigger_cd = db.sum(ModType::Base, cfg, &["TriggerCooldownBase"]);
-    let triggered_cd = db.sum(ModType::Base, cfg, &["TriggeredSkillCooldown"]);
-    let cwc_trigger_time = db.sum(ModType::Base, cfg, &["CWCTriggerTime"]);
+    let trigger_cd = db.sum_by_name(ModType::Base, cfg, &["TriggerCooldownBase"]);
+    let triggered_cd = db.sum_by_name(ModType::Base, cfg, &["TriggeredSkillCooldown"]);
+    let cwc_trigger_time = db.sum_by_name(ModType::Base, cfg, &["CWCTriggerTime"]);
 
     // The ICDR multiplier (CooldownRecovery INC/MORE folded together; defaults to 1.0, used as the trigger cooldown's divisor).
     let icdr = cooldown_recovery_multiplier(db, cfg);
@@ -1870,7 +1876,7 @@ fn fill_trigger(env: &mut Env) {
     // effective cast/attack rate as `TriggerSourceRate` BASE (fixes 14-G2: the source rate now
     // grows with attack-speed factors); when not injected (=0), falls back to the main skill's
     // `effective_action_rate` (backward compatible; the fallback value is only placeholder semantics).
-    let injected_source_rate = db.sum(ModType::Base, cfg, &["TriggerSourceRate"]);
+    let injected_source_rate = db.sum_by_name(ModType::Base, cfg, &["TriggerSourceRate"]);
     let source_rate = if injected_source_rate > 0.0 {
         injected_source_rate
     } else {
@@ -1881,8 +1887,8 @@ fn fill_trigger(env: &mut Env) {
     // skipped; on the triggerOnUse path, the injecting side doesn't inject a hit chance).
     let source_stats = TriggerSourceStats {
         action_rate: source_rate,
-        hit_chance: db.sum(ModType::Base, cfg, &["TriggerSourceHitChance"]) / 100.0,
-        crit_chance: db.sum(ModType::Base, cfg, &["TriggerSourceCritChance"]) / 100.0,
+        hit_chance: db.sum_by_name(ModType::Base, cfg, &["TriggerSourceHitChance"]) / 100.0,
+        crit_chance: db.sum_by_name(ModType::Base, cfg, &["TriggerSourceCritChance"]) / 100.0,
         ..Default::default()
     };
     let has_source_stats = source_stats.hit_chance > 0.0 || source_stats.crit_chance > 0.0;
@@ -1908,7 +1914,7 @@ fn fill_trigger(env: &mut Env) {
     // - `SkillIsTriggered` FLAG: gates a recognized trigger relationship with no cooldown data
     //   (vendor's triggerCD=nil → the simulation degenerates to pure source rate).
     let is_global = db.flag(cfg, "TriggerSourceGlobal");
-    let rate_cap_override = db.sum(ModType::Base, cfg, &["TriggerRateCapOverride"]);
+    let rate_cap_override = db.sum_by_name(ModType::Base, cfg, &["TriggerRateCapOverride"]);
     let is_triggered_flagged = db.flag(cfg, "SkillIsTriggered");
 
     let mut trace = TraceGraph::new();
@@ -1950,7 +1956,7 @@ fn fill_trigger(env: &mut Env) {
         // CWC: a channelling trigger, clamped by the triggered skill's cooldown. adds_cast_time
         // is injected by the build layer via `CWCAddsCastTime` BASE (the triggered spell's
         // base_cast_time/cast_speed; 0 if none).
-        let adds_cast_time = db.sum(ModType::Base, cfg, &["CWCAddsCastTime"]);
+        let adds_cast_time = db.sum_by_name(ModType::Base, cfg, &["CWCAddsCastTime"]);
         let (cwc, _) = calc_cwc_trigger_rate_traced(
             cwc_trigger_time,
             triggered_cd,
@@ -1984,8 +1990,8 @@ fn fill_trigger(env: &mut Env) {
 /// the trigger gem's cooldown is given by the gem data). Defaults to 1.0 (no bonus).
 fn cooldown_recovery_multiplier(db: &ModDb, cfg: &CalcConfig) -> f64 {
     let names = ["CooldownRecovery"];
-    let inc = db.sum(ModType::Inc, cfg, &names);
-    let more = db.more(cfg, &names);
+    let inc = db.sum_by_name(ModType::Inc, cfg, &names);
+    let more = db.more_by_name(cfg, &names);
     ((1.0 + inc / 100.0) * more).max(f64::EPSILON)
 }
 
@@ -2067,8 +2073,8 @@ fn fill_skill_mechanics(env: &mut Env) {
     if cfg.flags.intersects(ModFlags::PROJECTILE) || proj.base_count > 0.0 {
         let projectile_speed = ["ProjectileSpeed"];
         env.player.output.projectile_speed_mod = (1.0
-            + db.sum(ModType::Inc, cfg, &projectile_speed) / 100.0)
-            * db.more(cfg, &projectile_speed);
+            + db.sum_by_name(ModType::Inc, cfg, &projectile_speed) / 100.0)
+            * db.more_by_name(cfg, &projectile_speed);
     }
 
     let requirements = super::skill_mechanics::attribute_requirements(db, cfg);
@@ -2108,8 +2114,8 @@ fn fill_skill_mechanics(env: &mut Env) {
 
     // Area scaling is defined even when the skill has no known base radius.
     // Only the radius itself remains zero without SkillAreaRadiusBase.
-    let base_radius = db.sum(ModType::Base, cfg, &["SkillAreaRadiusBase"]);
-    let extra = db.sum(ModType::Base, cfg, &["SkillAreaRadiusExtra"]);
+    let base_radius = db.sum_by_name(ModType::Base, cfg, &["SkillAreaRadiusBase"]);
+    let extra = db.sum_by_name(ModType::Base, cfg, &["SkillAreaRadiusExtra"]);
     let aoe = calc_aoe(db, cfg, base_radius, extra);
     env.player.output.aoe_area_mod = aoe.area_mod;
     if base_radius > 0.0 {
@@ -2117,10 +2123,10 @@ fn fill_skill_mechanics(env: &mut Env) {
     }
 
     // Cooldown: needs the skill's base cooldown (SkillCooldownBase BASE, seconds). Skipped if absent.
-    let base_cd = db.sum(ModType::Base, cfg, &["SkillCooldownBase"]);
+    let base_cd = db.sum_by_name(ModType::Base, cfg, &["SkillCooldownBase"]);
     if base_cd > 0.0 {
         let stored = db
-            .sum(ModType::Base, cfg, &["SkillStoredUsesBase"])
+            .sum_by_name(ModType::Base, cfg, &["SkillStoredUsesBase"])
             .max(1.0) as u32;
         let cd = calc_cooldown(db, cfg, base_cd, stored);
         env.player.output.cooldown = cd.cooldown;
@@ -2132,13 +2138,13 @@ fn fill_skill_mechanics(env: &mut Env) {
     let costs = crate::calc::skill_mechanics::skill_costs(db, cfg);
     env.player.output.mana_cost = costs.mana;
     env.player.output.life_cost = costs.life;
-    let base_sr = db.sum(ModType::Base, cfg, &["SkillSpiritReservationBase"]);
+    let base_sr = db.sum_by_name(ModType::Base, cfg, &["SkillSpiritReservationBase"]);
     if base_sr > 0.0 {
         env.player.output.spirit_reserved = calc_spirit_reservation(db, cfg, base_sr).final_cost;
     }
     // Skills that reserve a share of the pool (Companions): the shares add
     // up, and the pool reserves that share of itself, rounded up.
-    let share = db.sum(ModType::Base, cfg, &["SkillSpiritReservationPercent"]);
+    let share = db.sum_by_name(ModType::Base, cfg, &["SkillSpiritReservationPercent"]);
     if share > 0.0 {
         let pool = crate::calc::defence_panels::calc_spirit_pool(db, cfg);
         env.player.output.spirit_reserved += (pool * share / 100.0).ceil();
@@ -2877,8 +2883,8 @@ fn resolve_stack_config(
             Some(v) => v.max(1.0) as u32,
             None => {
                 let names = [stacks_name.as_ref()];
-                let base = db.sum(ModType::Base, cfg, &names);
-                let more = db.more(cfg, &names);
+                let base = db.sum_by_name(ModType::Base, cfg, &names);
+                let more = db.more_by_name(cfg, &names);
                 ((1.0 + base) * more).max(1.0) as u32
             }
         }
@@ -2904,8 +2910,8 @@ fn enemy_poise_threshold_effective(enemy: &ModDb, cfg: &CalcConfig, level: u8) -
         .monster_scaling
         .poise_threshold_at(level as u32) as f64;
     let names = ["PoiseThreshold", "FreezeThreshold", "EnemyAilmentThreshold"];
-    let inc = enemy.sum(ModType::Inc, cfg, &names);
-    let more = enemy.more(cfg, &names);
+    let inc = enemy.sum_by_name(ModType::Inc, cfg, &names);
+    let more = enemy.more_by_name(cfg, &names);
     (base * (1.0 + inc / 100.0) * more).floor()
 }
 
@@ -2944,14 +2950,14 @@ pub(crate) fn enemy_ailment_threshold_terms(
             .constants
             .monster_scaling
             .ailment_threshold_at(level as u32) as f64,
-        increased: enemy.sum(ModType::Inc, cfg, &names),
-        more: enemy.more(cfg, &names),
+        increased: enemy.sum_by_name(ModType::Inc, cfg, &names),
+        more: enemy.more_by_name(cfg, &names),
     }
 }
 
 /// The flat physical damage reduction bonus (fraction), from `PhysicalDamageReduction` Base (percentage points → fraction).
 fn physical_pdr_fraction(db: &ModDb, cfg: &CalcConfig) -> f64 {
-    let pct = db.sum(ModType::Base, cfg, &["PhysicalDamageReduction"]);
+    let pct = db.sum_by_name(ModType::Base, cfg, &["PhysicalDamageReduction"]);
     // Doesn't clamp early at 0.9 here: PoB2 only clamps by DamageReductionMax once, after summing
     // armour+flat (CalcDefence.lua:396); the upper-bound clamp is handled uniformly by the ehp
     // layer (a variable dr_max). This only guarantees non-negativity.
@@ -2971,12 +2977,12 @@ pub(super) fn resource_cost_use_rate(env: &Env) -> f64 {
     } else if env
         .player
         .mod_db
-        .sum(ModType::Base, &cfg, &["CrossbowReloadTimeBase"])
+        .sum_by_name(ModType::Base, &cfg, &["CrossbowReloadTimeBase"])
         > 0.0
         && env
             .player
             .mod_db
-            .sum(ModType::Base, &cfg, &["ChanceToNotConsumeAmmo"])
+            .sum_by_name(ModType::Base, &cfg, &["ChanceToNotConsumeAmmo"])
             >= 100.0
     {
         rate = 0.0;
@@ -3001,7 +3007,7 @@ pub(super) fn resource_cost_use_rate(env: &Env) -> f64 {
         + env
             .player
             .mod_db
-            .sum(ModType::Base, &cfg, &["RepeatCount"])
+            .sum_by_name(ModType::Base, &cfg, &["RepeatCount"])
             .max(0.0);
     if env.crossbow_reload.is_none() {
         rate /= repeats;

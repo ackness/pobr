@@ -29,7 +29,7 @@ pub(crate) fn apply_armour_break(env: &mut Env) {
         .flag(&env.cfg, "Condition:CanArmourBreakBelowZero")
         || env.cfg.condition("CanArmourBreakBelowZero");
     let minimum = if below_zero { -original } else { 0.0 };
-    let amount = db.sum(ModType::Base, &env.cfg, &["ArmourBreakAmount"]);
+    let amount = db.sum_by_name(ModType::Base, &env.cfg, &["ArmourBreakAmount"]);
     let remaining = if amount > 0.0 {
         (original - amount).max(minimum)
     } else {
@@ -67,9 +67,9 @@ pub(crate) fn enemy_armour(db: &ModDb, cfg: &CalcConfig) -> f64 {
     let names = ["Armour"];
     db.override_(cfg, "Armour")
         .unwrap_or_else(|| {
-            db.sum(ModType::Base, cfg, &names)
-                * (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0)
-                * db.more(cfg, &names)
+            db.sum_by_name(ModType::Base, cfg, &names)
+                * (1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0)
+                * db.more_by_name(cfg, &names)
         })
         .max(0.0)
 }
@@ -79,7 +79,8 @@ pub(crate) fn enemy_armour(db: &ModDb, cfg: &CalcConfig) -> f64 {
 /// `broken_armour_and_sundered_armour_debuff_effect_+%` scales that effect.
 pub(super) fn fully_broken_effect(db: &ModDb, cfg: &CalcConfig) -> f64 {
     let names = ["FullyBrokenArmourEffect"];
-    20.0 * (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0).max(0.0) * db.more(cfg, &names)
+    20.0 * (1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0).max(0.0)
+        * db.more_by_name(cfg, &names)
 }
 
 pub(crate) fn apply_fully_broken_effect(env: &mut Env) {

@@ -436,8 +436,8 @@ impl DefenceTerms {
             "EnergyShield" => DEFENCE_SCALING_NAMES[2],
             _ => &single,
         };
-        let slot_scoped =
-            db.sum(ModType::Inc, cfg, names) != self.inc || db.more(cfg, names) != self.more;
+        let slot_scoped = db.sum_by_name(ModType::Inc, cfg, names) != self.inc
+            || db.more_by_name(cfg, names) != self.more;
         let mut steps = FormulaBuilder::default();
         if self.base != 0.0 {
             steps.set(FormulaOp::Base, self.base, self.base);
@@ -500,7 +500,7 @@ pub(crate) fn defence_resource_terms_and_totals(
                 continue;
             }
             conv[s][t] = db
-                .sum(ModType::Base, cfg, &[MATRIX_CONVERT_NAMES[s][t]])
+                .sum_by_name(ModType::Base, cfg, &[MATRIX_CONVERT_NAMES[s][t]])
                 .clamp(0.0, 100.0);
             total_conv[s] += conv[s][t];
         }
@@ -588,7 +588,7 @@ pub(crate) fn defence_resource_terms_and_totals(
         // The global base at this source's processing time = the input base stat + the global
         // flat BASE + amounts converted in by earlier sources (serial semantics, :1328-1329
         // `globalBase = Sum(BASE, source.mods) + source.globalBase`).
-        let global_flat = db.sum_global_only(ModType::Base, cfg, &[global_base_names[s]]);
+        let global_flat = db.sum_global_only_by_name(ModType::Base, cfg, &[global_base_names[s]]);
         // A maximum that is set ("Maximum Life is 1") is the amount converted
         // from: 5% of a Maximum Life of 1 converts next to nothing.
         let global_s = db
@@ -597,7 +597,8 @@ pub(crate) fn defence_resource_terms_and_totals(
         // Total channel input = `<Src>Total` BASE + amounts converted in by earlier sources'
         // total (:1331/:1364, serial and structured the same way).
         let total_name = MATRIX_TOTAL_NAMES[s];
-        let total_s = db.sum_global_only(ModType::Base, cfg, &[total_name]) + total_received[s];
+        let total_s =
+            db.sum_global_only_by_name(ModType::Base, cfg, &[total_name]) + total_received[s];
         let mut total_sources: Vec<Modifier> = db
             .named(total_name)
             .filter(|m| m.mod_type == ModType::Base && m.slot_name().is_none() && m.matches(cfg))
@@ -642,7 +643,7 @@ pub(crate) fn defence_resource_terms_and_totals(
             // GainAs stacks on top of ConvertTo and doesn't reduce the source (:1336-1337
             // `rate = conversionRate + gainRate`).
             let gain = db
-                .sum(ModType::Base, cfg, &[MATRIX_GAIN_NAMES[s][t]])
+                .sum_by_name(ModType::Base, cfg, &[MATRIX_GAIN_NAMES[s][t]])
                 .max(0.0);
             let rate = conv[s][t] + gain;
             if rate <= 0.0 {
@@ -691,7 +692,7 @@ pub(crate) fn defence_resource_terms_and_totals(
         }
         if !is_defence_src {
             let gain = db
-                .sum(ModType::Base, cfg, &[MATRIX_GAIN_AS_WARD_NAMES[s]])
+                .sum_by_name(ModType::Base, cfg, &[MATRIX_GAIN_AS_WARD_NAMES[s]])
                 .max(0.0);
             if gain > 0.0 {
                 extra_ward += (global_s * gain / 100.0).round();
@@ -716,16 +717,16 @@ pub(crate) fn defence_resource_terms_and_totals(
     for (s, value) in out.iter_mut().enumerate() {
         // Global inc/more scaling name set (see [`defence_scaling_names`] for the combined-name semantics).
         let names = DEFENCE_SCALING_NAMES[s];
-        let global_inc = db.sum_global_only(ModType::Inc, cfg, names);
-        let global_more = db.more_global_only(cfg, names);
+        let global_inc = db.sum_global_only_by_name(ModType::Inc, cfg, names);
+        let global_more = db.more_global_only_by_name(cfg, names);
         // Global base = retained-after-shrinking + amounts converted in by later sources (amounts
         // received after this source was processed are not reconverted by it — serial semantics).
         let mut total = (kept_global[s] + received[s]) * (1.0 + global_inc / 100.0) * global_more;
         let mut slot_scaled = 0.0;
         let mut slot_parts = Vec::new();
         for (slot, slot_base) in &slots[s] {
-            let slot_inc = db.sum_for_slot(ModType::Inc, cfg, names, slot);
-            let slot_more = db.more_for_slot(cfg, names, slot);
+            let slot_inc = db.sum_for_slot_by_name(ModType::Inc, cfg, names, slot);
+            let slot_more = db.more_for_slot_by_name(cfg, names, slot);
             let scaled =
                 slot_base * (1.0 + (global_inc + slot_inc) / 100.0) * (global_more * slot_more);
             total += scaled;
@@ -872,8 +873,8 @@ pub fn calc_es_recharge(
     }
 
     // Recharge rate: base 750%/min, scaled by EnergyShieldRecharge INC/MORE.
-    let rate_inc = db.sum(ModType::Inc, cfg, es_recharge_increase_names(db, cfg));
-    let rate_more = db.more(cfg, &["EnergyShieldRecharge"]);
+    let rate_inc = db.sum_by_name(ModType::Inc, cfg, es_recharge_increase_names(db, cfg));
+    let rate_more = db.more_by_name(cfg, &["EnergyShieldRecharge"]);
     let rate_per_min =
         (ES_RECHARGE_RATE_PER_MINUTE_BASE * (1.0 + rate_inc / 100.0) * rate_more).max(0.0);
     // Convert to a per-second fraction (750%/min = 12.5%/s; divide by 100 to get a fraction).
@@ -887,10 +888,11 @@ pub fn calc_es_recharge(
     let recharge_base = db
         .override_(cfg, "EnergyShieldRechargeBase")
         .unwrap_or_else(|| {
-            ES_RECHARGE_DELAY_BASE + db.sum(ModType::Base, cfg, &["EnergyShieldRechargeFaster"])
+            ES_RECHARGE_DELAY_BASE
+                + db.sum_by_name(ModType::Base, cfg, &["EnergyShieldRechargeFaster"])
         })
         .max(0.0);
-    let faster_inc = db.sum(ModType::Inc, cfg, &["EnergyShieldRechargeFaster"]);
+    let faster_inc = db.sum_by_name(ModType::Inc, cfg, &["EnergyShieldRechargeFaster"]);
     let delay_denom = 1.0 + faster_inc / 100.0;
     let delay_seconds = if delay_denom > 0.0 {
         round(recharge_base / delay_denom)
@@ -961,7 +963,7 @@ pub(crate) fn stun_avoidance_terms(
     if db.flag(cfg, "StunImmune") {
         return (0.0, 1.0);
     }
-    let raw = db.sum(ModType::Base, cfg, &["AvoidStun"]);
+    let raw = db.sum_by_name(ModType::Base, cfg, &["AvoidStun"]);
     (
         (100.0 - raw.min(AVOID_AILMENT_CAP)).max(0.0),
         if energy_shield > total_taken_hit && !energy_shield_protects_mana {
@@ -980,10 +982,10 @@ pub fn calc_avoidance(
     energy_shield_protects_mana: bool,
 ) -> AvoidanceResult {
     // Hit avoidance
-    let avoid_all_raw = db.sum(ModType::Base, cfg, &["AvoidAllDamageFromHitsChance"]);
+    let avoid_all_raw = db.sum_by_name(ModType::Base, cfg, &["AvoidAllDamageFromHitsChance"]);
     let avoid_all_damage_from_hits = round(avoid_all_raw.clamp(0.0, AVOID_HIT_CAP));
 
-    let avoid_proj_raw = db.sum(ModType::Base, cfg, &["AvoidProjectileDamageChance"]);
+    let avoid_proj_raw = db.sum_by_name(ModType::Base, cfg, &["AvoidProjectileDamageChance"]);
     let avoid_projectile_damage = round(avoid_proj_raw.clamp(0.0, AVOID_HIT_CAP));
 
     // Per-type hit avoidance (`Avoid<Type>DamageChance` BASE, e.g. Perfidy body armour's "chance
@@ -998,7 +1000,7 @@ pub fn calc_avoidance(
     ];
     let mut avoid_typed = [0.0; 5];
     for (i, &name) in AVOID_TYPED_NAMES.iter().enumerate() {
-        let raw = db.sum(ModType::Base, cfg, &[name]);
+        let raw = db.sum_by_name(ModType::Base, cfg, &[name]);
         avoid_typed[i] = round(raw.clamp(0.0, AVOID_HIT_CAP));
     }
 
@@ -1008,8 +1010,8 @@ pub fn calc_avoidance(
     // (does not transfer ShockImmune, and avoids double-counting AvoidElementalAilments / AvoidShock).
     let shock_applies_to_elemental = db.flag(cfg, "ShockAvoidAppliesToElementalAilments");
     let elemental_ailment_immune = db.flag(cfg, "ElementalAilmentImmune");
-    let avoid_elemental_raw = db.sum(ModType::Base, cfg, &["AvoidElementalAilments"]);
-    let avoid_shock_direct = db.sum(ModType::Base, cfg, &["AvoidShock"]);
+    let avoid_elemental_raw = db.sum_by_name(ModType::Base, cfg, &["AvoidElementalAilments"]);
+    let avoid_shock_direct = db.sum_by_name(ModType::Base, cfg, &["AvoidShock"]);
 
     // Shock avoidance (ElementalAilmentImmune also covers shock)
     let shock_immune = db.flag(cfg, "ShockImmune") || elemental_ailment_immune;
@@ -1032,7 +1034,7 @@ pub fn calc_avoidance(
     let avoid_ignite_raw = if ignite_immune {
         100.0
     } else {
-        db.sum(ModType::Base, cfg, &["AvoidIgnite"]) + avoid_elemental_base
+        db.sum_by_name(ModType::Base, cfg, &["AvoidIgnite"]) + avoid_elemental_base
     };
     let avoid_ignite = round(avoid_ignite_raw.clamp(0.0, AVOID_AILMENT_CAP));
 
@@ -1040,7 +1042,7 @@ pub fn calc_avoidance(
     let avoid_chill_raw = if chill_immune {
         100.0
     } else {
-        db.sum(ModType::Base, cfg, &["AvoidChill"]) + avoid_elemental_base
+        db.sum_by_name(ModType::Base, cfg, &["AvoidChill"]) + avoid_elemental_base
     };
     let avoid_chill = round(avoid_chill_raw.clamp(0.0, AVOID_AILMENT_CAP));
 
@@ -1048,7 +1050,7 @@ pub fn calc_avoidance(
     let avoid_freeze_raw = if freeze_immune {
         100.0
     } else {
-        db.sum(ModType::Base, cfg, &["AvoidFreeze"]) + avoid_elemental_base
+        db.sum_by_name(ModType::Base, cfg, &["AvoidFreeze"]) + avoid_elemental_base
     };
     let avoid_freeze = round(avoid_freeze_raw.clamp(0.0, AVOID_AILMENT_CAP));
 
@@ -1056,7 +1058,7 @@ pub fn calc_avoidance(
     let avoid_poison_raw = if poison_immune {
         100.0
     } else {
-        db.sum(ModType::Base, cfg, &["AvoidPoison"])
+        db.sum_by_name(ModType::Base, cfg, &["AvoidPoison"])
     };
     let avoid_poison = round(avoid_poison_raw.clamp(0.0, AVOID_AILMENT_CAP));
 
@@ -1064,7 +1066,7 @@ pub fn calc_avoidance(
     let avoid_bleeding_raw = if bleed_immune {
         100.0
     } else {
-        db.sum(ModType::Base, cfg, &["AvoidBleeding"])
+        db.sum_by_name(ModType::Base, cfg, &["AvoidBleeding"])
     };
     let avoid_bleeding = round(avoid_bleeding_raw.clamp(0.0, AVOID_AILMENT_CAP));
 
@@ -1137,7 +1139,7 @@ fn monster_hit_chance_pct(evasion: f64, accuracy: f64) -> f64 {
 
 /// Equivalent to `calcLib.mod`: `(1 + Σinc/100) × Πmore` (vendor CalcTools.lua `calcLib.mod`).
 fn scaling_mod(db: &ModDb, cfg: &CalcConfig, names: &[&str]) -> f64 {
-    (1.0 + db.sum(ModType::Inc, cfg, names) / 100.0) * db.more(cfg, names)
+    (1.0 + db.sum_by_name(ModType::Inc, cfg, names) / 100.0) * db.more_by_name(cfg, names)
 }
 
 /// The Evade four-way split calculation (PoB2 CalcDefence.lua:1394-1456).
@@ -1263,7 +1265,7 @@ pub(crate) fn evade_terms(
     let spell_projectile_evasion = typed_evasion("SpellProjectileEvasion");
 
     // :1435-1436 combined BASE and the cap.
-    let evade_base = db.sum(ModType::Base, cfg, &["EvadeChance"]);
+    let evade_base = db.sum_by_name(ModType::Base, cfg, &["EvadeChance"]);
     let evade_max = db
         .override_(cfg, "EvadeChanceMax")
         .unwrap_or(cfg.constants.game().evade_chance_cap)
@@ -1326,8 +1328,13 @@ pub(crate) fn evade_terms(
 /// Keystone toggles (CI, etc.) are passed in via the `keystones` snapshot.
 pub fn fill_evade_stun(env: &mut Env, keystones: &crate::rules::DefenceKeystones) {
     let hit_names = ["HitChance"];
-    let enemy_hit_mult = (1.0 + env.enemy.mod_db.sum(ModType::Inc, &env.cfg, &hit_names) / 100.0)
-        * env.enemy.mod_db.more(&env.cfg, &hit_names);
+    let enemy_hit_mult = (1.0
+        + env
+            .enemy
+            .mod_db
+            .sum_by_name(ModType::Inc, &env.cfg, &hit_names)
+            / 100.0)
+        * env.enemy.mod_db.more_by_name(&env.cfg, &hit_names);
     let enemy_cannot_be_evaded = env.enemy.mod_db.flag(&env.cfg, "CannotBeEvaded");
     let enemy_accuracy = super::setup_env::enemy_accuracy(&env.enemy, &env.cfg);
 
@@ -1489,8 +1496,8 @@ pub fn taken_mult_for_type_with_source(
         base
     };
 
-    let inc = db.sum(ModType::Inc, cfg, names);
-    let more = db.more(cfg, names);
+    let inc = db.sum_by_name(ModType::Inc, cfg, names);
+    let more = db.more_by_name(cfg, names);
     let mult = (1.0 + inc / 100.0) * more;
     round(mult.max(0.0))
 }
@@ -1566,8 +1573,8 @@ pub fn taken_mult_over_time(db: &ModDb, cfg: &CalcConfig, damage_type: DamageTyp
         ],
     };
 
-    let inc = db.sum(ModType::Inc, cfg, names);
-    let more = db.more(cfg, names);
+    let inc = db.sum_by_name(ModType::Inc, cfg, names);
+    let more = db.more_by_name(cfg, names);
     let mult = (1.0 + inc / 100.0) * more;
     round(mult.max(0.0))
 }
@@ -1642,14 +1649,14 @@ pub fn calc_taken_multi_suite(db: &ModDb, cfg: &CalcConfig) -> TakenMultiSuite {
             // Generic elemental: the global elemental contribution alone (each type already
             // includes its own share; this field only holds the pure ElementalDamageTaken contribution)
             let names = ["ElementalDamageTaken", "ElementalDamageTakenWhenHit"];
-            let inc = db.sum(ModType::Inc, cfg, &names);
-            let more = db.more(cfg, &names);
+            let inc = db.sum_by_name(ModType::Inc, cfg, &names);
+            let more = db.more_by_name(cfg, &names);
             round(((1.0 + inc / 100.0) * more).max(0.0))
         },
         all_over_time: {
             let names = ["DamageTaken", "DamageTakenOverTime"];
-            let inc = db.sum(ModType::Inc, cfg, &names);
-            let more = db.more(cfg, &names);
+            let inc = db.sum_by_name(ModType::Inc, cfg, &names);
+            let more = db.more_by_name(cfg, &names);
             round(((1.0 + inc / 100.0) * more).max(0.0))
         },
     }
@@ -1668,7 +1675,7 @@ pub fn calc_taken_multi_suite(db: &ModDb, cfg: &CalcConfig) -> TakenMultiSuite {
 /// Source: agent-docs/active-defences.md §4;
 ///       PoB2 `src/Modules/CalcDefence.lua` CritExtraDamageReduction section.
 pub fn calc_crit_extra_reduction(db: &ModDb, cfg: &CalcConfig) -> CritExtraReduction {
-    let raw = db.sum(ModType::Base, cfg, &["ReduceCritExtraDamage"]);
+    let raw = db.sum_by_name(ModType::Base, cfg, &["ReduceCritExtraDamage"]);
     CritExtraReduction {
         reduction_pct: round(raw.clamp(0.0, 100.0)),
     }

@@ -224,7 +224,7 @@ fn dependency_counters_observe_real_read_boundaries() {
         );
         super::super::skill_mechanics::skill_costs(&db, &cfg);
         super::super::skill_use_time::calc_skill_use_time(&db, &cfg, 0.7, 0.0, false);
-        db.sum(ModType::Base, &cfg, &["Life"]);
+        db.sum_by_name(ModType::Base, &cfg, &["Life"]);
         crate::HighPrecisionRules::default().precision_for("Damage", ModType::More);
     });
     for boundary in [

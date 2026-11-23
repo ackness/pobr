@@ -43,20 +43,23 @@ pub const ACTION_SPEED: &str = "ActionSpeed";
 /// `slows_have_no_potency_on_you` makes their slowing component zero.
 pub fn action_speed_factor(db: &ModDb, cfg: &CalcConfig) -> f64 {
     let names = [ACTION_SPEED];
-    let increases = db.contributions(ModType::Inc, cfg, &names);
-    let multipliers = db.contributions(ModType::More, cfg, &names);
+    let increases = db.contributions_by_name(ModType::Inc, cfg, &names);
+    let multipliers = db.contributions_by_name(ModType::More, cfg, &names);
     let has_slow = increases
         .iter()
         .chain(&multipliers)
         .any(|row| row.value < 0.0);
     if !has_slow {
-        return ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0);
+        return ((1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0)
+            * db.more_by_name(cfg, &names))
+        .max(0.0);
     }
     let potency = if db.flag(cfg, "UnaffectedBySlows") {
         0.0
     } else {
         let effect = ["SlowEffectOnSelf"];
-        ((1.0 + db.sum(ModType::Inc, cfg, &effect) / 100.0) * db.more(cfg, &effect)).max(0.0)
+        ((1.0 + db.sum_by_name(ModType::Inc, cfg, &effect) / 100.0) * db.more_by_name(cfg, &effect))
+            .max(0.0)
     };
     let mut increase = 0.0;
     let mut more = 1.0;
@@ -141,7 +144,7 @@ pub fn calc_skill_use_time(
 ) -> SkillUseTime {
     #[cfg(test)]
     super::hit_read_probe::dependency("skill use time/server tick");
-    let total_skill_speed = db.sum(ModType::Inc, cfg, speed_names_slice(cfg));
+    let total_skill_speed = db.sum_by_name(ModType::Inc, cfg, speed_names_slice(cfg));
     let action_factor = action_speed_factor(db, cfg);
     let total_action_speed = (action_factor - 1.0) * 100.0;
 
@@ -299,7 +302,8 @@ pub fn crossbow_reload_time(db: &crate::ModDb, cfg: &CalcConfig, base_reload_s: 
     let len = 1 + speed.len();
     buf[1..len].copy_from_slice(speed);
     let names = &buf[..len];
-    let multi = (1.0 + db.sum(ModType::Inc, cfg, names) / 100.0) * db.more(cfg, names);
+    let multi =
+        (1.0 + db.sum_by_name(ModType::Inc, cfg, names) / 100.0) * db.more_by_name(cfg, names);
     if multi <= 0.0 {
         return base_reload_s;
     }

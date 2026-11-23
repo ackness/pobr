@@ -25,7 +25,10 @@ pub(super) fn apply(env: &mut Env) {
         let Some(amount) = env.player.mod_db.override_(&env.cfg, input) else {
             continue;
         };
-        let percent = env.player.mod_db.sum(ModType::Base, &env.cfg, &[share]);
+        let percent = env
+            .player
+            .mod_db
+            .sum_by_name(ModType::Base, &env.cfg, &[share]);
         let damage = amount * percent / divisor;
         if damage <= 0.0 {
             continue;

@@ -302,7 +302,7 @@ fn dedup_seed(m: &Modifier) -> DedupSeed {
 /// leaves none.
 pub(crate) fn charm_slots(db: &crate::ModDb, cfg: &crate::CalcConfig) -> f64 {
     db.override_(cfg, "CharmLimit")
-        .unwrap_or_else(|| db.sum(ModType::Base, cfg, &["CharmLimit"]))
+        .unwrap_or_else(|| db.sum_by_name(ModType::Base, cfg, &["CharmLimit"]))
         .min(cfg.constants.game().charm_limit_cap)
 }
 
@@ -381,8 +381,8 @@ pub fn merge_flasks_charms(env: &mut Env) {
     // exception table; vendor's ScaleAddList → ScaleAddMod already looks up
     // highPrecisionMods per mod, ModStore.lua:69).
     let rules = &env.high_precision;
-    let flask_effect_inc = db.sum(ModType::Inc, cfg, &["FlaskEffect"]);
-    let charm_effect_inc = db.sum(ModType::Inc, cfg, &["CharmEffect"]);
+    let flask_effect_inc = db.sum_by_name(ModType::Inc, cfg, &["FlaskEffect"]);
+    let charm_effect_inc = db.sum_by_name(ModType::Inc, cfg, &["CharmEffect"]);
     let mut charm_budget = charm_slots(db, cfg);
     let flasks_do_not_apply = db.flag(cfg, "FlasksDoNotApplyToPlayer");
     let cannot_recover_life = db.flag(cfg, "CannotRecoverLifeOutsideLeech");
@@ -586,10 +586,10 @@ pub(super) fn resolve_unholy_might_magnitude(env: &mut Env) {
     if !env.cfg.multipliers.contains_key("UnholyMightMagnitude") {
         return;
     }
-    let inc = env
-        .player
-        .mod_db
-        .sum(ModType::Inc, &env.cfg, &["UnholyMightGrantedMagnitude"]);
+    let inc =
+        env.player
+            .mod_db
+            .sum_by_name(ModType::Inc, &env.cfg, &["UnholyMightGrantedMagnitude"]);
     if let Some(magnitude) = env.cfg.multipliers.get_mut("UnholyMightMagnitude") {
         // Add magnitude points before the definition's multiplier tag rounds
         // them: 100 + 16 must not become 115.999... through 100 * 1.16.
@@ -707,13 +707,15 @@ mod forward_enemy_modifiers_tests {
         assert_eq!(
             env.enemy
                 .mod_db
-                .sum(ModType::Inc, &effective_cursed_cfg(), &names),
+                .sum_by_name(ModType::Inc, &effective_cursed_cfg(), &names),
             6.0,
             "EnemyCursed + Effective -> enemy-side damage-taken chain matches"
         );
         let panel_cfg = CalcConfig::new().with_condition("EnemyCursed", true);
         assert_eq!(
-            env.enemy.mod_db.sum(ModType::Inc, &panel_cfg, &names),
+            env.enemy
+                .mod_db
+                .sum_by_name(ModType::Inc, &panel_cfg, &names),
             0.0,
             "panel scope (no Effective) -> doesn't match"
         );
@@ -729,10 +731,11 @@ mod forward_enemy_modifiers_tests {
 
         forward_enemy_modifiers(&mut env);
 
-        let contributions =
-            env.enemy
-                .mod_db
-                .contributions(ModType::Inc, &effective_cursed_cfg(), &["DamageTaken"]);
+        let contributions = env.enemy.mod_db.contributions_by_name(
+            ModType::Inc,
+            &effective_cursed_cfg(),
+            &["DamageTaken"],
+        );
         assert_eq!(contributions.len(), 1);
         let origin = contributions[0]
             .origin
@@ -759,7 +762,7 @@ mod forward_enemy_modifiers_tests {
             ))),
         );
         forward_enemy_modifiers(&mut env);
-        let contributions = env.enemy.mod_db.contributions(
+        let contributions = env.enemy.mod_db.contributions_by_name(
             ModType::Inc,
             &CalcConfig::new().with_mode_effective(true),
             &["ActionSpeed"],
@@ -784,7 +787,7 @@ mod forward_enemy_modifiers_tests {
         let names = ["DamageTaken"];
         let cfg = effective_cursed_cfg();
         assert_eq!(
-            env.enemy.mod_db.sum(ModType::Inc, &cfg, &names),
+            env.enemy.mod_db.sum_by_name(ModType::Inc, &cfg, &names),
             12.0,
             "two equal-valued source entries are each kept (vendor caches by instance, not merged by value)"
         );
@@ -793,7 +796,7 @@ mod forward_enemy_modifiers_tests {
         forward_enemy_modifiers(&mut env);
         forward_enemy_modifiers(&mut env);
         assert_eq!(
-            env.enemy.mod_db.sum(ModType::Inc, &cfg, &names),
+            env.enemy.mod_db.sum_by_name(ModType::Inc, &cfg, &names),
             12.0,
             "idempotent: already-forwarded entries are deducted by a fingerprint multiset"
         );
@@ -813,7 +816,7 @@ mod forward_enemy_modifiers_tests {
         assert_eq!(
             env.enemy
                 .mod_db
-                .sum(ModType::Inc, &effective_cursed_cfg(), &["DamageTaken"]),
+                .sum_by_name(ModType::Inc, &effective_cursed_cfg(), &["DamageTaken"]),
             6.0
         );
     }

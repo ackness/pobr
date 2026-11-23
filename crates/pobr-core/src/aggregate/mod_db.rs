@@ -798,6 +798,15 @@ impl ModDb {
         &self,
         mod_type: ModType,
         ctx: impl Into<EvalContext<'a>>,
+        names: &[ModName],
+    ) -> f64 {
+        self.sum_by_name(mod_type, ctx, names)
+    }
+
+    pub(crate) fn sum_by_name<'a>(
+        &self,
+        mod_type: ModType,
+        ctx: impl Into<EvalContext<'a>>,
         names: &[impl Borrow<str>],
     ) -> f64 {
         let ctx = ctx.into();
@@ -915,7 +924,16 @@ impl ModDb {
     /// modifiers passing `matches(cfg)`, returning `0.0` for an empty set.
     ///
     /// Source: agent-docs/debuffs.md §Exposure (exposure takes the strongest).
-    pub fn max_of(&self, mod_type: ModType, cfg: &CalcConfig, names: &[impl Borrow<str>]) -> f64 {
+    pub fn max_of(&self, mod_type: ModType, cfg: &CalcConfig, names: &[ModName]) -> f64 {
+        self.max_of_by_name(mod_type, cfg, names)
+    }
+
+    pub(crate) fn max_of_by_name(
+        &self,
+        mod_type: ModType,
+        cfg: &CalcConfig,
+        names: &[impl Borrow<str>],
+    ) -> f64 {
         let query = Query::Max(mod_type, names);
         // The strongest one is the one that counts.
         let mut strongest = None;
@@ -942,6 +960,15 @@ impl ModDb {
     /// after GlobalLimit accounting (`clamped_from` carries the value before
     /// clipping); `Σ value == sum()` always holds.
     pub fn contributions<'a>(
+        &self,
+        mod_type: ModType,
+        ctx: impl Into<EvalContext<'a>>,
+        names: &[ModName],
+    ) -> Vec<ModContribution> {
+        self.contributions_by_name(mod_type, ctx, names)
+    }
+
+    pub(crate) fn contributions_by_name<'a>(
         &self,
         mod_type: ModType,
         ctx: impl Into<EvalContext<'a>>,
@@ -979,9 +1006,17 @@ impl ModDb {
     pub fn evaluate_named<'a>(
         &self,
         ctx: impl Into<EvalContext<'a>>,
+        name: &ModName,
+    ) -> Vec<ModEvaluation<'_>> {
+        self.evaluate_names(ctx, std::slice::from_ref(name))
+    }
+
+    pub(crate) fn evaluate_by_name<'a>(
+        &self,
+        ctx: impl Into<EvalContext<'a>>,
         name: &(impl Borrow<str> + ?Sized),
     ) -> Vec<ModEvaluation<'_>> {
-        self.evaluate_names(ctx, &[name.borrow()])
+        self.evaluate_names_by_name(ctx, &[name.borrow()])
     }
 
     /// Every modifier stored under `names`, as one query over that name set
@@ -994,6 +1029,14 @@ impl ModDb {
     /// [`sum`](Self::sum) / [`more`](Self::more) over the same `names`); an
     /// inactive row keeps its unscaled stored number.
     pub fn evaluate_names<'a>(
+        &self,
+        ctx: impl Into<EvalContext<'a>>,
+        names: &[ModName],
+    ) -> Vec<ModEvaluation<'_>> {
+        self.evaluate_names_by_name(ctx, names)
+    }
+
+    pub(crate) fn evaluate_names_by_name<'a>(
         &self,
         ctx: impl Into<EvalContext<'a>>,
         names: &[impl Borrow<str>],
@@ -1049,11 +1092,22 @@ impl ModDb {
         &self,
         mod_type: ModType,
         ctx: impl Into<EvalContext<'a>>,
+        names: &[ModName],
+        trace: &mut TraceGraph,
+        label: impl Into<String>,
+    ) -> TracedValue {
+        self.sum_traced_by_name(mod_type, ctx, names, trace, label)
+    }
+
+    pub(crate) fn sum_traced_by_name<'a>(
+        &self,
+        mod_type: ModType,
+        ctx: impl Into<EvalContext<'a>>,
         names: &[impl Borrow<str>],
         trace: &mut TraceGraph,
         label: impl Into<String>,
     ) -> TracedValue {
-        let contributions = self.contributions(mod_type, ctx.into(), names);
+        let contributions = self.contributions_by_name(mod_type, ctx, names);
         let value = contributions
             .iter()
             .map(|contribution| contribution.value)
@@ -1117,7 +1171,15 @@ impl ModDb {
     }
 
     /// The parameter is upgraded to `impl Into<EvalContext>` (same as [`sum`](Self::sum)).
-    pub fn more<'a>(&self, ctx: impl Into<EvalContext<'a>>, names: &[impl Borrow<str>]) -> f64 {
+    pub fn more<'a>(&self, ctx: impl Into<EvalContext<'a>>, names: &[ModName]) -> f64 {
+        self.more_by_name(ctx, names)
+    }
+
+    pub(crate) fn more_by_name<'a>(
+        &self,
+        ctx: impl Into<EvalContext<'a>>,
+        names: &[impl Borrow<str>],
+    ) -> f64 {
         self.more_rounded(ctx.into(), names, Query::Of(ModType::More, names), |_| true)
     }
 
@@ -1193,17 +1255,27 @@ impl ModDb {
     pub fn more_traced<'a>(
         &self,
         ctx: impl Into<EvalContext<'a>>,
+        names: &[ModName],
+        trace: &mut TraceGraph,
+        label: impl Into<String>,
+    ) -> TracedValue {
+        self.more_traced_by_name(ctx, names, trace, label)
+    }
+
+    pub(crate) fn more_traced_by_name<'a>(
+        &self,
+        ctx: impl Into<EvalContext<'a>>,
         names: &[impl Borrow<str>],
         trace: &mut TraceGraph,
         label: impl Into<String>,
     ) -> TracedValue {
         let ctx = ctx.into();
-        let contributions = self.contributions(ModType::More, ctx, names);
+        let contributions = self.contributions_by_name(ModType::More, ctx, names);
         // Rounding shares the same implementation as [`more`](Self::more)
         // (including the precision-exception branch), so traced / non-traced
         // values are always equal (previously a duplicate implementation,
         // which was prone to drifting apart).
-        let factor = self.more(ctx, names);
+        let factor = self.more_by_name(ctx, names);
         let factor_node = trace.add_node(label, factor, TraceOperation::MoreProduct);
 
         for contribution in contributions {
@@ -1244,7 +1316,11 @@ impl ModDb {
     /// explicitly excludes mods with a slot tag, so they only apply through
     /// [`sum_for_slot`](Self::sum_for_slot) on a matching slot. Corresponds
     /// to the global part of PoB2's `calcLib.mod`.
-    pub fn sum_global_only(
+    pub fn sum_global_only(&self, mod_type: ModType, cfg: &CalcConfig, names: &[ModName]) -> f64 {
+        self.sum_global_only_by_name(mod_type, cfg, names)
+    }
+
+    pub(crate) fn sum_global_only_by_name(
         &self,
         mod_type: ModType,
         cfg: &CalcConfig,
@@ -1273,6 +1349,16 @@ impl ModDb {
         &self,
         mod_type: ModType,
         cfg: &CalcConfig,
+        names: &[ModName],
+        slot: &str,
+    ) -> f64 {
+        self.sum_for_slot_by_name(mod_type, cfg, names, slot)
+    }
+
+    pub(crate) fn sum_for_slot_by_name(
+        &self,
+        mod_type: ModType,
+        cfg: &CalcConfig,
         names: &[impl Borrow<str>],
         slot: &str,
     ) -> f64 {
@@ -1295,7 +1381,15 @@ impl ModDb {
     }
 
     /// Multiplies only `More` modifiers **without a slot restriction** — the global more bucket for per-slot defence aggregation.
-    pub fn more_global_only(&self, cfg: &CalcConfig, names: &[impl Borrow<str>]) -> f64 {
+    pub fn more_global_only(&self, cfg: &CalcConfig, names: &[ModName]) -> f64 {
+        self.more_global_only_by_name(cfg, names)
+    }
+
+    pub(crate) fn more_global_only_by_name(
+        &self,
+        cfg: &CalcConfig,
+        names: &[impl Borrow<str>],
+    ) -> f64 {
         let query = Query::Unslotted(ModType::More, names);
         self.more_rounded(EvalContext::new(cfg), names, query, |m| {
             m.slot_name().is_none()
@@ -1303,7 +1397,16 @@ impl ModDb {
     }
 
     /// Multiplies only `More` modifiers restricted to `slot` — the slot more bucket for per-slot defence aggregation.
-    pub fn more_for_slot(&self, cfg: &CalcConfig, names: &[impl Borrow<str>], slot: &str) -> f64 {
+    pub fn more_for_slot(&self, cfg: &CalcConfig, names: &[ModName], slot: &str) -> f64 {
+        self.more_for_slot_by_name(cfg, names, slot)
+    }
+
+    pub(crate) fn more_for_slot_by_name(
+        &self,
+        cfg: &CalcConfig,
+        names: &[impl Borrow<str>],
+        slot: &str,
+    ) -> f64 {
         let query = Query::Slot(ModType::More, names, slot);
         self.more_rounded(EvalContext::new(cfg), names, query, |m| {
             m.slot_name() == Some(slot)
@@ -1453,7 +1556,7 @@ impl ModDb {
         if let Some(overridden) = self.override_(cfg, &name) {
             return overridden;
         }
-        cfg.multiplier(var) + self.sum(ModType::Base, cfg, &[name.as_str()])
+        cfg.multiplier(var) + self.sum_by_name(ModType::Base, cfg, &[name.as_str()])
     }
 
     /// The traced version of [`override_`](Self::override_): records a
@@ -1576,7 +1679,7 @@ impl ModList {
         self.db.add_mod(modifier);
     }
 
-    pub fn sum(&self, mod_type: ModType, cfg: &CalcConfig, names: &[impl Borrow<str>]) -> f64 {
+    pub fn sum(&self, mod_type: ModType, cfg: &CalcConfig, names: &[ModName]) -> f64 {
         let local = self.db.sum(mod_type, cfg, names);
         let parent = self
             .parent

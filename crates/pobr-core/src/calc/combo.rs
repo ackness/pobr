@@ -132,12 +132,12 @@ pub fn calculate(env: &mut Env) {
     // A required amount is the capacity for Bell, Mantra and Combo Finisher
     // (their descriptions say to reach maximum Combo). An explicit maximum,
     // as on Culmination, is a distinct stat and must never be added to it.
-    let explicit_maximum = db.max_of(ModType::Base, cfg, &[MAXIMUM]);
+    let explicit_maximum = db.max_of_by_name(ModType::Base, cfg, &[MAXIMUM]);
     let limit = explicit_maximum.max(0.0).floor();
     // Quality can reduce the active skill's own requirement (Mantra), so
     // combine those signed contributions before comparing separate requirements.
-    let required = db.sum(ModType::Base, cfg, &[REQUIRED]);
-    let finisher_required = db.max_of(ModType::Base, cfg, &[FINISHER_REQUIRED]);
+    let required = db.sum_by_name(ModType::Base, cfg, &[REQUIRED]);
+    let finisher_required = db.max_of_by_name(ModType::Base, cfg, &[FINISHER_REQUIRED]);
     let maximum = if explicit_maximum > 0.0 {
         limit
     } else {
@@ -172,8 +172,8 @@ pub fn calculate(env: &mut Env) {
             || cfg.skill_types.intersects(SkillTypes::USED_BY_PROXY);
         terms.enabled = cfg.mode_combat && !finality && !proxy;
         if terms.enabled {
-            terms.additional = db.sum(ModType::Base, cfg, &[ADDITIONAL]);
-            terms.additional_chance = db.sum(ModType::Base, cfg, &[CHANCE]);
+            terms.additional = db.sum_by_name(ModType::Base, cfg, &[ADDITIONAL]);
+            terms.additional_chance = db.sum_by_name(ModType::Base, cfg, &[CHANCE]);
         }
     }
     env.player.output.combo_generation = terms;

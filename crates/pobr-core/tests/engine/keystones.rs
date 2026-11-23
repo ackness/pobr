@@ -164,7 +164,7 @@ fn dynamism_recognizes_the_five_second_generator_without_inventing_charge_uptime
         db.sum(
             ModType::Base,
             &CalcConfig::new(),
-            &["ThaumaturgicalDynamismChargeInterval"]
+            &["ThaumaturgicalDynamismChargeInterval".into()]
         ),
         5.0
     );

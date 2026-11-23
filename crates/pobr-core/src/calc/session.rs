@@ -346,13 +346,13 @@ impl CalculationSession {
         }
         let db = &self.env.player.mod_db;
         let cfg = &self.env.cfg;
-        let mult = (db.more(cfg, &["ReservationMultiplier"]) * 10_000.0).floor() / 10_000.0;
+        let mult = (db.more_by_name(cfg, &["ReservationMultiplier"]) * 10_000.0).floor() / 10_000.0;
         let eff_names = ["LifeReservationEfficiency", "ReservationEfficiency"];
-        let eff_inc = db.sum(ModType::Inc, cfg, &eff_names).max(-100.0);
-        let divisor = ((1.0 + eff_inc / 100.0) * db.more(cfg, &eff_names)).max(1e-12);
+        let eff_inc = db.sum_by_name(ModType::Inc, cfg, &eff_names).max(-100.0);
+        let divisor = ((1.0 + eff_inc / 100.0) * db.more_by_name(cfg, &eff_names)).max(1e-12);
         let factor = mult / divisor;
-        let flat = db.sum(ModType::Base, cfg, &["LifeReserved"]) * factor;
-        let percent = db.sum(ModType::Inc, cfg, &["LifeReservedPercent"]) * factor
+        let flat = db.sum_by_name(ModType::Base, cfg, &["LifeReserved"]) * factor;
+        let percent = db.sum_by_name(ModType::Inc, cfg, &["LifeReservedPercent"]) * factor
             + super::survivability::permanent_reserved_percent(db, cfg, "Life");
         let reserved = super::survivability::reservation(life, flat, percent).reserved;
         if (life - reserved) / life
@@ -1026,7 +1026,7 @@ impl CalculationSession {
         self.env
             .player
             .mod_db
-            .sum(ModType::Base, &self.env.cfg, &[name])
+            .sum_by_name(ModType::Base, &self.env.cfg, &[name])
     }
 
     /// Main skill Life cost snapshot (vendor `output.LifeCost`; includes
@@ -1051,9 +1051,9 @@ impl CalculationSession {
     pub fn attribute_total(&self, name: &str, class_base: f64) -> f64 {
         let names = [name];
         let db = &self.env.player.mod_db;
-        let base = class_base + db.sum(ModType::Base, &self.env.cfg, &names);
-        let inc = db.sum(ModType::Inc, &self.env.cfg, &names);
-        let more = db.more(&self.env.cfg, &names);
+        let base = class_base + db.sum_by_name(ModType::Base, &self.env.cfg, &names);
+        let inc = db.sum_by_name(ModType::Inc, &self.env.cfg, &names);
+        let more = db.more_by_name(&self.env.cfg, &names);
         (base * (1.0 + inc / 100.0) * more).round().max(0.0)
     }
 
@@ -1149,7 +1149,7 @@ impl CalculationSession {
         };
         let db = &self.env.enemy.mod_db;
         let cfg = &self.env.cfg;
-        let mut rows = db.evaluate_names(cfg, names);
+        let mut rows = db.evaluate_names_by_name(cfg, names);
         for row in &mut rows {
             if row.modifier.mod_type == ModType::Base
                 && db.override_(cfg, row.modifier.name.as_str()).is_some()
@@ -1733,7 +1733,7 @@ impl CalculationSession {
                     let mut rows = damage::evaluate_generic_scaling(db, &cfg);
                     rows.extend(damage::evaluate_type_scaling(db, &cfg, *ty));
                     rows.extend(
-                        db.evaluate_names(&cfg, &skill_dot::dot_multiplier_names(*ty))
+                        db.evaluate_names_by_name(&cfg, &skill_dot::dot_multiplier_names(*ty))
                             .into_iter()
                             .filter(|row| row.modifier.mod_type == ModType::Base),
                     );
@@ -1782,10 +1782,12 @@ impl CalculationSession {
         let scoped = ailment::ailment_scoped_cfg(cfg, kind);
         let (faster, slower) = ailment::rate_mod_names(name);
         Some(AilmentLines {
-            chance: db.evaluate_names(&scoped, &ailment::chance_mod_names(name, from_hit_size)),
-            duration: db.evaluate_names(&scoped, ailment::duration_mod_names_for(kind, db, cfg)),
-            effect: db.evaluate_names(&scoped, &ailment::effect_mod_names()),
-            rate: db.evaluate_names(cfg, &[faster, slower]),
+            chance: db
+                .evaluate_names_by_name(&scoped, &ailment::chance_mod_names(name, from_hit_size)),
+            duration: db
+                .evaluate_names_by_name(&scoped, ailment::duration_mod_names_for(kind, db, cfg)),
+            effect: db.evaluate_names_by_name(&scoped, &ailment::effect_mod_names()),
+            rate: db.evaluate_names_by_name(cfg, &[faster, slower]),
         })
     }
 
@@ -1825,7 +1827,7 @@ impl CalculationSession {
     pub fn hand_stat_mods(&self, stat: &str, pass: usize) -> Vec<crate::ModEvaluation<'_>> {
         let names = self.stat_mod_names_cow(stat);
         let cfg = self.stat_cfg(stat, pass);
-        self.env.player.mod_db.evaluate_names(&*cfg, &names)
+        self.env.player.mod_db.evaluate_names_by_name(&*cfg, &names)
     }
 
     /// `(BASE sum, INC sum, MORE product)` of the modifiers `stat`'s stage
@@ -1840,9 +1842,9 @@ impl CalculationSession {
         let cfg = self.stat_cfg(stat, pass);
         let db = &self.env.player.mod_db;
         (
-            db.sum(ModType::Base, &*cfg, &names),
-            db.sum(ModType::Inc, &*cfg, &names),
-            db.more(&*cfg, &names),
+            db.sum_by_name(ModType::Base, &*cfg, &names),
+            db.sum_by_name(ModType::Inc, &*cfg, &names),
+            db.more_by_name(&*cfg, &names),
         )
     }
 
@@ -1955,7 +1957,7 @@ impl CalculationSession {
         let cfg = self.minion_detail_cfg(minion);
         minion
             .mod_db
-            .evaluate_names(&cfg, &self.minion_stat_names(&cfg, stat))
+            .evaluate_names_by_name(&cfg, &self.minion_stat_names(&cfg, stat))
     }
 
     /// `(BASE sum, INC sum, MORE product)` of [`Self::minion_stat_mods`].
@@ -1967,9 +1969,9 @@ impl CalculationSession {
         let names = self.minion_stat_names(&cfg, stat);
         let db = &minion.mod_db;
         (
-            db.sum(ModType::Base, &cfg, &names),
-            db.sum(ModType::Inc, &cfg, &names),
-            db.more(&cfg, &names),
+            db.sum_by_name(ModType::Base, &cfg, &names),
+            db.sum_by_name(ModType::Inc, &cfg, &names),
+            db.more_by_name(&cfg, &names),
         )
     }
 

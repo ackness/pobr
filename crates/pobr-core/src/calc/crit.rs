@@ -435,7 +435,7 @@ pub(crate) fn crit_chance_terms(
     // Flesh" ("Base Critical Hit Chance for Spells is 15%", ModParser.lua:5801 →
     // `mod("CritChanceBase","OVERRIDE",num,SkillType.Spell)`).
     let mut source_base_pct =
-        base_crit * 100.0 + player.sum(ModType::Base, cfg, &["SkillBaseCritChance"]);
+        base_crit * 100.0 + player.sum_by_name(ModType::Base, cfg, &["SkillBaseCritChance"]);
     // Legacy of Northpaw replaces the weapon's locally modified base, before
     // added crit and global increases. The source writer sets this flag only
     // for an attack that actually takes its base crit from a weapon.
@@ -451,17 +451,17 @@ pub(crate) fn crit_chance_terms(
     // Base sum (including enemy crit weakness SelfCritChance, mode_effective only).
     // The source base and mod contributions are both in percentage points;
     // all arithmetic stays in percentage-point space (matching PoB2).
-    let player_flat = player.sum(ModType::Base, cfg, &crit_chance_names);
+    let player_flat = player.sum_by_name(ModType::Base, cfg, &crit_chance_names);
     let enemy_flat = enemy.map_or_default(|enemy| {
         #[cfg(test)]
         super::hit_read_probe::dependency("enemy critical chance");
-        enemy.sum(ModType::Base, cfg, &self_crit_chance)
+        enemy.sum_by_name(ModType::Base, cfg, &self_crit_chance)
     });
-    let player_inc = player.sum(ModType::Inc, cfg, &crit_chance_names);
+    let player_inc = player.sum_by_name(ModType::Inc, cfg, &crit_chance_names);
     let enemy_inc = enemy.map_or_default(|enemy| {
         #[cfg(test)]
         super::hit_read_probe::dependency("enemy critical chance");
-        enemy.sum(ModType::Inc, cfg, &self_crit_chance)
+        enemy.sum_by_name(ModType::Inc, cfg, &self_crit_chance)
     });
     CritChanceTerms {
         always: player.flag(cfg, "AlwaysCrit"),
@@ -470,7 +470,7 @@ pub(crate) fn crit_chance_terms(
         enemy_flat,
         player_inc,
         enemy_inc,
-        more: player.more(cfg, &crit_chance_names),
+        more: player.more_by_name(cfg, &crit_chance_names),
         // Cap: default 100, overridable by Override or Sum BASE.
         cap: crit_chance_cap(player, cfg),
     }
@@ -672,9 +672,9 @@ pub(crate) fn crit_multiplier_terms(
     let self_crit_mult = ["SelfCritMultiplier"];
     CritMultiplierTerms {
         base_bonus: base_bonus_percent,
-        flat: player.sum(ModType::Base, cfg, &crit_multiplier_names),
-        inc: player.sum(ModType::Inc, cfg, &crit_multiplier_names),
-        more: player.more(cfg, &crit_multiplier_names),
+        flat: player.sum_by_name(ModType::Base, cfg, &crit_multiplier_names),
+        inc: player.sum_by_name(ModType::Inc, cfg, &crit_multiplier_names),
+        more: player.more_by_name(cfg, &crit_multiplier_names),
         override_bonus: player.override_(cfg, "CriticalStrikeMultiplier"),
         disabled: player.flag(cfg, "NoCritMultiplier"),
         inevitable_less_more: adjust.and_then(|adjust| adjust.inevitable_less_more),
@@ -683,8 +683,8 @@ pub(crate) fn crit_multiplier_terms(
             #[cfg(test)]
             super::hit_read_probe::dependency("enemy critical bonus");
             (
-                enemy.sum(ModType::Base, cfg, &self_crit_mult),
-                enemy.sum(ModType::Inc, cfg, &self_crit_mult),
+                enemy.sum_by_name(ModType::Base, cfg, &self_crit_mult),
+                enemy.sum_by_name(ModType::Inc, cfg, &self_crit_mult),
             )
         }),
     }
@@ -695,7 +695,7 @@ fn crit_chance_cap(player: &ModDb, cfg: &CalcConfig) -> f64 {
     if let Some(override_cap) = player.override_(cfg, "CritChanceCap") {
         return override_cap;
     }
-    let summed = player.sum(ModType::Base, cfg, &["CritChanceCap"]);
+    let summed = player.sum_by_name(ModType::Base, cfg, &["CritChanceCap"]);
     if summed > 0.0 {
         summed
     } else {
@@ -758,7 +758,7 @@ fn record_trace(
     };
     // Keep the source base visible, replacing the weapon source with the
     // override's source when its original crit chance no longer contributes.
-    let chance_base = player.sum_traced(
+    let chance_base = player.sum_traced_by_name(
         ModType::Base,
         cfg,
         base_names,
@@ -775,7 +775,7 @@ fn record_trace(
         );
         trace.add_edge(node, crit_node);
     }
-    let chance_inc = player.sum_traced(
+    let chance_inc = player.sum_traced_by_name(
         ModType::Inc,
         cfg,
         &crit_chance_names,
@@ -793,7 +793,7 @@ fn record_trace(
     trace.add_edge(chance_more.node_id, crit_node);
 
     // CritMultiplier BASE / INC / MORE.
-    let mult_base = player.sum_traced(
+    let mult_base = player.sum_traced_by_name(
         ModType::Base,
         cfg,
         &crit_multiplier_names,
@@ -801,7 +801,7 @@ fn record_trace(
         "CriticalStrikeMultiplier BASE sum",
     );
     trace.add_edge(mult_base.node_id, crit_node);
-    let mult_inc = player.sum_traced(
+    let mult_inc = player.sum_traced_by_name(
         ModType::Inc,
         cfg,
         &crit_multiplier_names,
@@ -822,7 +822,7 @@ fn record_trace(
     if let Some(enemy) = enemy {
         #[cfg(test)]
         super::hit_read_probe::dependency("enemy critical trace");
-        let enemy_chance = enemy.sum_traced(
+        let enemy_chance = enemy.sum_traced_by_name(
             ModType::Base,
             cfg,
             &["SelfCritChance"],
@@ -830,7 +830,7 @@ fn record_trace(
             "enemy SelfCritChance BASE sum",
         );
         trace.add_edge(enemy_chance.node_id, crit_node);
-        let enemy_mult = enemy.sum_traced(
+        let enemy_mult = enemy.sum_traced_by_name(
             ModType::Base,
             cfg,
             &["SelfCritMultiplier"],
@@ -890,8 +890,15 @@ pub(crate) fn apply_inexorable_critical(env: &mut super::Env) {
             ModType::More,
         ),
     ] {
-        let per_second = env.player.mod_db.sum(ModType::Base, &env.cfg, &[rate]);
-        let limit = env.player.mod_db.sum(ModType::Base, &env.cfg, &[cap]).abs();
+        let per_second = env
+            .player
+            .mod_db
+            .sum_by_name(ModType::Base, &env.cfg, &[rate]);
+        let limit = env
+            .player
+            .mod_db
+            .sum_by_name(ModType::Base, &env.cfg, &[cap])
+            .abs();
         let value = (per_second * seconds).clamp(-limit, limit);
         if value != 0.0 {
             env.player.mod_db.add_mod(

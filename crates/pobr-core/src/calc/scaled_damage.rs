@@ -68,27 +68,27 @@ pub(crate) fn scaled_damage_effect_for_target(
     crit_chance: f64,
 ) -> ScaledDamage {
     let triple_on_crit = db
-        .sum(ModType::Base, cfg, &["TripleDamageChanceOnCrit"])
+        .sum_by_name(ModType::Base, cfg, &["TripleDamageChanceOnCrit"])
         .min(100.0);
     let enemy_self_triple = enemy.map_or_default(|enemy| {
         #[cfg(test)]
         super::hit_read_probe::dependency("enemy scaled damage");
-        enemy.sum(ModType::Base, cfg, &["SelfTripleDamageChance"])
+        enemy.sum_by_name(ModType::Base, cfg, &["SelfTripleDamageChance"])
     });
-    let triple_chance = (db.sum(ModType::Base, cfg, &["TripleDamageChance"])
+    let triple_chance = (db.sum_by_name(ModType::Base, cfg, &["TripleDamageChance"])
         + enemy_self_triple
         + triple_on_crit * crit_chance)
         .min(100.0);
 
     let double_on_crit = db
-        .sum(ModType::Base, cfg, &["DoubleDamageChanceOnCrit"])
+        .sum_by_name(ModType::Base, cfg, &["DoubleDamageChanceOnCrit"])
         .min(100.0);
     let enemy_self_double = enemy.map_or_default(|enemy| {
         #[cfg(test)]
         super::hit_read_probe::dependency("enemy scaled damage");
-        enemy.sum(ModType::Base, cfg, &["SelfDoubleDamageChance"])
+        enemy.sum_by_name(ModType::Base, cfg, &["SelfDoubleDamageChance"])
     });
-    let mut double_chance = (db.sum(ModType::Base, cfg, &["DoubleDamageChance"])
+    let mut double_chance = (db.sum_by_name(ModType::Base, cfg, &["DoubleDamageChance"])
         + enemy_self_double
         + double_on_crit * crit_chance)
         .min(100.0);
@@ -102,7 +102,7 @@ pub(crate) fn scaled_damage_effect_for_target(
             double_chance = 100.0;
         } else {
             double_chance = (double_chance
-                + db.sum(ModType::Base, cfg, &["IntimidatingUpTimeRatio"]))
+                + db.sum_by_name(ModType::Base, cfg, &["IntimidatingUpTimeRatio"]))
             .min(100.0);
         }
     }
@@ -210,7 +210,7 @@ pub fn dps_end_factors(
     // source to grenade skills in the support adaptation decision, so
     // non-grenade skills' db always has this name absent (=0).
     let activate_twice = db
-        .sum(ModType::Base, cfg, &["GrenadeActivateTwice"])
+        .sum_by_name(ModType::Base, cfg, &["GrenadeActivateTwice"])
         .min(100.0);
     // Barrage repeats (vendor CalcOffence.lua:962-976): when a Barrageable
     // skill is granted SequentialProjectiles + BarrageRepeats by the Barrage
@@ -227,11 +227,12 @@ pub fn dps_end_factors(
             && !db.flag(cfg, "OneShotProj")
             && !db.flag(cfg, "NoAdditionalProjectiles")
             && !db.flag(cfg, "TriggeredBySnipe");
-        let repeats = db.sum(ModType::Base, cfg, &["BarrageRepeats"]);
+        let repeats = db.sum_by_name(ModType::Base, cfg, &["BarrageRepeats"]);
         if barrageable && repeats > 0.0 {
             let repeat_damage_names = ["BarrageRepeatDamage"];
-            let repeat_damage = (1.0 + db.sum(ModType::Inc, cfg, &repeat_damage_names) / 100.0)
-                * db.more(cfg, &repeat_damage_names);
+            let repeat_damage = (1.0
+                + db.sum_by_name(ModType::Inc, cfg, &repeat_damage_names) / 100.0)
+                * db.more_by_name(cfg, &repeat_damage_names);
             let dps_multi = (1.0 + repeats) * repeat_damage;
             // Vendor's MoreInternal rounds each named bucket's percentage
             // (ModList.lua:143 `result * round(modResult, 2)`): the Barrage
@@ -248,11 +249,13 @@ pub fn dps_end_factors(
         }
     };
     let skill = skill_dps_multiplier.unwrap_or(1.0);
-    let increased = db.sum(ModType::Inc, cfg, &dps_names);
-    let more = db.more(cfg, &dps_names);
+    let increased = db.sum_by_name(ModType::Inc, cfg, &dps_names);
+    let more = db.more_by_name(cfg, &dps_names);
     let grenade = 1.0 + activate_twice / 100.0;
     let dps_multiplier = skill * (1.0 + increased / 100.0) * more * grenade * barrage_repeats_more;
-    let quantity_multiplier = db.sum(ModType::Base, cfg, &["QuantityMultiplier"]).max(1.0);
+    let quantity_multiplier = db
+        .sum_by_name(ModType::Base, cfg, &["QuantityMultiplier"])
+        .max(1.0);
     DpsEndFactors {
         skill,
         increased,

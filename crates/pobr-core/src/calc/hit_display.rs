@@ -148,7 +148,7 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
                 "1 + max(0, AdditionalRepeats)",
                 vec![(
                     "AdditionalRepeats",
-                    env.player.mod_db.sum(
+                    env.player.mod_db.sum_by_name(
                         pobr_data::prelude::ModType::Base,
                         &env.cfg,
                         &["RepeatCount"],

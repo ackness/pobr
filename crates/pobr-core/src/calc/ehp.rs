@@ -572,7 +572,7 @@ pub struct EnemyDamageIn {
 /// Explicit inputs replace preset base values, leaving added enemy damage intact.
 fn enemy_base(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
     db.override_(cfg, name)
-        .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[name]))
+        .unwrap_or_else(|| db.sum_by_name(ModType::Base, cfg, &[name]))
 }
 
 const ENEMY_DAMAGE_NAMES: [(&str, &str, &str, &str, &[&str]); 5] = [
@@ -639,13 +639,13 @@ pub fn assemble_enemy_damage(
         // Placeholder (injected by setup_enemy; 0 under a bare Env with no enemy config → neutral).
         let placeholder = enemy_base(enemy_db, cfg, placeholder_name);
         // :2098 the enemy Min/Max mod average.
-        let min_max = (enemy_db.sum(ModType::Base, cfg, &[min_name])
-            + enemy_db.sum(ModType::Base, cfg, &[max_name]))
+        let min_max = (enemy_db.sum_by_name(ModType::Base, cfg, &[min_name])
+            + enemy_db.sum_by_name(ModType::Base, cfg, &[max_name]))
             / 2.0;
         let enemy_damage = placeholder + min_max;
         // :2133 enemyDamageMult.
-        let mult = (1.0 + enemy_db.sum(ModType::Inc, cfg, mult_names) / 100.0)
-            * enemy_db.more(cfg, mult_names);
+        let mult = (1.0 + enemy_db.sum_by_name(ModType::Inc, cfg, mult_names) / 100.0)
+            * enemy_db.more_by_name(cfg, mult_names);
         result.mult_by_type[i] = mult;
         result.total_in += enemy_damage;
         base_by_type[i] = enemy_damage;
@@ -661,7 +661,8 @@ pub fn assemble_enemy_damage(
                 continue;
             }
             let share =
-                enemy_db.sum(ModType::Base, cfg, super::damage::gain_names(from, to)) / 100.0;
+                enemy_db.sum_by_name(ModType::Base, cfg, super::damage::gain_names(from, to))
+                    / 100.0;
             if share <= 0.0 {
                 continue;
             }
@@ -673,8 +674,8 @@ pub fn assemble_enemy_damage(
             } else {
                 &names_buf[..3]
             };
-            let mult =
-                (1.0 + enemy_db.sum(ModType::Inc, cfg, names) / 100.0) * enemy_db.more(cfg, names);
+            let mult = (1.0 + enemy_db.sum_by_name(ModType::Inc, cfg, names) / 100.0)
+                * enemy_db.more_by_name(cfg, names);
             per_type[to as usize] += base_by_type[from as usize] * share * mult * crit_effect;
         }
     }
@@ -774,8 +775,8 @@ pub(crate) fn enemy_crit_chance_terms(
         base: enemy_db
             .override_(cfg, "EnemyCritChance")
             .unwrap_or(presets.default_enemy_crit_chance),
-        increased: player_db.sum(ModType::Inc, cfg, &["EnemyCritChance"])
-            + enemy_db.sum(ModType::Inc, cfg, &["CritChance"]),
+        increased: player_db.sum_by_name(ModType::Inc, cfg, &["EnemyCritChance"])
+            + enemy_db.sum_by_name(ModType::Inc, cfg, &["CritChance"]),
         evade: configured_evade_pct,
         unlucky: player_db.flag(cfg, "EnemyUnluckyCrit"),
     }
@@ -817,8 +818,8 @@ fn enemy_crit_effect_with(
     let crit_damage = ((enemy_db
         .override_(cfg, "EnemyCritDamage")
         .unwrap_or(presets.default_enemy_crit_damage_bonus)
-        + enemy_db.sum(ModType::Base, &hit_cfg, &multiplier_names))
-        * (1.0 + enemy_db.sum(ModType::Inc, &hit_cfg, &multiplier_names) / 100.0))
+        + enemy_db.sum_by_name(ModType::Base, &hit_cfg, &multiplier_names))
+        * (1.0 + enemy_db.sum_by_name(ModType::Inc, &hit_cfg, &multiplier_names) / 100.0))
         .max(0.0);
     1.0 + chance / 100.0 * (crit_damage / 100.0) * (1.0 - crit_extra_reduction_pct / 100.0)
 }
@@ -1701,7 +1702,7 @@ pub fn fill_ehp_pob2(
             "LightningEnergyShieldRecoup",
         ]
         .iter()
-        .any(|name| db.sum(ModType::Base, cfg, &[*name]) > 0.0);
+        .any(|name| db.sum_by_name(ModType::Base, cfg, &[*name]) > 0.0);
         // Recovery on block (:1948-1960 outputs, :3261-3268 `× BlockChance`). PoBR
         // evaluates the "Average" damage category, so spell-block recovery counts
         // half (:3266-3267); `DisableEHPGainOnBlock` turns the whole layer off.
@@ -1713,7 +1714,7 @@ pub fn fill_ehp_pob2(
         {
             GainWhenHit::default()
         } else {
-            let on_block = |name: &str| db.sum(ModType::Base, cfg, &[name]);
+            let on_block = |name: &str| db.sum_by_name(ModType::Base, cfg, &[name]);
             GainWhenHit {
                 life: if db.flag(cfg, "CannotRecoverLifeOutsideLeech") {
                     0.0

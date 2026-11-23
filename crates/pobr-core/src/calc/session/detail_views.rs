@@ -860,8 +860,8 @@ impl CalculationSession {
                 use pobr_data::prelude::ModType;
                 let enemy = &env.enemy.mod_db;
                 let names = ["HitChance"];
-                let enemy_multiplier =
-                    (1.0 + enemy.sum(ModType::Inc, cfg, &names) / 100.0) * enemy.more(cfg, &names);
+                let enemy_multiplier = (1.0 + enemy.sum_by_name(ModType::Inc, cfg, &names) / 100.0)
+                    * enemy.more_by_name(cfg, &names);
                 let terms = crate::calc::defence::evade_terms(
                     db,
                     cfg,
@@ -1658,7 +1658,7 @@ impl CalculationSession {
             }
             "EnemyCritEffect" => {
                 use pobr_data::prelude::ModType;
-                let sum = |name: &str| env.enemy.mod_db.sum(ModType::Base, cfg, &[name]);
+                let sum = |name: &str| env.enemy.mod_db.sum_by_name(ModType::Base, cfg, &[name]);
                 ("round(1 + EnemyCritChance / 100 * EnemyCritBonus / 100 * (1 - CritExtraDamageReduction / 100), 9)".into(), vec![
                     ("EnemyCritChance".into(), sum("CritChance")), ("EnemyCritBonus".into(), sum("CritMultiplier")),
                     ("CritExtraDamageReduction".into(), out.crit_extra_damage_reduction),

@@ -534,14 +534,14 @@ mod tests {
                 .cloned(),
         );
         let local = CalcConfig::new().with_condition("AffectedByHerald", true);
-        assert_eq!(minion.sum(ModType::Inc, &local, &["Damage"]), 0.0);
+        assert_eq!(minion.sum(ModType::Inc, &local, &["Damage".into()]), 0.0);
         for (parent, expected) in [(0.0, 0.0), (1.0, 30.0)] {
             let cfg = CalcConfig::new().with_actor_multiplier(
                 ActorRef::Parent,
                 "AffectedByHerald",
                 parent,
             );
-            assert_eq!(minion.sum(ModType::Inc, &cfg, &["Damage"]), expected);
+            assert_eq!(minion.sum(ModType::Inc, &cfg, &["Damage".into()]), expected);
         }
     }
 }

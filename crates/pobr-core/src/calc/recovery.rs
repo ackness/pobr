@@ -156,12 +156,13 @@ const TAKEN_AS: [[&str; 5]; 5] = [
 ];
 
 fn base(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
-    db.sum(ModType::Base, cfg, &[name])
+    db.sum_by_name(ModType::Base, cfg, &[name])
 }
 
 fn factor(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
     let names = [name];
-    ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0)
+    ((1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0) * db.more_by_name(cfg, &names))
+        .max(0.0)
 }
 
 /// Called after the final main-skill frequency (channel/trigger/reload) is known.

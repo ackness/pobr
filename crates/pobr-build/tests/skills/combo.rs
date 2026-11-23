@@ -273,7 +273,7 @@ fn combo_absent_rules_are_excluded_on_reference_basis_and_ledger_reads_are_truth
         reference.mod_db().sum(
             ModType::Base,
             reference.config(),
-            &["Multiplier:ComboStacksMax"]
+            &["Multiplier:ComboStacksMax".into()]
         ),
         10.0
     );

@@ -11,7 +11,7 @@ pub const MIN_CHANNEL: &str = "FlameblastMinimumChannelTime";
 pub const RELEASE: &str = "FlameblastReleaseTime";
 
 pub(crate) fn configure(db: &ModDb, cfg: &mut CalcConfig) {
-    let maximum = db.sum(ModType::Base, &*cfg, &[MAX_STAGES]);
+    let maximum = db.sum_by_name(ModType::Base, &*cfg, &[MAX_STAGES]);
     if maximum >= 1.0 {
         let stage = cfg
             .multiplier_if_set(STAGE)
@@ -25,7 +25,7 @@ pub(crate) fn configure(db: &ModDb, cfg: &mut CalcConfig) {
 /// Time for the chosen stages, then the release. Called before action speed
 /// and cooldown limits, so cast speed only shortens the channel's stage time.
 pub(crate) fn release_time(db: &ModDb, cfg: &CalcConfig, stage_time: f64) -> f64 {
-    let maximum = db.sum(ModType::Base, cfg, &[MAX_STAGES]);
+    let maximum = db.sum_by_name(ModType::Base, cfg, &[MAX_STAGES]);
     if maximum < 1.0 {
         return stage_time;
     }
@@ -34,8 +34,8 @@ pub(crate) fn release_time(db: &ModDb, cfg: &CalcConfig, stage_time: f64) -> f64
         .unwrap_or(1.0)
         .floor()
         .clamp(1.0, maximum);
-    let minimum = db.sum(ModType::Base, cfg, &[MIN_CHANNEL]) / 1000.0;
-    let release = db.sum(ModType::Base, cfg, &[RELEASE]) / 1000.0;
+    let minimum = db.sum_by_name(ModType::Base, cfg, &[MIN_CHANNEL]) / 1000.0;
+    let release = db.sum_by_name(ModType::Base, cfg, &[RELEASE]) / 1000.0;
     (stage_time * stages).max(minimum) + release
 }
 
@@ -73,7 +73,7 @@ mod tests {
             }
             configure(&db, &mut cfg);
             assert_eq!(cfg.multiplier(STAGE), stages);
-            assert!((db.more(&cfg, &["Damage"]) - (1.0 + 0.75 * stages)).abs() < 1e-9);
+            assert!((db.more_by_name(&cfg, &["Damage"]) - (1.0 + 0.75 * stages)).abs() < 1e-9);
             assert!((release_time(&db, &cfg, 0.25) - time).abs() < 1e-9);
             let input = MinimalInput {
                 base_action_rate: 4.0,

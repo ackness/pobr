@@ -7,7 +7,8 @@ use crate::{CalcConfig, ModDb, Modifier};
 use super::env::Env;
 
 fn factor(db: &ModDb, cfg: &CalcConfig, names: &[&str]) -> f64 {
-    ((1.0 + db.sum(ModType::Inc, cfg, names) / 100.0) * db.more(cfg, names)).max(0.0)
+    ((1.0 + db.sum_by_name(ModType::Inc, cfg, names) / 100.0) * db.more_by_name(cfg, names))
+        .max(0.0)
 }
 
 /// Loreweave's rarity and exclusion are one game stat. Derived stat/type
@@ -149,12 +150,12 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     {
         0.0
     } else {
-        db.sum(ModType::Base, &global, &["ArmourMovementPenalty"])
+        db.sum_by_name(ModType::Base, &global, &["ArmourMovementPenalty"])
     };
     let mut movement = db
         .override_(&global, "MovementSpeed")
         .unwrap_or_else(|| {
-            (1.0 + db.sum(ModType::Base, &global, &["MovementSpeed"]) - armour_penalty)
+            (1.0 + db.sum_by_name(ModType::Base, &global, &["MovementSpeed"]) - armour_penalty)
                 * factor(db, &global, &["MovementSpeed"])
         })
         .max(0.0);
@@ -166,7 +167,7 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     out.limit_views.movement_speed_mod = movement;
     out.limit_views.light_radius_mod = factor(db, &global, &["LightRadius"]);
     out.limit_views.freeze_threshold_added = db
-        .sum(ModType::Base, &global, &["FreezeThreshold"])
+        .sum_by_name(ModType::Base, &global, &["FreezeThreshold"])
         .max(0.0);
     out.limit_views.freeze_threshold_mod = factor(db, &global, &["FreezeThreshold"]);
     out.limit_views.freeze_threshold = (out.ailment_threshold
@@ -197,7 +198,7 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     }
     // Presence is independent of skill AoE. Its base radius is 4 m since
     // Content Update 0.2.0 (pathofexile.com/forum/view-thread/3740562).
-    let radius = 40.0 + db.sum(ModType::Base, &global, &["PresenceRadius"]);
+    let radius = 40.0 + db.sum_by_name(ModType::Base, &global, &["PresenceRadius"]);
     out.presence_radius_metres =
         (super::skill_mechanics::calc_radius(radius, factor(db, &global, &["PresenceArea"]))
             * factor(db, &global, &["PresenceRadius"]))
@@ -221,11 +222,11 @@ pub(super) fn fill_sidebar(env: &mut Env) {
         out.curse_effect_mod = factor(db, cfg, &["CurseEffect", "SelectedCurseEffect"]);
     }
     out.active_minion_limit = db
-        .max_of(ModType::Base, cfg, &["SelectedMinionLimit"])
+        .max_of_by_name(ModType::Base, cfg, &["SelectedMinionLimit"])
         .max(0.0)
         .floor();
     out.explode_chance = db
-        .sum(ModType::Base, cfg, &["EnemyExplodeChance"])
+        .sum_by_name(ModType::Base, cfg, &["EnemyExplodeChance"])
         .clamp(0.0, 100.0);
     let monster_life = f64::from(
         cfg.constants
@@ -268,7 +269,7 @@ fn fill_threshold_and_kill_views(env: &mut Env) {
         .override_(cfg, "AilmentThreshold")
         .unwrap_or_else(|| {
             (super::ailment::player_ailment_threshold(out.life)
-                + db.sum(ModType::Base, cfg, &names))
+                + db.sum_by_name(ModType::Base, cfg, &names))
                 * factor(db, cfg, &["AilmentThreshold"])
         })
         .max(0.0);
@@ -277,7 +278,7 @@ fn fill_threshold_and_kill_views(env: &mut Env) {
         .with_flags(cfg.flags | ModFlags::HIT)
         .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
     out.daze_chance = db
-        .sum(ModType::Base, &hit_cfg, &["DazeChance"])
+        .sum_by_name(ModType::Base, &hit_cfg, &["DazeChance"])
         .clamp(0.0, 100.0);
     out.fully_broken_armour_effect = super::armour_break::fully_broken_effect(db, cfg);
     for (resource, on_kill_mod, cannot_gain_flag, value) in [
@@ -303,7 +304,7 @@ fn fill_threshold_and_kill_views(env: &mut Env) {
         // Flat and PercentStat-tagged gains share this query. A remote
         // skill's hit kills belong to its proxy, not to the player. This
         // view does not estimate kills or damage-over-time kill attribution.
-        let gain = db.sum(ModType::Base, cfg, &[on_kill_mod]);
+        let gain = db.sum_by_name(ModType::Base, cfg, &[on_kill_mod]);
         *value = if super::recovery::proxy(cfg)
             || cfg.skill_types.contains(SkillTypes::SUMMONS_TOTEM)
             || db.flag(cfg, cannot_gain_flag)

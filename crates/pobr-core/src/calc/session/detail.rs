@@ -627,9 +627,9 @@ impl CalculationSession {
             return vec![SourceGroup {
                 name: stat.into(),
                 more_precision: None,
-                totals: (filtered.sum(ModType::Base, &cfg, &names), 0.0, 1.0),
+                totals: (filtered.sum_by_name(ModType::Base, &cfg, &names), 0.0, 1.0),
                 rows: db
-                    .evaluate_names(&cfg, &names)
+                    .evaluate_names_by_name(&cfg, &names)
                     .into_iter()
                     .filter(|r| super::super::remnant_pickup::is_player_source(r.modifier))
                     .collect(),
@@ -642,11 +642,11 @@ impl CalculationSession {
                 name: stat.into(),
                 more_precision: None,
                 totals: (
-                    db.sum(ModType::Base, cfg, view_names),
-                    db.sum(ModType::Inc, cfg, view_names),
-                    db.more(cfg, view_names),
+                    db.sum_by_name(ModType::Base, cfg, view_names),
+                    db.sum_by_name(ModType::Inc, cfg, view_names),
+                    db.more_by_name(cfg, view_names),
                 ),
-                rows: db.evaluate_names(cfg, view_names),
+                rows: db.evaluate_names_by_name(cfg, view_names),
             }];
             if super::super::player_debuffs::is_duration_view(stat) {
                 let names = ["SelfDebuffExpirationRate"];
@@ -654,11 +654,11 @@ impl CalculationSession {
                     name: "SelfDebuffExpirationRate".into(),
                     more_precision: None,
                     totals: (
-                        db.sum(ModType::Base, cfg, &names),
-                        db.sum(ModType::Inc, cfg, &names),
-                        db.more(cfg, &names),
+                        db.sum_by_name(ModType::Base, cfg, &names),
+                        db.sum_by_name(ModType::Inc, cfg, &names),
+                        db.more_by_name(cfg, &names),
                     ),
-                    rows: db.evaluate_names(cfg, &names),
+                    rows: db.evaluate_names_by_name(cfg, &names),
                 });
             }
             return groups;
@@ -698,7 +698,7 @@ impl CalculationSession {
                 let mut query_cfg = cfg.clone();
                 if stat == "SkillTriggerRate"
                     && name == "EnergyGenerated"
-                    && db.sum(ModType::Base, &cfg, &["EnergyPerPowerOnCrit"]) > 0.0
+                    && db.sum_by_name(ModType::Base, &cfg, &["EnergyPerPowerOnCrit"]) > 0.0
                 {
                     query_cfg.conditions.insert("CritRecently".into(), true);
                 }
@@ -745,13 +745,13 @@ impl CalculationSession {
                     let rarity = db.filtered(&keep);
                     return SourceGroup {
                         totals: (
-                            rarity.sum(ModType::Base, cfg, &names),
-                            rarity.sum(ModType::Inc, cfg, &names),
-                            rarity.more(cfg, &names),
+                            rarity.sum_by_name(ModType::Base, cfg, &names),
+                            rarity.sum_by_name(ModType::Inc, cfg, &names),
+                            rarity.more_by_name(cfg, &names),
                         ),
                         more_precision: rarity.more_precision_for(query_name),
                         rows: db
-                            .evaluate_names(cfg, &names)
+                            .evaluate_names_by_name(cfg, &names)
                             .into_iter()
                             .map(|mut row| {
                                 row.active &= keep(row.modifier);
@@ -763,12 +763,12 @@ impl CalculationSession {
                 }
                 SourceGroup {
                     totals: (
-                        db.sum(ModType::Base, cfg, &names),
-                        db.sum(ModType::Inc, cfg, &names),
-                        db.more(cfg, &names),
+                        db.sum_by_name(ModType::Base, cfg, &names),
+                        db.sum_by_name(ModType::Inc, cfg, &names),
+                        db.more_by_name(cfg, &names),
                     ),
                     more_precision: db.more_precision_for(query_name),
-                    rows: db.evaluate_names(cfg, &names),
+                    rows: db.evaluate_names_by_name(cfg, &names),
                     name,
                 }
             })
@@ -786,7 +786,7 @@ impl CalculationSession {
                     more_precision: None,
                     totals: (0.0, db.sum_where(ModType::Inc, &cfg, &names, &keep), 1.0),
                     rows: db
-                        .evaluate_names(&cfg, &names)
+                        .evaluate_names_by_name(&cfg, &names)
                         .into_iter()
                         .filter(|row| row.modifier.mod_type == ModType::Inc)
                         .map(|mut row| {
@@ -806,9 +806,9 @@ impl CalculationSession {
                 groups.push(SourceGroup {
                     name: name.to_string(),
                     more_precision: None,
-                    totals: (0.0, db.sum(ModType::Inc, &cfg, &names), 1.0),
+                    totals: (0.0, db.sum_by_name(ModType::Inc, &cfg, &names), 1.0),
                     rows: db
-                        .evaluate_names(&cfg, &names)
+                        .evaluate_names_by_name(&cfg, &names)
                         .into_iter()
                         .filter(|row| row.modifier.mod_type == ModType::Inc)
                         .collect(),

@@ -158,7 +158,7 @@ pub fn query_config(cfg: &CalcConfig) -> CalcConfig {
 /// flask does not remove that buff. The input is remaining Guard, not maximum
 /// Ward: neither elapsed time nor intervening damage can be inferred here.
 pub fn olroth_guard(db: &ModDb, cfg: &CalcConfig, slot: &str, max_life: f64) -> f64 {
-    let duration = db.sum(
+    let duration = db.sum_by_name(
         ModType::Base,
         cfg,
         &[local_name(slot, "UtilityWardAsGuardDuration")],
@@ -177,10 +177,10 @@ pub fn calculate_guard_views(env: &mut Env) {
     for item in env.utility_items.iter().filter(|item| !item.is_charm) {
         let slot = item.slot.replace(' ', "");
         let duration_name = local_name(&slot, "UtilityWardAsGuardDuration");
-        let duration = env
-            .player
-            .mod_db
-            .sum(ModType::Base, &cfg, &[duration_name.as_str()]);
+        let duration =
+            env.player
+                .mod_db
+                .sum_by_name(ModType::Base, &cfg, &[duration_name.as_str()]);
         let amount = olroth_guard(&env.player.mod_db, &cfg, &slot, env.player.output.life);
         for (field, value, formula, inputs) in [
             (
@@ -224,10 +224,10 @@ pub fn calculate_guard_views(env: &mut Env) {
 }
 
 fn sum(db: &ModDb, cfg: &CalcConfig, kind: ModType, names: &[String]) -> f64 {
-    db.sum(kind, cfg, names)
+    db.sum_by_name(kind, cfg, names)
 }
 fn more(db: &ModDb, cfg: &CalcConfig, names: &[String]) -> f64 {
-    db.more(cfg, names)
+    db.more_by_name(cfg, names)
 }
 fn factor(db: &ModDb, cfg: &CalcConfig, names: &[String]) -> f64 {
     (1.0 + sum(db, cfg, ModType::Inc, names) / 100.0).max(0.0) * more(db, cfg, names)
@@ -256,7 +256,7 @@ pub(crate) fn snapshot_flask_charges_consumed(env: &mut Env) {
         if cfg.multipliers.contains_key(mult_key) {
             continue;
         }
-        let pct = db.sum(ModType::Base, cfg, &[pct_mod]);
+        let pct = db.sum_by_name(ModType::Base, cfg, &[pct_mod]);
         if pct <= 0.0 {
             continue;
         }

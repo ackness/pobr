@@ -156,8 +156,8 @@ pub fn flat_chance(base: f64, inc: f64, more: f64) -> f64 {
 
 /// Applies a set of ailment damage modifiers (inc summed, more multiplied) to the base magnitude.
 fn scale_magnitude(base: f64, db: &ModDb, cfg: &CalcConfig, names: &[&str]) -> f64 {
-    let inc = db.sum(ModType::Inc, cfg, names);
-    let more = db.more(cfg, names);
+    let inc = db.sum_by_name(ModType::Inc, cfg, names);
+    let more = db.more_by_name(cfg, names);
     base * (1.0 + inc / 100.0) * more
 }
 
@@ -165,8 +165,8 @@ fn scale_magnitude(base: f64, db: &ModDb, cfg: &CalcConfig, names: &[&str]) -> f
 /// `calcLib.mod(...)`, i.e. `(1+Σinc/100)×Πmore`, CalcOffence.lua:5037-5039;
 /// support payloads like Escalating Poison's `EnemyPoisonDuration MORE -20` go through the MORE leg).
 fn scale_duration(base: f64, db: &ModDb, cfg: &CalcConfig, names: &[&str]) -> f64 {
-    let inc = db.sum(ModType::Inc, cfg, names);
-    let more = db.more(cfg, names);
+    let inc = db.sum_by_name(ModType::Inc, cfg, names);
+    let more = db.more_by_name(cfg, names);
     base * (1.0 + inc / 100.0) * more
 }
 
@@ -263,13 +263,13 @@ pub fn ailment_duration_terms(
     let names = duration_mod_names_for(ailment, player, cfg);
     let mut terms = AilmentDurationTerms {
         base,
-        increased: player.sum(ModType::Inc, &scoped, names),
-        more: player.more(&scoped, names),
+        increased: player.sum_by_name(ModType::Inc, &scoped, names),
+        more: player.more_by_name(&scoped, names),
     };
     if let Some(enemy) = enemy {
         let names = self_duration_mod_names(ailment);
-        terms.increased += enemy.sum(ModType::Inc, cfg, names);
-        terms.more *= enemy.more(cfg, names);
+        terms.increased += enemy.sum_by_name(ModType::Inc, cfg, names);
+        terms.more *= enemy.more_by_name(cfg, names);
     }
     Some(terms)
 }
@@ -307,7 +307,7 @@ pub fn resolved_ailment_base_duration(
         return Some(duration);
     }
     if ailment == AilmentType::Poison && player.flag(&scoped, "PoisonDurationIsSkillDuration") {
-        let skill_base = player.sum(
+        let skill_base = player.sum_by_name(
             ModType::Base,
             cfg,
             &["SkillDurationBase", "Duration", "PrimaryDuration"],
@@ -519,8 +519,8 @@ pub fn debuff_duration_mult(enemy_db: &ModDb, cfg: &CalcConfig) -> f64 {
         return 1.0;
     }
     let names = ["BuffExpireFaster"];
-    let aggregated =
-        (1.0 + enemy_db.sum(ModType::Inc, cfg, &names) / 100.0) * enemy_db.more(cfg, &names);
+    let aggregated = (1.0 + enemy_db.sum_by_name(ModType::Inc, cfg, &names) / 100.0)
+        * enemy_db.more_by_name(cfg, &names);
     1.0 / aggregated.max(cfg.constants.game().buff_expiration_slow_cap)
 }
 
@@ -729,8 +729,8 @@ pub(crate) fn effmult_terms(
     }
     let type_cfg = cfg.clone().with_damage_type(damage_type);
     let taken_names = taken_mod_names(damage_type);
-    let taken_inc = enemy.sum(ModType::Inc, &type_cfg, taken_names);
-    let taken_more = enemy.more(&type_cfg, taken_names);
+    let taken_inc = enemy.sum_by_name(ModType::Inc, &type_cfg, taken_names);
+    let taken_more = enemy.more_by_name(&type_cfg, taken_names);
 
     let resist = ailment_resist(enemy, &type_cfg, damage_type);
     (resist, taken_inc, taken_more)
@@ -971,8 +971,8 @@ pub fn magnitude_scaling(ailment: AilmentType, db: &ModDb, cfg: &CalcConfig) -> 
     };
     (
         fraction * 100.0,
-        db.sum(ModType::Inc, cfg, &names),
-        db.more(cfg, &names) * extra_more,
+        db.sum_by_name(ModType::Inc, cfg, &names),
+        db.more_by_name(cfg, &names) * extra_more,
     )
 }
 
@@ -1137,9 +1137,10 @@ pub fn shock_traced(
     trace.add_edge(chance_node, node);
     // Chain the effectMod mod attribution into the shock-effect node (mirrors chill_traced).
     let mag_inc_traced =
-        player.sum_traced(ModType::Inc, cfg, &mag_names, trace, "Shock magnitude INC");
+        player.sum_traced_by_name(ModType::Inc, cfg, &mag_names, trace, "Shock magnitude INC");
     trace.add_edge(mag_inc_traced.node_id, node);
-    let mag_more_traced = player.more_traced(cfg, &mag_names, trace, "Shock magnitude MORE");
+    let mag_more_traced =
+        player.more_traced_by_name(cfg, &mag_names, trace, "Shock magnitude MORE");
     trace.add_edge(mag_more_traced.node_id, node);
     (chance, magnitude, node)
 }
@@ -1169,22 +1170,22 @@ fn flat_chance_traced(
     let chance_names = chance_mod_names(ailment, false);
     let self_chance = [self_chance_mod_name(ailment)];
 
-    let base = player.sum_traced(
+    let base = player.sum_traced_by_name(
         ModType::Base,
         cfg,
         &chance_names,
         trace,
         format!("{ailment}Chance BASE"),
     );
-    let enemy_base = enemy.sum_traced(
+    let enemy_base = enemy.sum_traced_by_name(
         ModType::Base,
         cfg,
         &self_chance,
         trace,
         format!("enemy Self{ailment}Chance BASE"),
     );
-    let inc = player.sum(ModType::Inc, cfg, &chance_names);
-    let more = player.more(cfg, &chance_names);
+    let inc = player.sum_by_name(ModType::Inc, cfg, &chance_names);
+    let more = player.more_by_name(cfg, &chance_names);
     let chance = flat_chance(base.value + enemy_base.value, inc, more);
     let node = trace.add_node(
         format!("{ailment}Chance"),
@@ -1218,23 +1219,23 @@ fn threshold_chance_traced(
     let chance_names = chance_mod_names(ailment, true);
     let self_chance = [self_chance_mod_name(ailment)];
 
-    let base = player.sum_traced(
+    let base = player.sum_traced_by_name(
         ModType::Base,
         cfg,
         &chance_names,
         trace,
         format!("{ailment}Chance BASE"),
     );
-    let enemy_base = enemy.sum_traced(
+    let enemy_base = enemy.sum_traced_by_name(
         ModType::Base,
         cfg,
         &self_chance,
         trace,
         format!("enemy Self{ailment}Chance BASE"),
     );
-    let inc =
-        player.sum(ModType::Inc, cfg, &chance_names) + enemy.sum(ModType::Inc, cfg, &self_chance);
-    let more = player.more(cfg, &chance_names) * enemy.more(cfg, &self_chance);
+    let inc = player.sum_by_name(ModType::Inc, cfg, &chance_names)
+        + enemy.sum_by_name(ModType::Inc, cfg, &self_chance);
+    let more = player.more_by_name(cfg, &chance_names) * enemy.more_by_name(cfg, &self_chance);
 
     let (on_hit, on_crit) = threshold_derived_chance(
         source.hit_avg,
@@ -1366,7 +1367,7 @@ fn record_magnitude_trace(
     // keyword-scoped mods).
     let cfg = &ailment_scoped_cfg(cfg, ailment);
     let names = magnitude_mod_names(ailment);
-    let inc = player.sum_traced(
+    let inc = player.sum_traced_by_name(
         ModType::Inc,
         cfg,
         &names,
@@ -1374,7 +1375,8 @@ fn record_magnitude_trace(
         format!("{ailment:?} magnitude INC"),
     );
     trace.add_edge(inc.node_id, mag_node);
-    let more = player.more_traced(cfg, &names, trace, format!("{ailment:?} magnitude MORE"));
+    let more =
+        player.more_traced_by_name(cfg, &names, trace, format!("{ailment:?} magnitude MORE"));
     trace.add_edge(more.node_id, mag_node);
 }
 
@@ -1390,7 +1392,7 @@ fn record_effmult_trace(
     let eff_node = trace.add_node("AilmentEffMult", round(eff_mult), TraceOperation::Mitigate);
 
     let taken_names = taken_mod_names(damage_type);
-    let taken_inc = enemy.sum_traced(
+    let taken_inc = enemy.sum_traced_by_name(
         ModType::Inc,
         &type_cfg,
         taken_names,
@@ -1398,7 +1400,8 @@ fn record_effmult_trace(
         "ailment DamageTaken INC",
     );
     trace.add_edge(taken_inc.node_id, eff_node);
-    let taken_more = enemy.more_traced(&type_cfg, taken_names, trace, "ailment DamageTaken MORE");
+    let taken_more =
+        enemy.more_traced_by_name(&type_cfg, taken_names, trace, "ailment DamageTaken MORE");
     trace.add_edge(taken_more.node_id, eff_node);
 
     if damage_type != DamageType::Physical {
@@ -1410,7 +1413,7 @@ fn record_effmult_trace(
             DamageType::Chaos => "ChaosResist",
             DamageType::Physical => unreachable!(),
         };
-        let resist = enemy.sum_traced(
+        let resist = enemy.sum_traced_by_name(
             ModType::Base,
             &type_cfg,
             &[resist_name],
@@ -1519,7 +1522,8 @@ pub(crate) fn effect_mod_factors(
     };
     let factor = |db: &ModDb, cfg: &CalcConfig, name: &str| {
         let names = [name, "AilmentMagnitude"];
-        ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0)
+        ((1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0) * db.more_by_name(cfg, &names))
+            .max(0.0)
     };
     let crit = crit_chance.clamp(0.0, 1.0);
     let mut attacker = factor(player, cfg, attacker_name);
@@ -1605,9 +1609,10 @@ pub fn chill_traced(
     let node = trace.add_node("ChillEffect", effect, TraceOperation::Multiply);
 
     // Record the effectMod contribution into the chill-effect node.
-    let inc_traced = player.sum_traced(ModType::Inc, cfg, &mag_names, trace, "Chill magnitude INC");
+    let inc_traced =
+        player.sum_traced_by_name(ModType::Inc, cfg, &mag_names, trace, "Chill magnitude INC");
     trace.add_edge(inc_traced.node_id, node);
-    let more_traced = player.more_traced(cfg, &mag_names, trace, "Chill magnitude MORE");
+    let more_traced = player.more_traced_by_name(cfg, &mag_names, trace, "Chill magnitude MORE");
     trace.add_edge(more_traced.node_id, node);
 
     (effect, node)
@@ -1682,8 +1687,8 @@ pub(crate) fn heavy_stun_terms(env: &super::Env, combined: &[(DamageType, f64)])
         .constants
         .monster_scaling
         .poise_threshold_at(env.enemy.level as u32) as f64
-        * (1.0 + enemy.sum(ModType::Inc, &cfg, &thresholds) / 100.0)
-        * enemy.more(&cfg, &thresholds))
+        * (1.0 + enemy.sum_by_name(ModType::Inc, &cfg, &thresholds) / 100.0)
+        * enemy.more_by_name(&cfg, &thresholds))
     .floor();
     let mut terms = HeavyStunTerms {
         melee_multiplier: if cfg.flags.intersects(ModFlags::MELEE) {
@@ -1693,10 +1698,10 @@ pub(crate) fn heavy_stun_terms(env: &super::Env, combined: &[(DamageType, f64)])
         },
         threshold,
         damage_scale: cfg.constants.game().heavy_stun_damage_scale,
-        increased: player.sum(ModType::Inc, &cfg, &names),
-        more: player.more(&cfg, &names),
-        enemy_multiplier: (1.0 + enemy.sum(ModType::Inc, &cfg, &enemy_names) / 100.0)
-            * enemy.more(&cfg, &enemy_names),
+        increased: player.sum_by_name(ModType::Inc, &cfg, &names),
+        more: player.more_by_name(&cfg, &names),
+        enemy_multiplier: (1.0 + enemy.sum_by_name(ModType::Inc, &cfg, &enemy_names) / 100.0)
+            * enemy.more_by_name(&cfg, &enemy_names),
         // A skill that Pins instead of Stunning (Pin support: "making it unable
         // to Stun", `support_pin_buildup_pin_instead_of_stun`) builds no Heavy
         // Stun; its damage counts toward Pin (`pin_terms`).
@@ -1807,8 +1812,8 @@ pub(crate) fn freeze_buildup_terms(
     FreezeBuildupTerms {
         source,
         buildup_pct,
-        enemy_multiplier: ((1.0 + enemy.sum(ModType::Inc, &cfg, &enemy_names) / 100.0)
-            * enemy.more(&cfg, &enemy_names))
+        enemy_multiplier: ((1.0 + enemy.sum_by_name(ModType::Inc, &cfg, &enemy_names) / 100.0)
+            * enemy.more_by_name(&cfg, &enemy_names))
         .max(0.0),
         enabled: can_hit && buildup_pct > 0.0 && !env.player.mod_db.flag(&cfg, "CannotFreeze"),
     }
@@ -1912,16 +1917,16 @@ pub(crate) fn pin_terms(
         .constants
         .monster_scaling
         .poise_threshold_at(env.enemy.level as u32) as f64
-        * (1.0 + enemy.sum(ModType::Inc, &cfg, &thresholds) / 100.0)
-        * enemy.more(&cfg, &thresholds))
+        * (1.0 + enemy.sum_by_name(ModType::Inc, &cfg, &thresholds) / 100.0)
+        * enemy.more_by_name(&cfg, &thresholds))
     .floor();
     let mut terms = PinTerms {
         threshold,
         damage_scale: cfg.constants.game().pin_damage_scale,
-        increased: player.sum(ModType::Inc, &cfg, &names),
-        more: player.more(&cfg, &names),
-        enemy_multiplier: (1.0 + enemy.sum(ModType::Inc, &cfg, &enemy_names) / 100.0)
-            * enemy.more(&cfg, &enemy_names),
+        increased: player.sum_by_name(ModType::Inc, &cfg, &names),
+        more: player.more_by_name(&cfg, &names),
+        enemy_multiplier: (1.0 + enemy.sum_by_name(ModType::Inc, &cfg, &enemy_names) / 100.0)
+            * enemy.more_by_name(&cfg, &enemy_names),
         enabled: can_hit && !player.flag(&cfg, "CannotPin"),
         ..Default::default()
     };
@@ -2094,8 +2099,8 @@ fn poise_buildup_traced(
         "EnemyImmobilisationBuildup",
         "ImmobilisationBuildup",
     ];
-    let inc = player.sum(ModType::Inc, cfg, &buildup_names);
-    let more = player.more(cfg, &buildup_names);
+    let inc = player.sum_by_name(ModType::Inc, cfg, &buildup_names);
+    let more = player.more_by_name(cfg, &buildup_names);
 
     let buildup = poise_buildup_inner(damage_scale, enemy_poise_threshold, inc, more);
     let node = trace.add_node(
@@ -2104,7 +2109,7 @@ fn poise_buildup_traced(
         TraceOperation::Multiply,
     );
 
-    let inc_tr = player.sum_traced(
+    let inc_tr = player.sum_traced_by_name(
         ModType::Inc,
         cfg,
         &buildup_names,
@@ -2112,7 +2117,7 @@ fn poise_buildup_traced(
         format!("{ailment} poise buildup INC"),
     );
     trace.add_edge(inc_tr.node_id, node);
-    let more_tr = player.more_traced(
+    let more_tr = player.more_traced_by_name(
         cfg,
         &buildup_names,
         trace,
@@ -2350,7 +2355,8 @@ pub fn stacking_ailment_dps_traced(
 /// PoB2 `CalcOffence.lua` l.5190 `local effectMod = calcLib.mod(skillModList, dotCfg, "AilmentEffect")`.
 pub fn ailment_effect_mod(db: &ModDb, cfg: &CalcConfig) -> f64 {
     let names = effect_mod_names();
-    (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0).max(0.0) * db.more(cfg, &names)
+    (1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0).max(0.0)
+        * db.more_by_name(cfg, &names)
 }
 
 /// The Ailment Rate factor (cadence correction): `mod(Faster) / mod(Slower)`.
@@ -2384,14 +2390,16 @@ pub fn ailment_rate_mod(
     };
 
     // faster: the calcLib.mod (INC+MORE two-leg) aggregate (player) + the enemy's INC/100 bonus.
-    let player_faster = (1.0 + player.sum(ModType::Inc, cfg, &[faster_name.as_ref()]) / 100.0)
-        * player.more(cfg, &[faster_name.as_ref()]);
-    let enemy_faster_inc = enemy.sum(ModType::Inc, cfg, &[self_faster_name.as_ref()]) / 100.0;
+    let player_faster = (1.0
+        + player.sum_by_name(ModType::Inc, cfg, &[faster_name.as_ref()]) / 100.0)
+        * player.more_by_name(cfg, &[faster_name.as_ref()]);
+    let enemy_faster_inc =
+        enemy.sum_by_name(ModType::Inc, cfg, &[self_faster_name.as_ref()]) / 100.0;
     let faster = player_faster + enemy_faster_inc;
 
     // slower: the calcLib.mod (INC+MORE two-leg) aggregate (player).
-    let slower = (1.0 + player.sum(ModType::Inc, cfg, &[slower_name.as_ref()]) / 100.0)
-        * player.more(cfg, &[slower_name.as_ref()]);
+    let slower = (1.0 + player.sum_by_name(ModType::Inc, cfg, &[slower_name.as_ref()]) / 100.0)
+        * player.more_by_name(cfg, &[slower_name.as_ref()]);
 
     // rateMod = faster / slower (the ratio of the two factors).
     if slower <= 0.0 {
@@ -2589,7 +2597,7 @@ fn stored_source_ranges(
             applies.then(|| {
                 // vendor `:4844`: `more = More(damageType .. ailment .. "Buildup")`.
                 let buildup = format!("{prefix}{ailment_name}Buildup");
-                let more = player.more(cfg, &[buildup.as_str()]);
+                let more = player.more_by_name(cfg, &[buildup.as_str()]);
                 StoredDamageRange {
                     damage_type: dt,
                     hit_min: range.hit_min * more,

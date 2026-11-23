@@ -184,7 +184,7 @@ pub fn maximum_terms(player: &ModDb, cfg: &CalcConfig, name: &str) -> MaximumTer
     MaximumTerms {
         override_value: player.override_(cfg, spec.max_name),
         game_maximum: spec.data_max(cfg),
-        bonus: player.sum(ModType::Base, cfg, &[spec.max_name]),
+        bonus: player.sum_by_name(ModType::Base, cfg, &[spec.max_name]),
     }
 }
 
@@ -242,7 +242,7 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> AppliedAilment {
     let player = &env.player.mod_db;
     let enemy = &env.enemy.mod_db;
 
-    let enemy_val = enemy.sum(ModType::Base, &cfg, &[spec.val_name]);
+    let enemy_val = enemy.sum_by_name(ModType::Base, &cfg, &[spec.val_name]);
 
     let mut sources = collect_player_sources(player, &cfg, spec);
     let selected_shock = spec.name == "Shock"
@@ -418,10 +418,10 @@ fn collect_player_sources(
 fn ailment_magnitude(player: &ModDb, enemy: &ModDb, cfg: &CalcConfig, spec: &AilmentSpec) -> f64 {
     let skill_names = [spec.enemy_magnitude, "AilmentMagnitude"];
     let enemy_names = [spec.self_magnitude, "AilmentMagnitude"];
-    let skill_side = (1.0 + player.sum(ModType::Inc, cfg, &skill_names) / 100.0)
-        * player.more(cfg, &skill_names);
-    let enemy_side =
-        (1.0 + enemy.sum(ModType::Inc, cfg, &enemy_names) / 100.0) * enemy.more(cfg, &enemy_names);
+    let skill_side = (1.0 + player.sum_by_name(ModType::Inc, cfg, &skill_names) / 100.0)
+        * player.more_by_name(cfg, &skill_names);
+    let enemy_side = (1.0 + enemy.sum_by_name(ModType::Inc, cfg, &enemy_names) / 100.0)
+        * enemy.more_by_name(cfg, &enemy_names);
     skill_side.max(0.0) * enemy_side.max(0.0)
 }
 
@@ -430,7 +430,7 @@ fn update_effect_multiplier(env: &mut Env, spec: &AilmentSpec, current: f64) {
     let existing = env
         .enemy
         .mod_db
-        .sum(ModType::Base, &env.cfg, &[spec.effect_multiplier]);
+        .sum_by_name(ModType::Base, &env.cfg, &[spec.effect_multiplier]);
     if existing < current {
         env.enemy.mod_db.add_mod(
             Modifier::number(spec.effect_multiplier, ModType::Base, current - existing)

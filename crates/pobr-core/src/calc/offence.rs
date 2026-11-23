@@ -437,9 +437,9 @@ fn resolve_resistance_named(
     let max_names = names.max;
     let [long, short] = names.overrides;
     let [max_long, max_short] = names.max_overrides;
-    let flat = db.sum(ModType::Base, cfg, res_names) + shared.flat;
-    let inc = db.sum(ModType::Inc, cfg, res_names) + shared.inc;
-    let more = db.more(cfg, res_names);
+    let flat = db.sum_by_name(ModType::Base, cfg, res_names) + shared.flat;
+    let inc = db.sum_by_name(ModType::Inc, cfg, res_names) + shared.inc;
+    let more = db.more_by_name(cfg, res_names);
     let override_total = db.override_(cfg, long).or_else(|| db.override_(cfg, short));
     // Resistance is an integer stat. Keep fractions through summing and
     // scaling (including shared Fire modifiers), then truncate toward zero.
@@ -455,7 +455,7 @@ fn resolve_resistance_named(
         .or_else(|| db.override_(cfg, max_short))
         .unwrap_or_else(|| {
             //  The default max resistance / hard cap now reads from the injected constants pack (fallback == old const, value unchanged).
-            (names.base_max + db.sum(ModType::Base, cfg, max_names) + shared.max)
+            (names.base_max + db.sum_by_name(ModType::Base, cfg, max_names) + shared.max)
                 .min(cfg.constants.game().resist_hard_cap)
         })
         .trunc();
@@ -516,7 +516,7 @@ fn shared_fire_resistance(db: &ModDb, cfg: &CalcConfig, element: &str) -> Shared
         return shared;
     }
     let total = |names: &[&str], mod_type: ModType| -> f64 {
-        db.evaluate_names(cfg, names)
+        db.evaluate_names_by_name(cfg, names)
             .into_iter()
             .filter(|row| row.active && row.modifier.mod_type == mod_type)
             .filter(|row| {
@@ -531,7 +531,7 @@ fn shared_fire_resistance(db: &ModDb, cfg: &CalcConfig, element: &str) -> Shared
             .filter_map(|row| row.value)
             .sum()
     };
-    let rate = db.sum(
+    let rate = db.sum_by_name(
         ModType::Base,
         cfg,
         &["FireResistanceAlsoGrantsColdAndLightning"],
@@ -648,7 +648,7 @@ fn fixed_use_rate(db: &ModDb, cfg: &CalcConfig) -> Option<f64> {
     if db.flag(cfg, super::trigger::EVENT_RATE_UNMODELLED) {
         return Some(0.0);
     }
-    let rate = db.sum(ModType::Base, cfg, &["SkillUseRate"]);
+    let rate = db.sum_by_name(ModType::Base, cfg, &["SkillUseRate"]);
     (rate > 0.0).then_some(rate)
 }
 
@@ -691,8 +691,8 @@ fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionR
         };
     }
     let speed_names = super::skill_use_time::speed_names_slice(cfg);
-    let inc_speed = db.sum(ModType::Inc, cfg, speed_names);
-    let more_speed = db.more(cfg, speed_names);
+    let inc_speed = db.sum_by_name(ModType::Inc, cfg, speed_names);
+    let more_speed = db.more_by_name(cfg, speed_names);
     let action_speed_mod = super::skill_use_time::action_speed_factor(db, cfg);
     let inc_more_rate = input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed;
     let scaled_rate = apply_total_time(db, cfg, inc_more_rate);
@@ -757,9 +757,9 @@ impl AccuracyTerms {
 pub(crate) fn accuracy_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> AccuracyTerms {
     let names = ["Accuracy"];
     let override_value = db.override_(cfg, "Accuracy");
-    let flat = db.sum(ModType::Base, cfg, &names);
-    let inc = db.sum(ModType::Inc, cfg, &names);
-    let more = db.more(cfg, &names);
+    let flat = db.sum_by_name(ModType::Base, cfg, &names);
+    let inc = db.sum_by_name(ModType::Inc, cfg, &names);
+    let more = db.more_by_name(cfg, &names);
     AccuracyTerms {
         base: input.base_accuracy,
         flat,
@@ -854,7 +854,7 @@ pub(crate) fn hit_chance_terms(
     };
     // Enemy block: only deducted from hit chance under the effective view (accuracy-and-enemy.md §2.3).
     let enemy_block = if cfg.mode_effective {
-        (enemy_db.sum(ModType::Base, cfg, &["BlockChance"]) / 100.0).clamp(0.0, 1.0)
+        (enemy_db.sum_by_name(ModType::Base, cfg, &["BlockChance"]) / 100.0).clamp(0.0, 1.0)
     } else {
         0.0
     };
@@ -1463,14 +1463,14 @@ fn total_dps_traced(
         input.base_accuracy,
         SourceId::new(SourceKind::CharacterBase, "base.Accuracy"),
     );
-    let accuracy_base = db.sum_traced(
+    let accuracy_base = db.sum_traced_by_name(
         ModType::Base,
         cfg,
         &accuracy_names,
         trace,
         "Accuracy BASE modifier sum",
     );
-    let accuracy_inc = db.sum_traced(
+    let accuracy_inc = db.sum_traced_by_name(
         ModType::Inc,
         cfg,
         &accuracy_names,
@@ -1504,7 +1504,7 @@ fn total_dps_traced(
     };
     // Enemy block: only deducted from hit chance under the effective view (accuracy-and-enemy.md §2.3).
     let enemy_block = if cfg.mode_effective {
-        (enemy_db.sum(ModType::Base, cfg, &["BlockChance"]) / 100.0).clamp(0.0, 1.0)
+        (enemy_db.sum_by_name(ModType::Base, cfg, &["BlockChance"]) / 100.0).clamp(0.0, 1.0)
     } else {
         0.0
     };
@@ -1569,7 +1569,7 @@ fn total_dps_traced(
     let non_crit_total: f64 = crit_pass.stored_hit_avg.iter().map(|(_, avg)| avg).sum();
     let non_crit_node = {
         let damage_cfg = cfg_hit.clone().with_damage_type(DamageType::Physical);
-        let inc_damage = db.sum_traced(
+        let inc_damage = db.sum_traced_by_name(
             ModType::Inc,
             &damage_cfg,
             &damage_names,
@@ -1609,7 +1609,7 @@ fn total_dps_traced(
     let crit_total: f64 = crit_pass.stored_crit_avg.iter().map(|(_, avg)| avg).sum();
     let crit_leg_node = {
         let damage_cfg = cfg_crit.clone().with_damage_type(DamageType::Physical);
-        let inc_damage = db.sum_traced(
+        let inc_damage = db.sum_traced_by_name(
             ModType::Inc,
             &damage_cfg,
             &damage_names,
@@ -1670,7 +1670,7 @@ fn total_dps_traced(
     // matching the non-traced path.
     let (use_rate, use_rate_node) = if fixed_use_rate(db, cfg).is_some() {
         // Used by something other than the character: no speed scales it.
-        let use_rate = db.sum_traced(
+        let use_rate = db.sum_traced_by_name(
             ModType::Base,
             cfg,
             &["SkillUseRate"],
@@ -1688,7 +1688,7 @@ fn total_dps_traced(
             input.base_action_rate,
             SourceId::new(SourceKind::CharacterBase, "base.ActionRate"),
         );
-        let inc_speed = db.sum_traced(
+        let inc_speed = db.sum_traced_by_name(
             ModType::Inc,
             cfg,
             speed_names,
@@ -1723,7 +1723,7 @@ fn total_dps_traced(
             } else {
                 "ProjectileSpeed"
             };
-            let landing_speed = db.sum_traced(
+            let landing_speed = db.sum_traced_by_name(
                 if landing_stat == "ProjectileSpeed" {
                     ModType::Inc
                 } else {
@@ -1754,11 +1754,12 @@ fn total_dps_traced(
                 super::periodic::DURATION,
                 super::periodic::LIMIT,
             ] {
-                let term = db.sum_traced(ModType::Base, cfg, &[name], trace, name);
+                let term = db.sum_traced_by_name(ModType::Base, cfg, &[name], trace, name);
                 trace.add_edge(term.node_id, node);
             }
             let duration = ["Duration"];
-            let inc = db.sum_traced(ModType::Inc, cfg, &duration, trace, "Periodic duration INC");
+            let inc =
+                db.sum_traced_by_name(ModType::Inc, cfg, &duration, trace, "Periodic duration INC");
             let more = more_factor_traced(db, cfg, &duration, "Periodic duration MORE", trace);
             trace.add_edge(inc.node_id, node);
             trace.add_edge(more.node_id, node);
@@ -1778,7 +1779,7 @@ fn total_dps_traced(
     if end_factor != 1.0 {
         // QuantityMultiplier's mod source enters the graph (dpsMultiplier
         // added once passed through from the skill data side by T4).
-        let quantity = db.sum_traced(
+        let quantity = db.sum_traced_by_name(
             ModType::Base,
             cfg,
             &["QuantityMultiplier"],
@@ -1867,7 +1868,7 @@ fn enemy_mitigation_terms(
 
     // The damage-taken chain: generic + per-type DamageTaken (INC + MORE)
     let taken_names = enemy_taken_names(damage_type);
-    let mut taken_inc = enemy_db.sum(ModType::Inc, &type_cfg, &taken_names);
+    let mut taken_inc = enemy_db.sum_by_name(ModType::Inc, &type_cfg, &taken_names);
     // INC-only extra names (vendor only adds these into takenInc, not takenMore):
     // - Elemental types += ElementalDamageTaken (CalcOffence.lua:4141);
     // - Projectile skills += ProjectileDamageTaken (`:4152-4153`), attack
@@ -1880,9 +1881,9 @@ fn enemy_mitigation_terms(
     //   statSet.baseFlags main channel; the support addFlags grant channel,
     //   e.g. Remote Mine support adding 'mine', isn't modeled by PoBR, kept tracked).
     for &name in enemy_taken_inc_only_names(&type_cfg, damage_type).as_slice() {
-        taken_inc += enemy_db.sum(ModType::Inc, &type_cfg, &[name]);
+        taken_inc += enemy_db.sum_by_name(ModType::Inc, &type_cfg, &[name]);
     }
-    let taken_more = enemy_db.more(&type_cfg, &taken_names);
+    let taken_more = enemy_db.more_by_name(&type_cfg, &taken_names);
     let taken_mult = (1.0 + taken_inc / 100.0) * taken_more;
 
     let mut invert_share = 0.0;
@@ -1903,7 +1904,7 @@ fn enemy_mitigation_terms(
         // penetration and ignore rules must resolve each outcome separately.
         if damage_type.is_elemental() {
             let invert = player_db
-                .sum(ModType::Base, &type_cfg, &["HitsInvertEleResChance"])
+                .sum_by_name(ModType::Base, &type_cfg, &["HitsInvertEleResChance"])
                 .clamp(0.0, 1.0);
             if invert > 0.0 {
                 resist -= 2.0 * invert * resist;
@@ -2069,12 +2070,12 @@ pub(crate) fn enemy_mitigation_lines<'a>(
 ) -> EnemyMitigationLines<'a> {
     let type_cfg = cfg.clone().with_damage_type(damage_type);
     let defence = if damage_type == DamageType::Physical {
-        enemy_db.evaluate_names(&type_cfg, &["Armour", "PhysicalDamageReduction"])
+        enemy_db.evaluate_names_by_name(&type_cfg, &["Armour", "PhysicalDamageReduction"])
     } else {
         let resisting = enemy_resisting_element(enemy_db, &type_cfg, damage_type);
         let resist_cfg = type_cfg.clone().with_damage_type(resisting);
         let names = enemy_resist_names(resisting);
-        let mut lines = enemy_db.evaluate_names(&resist_cfg, names);
+        let mut lines = enemy_db.evaluate_names_by_name(&resist_cfg, names);
         // The same last matching numeric override as enemy_own_resist uses.
         // Shared ElementalResist overrides are not part of that query.
         // Keep the existing short-name override priority, then its alias.
@@ -2102,10 +2103,10 @@ pub(crate) fn enemy_mitigation_lines<'a>(
         }
         lines
     };
-    let mut taken = enemy_db.evaluate_names(&type_cfg, &enemy_taken_names(damage_type));
+    let mut taken = enemy_db.evaluate_names_by_name(&type_cfg, &enemy_taken_names(damage_type));
     taken.extend(
         enemy_db
-            .evaluate_names(
+            .evaluate_names_by_name(
                 &type_cfg,
                 enemy_taken_inc_only_names(&type_cfg, damage_type).as_slice(),
             )
@@ -2206,9 +2207,9 @@ fn enemy_own_resist(enemy_db: &ModDb, type_cfg: &CalcConfig, damage_type: Damage
     {
         Some(value) => value,
         None => {
-            let base = enemy_db.sum(ModType::Base, type_cfg, names);
-            let scale = (1.0 + enemy_db.sum(ModType::Inc, type_cfg, names) / 100.0)
-                * enemy_db.more(type_cfg, names);
+            let base = enemy_db.sum_by_name(ModType::Base, type_cfg, names);
+            let scale = (1.0 + enemy_db.sum_by_name(ModType::Inc, type_cfg, names) / 100.0)
+                * enemy_db.more_by_name(type_cfg, names);
             base * scale.max(0.0)
         }
     };
@@ -2298,7 +2299,7 @@ fn penetration_minimum(player_db: &ModDb, type_cfg: &CalcConfig, damage_type: Da
         DamageType::Cold => &["ColdPenetrationMinimum", "ElementalPenetrationMinimum"],
         DamageType::Lightning => &["LightningPenetrationMinimum", "ElementalPenetrationMinimum"],
     };
-    player_db.sum(ModType::Base, type_cfg, names)
+    player_db.sum_by_name(ModType::Base, type_cfg, names)
 }
 
 /// The player's penetration value (%) for a damage type. Physical has no penetration (physical uses the Overwhelm/armour-break path instead).
@@ -2310,7 +2311,7 @@ fn penetration_value(player_db: &ModDb, type_cfg: &CalcConfig, damage_type: Dama
         DamageType::Lightning => &["LightningPenetration", "ElementalPenetration"],
         DamageType::Chaos => &["ChaosPenetration"],
     };
-    player_db.sum(ModType::Base, type_cfg, names)
+    player_db.sum_by_name(ModType::Base, type_cfg, names)
 }
 
 /// The physical mitigation component (for a given raw_hit), vendor
@@ -2365,9 +2366,9 @@ fn enemy_physical_reduction(
     let mut armour = match enemy_db.override_(cfg, "Armour") {
         Some(value) => value,
         None => {
-            enemy_db.sum(ModType::Base, cfg, &armour_names)
-                * (1.0 + enemy_db.sum(ModType::Inc, cfg, &armour_names) / 100.0)
-                * enemy_db.more(cfg, &armour_names)
+            enemy_db.sum_by_name(ModType::Base, cfg, &armour_names)
+                * (1.0 + enemy_db.sum_by_name(ModType::Inc, cfg, &armour_names) / 100.0)
+                * enemy_db.more_by_name(cfg, &armour_names)
         }
     };
     if armour > 0.0 {
@@ -2377,21 +2378,21 @@ fn enemy_physical_reduction(
             // Vendor :4301 reads the enemy's calcLib.val, not a player-side
             // ignore stat. A negative broken armour value must remain negative.
             let ignore_names = ["IgnoreArmour"];
-            let ignore = enemy_db.sum(ModType::Base, cfg, &ignore_names)
-                * (1.0 + enemy_db.sum(ModType::Inc, cfg, &ignore_names) / 100.0)
-                * enemy_db.more(cfg, &ignore_names);
+            let ignore = enemy_db.sum_by_name(ModType::Base, cfg, &ignore_names)
+                * (1.0 + enemy_db.sum_by_name(ModType::Inc, cfg, &ignore_names) / 100.0)
+                * enemy_db.more_by_name(cfg, &ignore_names);
             armour = (armour - ignore).max(0.0);
         }
     }
-    let as_though_dealing = player_db.more(cfg, &["CalcArmourAsThoughDealing"]);
+    let as_though_dealing = player_db.more_by_name(cfg, &["CalcArmourAsThoughDealing"]);
     let from_armour = armour_reduction_pct_signed(
         armour,
         raw_hit * as_though_dealing,
         cfg.constants.game().armour_ratio,
     );
-    let flat_pdr = enemy_db.sum(ModType::Base, cfg, &["PhysicalDamageReduction"]);
+    let flat_pdr = enemy_db.sum_by_name(ModType::Base, cfg, &["PhysicalDamageReduction"]);
     // Overwhelm: the player's EnemyPhysicalDamageReduction BASE (usually negative) is added directly to the enemy's PDR.
-    let overwhelm = player_db.sum(ModType::Base, cfg, &["EnemyPhysicalDamageReduction"]);
+    let overwhelm = player_db.sum_by_name(ModType::Base, cfg, &["EnemyPhysicalDamageReduction"]);
     (flat_pdr + overwhelm + from_armour).clamp(
         -cfg.constants.game().neg_armour_dmg_bonus_cap,
         ENEMY_PHYS_DMGRED_CAP,
@@ -2423,7 +2424,7 @@ pub(crate) fn more_factor_traced(
     label: impl Into<String>,
     trace: &mut TraceGraph,
 ) -> TracedValue {
-    let contributions = db.contributions(ModType::More, cfg, names);
+    let contributions = db.contributions_by_name(ModType::More, cfg, names);
     let factor = contributions.iter().fold(1.0, |product, contribution| {
         product * (1.0 + contribution.value / 100.0)
     });
@@ -2485,7 +2486,7 @@ fn apply_total_time(db: &ModDb, cfg: &CalcConfig, scaled_rate: f64) -> f64 {
     // SPELL/ATTACK flag derivation (skill_type_flags) isn't reliable for
     // some builds, and gating would make comet etc. lose the TotalCastTime
     // speed cap (regressed offence parity was observed); summing is more robust.
-    let extra_time = db.sum(ModType::Base, cfg, &["TotalCastTime", "TotalAttackTime"]);
+    let extra_time = db.sum_by_name(ModType::Base, cfg, &["TotalCastTime", "TotalAttackTime"]);
     let channel_time = super::flameblast::release_time(db, cfg, 1.0 / scaled_rate);
     if extra_time <= 0.0 && channel_time == 1.0 / scaled_rate {
         return scaled_rate;
@@ -2514,7 +2515,7 @@ pub(crate) fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f6
     if db.flag(cfg, "CooldownBypass") {
         return uncapped_rate;
     }
-    let base_cd = db.sum(ModType::Base, cfg, &["SkillCooldownBase"]);
+    let base_cd = db.sum_by_name(ModType::Base, cfg, &["SkillCooldownBase"]);
     if base_cd <= 0.0 {
         return uncapped_rate;
     }
@@ -2522,7 +2523,7 @@ pub(crate) fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f6
     // rounded up to the server tick (PoB2 CalcOffence L338-345), sharing the
     // same source read of SkillStoredUsesBase with perform::fill_skill_mechanics.
     let stored = db
-        .sum(ModType::Base, cfg, &["SkillStoredUsesBase"])
+        .sum_by_name(ModType::Base, cfg, &["SkillStoredUsesBase"])
         .max(0.0) as u32;
     let cd = super::skill_mechanics::calc_cooldown(db, cfg, base_cd, stored).cooldown;
     if cd <= 0.0 {
@@ -2535,7 +2536,9 @@ pub(crate) fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f6
 /// How many times one use of the skill casts it: `1 + RepeatCount` (Spell
 /// Echo's echoes, see `rules::skill_stats`).
 pub(crate) fn repeats(db: &ModDb, cfg: &CalcConfig) -> f64 {
-    1.0 + db.sum(ModType::Base, cfg, &["RepeatCount"]).max(0.0)
+    1.0 + db
+        .sum_by_name(ModType::Base, cfg, &["RepeatCount"])
+        .max(0.0)
 }
 
 /// The server tick rate ceiling (PoB2 CalcOffence L2863-2865): a
@@ -2631,12 +2634,12 @@ pub(crate) fn pool_terms(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) ->
     let names = [name];
     let converted_pct = pool_conversion_pct(db, cfg, name);
     let (extra_name, total_name, extra_total_name) = pool_extra_and_total_names(name);
-    let flat = db.sum(ModType::Base, cfg, &[name, extra_name.as_ref()]);
-    let inc = db.sum(ModType::Inc, cfg, &names);
-    let more = db.more(cfg, &names);
+    let flat = db.sum_by_name(ModType::Base, cfg, &[name, extra_name.as_ref()]);
+    let inc = db.sum_by_name(ModType::Inc, cfg, &names);
+    let more = db.more_by_name(cfg, &names);
     // Discipline grants total ES. Its converted share remains a total,
     // added after the destination pool's increases and multipliers.
-    let flat_after = db.sum(
+    let flat_after = db.sum_by_name(
         ModType::Base,
         cfg,
         &[total_name.as_ref(), extra_total_name.as_ref()],
@@ -2680,7 +2683,7 @@ fn pool_conversion_pct(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
         ],
         _ => return 0.0,
     };
-    db.sum(ModType::Base, cfg, names).min(100.0)
+    db.sum_by_name(ModType::Base, cfg, names).min(100.0)
 }
 
 fn scaled_numeric_stat(db: &ModDb, cfg: &CalcConfig, base: f64, names: &[&str]) -> f64 {
@@ -2693,9 +2696,9 @@ fn scaled_numeric_stat(db: &ModDb, cfg: &CalcConfig, base: f64, names: &[&str]) 
             return round(value);
         }
     }
-    let base_value = base + db.sum(ModType::Base, cfg, names);
-    let inc = db.sum(ModType::Inc, cfg, names);
-    let more = db.more(cfg, names);
+    let base_value = base + db.sum_by_name(ModType::Base, cfg, names);
+    let inc = db.sum_by_name(ModType::Inc, cfg, names);
+    let more = db.more_by_name(cfg, names);
     round(base_value * (1.0 + inc / 100.0) * more)
 }
 
@@ -2730,7 +2733,7 @@ fn scaled_pool_traced(
         SourceId::new(SourceKind::CharacterBase, format!("base.{stat_name}")),
     );
     let (extra_name, total_name, extra_total_name) = pool_extra_and_total_names(stat_name);
-    let base_mods = db.sum_traced(
+    let base_mods = db.sum_traced_by_name(
         ModType::Base,
         cfg,
         &[stat_name, extra_name.as_ref()],
@@ -2748,14 +2751,14 @@ fn scaled_pool_traced(
     trace.add_edge(base_node, base_total_node);
     trace.add_edge(base_mods.node_id, base_total_node);
 
-    let inc_mods = db.sum_traced(
+    let inc_mods = db.sum_traced_by_name(
         ModType::Inc,
         cfg,
         &names,
         trace,
         format!("{stat_name} INC modifier sum"),
     );
-    let more_factor = db.more(cfg, &names);
+    let more_factor = db.more_by_name(cfg, &names);
     let more_node = trace.add_node(
         format!("{stat_name} MORE factor"),
         more_factor,
@@ -2770,7 +2773,7 @@ fn scaled_pool_traced(
     trace.add_edge(base_total_node, scaled_node);
     trace.add_edge(inc_mods.node_id, scaled_node);
     trace.add_edge(more_node, scaled_node);
-    let total_mods = db.sum_traced(
+    let total_mods = db.sum_traced_by_name(
         ModType::Base,
         cfg,
         &[total_name.as_ref(), extra_total_name.as_ref()],
@@ -2806,7 +2809,7 @@ fn additive_stat_traced(
         base,
         SourceId::new(SourceKind::CharacterBase, format!("base.{stat_name}")),
     );
-    let base_mods = db.sum_traced(
+    let base_mods = db.sum_traced_by_name(
         ModType::Base,
         cfg,
         &names,
