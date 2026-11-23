@@ -41,7 +41,8 @@ def oracle_main_output(xml: Path) -> dict:
         r = subprocess.run([str(RUN), str(xml), out], capture_output=True, text=True, timeout=180)
         if r.returncode != 0:
             raise RuntimeError(f"oracle exit {r.returncode}: {r.stderr.strip()[-300:]}")
-        return json.load(open(out))["mainOutput"]
+        with open(out, encoding="utf-8") as handle:
+            return json.load(handle)["mainOutput"]
     finally:
         os.unlink(out)
 

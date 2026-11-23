@@ -1,0 +1,19 @@
+name: Prepare pinned external data
+description: Restore the owner download cache, install pinned data, and verify worktree data boundaries.
+runs:
+  using: composite
+  steps:
+    - name: Restore owner data downloads
+      uses: actions/cache@v6
+      with:
+        # Content-addressed by SHA-256; every hit is re-verified against the lock.
+        path: .cache/data-import-downloads
+        key: owner-data-${{ hashFiles('pipeline/data.lock.json') }}
+        restore-keys: owner-data-
+    - name: Prepare pinned external data
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        python3 -m pipeline.runtime.build_data --install data
+        python3 -c 'import json; from pathlib import Path; assert Path("data/CURRENT").read_text().strip() == json.loads(Path("pipeline/data.lock.json").read_bytes())["target"]["game_patch"]'
+        bash devs/scripts/check-data.sh

@@ -26,8 +26,7 @@ plan = load("ci-plan.py")
 gate = load("ci-gate.py")
 ready = load("pr-ready.py")
 tool_pins = load("tool-versions.py")
-gh_installer = load("install-gh.py")
-actionlint_installer = load("install-actionlint.py")
+tool_installer = load("install-tool.py")
 rust_tests = load("ci-rust-tests.py")
 timings = load("actions-timings.py")
 
@@ -53,7 +52,7 @@ class TimingTests(unittest.TestCase):
         self.assertTrue(timings.validation("Standalone WASM package smoke"))
         self.assertTrue(timings.validation("Worker runtime smoke"))
         self.assertFalse(timings.validation("Package standalone WASM and report size"))
-        self.assertFalse(timings.validation("Post Run actions/cache@v5"))
+        self.assertFalse(timings.validation("Post Run actions/cache@v6"))
 
 
 class SparsePlannerTests(unittest.TestCase):
@@ -113,7 +112,7 @@ class ExternalDataShardTests(unittest.TestCase):
         self.assertIn("needs: [web]", runtime)
         # The compact release is packaged from the prepared owner snapshot only.
         self.assertIn("runtime_pack build --data data --out .cache/ci-runtime-pack", runtime)
-        self.assertLess(runtime.index("build_data --install data"), runtime.index("runtime_pack build"))
+        self.assertLess(runtime.index("uses: ./.github/actions/prepare-data"), runtime.index("runtime_pack build"))
         self.assertNotIn("download-artifact@v8.0.2\n        with:\n          name: ordinary", runtime)
         self.assertIn("name: wasm-release", runtime)
         self.assertNotIn("run-id:", runtime)
@@ -126,6 +125,8 @@ class ExternalDataShardTests(unittest.TestCase):
         self.assertNotIn("cargo ", runtime)
 
     def test_web_data_imports_use_the_pinned_python(self):
+        action = (HERE.parents[1] / ".github/actions/prepare-data/action.yml").read_text()
+        self.assertIn("pipeline.runtime.build_data --install data", action)
         for filename in ("pr.yml", "ci.yml"):
             workflow = (HERE.parents[1] / ".github/workflows" / filename).read_text()
             # Job boundaries have two spaces; nested blocks have at least four.
@@ -133,7 +134,7 @@ class ExternalDataShardTests(unittest.TestCase):
             job = re.split(r"\n  [a-z]+:", job, maxsplit=1)[0]
             setup = job.split("uses: ./.github/actions/setup-tools", 1)[1].split("      - ", 1)[0]
             self.assertIn("python: 'true'", setup, filename)
-            self.assertIn("pipeline.runtime.build_data --install data", job, filename)
+            self.assertIn("uses: ./.github/actions/prepare-data", job, filename)
 
     def test_web_jobs_check_interface_copy_with_the_mise_task_script(self):
         root = HERE.parents[1]
@@ -157,22 +158,25 @@ class ExternalDataShardTests(unittest.TestCase):
         steps = job.split("      - name: ")
         prepare = next(step for step in steps if step.startswith("Prepare pinned external data"))
         self.assertNotIn("        if:", prepare)
-        self.assertIn("--install data", prepare)
+        self.assertIn("uses: ./.github/actions/prepare-data", prepare)
         self.assertLess(job.index("Prepare pinned external data"), job.index("Workspace tests"))
         for retired in ("ordinary_inputs", "pipeline.imports.data_imports", "pobr-data-adapter --bin"):
             self.assertNotIn(retired, workflow)
 
     def test_every_data_import_reuses_the_download_cache_and_leaves_a_clean_worktree(self):
-        for filename in ("pr.yml", "ci.yml"):
+        action = (HERE.parents[1] / ".github/actions/prepare-data/action.yml").read_text()
+        steps = action.split("    - name: ")
+        prepare_idx = next(i for i, step in enumerate(steps) if "pipeline.runtime.build_data --install data" in step)
+        self.assertIn("bash devs/scripts/check-data.sh", steps[prepare_idx])
+        self.assertIn("working-directory: ${{ github.workspace }}", steps[prepare_idx])
+        self.assertTrue(steps[prepare_idx - 1].startswith("Restore owner data downloads"))
+        self.assertIn("uses: actions/cache@v6", steps[prepare_idx - 1])
+        self.assertIn("path: .cache/data-import-downloads", steps[prepare_idx - 1])
+        self.assertIn("pipeline/data.lock.json", steps[prepare_idx - 1])
+        for filename, expected_uses in (("pr.yml", 2), ("ci.yml", 4)):
             workflow = (HERE.parents[1] / ".github/workflows" / filename).read_text()
-            steps = workflow.split("      - name: ")
-            prepares = [i for i, step in enumerate(steps) if "pipeline.runtime.build_data --install data" in step]
-            self.assertTrue(prepares, filename)
-            for index in prepares:
-                self.assertIn("bash devs/scripts/check-data.sh", steps[index], filename)
-                self.assertTrue(steps[index - 1].startswith("Restore owner data downloads"), filename)
-                self.assertIn("path: .cache/data-import-downloads", steps[index - 1], filename)
-                self.assertIn("pipeline/data.lock.json", steps[index - 1], filename)
+            self.assertEqual(workflow.count("uses: ./.github/actions/prepare-data"), expected_uses, filename)
+            self.assertNotIn("pipeline.runtime.build_data --install data", workflow, filename)
             self.assertNotIn("pipeline.legacy", workflow, filename)
 
 class RoutingTests(unittest.TestCase):
@@ -201,8 +205,9 @@ class RoutingTests(unittest.TestCase):
 
     def test_shared_or_unknown_inputs_select_full_without_duplicate_light_checks(self):
         for name in ["Cargo.lock", "crates/new/Cargo.toml", "mise.toml", "web/package.json",
-                     ".github/workflows/ci.yml", "devs/scripts/ci-plan.py",
-                     "devs/scripts/tool-versions.py", "devs/scripts/install-actionlint.py",
+                     ".github/workflows/ci.yml", ".github/actions/prepare-data/action.yml",
+                     "devs/scripts/ci-plan.py", "devs/scripts/tool-versions.py",
+                     "devs/scripts/install-tool.py",
                      "devs/scripts/setup-environment.sh", "devs/ci/parse-coverage-baseline.json",
                      "new-runtime.conf", "docs/hidden-executable.py", "requirements.txt", "devs/notes.txt"]:
             with self.subTest(name=name):
@@ -487,12 +492,14 @@ class GhInstallerTests(unittest.TestCase):
             requests.append(url)
             return checksum if url.endswith("checksums.txt") else data
         with tempfile.TemporaryDirectory() as root:
-            binary = gh_installer.install("1.2.3", "X64", root, fetch) / "gh"
+            binary = tool_installer.install("gh", "1.2.3", "X64", root, fetch) / "gh"
             self.assertEqual(binary.read_bytes(), payload)
             self.assertTrue(binary.stat().st_mode & 0o111)
             with self.assertRaisesRegex(ValueError, "checksum mismatch"):
-                gh_installer.install("1.2.3", "X64", root,
+                tool_installer.install("gh", "1.2.3", "X64", root,
                     lambda url: checksum if url.endswith("checksums.txt") else b"corrupt")
+            with self.assertRaisesRegex(ValueError, "Unsupported CI tool"):
+                tool_installer.install("unknown", "1.2.3", "X64", root, fetch)
         self.assertTrue(all(url.startswith("https://github.com/cli/cli/releases/download/v1.2.3/") for url in requests))
 
 
@@ -522,7 +529,7 @@ class ActionlintInstallerTests(unittest.TestCase):
                 def fetch(url):
                     requests.append(url)
                     return checksum if url.endswith("checksums.txt") else archive
-                binary = actionlint_installer.install("1.2.3", runner, root, fetch) / "actionlint"
+                binary = tool_installer.install("actionlint", "1.2.3", runner, root, fetch) / "actionlint"
                 self.assertEqual(binary.read_bytes(), payload)
                 self.assertTrue(binary.stat().st_mode & 0o111)
                 base = "https://github.com/rhysd/actionlint/releases/download/v1.2.3/"
@@ -542,7 +549,7 @@ class ActionlintInstallerTests(unittest.TestCase):
                 binary.parent.mkdir()
                 binary.write_bytes(b"existing")
                 with self.assertRaises(error):
-                    actionlint_installer.install("1.2.3", "X64", root,
+                    tool_installer.install("actionlint", "1.2.3", "X64", root,
                         lambda url: sums if url.endswith("checksums.txt") else data)
                 self.assertEqual(binary.read_bytes(), b"existing")
 

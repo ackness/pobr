@@ -33,7 +33,6 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
-from typing import Optional
 import zlib
 from xml.etree import ElementTree
 
@@ -115,7 +114,7 @@ class Line:
 
     mod_type: str
     key: str
-    value: Optional[float]
+    value: float | None
     label: str
     active: bool = True
 
@@ -250,7 +249,7 @@ def item_slot_keys(xml: str) -> "SourceKeys":
     return keys
 
 
-def slot_key(name: str, second_weapon_set: bool) -> Optional[str]:
+def slot_key(name: str, second_weapon_set: bool) -> str | None:
     """The source key of a PoB2 slot name (`Body Armour` → `item:bodyarmour`)."""
     if name.startswith("Jewel") or "Socket" in name:
         return None
@@ -355,7 +354,7 @@ def skill_effect(ident: str, main_skill: str) -> str:
 # Lines
 
 
-def number(value) -> Optional[float]:
+def number(value) -> float | None:
     if value is None or isinstance(value, bool):
         return None
     if isinstance(value, (int, float)):
@@ -372,7 +371,7 @@ def as_dict(value) -> dict:
     return value if isinstance(value, dict) else {}
 
 
-def reference_value(oracle: dict, pob_key: str) -> Optional[float]:
+def reference_value(oracle: dict, pob_key: str) -> float | None:
     """PoB2's value for a reference row: `Minion:<stat>` is the main skill's
     minion's, any other key the character's."""
     output = oracle_outputs(oracle)
@@ -400,7 +399,7 @@ def as_list(value) -> list:
     return value if isinstance(value, list) else []
 
 
-def pobr_lines(mods, main_skill: str, keys: Optional[dict] = None) -> list:
+def pobr_lines(mods, main_skill: str, keys: dict | None = None) -> list:
     """The engine's breakdown lines (`BreakdownMod`), inactive ones included.
     With the build's `SourceKeys`, a line a tree jewel grants a passive in its
     radius is keyed as the jewel's socket, as PoB2 keys it."""
@@ -530,7 +529,7 @@ def resolve_stats(asked, entries: dict) -> list:
     return stats
 
 
-def pob2_names(stat: str, entry: Optional[dict]) -> tuple:
+def pob2_names(stat: str, entry: dict | None) -> tuple:
     if stat in POB2_NAMES:
         return POB2_NAMES[stat]
     pob_key = (entry or {}).get("pob_key")

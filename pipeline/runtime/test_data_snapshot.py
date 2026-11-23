@@ -1,7 +1,6 @@
 """Offline tests for failure-safe snapshot publication."""
 from contextlib import contextmanager
 import fcntl
-import importlib.util
 import json
 from pathlib import Path
 import shutil
@@ -9,10 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-
-SPEC = importlib.util.spec_from_file_location("data_snapshot", Path(__file__).with_name("data_snapshot.py"))
-snapshot = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(snapshot)
+from pipeline.runtime import data_snapshot as snapshot
 
 
 def tree_fingerprint(path):

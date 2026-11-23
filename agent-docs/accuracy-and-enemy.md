@@ -3,10 +3,9 @@
 本文档收录 PoE2（0.5.0）**进攻命中侧**与**默认敌人/怪物参数**——它们共同构成 DPS 计算的关键输入：玩家攻击要先过命中检定，命中率又取决于敌人闪避；而"有效 DPS (effective DPS)"还要乘上敌人抗性/护甲/受到伤害修饰词。PoB2 用 **player / enemy 双 Actor + 双 ModDB** 建模这一切，敌人参数大量来自按**怪物等级**索引的缩放表。
 
 > 本文与既有文档**互补、不重复**，交叉引用：
-> - **命中-闪避公式的防御侧**（怪物击中玩家 `monsterHitChance`、熵值机制、闪避降级暴击）见 [evasion.md](./evasion.md)；本文只补**进攻侧**（玩家命中怪物 `calcs.hitChance`）。
 > - **暴击的闪避降级**（`有效暴击几率 = 暴击几率 × 命中率`）见 [critical-hits.md](./critical-hits.md)；敌人爆伤默认 +30%（怪物 base_critical_hit_damage_bonus）见下 §五。
 > - **异常/姿态阈值的怪物查表**（`monsterAilmentThresholdTable` / `monsterPoiseThresholdTable`）已在 [ailments.md](./ailments.md) 详述，本文只列 DPS 上下文需要的默认敌人阈值并指针引用。
-> - 抗性/最大抗性见 [resistances.md](./resistances.md)；护甲减伤见 [armour.md](./armour.md)；敌人 debuff（致盲/致残/暴露/感电等）见 [debuffs.md](./debuffs.md)。
+> - 护甲减伤见 [armour.md](./armour.md)；敌人 debuff（致盲/致残/暴露/感电等）见 [debuffs.md](./debuffs.md)。
 > - 末尾「PoB2 计算实现」给出核对过的真实变量/表名/常量名，是 pobr 的回归基准。
 
 ---
@@ -20,10 +19,10 @@
 | 来源 | 数值（0.5.0） | 备注 |
 |------|--------------|------|
 | 每角色等级 | **+6 Accuracy Rating**（0.5.0 由 +3 提升）| `accuracy_rating_per_level = 6`[^poe2wiki-acc] |
-| 每 1 点敏捷 (Dexterity) | **+6 Accuracy Rating**（0.5.0 由 +5 提升）| `AccuracyPerDexBase = 6`，见 [attributes.md](./attributes.md) |
+| 每 1 点敏捷 (Dexterity) | **+6 Accuracy Rating**（0.5.0 由 +5 提升）| `AccuracyPerDexBase = 6` |
 | 装备/天赋词条 | `+N to Accuracy Rating`、`N% increased Accuracy Rating` | 局部（武器）与全局两类 |
 
-> **0.5.0 命中改动**[^poe2wiki-acc]：① 每级 +6（旧 +3）、每点敏捷 +6（旧 +5）；② **距离衰减改为 2m→9m 线性插值**，9m 及更远固定 90% less（旧版无上限、14m 时 100% less）；③ **玩家召唤物攻击改为必定命中**（不再需要精准）；④ 闪避公式被下调以降低被闪避比例（防御侧见 [evasion.md](./evasion.md)）。
+> **0.5.0 命中改动**[^poe2wiki-acc]：① 每级 +6（旧 +3）、每点敏捷 +6（旧 +5）；② **距离衰减改为 2m→9m 线性插值**，9m 及更远固定 90% less（旧版无上限、14m 时 100% less）；③ **玩家召唤物攻击改为必定命中**（不再需要精准）；④ 闪避公式被下调以降低被闪避比例。
 
 ### 1.2 精准的聚合（base / inc / more）
 
@@ -65,7 +64,7 @@ PoB2 常量：`AccuracyFalloffStart = 20`（=2m，10 单位/米）、`AccuracyFa
 - **下限 5%**：命中率不能低于 5%（对应闪避上限 95%）；`accuracy < 0` 时直接返回 5。
 - **上限 100%**（默认 clamp）。**但公式本身上限是 125%**（DE=0 时 `1.25*100`）——只有带 `Condition:HitChanceCanExceed100` 旗标（如 Amazon `Critical Strike` notable）时，PoB2 才保留 >100% 的"超额命中"（`AccuracyHitChanceUncapped`），把多出的部分写入 `Multiplier:ExcessHitChance` 供其它机制消费。
 
-> **与防御侧公式不同（重要）**：这是**玩家打怪**用的式子；**怪物打玩家**用的是另一支 `calcs.monsterHitChance = (1 - 0.95*evasion/(evasion + 4*accuracy)) * 100`（见 [evasion.md](./evasion.md)）。两者**不是简单互为补数**，pobr 实现时务必分清攻防两侧各自的公式。
+> **与防御侧公式不同（重要）**：这是**玩家打怪**用的式子；**怪物打玩家**用的是另一支 `calcs.monsterHitChance = (1 - 0.95*evasion/(evasion + 4*accuracy)) * 100`。两者**不是简单互为补数**，pobr 实现时务必分清攻防两侧各自的公式。
 
 ### 2.2 绕过命中检定
 
@@ -271,12 +270,12 @@ monsterConstants: base_critical_hit_damage_bonus=30, maximum_physical_damage_red
 1. **`Env` 必须是 player / enemy 双 Actor + 双 ModDB（互指）。**
    - 当前 `env.rs::Env` 持有 player/enemy `Actor`，应让 enemy 侧拥有独立 ModDB（精准/闪避/护甲/抗性/受到伤害 debuff），且 `player.enemy ↔ enemy.player` 互引，供"对敌"聚合与敌方 `Self*` 词条求值。命中率求值在**只读快照阶段**展开，符合 pobr "calc 纯函数 + 确定性"约定。
 
-2. **命中率攻防两侧分开实现，勿混用 evasion.md 的防御公式。**
-   - 进攻侧 `hit_chance(accuracy, enemy_evasion) = clamp(accuracy*1.25*100/(accuracy + enemy_evasion*0.3), 5, 100)`；防御侧用 `monsterHitChance`（见 [evasion.md](./evasion.md)）。提供 `CannotBeEvaded`/`CannotEvade` 短路置 100，以及 `HitChanceCanExceed100`（保留 uncapped 与 `ExcessHitChance`）。
+2. **命中率攻防两侧分开实现，勿混用攻防公式。**
+   - 进攻侧 `hit_chance(accuracy, enemy_evasion) = clamp(accuracy*1.25*100/(accuracy + enemy_evasion*0.3), 5, 100)`；防御侧用 `monsterHitChance`。提供 `CannotBeEvaded`/`CannotEvade` 短路置 100，以及 `HitChanceCanExceed100`（保留 uncapped 与 `ExcessHitChance`）。
    - **法术分支**：`is_attack == false → hit_chance = 100`（不进精准管线）。把"是否攻击"作为技能/`CalcConfig` 的一等标志。
 
 3. **精准 base/inc/more 复用现有标准管线，并区分 `AccuracyVsEnemy` 与距离衰减。**
-   - 基础精准从角色等级（+6/级）、敏捷（+6/点）派生（见 [attributes.md](./attributes.md)），不得用全 0 默认；距离衰减作为可配置 `enemy_distance` 的乘区（2m→9m，max 90% less），可被 `NoAccuracyDistancePenalty` 关闭。
+   - 基础精准从角色等级（+6/级）、敏捷（+6/点）派生，不得用全 0 默认；距离衰减作为可配置 `enemy_distance` 的乘区（2m→9m，max 90% less），可被 `NoAccuracyDistancePenalty` 关闭。
 
 4. **敌人默认参数表纳入版本化数据，按 enemyLevel 索引。**
    - 把 `monsterLifeTable`/`monsterAccuracyTable`/`monsterEvasionTable`/`monsterArmourTable`/`monsterDamageTable`（及异常/姿态阈值表，见 [ailments.md](./ailments.md)）作为 `pobr-data` catalog（或 gameConstants 表），由 `pobr-gamedata` loader 读入 `data/<poe_version>/`。**整表照搬**（含 lv65/82 的非线性跳变），勿外推。`enemyLevel` 默认 `min(85, charLevel)`。

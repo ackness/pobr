@@ -342,9 +342,13 @@ def atomic_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as out:
         temporary = Path(out.name)
-        json.dump(value, out, indent=2, allow_nan=False)
-        out.write("\n")
-    temporary.replace(path)
+        try:
+            json.dump(value, out, indent=2, allow_nan=False)
+            out.write("\n")
+            out.close()
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
 
 
 def run(command, timeout=120):

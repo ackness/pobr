@@ -1,6 +1,6 @@
 # 技能功能面机制 (Skill Mechanics)
 
-本文档覆盖 PoE2（0.5.0）技能的**功能面**机制——技能的**行为**而非纯伤害数值：范围、投射物、持续时间、冷却、消耗/保留、重复、引导，以及技能标签如何决定修饰词适用。伤害本体见 [damage-scaling.md](damage-scaling.md) / [damage-types.md](damage-types.md)；速度（攻击/施法/技能速度、服务器帧上限）见 [skill-speed.md](skill-speed.md)，本文不重复；宝石等级/品质/转化见 [gems.md](gems.md)；触发型元宝石的 Energy/触发见 [meta-gems.md](meta-gems.md)；Spirit 保留的回复/上限公式见 [recovery-charges-buffs.md](recovery-charges-buffs.md)，本文只讲技能侧的保留消耗。
+本文档覆盖 PoE2（0.5.0）技能的**功能面**机制——技能的**行为**而非纯伤害数值：范围、投射物、持续时间、冷却、消耗/保留、重复、引导，以及技能标签如何决定修饰词适用。伤害本体见 [damage-scaling.md](damage-scaling.md) / [damage-types.md](damage-types.md)；速度（攻击/施法/技能速度、服务器帧上限）见 [skill-speed.md](skill-speed.md)，本文不重复；触发型元宝石的 Energy/触发见 [triggers.md](triggers.md)；Spirit 保留的回复/上限公式见 [recovery-charges-buffs.md](recovery-charges-buffs.md)，本文只讲技能侧的保留消耗。
 
 > 本文每条结论对照 PoB2 `src/Modules/CalcActiveSkill.lua`、`CalcOffence.lua`（线上）与本地 vendor `src/Data/SkillStatMap.lua`、`Costs.lua`、`Misc.lua`、`Global.lua`。末尾「## 对 pobr 实现的启示」给出对应 pobr 的 `CalcConfig` flags/tags/skill_types 与 `ModName`。
 
@@ -149,7 +149,7 @@ if not Flag("HasNoCost") then
 
 - 持续增益/光环/元宝石按宝石保留 **Spirit**（`HasReservation` 类型，非 `ReservationBecomesCost`）。
 - `ReservationMultiplier MORE`（宝石等级带 `level.reservationMultiplier`）、`ExtraSpirit BASE`（`level.spiritReservationFlat`）影响保留量。
-- **成本倍乘 ≠ 保留倍乘**：带 cost multiplier 的辅助宝石**不**增加 Spirit 保留，除非显式有保留倍乘（见 [meta-gems.md](meta-gems.md)）。
+- **成本倍乘 ≠ 保留倍乘**：带 cost multiplier 的辅助宝石**不**增加 Spirit 保留，除非显式有保留倍乘（见 [triggers.md](triggers.md)）。
 - `ReservationBecomesCost`（Divine Blessing / 图腾光环）把保留转成一次性消耗：`reservedFlat + floor(资源 × reservedPercent/100)`。
 - Spirit 的可用上限与回复不在技能侧——见 [recovery-charges-buffs.md](recovery-charges-buffs.md)（本文不重复保留池公式）。
 
@@ -177,7 +177,7 @@ output.Repeats = 1 + (repeatSkillTypesCheck(skillTypes) and Sum("BASE","RepeatCo
 ## 等级与品质对功能的影响
 
 - **等级**：除基础伤害外，宝石等级会改 `level.duration` / `level.cooldown` / `level.cost` / `reservationMultiplier` / `spiritReservationFlat` 等**功能字段**（`CalcActiveSkill.lua` 读 `level.*` 写入 `skillData` / 注入 mod）。
-- **品质**：0.5.0 起所有宝石都有"额外品质属性"（按住 Alt 查看），品质可加成功能面（如额外投射物、AoE、持续）——具体效果按宝石。详见 [gems.md](gems.md)（不重复）。
+- **品质**：0.5.0 起所有宝石都有"额外品质属性"（按住 Alt 查看），品质可加成功能面（如额外投射物、AoE、持续）——具体效果按宝石（另见 [item-character-systems.md](item-character-systems.md) §六）。
 
 ## 0.5.0 / PoE2 关键变化小结
 
