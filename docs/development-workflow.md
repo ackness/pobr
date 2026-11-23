@@ -303,7 +303,7 @@ CI 的 key 与构建都直接用 Node 执行，避免 pnpm 为脚本注入的临
 仅缺失时编译。工具安装不使用 `cargo install` / `go install`。
 按仓库 10 GiB 缓存预算控制存储，不缓存 dist、node_modules、已导入的 `data/<版本>/` 或历史诊断产物。
 
-每个执行 `python3 -m pipeline.runtime.build_data --install data` 的 job 先用 `actions/cache` 恢复 `.cache/data-import-downloads`。
+每个需要外部数据的 job 统一调用 [prepare-data](../.github/actions/prepare-data/action.yml)，先用 `actions/cache` 恢复 `.cache/data-import-downloads`，再执行 `python3 -m pipeline.runtime.build_data --install data`。
 这些 owner 下载按内容寻址，命中后导入仍逐项校验摘要，损坏或不符即失败。导入后运行
 `bash devs/scripts/check-data.sh`（即 `mise run data:check`）：离线确认 `data/` 只跟踪 `CURRENT`
 与自有共享规则，且导入没有留下未忽略的新文件或改动跟踪文件。

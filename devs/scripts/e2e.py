@@ -10,7 +10,7 @@ on a clean tree writes a receipt keyed by the tree hash that release:e2e-check l
 """
 
 import argparse
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import fnmatch
 import hashlib
 import importlib.util
@@ -508,9 +508,9 @@ def main(argv=None):
         port = int(env["POBR_E2E_PORT"]) if env.get("POBR_E2E_PORT") else None
         if port is not None and not port_free(port):
             raise Stop(f"POBR_E2E_PORT={port} is already in use")
-        started = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        started = datetime.now(UTC).isoformat(timespec="seconds")
         results = [run_suite(suite, port or free_port(ROOT), args.workers, extra, env) for suite in selection.suites]
-        finished = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        finished = datetime.now(UTC).isoformat(timespec="seconds")
         summary(results, env)
         if before is not None:
             receipt = release_receipt(before, snapshot(), results, args.workers, started, finished)
