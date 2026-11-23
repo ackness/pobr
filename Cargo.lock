@@ -428,7 +428,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-cli"
-version = "0.0.56"
+version = "0.0.57"
 dependencies = [
  "clap",
  "pobr-build",
@@ -502,7 +502,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-wasm"
-version = "0.0.56"
+version = "0.0.57"
 dependencies = [
  "pobr-build",
  "pobr-core",
@@ -519,7 +519,7 @@ dependencies = [
 
 [[package]]
 name = "precompile-mods"
-version = "0.0.56"
+version = "0.0.57"
 dependencies = [
  "pobr-core",
  "pobr-data",
