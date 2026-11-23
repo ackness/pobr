@@ -53,7 +53,10 @@ pub trait MinionSession {
 
     /// Spawns one minion from its catalog definition (see
     /// [`crate::calc::CalculationSession::add_minion_from_def`]).
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "mirrors CalculationSession::add_minion_from_def spawn parameters"
+    )]
     fn add_minion_from_def(
         &mut self,
         def: &pobr_data::minion::MinionDef,
@@ -95,7 +98,6 @@ impl MinionSession for crate::calc::CalculationSession {
         crate::calc::CalculationSession::minion_modifiers_for(self, skill_types)
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn add_minion_from_def(
         &mut self,
         def: &pobr_data::minion::MinionDef,
@@ -789,7 +791,7 @@ fn minion_skill(
                 types: effect.skill_types.clone(),
                 skill_types: effect.skill_type_bits(),
                 projectile_hit,
-                cast_time: effect.cast_time.map_or(0.0, |ms| f64::from(ms) / 1000.0),
+                cast_time: effect.cast_time.map_or_default(|ms| f64::from(ms) / 1000.0),
                 damage_multiplier: {
                     let level = minion_skill_level(data, id, minion_level);
                     data.selected_set_level_row(id, level, None)

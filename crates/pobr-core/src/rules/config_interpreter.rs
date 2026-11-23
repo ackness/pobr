@@ -347,7 +347,7 @@ fn apply_effect(
         return;
     }
 
-    let Some(mod_type) = parse_mod_type(&effect.mod_type) else {
+    let Some(mod_type) = effect.mod_type.parse::<ModType>().ok() else {
         outcome.diagnostics.push(format!(
             "config.{}: unknown mod_type `{}` (effect {} skipped)",
             def.var, effect.mod_type, effect.name
@@ -405,7 +405,7 @@ fn apply_nested_mod(
     input: f64,
     outcome: &mut ConfigOutcome,
 ) {
-    let Some(mod_type) = parse_mod_type(&nested.mod_type) else {
+    let Some(mod_type) = nested.mod_type.parse::<ModType>().ok() else {
         outcome.diagnostics.push(format!(
             "config.{}: nested mod has unknown mod_type `{}`, skipped",
             def.var, nested.mod_type
@@ -604,18 +604,6 @@ fn map_mod_flag(name: &str) -> Option<ModFlags> {
         "Melee" => Some(ModFlags::MELEE),
         "Projectile" => Some(ModFlags::PROJECTILE),
         "Area" => Some(ModFlags::AREA),
-        _ => None,
-    }
-}
-
-fn parse_mod_type(literal: &str) -> Option<ModType> {
-    match literal {
-        "BASE" => Some(ModType::Base),
-        "INC" => Some(ModType::Inc),
-        "MORE" => Some(ModType::More),
-        "FLAG" => Some(ModType::Flag),
-        "OVERRIDE" => Some(ModType::Override),
-        "LIST" => Some(ModType::List),
         _ => None,
     }
 }

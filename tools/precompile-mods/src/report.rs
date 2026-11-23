@@ -65,8 +65,8 @@ pub fn emit(cov: &Coverage, top_n: usize, data_dir: &Path) -> Result<(), String>
     // stderr summary
     eprintln!("--- parse coverage report ---");
     eprintln!(
-        "total {} | parsed {} | unsupported {} | err {} | coverage {:.4}",
-        cov.total, cov.parsed, cov.unsupported, cov.err, ratio
+        "total {} | parsed {} | unsupported {} | err {} | coverage {ratio:.4}",
+        cov.total, cov.parsed, cov.unsupported, cov.err
     );
     eprintln!("by source:");
     for (src, [p, u, e]) in &cov.by_source {

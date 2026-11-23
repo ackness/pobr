@@ -155,7 +155,7 @@ fn two_skills_total_rate_bounded_by_source() {
 #[test]
 fn long_cooldown_causes_high_waste_fraction() {
     for (cooldown, source_rate, minimum_waste) in [(8.0, 8.0, 0.4), (10.0, 10.0, 0.5)] {
-        let skills: Vec<RotationSkill> = (0..3).map(|_| RotationSkill::new(cooldown)).collect();
+        let skills = Vec::from_fn(3, |_| RotationSkill::new(cooldown));
         let result = calc_multi_spell_rotation(&skills, source_rate, SERVER_TICK_SECONDS);
         assert!(
             result.wasted_fraction > minimum_waste,

@@ -538,13 +538,11 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
             limit_total,
         } => {
             let mut detail = if *div == 1.0 {
-                format!("scales per point of {}`{}`", actor_label(*actor), var)
+                format!("scales per point of {}`{var}`", actor_label(*actor))
             } else {
                 format!(
-                    "scales per {} point(s) of {}`{}`",
-                    div,
-                    actor_label(*actor),
-                    var
+                    "scales per {div} point(s) of {}`{var}`",
+                    actor_label(*actor)
                 )
             };
             let cap = if *limit_total { "total" } else { "count" };
@@ -573,16 +571,13 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
         } => {
             let mut detail = if *div == 1.0 {
                 format!(
-                    "scales by the {}computed stat `{}`",
-                    actor_label(*actor),
-                    stat
+                    "scales by the {}computed stat `{stat}`",
+                    actor_label(*actor)
                 )
             } else {
                 format!(
-                    "scales by the {}computed stat `{}` / {}",
-                    actor_label(*actor),
-                    stat,
-                    div
+                    "scales by the {}computed stat `{stat}` / {div}",
+                    actor_label(*actor)
                 )
             };
             if let Some(l) = limit {
@@ -611,10 +606,8 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
         } => TagExplain {
             kind: "MultiplierThreshold".to_string(),
             detail: format!(
-                "only in effect when `{}` {} {}",
-                var,
-                if *upper { "<=" } else { ">=" },
-                threshold
+                "only in effect when `{var}` {} {threshold}",
+                if *upper { "<=" } else { ">=" }
             ),
         },
         ModTag::StatThreshold {
@@ -624,10 +617,8 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
         } => TagExplain {
             kind: "StatThreshold".to_string(),
             detail: format!(
-                "only in effect when the computed stat `{}` {} {}",
-                stat,
-                if *upper { "<=" } else { ">=" },
-                threshold
+                "only in effect when the computed stat `{stat}` {} {threshold}",
+                if *upper { "<=" } else { ">=" }
             ),
         },
         ModTag::GlobalLimit { value, key } => TagExplain {

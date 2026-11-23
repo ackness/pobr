@@ -10,7 +10,6 @@ use std::collections::HashSet;
 fn ingest_gem(gem: &GemModSource) -> Result<GemIngest, pobr_core::mod_parser::ParseError> {
     ingest_gem_with_ctx(gem, crate::support::ctx())
 }
-#[allow(dead_code)]
 fn ingest_active_gem(
     spec: &ActiveSkillSpec,
 ) -> Result<GemIngest, pobr_core::mod_parser::ParseError> {
@@ -333,10 +332,10 @@ fn judge_support_require_expression() {
 
     // Only Attack (missing Totemable) → AND doesn't hold → rejected.
     let only_attack = type_set(&["Attack"]);
-    assert!(matches!(
+    std::assert_matches!(
         judge_support(&support, &active_input(&only_attack)),
         Err(SkillGatingError::IncompatibleTypes { .. })
-    ));
+    );
 }
 
 /// Stage 3: an exclude expression hit → Excluded (takes priority over the require verdict).
@@ -369,10 +368,10 @@ fn judge_support_exclude_expression_hits() {
 
     // A triggered spell: the exclude residual stack has Triggered=true → hit → rejected (even though require also matches).
     let triggered = type_set(&["Spell", "Triggered"]);
-    assert!(matches!(
+    std::assert_matches!(
         judge_support(&support, &active_input(&triggered)),
         Err(SkillGatingError::Excluded { .. })
-    ));
+    );
 }
 
 /// Stage 1: active-effect cannotBeSupported → unconditional rejection (even if support has no restrictions at all).

@@ -78,13 +78,13 @@ fn golden_stats(dir: &Path) -> serde_json::Map<String, serde_json::Value> {
 /// EFFECTIVE export. Comparing panel damage with EFFECTIVE values can reward
 /// incorrectly active enemy conditions and reject a correct scope fix.
 fn panel_reference() -> &'static serde_json::Value {
-    static PANEL: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-    PANEL.get_or_init(|| {
+    static PANEL: std::sync::LazyLock<serde_json::Value> = std::sync::LazyLock::new(|| {
         serde_json::from_str(include_str!(
             "../../../../examples/demo-bd-test/panel-golden.json"
         ))
         .expect("parse panel references")
-    })
+    });
+    &PANEL
 }
 
 fn panel_golden_stats(dir: &Path) -> serde_json::Map<String, serde_json::Value> {
@@ -1758,8 +1758,8 @@ fn effective_switch_dual_run_report() {
             };
             if bp != be || (rp - re).abs() > 1e-9 {
                 moved.push(format!(
-                    "{name} :: {:<16} panel {:.3}x → eff {:.3}x{trans}",
-                    p.label, rp, re
+                    "{name} :: {:<16} panel {rp:.3}x → eff {re:.3}x{trans}",
+                    p.label
                 ));
             }
             eprintln!(

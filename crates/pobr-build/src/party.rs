@@ -93,22 +93,24 @@ pub fn parse_party(xml: &str) -> Result<Party, XmlError> {
                         .map_err(|e| XmlError::Parse(e.to_string()))?,
                 );
             }
-            Event::End(e) if matches!(e.name().as_ref(), "ImportedBuffs" | "ExportedBuffs") => {
-                if let Some((name, exported)) = block.take() {
-                    let dest = if let Some(m) = &mut member {
-                        &mut m.blocks
-                    } else if exported {
-                        &mut party.exports
-                    } else {
-                        &mut imported
-                    };
-                    dest.insert(name, text.clone());
-                }
+            Event::End(e)
+                if matches!(e.name().as_ref(), "ImportedBuffs" | "ExportedBuffs")
+                    && let Some((name, exported)) = block.take() =>
+            {
+                let dest = if let Some(m) = &mut member {
+                    &mut m.blocks
+                } else if exported {
+                    &mut party.exports
+                } else {
+                    &mut imported
+                };
+                dest.insert(name, text.clone());
             }
-            Event::End(e) if e.name().as_ref() == "PoBRMember" => {
-                if let Some(m) = member.take() {
-                    party.members.push(m);
-                }
+            Event::End(e)
+                if e.name().as_ref() == "PoBRMember"
+                    && let Some(m) = member.take() =>
+            {
+                party.members.push(m);
             }
             Event::End(e) if e.name().as_ref() == "Party" => break,
             Event::Eof => break,
@@ -224,7 +226,7 @@ pub fn member_effects(member: &PartyMember, index: usize) -> PartyEffects {
         };
         let source = SourceId::new(
             SourceKind::Buff,
-            format!("party.{}.{}", member.id, destination),
+            format!("party.{}.{destination}", member.id),
         );
         if destination == "PartyMemberStats" {
             continue;
@@ -242,7 +244,7 @@ pub fn member_effects(member: &PartyMember, index: usize) -> PartyEffects {
                 continue;
             }
             if destination == "EnemyConditions" {
-                let condition = line.strip_prefix("Condition:").unwrap_or(line);
+                let condition = line.trim_prefix("Condition:");
                 out.conditions.push(format!("Enemy{condition}"));
                 out.lines.push((source.clone(), line.into(), true));
                 continue;

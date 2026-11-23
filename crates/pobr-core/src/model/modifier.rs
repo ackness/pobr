@@ -430,7 +430,7 @@ impl ModTag {
     /// in `cfg`, with what `cfg` has instead where that helps.
     fn unmet(&self, cfg: &CalcConfig) -> String {
         let actor_key =
-            |actor: &Option<ActorRef>| actor.map_or(String::new(), |a| format!("{}.", a.key()));
+            |actor: &Option<ActorRef>| actor.map_or_default(|a| format!("{}.", a.key()));
         let bound = |upper: bool| if upper { "at most" } else { "at least" };
         let type_names = |types: &SkillTypes| {
             let names = types.names();
@@ -716,7 +716,7 @@ impl Modifier {
     fn zero_scaling(&self, ctx: &EvalContext<'_>) -> String {
         let cfg = ctx.cfg;
         let actor_key =
-            |actor: &Option<ActorRef>| actor.map_or(String::new(), |a| format!("{}.", a.key()));
+            |actor: &Option<ActorRef>| actor.map_or_default(|a| format!("{}.", a.key()));
         let per = |what: String, base: f64, div: f64| {
             if div == 1.0 {
                 format!("{what} is {base}")
@@ -953,9 +953,7 @@ fn ramp_factor(ramp: &[(f64, f64)], dist: f64) -> Option<f64> {
         return Some(last.1);
     }
     // Find the pair of adjacent points bracketing `dist` and interpolate linearly (matches vendor :583-588's order).
-    for pair in ramp.windows(2) {
-        let (d0, m0) = pair[0];
-        let (d1, m1) = pair[1];
+    for &[(d0, m0), (d1, m1)] in ramp.array_windows() {
         if dist <= d1 {
             return Some(m0 + (m1 - m0) * (dist - d0) / (d1 - d0));
         }

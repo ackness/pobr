@@ -309,7 +309,7 @@ mod tests {
     fn rejects_misshapen_files_and_codes() {
         let error =
             LocalePack::from_files("xx", [("words.json", br#"["Doom"]"#.as_slice())]).unwrap_err();
-        assert!(matches!(error, PackError::InvalidFile { ref file, .. } if file == "words.json"));
+        std::assert_matches!(error, PackError::InvalidFile { ref file, .. } if file == "words.json");
         let error =
             LocalePack::from_files("xx", [("stat_lines.json", br#"[{"src":"a"}]"#.as_slice())])
                 .unwrap_err();

@@ -950,9 +950,9 @@ pub(crate) fn filter_item_parseable(
     // two lines of the item text (The Adorned's, From Nothing's allocation
     // line): exempt only a pair whose join is such a line, not all text on
     // that jewel (unknown additional effects must remain visible).
-    let wrapped_pairs: Vec<&[String]> = item
+    let wrapped_pairs: Vec<&[String; 2]> = item
         .modifier_texts
-        .windows(2)
+        .array_windows()
         .filter(|pair| {
             let joined = pair.join(" ");
             dedicated_texts.contains(&joined)

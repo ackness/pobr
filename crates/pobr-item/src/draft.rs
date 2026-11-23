@@ -561,8 +561,8 @@ fn apply_spec(
         "Selected Alt Variant Four" => set_alt(&mut draft.variant, 3, val),
         "Selected Alt Variant Five" => set_alt(&mut draft.variant, 4, val),
         "Crafted" => draft.crafted = true,
-        s if catalyst_descriptor(s).is_some() => {
-            draft.catalyst.descriptor = catalyst_descriptor(s).map(str::to_owned);
+        s if let Some(descriptor) = catalyst_descriptor(s) => {
+            draft.catalyst.descriptor = Some(descriptor.to_owned());
             draft.catalyst.quality = parse_percent(val);
         }
         _ => return false,
@@ -616,8 +616,7 @@ fn is_spec_or_state_line(line: &str) -> bool {
 }
 
 fn catalyst_descriptor(spec: &str) -> Option<&str> {
-    spec.strip_prefix("Quality (")?
-        .strip_suffix(" Modifiers)")
+    spec.strip_circumfix("Quality (", " Modifiers)")
         .filter(|descriptor| !descriptor.is_empty())
 }
 

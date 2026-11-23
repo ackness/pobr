@@ -299,7 +299,7 @@ fn the_windows_of_a_heatmap_add_up_to_the_whole_of_it() {
             .map(|e| e["skill"].as_u64().unwrap())
             .collect();
         assert!(
-            skills.windows(2).all(|pair| pair[0] < pair[1]),
+            skills.array_windows().all(|[a, b]| a < b),
             "a window is in node order"
         );
         assert!(skills.len() <= 7);

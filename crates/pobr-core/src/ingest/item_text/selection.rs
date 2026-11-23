@@ -46,8 +46,7 @@ impl ItemSelection {
             header(key)
                 .and_then(|v| v.parse::<u32>().ok())
                 .unwrap_or(default)
-                .max(1)
-                .min(total.max(1))
+                .clamp(1, total.max(1))
         };
         let variant_count = count("Variant");
         let version_count = count("Version");

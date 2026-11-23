@@ -507,8 +507,8 @@ fn modifiers_waiting_for_what_nothing_sets_are_reported() {
     assert!(
         diagnosis
             .unset_conditions
-            .windows(2)
-            .all(|pair| pair[0].config_option.is_none() || pair[1].config_option.is_some())
+            .array_windows()
+            .all(|[a, b]| a.config_option.is_none() || b.config_option.is_some())
     );
     // Set by the config, it is not reported.
     let moving_set = diagnose(

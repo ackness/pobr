@@ -33,11 +33,8 @@ fn opts_with_threshold_line() -> DataOrchestratorOptions {
 /// the count walks every enabled group (matching vendor behaviour) without
 /// interfering with the main skill.
 fn xml_with_red_supports(count: usize) -> String {
-    let supports: String = (0..count)
-        .map(|_| {
-            r#"<Gem enabled="true" gemId="Metadata/Items/Gem/SupportGemAncestralCall" skillId="SupportAncestralCallPlayer" level="1" quality="0"/>"#
-        })
-        .collect();
+    let supports = r#"<Gem enabled="true" gemId="Metadata/Items/Gem/SupportGemAncestralCall" skillId="SupportAncestralCallPlayer" level="1" quality="0"/>"#
+        .repeat(count);
     let support_group = if count > 0 {
         format!(
             r#"<Skill enabled="true" slot="weapon2">

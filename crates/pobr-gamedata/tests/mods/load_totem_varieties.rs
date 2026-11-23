@@ -16,8 +16,8 @@ fn target_rows_have_unique_effects_and_source_links() {
     assert!(
         loaded
             .totems
-            .windows(2)
-            .all(|pair| pair[0].granted_effect < pair[1].granted_effect)
+            .array_windows()
+            .all(|[a, b]| a.granted_effect < b.granted_effect)
     );
     for row in &loaded.totems {
         assert!(!row.granted_effect.is_empty());

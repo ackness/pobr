@@ -97,10 +97,7 @@ pub(crate) fn parse_weapon_local_crit(text: &str) -> Option<(ModType, f64)> {
 /// Parses "adds N to M <suffix>" → (N, M) (suffix is a damage suffix with no leading
 /// space, e.g. `physical damage`). Returns `None` for any other form.
 pub(crate) fn parse_adds_with_suffix(clean: &str, suffix: &str) -> Option<(f64, f64)> {
-    let body = clean
-        .strip_prefix("adds ")?
-        .strip_suffix(suffix)?
-        .strip_suffix(' ')?;
+    let body = clean.strip_circumfix("adds ", suffix)?.strip_suffix(' ')?;
     let (lo, hi) = body.split_once(" to ")?;
     Some((lo.trim().parse().ok()?, hi.trim().parse().ok()?))
 }
@@ -120,8 +117,7 @@ pub(crate) fn item_accuracy_rating(item: &Item) -> f64 {
     weapon_mod_texts(item)
         .filter_map(|text| {
             clean_item_text(text)
-                .strip_prefix('+')?
-                .strip_suffix(" to accuracy rating")?
+                .strip_circumfix('+', " to accuracy rating")?
                 .trim()
                 .parse::<f64>()
                 .ok()

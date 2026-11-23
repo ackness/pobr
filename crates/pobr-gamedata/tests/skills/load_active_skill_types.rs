@@ -37,8 +37,9 @@ fn a_pack_without_the_table_is_refused_at_load() {
         data.active_skill_types().unwrap_err(),
         data.install_skill_type_names().unwrap_err(),
     ] {
-        assert!(
-            matches!(error, pobr_gamedata::LoadError::Integrity { .. }),
+        std::assert_matches!(
+            error,
+            pobr_gamedata::LoadError::Integrity { .. },
             "{error:?}"
         );
         assert!(

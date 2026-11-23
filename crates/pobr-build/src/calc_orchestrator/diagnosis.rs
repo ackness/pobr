@@ -717,11 +717,7 @@ pub fn diagnose(
         .map(|record| UnmappedStat {
             stat: record.stat.clone(),
             owner: record.label.clone(),
-            reason: record
-                .detail
-                .strip_prefix("unsupported:")
-                .unwrap_or(&record.detail)
-                .to_string(),
+            reason: record.detail.trim_prefix("unsupported:").to_string(),
         })
         .collect();
     unmapped_stats.sort_by(|a, b| (&a.owner, &a.stat).cmp(&(&b.owner, &b.stat)));

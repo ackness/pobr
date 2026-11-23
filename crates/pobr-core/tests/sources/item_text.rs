@@ -325,13 +325,13 @@ fn enchant_lines_land_in_enchant_section() {
 fn missing_rarity_is_structural_error() {
     let raw = "Just Some Name\n--------\n+10 to maximum Life\n";
     let err = parse_item_text(raw).unwrap_err();
-    assert!(matches!(err, ItemTextError::MissingRarity));
+    std::assert_matches!(err, ItemTextError::MissingRarity);
 }
 
 #[test]
 fn empty_input_is_structural_error() {
     let err = parse_item_text("   \n  \n").unwrap_err();
-    assert!(matches!(err, ItemTextError::Empty));
+    std::assert_matches!(err, ItemTextError::Empty);
 }
 
 #[test]
@@ -840,11 +840,11 @@ fn a_modifier_that_begins_with_a_state_word_is_kept() {
 
 #[test]
 fn xml_item_rejects_empty_and_missing_rarity() {
-    assert!(matches!(parse_pob_xml_item(""), Err(ItemTextError::Empty)));
-    assert!(matches!(
+    std::assert_matches!(parse_pob_xml_item(""), Err(ItemTextError::Empty));
+    std::assert_matches!(
         parse_pob_xml_item("Iron Ring\n+10 to Life"),
         Err(ItemTextError::MissingRarity)
-    ));
+    );
 }
 
 #[test]

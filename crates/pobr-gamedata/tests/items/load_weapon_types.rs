@@ -50,5 +50,5 @@ fn every_weapon_row_has_conditions_and_generic_classification() {
 #[test]
 fn sorted_by_id_for_stable_diffs() {
     let table = GameData::new(current_data_dir()).weapon_types().unwrap();
-    assert!(table.windows(2).all(|pair| pair[0].id < pair[1].id));
+    assert!(table.array_windows().all(|[a, b]| a.id < b.id));
 }
