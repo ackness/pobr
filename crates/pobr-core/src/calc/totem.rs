@@ -54,10 +54,10 @@ pub(crate) struct TotemLifeTerms {
 }
 
 pub(crate) fn life_terms(db: &ModDb, cfg: &CalcConfig) -> TotemLifeTerms {
-    let base = db.sum(ModType::Base, cfg, &[ModName::from("TotemLifeBase")]);
-    let names = [ModName::from("TotemLife")];
-    let inc = db.sum(ModType::Inc, cfg, &names);
-    let more = db.more(cfg, &names);
+    let base = db.sum_by_name(ModType::Base, cfg, &["TotemLifeBase"]);
+    let names = ["TotemLife"];
+    let inc = db.sum_by_name(ModType::Inc, cfg, &names);
+    let more = db.more_by_name(cfg, &names);
     let value = (base * ((1.0 + inc / 100.0) * more).max(0.0)).round();
     TotemLifeTerms {
         base,
@@ -96,22 +96,18 @@ pub(crate) fn defence_terms(
         TotemDefence::Evasion => ("TotemEvasionBase", "TotemEvasion"),
         TotemDefence::EnergyShield => ("TotemEnergyShieldBase", "TotemEnergyShield"),
     };
-    let names = [ModName::from(name)];
+    let names = [name];
     let from_life = if defence == TotemDefence::EnergyShield {
-        let pct = db.sum(
-            ModType::Base,
-            cfg,
-            &[ModName::from("TotemEnergyShieldFromLife")],
-        );
+        let pct = db.sum_by_name(ModType::Base, cfg, &["TotemEnergyShieldFromLife"]);
         (life * pct / 100.0).round()
     } else {
         0.0
     };
-    let base = db.sum(ModType::Base, cfg, &[ModName::from(base_name)])
-        + db.sum(ModType::Base, cfg, &names)
+    let base = db.sum_by_name(ModType::Base, cfg, &[base_name])
+        + db.sum_by_name(ModType::Base, cfg, &names)
         + from_life;
-    let inc = db.sum(ModType::Inc, cfg, &names);
-    let more = db.more(cfg, &names);
+    let inc = db.sum_by_name(ModType::Inc, cfg, &names);
+    let more = db.more_by_name(cfg, &names);
     let value = (base * ((1.0 + inc / 100.0) * more).max(0.0)).round();
     TotemDefenceTerms {
         base,
@@ -145,15 +141,15 @@ pub(crate) fn limit_cfg(cfg: &CalcConfig) -> CalcConfig {
 
 pub(crate) fn limit_terms(db: &ModDb, cfg: &CalcConfig) -> TotemLimitTerms {
     let cfg = &limit_cfg(cfg);
-    let names = [ModName::from("ActiveTotemLimit")];
-    let base = db.sum(ModType::Base, cfg, &[ModName::from("TotemLimitBase")]);
-    let additional = db.sum(ModType::Base, cfg, &names)
+    let names = ["ActiveTotemLimit"];
+    let base = db.sum_by_name(ModType::Base, cfg, &["TotemLimitBase"]);
+    let additional = db.sum_by_name(ModType::Base, cfg, &names)
         + if cfg.condition("BallistaSkill") {
-            db.sum(ModType::Base, cfg, &[ModName::from("ActiveBallistaLimit")])
+            db.sum_by_name(ModType::Base, cfg, &["ActiveBallistaLimit"])
         } else {
             0.0
         };
-    let more = db.more(cfg, &names);
+    let more = db.more_by_name(cfg, &names);
     let override_value = db.override_(cfg, "ActiveTotemLimit");
     let value = if has_totem(db, cfg) {
         override_value
@@ -182,16 +178,16 @@ fn defence_stat(stat: &str) -> Option<TotemDefence> {
 
 /// `(1 + INC/100) × MORE` of `TotemDuration`, at least 0.
 pub(crate) fn duration_mod_terms(db: &ModDb, cfg: &CalcConfig) -> (f64, f64, f64) {
-    let names = [ModName::from("TotemDuration")];
-    let inc = db.sum(ModType::Inc, cfg, &names);
-    let more = db.more(cfg, &names);
+    let names = ["TotemDuration"];
+    let inc = db.sum_by_name(ModType::Inc, cfg, &names);
+    let more = db.more_by_name(cfg, &names);
     (inc, more, ((1.0 + inc / 100.0) * more).max(0.0))
 }
 
 /// Whether the selected skill places a totem (the orchestrator stores the
 /// totem's base Life only then).
 fn has_totem(db: &ModDb, cfg: &CalcConfig) -> bool {
-    db.sum(ModType::Base, cfg, &[ModName::from("TotemLifeBase")]) > 0.0
+    db.sum_by_name(ModType::Base, cfg, &["TotemLifeBase"]) > 0.0
 }
 
 /// What the character's auras add to each totem resistance (Fire, Cold,
@@ -215,24 +211,44 @@ pub(crate) fn aura_resistances(env: &Env) -> [SharedResistance; 4] {
     for condition in conditions {
         aura_cfg.conditions.insert(condition, true);
     }
-    for (i, element) in ELEMENTS.iter().enumerate() {
-        let mut res = vec![
-            ModName::from(format!("{element}Resistance").as_str()),
-            ModName::from(format!("{element}Resist").as_str()),
-        ];
-        let mut max = vec![
-            ModName::from(format!("Maximum{element}Resistance").as_str()),
-            ModName::from(format!("{element}ResistMax").as_str()),
-        ];
-        if *element != "Chaos" {
-            res.push(ModName::from("ElementalResist"));
-            max.push(ModName::from("MaximumAllElementalResistances"));
-            max.push(ModName::from("ElementalResistMax"));
-        }
+    const ELEMENT_RESIST_NAMES: [(&[&str], &[&str]); 4] = [
+        (
+            &["FireResistance", "FireResist", "ElementalResist"],
+            &[
+                "MaximumFireResistance",
+                "FireResistMax",
+                "MaximumAllElementalResistances",
+                "ElementalResistMax",
+            ],
+        ),
+        (
+            &["ColdResistance", "ColdResist", "ElementalResist"],
+            &[
+                "MaximumColdResistance",
+                "ColdResistMax",
+                "MaximumAllElementalResistances",
+                "ElementalResistMax",
+            ],
+        ),
+        (
+            &["LightningResistance", "LightningResist", "ElementalResist"],
+            &[
+                "MaximumLightningResistance",
+                "LightningResistMax",
+                "MaximumAllElementalResistances",
+                "ElementalResistMax",
+            ],
+        ),
+        (
+            &["ChaosResistance", "ChaosResist"],
+            &["MaximumChaosResistance", "ChaosResistMax"],
+        ),
+    ];
+    for (i, &(res, max)) in ELEMENT_RESIST_NAMES.iter().enumerate() {
         out[i] = SharedResistance {
-            flat: aura_db.sum(ModType::Base, &aura_cfg, &res),
-            inc: aura_db.sum(ModType::Inc, &aura_cfg, &res),
-            max: aura_db.sum(ModType::Base, &aura_cfg, &max),
+            flat: aura_db.sum_by_name(ModType::Base, &aura_cfg, res),
+            inc: aura_db.sum_by_name(ModType::Inc, &aura_cfg, res),
+            max: aura_db.sum_by_name(ModType::Base, &aura_cfg, max),
         };
     }
     out

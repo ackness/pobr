@@ -118,7 +118,7 @@ pub fn apply_mageblood_legacies(env: &mut Env) {
     let found: Vec<(f64, &'static [LegacyEffect])> = LEGACIES
         .iter()
         .filter_map(|(name, effects)| {
-            let stacks = db.sum(ModType::Base, cfg, &[ModName::from(*name)]);
+            let stacks = db.sum_by_name(ModType::Base, cfg, &[*name]);
             (stacks > 0.0).then_some((stacks, *effects))
         })
         .collect();
@@ -130,7 +130,7 @@ pub fn apply_mageblood_legacies(env: &mut Env) {
         .iter()
         .map(|(stacks, _)| (stacks - 1.0).max(0.0))
         .sum();
-    let effect_per_dupe = db.sum(ModType::Inc, cfg, &[ModName::from("MagesLegacyEffect")]);
+    let effect_per_dupe = db.sum_by_name(ModType::Inc, cfg, &["MagesLegacyEffect"]);
     let global_effect = 1.0 + total_duplicates * (effect_per_dupe / 100.0);
 
     let source_id = SourceId::new(SourceKind::Item, "mageblood");
@@ -181,12 +181,12 @@ mod tests {
     fn base(env: &Env, name: &str) -> f64 {
         env.player
             .mod_db
-            .sum(ModType::Base, &env.cfg, &[ModName::from(name)])
+            .sum_by_name(ModType::Base, &env.cfg, &[name])
     }
     fn inc(env: &Env, name: &str) -> f64 {
         env.player
             .mod_db
-            .sum(ModType::Inc, &env.cfg, &[ModName::from(name)])
+            .sum_by_name(ModType::Inc, &env.cfg, &[name])
     }
 
     #[test]

@@ -28,7 +28,7 @@ pub(super) fn apply(env: &mut Env) {
         let percent = env
             .player
             .mod_db
-            .sum(ModType::Base, &env.cfg, &[ModName::from(share)]);
+            .sum_by_name(ModType::Base, &env.cfg, &[share]);
         let damage = amount * percent / divisor;
         if damage <= 0.0 {
             continue;

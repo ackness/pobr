@@ -225,23 +225,13 @@ pub fn maximum_energy(spells: &[SocketedSpell], ms_per_energy: f64) -> f64 {
 /// The empty-to-full channel duration uses continuous Energy gain, without
 /// assuming a refund from an earlier trigger or changing the spell's DPS.
 pub(crate) fn channel_trigger_terms(db: &crate::ModDb, cfg: &crate::CalcConfig) -> (f64, f64) {
-    let maximum = db.sum(
-        ModType::Base,
-        cfg,
-        &[ModName::from("ChannelTriggerMaximumEnergy")],
-    );
-    let gain = db.sum(
-        ModType::Base,
-        cfg,
-        &[ModName::from("ChannelTriggerEnergyPerSecond")],
-    );
-    let names = [
-        ModName::from(ENERGY_GENERATED),
-        ModName::from("ChannelTriggerEnergyGenerated"),
-    ];
+    let maximum = db.sum_by_name(ModType::Base, cfg, &["ChannelTriggerMaximumEnergy"]);
+    let gain = db.sum_by_name(ModType::Base, cfg, &["ChannelTriggerEnergyPerSecond"]);
+    let names = [ENERGY_GENERATED, "ChannelTriggerEnergyGenerated"];
     (
         maximum,
-        gain * (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names),
+        gain * (1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0)
+            * db.more_by_name(cfg, &names),
     )
 }
 
@@ -296,7 +286,7 @@ pub fn triggers_per_second(
 pub fn apply_energy_trigger(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
-    let sum = |name: &str| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
+    let sum = |name: &str| db.sum_by_name(ModType::Base, cfg, &[name]);
     let maximum = sum(MAXIMUM_ENERGY);
     if maximum <= 0.0 {
         return;
@@ -311,9 +301,9 @@ pub fn apply_energy_trigger(env: &mut Env) {
     } else {
         cfg.clone()
     };
-    let names = [ModName::from(ENERGY_GENERATED)];
-    let gain = ((1.0 + db.sum(ModType::Inc, &gain_cfg, &names) / 100.0)
-        * db.more(&gain_cfg, &names))
+    let names = [ENERGY_GENERATED];
+    let gain = ((1.0 + db.sum_by_name(ModType::Inc, &gain_cfg, &names) / 100.0)
+        * db.more_by_name(&gain_cfg, &names))
     .max(0.0);
     let power = match sum("Multiplier:EnemyPower") {
         power if power > 0.0 => power,

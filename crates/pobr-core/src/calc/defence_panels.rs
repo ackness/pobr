@@ -21,8 +21,8 @@ use super::formula::{FormulaBuilder, FormulaOp, StatFormula};
 use super::round;
 
 /// Equivalent to `calcLib.mod`: `(1 + Σinc/100) × Πmore` (vendor CalcTools.lua).
-fn scaling_mod(db: &ModDb, cfg: &CalcConfig, names: &[ModName]) -> f64 {
-    (1.0 + db.sum(ModType::Inc, cfg, names) / 100.0) * db.more(cfg, names)
+fn scaling_mod(db: &ModDb, cfg: &CalcConfig, names: &[&str]) -> f64 {
+    (1.0 + db.sum_by_name(ModType::Inc, cfg, names) / 100.0) * db.more_by_name(cfg, names)
 }
 
 // Block (CalcDefence.lua:961-1058)
@@ -111,8 +111,8 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
         .override_(cfg, "BlockChanceMax")
         .unwrap_or_else(|| {
             inherent_max
-                + db.sum(ModType::Base, cfg, &[ModName::from("BaseBlockChanceMax")])
-                + db.sum(ModType::Base, cfg, &[ModName::from("BlockChanceMax")])
+                + db.sum_by_name(ModType::Base, cfg, &["BaseBlockChanceMax"])
+                + db.sum_by_name(ModType::Base, cfg, &["BlockChanceMax"])
         })
         .min(cap)
         .max(0.0);
@@ -122,23 +122,20 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
     // instead of the Shield's value" (while using a shield).
     let shield_base = db
         .override_(cfg, "ReplaceShieldBlock")
-        .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[ModName::from("ShieldBlockChance")]));
+        .unwrap_or_else(|| db.sum_by_name(ModType::Base, cfg, &["ShieldBlockChance"]));
 
     // :1033-1036 attack block chance, rounded to a whole percent before the cap.
-    let block_names = [ModName::from("BlockChance")];
-    let total_block = ((shield_base + db.sum(ModType::Base, cfg, &block_names))
-        * scaling_mod(db, cfg, &block_names)
-        + 0.5)
-        .floor();
+    let block_names = ["BlockChance"];
+    let total_block = super::vendor_round(
+        (shield_base + db.sum_by_name(ModType::Base, cfg, &block_names))
+            * scaling_mod(db, cfg, &block_names),
+    );
     let mut block = total_block.clamp(0.0, block_max);
 
     // :994 projectile attack block chance (the incremental BASE also picks up the BlockChance factor).
     let mut projectile = (block
-        + db.sum(
-            ModType::Base,
-            cfg,
-            &[ModName::from("ProjectileBlockChance")],
-        ) * scaling_mod(db, cfg, &block_names))
+        + db.sum_by_name(ModType::Base, cfg, &["ProjectileBlockChance"])
+            * scaling_mod(db, cfg, &block_names))
     .clamp(0.0, block_max);
 
     // :995-998 spell block chance ceiling.
@@ -148,30 +145,24 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
         db.override_(cfg, "SpellBlockChanceMax")
             .unwrap_or_else(|| {
                 inherent_max
-                    + db.sum(
-                        ModType::Base,
-                        cfg,
-                        &[ModName::from("BaseSpellBlockChanceMax")],
-                    )
-                    + db.sum(ModType::Base, cfg, &[ModName::from("SpellBlockChanceMax")])
+                    + db.sum_by_name(ModType::Base, cfg, &["BaseSpellBlockChanceMax"])
+                    + db.sum_by_name(ModType::Base, cfg, &["SpellBlockChanceMax"])
             })
             .min(cap)
             .max(0.0)
     };
 
     // :1003-1014 spell / spell projectile block chance.
-    let spell_names = [ModName::from("SpellBlockChance")];
+    let spell_names = ["SpellBlockChance"];
     let (mut spell, mut spell_projectile) = if db.flag(cfg, "SpellBlockChanceIsBlockChance") {
         (block, projectile)
     } else {
-        let spell = (db.sum(ModType::Base, cfg, &spell_names) * scaling_mod(db, cfg, &spell_names))
-            .clamp(0.0, spell_max);
+        let spell = (db.sum_by_name(ModType::Base, cfg, &spell_names)
+            * scaling_mod(db, cfg, &spell_names))
+        .clamp(0.0, spell_max);
         let spell_proj = (spell
-            + db.sum(
-                ModType::Base,
-                cfg,
-                &[ModName::from("ProjectileSpellBlockChance")],
-            ) * scaling_mod(db, cfg, &spell_names))
+            + db.sum_by_name(ModType::Base, cfg, &["ProjectileSpellBlockChance"])
+                * scaling_mod(db, cfg, &spell_names))
         .min(spell_max)
         .max(projectile)
         .max(0.0);
@@ -189,9 +180,9 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
     }
 
     // :1034-1052 effective values (the lucky/unlucky power).
-    let effective = |v: f64, kind: &str| -> f64 {
-        let lucky = db.flag(cfg, &format!("{kind}IsLucky"));
-        let unlucky = db.flag(cfg, &format!("{kind}IsUnlucky"));
+    let effective = |v: f64, lucky_flag: &str, unlucky_flag: &str| -> f64 {
+        let lucky = db.flag(cfg, lucky_flag);
+        let unlucky = db.flag(cfg, unlucky_flag);
         round(luck_transform(v, lucky, unlucky))
     };
 
@@ -202,16 +193,25 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
         spell_block_chance: round(spell),
         spell_block_chance_max: round(spell_max),
         spell_projectile_block_chance: round(spell_projectile),
-        effective_block_chance: effective(block, "BlockChance"),
-        effective_spell_block_chance: effective(spell, "SpellBlockChance"),
-        effective_projectile_block_chance: effective(projectile, "ProjectileBlockChance"),
+        effective_block_chance: effective(block, "BlockChanceIsLucky", "BlockChanceIsUnlucky"),
+        effective_spell_block_chance: effective(
+            spell,
+            "SpellBlockChanceIsLucky",
+            "SpellBlockChanceIsUnlucky",
+        ),
+        effective_projectile_block_chance: effective(
+            projectile,
+            "ProjectileBlockChanceIsLucky",
+            "ProjectileBlockChanceIsUnlucky",
+        ),
         effective_spell_projectile_block_chance: effective(
             spell_projectile,
-            "SpellProjectileBlockChance",
+            "SpellProjectileBlockChanceIsLucky",
+            "SpellProjectileBlockChanceIsUnlucky",
         ),
         // :1054-1058 damage-taken share (clamped to [0,100]; overshoot mitigation never goes negative).
         block_effect_taken_pct: db
-            .sum(ModType::Base, cfg, &[ModName::from("BlockEffect")])
+            .sum_by_name(ModType::Base, cfg, &["BlockEffect"])
             .clamp(0.0, 100.0),
     }
 }
@@ -234,22 +234,18 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
 /// doubling follows the same path as armour, to be filled in later).
 /// Vendor rounding: no explicit round after the per-slot sum, so this follows suit down to 1e-9.
 pub fn calc_ward(db: &ModDb, cfg: &CalcConfig, es_to_ward: bool) -> f64 {
-    let base = db.sum(ModType::Base, cfg, &[ModName::from("Ward")]);
+    let base = db.sum_by_name(ModType::Base, cfg, &["Ward"]);
     if base <= 0.0 {
         return 0.0;
     }
-    let inc_names: &[ModName] = if es_to_ward {
-        &[
-            ModName::from("Ward"),
-            ModName::from("Defences"),
-            ModName::from("EnergyShield"),
-        ]
+    let inc_names: &[&str] = if es_to_ward {
+        &["Ward", "Defences", "EnergyShield"]
     } else {
-        &[ModName::from("Ward"), ModName::from("Defences")]
+        &["Ward", "Defences"]
     };
-    let more_names = [ModName::from("Ward"), ModName::from("Defences")];
-    let inc = db.sum(ModType::Inc, cfg, inc_names);
-    let more = db.more(cfg, &more_names);
+    let more_names = ["Ward", "Defences"];
+    let inc = db.sum_by_name(ModType::Inc, cfg, inc_names);
+    let more = db.more_by_name(cfg, &more_names);
     round(base * (1.0 + inc / 100.0) * more)
 }
 
@@ -294,23 +290,13 @@ pub(crate) fn deflection_rating_terms(
     armour: f64,
     evasion: f64,
 ) -> (f64, f64, f64, f64) {
-    let rating_names = [ModName::from("DeflectionRating")];
-    let gain_from_evasion = evasion
-        * db.sum(
-            ModType::Base,
-            cfg,
-            &[ModName::from("EvasionGainAsDeflection")],
-        )
-        / 100.0;
-    let gain_from_armour = armour
-        * db.sum(
-            ModType::Base,
-            cfg,
-            &[ModName::from("ArmourGainAsDeflection")],
-        )
-        / 100.0;
+    let rating_names = ["DeflectionRating"];
+    let gain_from_evasion =
+        evasion * db.sum_by_name(ModType::Base, cfg, &["EvasionGainAsDeflection"]) / 100.0;
+    let gain_from_armour =
+        armour * db.sum_by_name(ModType::Base, cfg, &["ArmourGainAsDeflection"]) / 100.0;
     (
-        db.sum(ModType::Base, cfg, &rating_names),
+        db.sum_by_name(ModType::Base, cfg, &rating_names),
         gain_from_evasion,
         gain_from_armour,
         scaling_mod(db, cfg, &rating_names),
@@ -335,7 +321,7 @@ impl DeflectEffectTerms {
 pub(crate) fn deflect_effect_terms(db: &ModDb, cfg: &CalcConfig) -> DeflectEffectTerms {
     DeflectEffectTerms {
         game_base: cfg.constants.game().deflect_effect,
-        added: db.sum(ModType::Base, cfg, &[ModName::from("DeflectEffect")]),
+        added: db.sum_by_name(ModType::Base, cfg, &["DeflectEffect"]),
     }
 }
 
@@ -460,9 +446,9 @@ fn equipment_spirit_base(db: &ModDb, cfg: &CalcConfig) -> f64 {
 }
 
 pub(crate) fn spirit_terms(db: &ModDb, cfg: &CalcConfig) -> SpiritTerms {
-    let names = [ModName::from("Spirit")];
+    let names = ["Spirit"];
     let override_value = db.override_(cfg, "Spirit");
-    let total_base = db.sum(ModType::Base, cfg, &names);
+    let total_base = db.sum_by_name(ModType::Base, cfg, &names);
     // Invoker's "Cannot gain Spirit from Equipment" (passive 8143): equipment
     // BASE (per-item Spirit + explicit +N lines + runes) is not gained; the
     // node's own per-ES/Evasion Spirit (passive origin) still counts. The flag
@@ -472,20 +458,20 @@ pub(crate) fn spirit_terms(db: &ModDb, cfg: &CalcConfig) -> SpiritTerms {
     } else {
         total_base
     };
-    let extra = db.sum(ModType::Base, cfg, &[ModName::from("ExtraSpirit")]);
+    let extra = db.sum_by_name(ModType::Base, cfg, &["ExtraSpirit"]);
     let conv = db
-        .sum(
+        .sum_by_name(
             ModType::Base,
             cfg,
             &[
-                ModName::from("SpiritConvertToEnergyShield"),
-                ModName::from("SpiritConvertToArmour"),
-                ModName::from("SpiritConvertToEvasion"),
+                "SpiritConvertToEnergyShield",
+                "SpiritConvertToArmour",
+                "SpiritConvertToEvasion",
             ],
         )
         .min(100.0);
-    let inc = db.sum(ModType::Inc, cfg, &names);
-    let more = db.more(cfg, &names);
+    let inc = db.sum_by_name(ModType::Inc, cfg, &names);
+    let more = db.more_by_name(cfg, &names);
     // `(1 + Σinc/100) × Πmore` is vendor's `calcLib.mod`.
     let value = override_value.unwrap_or_else(|| {
         ((base * (1.0 - conv / 100.0) + extra) * ((1.0 + inc / 100.0) * more))

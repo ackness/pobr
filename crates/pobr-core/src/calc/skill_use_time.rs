@@ -42,21 +42,24 @@ pub const ACTION_SPEED: &str = "ActionSpeed";
 /// `base_slow_potency_+%` is the potency of debuffs on this actor, and
 /// `slows_have_no_potency_on_you` makes their slowing component zero.
 pub fn action_speed_factor(db: &ModDb, cfg: &CalcConfig) -> f64 {
-    let names = [ModName::from(ACTION_SPEED)];
-    let increases = db.contributions(ModType::Inc, cfg, &names);
-    let multipliers = db.contributions(ModType::More, cfg, &names);
+    let names = [ACTION_SPEED];
+    let increases = db.contributions_by_name(ModType::Inc, cfg, &names);
+    let multipliers = db.contributions_by_name(ModType::More, cfg, &names);
     let has_slow = increases
         .iter()
         .chain(&multipliers)
         .any(|row| row.value < 0.0);
     if !has_slow {
-        return ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0);
+        return ((1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0)
+            * db.more_by_name(cfg, &names))
+        .max(0.0);
     }
     let potency = if db.flag(cfg, "UnaffectedBySlows") {
         0.0
     } else {
-        let effect = [ModName::from("SlowEffectOnSelf")];
-        ((1.0 + db.sum(ModType::Inc, cfg, &effect) / 100.0) * db.more(cfg, &effect)).max(0.0)
+        let effect = ["SlowEffectOnSelf"];
+        ((1.0 + db.sum_by_name(ModType::Inc, cfg, &effect) / 100.0) * db.more_by_name(cfg, &effect))
+            .max(0.0)
     };
     let mut increase = 0.0;
     let mut more = 1.0;
@@ -93,6 +96,29 @@ pub fn speed_names() -> [ModName; 3] {
     ]
 }
 
+/// Zero-allocation static slice behind [`speed_names_for`].
+pub(crate) fn speed_names_slice(cfg: &CalcConfig) -> &'static [&'static str] {
+    if cfg.skill_types.intersects(SkillTypes::WARCRY) {
+        return &["WarcrySpeed"];
+    }
+    // Attack/spell detection accepts either ModFlags (injected by the
+    // orchestrator via `skill_type_flags`) or SkillTypes
+    // (`CalcConfig::attack()`/`spell()` presets) — either one matching is
+    // enough, to be compatible with both assembly paths.
+    let is_attack = cfg.flags.intersects(ModFlags::ATTACK) || cfg.is_attack();
+    let is_spell = cfg.flags.intersects(ModFlags::SPELL) || cfg.is_spell();
+    let separate_timing = cfg
+        .skill_types
+        .intersects(SkillTypes::SUMMONS_TOTEM | SkillTypes::TRAPPED | SkillTypes::REMOTE_MINED);
+    let include_cast = is_spell || (!is_attack && !separate_timing);
+    match (is_attack, include_cast) {
+        (true, true) => &SPEED_BUCKET,
+        (true, false) => &[SPEED_BUCKET[0], SPEED_BUCKET[2]],
+        (false, true) => &[SPEED_BUCKET[1], SPEED_BUCKET[2]],
+        (false, false) => &[SPEED_BUCKET[2]],
+    }
+}
+
 /// Attacks use AttackSpeed; other skills with a cast time use CastSpeed,
 /// even without the Spell type (e.g. AncientGiftsPlayer's 1000 ms cast).
 /// Warcries use WarcrySpeed, matching their separate timing calculation.
@@ -101,27 +127,11 @@ pub fn speed_names() -> [ModName; 3] {
 /// Proxy placement must not acquire cast speed through this fallback.
 /// For ordinary attacks and casts, SkillSpeed shares the additive bucket.
 pub fn speed_names_for(cfg: &CalcConfig) -> Vec<ModName> {
-    if cfg.skill_types.intersects(SkillTypes::WARCRY) {
-        return vec![ModName::from("WarcrySpeed")];
-    }
-    // Attack/spell detection accepts either ModFlags (injected by the
-    // orchestrator via `skill_type_flags`) or SkillTypes
-    // (`CalcConfig::attack()`/`spell()` presets) — either one matching is
-    // enough, to be compatible with both assembly paths.
-    let is_attack = cfg.flags.intersects(ModFlags::ATTACK) || cfg.is_attack();
-    let is_spell = cfg.flags.intersects(ModFlags::SPELL) || cfg.is_spell();
-    let mut names = Vec::with_capacity(3);
-    if is_attack {
-        names.push(ModName::from(SPEED_BUCKET[0])); // AttackSpeed
-    }
-    let separate_timing = cfg
-        .skill_types
-        .intersects(SkillTypes::SUMMONS_TOTEM | SkillTypes::TRAPPED | SkillTypes::REMOTE_MINED);
-    if is_spell || (!is_attack && !separate_timing) {
-        names.push(ModName::from(SPEED_BUCKET[1])); // CastSpeed
-    }
-    names.push(ModName::from(SPEED_BUCKET[2])); // SkillSpeed (always)
-    names
+    speed_names_slice(cfg)
+        .iter()
+        .copied()
+        .map(ModName::from)
+        .collect()
 }
 
 /// Calculates skill use time and effective action rate.
@@ -134,7 +144,7 @@ pub fn calc_skill_use_time(
 ) -> SkillUseTime {
     #[cfg(test)]
     super::hit_read_probe::dependency("skill use time/server tick");
-    let total_skill_speed = db.sum(ModType::Inc, cfg, &speed_names_for(cfg));
+    let total_skill_speed = db.sum_by_name(ModType::Inc, cfg, speed_names_slice(cfg));
     let action_factor = action_speed_factor(db, cfg);
     let total_action_speed = (action_factor - 1.0) * 100.0;
 
@@ -287,9 +297,13 @@ pub fn crossbow_bolts_reloaded_in_window(
 /// up reloading). `Speed` expands to pobr's speed bucket names
 /// (see [`speed_names_for`]).
 pub fn crossbow_reload_time(db: &crate::ModDb, cfg: &CalcConfig, base_reload_s: f64) -> f64 {
-    let mut names = vec![ModName::from("ReloadSpeed")];
-    names.extend(speed_names_for(cfg));
-    let multi = (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names);
+    let speed = speed_names_slice(cfg);
+    let mut buf = ["ReloadSpeed"; 4];
+    let len = 1 + speed.len();
+    buf[1..len].copy_from_slice(speed);
+    let names = &buf[..len];
+    let multi =
+        (1.0 + db.sum_by_name(ModType::Inc, cfg, names) / 100.0) * db.more_by_name(cfg, names);
     if multi <= 0.0 {
         return base_reload_s;
     }

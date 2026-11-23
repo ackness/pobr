@@ -191,7 +191,10 @@ impl Env {
     ///
     /// `origin` retains Companion membership and damageability separately:
     /// only damageable Companions contribute to `TotalCompanionLife`.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "public constructor mirroring minion definition and summon context fields"
+    )]
     pub fn add_minion_from_def(
         &mut self,
         def: &super::MinionDef,

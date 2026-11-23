@@ -64,18 +64,12 @@ pub(super) fn is_duration_view(stat: &str) -> bool {
 pub(super) fn calculate_views(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
-    let expiration_rate = db.sum(
-        ModType::Base,
-        cfg,
-        &[ModName::from("SelfDebuffExpirationRate")],
-    );
+    let expiration_rate = db.sum_by_name(ModType::Base, cfg, &["SelfDebuffExpirationRate"]);
     let expiration = 100.0 / (100.0 + expiration_rate);
     let percent = |stat| {
-        let names: Vec<_> = view_names(stat)
-            .iter()
-            .map(|name| ModName::from(*name))
-            .collect();
-        let value = (100.0 + db.sum(ModType::Inc, cfg, &names)) * db.more(cfg, &names);
+        let names = view_names(stat);
+        let value =
+            (100.0 + db.sum_by_name(ModType::Inc, cfg, names)) * db.more_by_name(cfg, names);
         if is_duration_view(stat) {
             value * expiration
         } else {
@@ -105,8 +99,9 @@ pub(super) fn calculate_views(env: &mut Env) {
 }
 
 pub(super) fn effect(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
-    let names = [ModName::from(name)];
-    ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0)
+    let names = [name];
+    ((1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0) * db.more_by_name(cfg, &names))
+        .max(0.0)
 }
 
 /// Runs once after item, flask and buff modifiers have reached the player.

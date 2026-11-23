@@ -4,6 +4,35 @@ use pobr_core::{
 use pobr_data::prelude::*;
 
 #[test]
+fn public_queries_infer_untyped_empty_names() {
+    let db = ModDb::new();
+    let cfg = CalcConfig::new();
+    let mut trace = TraceGraph::new();
+    assert_eq!(db.sum(ModType::Base, &cfg, &[]), 0.0);
+    assert_eq!(db.max_of(ModType::Base, &cfg, &[]), 0.0);
+    assert_eq!(db.more(&cfg, &[]), 1.0);
+    assert_eq!(db.sum_global_only(ModType::Base, &cfg, &[]), 0.0);
+    assert_eq!(
+        db.sum_for_slot(ModType::Base, &cfg, &[], "Body Armour"),
+        0.0
+    );
+    assert_eq!(db.more_global_only(&cfg, &[]), 1.0);
+    assert_eq!(db.more_for_slot(&cfg, &[], "Body Armour"), 1.0);
+    assert!(db.evaluate_names(&cfg, &[]).is_empty());
+    assert!(db.contributions(ModType::Base, &cfg, &[]).is_empty());
+    assert_eq!(
+        db.sum_traced(ModType::Base, &cfg, &[], &mut trace, "empty sum")
+            .value,
+        0.0
+    );
+    assert_eq!(
+        db.more_traced(&cfg, &[], &mut trace, "empty product").value,
+        1.0
+    );
+    assert_eq!(ModList::new().sum(ModType::Base, &cfg, &[]), 0.0);
+}
+
+#[test]
 fn sum_filters_by_condition_flags_and_damage_type() {
     let mut db = ModDb::new();
 

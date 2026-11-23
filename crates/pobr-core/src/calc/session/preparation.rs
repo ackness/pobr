@@ -245,7 +245,7 @@ impl CalculationSession {
 pub(in crate::calc) fn bridge_ancestral_boost(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
-    let sum = |name| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
+    let sum = |name| db.sum_by_name(ModType::Base, cfg, &[name]);
     let source = db.flag(cfg, "Condition:AncestrallyBoosted");
     let effect = 1.0 + sum("Multiplier:AncestralBoostEffect").max(0.0);
     let (active, targets) = if cfg.ancestral_boost_assume_supported {

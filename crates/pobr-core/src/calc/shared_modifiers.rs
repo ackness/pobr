@@ -111,10 +111,10 @@ pub fn apply_shared_increases(env: &mut Env) {
     }
     // Game light_radius_* transfer stats apply increases and reductions only.
     // The area share is rolled (25-50 in Mods), not a hard-coded half.
-    let area_share = db.sum(
+    let area_share = db.sum_by_name(
         ModType::Base,
         &env.cfg,
-        &[ModName::from("LightRadiusAppliesToAreaPercent")],
+        &["LightRadiusAppliesToAreaPercent"],
     ) / 100.0
         + if db.flag(&env.cfg, "LightRadiusAppliesToAreaOfEffect") {
             0.5
@@ -187,7 +187,7 @@ mod tests {
         apply_companion_damage_to_player(&mut env);
         env.player
             .mod_db
-            .sum(ModType::Inc, &env.cfg, &[ModName::from("Damage")])
+            .sum_by_name(ModType::Inc, &env.cfg, &["Damage"])
     }
 
     fn transfer() -> Modifier {
@@ -209,10 +209,20 @@ mod tests {
         ]);
         let mut env = Env::new(player);
         apply_shared_increases(&mut env);
-        let names = [ModName::from("Damage")];
-        assert_eq!(env.player.mod_db.sum(ModType::Inc, &env.cfg, &names), 0.0);
+        let names = ["Damage"];
+        assert_eq!(
+            env.player
+                .mod_db
+                .sum_by_name(ModType::Inc, &env.cfg, &names),
+            0.0
+        );
         env.cfg.conditions.insert("FullLife".into(), true);
-        assert_eq!(env.player.mod_db.sum(ModType::Inc, &env.cfg, &names), 30.0);
+        assert_eq!(
+            env.player
+                .mod_db
+                .sum_by_name(ModType::Inc, &env.cfg, &names),
+            30.0
+        );
     }
 
     #[test]

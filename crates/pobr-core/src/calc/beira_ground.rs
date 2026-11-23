@@ -63,11 +63,7 @@ pub(super) fn calculate(env: &mut Env) {
             let slot = item.slot.replace(' ', "");
             let local = |name| {
                 player
-                    .sum(
-                        ModType::Base,
-                        &cfg,
-                        &[ModName::from(utility::local_name(&slot, name))],
-                    )
+                    .sum_by_name(ModType::Base, &cfg, &[utility::local_name(&slot, name)])
                     .max(0.0)
             };
             let duration = local("UtilityIgnitedGroundDuration");
@@ -116,11 +112,11 @@ pub(super) fn calculate(env: &mut Env) {
     let expiration = ailment::debuff_duration_mult(enemy, &cfg);
     let names = ailment::duration_mod_names(AilmentType::Ignite);
     let target_names = ailment::self_duration_mod_names(AilmentType::Ignite);
-    let duration_inc =
-        player.sum(ModType::Inc, &cfg, &names) + enemy.sum(ModType::Inc, &cfg, &target_names);
-    let duration_more = player.more(&cfg, &names) * enemy.more(&cfg, &target_names);
-    let magnitude_inc = player.sum(ModType::Inc, &cfg, &[ModName::from("AilmentMagnitude")]);
-    let magnitude_more = player.more(&cfg, &[ModName::from("AilmentMagnitude")]);
+    let duration_inc = player.sum_by_name(ModType::Inc, &cfg, names)
+        + enemy.sum_by_name(ModType::Inc, &cfg, target_names);
+    let duration_more = player.more_by_name(&cfg, names) * enemy.more_by_name(&cfg, target_names);
+    let magnitude_inc = player.sum_by_name(ModType::Inc, &cfg, &["AilmentMagnitude"]);
+    let magnitude_more = player.more_by_name(&cfg, &["AilmentMagnitude"]);
     let life = env.player.output.life.max(0.0);
     let fraction = cfg.constants.game().ignite_base_fraction;
     let base_duration = cfg.constants.game().ignite_base_duration;

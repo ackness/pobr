@@ -3,7 +3,7 @@
 //! read from the helper the calculation itself uses (or, for a value only
 //! computed inside another stage, retained by that stage); nothing here
 //! evaluates a mechanic a second time.
-use pobr_data::prelude::{ModName, ModType, SkillTypes};
+use pobr_data::prelude::{ModType, SkillTypes};
 
 use super::{
     Env, OutputTable,
@@ -107,7 +107,7 @@ pub(super) fn fill(env: &mut Env) {
     views.enemy_curse_limit = super::buff_pass::player_curse_limit(db, cfg);
     views.enemy_mark_limit = super::buff_pass::player_mark_limit(db, cfg);
     views.hazard_rune_limit = db
-        .sum(ModType::Base, cfg, &[ModName::from("HazardRuneLimit")])
+        .sum_by_name(ModType::Base, cfg, &["HazardRuneLimit"])
         .max(0.0);
     views.life_recovery_rate_mod =
         super::survivability::recoup_recovery_rate(db, cfg, RecoupResource::Life);
@@ -138,11 +138,8 @@ pub(super) fn fill(env: &mut Env) {
     views.duration_more = duration.more;
     views.duration_mod = duration.value();
     views.strike_skill = cfg.skill_types.intersects(SkillTypes::MELEE_SINGLE_TARGET);
-    views.additional_strike_targets = db.sum(
-        ModType::Base,
-        cfg,
-        &[ModName::from("AdditionalStrikeTarget")],
-    );
+    views.additional_strike_targets =
+        db.sum_by_name(ModType::Base, cfg, &["AdditionalStrikeTarget"]);
     views.strike_targets = if views.strike_skill {
         1.0 + views.additional_strike_targets
     } else {

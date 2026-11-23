@@ -305,7 +305,7 @@ fn global_cfg(cfg: &CalcConfig) -> CalcConfig {
 }
 
 fn base(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
-    db.sum(ModType::Base, cfg, &[ModName::from(name)])
+    db.sum_by_name(ModType::Base, cfg, &[name])
 }
 
 /// Landed hits per second of the selected skill: its effective rate, the DPS
@@ -417,7 +417,7 @@ fn armour_break_terms(
             percent,
         ));
     }
-    let names = [ModName::from("ArmourBreakPerHit")];
+    let names = ["ArmourBreakPerHit"];
     let rarity_multiplier = if enemy.flag(&cfg, "Condition:Unique")
         || enemy.flag(&cfg, "Condition:Rare")
         || enemy.flag(&cfg, "Condition:RareOrUnique")
@@ -429,10 +429,10 @@ fn armour_break_terms(
         ARMOUR_BREAK_VS_NORMAL
     };
     ArmourBreakTerms {
-        flat: db.sum(ModType::Base, &cfg, &names),
+        flat: db.sum_by_name(ModType::Base, &cfg, &names),
         from_damage,
-        increased: db.sum(ModType::Inc, &cfg, &names),
-        more: db.more(&cfg, &names),
+        increased: db.sum_by_name(ModType::Inc, &cfg, &names),
+        more: db.more_by_name(&cfg, &names),
         rarity_multiplier,
         enemy_armour: env
             .unbroken_enemy_armour
@@ -455,9 +455,8 @@ fn uptime_terms(env: &Env, hit_rate: f64) -> [DebuffUptimeTerms; 3] {
             chance,
             hit_rate,
             base_duration,
-            increased_duration: duration.map_or(0.0, |name| {
-                db.sum(ModType::Inc, &cfg, &[ModName::from(name)])
-            }),
+            increased_duration: duration
+                .map_or_default(|name| db.sum_by_name(ModType::Inc, &cfg, &[name])),
             enemy_duration: super::ailment::debuff_duration_mult(enemy, &env.cfg),
             enabled: !db.flag(&cfg, cannot) && !immune.is_some_and(|flag| enemy.flag(&cfg, flag)),
         }
@@ -465,13 +464,11 @@ fn uptime_terms(env: &Env, hit_rate: f64) -> [DebuffUptimeTerms; 3] {
 }
 
 fn scaled(db: &ModDb, cfg: &CalcConfig, base: f64, added: &[&str], names: &[&str]) -> ScaledTerms {
-    let names: Vec<_> = names.iter().map(|n| ModName::from(*n)).collect();
-    let added: Vec<_> = added.iter().map(|n| ModName::from(*n)).collect();
     ScaledTerms {
         base,
-        added: db.sum(ModType::Base, cfg, &added),
-        increased: db.sum(ModType::Inc, cfg, &names),
-        more: db.more(cfg, &names),
+        added: db.sum_by_name(ModType::Base, cfg, added),
+        increased: db.sum_by_name(ModType::Inc, cfg, names),
+        more: db.more_by_name(cfg, names),
         enabled: true,
     }
 }
@@ -484,7 +481,7 @@ fn curse_delay_terms(db: &ModDb, cfg: &CalcConfig) -> ScaledTerms {
     // `curse_delay_+%` reads "#% slower Curse Activation" and parses as a
     // negative CurseActivation speed; CurseDelay is the delay itself.
     let mut terms = scaled(db, cfg, 0.0, &["CurseDelayBase"], &["CurseDelay"]);
-    terms.increased -= db.sum(ModType::Inc, cfg, &[ModName::from("CurseActivation")]);
+    terms.increased -= db.sum_by_name(ModType::Inc, cfg, &["CurseActivation"]);
     terms
 }
 
@@ -502,8 +499,8 @@ fn pin_application_terms(env: &Env, hit_rate: f64) -> PinApplicationTerms {
     } else {
         40.0
     };
-    let names = [ModName::from("EnemyPinDuration")];
-    let target = [ModName::from("SelfPinDuration")];
+    let names = ["EnemyPinDuration"];
+    let target = ["SelfPinDuration"];
     PinApplicationTerms {
         enabled: hit_rate > 0.0
             && !db.flag(&cfg, "CannotPin")
@@ -513,8 +510,9 @@ fn pin_application_terms(env: &Env, hit_rate: f64) -> PinApplicationTerms {
         primed_threshold,
         duration: super::ailment::AilmentDurationTerms {
             base: cfg.constants.game().pin_base_duration,
-            increased: db.sum(ModType::Inc, &cfg, &names) + enemy.sum(ModType::Inc, &cfg, &target),
-            more: db.more(&cfg, &names) * enemy.more(&cfg, &target),
+            increased: db.sum_by_name(ModType::Inc, &cfg, &names)
+                + enemy.sum_by_name(ModType::Inc, &cfg, &target),
+            more: db.more_by_name(&cfg, &names) * enemy.more_by_name(&cfg, &target),
         },
         enemy_duration: super::ailment::debuff_duration_mult(enemy, &cfg),
     }

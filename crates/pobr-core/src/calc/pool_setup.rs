@@ -26,8 +26,42 @@ use crate::{CalcConfig, ModDb};
 use pobr_data::constants::DamageType;
 use pobr_data::prelude::*;
 
-/// Vendor's type names (the per-type ModName prefix), indexed by [`DamageType`]'s enum order.
-const TYPE_NAMES: [&str; 5] = ["Physical", "Fire", "Cold", "Lightning", "Chaos"];
+/// Per-type pool modifier names, indexed by [`DamageType`]'s enum order.
+const ES_BYPASS_NAMES: [&str; 5] = [
+    "PhysicalEnergyShieldBypass",
+    "FireEnergyShieldBypass",
+    "ColdEnergyShieldBypass",
+    "LightningEnergyShieldBypass",
+    "ChaosEnergyShieldBypass",
+];
+const MOM_BY_TYPE_NAMES: [&str; 5] = [
+    "PhysicalDamageTakenFromManaBeforeLife",
+    "FireDamageTakenFromManaBeforeLife",
+    "ColdDamageTakenFromManaBeforeLife",
+    "LightningDamageTakenFromManaBeforeLife",
+    "ChaosDamageTakenFromManaBeforeLife",
+];
+const AEGIS_BY_TYPE_NAMES: [&str; 5] = [
+    "PhysicalAegisValue",
+    "FireAegisValue",
+    "ColdAegisValue",
+    "LightningAegisValue",
+    "ChaosAegisValue",
+];
+const GUARD_RATE_BY_TYPE_NAMES: [&str; 5] = [
+    "PhysicalGuardAbsorbRate",
+    "FireGuardAbsorbRate",
+    "ColdGuardAbsorbRate",
+    "LightningGuardAbsorbRate",
+    "ChaosGuardAbsorbRate",
+];
+const GUARD_LIMIT_BY_TYPE_NAMES: [&str; 5] = [
+    "PhysicalGuardAbsorbLimit",
+    "FireGuardAbsorbLimit",
+    "ColdGuardAbsorbLimit",
+    "LightningGuardAbsorbLimit",
+    "ChaosGuardAbsorbLimit",
+];
 
 /// The "output side" inputs for pool setup (supplied by perform/Track F from
 /// the existing OutputTable values; this module doesn't recompute the base Life/Mana/ES values).
@@ -60,34 +94,23 @@ pub fn build_pool_ctx(
     // all types; otherwise Override takes priority, falling back to Σ BASE; clamped 0-100.
     let unblocked_bypass = db.flag(cfg, "UnblockedDamageDoesBypassES");
     let mut es_bypass_by_type = [0.0_f64; 5];
-    for (idx, type_name) in TYPE_NAMES.iter().enumerate() {
-        let name = ModName::from(format!("{type_name}EnergyShieldBypass"));
+    for (idx, &name) in ES_BYPASS_NAMES.iter().enumerate() {
         es_bypass_by_type[idx] = if unblocked_bypass {
             100.0
         } else {
-            db.override_(cfg, name.as_str())
-                .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[name]))
+            db.override_(cfg, name)
+                .unwrap_or_else(|| db.sum_by_name(ModType::Base, cfg, &[name]))
         }
         .clamp(0.0, 100.0);
     }
     // MoM shared (:2728) and per-type (:2773, capped at 100−shared).
     let mom_shared = db
-        .sum(
-            ModType::Base,
-            cfg,
-            &[ModName::from("DamageTakenFromManaBeforeLife")],
-        )
+        .sum_by_name(ModType::Base, cfg, &["DamageTakenFromManaBeforeLife"])
         .min(100.0);
     let mut mom_by_type = [0.0_f64; 5];
-    for (idx, type_name) in TYPE_NAMES.iter().enumerate() {
+    for (idx, &name) in MOM_BY_TYPE_NAMES.iter().enumerate() {
         mom_by_type[idx] = db
-            .sum(
-                ModType::Base,
-                cfg,
-                &[ModName::from(format!(
-                    "{type_name}DamageTakenFromManaBeforeLife"
-                ))],
-            )
+            .sum_by_name(ModType::Base, cfg, &[name])
             .min(100.0 - mom_shared);
     }
     PoolCtx {
@@ -98,18 +121,18 @@ pub fn build_pool_ctx(
         mom_shared,
         mom_by_type,
         // :572 `Σ BASE WardBypass` (vendor doesn't clamp this, kept as the raw value).
-        ward_bypass: db.sum(ModType::Base, cfg, &[ModName::from("WardBypass")]),
+        ward_bypass: db.sum_by_name(ModType::Base, cfg, &["WardBypass"]),
         eternal_life: keystones.eternal_life,
         eb: keystones.energy_shield_protects_mana,
         chaos_not_double_es: db.flag(cfg, "ChaosNotDoubleESDamage"),
         // :2662 `min(Σ LifeLossPrevented, 100)`; :2664 belowHalf is the raw BASE sum.
         prevented_life_loss: db
-            .sum(ModType::Base, cfg, &[ModName::from("LifeLossPrevented")])
+            .sum_by_name(ModType::Base, cfg, &["LifeLossPrevented"])
             .min(100.0),
-        life_loss_below_half_prevented: db.sum(
+        life_loss_below_half_prevented: db.sum_by_name(
             ModType::Base,
             cfg,
-            &[ModName::from("LifeLossBelowHalfPrevented")],
+            &["LifeLossBelowHalfPrevented"],
         ),
     }
 }
@@ -132,21 +155,16 @@ pub fn build_pool_state(
     deflect_chance: f64,
 ) -> PoolState {
     // Aegis (:2860-2877): modDB:Max takes the single strongest source (not a sum).
-    let aegis_shared = db.max_of(ModType::Base, cfg, &[ModName::from("AegisValue")]);
-    let aegis_shared_elemental =
-        db.max_of(ModType::Base, cfg, &[ModName::from("ElementalAegisValue")]);
+    let aegis_shared = db.max_of_by_name(ModType::Base, cfg, &["AegisValue"]);
+    let aegis_shared_elemental = db.max_of_by_name(ModType::Base, cfg, &["ElementalAegisValue"]);
     let mut aegis_by_type = [0.0_f64; 5];
-    for (idx, type_name) in TYPE_NAMES.iter().enumerate() {
-        aegis_by_type[idx] = db.max_of(
-            ModType::Base,
-            cfg,
-            &[ModName::from(format!("{type_name}AegisValue"))],
-        );
+    for (idx, &name) in AEGIS_BY_TYPE_NAMES.iter().enumerate() {
+        aegis_by_type[idx] = db.max_of_by_name(ModType::Base, cfg, &[name]);
     }
     // Guard (:2823-2845): rate = min(Σ BASE, 100); pool = calcLib.val(GuardAbsorbLimit)
     // (only evaluated when rate > 0, since vendor only writes output in that branch).
     let mut guard_shared_rate = db
-        .sum(ModType::Base, cfg, &[ModName::from("GuardAbsorbRate")])
+        .sum_by_name(ModType::Base, cfg, &["GuardAbsorbRate"])
         .min(100.0);
     let mut guard_shared = if guard_shared_rate > 0.0 {
         calc_val(db, cfg, "GuardAbsorbLimit")
@@ -157,7 +175,7 @@ pub fn build_pool_state(
     // absorbing all hit damage, capped at 200% maximum Life (Guard keyword).
     // Enabled charms already have their local/global effect applied.
     let charm_guard = db
-        .max_of(ModType::Base, cfg, &[ModName::from("CharmGuard")])
+        .max_of_by_name(ModType::Base, cfg, &["CharmGuard"])
         .clamp(0.0, 2.0 * base.max_life.max(0.0));
     let olroth_guard = ["Flask1", "Flask2"]
         .map(|slot| super::utility::olroth_guard(db, cfg, slot, base.max_life))
@@ -170,17 +188,13 @@ pub fn build_pool_state(
     }
     let mut guard_rate_by_type = [0.0_f64; 5];
     let mut guard_by_type = [0.0_f64; 5];
-    for (idx, type_name) in TYPE_NAMES.iter().enumerate() {
+    for idx in 0..5 {
         let rate = db
-            .sum(
-                ModType::Base,
-                cfg,
-                &[ModName::from(format!("{type_name}GuardAbsorbRate"))],
-            )
+            .sum_by_name(ModType::Base, cfg, &[GUARD_RATE_BY_TYPE_NAMES[idx]])
             .min(100.0);
         guard_rate_by_type[idx] = rate;
         guard_by_type[idx] = if rate > 0.0 {
-            calc_val(db, cfg, &format!("{type_name}GuardAbsorbLimit"))
+            calc_val(db, cfg, GUARD_LIMIT_BY_TYPE_NAMES[idx])
         } else {
             0.0
         };
@@ -192,21 +206,17 @@ pub fn build_pool_state(
     // `TotalCompanionLife` (config Override takes priority, otherwise the
     // BASE sum injected by perform).
     let mut allies = Vec::new();
-    let companion_rate = db.sum(
-        ModType::Base,
-        cfg,
-        &[ModName::from("TakenFromCompanionBeforeYou")],
-    ) + db.sum(
-        ModType::Base,
-        cfg,
-        &[ModName::from("TakenFromCompanionBeforeYouFromDeflected")],
-    ) * deflect_chance.clamp(0.0, 100.0)
-        / 100.0;
+    let companion_rate = db.sum_by_name(ModType::Base, cfg, &["TakenFromCompanionBeforeYou"])
+        + db.sum_by_name(
+            ModType::Base,
+            cfg,
+            &["TakenFromCompanionBeforeYouFromDeflected"],
+        ) * deflect_chance.clamp(0.0, 100.0)
+            / 100.0;
     if companion_rate != 0.0 {
-        let companion_life_name = ModName::from("TotalCompanionLife");
         let companion_life = db
-            .override_(cfg, companion_life_name.as_str())
-            .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[companion_life_name]));
+            .override_(cfg, "TotalCompanionLife")
+            .unwrap_or_else(|| db.sum_by_name(ModType::Base, cfg, &["TotalCompanionLife"]));
         if companion_life > 0.0 {
             allies.push(AllyLayer {
                 id: "companion",
@@ -238,12 +248,12 @@ pub fn build_pool_state(
 /// Equivalent to vendor's `calcLib.val` (CalcTools.lua:32-39):
 /// `Σ BASE × (1 + Σ INC/100) × Π more` (returns 0 directly when BASE is 0, without applying the factors).
 fn calc_val(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
-    let names = [ModName::from(name)];
-    let base = db.sum(ModType::Base, cfg, &names);
+    let names = [name];
+    let base = db.sum_by_name(ModType::Base, cfg, &names);
     if base == 0.0 {
         return 0.0;
     }
-    base * (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)
+    base * (1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0) * db.more_by_name(cfg, &names)
 }
 
 /// Minimum ES bypass across all types (vendor `output.MinimumBypass`,

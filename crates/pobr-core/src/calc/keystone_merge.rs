@@ -163,7 +163,7 @@ mod tests {
         assert_eq!(
             env.player
                 .mod_db
-                .sum(ModType::Inc, &env.cfg, &[ModName::from("Armour")],),
+                .sum_by_name(ModType::Inc, &env.cfg, &["Armour"],),
             20.0
         );
     }
@@ -187,7 +187,7 @@ mod tests {
         assert_eq!(
             env.player
                 .mod_db
-                .sum(ModType::Inc, &env.cfg, &[ModName::from("Armour")],),
+                .sum_by_name(ModType::Inc, &env.cfg, &["Armour"],),
             20.0,
             "idempotent: repeated grants / a second merge must not stack"
         );

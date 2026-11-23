@@ -148,10 +148,10 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
                 "1 + max(0, AdditionalRepeats)",
                 vec![(
                     "AdditionalRepeats",
-                    env.player.mod_db.sum(
+                    env.player.mod_db.sum_by_name(
                         pobr_data::prelude::ModType::Base,
                         &env.cfg,
-                        &[pobr_data::prelude::ModName::from("RepeatCount")],
+                        &["RepeatCount"],
                     ),
                 )],
             ));
@@ -256,7 +256,7 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
                     vec![
                         ("HitTypePresent", if p.present(kind) { 1.0 } else { 0.0 }),
                         ("EnemyTakenFactor", t.map_or(1.0, |t| t.taken)),
-                        ("HitReduction", t.map_or(0.0, |t| t.reduction)),
+                        ("HitReduction", t.map_or_default(|t| t.reduction)),
                     ],
                 )
             } else {

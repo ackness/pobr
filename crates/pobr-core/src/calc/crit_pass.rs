@@ -144,7 +144,10 @@ struct Leg {
 /// an offence closure so `enemy_damage_multiplier` stays private). `scaled`
 /// is the multiplier group (T3 contract 2, shared by both legs, with the crit
 /// leg getting the extra ×CritMultiplier).
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "public entry point passing crit pass inputs directly without a wrapper struct"
+)]
 pub fn run_crit_passes<F>(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -219,8 +222,8 @@ where
                 damage_type: component.damage_type,
                 hit_min: component.min,
                 hit_max: component.max,
-                crit_min: crit_component.map_or(0.0, |cc| cc.min),
-                crit_max: crit_component.map_or(0.0, |cc| cc.max),
+                crit_min: crit_component.map_or_default(|cc| cc.min),
+                crit_max: crit_component.map_or_default(|cc| cc.max),
             }
         })
         .collect();

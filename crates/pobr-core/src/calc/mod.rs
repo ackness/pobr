@@ -174,6 +174,23 @@ pub(crate) fn round(value: f64) -> f64 {
     (value * 1_000_000_000.0).round() / 1_000_000_000.0
 }
 
+/// Vendor's `round(val)` (`Modules/Common.lua`: `m_floor(val + 0.5)`, rounds to the nearest integer).
+pub(crate) fn vendor_round(value: f64) -> f64 {
+    (value + 0.5).floor()
+}
+
+/// `DamageType` modifier name prefix (`"Physical"`, `"Fire"`, `"Cold"`, `"Lightning"`, `"Chaos"`).
+pub(crate) fn damage_type_prefix(damage_type: pobr_data::prelude::DamageType) -> &'static str {
+    use pobr_data::prelude::DamageType;
+    match damage_type {
+        DamageType::Physical => "Physical",
+        DamageType::Fire => "Fire",
+        DamageType::Cold => "Cold",
+        DamageType::Lightning => "Lightning",
+        DamageType::Chaos => "Chaos",
+    }
+}
+
 mod sidebar;
 
 pub mod beira_ground;

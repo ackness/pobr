@@ -33,6 +33,8 @@
 //! takes the fast path that's completely identical to the historical
 //! "per-type base × scale" implementation ([`scale_components_no_conversion`]), with output unchanged byte for byte.
 
+use std::borrow::Cow;
+
 use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb};
@@ -160,12 +162,16 @@ pub fn lucky_hit_chance(
     {
         return 1.0;
     }
-    let prefix = type_prefix(damage_type);
-    let names = [
-        ModName::from(format!("{prefix}LuckyHitsChance")),
-        ModName::from("LuckyHitsChance"),
-    ];
-    db.sum(ModType::Base, cfg, &names).min(100.0) / 100.0
+    let typed = match damage_type {
+        DamageType::Physical => "PhysicalLuckyHitsChance",
+        DamageType::Fire => "FireLuckyHitsChance",
+        DamageType::Cold => "ColdLuckyHitsChance",
+        DamageType::Lightning => "LightningLuckyHitsChance",
+        DamageType::Chaos => "ChaosLuckyHitsChance",
+    };
+    db.sum_by_name(ModType::Base, cfg, &[typed, "LuckyHitsChance"])
+        .min(100.0)
+        / 100.0
 }
 
 /// canDeal / `DealNo<Type>` gating (contract 3's frozen signature; PoB2
@@ -189,11 +195,14 @@ pub fn lucky_hit_chance(
 pub fn apply_can_deal(components: &mut [DamageComponent], db: &ModDb, cfg: &CalcConfig) {
     let deal_no_damage = db.flag(cfg, "DealNoDamage");
     for component in components.iter_mut() {
-        let gated = deal_no_damage
-            || db.flag(
-                cfg,
-                &format!("DealNo{}", type_prefix(component.damage_type)),
-            );
+        let deal_no_typed = match component.damage_type {
+            DamageType::Physical => "DealNoPhysical",
+            DamageType::Fire => "DealNoFire",
+            DamageType::Cold => "DealNoCold",
+            DamageType::Lightning => "DealNoLightning",
+            DamageType::Chaos => "DealNoChaos",
+        };
+        let gated = deal_no_damage || db.flag(cfg, deal_no_typed);
         if gated {
             component.min = 0.0;
             component.max = 0.0;
@@ -223,14 +232,14 @@ fn type_order_index(damage_type: DamageType) -> usize {
         .unwrap_or(usize::MAX)
 }
 
-/// Maps a `DamageType` to its stable modifier name prefix (matching PoB's naming).
-fn type_prefix(damage_type: DamageType) -> &'static str {
+/// Maps a `DamageType` to its `<Type>Damage` modifier name.
+fn damage_type_name(damage_type: DamageType) -> &'static str {
     match damage_type {
-        DamageType::Physical => "Physical",
-        DamageType::Fire => "Fire",
-        DamageType::Cold => "Cold",
-        DamageType::Lightning => "Lightning",
-        DamageType::Chaos => "Chaos",
+        DamageType::Physical => "PhysicalDamage",
+        DamageType::Fire => "FireDamage",
+        DamageType::Cold => "ColdDamage",
+        DamageType::Lightning => "LightningDamage",
+        DamageType::Chaos => "ChaosDamage",
     }
 }
 
@@ -264,14 +273,15 @@ fn base_flat(
     base_hit_max: f64,
 ) -> SourceTerms {
     let (min_name, max_name) = added_damage_names(damage_type);
-    let added_min = db.sum(ModType::Base, cfg, &[min_name]);
-    let added_max = db.sum(ModType::Base, cfg, &[max_name]);
+    let added_min = db.sum_by_name(ModType::Base, cfg, &[min_name]);
+    let added_max = db.sum_by_name(ModType::Base, cfg, &[max_name]);
 
     // Added damage effectiveness (addedMult = (1 + ΣINC/100) × ΠMORE): only
     // applies to external flat added damage, never the skill/weapon's own
     // base. Name set = `Added<Type>Damage` + `AddedDamage` (vendor's order).
     let eff_names = added_effect_names(damage_type);
-    let eff = (1.0 + db.sum(ModType::Inc, cfg, &eff_names) / 100.0) * db.more(cfg, &eff_names);
+    let eff = (1.0 + db.sum_by_name(ModType::Inc, cfg, &eff_names) / 100.0)
+        * db.more_by_name(cfg, &eff_names);
 
     let (min, max) = match damage_type {
         DamageType::Physical => {
@@ -309,29 +319,37 @@ pub struct SourceTerms {
 }
 
 /// The BASE names of `damage_type`'s added damage: `(minimum, maximum)`.
-fn added_damage_names(damage_type: DamageType) -> (ModName, ModName) {
-    let prefix = type_prefix(damage_type);
-    (
-        ModName::from(format!("{prefix}DamageMin")),
-        ModName::from(format!("{prefix}DamageMax")),
-    )
+fn added_damage_names(damage_type: DamageType) -> (&'static str, &'static str) {
+    match damage_type {
+        DamageType::Physical => ("PhysicalDamageMin", "PhysicalDamageMax"),
+        DamageType::Fire => ("FireDamageMin", "FireDamageMax"),
+        DamageType::Cold => ("ColdDamageMin", "ColdDamageMax"),
+        DamageType::Lightning => ("LightningDamageMin", "LightningDamageMax"),
+        DamageType::Chaos => ("ChaosDamageMin", "ChaosDamageMax"),
+    }
 }
 
 /// The INC / MORE names of `damage_type`'s added damage effectiveness.
-fn added_effect_names(damage_type: DamageType) -> [ModName; 2] {
-    [
-        ModName::from(format!("Added{}Damage", type_prefix(damage_type))),
-        ModName::from("AddedDamage"),
-    ]
+fn added_effect_names(damage_type: DamageType) -> [&'static str; 2] {
+    let typed = match damage_type {
+        DamageType::Physical => "AddedPhysicalDamage",
+        DamageType::Fire => "AddedFireDamage",
+        DamageType::Cold => "AddedColdDamage",
+        DamageType::Lightning => "AddedLightningDamage",
+        DamageType::Chaos => "AddedChaosDamage",
+    };
+    [typed, "AddedDamage"]
 }
 
 /// The MORE names that scale one end of `damage_type`'s range: `(minimum, maximum)`.
-fn range_more_names(damage_type: DamageType) -> (ModName, ModName) {
-    let prefix = type_prefix(damage_type);
-    (
-        ModName::from(format!("Min{prefix}Damage")),
-        ModName::from(format!("Max{prefix}Damage")),
-    )
+fn range_more_names(damage_type: DamageType) -> (&'static str, &'static str) {
+    match damage_type {
+        DamageType::Physical => ("MinPhysicalDamage", "MaxPhysicalDamage"),
+        DamageType::Fire => ("MinFireDamage", "MaxFireDamage"),
+        DamageType::Cold => ("MinColdDamage", "MaxColdDamage"),
+        DamageType::Lightning => ("MinLightningDamage", "MaxLightningDamage"),
+        DamageType::Chaos => ("MinChaosDamage", "MaxChaosDamage"),
+    }
 }
 
 /// Every damage type's [`SourceTerms`] in the non-typed hit config `cfg`,
@@ -384,22 +402,24 @@ pub(crate) fn evaluate_source_lines<'a>(
     let mut gain = Vec::new();
     for &to in DAMAGE_TYPES.iter() {
         if to != damage_type {
-            convert_names.extend(conversion_names(damage_type, to, true));
-            convert_names.extend(conversion_names(damage_type, to, false));
+            convert_names.extend_from_slice(conversion_names(damage_type, to, true));
+            convert_names.extend_from_slice(conversion_names(damage_type, to, false));
         }
-        gain.extend(gain_names(damage_type, to));
+        gain.extend_from_slice(gain_names(damage_type, to));
     }
-    gain.push(ModName::from("DamageGainAsRandom"));
+    gain.push("DamageGainAsRandom");
     if damage_type == DamageType::Physical {
-        convert_names.push(ModName::from("PhysicalDamageConvertToRandom"));
-        gain.push(ModName::from("PhysicalDamageGainAsRandom"));
+        convert_names.push("PhysicalDamageConvertToRandom");
+        gain.push("PhysicalDamageGainAsRandom");
     }
     SourceLines {
-        added_min: base_rows(db.evaluate_named(&type_cfg, &min_name)),
-        added_max: base_rows(db.evaluate_named(&type_cfg, &max_name)),
-        added_effect: scaling_rows(db.evaluate_names(&type_cfg, &added_effect_names(damage_type))),
-        convert: base_rows(db.evaluate_names(cfg, &convert_names)),
-        gain: base_rows(db.evaluate_names(cfg, &gain)),
+        added_min: base_rows(db.evaluate_by_name(&type_cfg, min_name)),
+        added_max: base_rows(db.evaluate_by_name(&type_cfg, max_name)),
+        added_effect: scaling_rows(
+            db.evaluate_names_by_name(&type_cfg, &added_effect_names(damage_type)),
+        ),
+        convert: base_rows(db.evaluate_names_by_name(cfg, &convert_names)),
+        gain: base_rows(db.evaluate_names_by_name(cfg, &gain)),
     }
 }
 
@@ -411,13 +431,13 @@ pub(crate) fn evaluate_range_more<'a>(
     damage_type: DamageType,
 ) -> (Vec<crate::ModEvaluation<'a>>, Vec<crate::ModEvaluation<'a>>) {
     let (min_name, max_name) = range_more_names(damage_type);
-    let more_rows = |name: &ModName| -> Vec<crate::ModEvaluation<'a>> {
-        db.evaluate_named(cfg, name)
+    let more_rows = |name: &str| -> Vec<crate::ModEvaluation<'a>> {
+        db.evaluate_by_name(cfg, name)
             .into_iter()
             .filter(|row| row.modifier.mod_type == ModType::More)
             .collect()
     };
-    (more_rows(&min_name), more_rows(&max_name))
+    (more_rows(min_name), more_rows(max_name))
 }
 
 /// Calculates the hit component vector across every damage type (including
@@ -560,8 +580,8 @@ fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> Compo
     // carry no DamageType tag, matched by name against cfg (which carries
     // skill flags); with no such mod, more returns 1.0 and output is unchanged.
     let (min_name, max_name) = range_more_names(comp.damage_type);
-    let more_min = db.more(cfg, &[min_name]);
-    let more_max = db.more(cfg, &[max_name]);
+    let more_min = db.more_by_name(cfg, &[min_name]);
+    let more_max = db.more_by_name(cfg, &[max_name]);
     ComponentTerms {
         base_min: comp.min,
         base_max: comp.max,
@@ -578,11 +598,11 @@ fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> Compo
 }
 
 /// The damage names every type of the hit is scaled by, whatever its type.
-pub(crate) fn generic_scaling_names(cfg: &CalcConfig) -> Vec<ModName> {
+pub(crate) fn generic_scaling_names(cfg: &CalcConfig) -> Vec<Cow<'_, str>> {
     // The generic bucket (not restricted to a damage type): `Damage` always;
     // attack/spell/skill categories (projectile/area/melee) per the cfg flag
     // -- so `increased <Attack|Spell|Projectile|Area|Melee> Damage` applies to this skill.
-    let mut generic_names = vec![ModName::from("Damage")];
+    let mut generic_names = vec![Cow::Borrowed("Damage")];
     for (flag, name) in [
         (ModFlags::ATTACK, "AttackDamage"),
         (ModFlags::SPELL, "SpellDamage"),
@@ -591,12 +611,12 @@ pub(crate) fn generic_scaling_names(cfg: &CalcConfig) -> Vec<ModName> {
         (ModFlags::MELEE, "MeleeDamage"),
     ] {
         if cfg.flags.intersects(flag) {
-            generic_names.push(ModName::from(name));
+            generic_names.push(Cow::Borrowed(name));
         }
     }
     // Damage-scaling names derived from keywords / weapon categories (GrenadeDamage / CrossbowDamage, etc.).
     for kw in &cfg.damage_keywords {
-        generic_names.push(ModName::from(kw.clone()));
+        generic_names.push(Cow::Borrowed(kw.as_str()));
     }
     // Type-scoped names follow this pass's weapon bits, including unarmed.
     // Legacy unscoped names remain on the orchestration's main-hand channel.
@@ -604,9 +624,12 @@ pub(crate) fn generic_scaling_names(cfg: &CalcConfig) -> Vec<ModName> {
         if !row.uses_legacy_damage_keyword()
             && ModFlags::weapon_type_bit(&row.flag).is_some_and(|bit| cfg.flags.intersects(bit))
         {
-            let name = ModName::from(row.damage_keyword());
-            if !generic_names.contains(&name) {
-                generic_names.push(name);
+            let name = row.damage_keyword();
+            if !generic_names
+                .iter()
+                .any(|existing| existing.as_ref() == name)
+            {
+                generic_names.push(Cow::Owned(name));
             }
         }
     }
@@ -619,7 +642,7 @@ pub(crate) fn evaluate_generic_scaling<'a>(
     db: &'a ModDb,
     cfg: &CalcConfig,
 ) -> Vec<crate::ModEvaluation<'a>> {
-    scaling_rows(db.evaluate_names(cfg, &generic_scaling_names(cfg)))
+    scaling_rows(db.evaluate_names_by_name(cfg, &generic_scaling_names(cfg)))
 }
 
 /// The INC / MORE lines [`aggregate_inc_more`] reads for `final_type` only:
@@ -631,10 +654,9 @@ pub(crate) fn evaluate_type_scaling<'a>(
     final_type: DamageType,
 ) -> Vec<crate::ModEvaluation<'a>> {
     let type_cfg = cfg.clone().with_damage_type(final_type);
-    let type_name = ModName::from(format!("{}Damage", type_prefix(final_type)));
-    let mut rows = db.evaluate_named(&type_cfg, &type_name);
+    let mut rows = db.evaluate_by_name(&type_cfg, damage_type_name(final_type));
     if final_type.is_elemental() {
-        rows.extend(db.evaluate_named(&type_cfg, &ModName::from("ElementalDamage")));
+        rows.extend(db.evaluate_by_name(&type_cfg, "ElementalDamage"));
     }
     scaling_rows(rows)
 }
@@ -657,20 +679,19 @@ pub(crate) fn aggregate_inc_more(
     final_type: DamageType,
 ) -> (f64, f64) {
     let generic_names = generic_scaling_names(cfg);
-    let elemental_name = ModName::from("ElementalDamage");
 
     // The generic bucket is only counted once (not restricted to a damage type).
-    let mut inc = db.sum(ModType::Inc, cfg, &generic_names);
-    let mut more = db.more(cfg, &generic_names);
+    let mut inc = db.sum_by_name(ModType::Inc, cfg, &generic_names);
+    let mut more = db.more_by_name(cfg, &generic_names);
     if dbg_env!("POBR_DBG_BASES").is_some() && final_type == DamageType::Physical {
         eprintln!("[POBR_POOL_NAMES] {generic_names:?}");
-        for c in db.contributions(ModType::Inc, cfg, &generic_names) {
+        for c in db.contributions_by_name(ModType::Inc, cfg, &generic_names) {
             eprintln!(
                 "[POBR_POOL_SRC] {:?} {} src={:?}",
                 c.name, c.value, c.raw_text
             );
         }
-        for c in db.contributions(ModType::More, cfg, &generic_names) {
+        for c in db.contributions_by_name(ModType::More, cfg, &generic_names) {
             eprintln!(
                 "[POBR_POOL_MORE] {:?} {} src={:?}",
                 c.name, c.value, c.raw_text
@@ -689,14 +710,14 @@ pub(crate) fn aggregate_inc_more(
     // own type (e.g. a Cold component with path=[Physical,Lightning,Cold,Fire]
     // has Fire as its last entry).
     let type_cfg = cfg.clone().with_damage_type(final_type);
-    let type_name = [ModName::from(format!("{}Damage", type_prefix(final_type)))];
-    inc += db.sum(ModType::Inc, &type_cfg, &type_name);
-    more *= db.more(&type_cfg, &type_name);
+    let type_name = [damage_type_name(final_type)];
+    inc += db.sum_by_name(ModType::Inc, &type_cfg, &type_name);
+    more *= db.more_by_name(&type_cfg, &type_name);
 
     if final_type.is_elemental() {
-        let elem = [elemental_name];
-        inc += db.sum(ModType::Inc, &type_cfg, &elem);
-        more *= db.more(&type_cfg, &elem);
+        let elem = ["ElementalDamage"];
+        inc += db.sum_by_name(ModType::Inc, &type_cfg, &elem);
+        more *= db.more_by_name(&type_cfg, &elem);
     }
     (inc, more)
 }
@@ -771,7 +792,7 @@ fn build_conversion_matrix(db: &ModDb, cfg: &CalcConfig, skill: bool) -> [[f64; 
                 continue;
             }
             let names = conversion_names(from, to, skill);
-            let pct = db.sum(ModType::Base, cfg, &names).max(0.0);
+            let pct = db.sum_by_name(ModType::Base, cfg, names).max(0.0);
             matrix[fi][ti] = pct / 100.0;
             total += pct;
         }
@@ -780,11 +801,7 @@ fn build_conversion_matrix(db: &ModDb, cfg: &CalcConfig, skill: bool) -> [[f64; 
         // (physMode's default): n/3 per element.
         if !skill && from == DamageType::Physical {
             let random = db
-                .sum(
-                    ModType::Base,
-                    cfg,
-                    &[ModName::from("PhysicalDamageConvertToRandom")],
-                )
+                .sum_by_name(ModType::Base, cfg, &["PhysicalDamageConvertToRandom"])
                 .max(0.0);
             if random > 0.0 {
                 for (ti, &to) in DAMAGE_TYPES.iter().enumerate() {
@@ -807,62 +824,153 @@ fn build_conversion_matrix(db: &ModDb, cfg: &CalcConfig, skill: bool) -> [[f64; 
 }
 
 /// The BASE names of one stage's (skill or global) conversion of `from` to `to`.
-fn conversion_names(from: DamageType, to: DamageType, skill: bool) -> Vec<ModName> {
-    let from_prefix = type_prefix(from);
-    let to_prefix = type_prefix(to);
-    let mut names = Vec::new();
-    if skill {
-        names.push(ModName::from(format!("SkillDamageConvertTo{to_prefix}")));
-        names.push(ModName::from(format!(
-            "Skill{from_prefix}DamageConvertTo{to_prefix}"
-        )));
-    } else {
-        names.push(ModName::from(format!("DamageConvertTo{to_prefix}")));
-        names.push(ModName::from(format!(
-            "{from_prefix}DamageConvertTo{to_prefix}"
-        )));
-        if from.is_elemental() {
-            names.push(ModName::from(format!(
-                "ElementalDamageConvertTo{to_prefix}"
-            )));
-        }
-        if from != DamageType::Chaos {
-            names.push(ModName::from(format!("NonChaosDamageConvertTo{to_prefix}")));
-        }
+fn conversion_names(from: DamageType, to: DamageType, skill: bool) -> &'static [&'static str] {
+    macro_rules! conv_for_to {
+        ($to:literal) => {
+            if skill {
+                match from {
+                    DamageType::Physical => &[
+                        concat!("SkillDamageConvertTo", $to),
+                        concat!("SkillPhysicalDamageConvertTo", $to),
+                    ],
+                    DamageType::Fire => &[
+                        concat!("SkillDamageConvertTo", $to),
+                        concat!("SkillFireDamageConvertTo", $to),
+                    ],
+                    DamageType::Cold => &[
+                        concat!("SkillDamageConvertTo", $to),
+                        concat!("SkillColdDamageConvertTo", $to),
+                    ],
+                    DamageType::Lightning => &[
+                        concat!("SkillDamageConvertTo", $to),
+                        concat!("SkillLightningDamageConvertTo", $to),
+                    ],
+                    DamageType::Chaos => &[
+                        concat!("SkillDamageConvertTo", $to),
+                        concat!("SkillChaosDamageConvertTo", $to),
+                    ],
+                }
+            } else {
+                match from {
+                    DamageType::Physical => &[
+                        concat!("DamageConvertTo", $to),
+                        concat!("PhysicalDamageConvertTo", $to),
+                        concat!("NonChaosDamageConvertTo", $to),
+                    ],
+                    DamageType::Fire => &[
+                        concat!("DamageConvertTo", $to),
+                        concat!("FireDamageConvertTo", $to),
+                        concat!("ElementalDamageConvertTo", $to),
+                        concat!("NonChaosDamageConvertTo", $to),
+                    ],
+                    DamageType::Cold => &[
+                        concat!("DamageConvertTo", $to),
+                        concat!("ColdDamageConvertTo", $to),
+                        concat!("ElementalDamageConvertTo", $to),
+                        concat!("NonChaosDamageConvertTo", $to),
+                    ],
+                    DamageType::Lightning => &[
+                        concat!("DamageConvertTo", $to),
+                        concat!("LightningDamageConvertTo", $to),
+                        concat!("ElementalDamageConvertTo", $to),
+                        concat!("NonChaosDamageConvertTo", $to),
+                    ],
+                    DamageType::Chaos => &[
+                        concat!("DamageConvertTo", $to),
+                        concat!("ChaosDamageConvertTo", $to),
+                    ],
+                }
+            }
+        };
     }
-    names
+    match to {
+        DamageType::Physical => conv_for_to!("Physical"),
+        DamageType::Fire => conv_for_to!("Fire"),
+        DamageType::Cold => conv_for_to!("Cold"),
+        DamageType::Lightning => conv_for_to!("Lightning"),
+        DamageType::Chaos => conv_for_to!("Chaos"),
+    }
 }
 
 /// The BASE names that add a share of `from` as extra `to`. "Gain 10% of
 /// Physical Damage as Chaos Damage" (`PhysicalDamageAsChaos`) adds as much
 /// as the same line with "as extra Chaos Damage": the game's stat for both
 /// is a share "to add as" the other type.
-pub(crate) fn gain_names(from: DamageType, to: DamageType) -> Vec<ModName> {
-    let from_prefix = type_prefix(from);
-    let to_prefix = type_prefix(to);
-    let mut names = vec![
-        ModName::from(format!("DamageGainAs{to_prefix}")),
-        ModName::from(format!("DamageAs{to_prefix}")),
-        ModName::from(format!("{from_prefix}DamageGainAs{to_prefix}")),
-        ModName::from(format!("{from_prefix}DamageAs{to_prefix}")),
-        ModName::from(format!("SkillDamageGainAs{to_prefix}")),
-        ModName::from(format!("Skill{from_prefix}DamageGainAs{to_prefix}")),
-    ];
-    if from.is_elemental() {
-        names.push(ModName::from(format!("ElementalDamageGainAs{to_prefix}")));
-        names.push(ModName::from(format!("ElementalDamageAs{to_prefix}")));
-        names.push(ModName::from(format!(
-            "SkillElementalDamageGainAs{to_prefix}"
-        )));
+pub(crate) fn gain_names(from: DamageType, to: DamageType) -> &'static [&'static str] {
+    macro_rules! gain_for_to {
+        ($to:literal) => {
+            match from {
+                DamageType::Physical => &[
+                    concat!("DamageGainAs", $to),
+                    concat!("DamageAs", $to),
+                    concat!("PhysicalDamageGainAs", $to),
+                    concat!("PhysicalDamageAs", $to),
+                    concat!("SkillDamageGainAs", $to),
+                    concat!("SkillPhysicalDamageGainAs", $to),
+                    concat!("NonChaosDamageGainAs", $to),
+                    concat!("NonChaosDamageAs", $to),
+                    concat!("SkillNonChaosDamageGainAs", $to),
+                ],
+                DamageType::Fire => &[
+                    concat!("DamageGainAs", $to),
+                    concat!("DamageAs", $to),
+                    concat!("FireDamageGainAs", $to),
+                    concat!("FireDamageAs", $to),
+                    concat!("SkillDamageGainAs", $to),
+                    concat!("SkillFireDamageGainAs", $to),
+                    concat!("ElementalDamageGainAs", $to),
+                    concat!("ElementalDamageAs", $to),
+                    concat!("SkillElementalDamageGainAs", $to),
+                    concat!("NonChaosDamageGainAs", $to),
+                    concat!("NonChaosDamageAs", $to),
+                    concat!("SkillNonChaosDamageGainAs", $to),
+                ],
+                DamageType::Cold => &[
+                    concat!("DamageGainAs", $to),
+                    concat!("DamageAs", $to),
+                    concat!("ColdDamageGainAs", $to),
+                    concat!("ColdDamageAs", $to),
+                    concat!("SkillDamageGainAs", $to),
+                    concat!("SkillColdDamageGainAs", $to),
+                    concat!("ElementalDamageGainAs", $to),
+                    concat!("ElementalDamageAs", $to),
+                    concat!("SkillElementalDamageGainAs", $to),
+                    concat!("NonChaosDamageGainAs", $to),
+                    concat!("NonChaosDamageAs", $to),
+                    concat!("SkillNonChaosDamageGainAs", $to),
+                ],
+                DamageType::Lightning => &[
+                    concat!("DamageGainAs", $to),
+                    concat!("DamageAs", $to),
+                    concat!("LightningDamageGainAs", $to),
+                    concat!("LightningDamageAs", $to),
+                    concat!("SkillDamageGainAs", $to),
+                    concat!("SkillLightningDamageGainAs", $to),
+                    concat!("ElementalDamageGainAs", $to),
+                    concat!("ElementalDamageAs", $to),
+                    concat!("SkillElementalDamageGainAs", $to),
+                    concat!("NonChaosDamageGainAs", $to),
+                    concat!("NonChaosDamageAs", $to),
+                    concat!("SkillNonChaosDamageGainAs", $to),
+                ],
+                DamageType::Chaos => &[
+                    concat!("DamageGainAs", $to),
+                    concat!("DamageAs", $to),
+                    concat!("ChaosDamageGainAs", $to),
+                    concat!("ChaosDamageAs", $to),
+                    concat!("SkillDamageGainAs", $to),
+                    concat!("SkillChaosDamageGainAs", $to),
+                ],
+            }
+        };
     }
-    if from != DamageType::Chaos {
-        names.push(ModName::from(format!("NonChaosDamageGainAs{to_prefix}")));
-        names.push(ModName::from(format!("NonChaosDamageAs{to_prefix}")));
-        names.push(ModName::from(format!(
-            "SkillNonChaosDamageGainAs{to_prefix}"
-        )));
+    match to {
+        DamageType::Physical => gain_for_to!("Physical"),
+        DamageType::Fire => gain_for_to!("Fire"),
+        DamageType::Cold => gain_for_to!("Cold"),
+        DamageType::Lightning => gain_for_to!("Lightning"),
+        DamageType::Chaos => gain_for_to!("Chaos"),
     }
-    names
 }
 
 /// Reads the gain-as-extra ratio matrix `g[from][to]` (not normalized, doesn't deduct from the source).
@@ -873,7 +981,9 @@ fn build_gain_matrix(db: &ModDb, cfg: &CalcConfig) -> [[f64; 5]; 5] {
     let mut matrix = [[0.0_f64; 5]; 5];
     for (fi, &from) in DAMAGE_TYPES.iter().enumerate() {
         for (ti, &to) in DAMAGE_TYPES.iter().enumerate() {
-            let pct = db.sum(ModType::Base, cfg, &gain_names(from, to)).max(0.0);
+            let pct = db
+                .sum_by_name(ModType::Base, cfg, gain_names(from, to))
+                .max(0.0);
             matrix[fi][ti] = pct / 100.0;
         }
     }
@@ -885,14 +995,10 @@ fn build_gain_matrix(db: &ModDb, cfg: &CalcConfig) -> [[f64; 5]; 5] {
     // summed by buildGainTable for every from row); `PhysicalDamageGainAsRandom`
     // only applies to the physical source row (expanded into `PhysicalDamageGainAs<Elem>`).
     let generic_random = db
-        .sum(ModType::Base, cfg, &[ModName::from("DamageGainAsRandom")])
+        .sum_by_name(ModType::Base, cfg, &["DamageGainAsRandom"])
         .max(0.0);
     let phys_random = db
-        .sum(
-            ModType::Base,
-            cfg,
-            &[ModName::from("PhysicalDamageGainAsRandom")],
-        )
+        .sum_by_name(ModType::Base, cfg, &["PhysicalDamageGainAsRandom"])
         .max(0.0);
     if generic_random > 0.0 || phys_random > 0.0 {
         for (fi, &from) in DAMAGE_TYPES.iter().enumerate() {
@@ -942,7 +1048,6 @@ fn build_gain_matrix(db: &ModDb, cfg: &CalcConfig) -> [[f64; 5]; 5] {
 /// - `convert_path[from][to]` = the set of intermediate types this from→to
 ///   flow passed through (excluding from / to), used to accumulate
 ///   double-dip increased along the way (e.g. the fire from Phys→Cold→Fire carries a Cold tag).
-#[allow(clippy::type_complexity)]
 fn fold_conversion_stages(
     skill: &[[f64; 5]; 5],
     global: &[[f64; 5]; 5],

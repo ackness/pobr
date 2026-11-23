@@ -29,6 +29,8 @@
 //! Source: PoB2 `src/Modules/CalcOffence.lua` (`calcAilmentDamage` / `calcDamagingAilmentOutputs`
 //!       / `Calculate scaling threshold ailment chance` / the effMult section), agent-docs/ailments.md.
 
+use std::borrow::Cow;
+
 use pobr_data::monster::{
     CHILL_EFFECT_MULTIPLIER, CHILL_MAX_EFFECT, CHILL_MIN_EFFECT, ELECTROCUTE_DAMAGE_SCALE,
     FREEZE_DAMAGE_SCALE, IGNITE_CHANCE_MULTIPLIER, PLAYER_AILMENT_THRESHOLD_LIFE_FACTOR,
@@ -153,18 +155,18 @@ pub fn flat_chance(base: f64, inc: f64, more: f64) -> f64 {
 }
 
 /// Applies a set of ailment damage modifiers (inc summed, more multiplied) to the base magnitude.
-fn scale_magnitude(base: f64, db: &ModDb, cfg: &CalcConfig, names: &[ModName]) -> f64 {
-    let inc = db.sum(ModType::Inc, cfg, names);
-    let more = db.more(cfg, names);
+fn scale_magnitude(base: f64, db: &ModDb, cfg: &CalcConfig, names: &[&str]) -> f64 {
+    let inc = db.sum_by_name(ModType::Inc, cfg, names);
+    let more = db.more_by_name(cfg, names);
     base * (1.0 + inc / 100.0) * more
 }
 
 /// Applies a duration modifier (inc summed + more multiplied — vendor's durationMod =
 /// `calcLib.mod(...)`, i.e. `(1+Σinc/100)×Πmore`, CalcOffence.lua:5037-5039;
 /// support payloads like Escalating Poison's `EnemyPoisonDuration MORE -20` go through the MORE leg).
-fn scale_duration(base: f64, db: &ModDb, cfg: &CalcConfig, names: &[ModName]) -> f64 {
-    let inc = db.sum(ModType::Inc, cfg, names);
-    let more = db.more(cfg, names);
+fn scale_duration(base: f64, db: &ModDb, cfg: &CalcConfig, names: &[&str]) -> f64 {
+    let inc = db.sum_by_name(ModType::Inc, cfg, names);
+    let more = db.more_by_name(cfg, names);
     base * (1.0 + inc / 100.0) * more
 }
 
@@ -227,7 +229,7 @@ fn ailment_keyword(ailment: AilmentType) -> KeywordFlags {
 /// parameter) can read it before an instance is constructed.
 /// Supports the damaging ailments, Shock and Chill; other types return 0.
 pub fn ailment_duration(ailment: AilmentType, db: &ModDb, cfg: &CalcConfig) -> f64 {
-    ailment_duration_terms(ailment, db, None, cfg).map_or(0.0, |t| round(t.value()))
+    ailment_duration_terms(ailment, db, None, cfg).map_or_default(|t| round(t.value()))
 }
 
 /// The inputs of an inflicted ailment's duration before the enemy's debuff
@@ -261,13 +263,13 @@ pub fn ailment_duration_terms(
     let names = duration_mod_names_for(ailment, player, cfg);
     let mut terms = AilmentDurationTerms {
         base,
-        increased: player.sum(ModType::Inc, &scoped, &names),
-        more: player.more(&scoped, &names),
+        increased: player.sum_by_name(ModType::Inc, &scoped, names),
+        more: player.more_by_name(&scoped, names),
     };
     if let Some(enemy) = enemy {
         let names = self_duration_mod_names(ailment);
-        terms.increased += enemy.sum(ModType::Inc, cfg, &names);
-        terms.more *= enemy.more(cfg, &names);
+        terms.increased += enemy.sum_by_name(ModType::Inc, cfg, names);
+        terms.more *= enemy.more_by_name(cfg, names);
     }
     Some(terms)
 }
@@ -305,14 +307,10 @@ pub fn resolved_ailment_base_duration(
         return Some(duration);
     }
     if ailment == AilmentType::Poison && player.flag(&scoped, "PoisonDurationIsSkillDuration") {
-        let skill_base = player.sum(
+        let skill_base = player.sum_by_name(
             ModType::Base,
             cfg,
-            &[
-                ModName::from("SkillDurationBase"),
-                ModName::from("Duration"),
-                ModName::from("PrimaryDuration"),
-            ],
+            &["SkillDurationBase", "Duration", "PrimaryDuration"],
         );
         if skill_base > 0.0 {
             return Some(skill_base);
@@ -321,105 +319,184 @@ pub fn resolved_ailment_base_duration(
     ailment_base_duration(ailment, cfg)
 }
 
-fn is_elemental_ailment(ailment: AilmentType) -> bool {
-    matches!(
-        ailment,
-        AilmentType::Ignite | AilmentType::Shock | AilmentType::Chill | AilmentType::Freeze
-    )
-}
-
 /// The modifier names [`ailment_duration`] scales the base duration by,
 /// including skill-effect duration when `PoisonDurationIsSkillDuration` is set.
 pub(crate) fn duration_mod_names_for(
     ailment: AilmentType,
     player: &ModDb,
     cfg: &CalcConfig,
-) -> Vec<ModName> {
-    let mut names = duration_mod_names(ailment);
+) -> &'static [&'static str] {
     if ailment == AilmentType::Poison
         && player.flag(
             &ailment_scoped_cfg(cfg, ailment),
             "PoisonDurationIsSkillDuration",
         )
     {
-        names.push(ModName::from("Duration"));
-        names.push(ModName::from("PrimaryDuration"));
+        return &[
+            "PoisonDuration",
+            "DamagingAilmentDuration",
+            "AilmentDuration",
+            "EnemyAilmentDuration",
+            "Duration",
+            "PrimaryDuration",
+        ];
     }
-    names
+    duration_mod_names(ailment)
 }
 
 /// The modifier names [`ailment_duration`] scales the base duration by.
 /// "increased duration of Ailments you inflict" reads as
 /// `EnemyAilmentDuration`; supports' stats map to `AilmentDuration`.
-pub(crate) fn duration_mod_names(ailment: AilmentType) -> Vec<ModName> {
-    let own = ailment_mod_name(ailment);
-    let mut names = match ailment {
+pub(crate) fn duration_mod_names(ailment: AilmentType) -> &'static [&'static str] {
+    match ailment {
         // "increased Shock / Chill / Freeze Duration" (`shock_duration_+%`,
         // `chill_duration_+%`, `freeze_duration_+%`, and both of
         // `chill_and_freeze_duration_+%`) reads as the inflicted
         // `Enemy<Ailment>Duration`.
-        AilmentType::Shock | AilmentType::Chill | AilmentType::Freeze => {
-            vec![ModName::from(format!("Enemy{own}Duration"))]
-        }
-        _ => vec![
-            ModName::from(format!("{own}Duration")),
-            ModName::from("DamagingAilmentDuration"),
+        AilmentType::Shock => &[
+            "EnemyShockDuration",
+            "AilmentDuration",
+            "EnemyAilmentDuration",
+            "EnemyElementalAilmentDuration",
         ],
-    };
-    names.extend([
-        ModName::from("AilmentDuration"),
-        ModName::from("EnemyAilmentDuration"),
-    ]);
-    if ailment == AilmentType::Bleed {
-        // An OVERRIDE, not part of the INC/MORE sums. Keep the base
-        // replacement visible among the duration's attributed source rows.
-        names.push(ModName::from("BaseBleedingDuration"));
+        AilmentType::Chill => &[
+            "EnemyChillDuration",
+            "AilmentDuration",
+            "EnemyAilmentDuration",
+            "EnemyElementalAilmentDuration",
+        ],
+        AilmentType::Freeze => &[
+            "EnemyFreezeDuration",
+            "AilmentDuration",
+            "EnemyAilmentDuration",
+            "EnemyElementalAilmentDuration",
+        ],
+        // An OVERRIDE (`BaseBleedingDuration`), not part of the INC/MORE sums.
+        // Keep the base replacement visible among the duration's attributed source rows.
+        AilmentType::Bleed => &[
+            "BleedDuration",
+            "DamagingAilmentDuration",
+            "AilmentDuration",
+            "EnemyAilmentDuration",
+            "BaseBleedingDuration",
+        ],
+        AilmentType::CorruptedBlood => &[
+            "BleedDuration",
+            "DamagingAilmentDuration",
+            "AilmentDuration",
+            "EnemyAilmentDuration",
+        ],
+        // "Duration of Elemental Ailments on Enemies" affects Ignite, Shock and
+        // Chill, not Bleeding or Poison; skill-effect duration alone affects none
+        // unless `PoisonDurationIsSkillDuration` links Poison to skill duration.
+        AilmentType::Ignite => &[
+            "IgniteDuration",
+            "DamagingAilmentDuration",
+            "AilmentDuration",
+            "EnemyAilmentDuration",
+            "EnemyElementalAilmentDuration",
+        ],
+        AilmentType::Poison => &[
+            "PoisonDuration",
+            "DamagingAilmentDuration",
+            "AilmentDuration",
+            "EnemyAilmentDuration",
+        ],
+        AilmentType::Electrocute => &[
+            "ElectrocuteDuration",
+            "DamagingAilmentDuration",
+            "AilmentDuration",
+            "EnemyAilmentDuration",
+        ],
     }
-    // "Duration of Elemental Ailments on Enemies" affects Ignite, Shock and
-    // Chill, not Bleeding or Poison; skill-effect duration alone affects none
-    // unless `PoisonDurationIsSkillDuration` links Poison to skill duration.
-    if is_elemental_ailment(ailment) {
-        names.push(ModName::from("EnemyElementalAilmentDuration"));
-    }
-    names
 }
 
 /// The target's own duration modifier names [`ailment_duration_terms`] reads
 /// from the enemy database.
-pub(crate) fn self_duration_mod_names(ailment: AilmentType) -> Vec<ModName> {
-    let mut names = vec![
-        ModName::from(format!("Self{}Duration", ailment_mod_name(ailment))),
-        ModName::from("SelfAilmentDuration"),
-    ];
-    if is_elemental_ailment(ailment) {
-        names.push(ModName::from("SelfElementalAilmentDuration"));
+pub(crate) fn self_duration_mod_names(ailment: AilmentType) -> &'static [&'static str] {
+    match ailment {
+        AilmentType::Bleed | AilmentType::CorruptedBlood => {
+            &["SelfBleedDuration", "SelfAilmentDuration"]
+        }
+        AilmentType::Ignite => &[
+            "SelfIgniteDuration",
+            "SelfAilmentDuration",
+            "SelfElementalAilmentDuration",
+        ],
+        AilmentType::Poison => &["SelfPoisonDuration", "SelfAilmentDuration"],
+        AilmentType::Shock => &[
+            "SelfShockDuration",
+            "SelfAilmentDuration",
+            "SelfElementalAilmentDuration",
+        ],
+        AilmentType::Chill => &[
+            "SelfChillDuration",
+            "SelfAilmentDuration",
+            "SelfElementalAilmentDuration",
+        ],
+        AilmentType::Freeze => &[
+            "SelfFreezeDuration",
+            "SelfAilmentDuration",
+            "SelfElementalAilmentDuration",
+        ],
+        AilmentType::Electrocute => &["SelfElectrocuteDuration", "SelfAilmentDuration"],
     }
-    names
 }
 
 /// The player modifier names behind the chance to apply `ailment` (`"Bleed"`
 /// / `"Poison"` / `"Ignite"` / `"Shock"`): the intrinsic chance of bleed and
 /// poison, or the chance derived from the hit for the others.
-pub(crate) fn chance_mod_names(ailment: &str, from_hit_size: bool) -> [ModName; 2] {
-    let own = if from_hit_size {
-        format!("Enemy{ailment}Chance")
-    } else {
-        format!("{ailment}Chance")
+pub(crate) fn chance_mod_names(ailment: &str, from_hit_size: bool) -> [Cow<'static, str>; 2] {
+    let own = match (ailment, from_hit_size) {
+        ("Bleed", false) => Cow::Borrowed("BleedChance"),
+        ("Bleed", true) => Cow::Borrowed("EnemyBleedChance"),
+        ("Poison", false) => Cow::Borrowed("PoisonChance"),
+        ("Poison", true) => Cow::Borrowed("EnemyPoisonChance"),
+        ("Ignite", false) => Cow::Borrowed("IgniteChance"),
+        ("Ignite", true) => Cow::Borrowed("EnemyIgniteChance"),
+        ("Shock", false) => Cow::Borrowed("ShockChance"),
+        ("Shock", true) => Cow::Borrowed("EnemyShockChance"),
+        ("Chill", false) => Cow::Borrowed("ChillChance"),
+        ("Chill", true) => Cow::Borrowed("EnemyChillChance"),
+        ("Freeze", false) => Cow::Borrowed("FreezeChance"),
+        ("Freeze", true) => Cow::Borrowed("EnemyFreezeChance"),
+        ("Electrocute", false) => Cow::Borrowed("ElectrocuteChance"),
+        ("Electrocute", true) => Cow::Borrowed("EnemyElectrocuteChance"),
+        (_, true) => Cow::Owned(format!("Enemy{ailment}Chance")),
+        (_, false) => Cow::Owned(format!("{ailment}Chance")),
     };
-    [ModName::from(own), ModName::from("AilmentChance")]
+    [own, Cow::Borrowed("AilmentChance")]
+}
+
+fn self_chance_mod_name(ailment: &str) -> Cow<'static, str> {
+    match ailment {
+        "Bleed" => Cow::Borrowed("SelfBleedChance"),
+        "Poison" => Cow::Borrowed("SelfPoisonChance"),
+        "Ignite" => Cow::Borrowed("SelfIgniteChance"),
+        "Shock" => Cow::Borrowed("SelfShockChance"),
+        "Chill" => Cow::Borrowed("SelfChillChance"),
+        "Freeze" => Cow::Borrowed("SelfFreezeChance"),
+        "Electrocute" => Cow::Borrowed("SelfElectrocuteChance"),
+        _ => Cow::Owned(format!("Self{ailment}Chance")),
+    }
 }
 
 /// The player modifier names [`ailment_rate_mod`] reads: `(faster, slower)`.
-pub(crate) fn rate_mod_names(ailment_name: &str) -> (ModName, ModName) {
-    (
-        ModName::from(format!("{ailment_name}Faster")),
-        ModName::from(format!("{ailment_name}Slower")),
-    )
+pub(crate) fn rate_mod_names(ailment_name: &str) -> (Cow<'static, str>, Cow<'static, str>) {
+    match ailment_name {
+        "Bleed" => (Cow::Borrowed("BleedFaster"), Cow::Borrowed("BleedSlower")),
+        "Poison" => (Cow::Borrowed("PoisonFaster"), Cow::Borrowed("PoisonSlower")),
+        "Ignite" => (Cow::Borrowed("IgniteFaster"), Cow::Borrowed("IgniteSlower")),
+        _ => (
+            Cow::Owned(format!("{ailment_name}Faster")),
+            Cow::Owned(format!("{ailment_name}Slower")),
+        ),
+    }
 }
 
 /// The player modifier name [`ailment_effect_mod`] reads.
-pub(crate) fn effect_mod_names() -> [ModName; 1] {
-    [ModName::from("AilmentEffect")]
+pub(crate) fn effect_mod_names() -> [&'static str; 1] {
+    ["AilmentEffect"]
 }
 
 /// The debuff/ailment duration factor `debuffDurationMult` (vendor CalcOffence.lua:1833-1835):
@@ -441,9 +518,9 @@ pub fn debuff_duration_mult(enemy_db: &ModDb, cfg: &CalcConfig) -> f64 {
     if !cfg.mode_effective {
         return 1.0;
     }
-    let names = [ModName::from("BuffExpireFaster")];
-    let aggregated =
-        (1.0 + enemy_db.sum(ModType::Inc, cfg, &names) / 100.0) * enemy_db.more(cfg, &names);
+    let names = ["BuffExpireFaster"];
+    let aggregated = (1.0 + enemy_db.sum_by_name(ModType::Inc, cfg, &names) / 100.0)
+        * enemy_db.more_by_name(cfg, &names);
     1.0 / aggregated.max(cfg.constants.game().buff_expiration_slow_cap)
 }
 
@@ -476,7 +553,7 @@ pub fn bleed_instance(
     // participate in damaging-ailment magnitude; `AilmentEffect` is applied as a separate factor
     // in finalize_ailment_dps (PoB2's effectMod, not double-counted).
     // Source: PoB2 CalcOffence.lua L5145-5146 / L5190.
-    let magnitude_dps = scale_magnitude(base_dps, db, cfg, &[ModName::from("AilmentMagnitude")])
+    let magnitude_dps = scale_magnitude(base_dps, db, cfg, &["AilmentMagnitude"])
         * bleed_aggravated_multiplier(db, cfg);
     let duration_secs = ailment_duration(AilmentType::Bleed, db, cfg);
     AilmentInstance {
@@ -514,12 +591,12 @@ fn ignite_instance_in_scope(
     // Caller supplies either the hit ailment scope or the independent ground scope.
     // PoE2 ignite magnitude is scaled only by `AilmentMagnitude` (PoB2's ailmentPercentBase factor).
     // Source: PoB2 CalcOffence.lua L5145-5146.
-    let magnitude_dps = scale_magnitude(base_dps, db, cfg, &[ModName::from("AilmentMagnitude")]);
+    let magnitude_dps = scale_magnitude(base_dps, db, cfg, &["AilmentMagnitude"]);
     let duration_secs = scale_duration(
         gc.ignite_base_duration,
         db,
         cfg,
-        &duration_mod_names(AilmentType::Ignite),
+        duration_mod_names(AilmentType::Ignite),
     );
     AilmentInstance {
         ailment: AilmentType::Ignite,
@@ -539,8 +616,7 @@ pub fn poison_instance(pre_mitigation_hit: f64, db: &ModDb, cfg: &CalcConfig) ->
     let scoped = ailment_scoped_cfg(cfg, AilmentType::Poison);
     // PoE2 poison magnitude is scaled only by `AilmentMagnitude` (PoB2's ailmentPercentBase factor).
     // Source: PoB2 CalcOffence.lua L5145-5146.
-    let magnitude_dps =
-        scale_magnitude(base_dps, db, &scoped, &[ModName::from("AilmentMagnitude")]);
+    let magnitude_dps = scale_magnitude(base_dps, db, &scoped, &["AilmentMagnitude"]);
     let duration_secs = ailment_duration(AilmentType::Poison, db, cfg);
     AilmentInstance {
         ailment: AilmentType::Poison,
@@ -653,8 +729,8 @@ pub(crate) fn effmult_terms(
     }
     let type_cfg = cfg.clone().with_damage_type(damage_type);
     let taken_names = taken_mod_names(damage_type);
-    let taken_inc = enemy.sum(ModType::Inc, &type_cfg, &taken_names);
-    let taken_more = enemy.more(&type_cfg, &taken_names);
+    let taken_inc = enemy.sum_by_name(ModType::Inc, &type_cfg, taken_names);
+    let taken_more = enemy.more_by_name(&type_cfg, taken_names);
 
     let resist = ailment_resist(enemy, &type_cfg, damage_type);
     (resist, taken_inc, taken_more)
@@ -674,30 +750,45 @@ fn ailment_resist(enemy: &ModDb, type_cfg: &CalcConfig, damage_type: DamageType)
 }
 
 /// The damage-taken-chain ModName set (DamageTaken / DamageTakenOverTime / per-type + elemental).
-fn taken_mod_names(damage_type: DamageType) -> Vec<ModName> {
-    let prefix = type_prefix(damage_type);
-    let mut names = vec![
-        ModName::from("DamageTaken"),
-        ModName::from("DamageTakenOverTime"),
-        ModName::from(format!("{prefix}DamageTaken")),
-        ModName::from(format!("{prefix}DamageTakenOverTime")),
-    ];
-    if damage_type.is_elemental() {
-        names.push(ModName::from("ElementalDamageTaken"));
+fn taken_mod_names(damage_type: DamageType) -> &'static [&'static str] {
+    match damage_type {
+        DamageType::Physical => &[
+            "DamageTaken",
+            "DamageTakenOverTime",
+            "PhysicalDamageTaken",
+            "PhysicalDamageTakenOverTime",
+        ],
+        DamageType::Fire => &[
+            "DamageTaken",
+            "DamageTakenOverTime",
+            "FireDamageTaken",
+            "FireDamageTakenOverTime",
+            "ElementalDamageTaken",
+        ],
+        DamageType::Cold => &[
+            "DamageTaken",
+            "DamageTakenOverTime",
+            "ColdDamageTaken",
+            "ColdDamageTakenOverTime",
+            "ElementalDamageTaken",
+        ],
+        DamageType::Lightning => &[
+            "DamageTaken",
+            "DamageTakenOverTime",
+            "LightningDamageTaken",
+            "LightningDamageTakenOverTime",
+            "ElementalDamageTaken",
+        ],
+        DamageType::Chaos => &[
+            "DamageTaken",
+            "DamageTakenOverTime",
+            "ChaosDamageTaken",
+            "ChaosDamageTakenOverTime",
+        ],
     }
-    names
 }
 
-/// `DamageType` → modifier name prefix.
-fn type_prefix(damage_type: DamageType) -> &'static str {
-    match damage_type {
-        DamageType::Physical => "Physical",
-        DamageType::Fire => "Fire",
-        DamageType::Cold => "Cold",
-        DamageType::Lightning => "Lightning",
-        DamageType::Chaos => "Chaos",
-    }
-}
+use super::damage_type_prefix as type_prefix;
 
 // High level: chance + crit weighting + magnitude + effMult (with TraceGraph attribution)
 
@@ -880,8 +971,8 @@ pub fn magnitude_scaling(ailment: AilmentType, db: &ModDb, cfg: &CalcConfig) -> 
     };
     (
         fraction * 100.0,
-        db.sum(ModType::Inc, cfg, &names),
-        db.more(cfg, &names) * extra_more,
+        db.sum_by_name(ModType::Inc, cfg, &names),
+        db.more_by_name(cfg, &names) * extra_more,
     )
 }
 
@@ -1030,10 +1121,7 @@ pub fn shock_traced(
     let weighted_hit =
         source.hit_avg * (1.0 - source.crit_chance) + source.crit_avg * source.crit_chance;
     // effectMod: the attacker's and the target's magnitude factors.
-    let mag_names = [
-        ModName::from("AilmentMagnitude"),
-        ModName::from("EnemyShockMagnitude"),
-    ];
+    let mag_names = ["AilmentMagnitude", "EnemyShockMagnitude"];
     let (attacker, defender) =
         effect_mod_factors(AilmentType::Shock, player, enemy, cfg, source.crit_chance);
     let effect_mod = attacker * defender;
@@ -1049,9 +1137,10 @@ pub fn shock_traced(
     trace.add_edge(chance_node, node);
     // Chain the effectMod mod attribution into the shock-effect node (mirrors chill_traced).
     let mag_inc_traced =
-        player.sum_traced(ModType::Inc, cfg, &mag_names, trace, "Shock magnitude INC");
+        player.sum_traced_by_name(ModType::Inc, cfg, &mag_names, trace, "Shock magnitude INC");
     trace.add_edge(mag_inc_traced.node_id, node);
-    let mag_more_traced = player.more_traced(cfg, &mag_names, trace, "Shock magnitude MORE");
+    let mag_more_traced =
+        player.more_traced_by_name(cfg, &mag_names, trace, "Shock magnitude MORE");
     trace.add_edge(mag_more_traced.node_id, node);
     (chance, magnitude, node)
 }
@@ -1079,24 +1168,24 @@ fn flat_chance_traced(
         return (chance.clamp(0.0, 100.0), override_node);
     }
     let chance_names = chance_mod_names(ailment, false);
-    let self_chance = [ModName::from(format!("Self{ailment}Chance"))];
+    let self_chance = [self_chance_mod_name(ailment)];
 
-    let base = player.sum_traced(
+    let base = player.sum_traced_by_name(
         ModType::Base,
         cfg,
         &chance_names,
         trace,
         format!("{ailment}Chance BASE"),
     );
-    let enemy_base = enemy.sum_traced(
+    let enemy_base = enemy.sum_traced_by_name(
         ModType::Base,
         cfg,
         &self_chance,
         trace,
         format!("enemy Self{ailment}Chance BASE"),
     );
-    let inc = player.sum(ModType::Inc, cfg, &chance_names);
-    let more = player.more(cfg, &chance_names);
+    let inc = player.sum_by_name(ModType::Inc, cfg, &chance_names);
+    let more = player.more_by_name(cfg, &chance_names);
     let chance = flat_chance(base.value + enemy_base.value, inc, more);
     let node = trace.add_node(
         format!("{ailment}Chance"),
@@ -1110,7 +1199,10 @@ fn flat_chance_traced(
 
 /// Chance-derived chance (ignite/shock) with trace. Returns `(chance_on_hit, chance_on_crit, chance_node)`
 /// (percentage points + node).
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "internal traced threshold-chance helper passing actor dbs and ailment inputs directly"
+)]
 fn threshold_chance_traced(
     source: &AilmentSource,
     player: &ModDb,
@@ -1125,25 +1217,25 @@ fn threshold_chance_traced(
     // (non-damaging ailments like shock have no dedicated KeywordFlag → the cfg passes through unchanged).
     let cfg = &ailment_scoped_cfg(cfg, ailment_type_of(ailment));
     let chance_names = chance_mod_names(ailment, true);
-    let self_chance = [ModName::from(format!("Self{ailment}Chance"))];
+    let self_chance = [self_chance_mod_name(ailment)];
 
-    let base = player.sum_traced(
+    let base = player.sum_traced_by_name(
         ModType::Base,
         cfg,
         &chance_names,
         trace,
         format!("{ailment}Chance BASE"),
     );
-    let enemy_base = enemy.sum_traced(
+    let enemy_base = enemy.sum_traced_by_name(
         ModType::Base,
         cfg,
         &self_chance,
         trace,
         format!("enemy Self{ailment}Chance BASE"),
     );
-    let inc =
-        player.sum(ModType::Inc, cfg, &chance_names) + enemy.sum(ModType::Inc, cfg, &self_chance);
-    let more = player.more(cfg, &chance_names) * enemy.more(cfg, &self_chance);
+    let inc = player.sum_by_name(ModType::Inc, cfg, &chance_names)
+        + enemy.sum_by_name(ModType::Inc, cfg, &self_chance);
+    let more = player.more_by_name(cfg, &chance_names) * enemy.more_by_name(cfg, &self_chance);
 
     let (on_hit, on_crit) = threshold_derived_chance(
         source.hit_avg,
@@ -1170,7 +1262,10 @@ fn threshold_chance_traced(
 /// Chains the chance node, magnitude's inc/more contributions, and effMult's enemy
 /// resistance/taken contributions all into the final `<Ailment>DPS` node, making the output
 /// traceable (gap: ailment-trace-attribution-missing).
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "internal damaging-ailment core helper shared by bleed, ignite, and poison"
+)]
 fn compute_damaging_ailment(
     source: &AilmentSource,
     player: &ModDb,
@@ -1272,7 +1367,7 @@ fn record_magnitude_trace(
     // keyword-scoped mods).
     let cfg = &ailment_scoped_cfg(cfg, ailment);
     let names = magnitude_mod_names(ailment);
-    let inc = player.sum_traced(
+    let inc = player.sum_traced_by_name(
         ModType::Inc,
         cfg,
         &names,
@@ -1280,7 +1375,8 @@ fn record_magnitude_trace(
         format!("{ailment:?} magnitude INC"),
     );
     trace.add_edge(inc.node_id, mag_node);
-    let more = player.more_traced(cfg, &names, trace, format!("{ailment:?} magnitude MORE"));
+    let more =
+        player.more_traced_by_name(cfg, &names, trace, format!("{ailment:?} magnitude MORE"));
     trace.add_edge(more.node_id, mag_node);
 }
 
@@ -1296,23 +1392,31 @@ fn record_effmult_trace(
     let eff_node = trace.add_node("AilmentEffMult", round(eff_mult), TraceOperation::Mitigate);
 
     let taken_names = taken_mod_names(damage_type);
-    let taken_inc = enemy.sum_traced(
+    let taken_inc = enemy.sum_traced_by_name(
         ModType::Inc,
         &type_cfg,
-        &taken_names,
+        taken_names,
         trace,
         "ailment DamageTaken INC",
     );
     trace.add_edge(taken_inc.node_id, eff_node);
-    let taken_more = enemy.more_traced(&type_cfg, &taken_names, trace, "ailment DamageTaken MORE");
+    let taken_more =
+        enemy.more_traced_by_name(&type_cfg, taken_names, trace, "ailment DamageTaken MORE");
     trace.add_edge(taken_more.node_id, eff_node);
 
     if damage_type != DamageType::Physical {
         let prefix = type_prefix(damage_type);
-        let resist = enemy.sum_traced(
+        let resist_name = match damage_type {
+            DamageType::Fire => "FireResist",
+            DamageType::Cold => "ColdResist",
+            DamageType::Lightning => "LightningResist",
+            DamageType::Chaos => "ChaosResist",
+            DamageType::Physical => unreachable!(),
+        };
+        let resist = enemy.sum_traced_by_name(
             ModType::Base,
             &type_cfg,
-            &[ModName::from(format!("{prefix}Resist"))],
+            &[resist_name],
             trace,
             format!("enemy {prefix}Resist BASE"),
         );
@@ -1405,14 +1509,24 @@ pub(crate) fn effect_mod_factors(
     cfg: &CalcConfig,
     crit_chance: f64,
 ) -> (f64, f64) {
-    let own = ailment_mod_name(ailment);
-    let factor = |db: &ModDb, cfg: &CalcConfig, name: String| {
-        let names = [ModName::from(name), ModName::from("AilmentMagnitude")];
-        ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0)
+    let (attacker_name, defender_name) = match ailment {
+        AilmentType::Bleed | AilmentType::CorruptedBlood => {
+            ("EnemyBleedMagnitude", "SelfBleedMagnitude")
+        }
+        AilmentType::Ignite => ("EnemyIgniteMagnitude", "SelfIgniteMagnitude"),
+        AilmentType::Poison => ("EnemyPoisonMagnitude", "SelfPoisonMagnitude"),
+        AilmentType::Shock => ("EnemyShockMagnitude", "SelfShockMagnitude"),
+        AilmentType::Chill => ("EnemyChillMagnitude", "SelfChillMagnitude"),
+        AilmentType::Freeze => ("EnemyFreezeMagnitude", "SelfFreezeMagnitude"),
+        AilmentType::Electrocute => ("EnemyElectrocuteMagnitude", "SelfElectrocuteMagnitude"),
     };
-    let attacker_name = format!("Enemy{own}Magnitude");
+    let factor = |db: &ModDb, cfg: &CalcConfig, name: &str| {
+        let names = [name, "AilmentMagnitude"];
+        ((1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0) * db.more_by_name(cfg, &names))
+            .max(0.0)
+    };
     let crit = crit_chance.clamp(0.0, 1.0);
-    let mut attacker = factor(player, cfg, attacker_name.clone());
+    let mut attacker = factor(player, cfg, attacker_name);
     if crit > 0.0 && !cfg.condition("CriticalStrike") {
         let on_crit = factor(
             player,
@@ -1421,7 +1535,7 @@ pub(crate) fn effect_mod_factors(
         );
         attacker = attacker * (1.0 - crit) + on_crit * crit;
     }
-    (attacker, factor(enemy, cfg, format!("Self{own}Magnitude")))
+    (attacker, factor(enemy, cfg, defender_name))
 }
 
 /// The chill effect (action speed reduction percentage, integer scale):
@@ -1486,10 +1600,7 @@ pub fn chill_traced(
     if let Some(node) = prohibited_ailment_node(player, cfg, "CannotChill", "ChillEffect", trace) {
         return (0.0, node);
     }
-    let mag_names = [
-        ModName::from("AilmentMagnitude"),
-        ModName::from("EnemyChillMagnitude"),
-    ];
+    let mag_names = ["AilmentMagnitude", "EnemyChillMagnitude"];
     let (attacker, defender) =
         effect_mod_factors(AilmentType::Chill, player, enemy, cfg, crit_chance);
     let effect_mod = attacker * defender;
@@ -1498,9 +1609,10 @@ pub fn chill_traced(
     let node = trace.add_node("ChillEffect", effect, TraceOperation::Multiply);
 
     // Record the effectMod contribution into the chill-effect node.
-    let inc_traced = player.sum_traced(ModType::Inc, cfg, &mag_names, trace, "Chill magnitude INC");
+    let inc_traced =
+        player.sum_traced_by_name(ModType::Inc, cfg, &mag_names, trace, "Chill magnitude INC");
     trace.add_edge(inc_traced.node_id, node);
-    let more_traced = player.more_traced(cfg, &mag_names, trace, "Chill magnitude MORE");
+    let more_traced = player.more_traced_by_name(cfg, &mag_names, trace, "Chill magnitude MORE");
     trace.add_edge(more_traced.node_id, node);
 
     (effect, node)
@@ -1568,17 +1680,15 @@ pub(crate) fn heavy_stun_terms(env: &super::Env, combined: &[(DamageType, f64)])
     cfg.flags |= ModFlags::HIT;
     let player = &env.player.mod_db;
     let enemy = &env.enemy.mod_db;
-    let names = ["EnemyHeavyStunBuildup", "EnemyImmobilisationBuildup"].map(ModName::from);
-    let enemy_names =
-        ["HeavyStunBuildup", "StunBuildup", "ImmobilisationBuildup"].map(ModName::from);
-    let thresholds =
-        ["PoiseThreshold", "HeavyStunThreshold", "EnemyStunThreshold"].map(ModName::from);
+    let names = ["EnemyHeavyStunBuildup", "EnemyImmobilisationBuildup"];
+    let enemy_names = ["HeavyStunBuildup", "StunBuildup", "ImmobilisationBuildup"];
+    let thresholds = ["PoiseThreshold", "HeavyStunThreshold", "EnemyStunThreshold"];
     let threshold = (cfg
         .constants
         .monster_scaling
         .poise_threshold_at(env.enemy.level as u32) as f64
-        * (1.0 + enemy.sum(ModType::Inc, &cfg, &thresholds) / 100.0)
-        * enemy.more(&cfg, &thresholds))
+        * (1.0 + enemy.sum_by_name(ModType::Inc, &cfg, &thresholds) / 100.0)
+        * enemy.more_by_name(&cfg, &thresholds))
     .floor();
     let mut terms = HeavyStunTerms {
         melee_multiplier: if cfg.flags.intersects(ModFlags::MELEE) {
@@ -1588,10 +1698,10 @@ pub(crate) fn heavy_stun_terms(env: &super::Env, combined: &[(DamageType, f64)])
         },
         threshold,
         damage_scale: cfg.constants.game().heavy_stun_damage_scale,
-        increased: player.sum(ModType::Inc, &cfg, &names),
-        more: player.more(&cfg, &names),
-        enemy_multiplier: (1.0 + enemy.sum(ModType::Inc, &cfg, &enemy_names) / 100.0)
-            * enemy.more(&cfg, &enemy_names),
+        increased: player.sum_by_name(ModType::Inc, &cfg, &names),
+        more: player.more_by_name(&cfg, &names),
+        enemy_multiplier: (1.0 + enemy.sum_by_name(ModType::Inc, &cfg, &enemy_names) / 100.0)
+            * enemy.more_by_name(&cfg, &enemy_names),
         // A skill that Pins instead of Stunning (Pin support: "making it unable
         // to Stun", `support_pin_buildup_pin_instead_of_stun`) builds no Heavy
         // Stun; its damage counts toward Pin (`pin_terms`).
@@ -1684,7 +1794,7 @@ pub(crate) fn freeze_buildup_terms(
     cfg.keyword_flags = cfg.keyword_flags | KeywordFlags::HIT;
     cfg.flags |= ModFlags::HIT;
     let enemy = &env.enemy.mod_db;
-    let enemy_names = ["FreezeBuildup", "ImmobilisationBuildup"].map(ModName::from);
+    let enemy_names = ["FreezeBuildup", "ImmobilisationBuildup"];
     let parts = hit_damage_parts(env, combined);
     // Cold builds Freeze; another type also does when the player carries
     // its `<Type>CanFreeze` flag (Pinnacle of Power's per-Power-Charge
@@ -1702,8 +1812,8 @@ pub(crate) fn freeze_buildup_terms(
     FreezeBuildupTerms {
         source,
         buildup_pct,
-        enemy_multiplier: ((1.0 + enemy.sum(ModType::Inc, &cfg, &enemy_names) / 100.0)
-            * enemy.more(&cfg, &enemy_names))
+        enemy_multiplier: ((1.0 + enemy.sum_by_name(ModType::Inc, &cfg, &enemy_names) / 100.0)
+            * enemy.more_by_name(&cfg, &enemy_names))
         .max(0.0),
         enabled: can_hit && buildup_pct > 0.0 && !env.player.mod_db.flag(&cfg, "CannotFreeze"),
     }
@@ -1800,23 +1910,23 @@ pub(crate) fn pin_terms(
     cfg.flags |= ModFlags::HIT;
     let player = &env.player.mod_db;
     let enemy = &env.enemy.mod_db;
-    let names = ["EnemyPinBuildup", "EnemyImmobilisationBuildup"].map(ModName::from);
-    let enemy_names = ["PinBuildup", "ImmobilisationBuildup"].map(ModName::from);
-    let thresholds = ["PoiseThreshold"].map(ModName::from);
+    let names = ["EnemyPinBuildup", "EnemyImmobilisationBuildup"];
+    let enemy_names = ["PinBuildup", "ImmobilisationBuildup"];
+    let thresholds = ["PoiseThreshold"];
     let threshold = (cfg
         .constants
         .monster_scaling
         .poise_threshold_at(env.enemy.level as u32) as f64
-        * (1.0 + enemy.sum(ModType::Inc, &cfg, &thresholds) / 100.0)
-        * enemy.more(&cfg, &thresholds))
+        * (1.0 + enemy.sum_by_name(ModType::Inc, &cfg, &thresholds) / 100.0)
+        * enemy.more_by_name(&cfg, &thresholds))
     .floor();
     let mut terms = PinTerms {
         threshold,
         damage_scale: cfg.constants.game().pin_damage_scale,
-        increased: player.sum(ModType::Inc, &cfg, &names),
-        more: player.more(&cfg, &names),
-        enemy_multiplier: (1.0 + enemy.sum(ModType::Inc, &cfg, &enemy_names) / 100.0)
-            * enemy.more(&cfg, &enemy_names),
+        increased: player.sum_by_name(ModType::Inc, &cfg, &names),
+        more: player.more_by_name(&cfg, &names),
+        enemy_multiplier: (1.0 + enemy.sum_by_name(ModType::Inc, &cfg, &enemy_names) / 100.0)
+            * enemy.more_by_name(&cfg, &enemy_names),
         enabled: can_hit && !player.flag(&cfg, "CannotPin"),
         ..Default::default()
     };
@@ -1862,7 +1972,7 @@ pub(crate) fn pin_terms(
             let crit_damage = crit_share
                 .iter()
                 .find(|(crit_kind, _)| *crit_kind == kind)
-                .map_or(0.0, |(_, value)| value.min(damage));
+                .map_or_default(|(_, value)| value.min(damage));
             let opted_in = |leg: &CalcConfig| {
                 player.flag(leg, "CanPin") || player.flag(leg, can_pin_flag(kind))
             };
@@ -1969,14 +2079,28 @@ fn poise_buildup_traced(
     cfg: &CalcConfig,
     trace: &mut TraceGraph,
 ) -> (f64, TraceNodeId) {
+    let (own, enemy_own): (Cow<'static, str>, Cow<'static, str>) = match ailment {
+        "Freeze" => (
+            Cow::Borrowed("FreezeBuildup"),
+            Cow::Borrowed("EnemyFreezeBuildup"),
+        ),
+        "Electrocute" => (
+            Cow::Borrowed("ElectrocuteBuildup"),
+            Cow::Borrowed("EnemyElectrocuteBuildup"),
+        ),
+        _ => (
+            Cow::Owned(format!("{ailment}Buildup")),
+            Cow::Owned(format!("Enemy{ailment}Buildup")),
+        ),
+    };
     let buildup_names = [
-        ModName::from(format!("{ailment}Buildup")),
-        ModName::from(format!("Enemy{ailment}Buildup")),
-        ModName::from("EnemyImmobilisationBuildup"),
-        ModName::from("ImmobilisationBuildup"),
+        own.as_ref(),
+        enemy_own.as_ref(),
+        "EnemyImmobilisationBuildup",
+        "ImmobilisationBuildup",
     ];
-    let inc = player.sum(ModType::Inc, cfg, &buildup_names);
-    let more = player.more(cfg, &buildup_names);
+    let inc = player.sum_by_name(ModType::Inc, cfg, &buildup_names);
+    let more = player.more_by_name(cfg, &buildup_names);
 
     let buildup = poise_buildup_inner(damage_scale, enemy_poise_threshold, inc, more);
     let node = trace.add_node(
@@ -1985,7 +2109,7 @@ fn poise_buildup_traced(
         TraceOperation::Multiply,
     );
 
-    let inc_tr = player.sum_traced(
+    let inc_tr = player.sum_traced_by_name(
         ModType::Inc,
         cfg,
         &buildup_names,
@@ -1993,7 +2117,7 @@ fn poise_buildup_traced(
         format!("{ailment} poise buildup INC"),
     );
     trace.add_edge(inc_tr.node_id, node);
-    let more_tr = player.more_traced(
+    let more_tr = player.more_traced_by_name(
         cfg,
         &buildup_names,
         trace,
@@ -2063,7 +2187,7 @@ impl StackConfig {
 
     /// Finite display contract: zero means no ceiling for an applying ailment.
     pub fn displayed_max(&self) -> f64 {
-        self.max_stacks.map_or(0.0, f64::from)
+        self.max_stacks.map_or_default(f64::from)
     }
 
     /// Instances doing damage, rather than potential instances competing for a cap.
@@ -2231,7 +2355,8 @@ pub fn stacking_ailment_dps_traced(
 /// PoB2 `CalcOffence.lua` l.5190 `local effectMod = calcLib.mod(skillModList, dotCfg, "AilmentEffect")`.
 pub fn ailment_effect_mod(db: &ModDb, cfg: &CalcConfig) -> f64 {
     let names = effect_mod_names();
-    (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0).max(0.0) * db.more(cfg, &names)
+    (1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0).max(0.0)
+        * db.more_by_name(cfg, &names)
 }
 
 /// The Ailment Rate factor (cadence correction): `mod(Faster) / mod(Slower)`.
@@ -2257,18 +2382,24 @@ pub fn ailment_rate_mod(
     ailment_name: &str,
 ) -> f64 {
     let (faster_name, slower_name) = rate_mod_names(ailment_name);
-    let self_faster_name = ModName::from(format!("Self{ailment_name}Faster"));
+    let self_faster_name: Cow<'static, str> = match ailment_name {
+        "Bleed" => Cow::Borrowed("SelfBleedFaster"),
+        "Poison" => Cow::Borrowed("SelfPoisonFaster"),
+        "Ignite" => Cow::Borrowed("SelfIgniteFaster"),
+        _ => Cow::Owned(format!("Self{ailment_name}Faster")),
+    };
 
     // faster: the calcLib.mod (INC+MORE two-leg) aggregate (player) + the enemy's INC/100 bonus.
     let player_faster = (1.0
-        + player.sum(ModType::Inc, cfg, std::slice::from_ref(&faster_name)) / 100.0)
-        * player.more(cfg, &[faster_name]);
-    let enemy_faster_inc = enemy.sum(ModType::Inc, cfg, &[self_faster_name]) / 100.0;
+        + player.sum_by_name(ModType::Inc, cfg, &[faster_name.as_ref()]) / 100.0)
+        * player.more_by_name(cfg, &[faster_name.as_ref()]);
+    let enemy_faster_inc =
+        enemy.sum_by_name(ModType::Inc, cfg, &[self_faster_name.as_ref()]) / 100.0;
     let faster = player_faster + enemy_faster_inc;
 
     // slower: the calcLib.mod (INC+MORE two-leg) aggregate (player).
-    let slower = (1.0 + player.sum(ModType::Inc, cfg, std::slice::from_ref(&slower_name)) / 100.0)
-        * player.more(cfg, &[slower_name]);
+    let slower = (1.0 + player.sum_by_name(ModType::Inc, cfg, &[slower_name.as_ref()]) / 100.0)
+        * player.more_by_name(cfg, &[slower_name.as_ref()]);
 
     // rateMod = faster / slower (the ratio of the two factors).
     if slower <= 0.0 {
@@ -2465,10 +2596,8 @@ fn stored_source_ranges(
                 || player.flag(cfg, &format!("{prefix}Can{ailment_name}"));
             applies.then(|| {
                 // vendor `:4844`: `more = More(damageType .. ailment .. "Buildup")`.
-                let more = player.more(
-                    cfg,
-                    &[ModName::from(format!("{prefix}{ailment_name}Buildup"))],
-                );
+                let buildup = format!("{prefix}{ailment_name}Buildup");
+                let more = player.more_by_name(cfg, &[buildup.as_str()]);
                 StoredDamageRange {
                     damage_type: dt,
                     hit_min: range.hit_min * more,
@@ -2733,6 +2862,6 @@ pub fn dps_with_effect_rate_cap_traced(
 /// ailmentPercentBase factor, CalcOffence.lua L5145-5146). PoE1's `BleedDamage`/`DamageOverTime`
 /// etc. don't exist in PoE2; the attribution name set must match the actual scaling source, or
 /// trace will show mods that no longer take effect.
-pub(super) fn magnitude_mod_names(_ailment: AilmentType) -> Vec<ModName> {
-    vec![ModName::from("AilmentMagnitude")]
+pub(super) fn magnitude_mod_names(_ailment: AilmentType) -> [&'static str; 1] {
+    ["AilmentMagnitude"]
 }

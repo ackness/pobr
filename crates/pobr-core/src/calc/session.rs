@@ -346,17 +346,13 @@ impl CalculationSession {
         }
         let db = &self.env.player.mod_db;
         let cfg = &self.env.cfg;
-        let mult =
-            (db.more(cfg, &[ModName::from("ReservationMultiplier")]) * 10_000.0).floor() / 10_000.0;
-        let eff_names = [
-            ModName::from("LifeReservationEfficiency"),
-            ModName::from("ReservationEfficiency"),
-        ];
-        let eff_inc = db.sum(ModType::Inc, cfg, &eff_names).max(-100.0);
-        let divisor = ((1.0 + eff_inc / 100.0) * db.more(cfg, &eff_names)).max(1e-12);
+        let mult = (db.more_by_name(cfg, &["ReservationMultiplier"]) * 10_000.0).floor() / 10_000.0;
+        let eff_names = ["LifeReservationEfficiency", "ReservationEfficiency"];
+        let eff_inc = db.sum_by_name(ModType::Inc, cfg, &eff_names).max(-100.0);
+        let divisor = ((1.0 + eff_inc / 100.0) * db.more_by_name(cfg, &eff_names)).max(1e-12);
         let factor = mult / divisor;
-        let flat = db.sum(ModType::Base, cfg, &[ModName::from("LifeReserved")]) * factor;
-        let percent = db.sum(ModType::Inc, cfg, &[ModName::from("LifeReservedPercent")]) * factor
+        let flat = db.sum_by_name(ModType::Base, cfg, &["LifeReserved"]) * factor;
+        let percent = db.sum_by_name(ModType::Inc, cfg, &["LifeReservedPercent"]) * factor
             + super::survivability::permanent_reserved_percent(db, cfg, "Life");
         let reserved = super::survivability::reservation(life, flat, percent).reserved;
         if (life - reserved) / life
@@ -585,7 +581,10 @@ impl CalculationSession {
     /// minions, so zero behavior effect on existing non-minion builds.
     /// `perform_minimal` runs the same offence/defence pipeline for each
     /// minion at the end, landing the result in `OutputTable.minions`.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "public session facade forwarding Env::add_minion_from_def parameters"
+    )]
     pub fn add_minion_from_def(
         &mut self,
         def: &super::MinionDef,
@@ -1027,7 +1026,7 @@ impl CalculationSession {
         self.env
             .player
             .mod_db
-            .sum(ModType::Base, &self.env.cfg, &[ModName::from(name)])
+            .sum_by_name(ModType::Base, &self.env.cfg, &[name])
     }
 
     /// Main skill Life cost snapshot (vendor `output.LifeCost`; includes
@@ -1050,11 +1049,11 @@ impl CalculationSession {
     /// BASE term participating in INC/MORE scaling, aligning with vendor's
     /// semantics that "the class attribute is also a modDB BASE mod and equally subject to `N% increased <Attr>` scaling").
     pub fn attribute_total(&self, name: &str, class_base: f64) -> f64 {
-        let names = [ModName::from(name)];
+        let names = [name];
         let db = &self.env.player.mod_db;
-        let base = class_base + db.sum(ModType::Base, &self.env.cfg, &names);
-        let inc = db.sum(ModType::Inc, &self.env.cfg, &names);
-        let more = db.more(&self.env.cfg, &names);
+        let base = class_base + db.sum_by_name(ModType::Base, &self.env.cfg, &names);
+        let inc = db.sum_by_name(ModType::Inc, &self.env.cfg, &names);
+        let more = db.more_by_name(&self.env.cfg, &names);
         (base * (1.0 + inc / 100.0) * more).round().max(0.0)
     }
 
@@ -1123,15 +1122,13 @@ impl CalculationSession {
     /// Incoming enemy inputs used by EHP and maximum-hit calculations.
     /// Preset rows remain visible but inactive when an explicit value replaces them.
     pub fn enemy_hit_mods(&self, include_damage: bool) -> Vec<crate::ModEvaluation<'_>> {
-        let mut names = vec![
-            "EnemyFirePen",
-            "EnemyColdPen",
-            "EnemyLightningPen",
-            "EnemyPhysicalOverwhelm",
-            "EnemyHitCategory",
-        ];
-        if include_damage {
-            names.extend([
+        let names: &[&str] = if include_damage {
+            &[
+                "EnemyFirePen",
+                "EnemyColdPen",
+                "EnemyLightningPen",
+                "EnemyPhysicalOverwhelm",
+                "EnemyHitCategory",
                 "EnemyPhysicalDamage",
                 "EnemyFireDamage",
                 "EnemyColdDamage",
@@ -1140,14 +1137,19 @@ impl CalculationSession {
                 "EnemyCritChance",
                 "EnemyCritDamage",
                 "EHPUnluckyWorstOf",
-            ]);
-        }
+            ]
+        } else {
+            &[
+                "EnemyFirePen",
+                "EnemyColdPen",
+                "EnemyLightningPen",
+                "EnemyPhysicalOverwhelm",
+                "EnemyHitCategory",
+            ]
+        };
         let db = &self.env.enemy.mod_db;
         let cfg = &self.env.cfg;
-        let mut rows = db.evaluate_names(
-            cfg,
-            &names.into_iter().map(ModName::from).collect::<Vec<_>>(),
-        );
+        let mut rows = db.evaluate_names_by_name(cfg, names);
         for row in &mut rows {
             if row.modifier.mod_type == ModType::Base
                 && db.override_(cfg, row.modifier.name.as_str()).is_some()
@@ -1215,12 +1217,11 @@ impl CalculationSession {
     /// modDB (including ones that don't match cfg), for parity debugging to
     /// check each source's contribution.
     pub fn mods_named(&self, name: &str) -> Vec<&Modifier> {
-        let target = ModName::from(name);
         self.env
             .player
             .mod_db
             .iter_mods()
-            .filter(|m| m.name == target)
+            .filter(|m| m.name.as_str() == name)
             .collect()
     }
 
@@ -1235,6 +1236,14 @@ impl CalculationSession {
     /// shared ones (`defence::defence_scaling_names`). Any other stat is
     /// aggregated under its own name.
     pub fn stat_mod_names(&self, stat: &str) -> Vec<ModName> {
+        self.stat_mod_names_cow(stat)
+            .iter()
+            .map(|&name| ModName::from(name))
+            .collect()
+    }
+
+    fn stat_mod_names_cow<'a>(&self, stat: &'a str) -> std::borrow::Cow<'a, [&'a str]> {
+        use std::borrow::Cow;
         let names: &[&str] = match stat {
             "Life" => &["MaximumLife", "ExtraLife", "LifeTotal", "ExtraLifeTotal"],
             "Mana" => &["MaximumMana", "ExtraMana", "ManaTotal", "ExtraManaTotal"],
@@ -1269,29 +1278,31 @@ impl CalculationSession {
                 ]
             }
             "ActionRate" => {
-                let mut names = super::skill_use_time::speed_names_for(&self.env.cfg);
-                if self
+                let base = super::skill_use_time::speed_names_slice(&self.env.cfg);
+                let has_cadence = self
                     .env
                     .player
                     .mod_db
-                    .flag(&self.env.cfg, super::rain::USE_CADENCE)
-                {
-                    names.push(ModName::from(super::rain::HIT_INTERVAL));
+                    .flag(&self.env.cfg, super::rain::USE_CADENCE);
+                let has_channel = self.env.player.mod_db.flag(&self.env.cfg, "ChannelCycle");
+                if !has_cadence && !has_channel {
+                    return Cow::Borrowed(base);
                 }
-                if self.env.player.mod_db.flag(&self.env.cfg, "ChannelCycle") {
-                    names.extend(
-                        [
-                            "ChannelFixedAttackTime",
-                            "ChannelMinimumTime",
-                            "ChannelStartLock",
-                            "ChannelMaxStages",
-                            "ChannelReleaseTime",
-                            "ChannelReleaseFraction",
-                        ]
-                        .map(ModName::from),
-                    );
+                let mut names = base.to_vec();
+                if has_cadence {
+                    names.push(super::rain::HIT_INTERVAL);
                 }
-                return names;
+                if has_channel {
+                    names.extend([
+                        "ChannelFixedAttackTime",
+                        "ChannelMinimumTime",
+                        "ChannelStartLock",
+                        "ChannelMaxStages",
+                        "ChannelReleaseTime",
+                        "ChannelReleaseFraction",
+                    ]);
+                }
+                return Cow::Owned(names);
             }
             "CritChance" => &["CriticalStrikeChance"],
             "CritMultiplier" => &["CriticalStrikeMultiplier"],
@@ -1300,9 +1311,9 @@ impl CalculationSession {
             "Armour" | "Evasion" | "EnergyShield" => {
                 return super::defence::defence_scaling_names(stat);
             }
-            other => return vec![ModName::from(other)],
+            other => return Cow::Owned(vec![other]),
         };
-        names.iter().map(|name| ModName::from(*name)).collect()
+        Cow::Borrowed(names)
     }
 
     /// The steps the calculation took from `stat`'s starting value to its
@@ -1722,7 +1733,7 @@ impl CalculationSession {
                     let mut rows = damage::evaluate_generic_scaling(db, &cfg);
                     rows.extend(damage::evaluate_type_scaling(db, &cfg, *ty));
                     rows.extend(
-                        db.evaluate_names(&cfg, &skill_dot::dot_multiplier_names(*ty))
+                        db.evaluate_names_by_name(&cfg, &skill_dot::dot_multiplier_names(*ty))
                             .into_iter()
                             .filter(|row| row.modifier.mod_type == ModType::Base),
                     );
@@ -1771,10 +1782,12 @@ impl CalculationSession {
         let scoped = ailment::ailment_scoped_cfg(cfg, kind);
         let (faster, slower) = ailment::rate_mod_names(name);
         Some(AilmentLines {
-            chance: db.evaluate_names(&scoped, &ailment::chance_mod_names(name, from_hit_size)),
-            duration: db.evaluate_names(&scoped, &ailment::duration_mod_names_for(kind, db, cfg)),
-            effect: db.evaluate_names(&scoped, &ailment::effect_mod_names()),
-            rate: db.evaluate_names(cfg, &[faster, slower]),
+            chance: db
+                .evaluate_names_by_name(&scoped, &ailment::chance_mod_names(name, from_hit_size)),
+            duration: db
+                .evaluate_names_by_name(&scoped, ailment::duration_mod_names_for(kind, db, cfg)),
+            effect: db.evaluate_names_by_name(&scoped, &ailment::effect_mod_names()),
+            rate: db.evaluate_names_by_name(cfg, &[faster, slower]),
         })
     }
 
@@ -1812,9 +1825,9 @@ impl CalculationSession {
     /// [`evaluated_stat_mods`](Self::evaluated_stat_mods) in offence pass
     /// `pass`: an off-hand pass can match weapon-specific rows differently.
     pub fn hand_stat_mods(&self, stat: &str, pass: usize) -> Vec<crate::ModEvaluation<'_>> {
-        let names = self.stat_mod_names(stat);
+        let names = self.stat_mod_names_cow(stat);
         let cfg = self.stat_cfg(stat, pass);
-        self.env.player.mod_db.evaluate_names(&*cfg, &names)
+        self.env.player.mod_db.evaluate_names_by_name(&*cfg, &names)
     }
 
     /// `(BASE sum, INC sum, MORE product)` of the modifiers `stat`'s stage
@@ -1825,13 +1838,13 @@ impl CalculationSession {
 
     /// [`stat_totals`](Self::stat_totals) in offence pass `pass`.
     pub fn hand_stat_totals(&self, stat: &str, pass: usize) -> (f64, f64, f64) {
-        let names = self.stat_mod_names(stat);
+        let names = self.stat_mod_names_cow(stat);
         let cfg = self.stat_cfg(stat, pass);
         let db = &self.env.player.mod_db;
         (
-            db.sum(ModType::Base, &*cfg, &names),
-            db.sum(ModType::Inc, &*cfg, &names),
-            db.more(&*cfg, &names),
+            db.sum_by_name(ModType::Base, &*cfg, &names),
+            db.sum_by_name(ModType::Inc, &*cfg, &names),
+            db.more_by_name(&*cfg, &names),
         )
     }
 
@@ -1864,20 +1877,22 @@ impl CalculationSession {
     /// The modifier names a minion's `stat` is built from: its Life pool
     /// holds both the monster's base `Life` and the `MaximumLife` lines, and
     /// its speed is that of its own skill.
-    fn minion_stat_names(&self, cfg: &CalcConfig, stat: &str) -> Vec<ModName> {
+    fn minion_stat_names<'a>(
+        &self,
+        cfg: &CalcConfig,
+        stat: &'a str,
+    ) -> std::borrow::Cow<'a, [&'a str]> {
+        use std::borrow::Cow;
         match stat {
-            "LifeRegen" => [
+            "LifeRegen" => Cow::Borrowed(&[
                 "LifeRegen",
                 "LifeRegenPercent",
                 "LifeRegenRate",
                 "LifeRecoveryRate",
-            ]
-            .into_iter()
-            .map(ModName::from)
-            .collect(),
-            "Life" => vec![ModName::from("MaximumLife"), ModName::from("Life")],
-            "ActionRate" => super::skill_use_time::speed_names_for(cfg),
-            _ => self.stat_mod_names(stat),
+            ]),
+            "Life" => Cow::Borrowed(&["MaximumLife", "Life"]),
+            "ActionRate" => Cow::Borrowed(super::skill_use_time::speed_names_slice(cfg)),
+            _ => self.stat_mod_names_cow(stat),
         }
     }
 
@@ -1942,7 +1957,7 @@ impl CalculationSession {
         let cfg = self.minion_detail_cfg(minion);
         minion
             .mod_db
-            .evaluate_names(&cfg, &self.minion_stat_names(&cfg, stat))
+            .evaluate_names_by_name(&cfg, &self.minion_stat_names(&cfg, stat))
     }
 
     /// `(BASE sum, INC sum, MORE product)` of [`Self::minion_stat_mods`].
@@ -1954,9 +1969,9 @@ impl CalculationSession {
         let names = self.minion_stat_names(&cfg, stat);
         let db = &minion.mod_db;
         (
-            db.sum(ModType::Base, &cfg, &names),
-            db.sum(ModType::Inc, &cfg, &names),
-            db.more(&cfg, &names),
+            db.sum_by_name(ModType::Base, &cfg, &names),
+            db.sum_by_name(ModType::Inc, &cfg, &names),
+            db.more_by_name(&cfg, &names),
         )
     }
 

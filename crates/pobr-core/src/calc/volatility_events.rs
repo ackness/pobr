@@ -101,11 +101,7 @@ pub(super) fn calculate(env: &mut Env) {
     {
         return;
     }
-    let raw_chance = db.sum(
-        ModType::Base,
-        &cfg,
-        &[ModName::from("VolatilityRefreshChance")],
-    );
+    let raw_chance = db.sum_by_name(ModType::Base, &cfg, &["VolatilityRefreshChance"]);
     if !raw_chance.is_finite() {
         return;
     }

@@ -101,11 +101,11 @@ fn local_more(mods: &[Modifier], cfg: &CalcConfig, name: &str) -> f64 {
 
 /// Combined BASE/INC sum across skill-local mods and the player db (vendor skillModList chains up to modDB).
 fn scoped_sum(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig, ty: ModType, name: &str) -> f64 {
-    db.sum(ty, cfg, &[ModName::from(name)]) + local_sum(&spec.mods, cfg, ty, name)
+    db.sum_by_name(ty, cfg, &[name]) + local_sum(&spec.mods, cfg, ty, name)
 }
 
 fn scoped_more(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig, name: &str) -> f64 {
-    db.more(cfg, &[ModName::from(name)]) * local_more(&spec.mods, cfg, name)
+    db.more_by_name(cfg, &[name]) * local_more(&spec.mods, cfg, name)
 }
 
 /// Empowered attack count (`Num<Name>Empowers`, CalcPerform.lua:2116-2130).
@@ -115,9 +115,9 @@ fn total_empowers(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig) -> f64 {
     // (BASE 20 comes from the enemy preset's player_mods, shared across
     // Boss/Pinnacle/Uber, ConfigOptions.lua:2007).
     let warcry_power = db.override_(cfg, "WarcryPower").unwrap_or_else(|| {
-        let base = db.sum(ModType::Base, cfg, &[ModName::from("WarcryPower")]);
-        let inc = db.sum(ModType::Inc, cfg, &[ModName::from("WarcryPower")]);
-        let min = db.sum(ModType::Base, cfg, &[ModName::from("MinimumWarcryPower")]);
+        let base = db.sum_by_name(ModType::Base, cfg, &["WarcryPower"]);
+        let inc = db.sum_by_name(ModType::Inc, cfg, &["WarcryPower"]);
+        let min = db.sum_by_name(ModType::Base, cfg, &["MinimumWarcryPower"]);
         (base * (1.0 + inc / 100.0)).max(min)
     });
     // :2121-2123 -- per/cap are skillModList-side stats (Infernal's constant stat 10/50).
@@ -284,11 +284,10 @@ pub fn apply_warcry_uptime(env: &mut Env) {
             && !intimidating_calculated
             && env.cfg.skill_types.intersects(SkillTypes::MELEE)
         {
-            let exerts = env.player.mod_db.sum(
-                ModType::Base,
-                &env.cfg,
-                &[ModName::from("NumIntimidatingExerts")],
-            );
+            let exerts =
+                env.player
+                    .mod_db
+                    .sum_by_name(ModType::Base, &env.cfg, &["NumIntimidatingExerts"]);
             let tick_s = env.cfg.constants.game().server_tick_seconds;
             let cooldown = actual_cooldown(&env.player.mod_db, spec, &scope_cfg, tick_s);
             let cast_time = warcry_cast_time(&env.player.mod_db, spec, &scope_cfg, tick_s);
@@ -453,11 +452,10 @@ mod tests {
             2.0,
         ));
         apply_warcry_uptime(&mut env);
-        let ratio = env.player.mod_db.sum(
-            ModType::Base,
-            &env.cfg,
-            &[ModName::from("IntimidatingUpTimeRatio")],
-        );
+        let ratio =
+            env.player
+                .mod_db
+                .sum_by_name(ModType::Base, &env.cfg, &["IntimidatingUpTimeRatio"]);
         // With AdditionalCooldownUses present the cooldown is not tick-rounded:
         // 2 exerts / 1 action/s / (5 cooldown + 1 cast) = 33.33%.
         // Lua's `storedUses or 0 + Additional` uses storedUses=1, not 4.
@@ -472,11 +470,9 @@ mod tests {
         );
         apply_warcry_uptime(&mut env);
         assert_eq!(
-            env.player.mod_db.sum(
-                ModType::Base,
-                &env.cfg,
-                &[ModName::from("IntimidatingUpTimeRatio")]
-            ),
+            env.player
+                .mod_db
+                .sum_by_name(ModType::Base, &env.cfg, &["IntimidatingUpTimeRatio"]),
             ratio
         );
         let mut empty = make_env();
@@ -489,10 +485,10 @@ mod tests {
                 .any(|m| m.name.as_str() == "IntimidatingUpTimeRatio")
         );
         assert_eq!(
-            empty.player.mod_db.sum(
+            empty.player.mod_db.sum_by_name(
                 ModType::Base,
                 &empty.cfg,
-                &[ModName::from("IntimidatingUpTimeRatio")]
+                &["IntimidatingUpTimeRatio"]
             ),
             0.0
         );

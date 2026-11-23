@@ -432,7 +432,6 @@ fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> Mi
 
 /// Merged breakdown: reuses single-pass step names (display/CLI consumers
 /// look values up by name); offence-family steps use the merged value, defence-family steps keep the MH leg.
-#[allow(clippy::too_many_arguments)]
 fn combined_breakdown(
     mh: &MinimalOutput,
     crit_chance: f64,

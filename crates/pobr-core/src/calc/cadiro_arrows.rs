@@ -91,7 +91,7 @@ pub(super) fn apply(env: &mut Env) {
         let chains = env.cfg.multiplier_if_set("Chain").unwrap_or_else(|| {
             env.player
                 .mod_db
-                .sum(ModType::Base, &env.cfg, &[ModName::from("ChainCount")])
+                .sum_by_name(ModType::Base, &env.cfg, &["ChainCount"])
         });
         let available = super::skill_mechanics::projectile_behavior_counts(
             &env.player.mod_db,
@@ -118,7 +118,7 @@ pub(super) fn fill(env: &mut Env) {
     let sum = |name| {
         env.player
             .mod_db
-            .sum(ModType::Base, &env.cfg, &[ModName::from(name)])
+            .sum_by_name(ModType::Base, &env.cfg, &[name])
     };
     env.player.output.cadiro_arrow_return = sum("CadiroArrowReturn");
     env.player.output.cadiro_arrow_kill_rarity = sum("CadiroArrowKillRarity");

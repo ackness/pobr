@@ -112,13 +112,13 @@ pub(crate) fn player_curse_limit(db: &ModDb, cfg: &crate::CalcConfig) -> f64 {
     if db.flag(cfg, "CurseLimitIsMaximumPowerCharges") {
         f64::from(charge_maximum(db, cfg, ChargeKind::Power))
     } else {
-        DEFAULT_ENEMY_CURSE_LIMIT + db.sum(ModType::Base, cfg, &[ModName::from("EnemyCurseLimit")])
+        DEFAULT_ENEMY_CURSE_LIMIT + db.sum_by_name(ModType::Base, cfg, &["EnemyCurseLimit"])
     }
 }
 
 /// The player's own mark limit: the baseline plus the `EnemyMarkLimit` bonuses.
 pub(crate) fn player_mark_limit(db: &ModDb, cfg: &crate::CalcConfig) -> f64 {
-    DEFAULT_ENEMY_MARK_LIMIT + db.sum(ModType::Base, cfg, &[ModName::from("EnemyMarkLimit")])
+    DEFAULT_ENEMY_MARK_LIMIT + db.sum_by_name(ModType::Base, cfg, &["EnemyMarkLimit"])
 }
 
 /// The ceiling on socket order entering priority (vendor `CalcPerform.lua:465`'s
@@ -204,13 +204,11 @@ pub fn determine_curse_priority(
 ) -> i64 {
     let base = data.curse_base.get(curse_name).copied().unwrap_or(0);
     let socket = i64::from(socket_index.clamp(1, SOCKET_INDEX_CAP)) * data.socket_priority_base;
-    let slot_key = slot
-        .map(|s| {
-            s.trim_end_matches(" (Swap)")
-                .trim_end_matches(" Swap")
-                .to_string()
-        })
-        .unwrap_or_default();
+    let slot_key = slot.map_or_default(|s| {
+        s.trim_end_matches(" (Swap)")
+            .trim_end_matches(" Swap")
+            .to_string()
+    });
     let mut slot_weight = data.slot_weights.get(&slot_key).copied().unwrap_or(0);
     if source == CurseSourceWeight::Equipment {
         let ring = |name: &str| data.slot_weights.get(name).copied();
@@ -403,14 +401,11 @@ pub(crate) fn auras_on_minion(
     ]
     .iter()
     .any(|flag| player.flag(&env.cfg, flag));
-    let effect = [ModName::from("AuraEffect"), ModName::from("BuffEffect")];
-    let on_self = [
-        ModName::from("BuffEffectOnSelf"),
-        ModName::from("AuraEffectOnSelf"),
-    ];
-    let magnitude = [ModName::from("Magnitude")];
-    let minion_inc = minion_db.sum(ModType::Inc, minion_cfg, &on_self);
-    let minion_more = minion_db.more(minion_cfg, &on_self);
+    let effect = ["AuraEffect", "BuffEffect"];
+    let on_self = ["BuffEffectOnSelf", "AuraEffectOnSelf"];
+    let magnitude = ["Magnitude"];
+    let minion_inc = minion_db.sum_by_name(ModType::Inc, minion_cfg, &on_self);
+    let minion_more = minion_db.more_by_name(minion_cfg, &on_self);
     let mut buffs: BTreeMap<String, Vec<Modifier>> = BTreeMap::new();
     let mut conditions = Vec::new();
     for spec in env
@@ -423,11 +418,15 @@ pub(crate) fn auras_on_minion(
             .clone()
             .with_skill_types(spec.skill_types.clone())
             .with_keyword_flags(crate::skill_env::skill_keyword_flags(&spec.skill_types));
-        let inc = player.sum(ModType::Inc, &aura_cfg, &effect) + spec.local_effect_inc + minion_inc;
-        let more =
-            player.more(&aura_cfg, &effect) * spec.local_effect_more * minion_more * spec.magnitude;
-        let mag_mult = (1.0 + player.sum(ModType::Inc, &aura_cfg, &magnitude) / 100.0)
-            * player.more(&aura_cfg, &magnitude);
+        let inc = player.sum_by_name(ModType::Inc, &aura_cfg, &effect)
+            + spec.local_effect_inc
+            + minion_inc;
+        let more = player.more_by_name(&aura_cfg, &effect)
+            * spec.local_effect_more
+            * minion_more
+            * spec.magnitude;
+        let mag_mult = (1.0 + player.sum_by_name(ModType::Inc, &aura_cfg, &magnitude) / 100.0)
+            * player.more_by_name(&aura_cfg, &magnitude);
         let mult = (1.0 + inc / 100.0) * more * mag_mult;
         let source_id = format!("aura.{}", spec.skill_id);
         let scaled = spec
@@ -455,13 +454,13 @@ pub(crate) fn auras_on_minion(
                 .clone()
                 .with_skill_types(spec.skill_types.clone())
                 .with_keyword_flags(crate::skill_env::skill_keyword_flags(&spec.skill_types));
-            let effect = [ModName::from("BuffEffect")];
-            let received = [ModName::from("BuffEffectOnSelf")];
-            let inc = player.sum(ModType::Inc, &buff_cfg, &effect)
-                + minion_db.sum(ModType::Inc, minion_cfg, &received)
+            let effect = ["BuffEffect"];
+            let received = ["BuffEffectOnSelf"];
+            let inc = player.sum_by_name(ModType::Inc, &buff_cfg, &effect)
+                + minion_db.sum_by_name(ModType::Inc, minion_cfg, &received)
                 + spec.local_effect_inc;
-            let more = player.more(&buff_cfg, &effect)
-                * minion_db.more(minion_cfg, &received)
+            let more = player.more_by_name(&buff_cfg, &effect)
+                * minion_db.more_by_name(minion_cfg, &received)
                 * spec.local_effect_more
                 * spec.magnitude;
             let source_id = format!("buff.{}", spec.skill_id);
@@ -588,34 +587,41 @@ pub fn buff_pass(env: &mut Env) {
                     .clone()
                     .with_skill_types(spec.skill_types.clone())
                     .with_keyword_flags(crate::skill_env::skill_keyword_flags(&spec.skill_types));
-                let mag_names = [ModName::from("Magnitude")];
+                let mag_names = ["Magnitude"];
                 let mult = if party.is_some() {
                     received_effect(&env.player.mod_db, &aura_cfg, true) * spec.magnitude
                 } else if owner.is_some() {
-                    let caster_names = [ModName::from("AuraEffect"), ModName::from("BuffEffect")];
-                    let on_self = [
-                        ModName::from("BuffEffectOnSelf"),
-                        ModName::from("AuraEffectOnSelf"),
-                    ];
-                    let inc = caster.mod_db.sum(ModType::Inc, &caster_cfg, &caster_names)
+                    let caster_names = ["AuraEffect", "BuffEffect"];
+                    let on_self = ["BuffEffectOnSelf", "AuraEffectOnSelf"];
+                    let inc = caster
+                        .mod_db
+                        .sum_by_name(ModType::Inc, &caster_cfg, &caster_names)
                         + spec.local_effect_inc
-                        + env.player.mod_db.sum(ModType::Inc, &env.cfg, &on_self);
-                    let more = caster.mod_db.more(&caster_cfg, &caster_names)
+                        + env
+                            .player
+                            .mod_db
+                            .sum_by_name(ModType::Inc, &env.cfg, &on_self);
+                    let more = caster.mod_db.more_by_name(&caster_cfg, &caster_names)
                         * spec.local_effect_more
-                        * env.player.mod_db.more(&env.cfg, &on_self)
+                        * env.player.mod_db.more_by_name(&env.cfg, &on_self)
                         * spec.magnitude;
                     let mag_mult = (1.0
-                        + caster.mod_db.sum(ModType::Inc, &caster_cfg, &mag_names) / 100.0)
-                        * caster.mod_db.more(&caster_cfg, &mag_names);
+                        + caster
+                            .mod_db
+                            .sum_by_name(ModType::Inc, &caster_cfg, &mag_names)
+                            / 100.0)
+                        * caster.mod_db.more_by_name(&caster_cfg, &mag_names);
                     (1.0 + inc / 100.0) * more * mag_mult
                 } else {
-                    let names: Vec<ModName> = AURA_SELF_EFFECT_NAMES
-                        .iter()
-                        .map(|n| ModName::from(*n))
-                        .collect();
-                    let inc = env.player.mod_db.sum(ModType::Inc, &aura_cfg, &names)
-                        + spec.local_effect_inc;
-                    let more = env.player.mod_db.more(&aura_cfg, &names)
+                    let inc = env.player.mod_db.sum_by_name(
+                        ModType::Inc,
+                        &aura_cfg,
+                        &AURA_SELF_EFFECT_NAMES,
+                    ) + spec.local_effect_inc;
+                    let more = env
+                        .player
+                        .mod_db
+                        .more_by_name(&aura_cfg, &AURA_SELF_EFFECT_NAMES)
                         * spec.local_effect_more
                         * spec.magnitude;
                     // `Magnitude` is an independent factor (vendor `:2205`'s
@@ -625,8 +631,12 @@ pub fn buff_pass(env: &mut Env) {
                     // together**, not summed into the same bucket. E.g. the mod
                     // "Aura Skills have N% increased Magnitudes" → Magnitude INC + a SkillTypes(Aura) tag).
                     let mag_mult = (1.0
-                        + env.player.mod_db.sum(ModType::Inc, &aura_cfg, &mag_names) / 100.0)
-                        * env.player.mod_db.more(&aura_cfg, &mag_names);
+                        + env
+                            .player
+                            .mod_db
+                            .sum_by_name(ModType::Inc, &aura_cfg, &mag_names)
+                            / 100.0)
+                        * env.player.mod_db.more_by_name(&aura_cfg, &mag_names);
                     (1.0 + inc / 100.0) * more * mag_mult
                 };
                 // vendor :2107-2110: sets the conditions.
@@ -653,15 +663,8 @@ pub fn buff_pass(env: &mut Env) {
                 // corresponding ModName produced by pobr's parse layer, not implemented;
                 // `applyNotPlayer` / the totem gate (`:1950-1953`) isn't
                 // modeled, always treated as applying to the player.
-                let inc_names = [
-                    ModName::from("BuffEffect"),
-                    ModName::from("BuffEffectOnSelf"),
-                    ModName::from("BuffEffectOnPlayer"),
-                ];
-                let more_names = [
-                    ModName::from("BuffEffect"),
-                    ModName::from("BuffEffectOnSelf"),
-                ];
+                let inc_names = ["BuffEffect", "BuffEffectOnSelf", "BuffEffectOnPlayer"];
+                let more_names = ["BuffEffect", "BuffEffectOnSelf"];
                 // The skill's own and its supports' increase of its buff
                 // (Sacrificial Offering's "Supported Offering Skills have
                 // 30% increased Buff effect") adds to the character's. The
@@ -676,18 +679,24 @@ pub fn buff_pass(env: &mut Env) {
                     .clone()
                     .with_skill_types(spec.skill_types.clone())
                     .with_keyword_flags(crate::skill_env::skill_keyword_flags(&spec.skill_types));
-                let mut inc = env.player.mod_db.sum(ModType::Inc, &buff_cfg, &inc_names)
+                let mut inc = env
+                    .player
+                    .mod_db
+                    .sum_by_name(ModType::Inc, &buff_cfg, &inc_names)
                     + spec.local_effect_inc;
-                let mut more = env.player.mod_db.more(&buff_cfg, &more_names)
+                let mut more = env.player.mod_db.more_by_name(&buff_cfg, &more_names)
                     * spec.magnitude
                     * spec.local_effect_more;
                 // The persistent Mana Remnants buff is not a pickup effect.
                 if spec.skill_id != "ManaRemnantsPlayer"
                     && spec.skill_types.contains(SkillTypes::GENERATES_REMNANTS)
                 {
-                    let names = [ModName::from("RemnantEffect")];
-                    inc += env.player.mod_db.sum(ModType::Inc, &env.cfg, &names);
-                    more *= env.player.mod_db.more(&env.cfg, &names);
+                    let names = ["RemnantEffect"];
+                    inc += env
+                        .player
+                        .mod_db
+                        .sum_by_name(ModType::Inc, &env.cfg, &names);
+                    more *= env.player.mod_db.more_by_name(&env.cfg, &names);
                 }
                 let mult = if party.is_some() {
                     received_effect(&env.player.mod_db, &buff_cfg, false) * spec.magnitude
@@ -708,9 +717,10 @@ pub fn buff_pass(env: &mut Env) {
                 // Freezing/Voltaic Mark grant a self buff when the mark activates.
                 // The existing active-buff assumption is unchanged; Mark Effect
                 // scales the mark skill's numerical benefit, not its trigger rate.
-                let names = [ModName::from("MarkEffect")];
-                let mult = (1.0 + caster.mod_db.sum(ModType::Inc, &caster_cfg, &names) / 100.0)
-                    * caster.mod_db.more(&caster_cfg, &names);
+                let names = ["MarkEffect"];
+                let mult = (1.0
+                    + caster.mod_db.sum_by_name(ModType::Inc, &caster_cfg, &names) / 100.0)
+                    * caster.mod_db.more_by_name(&caster_cfg, &names);
                 let source_id = format!("buff.{}", spec.skill_id);
                 let scaled = spec
                     .mods
@@ -735,36 +745,44 @@ pub fn buff_pass(env: &mut Env) {
                 // (no BuffEffect), aligned with the actual vendor source;
                 // the aura source's extra AuraEffect INC (`:2296-2298`) isn't
                 // implemented (simplification (g): no aura source modeled).
-                let mut curse_effect = vec![ModName::from("CurseEffect")];
-                if spec.is_mark {
-                    curse_effect.push(ModName::from("MarkEffect"));
-                }
-                let curse_effect_on_self = [ModName::from("CurseEffectOnSelf")];
+                let curse_effect: &[&str] = if spec.is_mark {
+                    &["CurseEffect", "MarkEffect"]
+                } else {
+                    &["CurseEffect"]
+                };
+                let curse_effect_on_self = ["CurseEffectOnSelf"];
                 // spec.local_effect_inc/more = vendor skillModList's
                 // skill-local CurseEffect section (gem quality / in-group
                 // support, pre-folded by the orchestration layer).
-                let inc = caster.mod_db.sum(ModType::Inc, &caster_cfg, &curse_effect)
+                let inc = caster
+                    .mod_db
+                    .sum_by_name(ModType::Inc, &caster_cfg, curse_effect)
                     + spec.local_effect_inc
                     + env
                         .enemy
                         .mod_db
-                        .sum(ModType::Inc, &env.cfg, &curse_effect_on_self);
-                let mut more = caster.mod_db.more(&caster_cfg, &curse_effect)
+                        .sum_by_name(ModType::Inc, &env.cfg, &curse_effect_on_self);
+                let mut more = caster.mod_db.more_by_name(&caster_cfg, curse_effect)
                     * spec.local_effect_more
                     * spec.magnitude;
                 if !spec.is_mark {
                     // vendor :2303-2305: non-marks additionally multiply by the enemy-side CurseEffectOnSelf MORE.
-                    more *= env.enemy.mod_db.more(&env.cfg, &curse_effect_on_self);
-                }
-                let mult = if party.is_some() {
-                    let inc = env
+                    more *= env
                         .enemy
                         .mod_db
-                        .sum(ModType::Inc, &env.cfg, &curse_effect_on_self);
+                        .more_by_name(&env.cfg, &curse_effect_on_self);
+                }
+                let mult = if party.is_some() {
+                    let inc =
+                        env.enemy
+                            .mod_db
+                            .sum_by_name(ModType::Inc, &env.cfg, &curse_effect_on_self);
                     let more = if spec.is_mark {
                         1.0
                     } else {
-                        env.enemy.mod_db.more(&env.cfg, &curse_effect_on_self)
+                        env.enemy
+                            .mod_db
+                            .more_by_name(&env.cfg, &curse_effect_on_self)
                     };
                     (1.0 + inc / 100.0) * more * spec.magnitude
                 } else {
@@ -801,7 +819,7 @@ pub fn buff_pass(env: &mut Env) {
                     && !spec.is_mark;
                 curses.push(CurseEntry {
                     owner: party.map_or_else(
-                        || owner.map_or(0, |index| index + 1),
+                        || owner.map_or_default(|index| index + 1),
                         |p| 1 + env.minions.len() + p.member,
                     ),
                     name: spec.name.clone(),
@@ -832,10 +850,10 @@ pub fn buff_pass(env: &mut Env) {
                         .with_keyword_flags(crate::skill_env::skill_keyword_flags(
                             &spec.skill_types,
                         ));
-                    let names = [ModName::from("DebuffEffect")];
-                    let inc = caster.mod_db.sum(ModType::Inc, &debuff_cfg, &names)
+                    let names = ["DebuffEffect"];
+                    let inc = caster.mod_db.sum_by_name(ModType::Inc, &debuff_cfg, &names)
                         + spec.local_effect_inc;
-                    let more = caster.mod_db.more(&debuff_cfg, &names)
+                    let more = caster.mod_db.more_by_name(&debuff_cfg, &names)
                         * spec.local_effect_more
                         * spec.magnitude;
                     (1.0 + inc / 100.0) * more
@@ -894,11 +912,11 @@ pub fn buff_pass(env: &mut Env) {
             let cfg = super::perform::minion_cfg(env, actor);
             let limit = actor
                 .mod_db
-                .sum(ModType::Base, &cfg, &[ModName::from("EnemyCurseLimit")])
+                .sum_by_name(ModType::Base, &cfg, &["EnemyCurseLimit"])
                 .max(1.0);
             let marks = actor
                 .mod_db
-                .sum(ModType::Base, &cfg, &[ModName::from("EnemyMarkLimit")])
+                .sum_by_name(ModType::Base, &cfg, &["EnemyMarkLimit"])
                 .max(1.0);
             limits.insert(curse.owner, (limit, marks));
             curse_limit = curse_limit.max(limit);
@@ -1041,12 +1059,12 @@ pub fn buff_pass(env: &mut Env) {
 
 /// Party exports carry the caster's factor; only the recipient's modifiers apply here.
 fn received_effect(db: &ModDb, cfg: &crate::CalcConfig, aura: bool) -> f64 {
-    let names: Vec<ModName> = if aura {
-        vec!["BuffEffectOnSelf".into(), "AuraEffectOnSelf".into()]
+    let names: &[&str] = if aura {
+        &["BuffEffectOnSelf", "AuraEffectOnSelf"]
     } else {
-        vec!["BuffEffectOnSelf".into()]
+        &["BuffEffectOnSelf"]
     };
-    (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)
+    (1.0 + db.sum_by_name(ModType::Inc, cfg, names) / 100.0) * db.more_by_name(cfg, names)
 }
 
 pub(super) fn party_exports(env: &Env) -> Vec<super::session::BuffSpec> {
@@ -1071,21 +1089,23 @@ pub(super) fn party_exports(env: &Env) -> Vec<super::session::BuffSpec> {
             .clone()
             .with_skill_types(spec.skill_types.clone())
             .with_keyword_flags(crate::skill_env::skill_keyword_flags(&spec.skill_types));
-        let names: Vec<ModName> = if spec.kind == BuffKind::Aura {
-            vec!["AuraEffect".into(), "BuffEffect".into()]
+        let names: &[&str] = if spec.kind == BuffKind::Aura {
+            &["AuraEffect", "BuffEffect"]
         } else if spec.is_mark {
-            vec!["CurseEffect".into(), "MarkEffect".into()]
+            &["CurseEffect", "MarkEffect"]
         } else {
-            vec!["CurseEffect".into()]
+            &["CurseEffect"]
         };
         let mut exported = spec.clone();
-        let inc = env.player.mod_db.sum(ModType::Inc, &cfg, &names) + spec.local_effect_inc;
-        exported.magnitude *=
-            (1.0 + inc / 100.0) * env.player.mod_db.more(&cfg, &names) * spec.local_effect_more;
+        let inc = env.player.mod_db.sum_by_name(ModType::Inc, &cfg, names) + spec.local_effect_inc;
+        exported.magnitude *= (1.0 + inc / 100.0)
+            * env.player.mod_db.more_by_name(&cfg, names)
+            * spec.local_effect_more;
         if spec.kind == BuffKind::Aura {
-            let names = [ModName::from("Magnitude")];
-            exported.magnitude *= (1.0 + env.player.mod_db.sum(ModType::Inc, &cfg, &names) / 100.0)
-                * env.player.mod_db.more(&cfg, &names);
+            let names = ["Magnitude"];
+            exported.magnitude *= (1.0
+                + env.player.mod_db.sum_by_name(ModType::Inc, &cfg, &names) / 100.0)
+                * env.player.mod_db.more_by_name(&cfg, &names);
         }
         exported.local_effect_inc = 0.0;
         exported.local_effect_more = 1.0;
@@ -1216,7 +1236,7 @@ mod tests {
         assert_eq!(
             env.enemy
                 .mod_db
-                .sum(ModType::Inc, &env.cfg, &[ModName::from("DamageTaken")]),
+                .sum_by_name(ModType::Inc, &env.cfg, &["DamageTaken"]),
             37.0
         );
     }
@@ -1451,7 +1471,7 @@ mod tests {
         assert_eq!(
             env.enemy
                 .mod_db
-                .sum(ModType::Inc, &env.cfg, &[ModName::from("DamageTaken")]),
+                .sum_by_name(ModType::Inc, &env.cfg, &["DamageTaken"]),
             11.0,
             "only the highest-priority mod enters the enemy db"
         );
@@ -1480,7 +1500,7 @@ mod tests {
         assert_eq!(
             env.enemy
                 .mod_db
-                .sum(ModType::Inc, &env.cfg, &[ModName::from("DamageTaken")]),
+                .sum_by_name(ModType::Inc, &env.cfg, &["DamageTaken"]),
             12.0
         );
     }
@@ -1530,7 +1550,7 @@ mod tests {
         assert_eq!(
             env.enemy
                 .mod_db
-                .sum(ModType::Inc, &env.cfg, &[ModName::from("DamageTaken")]),
+                .sum_by_name(ModType::Inc, &env.cfg, &["DamageTaken"]),
             16.0
         );
         assert!(env.cfg.condition("EnemyMarked"));
@@ -1556,7 +1576,7 @@ mod tests {
         assert_eq!(
             env.enemy
                 .mod_db
-                .sum(ModType::Inc, &env.cfg, &[ModName::from("DamageTaken")]),
+                .sum_by_name(ModType::Inc, &env.cfg, &["DamageTaken"]),
             12.0
         );
     }
@@ -1589,7 +1609,7 @@ mod tests {
         let contributions =
             env.enemy
                 .mod_db
-                .contributions(ModType::Inc, &env.cfg, &[ModName::from("DamageTaken")]);
+                .contributions_by_name(ModType::Inc, &env.cfg, &["DamageTaken"]);
         let mut values: Vec<f64> = contributions.iter().map(|c| c.value).collect();
         values.sort_by(f64::total_cmp);
         // hex: 10 × (1.2 × 0.5) = 6; mark: 10 × 1.2 = 12.
@@ -1599,7 +1619,7 @@ mod tests {
         assert_eq!(
             env.enemy
                 .mod_db
-                .sum(ModType::Inc, &panel_cfg, &[ModName::from("DamageTaken")]),
+                .sum_by_name(ModType::Inc, &panel_cfg, &["DamageTaken"]),
             0.0
         );
         // Attribution: a curse mod with no origin falls back to (Buff, "curse.<skill_id>").
@@ -1659,7 +1679,7 @@ mod tests {
         assert_eq!(
             env.player
                 .mod_db
-                .sum(ModType::Inc, &env.cfg, &[ModName::from("ActionSpeed")]),
+                .sum_by_name(ModType::Inc, &env.cfg, &["ActionSpeed"]),
             30.0,
             "vendor :1957-1959：mult = 1 + ΣINC(BuffEffect…)/100"
         );
@@ -1693,7 +1713,7 @@ mod tests {
         assert_eq!(
             env.player
                 .mod_db
-                .sum(ModType::Inc, &env.cfg, &[ModName::from("ActionSpeed")]),
+                .sum_by_name(ModType::Inc, &env.cfg, &["ActionSpeed"]),
             20.0,
             "raw value injected directly: the BuffEffect multiplier zone doesn't apply"
         );
@@ -1716,7 +1736,7 @@ mod tests {
         assert_eq!(
             env.player
                 .mod_db
-                .sum(ModType::Base, &env.cfg, &[ModName::from("EnergyShield")]),
+                .sum_by_name(ModType::Base, &env.cfg, &["EnergyShield"]),
             120.0
         );
         assert!(env.cfg.condition("AffectedByAura"));
@@ -1813,7 +1833,7 @@ mod tests {
         assert_eq!(
             env.player
                 .mod_db
-                .sum(ModType::Base, &env.cfg, &[ModName::from("EnergyShield")]),
+                .sum_by_name(ModType::Base, &env.cfg, &["EnergyShield"]),
             165.0
         );
     }
@@ -1897,7 +1917,7 @@ mod tests {
         assert_eq!(
             env.player
                 .mod_db
-                .sum(ModType::Base, &env.cfg, &[ModName::from("EnergyShield")]),
+                .sum_by_name(ModType::Base, &env.cfg, &["EnergyShield"]),
             100.0,
             "same-name buff, same-parameter mods take the strongest, not stacked"
         );
@@ -1930,7 +1950,7 @@ mod tests {
         assert_eq!(
             env.player
                 .mod_db
-                .sum(ModType::Base, &env.cfg, &[ModName::from("EnergyShield")]),
+                .sum_by_name(ModType::Base, &env.cfg, &["EnergyShield"]),
             225.0
         );
     }
@@ -1972,7 +1992,7 @@ mod tests {
         assert_eq!(
             env.player
                 .mod_db
-                .sum(ModType::Base, &env.cfg, &[ModName::from("EnergyShield")]),
+                .sum_by_name(ModType::Base, &env.cfg, &["EnergyShield"]),
             360.0
         );
     }
@@ -2011,11 +2031,10 @@ mod tests {
         buff_pass(&mut player_env);
         // (1 + (20 + 30)/100) * 1.5 = 2.25 -> 20 * 2.25 = 45.
         assert_eq!(
-            player_env.enemy.mod_db.sum(
-                ModType::Inc,
-                &player_env.cfg,
-                &[ModName::from("DamageTaken")]
-            ),
+            player_env
+                .enemy
+                .mod_db
+                .sum_by_name(ModType::Inc, &player_env.cfg, &["DamageTaken"]),
             45.0
         );
 
@@ -2037,11 +2056,10 @@ mod tests {
         buff_pass(&mut minion_env);
         // (1 + (50 + 10)/100) * 1.5 = 2.4 -> 20 * 2.4 = 48.
         assert_eq!(
-            minion_env.enemy.mod_db.sum(
-                ModType::Inc,
-                &minion_env.cfg,
-                &[ModName::from("DamageTaken")]
-            ),
+            minion_env
+                .enemy
+                .mod_db
+                .sum_by_name(ModType::Inc, &minion_env.cfg, &["DamageTaken"]),
             48.0
         );
 
@@ -2063,11 +2081,10 @@ mod tests {
         buff_pass(&mut party_env);
         // 20 * 1.5 = 30.
         assert_eq!(
-            party_env.enemy.mod_db.sum(
-                ModType::Inc,
-                &party_env.cfg,
-                &[ModName::from("DamageTaken")]
-            ),
+            party_env
+                .enemy
+                .mod_db
+                .sum_by_name(ModType::Inc, &party_env.cfg, &["DamageTaken"]),
             30.0
         );
     }
@@ -2111,25 +2128,25 @@ mod tests {
         buff_pass(&mut env);
 
         assert_eq!(
-            env.player.mod_db.sum(
+            env.player.mod_db.sum_by_name(
                 ModType::Base,
                 &env.cfg,
-                &[ModName::from("Multiplier:SigilOfPowerMaxStages")]
+                &["Multiplier:SigilOfPowerMaxStages"]
             ),
             4.0,
             "unscalable stage cap must not double under +100% BuffEffect"
         );
         assert_eq!(
-            env.player.mod_db.sum(
+            env.player.mod_db.sum_by_name(
                 ModType::Base,
                 &env.cfg,
-                &[ModName::from("TakenFromCompanionBeforeYou")]
+                &["TakenFromCompanionBeforeYou"]
             ),
             10.0,
             "unscalable companion share must not double under +100% BuffEffect"
         );
         assert!(
-            (env.player.mod_db.more(&env.cfg, &[ModName::from("Damage")]) - 1.4).abs() < 1e-9,
+            (env.player.mod_db.more_by_name(&env.cfg, &["Damage"]) - 1.4).abs() < 1e-9,
             "scalable sibling Damage MORE 20 must double to 40 under +100% BuffEffect"
         );
         let extra = env

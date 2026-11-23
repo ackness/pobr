@@ -56,13 +56,13 @@ pub(crate) fn enemy_accuracy(enemy: &Actor, cfg: &CalcConfig) -> f64 {
 }
 
 fn enemy_rating(enemy: &Actor, cfg: &CalcConfig, name: &str, scalar: f64) -> f64 {
-    let names = [ModName::from(name)];
+    let names = [name];
     let db = &enemy.mod_db;
     // An environment built without `setup_enemy` holds the rating only as
     // the actor's scalar.
-    let stored = db.sum(ModType::Base, cfg, &names);
+    let stored = db.sum_by_name(ModType::Base, cfg, &names);
     let base = if stored > 0.0 { stored } else { scalar };
-    base * (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)
+    base * (1.0 + db.sum_by_name(ModType::Inc, cfg, &names) / 100.0) * db.more_by_name(cfg, &names)
 }
 
 /// Injects a numeric modifier attributed to `EnemyConfig` into the enemy modDB.
@@ -465,7 +465,7 @@ fn inject_ehp_damage_placeholder(
     // presets only set the three elements). Only the new EHP pipeline
     // (`ehp::fill_ehp_pob2`) consumes this ModName group.
     let presets = &constants.enemy_presets;
-    let pen = presets.tier_for(tier).map_or(0.0, |preset| preset.pen);
+    let pen = presets.tier_for(tier).map_or_default(|preset| preset.pen);
     if pen != 0.0 {
         for name in ["EnemyFirePen", "EnemyColdPen", "EnemyLightningPen"] {
             push_enemy_number(db, name, ModType::Base, pen, "boss_ele_pen_placeholder");
@@ -478,7 +478,7 @@ fn inject_ehp_damage_placeholder(
 /// the enemy already carries the `1.5`, so the extra multiplier added here is `(1 + 0.5 * (1 + i)) / 1.5`, which
 /// is `1 + i / 3`. Gated on the same `EnemyDazed` state; nothing is added without a Daze Magnitude modifier.
 pub fn scale_enemy_daze(db: &mut ModDb, player_db: &ModDb, cfg: &CalcConfig) {
-    let increased = player_db.sum(ModType::Inc, cfg, &[ModName::from("DazeMagnitude")]);
+    let increased = player_db.sum_by_name(ModType::Inc, cfg, &["DazeMagnitude"]);
     if increased == 0.0 {
         return;
     }
@@ -508,15 +508,11 @@ pub fn apply_enemy_incision(db: &mut ModDb, player_db: &ModDb, cfg: &CalcConfig)
     if !player_db.flag(cfg, "Condition:CanInflictIncision") {
         return;
     }
-    let stacks = db.sum(
-        ModType::Base,
-        cfg,
-        &[ModName::from("Multiplier:IncisionStack")],
-    );
+    let stacks = db.sum_by_name(ModType::Base, cfg, &["Multiplier:IncisionStack"]);
     if stacks <= 0.0 {
         return;
     }
-    let increased = player_db.sum(ModType::Inc, cfg, &[ModName::from("IncisionEffect")]);
+    let increased = player_db.sum_by_name(ModType::Inc, cfg, &["IncisionEffect"]);
     let effect = (1.0 + increased / 100.0).max(0.0);
     db.add_mod(
         Modifier::number(
@@ -561,45 +557,47 @@ pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &CalcConfig
     // a Boss's `MORE -50` → 0.5. This mod is gated by `Condition:Effective`,
     // which doesn't match in the panel view (`mode_effective == false`) →
     // factor 1.0, consistent with historical output.
-    let exposure_effect_on_self = db.more(cfg, &[ModName::from("ExposureEffectOnSelf")]);
+    let exposure_effect_on_self = db.more_by_name(cfg, &["ExposureEffectOnSelf"]);
     let cfg = &with_exposure_sources(db, player_db, cfg);
-    for (element, exposure_name, resist_name) in [
-        ("Fire", "FireExposure", "FireResist"),
-        ("Cold", "ColdExposure", "ColdResist"),
-        ("Lightning", "LightningExposure", "LightningResist"),
+    for (exposure_name, resist_name, extra_name, effect_name) in [
+        (
+            "FireExposure",
+            "FireResist",
+            "ExtraFireExposure",
+            "FireExposureEffect",
+        ),
+        (
+            "ColdExposure",
+            "ColdResist",
+            "ExtraColdExposure",
+            "ColdExposureEffect",
+        ),
+        (
+            "LightningExposure",
+            "LightningResist",
+            "ExtraLightningExposure",
+            "LightningExposureEffect",
+        ),
     ] {
         // Refraction III: "Banner applies {0}% Elemental Exposure per 1000
         // Armour" (`support_tempered_valour_banner_applies_%_elemental_exposure_per_1000_armour`),
         // per whole 1000 of the character's Armour.
-        let per_armour = player_db.sum(
+        let per_armour = player_db.sum_by_name(
             ModType::Base,
             cfg,
-            &[ModName::from(
-                crate::rules::skill_stats::ELEMENTAL_EXPOSURE_PER_1000_ARMOUR,
-            )],
+            &[crate::rules::skill_stats::ELEMENTAL_EXPOSURE_PER_1000_ARMOUR],
         ) * (cfg.stats.get("Armour").copied().unwrap_or(0.0) / 1000.0).floor();
         let raw = db
-            .max_of(ModType::Base, cfg, &[ModName::from(exposure_name)])
+            .max_of_by_name(ModType::Base, cfg, &[exposure_name])
             .max(per_armour);
         if raw <= 0.0 {
             continue;
         }
         // :3222 the player's extra exposure amount (BASE, added before scaling).
-        let extra = player_db.sum(
-            ModType::Base,
-            cfg,
-            &[
-                ModName::from("ExtraExposure"),
-                ModName::from(format!("Extra{element}Exposure")),
-            ],
-        );
+        let extra = player_db.sum_by_name(ModType::Base, cfg, &["ExtraExposure", extra_name]);
         // :3223 the player's exposure effect INC (vendor sums global + skill
         // separately then adds them; PoBR approximates this with a single flat-db sum).
-        let effect_inc = player_db.sum(
-            ModType::Inc,
-            cfg,
-            &[ModName::from(format!("{element}ExposureEffect"))],
-        );
+        let effect_inc = player_db.sum_by_name(ModType::Inc, cfg, &[effect_name]);
         // :3227 m_floor((value + extra) × (1 + effect/100) × effectOnSelf).
         let mut magnitude =
             ((raw + extra) * (1.0 + effect_inc / 100.0) * exposure_effect_on_self).floor();
@@ -643,33 +641,30 @@ pub fn can_apply_exposure(element: &str) -> String {
 fn with_exposure_sources(db: &ModDb, player_db: &ModDb, cfg: &CalcConfig) -> CalcConfig {
     let mut cfg = cfg.clone();
     let inflicts_any = player_db.flag(&cfg, "InflictExposure")
-        || player_db.sum(
+        || player_db.sum_by_name(
             ModType::Base,
             &cfg,
-            &[ModName::from(
-                crate::rules::skill_stats::ELEMENTAL_EXPOSURE_PER_1000_ARMOUR,
-            )],
+            &[crate::rules::skill_stats::ELEMENTAL_EXPOSURE_PER_1000_ARMOUR],
         ) > 0.0;
-    for element in EXPOSURE_ELEMENTS {
-        let var = can_apply_exposure(element);
-        if cfg.condition(&var) {
+    for (var, chance_name, exposure_name) in [
+        ("CanApplyFireExposure", "FireExposureChance", "FireExposure"),
+        ("CanApplyColdExposure", "ColdExposureChance", "ColdExposure"),
+        (
+            "CanApplyLightningExposure",
+            "LightningExposureChance",
+            "LightningExposure",
+        ),
+    ] {
+        if cfg.condition(var) {
             continue;
         }
         let can_apply = inflicts_any
-            || player_db.sum(
-                ModType::Base,
-                &cfg,
-                &[ModName::from(format!("{element}ExposureChance"))],
-            ) > 0.0
+            || player_db.sum_by_name(ModType::Base, &cfg, &[chance_name]) > 0.0
             // Read without the condition set, so the configured exposure
             // itself does not count.
-            || db.max_of(
-                ModType::Base,
-                &cfg,
-                &[ModName::from(format!("{element}Exposure"))],
-            ) > 0.0;
+            || db.max_of_by_name(ModType::Base, &cfg, &[exposure_name]) > 0.0;
         if can_apply {
-            cfg.conditions.insert(var, true);
+            cfg.conditions.insert(var.to_string(), true);
         }
     }
     cfg

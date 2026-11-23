@@ -309,7 +309,7 @@ pub fn calculate_conditional_hit(
         values
             .iter()
             .find(|(kind, _)| *kind == ty)
-            .map_or(0.0, |(_, value)| *value)
+            .map_or_default(|(_, value)| *value)
     };
     let damage: Vec<_> = passes
         .stored_ranges

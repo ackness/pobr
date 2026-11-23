@@ -2,7 +2,7 @@
 //! ModDb query: totals and rows always use the same names and configuration.
 use super::CalculationSession;
 use crate::ModEvaluation;
-use pobr_data::prelude::{ModName, ModType};
+use pobr_data::prelude::ModType;
 
 pub use super::detail_views::DERIVED_STATS;
 
@@ -622,14 +622,14 @@ impl CalculationSession {
             "RemnantManaRecoveryPercent" | "CreatedRemnantDuplicateChance"
         ) {
             let cfg = super::super::utility::query_config(&self.env.cfg);
-            let names = [ModName::from(stat)];
+            let names = [stat];
             let filtered = db.filtered(super::super::remnant_pickup::is_player_source);
             return vec![SourceGroup {
                 name: stat.into(),
                 more_precision: None,
-                totals: (filtered.sum(ModType::Base, &cfg, &names), 0.0, 1.0),
+                totals: (filtered.sum_by_name(ModType::Base, &cfg, &names), 0.0, 1.0),
                 rows: db
-                    .evaluate_names(&cfg, &names)
+                    .evaluate_names_by_name(&cfg, &names)
                     .into_iter()
                     .filter(|r| super::super::remnant_pickup::is_player_source(r.modifier))
                     .collect(),
@@ -638,28 +638,27 @@ impl CalculationSession {
         let view_names = super::super::player_debuffs::view_names(stat);
         if !view_names.is_empty() {
             let cfg = &self.env.cfg;
-            let names: Vec<_> = view_names.iter().map(|name| ModName::from(*name)).collect();
             let mut groups = vec![SourceGroup {
                 name: stat.into(),
                 more_precision: None,
                 totals: (
-                    db.sum(ModType::Base, cfg, &names),
-                    db.sum(ModType::Inc, cfg, &names),
-                    db.more(cfg, &names),
+                    db.sum_by_name(ModType::Base, cfg, view_names),
+                    db.sum_by_name(ModType::Inc, cfg, view_names),
+                    db.more_by_name(cfg, view_names),
                 ),
-                rows: db.evaluate_names(cfg, &names),
+                rows: db.evaluate_names_by_name(cfg, view_names),
             }];
             if super::super::player_debuffs::is_duration_view(stat) {
-                let names = [ModName::from("SelfDebuffExpirationRate")];
+                let names = ["SelfDebuffExpirationRate"];
                 groups.push(SourceGroup {
                     name: "SelfDebuffExpirationRate".into(),
                     more_precision: None,
                     totals: (
-                        db.sum(ModType::Base, cfg, &names),
-                        db.sum(ModType::Inc, cfg, &names),
-                        db.more(cfg, &names),
+                        db.sum_by_name(ModType::Base, cfg, &names),
+                        db.sum_by_name(ModType::Inc, cfg, &names),
+                        db.more_by_name(cfg, &names),
                     ),
-                    rows: db.evaluate_names(cfg, &names),
+                    rows: db.evaluate_names_by_name(cfg, &names),
                 });
             }
             return groups;
@@ -692,19 +691,14 @@ impl CalculationSession {
             .into_iter()
             .filter(|name| {
                 !matches!(name.as_str(), "AttackSpeed" | "CastSpeed" | "SkillSpeed")
-                    || super::super::skill_use_time::speed_names_for(&cfg)
-                        .iter()
-                        .any(|n| n.as_str() == name)
+                    || super::super::skill_use_time::speed_names_slice(&cfg)
+                        .contains(&name.as_str())
             })
             .map(|name| {
                 let mut query_cfg = cfg.clone();
                 if stat == "SkillTriggerRate"
                     && name == "EnergyGenerated"
-                    && db.sum(
-                        ModType::Base,
-                        &cfg,
-                        &[ModName::from("EnergyPerPowerOnCrit")],
-                    ) > 0.0
+                    && db.sum_by_name(ModType::Base, &cfg, &["EnergyPerPowerOnCrit"]) > 0.0
                 {
                     query_cfg.conditions.insert("CritRecently".into(), true);
                 }
@@ -745,19 +739,19 @@ impl CalculationSession {
                     _ => (db, name.as_str()),
                 };
                 let cfg = &query_cfg;
-                let names = [ModName::from(query_name)];
+                let names = [query_name];
                 if stat == "EffectiveLootRarityMod" && query_name == "LootRarity" {
                     let keep = super::super::sidebar::loot_rarity_filter(db, cfg);
                     let rarity = db.filtered(&keep);
                     return SourceGroup {
                         totals: (
-                            rarity.sum(ModType::Base, cfg, &names),
-                            rarity.sum(ModType::Inc, cfg, &names),
-                            rarity.more(cfg, &names),
+                            rarity.sum_by_name(ModType::Base, cfg, &names),
+                            rarity.sum_by_name(ModType::Inc, cfg, &names),
+                            rarity.more_by_name(cfg, &names),
                         ),
                         more_precision: rarity.more_precision_for(query_name),
                         rows: db
-                            .evaluate_names(cfg, &names)
+                            .evaluate_names_by_name(cfg, &names)
                             .into_iter()
                             .map(|mut row| {
                                 row.active &= keep(row.modifier);
@@ -769,12 +763,12 @@ impl CalculationSession {
                 }
                 SourceGroup {
                     totals: (
-                        db.sum(ModType::Base, cfg, &names),
-                        db.sum(ModType::Inc, cfg, &names),
-                        db.more(cfg, &names),
+                        db.sum_by_name(ModType::Base, cfg, &names),
+                        db.sum_by_name(ModType::Inc, cfg, &names),
+                        db.more_by_name(cfg, &names),
                     ),
                     more_precision: db.more_precision_for(query_name),
-                    rows: db.evaluate_names(cfg, &names),
+                    rows: db.evaluate_names_by_name(cfg, &names),
                     name,
                 }
             })
@@ -785,14 +779,14 @@ impl CalculationSession {
         if !shared_regen.is_empty() {
             let keep =
                 super::super::survivability::shared_regen_increase_filter(db, &cfg, regen_stat);
-            for name in shared_regen {
-                let names = [name.clone()];
+            for &name in shared_regen {
+                let names = [name];
                 groups.push(SourceGroup {
                     name: name.to_string(),
                     more_precision: None,
                     totals: (0.0, db.sum_where(ModType::Inc, &cfg, &names, &keep), 1.0),
                     rows: db
-                        .evaluate_names(&cfg, &names)
+                        .evaluate_names_by_name(&cfg, &names)
                         .into_iter()
                         .filter(|row| row.modifier.mod_type == ModType::Inc)
                         .map(|mut row| {
@@ -804,17 +798,17 @@ impl CalculationSession {
             }
         }
         if stat == "EsRechargeRate" {
-            for name in super::super::defence::es_recharge_increase_names(db, &cfg)
-                .into_iter()
+            for &name in super::super::defence::es_recharge_increase_names(db, &cfg)
+                .iter()
                 .skip(1)
             {
-                let names = [name.clone()];
+                let names = [name];
                 groups.push(SourceGroup {
                     name: name.to_string(),
                     more_precision: None,
-                    totals: (0.0, db.sum(ModType::Inc, &cfg, &names), 1.0),
+                    totals: (0.0, db.sum_by_name(ModType::Inc, &cfg, &names), 1.0),
                     rows: db
-                        .evaluate_names(&cfg, &names)
+                        .evaluate_names_by_name(&cfg, &names)
                         .into_iter()
                         .filter(|row| row.modifier.mod_type == ModType::Inc)
                         .collect(),
@@ -848,8 +842,7 @@ impl CalculationSession {
                     )],
                     context: terms
                         .missing_source
-                        .map(|reason| vec![(reason.into(), 1.0)])
-                        .unwrap_or_default(),
+                        .map_or_default(|reason| vec![(reason.into(), 1.0)]),
                 });
             }
             if stat == "SkillTriggerRate" {
