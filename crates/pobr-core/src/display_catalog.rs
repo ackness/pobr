@@ -25,8 +25,9 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
 /// The display catalog, built once. It holds only declarations, so every calculation
 /// and every response can share it instead of rebuilding about 700 definitions.
 pub fn display_catalog_ref() -> &'static [DisplayStatDefinition] {
-    static CATALOG: std::sync::OnceLock<Vec<DisplayStatDefinition>> = std::sync::OnceLock::new();
-    CATALOG.get_or_init(build_display_catalog)
+    static CATALOG: std::sync::LazyLock<Vec<DisplayStatDefinition>> =
+        std::sync::LazyLock::new(build_display_catalog);
+    &CATALOG
 }
 
 fn build_display_catalog() -> Vec<DisplayStatDefinition> {
@@ -2951,8 +2952,14 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "WithIgniteDPS" => output.with_ignite_dps,
         "WithBleedDPS" => output.with_bleed_dps,
         "WithPoisonDPS" => output.with_poison_dps,
-        "MainHandAccuracy" => output.main_hand.as_ref().map_or(0.0, |hand| hand.accuracy),
-        "OffHandAccuracy" => output.off_hand.as_ref().map_or(0.0, |hand| hand.accuracy),
+        "MainHandAccuracy" => output
+            .main_hand
+            .as_ref()
+            .map_or_default(|hand| hand.accuracy),
+        "OffHandAccuracy" => output
+            .off_hand
+            .as_ref()
+            .map_or_default(|hand| hand.accuracy),
         "AccuracyHitChance" => output.accuracy_hit_chance,
         "AccuracyHitChanceUncapped" => output.accuracy_hit_chance_uncapped,
         "QuantityMultiplier" => output.quantity_multiplier,
@@ -2990,8 +2997,8 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "EffectiveActionRate" => output.effective_action_rate,
         "CritChance" => output.crit_chance * 100.0,
         "CritMultiplier" => output.crit_multiplier,
-        "FullDPS" => output.full_dps.as_ref().map_or(0.0, |full| full.dps),
-        "FullDotDPS" => output.full_dps.as_ref().map_or(0.0, |full| full.dot_dps),
+        "FullDPS" => output.full_dps.as_ref().map_or_default(|full| full.dps),
+        "FullDotDPS" => output.full_dps.as_ref().map_or_default(|full| full.dot_dps),
         "CombinedDPS" => output.combined_dps,
         "TotalDotDPS" => output.total_dot_dps,
         "BleedDPS" => output.bleed_dps,
@@ -3189,299 +3196,338 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "PhysicalDamageReduction" => output.physical_damage_reduction,
         "NumberOfDamagingHits" => output.number_of_damaging_hits,
         "NumberOfMitigatedHits" => output.number_of_mitigated_hits,
-        "PhysicalEnemyDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_damage[0]),
-        "PhysicalTakenDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_damage[0]),
-        "PhysicalTakenHit" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_hit[0]),
+        "PhysicalEnemyDamage" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.enemy_damage[0]),
+        "PhysicalTakenDamage" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.taken_damage[0]),
+        "PhysicalTakenHit" => output.ehp_terms.as_ref().map_or_default(|t| t.taken_hit[0]),
         "PhysicalEnergyShieldBypass" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.energy_shield_bypass[0]),
+            .map_or_default(|t| t.energy_shield_bypass[0]),
         "PhysicalTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.taken_hit_multiplier(0)),
-        "FireEnemyDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_damage[1]),
-        "FireTakenDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_damage[1]),
-        "FireTakenHit" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_hit[1]),
+            .map_or_default(|t| t.taken_hit_multiplier(0)),
+        "FireEnemyDamage" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.enemy_damage[1]),
+        "FireTakenDamage" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.taken_damage[1]),
+        "FireTakenHit" => output.ehp_terms.as_ref().map_or_default(|t| t.taken_hit[1]),
         "FireEnergyShieldBypass" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.energy_shield_bypass[1]),
+            .map_or_default(|t| t.energy_shield_bypass[1]),
         "FireTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.taken_hit_multiplier(1)),
-        "FireDamageReduction" => output.ehp_terms.as_ref().map_or(0.0, |t| {
-            100.0 - t.damage_reduction[1].taken_multiplier() * 100.0
-        }),
-        "ColdEnemyDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_damage[2]),
-        "ColdTakenDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_damage[2]),
-        "ColdTakenHit" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_hit[2]),
+            .map_or_default(|t| t.taken_hit_multiplier(1)),
+        "FireDamageReduction" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| 100.0 - t.damage_reduction[1].taken_multiplier() * 100.0),
+        "ColdEnemyDamage" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.enemy_damage[2]),
+        "ColdTakenDamage" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.taken_damage[2]),
+        "ColdTakenHit" => output.ehp_terms.as_ref().map_or_default(|t| t.taken_hit[2]),
         "ColdEnergyShieldBypass" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.energy_shield_bypass[2]),
+            .map_or_default(|t| t.energy_shield_bypass[2]),
         "ColdTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.taken_hit_multiplier(2)),
-        "ColdDamageReduction" => output.ehp_terms.as_ref().map_or(0.0, |t| {
-            100.0 - t.damage_reduction[2].taken_multiplier() * 100.0
-        }),
-        "LightningEnemyDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_damage[3]),
-        "LightningTakenDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_damage[3]),
-        "LightningTakenHit" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_hit[3]),
+            .map_or_default(|t| t.taken_hit_multiplier(2)),
+        "ColdDamageReduction" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| 100.0 - t.damage_reduction[2].taken_multiplier() * 100.0),
+        "LightningEnemyDamage" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.enemy_damage[3]),
+        "LightningTakenDamage" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.taken_damage[3]),
+        "LightningTakenHit" => output.ehp_terms.as_ref().map_or_default(|t| t.taken_hit[3]),
         "LightningEnergyShieldBypass" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.energy_shield_bypass[3]),
+            .map_or_default(|t| t.energy_shield_bypass[3]),
         "LightningTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.taken_hit_multiplier(3)),
-        "LightningDamageReduction" => output.ehp_terms.as_ref().map_or(0.0, |t| {
-            100.0 - t.damage_reduction[3].taken_multiplier() * 100.0
-        }),
-        "ChaosEnemyDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_damage[4]),
-        "ChaosTakenDamage" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_damage[4]),
-        "ChaosTakenHit" => output.ehp_terms.as_ref().map_or(0.0, |t| t.taken_hit[4]),
+            .map_or_default(|t| t.taken_hit_multiplier(3)),
+        "LightningDamageReduction" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| 100.0 - t.damage_reduction[3].taken_multiplier() * 100.0),
+        "ChaosEnemyDamage" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.enemy_damage[4]),
+        "ChaosTakenDamage" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.taken_damage[4]),
+        "ChaosTakenHit" => output.ehp_terms.as_ref().map_or_default(|t| t.taken_hit[4]),
         "ChaosEnergyShieldBypass" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.energy_shield_bypass[4]),
+            .map_or_default(|t| t.energy_shield_bypass[4]),
         "ChaosTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.taken_hit_multiplier(4)),
+            .map_or_default(|t| t.taken_hit_multiplier(4)),
         "totalEnemyDamage" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.enemy_damage.iter().sum()),
+            .map_or_default(|t| t.enemy_damage.iter().sum()),
         "totalTakenDamage" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.taken_damage.iter().sum()),
+            .map_or_default(|t| t.taken_damage.iter().sum()),
         "totalTakenHit" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.taken_hit.iter().sum()),
-        "ConfiguredDamageChance" => output.ehp_terms.as_ref().map_or(0.0, |t| t.damage_chance),
-        "ConfiguredNotHitChance" => output.ehp_terms.as_ref().map_or(0.0, |t| t.not_hit_chance),
+            .map_or_default(|t| t.taken_hit.iter().sum()),
+        "ConfiguredDamageChance" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.damage_chance),
+        "ConfiguredNotHitChance" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.not_hit_chance),
         "DamageTakenOnBlock" => output.block_effect,
         "TotalEHPLowestMaxHit" => output.total_ehp_lowest_max_hit,
         "PhysicalEnemyDamageMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.enemy_damage_multipliers[0]),
+            .map_or_default(|t| t.enemy_damage_multipliers[0]),
         "FireEnemyDamageMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.enemy_damage_multipliers[1]),
+            .map_or_default(|t| t.enemy_damage_multipliers[1]),
         "ColdEnemyDamageMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.enemy_damage_multipliers[2]),
+            .map_or_default(|t| t.enemy_damage_multipliers[2]),
         "LightningEnemyDamageMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.enemy_damage_multipliers[3]),
+            .map_or_default(|t| t.enemy_damage_multipliers[3]),
         "ChaosEnemyDamageMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.enemy_damage_multipliers[4]),
-        "PhysicalEnemyPen" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_pen[0]),
-        "FireEnemyPen" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_pen[1]),
-        "ColdEnemyPen" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_pen[2]),
-        "LightningEnemyPen" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_pen[3]),
-        "ChaosEnemyPen" => output.ehp_terms.as_ref().map_or(0.0, |t| t.enemy_pen[4]),
+            .map_or_default(|t| t.enemy_damage_multipliers[4]),
+        "PhysicalEnemyPen" => output.ehp_terms.as_ref().map_or_default(|t| t.enemy_pen[0]),
+        "FireEnemyPen" => output.ehp_terms.as_ref().map_or_default(|t| t.enemy_pen[1]),
+        "ColdEnemyPen" => output.ehp_terms.as_ref().map_or_default(|t| t.enemy_pen[2]),
+        "LightningEnemyPen" => output.ehp_terms.as_ref().map_or_default(|t| t.enemy_pen[3]),
+        "ChaosEnemyPen" => output.ehp_terms.as_ref().map_or_default(|t| t.enemy_pen[4]),
         "PhysicalResistTakenHitMulti" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.resist_taken_multi[0]),
+            .map_or_default(|t| t.resist_taken_multi[0]),
         "FireResistTakenHitMulti" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.resist_taken_multi[1]),
+            .map_or_default(|t| t.resist_taken_multi[1]),
         "ColdResistTakenHitMulti" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.resist_taken_multi[2]),
+            .map_or_default(|t| t.resist_taken_multi[2]),
         "LightningResistTakenHitMulti" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.resist_taken_multi[3]),
+            .map_or_default(|t| t.resist_taken_multi[3]),
         "ChaosResistTakenHitMulti" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.resist_taken_multi[4]),
+            .map_or_default(|t| t.resist_taken_multi[4]),
         "PhysicalAttackTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mitigation.attack_taken_multi[0]),
+            .map_or_default(|t| t.mitigation.attack_taken_multi[0]),
         "FireAttackTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mitigation.attack_taken_multi[1]),
+            .map_or_default(|t| t.mitigation.attack_taken_multi[1]),
         "ColdAttackTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mitigation.attack_taken_multi[2]),
+            .map_or_default(|t| t.mitigation.attack_taken_multi[2]),
         "LightningAttackTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mitigation.attack_taken_multi[3]),
+            .map_or_default(|t| t.mitigation.attack_taken_multi[3]),
         "ChaosAttackTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mitigation.attack_taken_multi[4]),
+            .map_or_default(|t| t.mitigation.attack_taken_multi[4]),
         "PhysicalSpellTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mitigation.spell_taken_multi[0]),
+            .map_or_default(|t| t.mitigation.spell_taken_multi[0]),
         "FireSpellTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mitigation.spell_taken_multi[1]),
+            .map_or_default(|t| t.mitigation.spell_taken_multi[1]),
         "ColdSpellTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mitigation.spell_taken_multi[2]),
+            .map_or_default(|t| t.mitigation.spell_taken_multi[2]),
         "LightningSpellTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mitigation.spell_taken_multi[3]),
+            .map_or_default(|t| t.mitigation.spell_taken_multi[3]),
         "ChaosSpellTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mitigation.spell_taken_multi[4]),
+            .map_or_default(|t| t.mitigation.spell_taken_multi[4]),
         "PhysicalAfterReductionTakenHitMulti" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.after_reduction_multi[0]),
+            .map_or_default(|t| t.after_reduction_multi[0]),
         "FireAfterReductionTakenHitMulti" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.after_reduction_multi[1]),
+            .map_or_default(|t| t.after_reduction_multi[1]),
         "ColdAfterReductionTakenHitMulti" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.after_reduction_multi[2]),
+            .map_or_default(|t| t.after_reduction_multi[2]),
         "LightningAfterReductionTakenHitMulti" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.after_reduction_multi[3]),
+            .map_or_default(|t| t.after_reduction_multi[3]),
         "ChaosAfterReductionTakenHitMulti" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.after_reduction_multi[4]),
+            .map_or_default(|t| t.after_reduction_multi[4]),
         "PhysicalBaseTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.base_taken_hit_multiplier(0)),
+            .map_or_default(|t| t.base_taken_hit_multiplier(0)),
         "FireBaseTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.base_taken_hit_multiplier(1)),
+            .map_or_default(|t| t.base_taken_hit_multiplier(1)),
         "ColdBaseTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.base_taken_hit_multiplier(2)),
+            .map_or_default(|t| t.base_taken_hit_multiplier(2)),
         "LightningBaseTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.base_taken_hit_multiplier(3)),
+            .map_or_default(|t| t.base_taken_hit_multiplier(3)),
         "ChaosBaseTakenHitMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.base_taken_hit_multiplier(4)),
+            .map_or_default(|t| t.base_taken_hit_multiplier(4)),
         "PhysicalDamageReductionMax" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mitigation.dr_max_pct[0]),
+            .map_or_default(|t| t.mitigation.dr_max_pct[0]),
         "FireDamageReductionMax" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mitigation.dr_max_pct[1]),
+            .map_or_default(|t| t.mitigation.dr_max_pct[1]),
         "ColdDamageReductionMax" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mitigation.dr_max_pct[2]),
+            .map_or_default(|t| t.mitigation.dr_max_pct[2]),
         "LightningDamageReductionMax" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mitigation.dr_max_pct[3]),
+            .map_or_default(|t| t.mitigation.dr_max_pct[3]),
         "ChaosDamageReductionMax" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mitigation.dr_max_pct[4]),
+            .map_or_default(|t| t.mitigation.dr_max_pct[4]),
         "PhysicalManaEffectiveLife" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mom.effective_life_by_type[0]),
+            .map_or_default(|t| t.mom.effective_life_by_type[0]),
         "FireManaEffectiveLife" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mom.effective_life_by_type[1]),
+            .map_or_default(|t| t.mom.effective_life_by_type[1]),
         "ColdManaEffectiveLife" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mom.effective_life_by_type[2]),
+            .map_or_default(|t| t.mom.effective_life_by_type[2]),
         "LightningManaEffectiveLife" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mom.effective_life_by_type[3]),
+            .map_or_default(|t| t.mom.effective_life_by_type[3]),
         "ChaosManaEffectiveLife" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mom.effective_life_by_type[4]),
+            .map_or_default(|t| t.mom.effective_life_by_type[4]),
         "PhysicalMoMHitPool" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mom.hit_pool_by_type[0]),
+            .map_or_default(|t| t.mom.hit_pool_by_type[0]),
         "FireMoMHitPool" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mom.hit_pool_by_type[1]),
+            .map_or_default(|t| t.mom.hit_pool_by_type[1]),
         "ColdMoMHitPool" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mom.hit_pool_by_type[2]),
+            .map_or_default(|t| t.mom.hit_pool_by_type[2]),
         "LightningMoMHitPool" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mom.hit_pool_by_type[3]),
+            .map_or_default(|t| t.mom.hit_pool_by_type[3]),
         "ChaosMoMHitPool" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mom.hit_pool_by_type[4]),
+            .map_or_default(|t| t.mom.hit_pool_by_type[4]),
         "PhysicalTotalHitPool" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.total_hit_pool[0]),
+            .map_or_default(|t| t.total_hit_pool[0]),
         "FireTotalHitPool" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.total_hit_pool[1]),
+            .map_or_default(|t| t.total_hit_pool[1]),
         "ColdTotalHitPool" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.total_hit_pool[2]),
+            .map_or_default(|t| t.total_hit_pool[2]),
         "LightningTotalHitPool" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.total_hit_pool[3]),
+            .map_or_default(|t| t.total_hit_pool[3]),
         "ChaosTotalHitPool" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.total_hit_pool[4]),
+            .map_or_default(|t| t.total_hit_pool[4]),
         "DamageReductionMax" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mitigation.dr_max_global),
+            .map_or_default(|t| t.mitigation.dr_max_global),
         "LifeHitPool" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.mom.life_hit_pool),
+            .map_or_default(|t| t.mom.life_hit_pool),
         "FireResistTotal" => output.fire_resistance_total,
         "ColdResistTotal" => output.cold_resistance_total,
         "LightningResistTotal" => output.lightning_resistance_total,
@@ -3493,37 +3539,52 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "PhysicalTakenDotMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.dot_taken[0].multiplier()),
+            .map_or_default(|t| t.dot_taken[0].multiplier()),
         "FireTakenDotMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.dot_taken[1].multiplier()),
+            .map_or_default(|t| t.dot_taken[1].multiplier()),
         "ColdTakenDotMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.dot_taken[2].multiplier()),
+            .map_or_default(|t| t.dot_taken[2].multiplier()),
         "LightningTakenDotMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.dot_taken[3].multiplier()),
+            .map_or_default(|t| t.dot_taken[3].multiplier()),
         "ChaosTakenDotMult" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.dot_taken[4].multiplier()),
-        "PhysicalTotalPool" => output.ehp_terms.as_ref().map_or(0.0, |t| t.total_pool[0]),
-        "FireTotalPool" => output.ehp_terms.as_ref().map_or(0.0, |t| t.total_pool[1]),
-        "ColdTotalPool" => output.ehp_terms.as_ref().map_or(0.0, |t| t.total_pool[2]),
-        "LightningTotalPool" => output.ehp_terms.as_ref().map_or(0.0, |t| t.total_pool[3]),
-        "ChaosTotalPool" => output.ehp_terms.as_ref().map_or(0.0, |t| t.total_pool[4]),
-        "PhysicalDotEHP" => output.ehp_terms.as_ref().map_or(0.0, |t| t.dot_ehp(0)),
-        "FireDotEHP" => output.ehp_terms.as_ref().map_or(0.0, |t| t.dot_ehp(1)),
-        "ColdDotEHP" => output.ehp_terms.as_ref().map_or(0.0, |t| t.dot_ehp(2)),
-        "LightningDotEHP" => output.ehp_terms.as_ref().map_or(0.0, |t| t.dot_ehp(3)),
-        "ChaosDotEHP" => output.ehp_terms.as_ref().map_or(0.0, |t| t.dot_ehp(4)),
+            .map_or_default(|t| t.dot_taken[4].multiplier()),
+        "PhysicalTotalPool" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.total_pool[0]),
+        "FireTotalPool" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.total_pool[1]),
+        "ColdTotalPool" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.total_pool[2]),
+        "LightningTotalPool" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.total_pool[3]),
+        "ChaosTotalPool" => output
+            .ehp_terms
+            .as_ref()
+            .map_or_default(|t| t.total_pool[4]),
+        "PhysicalDotEHP" => output.ehp_terms.as_ref().map_or_default(|t| t.dot_ehp(0)),
+        "FireDotEHP" => output.ehp_terms.as_ref().map_or_default(|t| t.dot_ehp(1)),
+        "ColdDotEHP" => output.ehp_terms.as_ref().map_or_default(|t| t.dot_ehp(2)),
+        "LightningDotEHP" => output.ehp_terms.as_ref().map_or_default(|t| t.dot_ehp(3)),
+        "ChaosDotEHP" => output.ehp_terms.as_ref().map_or_default(|t| t.dot_ehp(4)),
         "EHPSurvivalTime" => output
             .ehp_terms
             .as_ref()
-            .map_or(0.0, |t| t.survival_time(output.total_number_of_hits)),
+            .map_or_default(|t| t.survival_time(output.total_number_of_hits)),
 
         _ => 0.0,
     }

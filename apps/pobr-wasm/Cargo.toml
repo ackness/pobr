@@ -61,3 +61,6 @@ required-features = ["diagnostics"]
 [[test]]
 name = "perf_variants"
 required-features = ["diagnostics"]
+
+[lints]
+workspace = true

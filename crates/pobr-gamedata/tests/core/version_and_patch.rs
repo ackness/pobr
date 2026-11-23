@@ -57,10 +57,7 @@ fn unknown_game_versions_are_named_errors_even_with_a_compatibility_label() {
             let error = tree_data(version, compatibility)
                 .tree_version()
                 .unwrap_err();
-            assert!(matches!(
-                error,
-                pobr_gamedata::LoadError::UnknownTreeVersion { .. }
-            ));
+            std::assert_matches!(error, pobr_gamedata::LoadError::UnknownTreeVersion { .. });
             assert!(error.to_string().starts_with("unknown_tree_version:"));
         }
     }
@@ -71,10 +68,7 @@ fn compatibility_disagreement_is_reported() {
     let error = tree_data("0.5.5.5", Some("0_4"))
         .tree_version()
         .unwrap_err();
-    assert!(matches!(
-        error,
-        pobr_gamedata::LoadError::TreeVersionMismatch { .. }
-    ));
+    std::assert_matches!(error, pobr_gamedata::LoadError::TreeVersionMismatch { .. });
     assert!(error.to_string().starts_with("tree_version_mismatch:"));
 }
 

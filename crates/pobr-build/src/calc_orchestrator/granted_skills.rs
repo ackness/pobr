@@ -130,7 +130,7 @@ impl GrantIdentity<'_> {
             };
             let ordinal = group_active_effects(data, group)
                 .find(|effect| effect.gem_index == gem_index && effect.skill_id == selected_id)
-                .map_or(0, |effect| effect.active_skill_index);
+                .map_or_default(|effect| effect.active_skill_index);
             group.main_active_skill = Some(ordinal);
         }
         true

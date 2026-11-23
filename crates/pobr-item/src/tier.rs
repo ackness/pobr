@@ -368,7 +368,7 @@ fn stat_key<'a>(ids: impl Iterator<Item = &'a str>) -> String {
 fn stat_magnitude(stats: &[ModStat]) -> u64 {
     stats
         .first()
-        .map_or(0, |s| s.max.unsigned_abs().max(s.min.unsigned_abs()))
+        .map_or_default(|s| s.max.unsigned_abs().max(s.min.unsigned_abs()))
 }
 
 /// Skeletonizes a line of text: replaces each numeric run
@@ -539,7 +539,7 @@ fn compound_template_slots(template: &str) -> Option<(String, Vec<Slot>)> {
         let k: usize = key.parse().ok()?;
         // `tokenize` consumes a leading plus as part of a numeric capture.
         let text = &rest[..open];
-        rendered.push_str(text.strip_suffix('+').unwrap_or(text));
+        rendered.push_str(text.trim_suffix('+'));
         rendered.push('\u{1}'); // placeholder sentinel (never appears in real game text)
         placeholder_order.push(k);
         rest = &rest[close + 1..];

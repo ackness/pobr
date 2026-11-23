@@ -581,11 +581,11 @@ fn native_passive_resealed_value_changes_identity_and_malformed_packet_fails_loa
             );
         } else {
             let error = BuildData::load(&changed).unwrap_err();
-            assert!(matches!(
+            std::assert_matches!(
                 &error,
                 pobr_gamedata::LoadError::Parse { path, .. }
                     if path.ends_with("base/passive_tree.json")
-            ));
+            );
             assert!(error.to_string().contains("expected i64"), "{error}");
         }
     }

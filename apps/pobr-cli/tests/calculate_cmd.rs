@@ -1346,10 +1346,7 @@ fn lang_reports_a_broken_data_pack_as_a_data_error() {
     std::fs::write(corrupt.join("manifest.json"), "{ not json").unwrap();
     for dir in [root.join("missing"), corrupt] {
         let error = pobr_cli::Locale::load(&dir, "zh-CN").unwrap_err();
-        assert!(
-            matches!(error, pobr_cli::CliError::GameData(_)),
-            "{dir:?}: {error}"
-        );
+        std::assert_matches!(error, pobr_cli::CliError::GameData(_), "{dir:?}: {error}");
         assert!(!error.to_string().contains("unknown language"), "{error}");
     }
     std::fs::remove_dir_all(&root).unwrap();

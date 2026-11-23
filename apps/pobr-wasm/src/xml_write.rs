@@ -89,13 +89,7 @@ pub(crate) struct XmlInput<'a> {
     pub notes: Option<&'a str>,
 }
 
-/// Escapes an XML attribute value.
-fn esc_attr(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
-}
+use pobr_build::xml_merge::escape_xml_attr as esc_attr;
 
 /// Escapes an XML text node.
 fn esc_text(s: &str) -> String {
@@ -213,7 +207,7 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
     wln!(
         w,
         r#"    <SkillSet id="1" mainSocketGroup="{}">"#,
-        input.main_socket_group.map_or(0, |main| main + 1)
+        input.main_socket_group.map_or_default(|main| main + 1)
     );
     for group in &input.socket_groups {
         w!(

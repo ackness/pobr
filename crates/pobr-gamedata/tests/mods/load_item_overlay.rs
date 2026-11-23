@@ -28,8 +28,8 @@ fn mod_scalability_samples() {
     );
     assert!(
         def.entries
-            .windows(2)
-            .all(|w| w[0].template < w[1].template),
+            .array_windows()
+            .all(|[a, b]| a.template < b.template),
         "templates should be strictly ascending (unique key)"
     );
     let find = |t: &str| {

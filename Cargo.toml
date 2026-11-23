@@ -32,6 +32,11 @@ regex = "1.11"
 aho-corasick = "1.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sha2 = "0.11"
+thiserror = "2"
+
+[workspace.lints.cargo]
+unused_dependencies = "warn"
 
 # Reduce test link cost while retaining source locations in panic backtraces.
 # Use CARGO_PROFILE_DEV_DEBUG=2 for variable inspection, or CARGO_PROFILE_TEST_DEBUG=2 for tests.

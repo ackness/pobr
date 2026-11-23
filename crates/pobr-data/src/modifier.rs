@@ -30,6 +30,22 @@ impl ModType {
     }
 }
 
+impl std::str::FromStr for ModType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "BASE" => Ok(Self::Base),
+            "INC" => Ok(Self::Inc),
+            "MORE" => Ok(Self::More),
+            "FLAG" => Ok(Self::Flag),
+            "OVERRIDE" => Ok(Self::Override),
+            "LIST" => Ok(Self::List),
+            _ => Err(()),
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct ModFlags(u64);
 

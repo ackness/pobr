@@ -295,7 +295,7 @@ fn parse_mod_engine_impl(
         // The form's own suffix + the pre_flag `mod_suffix` (vendor `modSuffix`, e.g. `enemies
         // you curse take ` → `"Taken"`, so inner name `Damage` → `DamageTaken`,
         // ModParser.lua:6683 `name .. misc.modSuffix`).
-        let full_name = format!("{}{}{}", name, form_result.suffix, effects_acc.mod_suffix);
+        let full_name = format!("{name}{}{}", form_result.suffix, effects_acc.mod_suffix);
         // .3 route-B engine normalization: fold vendor's "generic name + flag/kw" combinations
         // into PoBR special names (C3 damage flag→special name / Speed flag→AttackSpeed,
         // CastSpeed), and attach the corresponding DamageType tag by final name (C5) +

@@ -135,13 +135,13 @@ pub fn preview_conversion(
                         "Spec" => header = a,
                         "WeaponSet1" => sets[0] = ids(a.get("nodes")),
                         "WeaponSet2" => sets[1] = ids(a.get("nodes")),
-                        "Socket" => {
+                        "Socket"
                             if let (Some(node), Some(item)) = (
                                 a.get("nodeId").and_then(|s| s.parse::<u32>().ok()),
                                 a.get("itemId").and_then(|s| s.parse::<u32>().ok()),
-                            ) {
-                                sockets.insert(node, item);
-                            }
+                            ) =>
+                        {
+                            sockets.insert(node, item);
                         }
                         _ => {}
                     }

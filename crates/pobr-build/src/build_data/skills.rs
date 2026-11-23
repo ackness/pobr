@@ -67,8 +67,7 @@ impl BuildData {
         set_index: Option<u32>,
     ) -> pobr_data::catalog::DotFlags {
         self.select_stat_set(skill_id, set_index)
-            .map(|s| s.dot_flags)
-            .unwrap_or_default()
+            .map_or_default(|s| s.dot_flags)
     }
 
     /// The selected statSet's corpse-explosion gate (statSet `baseMods`'

@@ -233,7 +233,7 @@ pub fn eval_form(
             if let Some((name, ty, value)) = payload.mod_def {
                 // The hexproof special case: an embedded mod (name/type/value).
                 result.names.push(name);
-                result.types.push(parse_mod_type(&ty));
+                result.types.push(ty.parse().unwrap_or(ModType::Base));
                 result.values.push(value);
             } else if let Some(cond) = payload.condition {
                 // A `Condition:X` FLAG mod (value=true -> 1.0).
@@ -469,15 +469,4 @@ fn lookup_dmg_type(word: &str, rules: &CompiledParserRules) -> Option<String> {
         .damage_types
         .scan(&key, &key)
         .map(|(idx, _)| rules.damage_types.payload(idx).clone())
-}
-
-fn parse_mod_type(s: &str) -> ModType {
-    match s {
-        "INC" => ModType::Inc,
-        "MORE" => ModType::More,
-        "FLAG" => ModType::Flag,
-        "OVERRIDE" => ModType::Override,
-        "LIST" => ModType::List,
-        _ => ModType::Base,
-    }
 }

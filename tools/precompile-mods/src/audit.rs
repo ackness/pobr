@@ -205,7 +205,7 @@ fn collect(data: &Path) -> Result<(Corpus, BTreeMap<String, usize>), String> {
             }
         }
         *counts.entry("unrendered_stats".into()).or_default() +=
-            scope["unrendered"].as_array().map_or(0, Vec::len);
+            scope["unrendered"].as_array().map_or_default(Vec::len);
     }
     let catalog = read_json(&data.join("overlay/trade_catalog.json"))?;
     for group in ["mods", "search_mods", "bases"] {

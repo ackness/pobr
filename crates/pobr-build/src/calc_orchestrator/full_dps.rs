@@ -177,7 +177,7 @@ pub(super) fn calculate_prepared(
                         .get("BeiraIgniteDPS")
                         .copied()
                         .unwrap_or(0.0);
-                    if ground > beira.as_ref().map_or(0.0, |source| source.dps) {
+                    if ground > beira.as_ref().map_or_default(|source| source.dps) {
                         beira = Some(StackSource {
                             index,
                             dps: ground,
@@ -423,41 +423,33 @@ pub(super) fn other_weapon_set(build: &Build) -> Build {
         swapped.other_weapon_set_nodes = Some(build.tree.allocated_nodes.clone());
         // Socketed jewels follow allocation too. Retain their raw records so the
         // normal preparation step can resolve sockets granted by items/passives.
-        swapped.jewels.retain(|(socket, item)| {
-            if let JewelSocket::Node(node) = socket
-                && !nodes.iter().any(|id| id.0 == *node)
-            {
-                let radius = build
+        let removed_jewels: Vec<_> = swapped
+            .jewels
+            .extract_if(.., |(socket, _)| {
+                matches!(socket, JewelSocket::Node(node) if !nodes.iter().any(|id| id.0 == *node))
+            })
+            .collect();
+        for (socket, item) in removed_jewels {
+            if let JewelSocket::Node(node) = socket {
+                let radius = swapped
                     .radius_jewels
-                    .iter()
-                    .find(|r| r.socket_node == *node)
-                    .cloned();
-                swapped
-                    .granted_socket_jewels
-                    .push((*node, item.clone(), radius));
-                false
-            } else {
-                true
+                    .extract_if(.., |r| r.socket_node == node)
+                    .next();
+                swapped.granted_socket_jewels.push((node, item, radius));
             }
-        });
+        }
         swapped
             .radius_jewels
             .retain(|radius| nodes.iter().any(|id| id.0 == radius.socket_node));
-        swapped
+        for (node, item, radius) in swapped
             .granted_socket_jewels
-            .retain(|(node, item, radius)| {
-                if nodes.iter().any(|id| id.0 == *node) {
-                    swapped
-                        .jewels
-                        .push((JewelSocket::Node(*node), item.clone()));
-                    if let Some(radius) = radius {
-                        swapped.radius_jewels.push(radius.clone());
-                    }
-                    false
-                } else {
-                    true
-                }
-            });
+            .extract_if(.., |(node, _, _)| nodes.iter().any(|id| id.0 == *node))
+        {
+            swapped.jewels.push((JewelSocket::Node(node), item));
+            if let Some(radius) = radius {
+                swapped.radius_jewels.push(radius);
+            }
+        }
     }
     swapped
 }
@@ -476,19 +468,17 @@ mod tests {
 
     #[test]
     fn strongest_instances_share_a_limit_and_fill_unused_stacks() {
-        let mut rows: Vec<_> = (0..2)
-            .map(|index| FullDpsSkill {
-                group_index: index,
-                active_skill_index: 1,
-                skill_id: "Poison".into(),
-                count: 1.0,
-                hit_dps: 0.0,
-                dot_dps: 0.0,
-                dps: 0.0,
-                unsupported_modifiers: Vec::new(),
-                error: None,
-            })
-            .collect();
+        let mut rows = Vec::from_fn(2, |index| FullDpsSkill {
+            group_index: index,
+            active_skill_index: 1,
+            skill_id: "Poison".into(),
+            count: 1.0,
+            hit_dps: 0.0,
+            dot_dps: 0.0,
+            dps: 0.0,
+            unsupported_modifiers: Vec::new(),
+            error: None,
+        });
         let mut sources = [
             StackSource {
                 index: 0,

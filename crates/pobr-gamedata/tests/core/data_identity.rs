@@ -3,16 +3,8 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use pobr_gamedata::{DataIdentity, GameData};
+use pobr_gamedata::{DataIdentity, GameData, sha256_hex};
 use serde_json::json;
-use sha2::{Digest, Sha256};
-
-fn hash(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
-}
 
 fn files(schema: u32) -> BTreeMap<String, Vec<u8>> {
     let costs = br#"[{"id":"Mana","divisor":1}]"#.to_vec();
@@ -21,7 +13,7 @@ fn files(schema: u32) -> BTreeMap<String, Vec<u8>> {
         "schema_version": schema, "poe_version": "1.2.3", "languages": [],
         "contract_version": pobr_data::CONTRACT_VERSION,
         "domains": { "base": ["stats", "cost_types"], "overlay": [], "generated": [] },
-        "files": { "base/cost_types.json": hash(&costs), "base/stats.json": hash(&stats) }
+        "files": { "base/cost_types.json": sha256_hex(&costs), "base/stats.json": sha256_hex(&stats) }
     });
     BTreeMap::from([
         (
@@ -114,7 +106,7 @@ fn changes_in_each_effective_layer_change_identity() {
         if relative == "base/stats.json" {
             let mut manifest: serde_json::Value =
                 serde_json::from_slice(&changed["manifest.json"]).unwrap();
-            manifest["files"][relative] = hash(&changed[relative]).into();
+            manifest["files"][relative] = sha256_hex(&changed[relative]).into();
             changed.insert(
                 "manifest.json".into(),
                 serde_json::to_vec(&manifest).unwrap(),

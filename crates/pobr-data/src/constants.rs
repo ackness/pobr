@@ -55,6 +55,33 @@ impl DamageType {
             DamageType::Fire | DamageType::Cold | DamageType::Lightning
         )
     }
+
+    /// Canonical prefix name used in ModDb stat names (`"Physical"`, `"Fire"`,
+    /// `"Cold"`, `"Lightning"`, `"Chaos"`).
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            DamageType::Physical => "Physical",
+            DamageType::Fire => "Fire",
+            DamageType::Cold => "Cold",
+            DamageType::Lightning => "Lightning",
+            DamageType::Chaos => "Chaos",
+        }
+    }
+}
+
+impl std::str::FromStr for DamageType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Physical" => Ok(Self::Physical),
+            "Fire" => Ok(Self::Fire),
+            "Cold" => Ok(Self::Cold),
+            "Lightning" => Ok(Self::Lightning),
+            "Chaos" => Ok(Self::Chaos),
+            _ => Err(()),
+        }
+    }
 }
 
 /// An elemental sub-type, used to aggregate `ElementalDamage` (fire/cold/lightning).

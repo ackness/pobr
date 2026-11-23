@@ -135,7 +135,7 @@ pub fn compare_minion_to_reference(
             Some(ReferenceRow {
                 id: (*id).to_string(),
                 pob_key: format!("Minion:{key}"),
-                pobr: minion.map_or(0.0, |minion| minion_value(minion, key)),
+                pobr: minion.map_or_default(|minion| minion_value(minion, key)),
                 reference: *reference.get(*key)?,
             })
         })

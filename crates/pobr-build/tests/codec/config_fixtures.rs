@@ -1,10 +1,7 @@
 //! Config fixture integration tests.
 //!
 //! Scope: asserts that input parsing correctly produces RawConfigInputs, and
-//! that the interpreter correctly produces ConfigOutcome. Production
-//! `calculate_with_data` has already switched to the interpreter as its main
-//! path (`config_resolve`, commit ①); the old `parse_config` is kept as a
-//! fallback/comparison (ongoing regression coverage in `config_dualrun.rs`).
+//! that the interpreter correctly produces ConfigOutcome via `config_resolve`.
 //!
 //! Fixture coverage (`tests/fixtures/config_*.xml`): count-type stationary,
 //! implyCond chains, enemy resistance overrides + enemyIsBoss=None, multi-line

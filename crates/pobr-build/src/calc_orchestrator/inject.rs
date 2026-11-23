@@ -197,7 +197,7 @@ pub(super) fn inject_buffs_and_heralds(
             if !parsed {
                 context
                     .support_limits
-                    .push(format!("Party {}: {}", member.name, text));
+                    .push(format!("Party {}: {text}", member.name));
             }
         }
         for spec in effects.buffs {

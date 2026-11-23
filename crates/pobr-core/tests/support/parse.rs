@@ -55,24 +55,12 @@ static RULES: LazyLock<std::sync::Arc<CompiledParserRules>> = LazyLock::new(|| {
     )
 });
 
-/// The real rule set (the six parser-rule tables + the special channel).
-#[allow(dead_code)]
-pub fn rules() -> &'static CompiledParserRules {
-    &RULES
-}
-
-/// Shared `Arc` of the real rule set (for injecting via `CalculationSession::set_parser_rules`).
-#[allow(dead_code)]
-pub fn rules_arc() -> std::sync::Arc<CompiledParserRules> {
-    RULES.clone()
-}
-
 /// A [`pobr_core::calc::CalculationSession`] wired up with the real engine rules and
 /// the imported monster table (a later `with_config` replaces the constants).
 #[allow(dead_code)]
 pub fn session(input: pobr_core::calc::MinimalInput) -> pobr_core::calc::CalculationSession {
     let mut s = pobr_core::calc::CalculationSession::new(input);
-    s.set_parser_rules(rules_arc());
+    s.set_parser_rules(RULES.clone());
     s.set_constants(test_constants());
     s
 }

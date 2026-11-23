@@ -174,8 +174,8 @@ fn connected_support_colours(
 /// Stage 2: closes out config consumption (the primary-path switch) — goes through
 /// `config_interpreter::interpret` when a ConfigCatalog is available (raw_inputs →
 /// conditions/multipliers/scalar wrapping/Config-attributed modifiers); falls back to
-/// the legacy parse_config output when the catalog is missing (tolerant of a missing
-/// table). Produces the base cfg (including backfilling the config multiplier bridge
+/// the fields populated on `BuildConfig` at import time when the catalog is missing.
+/// Produces the base cfg (including backfilling the config multiplier bridge
 /// for the Effective gate); stage_build_cfg layers skill-derived pieces on top of it.
 pub(super) fn stage_resolve_config(
     build: &Build,
@@ -209,7 +209,7 @@ pub(super) fn stage_resolve_config(
             // Condition{Combat}` — the denominator for the NearbyAlly≥1 threshold row,
             // ConfigOptions.lua:1018).
             // The XML input of a `multiplier<X>` option has already put its number in the multiplier
-            // table (`ParsedConfig::multipliers`). Backfilling the option's tagged effect as well would
+            // table (`BuildConfig::multipliers`). Backfilling the option's tagged effect as well would
             // count the input twice: this bridge is for a placeholder default, which no input covers.
             let counted_by_input = |var: &str| {
                 m.origin

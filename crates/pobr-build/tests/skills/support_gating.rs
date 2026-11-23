@@ -1162,7 +1162,7 @@ fn support_coverage_effective_zero_conditional_number_is_not_a_limit() {
         .unwrap()
         .mult = Some(0.0);
     data.stat_map_catalog = Some(Arc::new(StatMapCatalog::new(mapping)));
-    assert!(matches!(
+    std::assert_matches!(
         map_stat(
             data.stat_map_catalog.as_deref().unwrap(),
             SWIFT,
@@ -1171,7 +1171,7 @@ fn support_coverage_effective_zero_conditional_number_is_not_a_limit() {
             50.0
         ),
         MappedOutcome::Unsupported(_)
-    ));
+    );
     let zero = coverage_session(&build, &data);
     assert!(zero.unsupported_modifier_texts().is_empty());
     assert_eq!(zero.output(), baseline.output());

@@ -1,5 +1,4 @@
-//! Closes out config consumption ("xml_build switches to the interpreter
-//! primary path").
+//! Config consumption for [`calculate_with_data`](crate::calculate_with_data).
 //!
 //! [`resolve_config`] is the **single entry point** `calculate_with_data` uses to
 //! consume build config:
@@ -10,34 +9,27 @@
 //!   (enemyIsBoss, resistancePenalty wrapping) / player·enemy modifiers / a customMods
 //!   line channel;
 //! - When the catalog is missing (old data pack / [`BuildData::empty`](crate::BuildData::empty))
-//!   → falls back to the legacy `parse_config` output (`build.config`'s existing fields,
-//!   tolerant of a missing table).
+//!   → falls back to the fields populated on `build.config` at import time.
 //! - In both paths, explicit booleans for charge use, elemental exposure and elemental
-//!   ailments override legacy conditions. Absent inputs retain existing fallback behavior.
+//!   ailments override imported conditions. Absent inputs retain existing fallback behavior.
 //!
-//! ## Dual-run period semantics (commit cluster opened category by category)
+//! ## Channel semantics
 //!
-//! - **conditions / multipliers**: old key set ∪ interpreter output — the intersection
-//!   is asserted value-equal (`config_dualrun`'s ongoing regression hard assert); the
-//!   interpreter's exclusive new overrides (count-type / implyCond / unprefixed entries,
-//!   report §2.3 lines 1-2) have already been opened up (commit ②, see
+//! - **conditions / multipliers**: imported `build.config` fields overlaid with interpreter
+//!   output (including count-type / implyCond / unprefixed entries, see
 //!   [`merge_conditions`] / [`merge_multipliers`]).
 //! - **enemy condition bridge**: vendor puts `conditionEnemy<X>` into the enemy bucket
 //!   as `Condition:<X>` (ConfigOptions.lua:1694/1769/1789/1833 enemyModList:NewMod);
-//!   pobr's mod_parser models "against <X> enemies" as the cfg condition `Enemy<X>`
-//!   (mod_parser.rs:1612-1640), so this bridges the enemy-bucket FLAG back to the
-//!   `Enemy<X>` condition — pure namespace translation, zero behavior delta (matches the
-//!   legacy value item-for-item, before the legacy path is removed).
-//! - **quest rewards**: still go through the legacy text channel
-//!   (`global_modifier_texts`) — the interpreter's declarative quest mods follow vendor
-//!   spelling (`Life`/`Str`/`ColdResist`), which hasn't been unified with the parser's
-//!   namespace (`MaximumLife`/`Strength`/`ColdResistance`) yet; switching now would split
-//!   the same stat under two names.
-//! - **scalars**: enemyIsBoss / resistancePenalty only go through the handler wrapper
+//!   pobr's mod_parser models "against <X> enemies" as the cfg condition `Enemy<X>`,
+//!   so this bridges the enemy-bucket FLAG back to the `Enemy<X>` condition.
+//! - **quest rewards**: go through the text channel (`global_modifier_texts`) — the
+//!   interpreter's declarative quest mods follow vendor spelling (`Life`/`Str`/`ColdResist`),
+//!   which hasn't been unified with the parser's namespace (`MaximumLife`/`Strength`/`ColdResistance`)
+//!   yet; switching now would split the same stat under two names.
+//! - **scalars**: enemyIsBoss / resistancePenalty go through the handler wrapper
 //!   ([`enemy_tier_from_config`] / [`campaign_progress_from_config`]) when the XML gives
 //!   them **explicitly**; when omitted, they keep the existing fallback chain
-//!   (orchestrator option tier / Endgame -60), which matches the catalog's materialized
-//!   defaultIndex value (report §2.3 line 5: opening this up is actually a zero diff).
+//!   (orchestrator option tier / Endgame -60), matching the catalog's defaultIndex.
 
 use std::collections::HashMap;
 
@@ -314,10 +306,9 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
     }
 }
 
-/// Merges conditions (fully, from commit ② on): the intersection matches the primary
-/// path value-for-value (guaranteed by config_dualrun's ongoing regression); keys unique
-/// to the interpreter are net-new overrides (count-type entries' `>0` condition,
-/// implyCond expansion, non-`condition`-prefixed entries).
+/// Merges interpreter conditions onto imported `BuildConfig` conditions (including
+/// count-type entries' `>0` condition, implyCond expansion, and non-`condition`-prefixed
+/// entries).
 ///
 /// implyCond semantics: vendor bakes the calc-side implication **directly into each
 /// entry's apply** (e.g. conditionCritRecently also does NewMod
@@ -325,9 +316,9 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
 /// already carried by the player_mods injection, Combat-gated); the `implyCondList`
 /// metadata itself only drives visibility on vendor's config page
 /// (ConfigTab.lua:91-109). Writing the imply expansion into cfg.conditions here is
-/// pobr's compatibility channel (matching legacy parse_config's "bare condition goes
-/// straight into cfg" semantics, for mod_parser's Condition tag mods to consume); it
-/// doesn't override an explicit value (interpreter's `or_insert` semantics).
+/// pobr's compatibility channel (matching "bare condition goes straight into cfg"
+/// semantics, for mod_parser's Condition tag mods to consume); it doesn't override
+/// an explicit value (interpreter's `or_insert` semantics).
 fn merge_conditions(conditions: &mut HashMap<String, bool>, outcome: &ConfigOutcome) {
     for (var, enabled) in &outcome.conditions {
         conditions.insert(var.clone(), *enabled);

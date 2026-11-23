@@ -242,8 +242,16 @@ mod tests {
 
     /// The prepared data package's table (`mise run data:prepare`).
     pub(super) fn package_rows() -> Vec<ActiveSkillTypeDef> {
-        let data = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data");
-        let version = std::fs::read_to_string(data.join("CURRENT")).expect("data/CURRENT");
+        let data = std::env::var_os("POBR_DATA_ROOT")
+            .filter(|v| !v.is_empty())
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data"));
+        let version = std::env::var("POBR_DATA_VERSION")
+            .ok()
+            .filter(|v| !v.trim().is_empty())
+            .unwrap_or_else(|| {
+                std::fs::read_to_string(data.join("CURRENT")).expect("data/CURRENT")
+            });
         let path = data
             .join(version.trim())
             .join("base/active_skill_types.json");

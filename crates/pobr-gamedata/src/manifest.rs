@@ -10,7 +10,7 @@ use sha2::{Digest, Sha256};
 use crate::{GameData, LoadError};
 
 /// Lowercase hex SHA-256 of `bytes`.
-pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
+pub fn sha256_hex(bytes: &[u8]) -> String {
     Sha256::digest(bytes)
         .iter()
         .map(|byte| format!("{byte:02x}"))
@@ -329,10 +329,7 @@ mod tests {
         )]);
         let data = GameData::from_memory(files);
         let direct = data.manifest().unwrap_err();
-        assert!(
-            matches!(direct, crate::LoadError::Integrity { .. }),
-            "{direct}"
-        );
+        std::assert_matches!(direct, crate::LoadError::Integrity { .. }, "{direct}");
         let message = data.validate_manifest().unwrap_err().to_string();
         assert!(message.contains("data contract mismatch"), "{message}");
         assert_eq!(
@@ -528,9 +525,9 @@ mod tests {
             );
             assert!(data.stat_descriptions().unwrap().is_none());
             assert!(data.word_names("zh-TW").unwrap().is_empty());
-            assert!(
-                matches!(data.stats(), Err(crate::LoadError::Io { source, .. })
-                if source.kind() == std::io::ErrorKind::NotFound)
+            std::assert_matches!(
+                data.stats(),
+                Err(crate::LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound
             );
             assert_eq!(data.available_tree_versions(), ["listed"]);
             assert!(data.passive_nodes_versioned("listed").unwrap().is_some());
@@ -551,15 +548,15 @@ mod tests {
                 files.insert("overlay/gem_quality_stats.json".into(), b"{}".to_vec());
             }
             with_backends(if missing { "missing" } else { "changed" }, files, |data| {
-                assert!(matches!(
+                std::assert_matches!(
                     data.gem_quality_stats(),
                     Err(crate::LoadError::Integrity { .. })
-                ));
+                );
                 // This loader probes existence before reading, and must still fail.
-                assert!(matches!(
+                std::assert_matches!(
                     data.stat_descriptions(),
                     Err(crate::LoadError::Integrity { .. })
-                ));
+                );
             });
         }
     }

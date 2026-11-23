@@ -3,16 +3,8 @@
 
 use std::collections::BTreeMap;
 
-use pobr_gamedata::GameData;
+use pobr_gamedata::{GameData, sha256_hex};
 use serde_json::json;
-use sha2::{Digest, Sha256};
-
-fn hash(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
-}
 
 fn pack() -> BTreeMap<String, Vec<u8>> {
     let costs = br#"[{"id":"Mana","divisor":1}]"#.to_vec();
@@ -21,7 +13,7 @@ fn pack() -> BTreeMap<String, Vec<u8>> {
         "schema_version": 3, "poe_version": "1.2.3", "languages": [],
         "contract_version": pobr_data::CONTRACT_VERSION,
         "domains": { "base": ["stats", "cost_types"], "overlay": [], "generated": [] },
-        "files": { "base/cost_types.json": hash(&costs), "base/stats.json": hash(&stats) }
+        "files": { "base/cost_types.json": sha256_hex(&costs), "base/stats.json": sha256_hex(&stats) }
     });
     BTreeMap::from([
         (

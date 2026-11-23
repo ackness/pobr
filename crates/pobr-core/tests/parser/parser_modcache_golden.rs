@@ -241,15 +241,9 @@ fn pobr_mod_to_canon(m: &Modifier) -> CanonMod {
 
 fn golden_value_to_canon(v: Option<&Value>) -> String {
     match v {
-        Some(Value::Number(n)) => {
-            if let Some(i) = n.as_i64() {
-                format!("{i}")
-            } else if let Some(f) = n.as_f64() {
-                num_to_canon(f)
-            } else {
-                n.to_string()
-            }
-        }
+        Some(Value::Number(n)) if let Some(i) = n.as_i64() => format!("{i}"),
+        Some(Value::Number(n)) if let Some(f) = n.as_f64() => num_to_canon(f),
+        Some(Value::Number(n)) => n.to_string(),
         Some(Value::Bool(b)) => b.to_string(),
         Some(Value::String(s)) => format!("{s:?}"),
         Some(Value::Array(a)) => format!("nested:{}", a.len()),

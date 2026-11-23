@@ -58,8 +58,6 @@ pub mod stat_descriptions;
 // Phase 7.1: mod-line input translation templates (i18n/<lang>/stat_lines.json)
 pub mod i18n_stat_lines;
 pub use i18n_stat_lines::{StatLineTemplate, TextOrigin};
-//  StatId→Modifier mapping table (stat_descriptions baked by the engine's parser)
-pub mod stat_id_map;
 
 // Base item override-value overlay schema (extracted from vendor Data/Bases: block/spirit)
 pub mod base_item_overrides;
@@ -80,7 +78,6 @@ pub mod item_overlay; // M5c: mod_scalability / catalysts / runes / uniques (ven
 pub mod parser_rules; // M5b: special_mods templates (hand-curated) + M6: the ModParser rule six-table set (mod_parser_rules/v1)
 pub mod skill_types; // the client's ActiveSkillType rows (skill type names)
 pub mod triggers; // M5a-D2: mirage_configs (generated embedded in the tool); M4-T5 extends trigger_configs in the same file
-pub mod vendor_name_aliases; // M6.3: the vendor→PoBR ModName alias table (a switchover-prerequisite data asset, zero consumers)
 
 pub use actors::{
     GrantedEffectMinionDef, GrantedEffectMinionsDef, LuaValueDef, MinionEntryDef, MinionModDef,
@@ -117,7 +114,4 @@ pub use triggers::{
     TriggerConfigsDef, TriggerKeyDef, TriggerSkillCondDef,
 };
 pub use unarmed_data::{UnarmedDataTable, UnarmedWeaponDef};
-pub use vendor_name_aliases::{
-    VENDOR_NAME_ALIASES_SCHEMA, VendorNameAliasDef, VendorNameAliasesDoc,
-};
 pub use weapon_types::{WeaponTypeDef, WeaponTypeTable};

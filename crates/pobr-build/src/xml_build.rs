@@ -30,10 +30,11 @@
 //! for `<Item>`, etc. are left for later.
 
 use quick_xml::Reader;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use quick_xml::events::{BytesRef, BytesStart, Event};
 
+use crate::build_config::BuildConfig;
 use pobr_core::CampaignProgress;
 use pobr_core::item_text::parse_pob_xml_item;
 use pobr_core::rules::config_interpreter::{ConfigInputValue, RawConfigInputs};
@@ -130,14 +131,15 @@ fn parse_reference_stats(xml: &str, element: &str) -> Result<BTreeMap<String, f6
     let mut stats = BTreeMap::new();
     loop {
         match reader.read_event() {
-            Ok(Event::Start(e)) | Ok(Event::Empty(e)) if element_name(&e) == element => {
-                if let (Some(stat), Some(value)) = (
-                    attr_value(&e, b"stat"),
-                    attr_value(&e, b"value").and_then(|v| v.parse::<f64>().ok()),
-                ) && !value.is_nan()
-                {
-                    stats.entry(stat).or_insert(value);
-                }
+            Ok(Event::Start(e)) | Ok(Event::Empty(e))
+                if element_name(&e) == element
+                    && let (Some(stat), Some(value)) = (
+                        attr_value(&e, b"stat"),
+                        attr_value(&e, b"value").and_then(|v| v.parse::<f64>().ok()),
+                    )
+                    && !value.is_nan() =>
+            {
+                stats.entry(stat).or_insert(value);
             }
             Ok(Event::Eof) => break,
             Err(e) => return Err(XmlError::Parse(e.to_string())),
@@ -264,25 +266,8 @@ fn parse_build_with_allocated_nodes_impl(
         build = build.add_socket_group(group);
     }
 
-    // Combat config: the raw three-typed `<Input>` key-values are captured losslessly
-    // into `raw_inputs` (the primary-path data source — the orchestrator consumes it via
-    // `config_resolve::resolve_config` → `config_interpreter::interpret` once a
-    // ConfigCatalog is available); the legacy parse_config output is also kept, filling
-    // the existing fields, serving as (a) a fallback tolerant of a missing catalog, (b)
-    // the quest text channel (not switched over until naming is unified per §3-⑤), and
-    // (c) an ongoing regression reference for config_dualrun. New coverage is opened up
-    // category by category; once the report is reviewed, the legacy path is removed
-    // (its own commit, report §3-⑧).
-    build.config.raw_inputs = parse_config_inputs(xml);
-    let parsed = parse_config(xml);
-    build.config.conditions.extend(parsed.conditions);
-    build.config.multipliers.extend(parsed.multipliers);
-    build
-        .config
-        .global_modifier_texts
-        .extend(parsed.global_texts);
-    build.config.campaign_progress = parsed.campaign_progress;
-    build.config.enemy_tier = parsed.enemy_tier;
+    let (raw_inputs, _) = parse_config_document(xml, Some(&mut build.config));
+    build.config.raw_inputs = raw_inputs;
 
     Ok(ImportedBuild { build, report })
 }
@@ -348,44 +333,15 @@ pub fn default_quest_stat_reward_texts(
     out
 }
 
-/// The result of parsing `<Config>`: conditions / multipliers / global mod text + top-level scalar config options.
-///
-/// **Temporary export during the dual-run period**: the primary path has switched to
-/// `parse_config_inputs` + `config_interpreter` (via the orchestrator's
-/// `config_resolve`, commit ①); the legacy path's output is kept as (a) a fallback
-/// tolerant of a missing catalog, (b) the quest text channel (report §3-⑤), and (c) an
-/// ongoing regression reference for `config_dualrun`. New coverage is opened up category
-/// by category; once the report is reviewed, this struct is removed along with the
-/// legacy path (its own commit, report §3-⑧).
-#[doc(hidden)]
-#[derive(Debug, Default)]
-pub struct ParsedConfig {
-    /// Boolean condition overrides (variable name with the `condition` prefix stripped → value).
-    pub conditions: HashMap<String, bool>,
-    /// Numeric multiplier overrides (variable name with the `multiplier` prefix stripped → value).
-    pub multipliers: HashMap<String, f64>,
-    /// Globally-injected mod text (quest rewards etc.).
-    pub global_texts: Vec<String>,
-    /// The campaign progress that `resistancePenalty` (a list, stored as a number in
-    /// XML) maps to. `None` when the XML omits it or the value isn't in PoB2's
-    /// seven-tier table (the consumer falls back to PoB2's default Endgame `-60`).
-    pub campaign_progress: Option<CampaignProgress>,
-    /// The enemy tier that `enemyIsBoss` (a list, stored as a string in XML) maps to.
-    /// `None` when the XML omits it or the string isn't in the four-tier table (the
-    /// consumer falls back to the orchestrator option's tier, which defaults to PoB2's Pinnacle).
-    pub enemy_tier: Option<EnemyTier>,
-}
-
 /// Extracts every `<Config>` `<Input name bool|number|string>` into typed raw
-/// key-values (the new pipeline: this function does **no semantic interpretation** at
-/// all — interpretation goes uniformly through
-/// `pobr_core::rules::config_interpreter::interpret` + `ConfigCatalog`).
+/// key-values (this function does **no semantic interpretation** — interpretation
+/// goes uniformly through `pobr_core::rules::config_interpreter::interpret` +
+/// `ConfigCatalog`).
 ///
-/// Same scan scope as the legacy [`parse_config`]: walks every `Input` element in the
-/// whole XML (PoB2 in practice only saves Input under `<Config>`). On a duplicate name,
-/// the later write wins (matching the legacy path's HashMap insert semantics). The
-/// three-type check order is boolean → number → string; an `<Input>` with none of these
-/// payload attributes is skipped.
+/// Walks every `Input` element in the selected `<ConfigSet>` (or directly under
+/// `<Config>`). On a duplicate name, the later write wins. The three-type check
+/// order is boolean → number → string; an `<Input>` with none of these payload
+/// attributes is skipped.
 ///
 /// `<Placeholder>` elements (placeholder values PoB2's ConfigTab saves, the
 /// `setInputAndPlaceholder` sibling in SkillsTab.lua) land in a separate `placeholders`
@@ -393,19 +349,23 @@ pub struct ParsedConfig {
 /// Placeholder fallback" (e.g. `enemyLevel`, ConfigTab.lua:872-877); the interpreter's
 /// main flow doesn't read this table.
 pub fn parse_config_inputs(xml: &str) -> RawConfigInputs {
-    parse_config_document(xml).0
+    parse_config_document(xml, None).0
 }
 
 /// Returns the selected ConfigSet's editable custom modifier groups. Legacy
 /// `customMods` Input text is migrated to a Default group as PoB2 does.
 pub fn parse_custom_modifier_blocks(xml: &str) -> Vec<CustomModifierBlock> {
-    parse_config_document(xml).1
+    parse_config_document(xml, None).1
 }
 
 /// Scan Inputs and custom groups together so calculation and editing share
 /// the same selected-set, XML entity, and legacy migration semantics.
-fn parse_config_document(xml: &str) -> (RawConfigInputs, Vec<CustomModifierBlock>) {
+fn parse_config_document(
+    xml: &str,
+    mut fallback: Option<&mut BuildConfig>,
+) -> (RawConfigInputs, Vec<CustomModifierBlock>) {
     let mut inputs = RawConfigInputs::new();
+    let mut seen_inputs = HashSet::new();
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
     let mut in_config = false;
@@ -442,19 +402,20 @@ fn parse_config_document(xml: &str) -> (RawConfigInputs, Vec<CustomModifierBlock
                     });
                 }
             }
-            Ok(Event::Text(text)) if current_block.is_some() => {
-                current_block.as_mut().unwrap().text.push_str(&text);
+            Ok(Event::Text(text)) if let Some(block) = current_block.as_mut() => {
+                block.text.push_str(&text);
             }
-            Ok(Event::GeneralRef(reference)) if current_block.is_some() => {
-                append_general_ref(&mut current_block.as_mut().unwrap().text, &reference);
+            Ok(Event::GeneralRef(reference)) if let Some(block) = current_block.as_mut() => {
+                append_general_ref(&mut block.text, &reference);
             }
-            Ok(Event::CData(text)) if current_block.is_some() => {
-                current_block.as_mut().unwrap().text.push_str(&text);
+            Ok(Event::CData(text)) if let Some(block) = current_block.as_mut() => {
+                block.text.push_str(&text);
             }
-            Ok(Event::End(e)) if element_name_end(&e) == "CustomModifierBlock" => {
-                if let Some(block) = current_block.take() {
-                    blocks.push(block);
-                }
+            Ok(Event::End(e))
+                if element_name_end(&e) == "CustomModifierBlock"
+                    && let Some(block) = current_block.take() =>
+            {
+                blocks.push(block);
             }
             Ok(Event::End(e)) if element_name_end(&e) == "ConfigSet" => {
                 in_set = false;
@@ -469,6 +430,11 @@ fn parse_config_document(xml: &str) -> (RawConfigInputs, Vec<CustomModifierBlock
                 let Some(name) = attr_value(&e, b"name") else {
                     continue;
                 };
+                let is_input = element_name(&e) == "Input";
+                if is_input && let Some(config) = fallback.as_deref_mut() {
+                    apply_fallback_config_input(config, &name, &e);
+                    seen_inputs.insert(name.clone());
+                }
                 let value = if let Some(b) = attr_value(&e, b"boolean") {
                     ConfigInputValue::Bool(b == "true")
                 } else if let Some(n) =
@@ -480,7 +446,7 @@ fn parse_config_document(xml: &str) -> (RawConfigInputs, Vec<CustomModifierBlock
                 } else {
                     continue;
                 };
-                if element_name(&e) == "Input" {
+                if is_input {
                     inputs.values.insert(name, value);
                 } else {
                     inputs.placeholders.insert(name, value);
@@ -526,146 +492,63 @@ fn parse_config_document(xml: &str) -> (RawConfigInputs, Vec<CustomModifierBlock
             ConfigInputValue::Text(active_blocks.join("\n")),
         );
     }
+    if let Some(config) = fallback {
+        apply_omitted_config_defaults(config, &seen_inputs);
+    }
     (inputs, blocks)
 }
 
-/// **Temporary export during the dual-run period**: the legacy `<Config>` parse path
-/// (a reference for current production behavior).
-///
-/// Only for integration tests to compare against the new `parse_config_inputs` +
-/// config_interpreter path (asserting "legacy ⊆ new and the intersection is
-/// value-for-value equal"); no new business consumer may use it.
-#[doc(hidden)]
-pub fn parse_config_legacy(xml: &str) -> ParsedConfig {
-    parse_config(xml)
-}
-
-/// Extracts `<Config>`'s `<Input name boolean|number|string>` entries into a
-/// [`ParsedConfig`]. Names have the `condition`/`multiplier` prefix stripped to become
-/// the variable name (e.g. `conditionEnemyChilled` → `EnemyChilled`), matching the
-/// calc side's `ModTag::Condition`/`Multiplier` variable convention.
-///
-/// **Omission = default value** (PoB2's `defaultState`): an `<Input>` present in the XML
-/// takes its own value; among absent boolean conditions, the entries listed in
-/// [`DEFAULT_TRUE_CONDITIONS`] get `true` filled in (everything else still falls back to
-/// false on the calc side).
-///
-/// **Temporarily kept during the dual-run period**: this function is a reference for
-/// current production behavior, its logic frozen; see [`parse_config_inputs`] for the
-/// new pipeline. Removed once the dual-run report is reviewed (its own commit).
-fn parse_config(xml: &str) -> ParsedConfig {
-    let mut parsed = ParsedConfig::default();
-    // Records the `<Input name>`s that **did appear** in the XML, used to determine which defaultState entries were omitted.
-    let mut seen_names: std::collections::HashSet<String> = std::collections::HashSet::new();
-    let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(true);
-    let mut in_config = false;
-    let mut in_set = false;
-    let mut active_set = String::from("1");
-    let mut selected_set = false;
-    loop {
-        match reader.read_event() {
-            Ok(Event::Start(e)) if element_name(&e) == "Config" => {
-                in_config = true;
-                active_set = attr_value(&e, b"activeConfigSet").unwrap_or_else(|| "1".into());
-            }
-            Ok(Event::Start(e)) if in_config && element_name(&e) == "ConfigSet" => {
-                in_set = true;
-                selected_set = attr_value(&e, b"id").as_deref() == Some(active_set.as_str());
-            }
-            Ok(Event::End(e)) if element_name_end(&e) == "ConfigSet" => {
-                in_set = false;
-                selected_set = false;
-            }
-            Ok(Event::End(e)) if element_name_end(&e) == "Config" => in_config = false,
-            Ok(Event::Start(e)) | Ok(Event::Empty(e))
-                if in_config && (!in_set || selected_set) && element_name(&e) == "Input" =>
-            {
-                let Some(name) = attr_value(&e, b"name") else {
-                    continue;
-                };
-                seen_names.insert(name.clone());
-                if let Some(var) = name.strip_prefix("condition")
-                    && let Some(b) = attr_value(&e, b"boolean")
-                {
-                    parsed.conditions.insert(var.to_string(), b == "true");
-                } else if let Some(charge_cond) = use_charge_condition(&name)
-                    && let Some(b) = attr_value(&e, b"boolean")
-                {
-                    // PoB2 ConfigOptions: the `useXCharges` checkbox → `Condition:UseXCharges` FLAG.
-                    // Full-stack charge default (current = max) only takes effect when this condition is true (see charge_multipliers_panel_default).
-                    parsed
-                        .conditions
-                        .insert(charge_cond.to_string(), b == "true");
-                } else if let Some((_, cond_var)) =
-                    DEFAULT_TRUE_CONDITIONS.iter().find(|(n, _)| *n == name)
-                    && let Some(b) = attr_value(&e, b"boolean")
-                {
-                    // A defaultState=true entry that **appears explicitly** takes its own value (no default fill-in).
-                    parsed
-                        .conditions
-                        .insert((*cond_var).to_string(), b == "true");
-                } else if let Some(var) = name.strip_prefix("multiplier")
-                    && let Some(n) = attr_value(&e, b"number").and_then(|v| v.parse::<f64>().ok())
-                {
-                    parsed.multipliers.insert(var.to_string(), n);
-                } else if name == "enemyIsBoss" {
-                    // PoB2 ConfigOptions `enemyIsBoss` (a list, stored as a string in
-                    // XML): the four tiers None/Boss/Pinnacle/Uber → EnemyTier. A string
-                    // outside the table stays None, and the consumer falls back to the
-                    // orchestrator option's tier (PoB2 defaultIndex=3 = Pinnacle).
-                    parsed.enemy_tier =
-                        attr_value(&e, b"string").and_then(|v| EnemyTier::from_pob_str(&v));
-                } else if name == "resistancePenalty" {
-                    // PoB2 ConfigOptions `resistancePenalty` (a list, stored as a number
-                    // in XML): the seven tiers 0/-10/…/-60 → the existing CampaignProgress
-                    // table. Stays None when the value isn't in the tier table
-                    // (theoretically PoB2 never saves such a value), and the consumer
-                    // falls back to the default Endgame.
-                    parsed.campaign_progress = attr_value(&e, b"number")
-                        .and_then(|v| v.parse::<f64>().ok())
-                        .and_then(CampaignProgress::from_resistance_penalty);
-                } else if name.starts_with("quest") {
-                    // PoB2 quest rewards (`questRewards`) are injected as **global**
-                    // permanent modifiers:
-                    // - Options type (list): `string="<selected option>"` (can be
-                    //   multi-line, injected line by line);
-                    // - Stat type (checkbox, defaultState=true): `boolean="true"` or the
-                    //   XML **omitting** it both mean claimed (backfilled from the
-                    //   default table [`DEFAULT_QUEST_STAT_REWARDS`]),
-                    //   `boolean="false"` means explicitly declined.
-                    if let Some(s) = attr_value(&e, b"string") {
-                        push_quest_lines(&mut parsed.global_texts, &s);
-                    } else if attr_bool(&e, b"boolean")
-                        && let Some((_, stat)) = DEFAULT_QUEST_STAT_REWARDS
-                            .iter()
-                            .find(|(key, _)| *key == name)
-                    {
-                        push_quest_lines(&mut parsed.global_texts, stat);
-                    }
-                }
-            }
-            Ok(Event::Eof) => break,
-            Err(e) => {
-                // Error mid-scan: stop scanning (permissive semantics that keep what's
-                // already been collected), but emit a diagnostic rather than staying
-                // silent — otherwise condition/multiplier/quest entries further down
-                // being silently dropped would cause miscalculation with no signal at all.
-                eprintln!("[POBR_WARN] parse_config: XML scan halted on error: {e}");
-                break;
-            }
-            _ => {}
+fn apply_fallback_config_input(config: &mut BuildConfig, name: &str, element: &BytesStart<'_>) {
+    if let Some(var) = name.strip_prefix("condition")
+        && let Some(value) = attr_value(element, b"boolean")
+    {
+        config.conditions.insert(var.to_string(), value == "true");
+    } else if let Some(charge_cond) = use_charge_condition(name)
+        && let Some(value) = attr_value(element, b"boolean")
+    {
+        config
+            .conditions
+            .insert(charge_cond.to_string(), value == "true");
+    } else if let Some((_, cond_var)) = DEFAULT_TRUE_CONDITIONS.iter().find(|(key, _)| *key == name)
+        && let Some(value) = attr_value(element, b"boolean")
+    {
+        config
+            .conditions
+            .insert((*cond_var).to_string(), value == "true");
+    } else if let Some(var) = name.strip_prefix("multiplier")
+        && let Some(value) =
+            attr_value(element, b"number").and_then(|value| value.parse::<f64>().ok())
+    {
+        config.multipliers.insert(var.to_string(), value);
+    } else if name == "enemyIsBoss" {
+        config.enemy_tier =
+            attr_value(element, b"string").and_then(|value| EnemyTier::from_pob_str(&value));
+    } else if name == "resistancePenalty" {
+        config.campaign_progress = attr_value(element, b"number")
+            .and_then(|value| value.parse::<f64>().ok())
+            .and_then(CampaignProgress::from_resistance_penalty);
+    } else if name.starts_with("quest") {
+        if let Some(text) = attr_value(element, b"string") {
+            push_quest_lines(&mut config.global_modifier_texts, &text);
+        } else if attr_bool(element, b"boolean")
+            && let Some((_, text)) = DEFAULT_QUEST_STAT_REWARDS
+                .iter()
+                .find(|(key, _)| *key == name)
+        {
+            push_quest_lines(&mut config.global_modifier_texts, text);
         }
     }
+}
 
-    // PoB2 `defaultState = true`: fill in true for entries the XML omits (doesn't override entries that appeared explicitly).
+fn apply_omitted_config_defaults(config: &mut BuildConfig, seen_inputs: &HashSet<String>) {
+    // PoB2 `defaultState = true`: fill in true for entries the XML omits (doesn't override explicit entries).
     for (xml_name, cond_var) in DEFAULT_TRUE_CONDITIONS {
         // Skill-dependent default, resolved after the enabled skills are known.
         if *xml_name == "companionInPresence" {
             continue;
         }
-        if !seen_names.contains(*xml_name) {
-            parsed
+        if !seen_inputs.contains(*xml_name) {
+            config
                 .conditions
                 .entry((*cond_var).to_string())
                 .or_insert(true);
@@ -673,15 +556,12 @@ fn parse_config(xml: &str) -> ParsedConfig {
     }
 
     // Stat-type quest reward defaultState=true: a key the XML omits is treated as
-    // claimed, so the default reward is backfilled (matching PoB2 ConfigOptions's
-    // `addQuestModsRewardsConfigOptions` checkbox-default-checked semantics).
-    for (key, stat) in DEFAULT_QUEST_STAT_REWARDS {
-        if !seen_names.contains(*key) {
-            push_quest_lines(&mut parsed.global_texts, stat);
-        }
-    }
-
-    parsed
+    // claimed, so the default reward is backfilled; explicit false declines it.
+    config
+        .global_modifier_texts
+        .extend(default_quest_stat_reward_texts(|key| {
+            seen_inputs.contains(key).then_some(false)
+        }));
 }
 
 /// The default table for Stat-type (checkbox) quest rewards from PoB2's
@@ -801,13 +681,11 @@ fn parse_main_socket_group(xml: &str) -> Option<usize> {
             }
             Ok(Event::Start(e)) | Ok(Event::Empty(e))
                 if element_name(&e) == "SkillSet"
-                    && attr_value(&e, b"id").as_deref() == Some(active.as_str()) =>
+                    && attr_value(&e, b"id").as_deref() == Some(active.as_str())
+                    && let Some(main) = attr_value(&e, b"mainSocketGroup")
+                        .and_then(|v| v.parse::<usize>().ok()) =>
             {
-                if let Some(main) =
-                    attr_value(&e, b"mainSocketGroup").and_then(|v| v.parse::<usize>().ok())
-                {
-                    return (main > 0).then_some(main);
-                }
+                return (main > 0).then_some(main);
             }
             Ok(Event::Eof) | Err(_) => return header,
             _ => {}
@@ -1088,7 +966,7 @@ fn parse_items_and_slots(
     let unmodelled_slots = unmodelled
         .into_iter()
         .map(|(slot, item_id)| UnmodelledSlot {
-            name: items.get(&item_id).map(item_name).unwrap_or_default(),
+            name: items.get(&item_id).map_or_default(item_name),
             slot,
             item_id,
         })
@@ -1640,16 +1518,15 @@ fn parse_item_set_for_weapons(
             Ok(Event::Empty(e)) => match element_name(&e).as_str() {
                 "Items" => active_item_set = attr_value(&e, b"activeItemSet"),
                 "ItemSet" => sets.push(item_set_data(&e)),
-                "Slot" => {
+                "Slot"
                     if let Some(cur) = current.as_mut()
                         && let (Some(slot_name), Some(item_id)) = (
                             attr_value(&e, b"name"),
                             attr_value(&e, b"itemId").and_then(|v| v.parse::<u32>().ok()),
-                        )
-                    {
-                        cur.slots
-                            .push((slot_name, item_id, attr_bool(&e, b"active")));
-                    }
+                        ) =>
+                {
+                    cur.slots
+                        .push((slot_name, item_id, attr_bool(&e, b"active")));
                 }
                 _ => {}
             },
@@ -1836,91 +1713,98 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                         }
                         current = Some(group);
                     }
-                    "Gem" if in_target_set => {
-                        if let Some(cur) = current.as_mut() {
-                            let enabled = attr_bool_default_true(&e, b"enabled");
-                            let gem_id = attr_value(&e, b"gemId").filter(|v| !v.is_empty());
-                            let skill_id = attr_value(&e, b"skillId").filter(|v| !v.is_empty());
-                            // A lineage support (e.g. Atziri's Communion) lacks
-                            // skillId/gemId when serialized, only nameSpec — the display
-                            // name is kept, and the orchestrator's `stage_build_view`
-                            // resolves it back to an id by looking it up against granted_effects.
-                            let name_spec = attr_value(&e, b"nameSpec").filter(|v| !v.is_empty());
-                            // Captures skillId + level + quality for every gem
-                            // (both active and support). A missing/invalid quality
-                            // attribute defaults to 0 (no quality), matching PoB2
-                            // SkillsTab.lua's `quality` attribute read (default 0).
-                            if skill_id.is_some() || name_spec.is_some() {
-                                // The gem's own level plus its "+N Level from
-                                // Corruption" (`corruptLevel`, ±1; PoB2 writes the
-                                // literal "nil" for none; vendor CalcSetup.lua:2297-2299).
-                                // A gem without one keeps the level as written.
-                                let own_level = attr_value(&e, b"level")
-                                    .and_then(|v| v.parse::<u32>().ok())
-                                    .unwrap_or(1);
-                                let level = match attr_value(&e, b"corruptLevel")
-                                    .and_then(|v| v.parse::<i64>().ok())
-                                {
-                                    Some(corrupt_level) if corrupt_level != 0 => {
-                                        u32::try_from((i64::from(own_level) + corrupt_level).max(1))
-                                            .unwrap_or(own_level)
-                                    }
-                                    _ => own_level,
-                                };
-                                let quality = attr_value(&e, b"quality")
-                                    .and_then(|v| v.parse::<u32>().ok())
-                                    .unwrap_or(0);
-                                // statSet form selection (T5.4, PoB2 SkillsTab.lua:354
-                                // reads / :489 writes): invalid/missing/the literal
-                                // "nil" (PoB2's default serialization) → None (default
-                                // primary set). `statSetIndexCalcs` (a separate
-                                // selection on the calcs page) is not handled, and ignored.
-                                let stat_set_index = attr_value(&e, b"statSetIndex")
-                                    .and_then(|v| v.parse::<u32>().ok());
-                                let corrupted =
-                                    attr_value(&e, b"corrupted").is_some_and(|v| v == "true");
-                                let minion = attr_value(&e, b"skillMinion")
-                                    .filter(|v| !v.is_empty() && v.as_str() != "nil");
-                                let minion_skill = attr_value(&e, b"skillMinionSkill")
-                                    .and_then(|v| v.parse::<u32>().ok());
-                                // The first enabled gem in the group with a skillId is
-                                // treated as the active skill (PoB's Gem list has active
-                                // first; nameSpec-only references are always lineage
-                                // supports and don't factor into active-skill determination).
-                                if let Some(skill_id) = &skill_id
-                                    && enabled
-                                    && cur.active_skill_id.is_none()
-                                {
-                                    cur.active_skill_id = Some(skill_id.clone());
-                                    cur.active_gem_level = Some(level);
-                                    cur.active_gem_quality = Some(quality);
+                    "Gem" if in_target_set && let Some(cur) = current.as_mut() => {
+                        let enabled = attr_bool_default_true(&e, b"enabled");
+                        let gem_id = attr_value(&e, b"gemId").filter(|v| !v.is_empty());
+                        let skill_id = attr_value(&e, b"skillId").filter(|v| !v.is_empty());
+                        // A lineage support (e.g. Atziri's Communion) lacks
+                        // skillId/gemId when serialized, only nameSpec — the display
+                        // name is kept, and the orchestrator's `stage_build_view`
+                        // resolves it back to an id by looking it up against granted_effects.
+                        let name_spec = attr_value(&e, b"nameSpec").filter(|v| !v.is_empty());
+                        // Captures skillId + level + quality for every gem
+                        // (both active and support). A missing/invalid quality
+                        // attribute defaults to 0 (no quality), matching PoB2
+                        // SkillsTab.lua's `quality` attribute read (default 0).
+                        if skill_id.is_some() || name_spec.is_some() {
+                            // The gem's own level plus its "+N Level from
+                            // Corruption" (`corruptLevel`, ±1; PoB2 writes the
+                            // literal "nil" for none; vendor CalcSetup.lua:2297-2299).
+                            // A gem without one keeps the level as written.
+                            let own_level = attr_value(&e, b"level")
+                                .and_then(|v| v.parse::<u32>().ok())
+                                .unwrap_or(1);
+                            let level = match attr_value(&e, b"corruptLevel")
+                                .and_then(|v| v.parse::<i64>().ok())
+                            {
+                                Some(corrupt_level) if corrupt_level != 0 => {
+                                    u32::try_from((i64::from(own_level) + corrupt_level).max(1))
+                                        .unwrap_or(own_level)
                                 }
-                                let name_spec_pending = skill_id.is_none();
-                                cur.gem_requirement_levels.push(own_level);
-                                cur.gem_skills.push(crate::build::GemSkillRef {
-                                    enabled,
-                                    count: attr_value(&e, b"count").and_then(|v| v.parse().ok()),
-                                    enable_global_1: attr_value(&e, b"enableGlobal1")
-                                        .map(|v| v == "true"),
-                                    enable_global_2: attr_value(&e, b"enableGlobal2")
-                                        .map(|v| v == "true"),
-                                    skill_id: skill_id.unwrap_or_default(),
-                                    gem_level: level,
-                                    global_level_bonus: None,
-                                    quality,
-                                    stat_set_index,
-                                    name_spec: if name_spec_pending { name_spec } else { None },
-                                    corrupted,
-                                    minion,
-                                    minion_skill,
-                                });
+                                _ => own_level,
+                            };
+                            let quality = attr_value(&e, b"quality")
+                                .and_then(|v| v.parse::<u32>().ok())
+                                .unwrap_or(0);
+                            // statSet form selection (T5.4, PoB2 SkillsTab.lua:354
+                            // reads / :489 writes): invalid/missing/the literal
+                            // "nil" (PoB2's default serialization) → None (default
+                            // primary set). `statSetIndexCalcs` (a separate
+                            // selection on the calcs page) is not handled, and ignored.
+                            let stat_set_index =
+                                attr_value(&e, b"statSetIndex").and_then(|v| v.parse::<u32>().ok());
+                            let corrupted =
+                                attr_value(&e, b"corrupted").is_some_and(|v| v == "true");
+                            let minion = attr_value(&e, b"skillMinion")
+                                .filter(|v| !v.is_empty() && v.as_str() != "nil");
+                            let minion_skill = attr_value(&e, b"skillMinionSkill")
+                                .and_then(|v| v.parse::<u32>().ok());
+                            // The first enabled gem in the group with a skillId is
+                            // treated as the active skill (PoB's Gem list has active
+                            // first; nameSpec-only references are always lineage
+                            // supports and don't factor into active-skill determination).
+                            if let Some(skill_id) = &skill_id
+                                && enabled
+                                && cur.active_skill_id.is_none()
+                            {
+                                cur.active_skill_id = Some(skill_id.clone());
+                                cur.active_gem_level = Some(level);
+                                cur.active_gem_quality = Some(quality);
                             }
-                            if let Some(gem_id) = gem_id {
-                                cur.gem_ids.push(gem_id);
-                            }
+                            let name_spec_pending = skill_id.is_none();
+                            cur.gem_requirement_levels.push(own_level);
+                            cur.gem_skills.push(crate::build::GemSkillRef {
+                                enabled,
+                                count: attr_value(&e, b"count").and_then(|v| v.parse().ok()),
+                                enable_global_1: attr_value(&e, b"enableGlobal1")
+                                    .map(|v| v == "true"),
+                                enable_global_2: attr_value(&e, b"enableGlobal2")
+                                    .map(|v| v == "true"),
+                                skill_id: skill_id.unwrap_or_default(),
+                                gem_level: level,
+                                global_level_bonus: None,
+                                quality,
+                                stat_set_index,
+                                name_spec: if name_spec_pending { name_spec } else { None },
+                                corrupted,
+                                minion,
+                                minion_skill,
+                            });
+                        }
+                        if let Some(gem_id) = gem_id {
+                            cur.gem_ids.push(gem_id);
                         }
                     }
-                    "StatSetIndex" if in_target_set => {
+                    "StatSetIndex"
+                        if in_target_set
+                            && let Some(cur) = current.as_mut()
+                            && let Some(effect) = attr_value(&e, b"grantedEffect")
+                            && let Some(idx) =
+                                attr_value(&e, b"index").and_then(|v| v.parse::<u32>().ok())
+                            && let Some(gem) = cur.gem_skills.last_mut()
+                            && gem.skill_id == effect
+                            && gem.stat_set_index.is_none() =>
+                    {
                         // PoB2's newer statSet serialization (confirmed against real
                         // ninja codes; vendor SkillsTab.lua:375 reads / :508 writes): a
                         // per-grantedEffect child element
@@ -1931,16 +1815,7 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                         // grantedEffect matches that gem's skillId and the attribute
                         // channel hasn't already supplied a value (the older attribute
                         // takes priority, backward compatible).
-                        if let Some(cur) = current.as_mut()
-                            && let Some(effect) = attr_value(&e, b"grantedEffect")
-                            && let Some(idx) =
-                                attr_value(&e, b"index").and_then(|v| v.parse::<u32>().ok())
-                            && let Some(gem) = cur.gem_skills.last_mut()
-                            && gem.skill_id == effect
-                            && gem.stat_set_index.is_none()
-                        {
-                            gem.stat_set_index = Some(idx);
-                        }
+                        gem.stat_set_index = Some(idx);
                     }
                     _ => {}
                 }
@@ -2274,6 +2149,56 @@ Item Level: 80
         assert!(texts.iter().any(|t| t == "+5% to Fire Resistance"));
         // Default entries not mentioned are still there.
         assert!(texts.iter().any(|t| t == "+10% to Cold Resistance"));
+    }
+
+    #[test]
+    fn explicit_untyped_inputs_do_not_receive_omission_defaults() {
+        let xml = r#"<PathOfBuilding2>
+    <Build level="92" className="Ranger" ascendClassName="Deadeye" viewMode="TREE"/>
+    <Config activeConfigSet="2">
+        <ConfigSet id="1">
+            <Input name="questAct 3Jiquani's MachinariumBlackjaw" boolean="false"/>
+        </ConfigSet>
+        <ConfigSet id="2">
+            <Input name="questAct 1ClearfellBeira"/>
+            <Input name="targetBrandedEnemy" number="invalid"/>
+            <Input name="questAct 1Ogham ManorCandlemass" boolean="true" string="+1 to maximum Life"/>
+        </ConfigSet>
+    </Config>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        let config = &build.config;
+        assert!(
+            !config
+                .raw_inputs
+                .values
+                .contains_key("questAct 1ClearfellBeira")
+        );
+        assert!(!config.conditions.contains_key("TargetingBrandedEnemy"));
+        assert!(
+            !config
+                .global_modifier_texts
+                .iter()
+                .any(|text| text == "+10% to Cold Resistance")
+        );
+        assert!(
+            !config
+                .global_modifier_texts
+                .iter()
+                .any(|text| text == "+20 to maximum Life")
+        );
+        assert!(
+            config
+                .global_modifier_texts
+                .iter()
+                .any(|text| text == "+1 to maximum Life")
+        );
+        assert!(
+            config
+                .global_modifier_texts
+                .iter()
+                .any(|text| text == "+10% to Fire Resistance")
+        );
     }
 
     #[test]
@@ -2645,15 +2570,15 @@ Iron Ring
     fn poe1_root_rejected() {
         // PoE2-only: the PoE1 `PathOfBuilding` root is no longer accepted.
         let xml = r#"<PathOfBuilding><Build level="1" className="Witch"/></PathOfBuilding>"#;
-        assert!(matches!(parse_build(xml), Err(XmlError::NotPobRoot(_))));
+        std::assert_matches!(parse_build(xml), Err(XmlError::NotPobRoot(_)));
     }
 
     #[test]
     fn rejects_non_pob_root() {
-        assert!(matches!(
+        std::assert_matches!(
             parse_build("<NotPoB><Build/></NotPoB>"),
             Err(XmlError::NotPobRoot(_))
-        ));
+        );
     }
 
     // Config defaultState import (finding 01-06)

@@ -178,10 +178,7 @@ pub fn parse_adds_physical(clean: &str) -> Option<(f64, f64)> {
 /// Parses "adds N to M <suffix>" → (N, M) (suffix is a damage suffix with no leading
 /// space, e.g. `physical damage`). Returns `None` for any other form.
 pub fn parse_adds_with_suffix(clean: &str, suffix: &str) -> Option<(f64, f64)> {
-    let body = clean
-        .strip_prefix("adds ")?
-        .strip_suffix(suffix)?
-        .strip_suffix(' ')?;
+    let body = clean.strip_circumfix("adds ", suffix)?.strip_suffix(' ')?;
     let (lo, hi) = body.split_once(" to ")?;
     Some((lo.trim().parse().ok()?, hi.trim().parse().ok()?))
 }
@@ -388,9 +385,7 @@ pub fn item_per_level_defence(item: &Item) -> [f64; 3] {
 /// Parses "has +N to <armour/evasion rating/maximum energy shield> per player level" →
 /// `[armour, evasion, es]` (+N per level). Returns `None` for any other form.
 pub fn parse_has_per_level_defence(clean: &str) -> Option<[f64; 3]> {
-    let body = clean
-        .strip_prefix("has +")?
-        .strip_suffix(" per player level")?;
+    let body = clean.strip_circumfix("has +", " per player level")?;
     let (num, rest) = body.split_once(" to ")?;
     let n: f64 = num.trim().parse().ok()?;
     let mut out = [0.0; 3];

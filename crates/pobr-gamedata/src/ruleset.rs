@@ -182,7 +182,7 @@ impl GameData {
             Err(e) => return Err(e),
         };
         // Missing-table tolerance: table absent → None, the consumer falls
-        // back to the old parse_config path.
+        // back to the fields populated on `BuildConfig` at import time.
         let config_catalog = match self.config_options() {
             Ok(v) => Some(ConfigCatalog::new(v.options)),
             Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
@@ -213,9 +213,9 @@ impl GameData {
             if special_overlay.is_none() && special_derived.is_none() && special_vendor.is_none() {
                 None
             } else {
-                let mut entries = special_overlay.map(|d| d.entries).unwrap_or_default();
-                entries.extend(special_derived.map(|d| d.entries).unwrap_or_default());
-                entries.extend(special_vendor.map(|d| d.entries).unwrap_or_default());
+                let mut entries = special_overlay.map_or_default(|d| d.entries);
+                entries.extend(special_derived.map_or_default(|d| d.entries));
+                entries.extend(special_vendor.map_or_default(|d| d.entries));
                 Some(entries)
             };
         Ok(RuleSet {
@@ -290,7 +290,7 @@ mod tests {
         std::fs::create_dir_all(root.join("game_constants.json")).unwrap();
         let result = GameData::new(&root).load_ruleset();
         std::fs::remove_dir_all(root).unwrap();
-        assert!(matches!(result, Err(crate::LoadError::Io { .. })));
+        std::assert_matches!(result, Err(crate::LoadError::Io { .. }));
     }
 
     /// The precision exceptions are looked up by the engine's modifier

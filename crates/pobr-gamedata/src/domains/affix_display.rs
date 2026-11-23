@@ -281,7 +281,7 @@ mod tests {
         files.remove(CATALOG_PATH).unwrap();
         for data in memory_backends(files) {
             let error = data.special_affix_pools().unwrap_err();
-            assert!(matches!(&error, LoadError::Integrity { .. }), "{error}");
+            std::assert_matches!(&error, LoadError::Integrity { .. }, "{error}");
             assert!(error.to_string().contains(CATALOG_PATH), "{error}");
         }
     }
@@ -303,7 +303,7 @@ mod tests {
         );
         for data in memory_backends(files) {
             let error = data.special_affix_pools().unwrap_err();
-            assert!(matches!(&error, LoadError::Integrity { .. }), "{error}");
+            std::assert_matches!(&error, LoadError::Integrity { .. }, "{error}");
             assert!(
                 error
                     .to_string()
@@ -322,7 +322,7 @@ mod tests {
         );
         for data in memory_backends(files) {
             let error = data.special_affix_pools().unwrap_err();
-            assert!(matches!(&error, LoadError::Integrity { .. }), "{error}");
+            std::assert_matches!(&error, LoadError::Integrity { .. }, "{error}");
             assert!(error.to_string().contains(CATALOG_PATH), "{error}");
             assert!(error.to_string().contains("SHA-256 mismatch"), "{error}");
         }
@@ -334,7 +334,7 @@ mod tests {
             for data in memory_backends(sealed_files(Some(content))) {
                 data.validate_manifest().unwrap();
                 let error = data.special_affix_pools().unwrap_err();
-                assert!(matches!(&error, LoadError::Parse { .. }), "{error}");
+                std::assert_matches!(&error, LoadError::Parse { .. }, "{error}");
                 assert!(error.to_string().contains(CATALOG_PATH), "{error}");
             }
         }
@@ -354,14 +354,14 @@ mod tests {
                 GameData::from_memory_releasing(sealed_files(Some(SPECIAL_CATALOG)), prechecked);
             assert_eq!(data.cost_types().unwrap()[0].divisor, 1);
             data.release_domain("cost_types.json");
-            assert!(matches!(
+            std::assert_matches!(
                 data.files
                     .as_ref()
                     .unwrap()
                     .lock()
                     .get("base/cost_types.json"),
                 Some(crate::MemoryEntry::Released)
-            ));
+            );
             for read in 1..=2 {
                 assert_eq!(
                     data.special_affix_pools().unwrap(),

@@ -43,8 +43,8 @@ fn find<'a>(doc: &'a BuffDefinitionsDef, id: &str) -> &'a BuffDef {
 #[test]
 fn sorted_and_first_batch_coverage() {
     let doc = load();
-    for pair in doc.buffs.windows(2) {
-        assert!(pair[0].id <= pair[1].id, "not sorted by id: {}", pair[1].id);
+    for [a, b] in doc.buffs.array_windows() {
+        assert!(a.id <= b.id, "not sorted by id: {}", b.id);
     }
     for id in [
         "Onslaught",

@@ -352,10 +352,10 @@ fn nonfinite_numbers_bad_ranges_overflow_and_unadmitted_contexts_fail() {
         );
     }
     let reversed = lightning(20.0, 10.0);
-    assert!(matches!(
+    std::assert_matches!(
         calculate_conditional_hit(&input(&reversed, 0.1, 100.0)),
         Err(ConditionalHitError::InvalidDamageRange { .. })
-    ));
+    );
     let huge = lightning(f64::MAX, f64::MAX);
     assert_eq!(
         calculate_conditional_hit(&input(&huge, 0.1, 100.0)).unwrap_err(),

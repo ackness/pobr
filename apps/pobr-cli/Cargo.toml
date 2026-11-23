@@ -20,4 +20,7 @@ pobr-i18n.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 clap = { version = "4.6", features = ["derive"] }
-thiserror = "2"
+thiserror.workspace = true
+
+[lints]
+workspace = true

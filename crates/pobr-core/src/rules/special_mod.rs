@@ -174,8 +174,6 @@ struct CompiledModTemplate {
     keyword_flags: KeywordFlags,
     /// Validated tags; unsupported fields fail compilation.
     tags: Vec<CompiledTag>,
-    #[allow(dead_code)]
-    target: Option<ActorRef>,
 }
 
 #[derive(Debug)]
@@ -508,18 +506,6 @@ fn ascii_digits(pattern: &str) -> String {
     out
 }
 
-fn parse_mod_type(literal: &str) -> Option<ModType> {
-    match literal {
-        "BASE" => Some(ModType::Base),
-        "INC" => Some(ModType::Inc),
-        "MORE" => Some(ModType::More),
-        "FLAG" => Some(ModType::Flag),
-        "OVERRIDE" => Some(ModType::Override),
-        "LIST" => Some(ModType::List),
-        _ => None,
-    }
-}
-
 fn compile_template(
     def: &SpecialTemplateDef,
     enums: &BTreeMap<u32, BTreeMap<String, String>>,
@@ -527,10 +513,12 @@ fn compile_template(
     let mut mods = Vec::with_capacity(def.mods.len());
     for m in &def.mods {
         let mod_type =
-            parse_mod_type(&m.mod_type).ok_or_else(|| SpecialCompileError::BadModType {
-                entry_id: def.id.clone(),
-                literal: m.mod_type.clone(),
-            })?;
+            m.mod_type
+                .parse::<ModType>()
+                .map_err(|()| SpecialCompileError::BadModType {
+                    entry_id: def.id.clone(),
+                    literal: m.mod_type.clone(),
+                })?;
         // Validate that the enums reference isn't out of range (name).
         if let TemplateNameDef::Enum { capture_index } = &m.name
             && !enums.contains_key(capture_index)
@@ -555,7 +543,6 @@ fn compile_template(
         let flags = compile_flags(&flag_names);
         let keyword_flags = compile_keyword_flags(&m.keyword_flags);
         let tags = m.tags.iter().filter_map(compile_tag).collect();
-        let target = m.target.as_deref().and_then(parse_target);
         mods.push(CompiledModTemplate {
             name,
             mod_type,
@@ -563,7 +550,6 @@ fn compile_template(
             flags,
             keyword_flags,
             tags,
-            target,
         });
     }
     Ok(CompiledTemplate { mods })
@@ -581,10 +567,12 @@ fn validate_nested_value(
         return Ok(());
     };
     for m in mods {
-        parse_mod_type(&m.mod_type).ok_or_else(|| SpecialCompileError::BadModType {
-            entry_id: entry_id.to_string(),
-            literal: m.mod_type.clone(),
-        })?;
+        m.mod_type
+            .parse::<ModType>()
+            .map_err(|()| SpecialCompileError::BadModType {
+                entry_id: entry_id.to_string(),
+                literal: m.mod_type.clone(),
+            })?;
         if let TemplateNameDef::Enum { capture_index } = &m.name
             && !enums.contains_key(capture_index)
         {
@@ -639,26 +627,6 @@ fn compile_keyword_flags(names: &[String]) -> KeywordFlags {
         }
     }
     flags
-}
-
-fn parse_target(target: &str) -> Option<ActorRef> {
-    match target {
-        // Legacy representation only: validation now rejects non-player
-        // targets. Use explicit LIST wrappers for cross-actor effects.
-        "minion" => Some(ActorRef::Minion),
-        _ => None,
-    }
-}
-
-fn damage_type_bit(name: &str) -> Option<DamageType> {
-    Some(match name {
-        "Physical" => DamageType::Physical,
-        "Fire" => DamageType::Fire,
-        "Cold" => DamageType::Cold,
-        "Lightning" => DamageType::Lightning,
-        "Chaos" => DamageType::Chaos,
-        _ => return None,
-    })
 }
 
 /// Maps a template tag to a pobr `ModTag`. **Mappable list**:
@@ -761,7 +729,7 @@ fn compile_literal_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             // a reverse lookup on vendor's enum, so a miss means corrupt
             // data; validation rejects it in debug and release builds.
             let lookup = |name: &str| {
-                let bare = name.strip_prefix("SkillType:").unwrap_or(name);
+                let bare = name.trim_prefix("SkillType:");
                 SkillTypes::from_pob2_name(bare)
             };
             // `neg`: the skill has none of the types ("Non-Channelling Spells").
@@ -792,7 +760,7 @@ fn compile_literal_tag(tag: &TemplateTagDef) -> Option<ModTag> {
         }
         "DamageType" => {
             let name = scalar_text(tag.fields.get("damageType")?)?;
-            damage_type_bit(&name).map(ModTag::DamageType)
+            name.parse::<DamageType>().ok().map(ModTag::DamageType)
         }
         "Multiplier" => {
             // Multiplier with literal var/div/limit (linear scaling by a
@@ -984,19 +952,17 @@ fn translate_vendor_name(name: &str, flags: &[String]) -> (String, Vec<String>) 
     match name {
         "CritChance" => ("CriticalStrikeChance".into(), flags.to_vec()),
         "CritMultiplier" => ("CriticalStrikeMultiplier".into(), flags.to_vec()),
-        "Speed" => {
-            if let Some(pos) = flags.iter().position(|f| f == "Attack") {
-                let mut rest = flags.to_vec();
-                rest.remove(pos);
-                ("AttackSpeed".into(), rest)
-            } else if let Some(pos) = flags.iter().position(|f| f == "Cast") {
-                let mut rest = flags.to_vec();
-                rest.remove(pos);
-                ("CastSpeed".into(), rest)
-            } else {
-                ("SkillSpeed".into(), flags.to_vec())
-            }
+        "Speed" if let Some(pos) = flags.iter().position(|f| f == "Attack") => {
+            let mut rest = flags.to_vec();
+            rest.remove(pos);
+            ("AttackSpeed".into(), rest)
         }
+        "Speed" if let Some(pos) = flags.iter().position(|f| f == "Cast") => {
+            let mut rest = flags.to_vec();
+            rest.remove(pos);
+            ("CastSpeed".into(), rest)
+        }
+        "Speed" => ("SkillSpeed".into(), flags.to_vec()),
         _ => (name.to_string(), flags.to_vec()),
     }
 }
@@ -1159,7 +1125,7 @@ fn instantiate_mod_def(
     source: &str,
     in_enemy_modifier: bool,
 ) -> Option<Modifier> {
-    let mod_type = parse_mod_type(&def.mod_type)?;
+    let mod_type = def.mod_type.parse::<ModType>().ok()?;
     let name = resolve_name(&def.name, captures, enums).filter(|n| !n.is_empty())?;
     // Same vendor→PoBR name translation as compile_template (on-demand
     // compile path for nested payloads).
@@ -1235,23 +1201,19 @@ fn instantiate_value(
     match value {
         TemplateValueDef::Flag(b) => Some(ModValue::Bool(*b)),
         TemplateValueDef::Number(n) => Some(ModValue::Number(*n)),
-        TemplateValueDef::Capture(s) => {
-            if let Some(idx) = capture_index(s) {
-                let raw = captures.get(idx - 1)?;
-                if matches!(mod_type, ModType::List) {
-                    Some(ModValue::Text(raw.clone()))
-                } else {
-                    raw.parse::<f64>()
-                        .ok()
-                        .filter(|n| n.is_finite())
-                        .map(ModValue::Number)
-                }
+        TemplateValueDef::Capture(s) if let Some(idx) = capture_index(s) => {
+            let raw = captures.get(idx - 1)?;
+            if matches!(mod_type, ModType::List) {
+                Some(ModValue::Text(raw.clone()))
             } else {
-                // Literal string (a LIST text value, e.g. a GrantedPassive
-                // name).
-                Some(ModValue::Text(s.clone()))
+                raw.parse::<f64>()
+                    .ok()
+                    .filter(|n| n.is_finite())
+                    .map(ModValue::Number)
             }
         }
+        // Literal string (a LIST text value, e.g. a GrantedPassive name).
+        TemplateValueDef::Capture(s) => Some(ModValue::Text(s.clone())),
         TemplateValueDef::Expr(expr) => {
             let value = eval_value_expr_def(expr, captures)?;
             value.is_finite().then_some(ModValue::Number(value))
@@ -1601,7 +1563,7 @@ mod tests {
                 {"name":"EnemyModifier","type":"LIST","value":{"mods":[
                     {"name":"Armour","type":"MAX","value":1}]}}],"batch":"V0"}"#);
         let err = SpecialModRules::compile(&[d], &HandlerRegistry::new()).unwrap_err();
-        assert!(matches!(err, SpecialCompileError::BadModType { .. }));
+        std::assert_matches!(err, SpecialCompileError::BadModType { .. });
     }
 
     /// Linear-folded div: `$1 / 100`.
@@ -1673,8 +1635,7 @@ mod tests {
         let reg = HandlerRegistry::new();
         let m = r.try_match("never crit", &reg).unwrap();
         assert_eq!(m.mods[0].tags.len(), 1);
-        assert!(
-            matches!(&m.mods[0].tags[0], ModTag::Condition { var, negated, .. } if var=="NeverCrit" && *negated)
+        std::assert_matches!(&m.mods[0].tags[0], ModTag::Condition { var, negated, .. } if var=="NeverCrit" && *negated
         );
     }
 
@@ -1687,10 +1648,10 @@ mod tests {
         let r = rules(vec![d]);
         let reg = HandlerRegistry::new();
         let m = r.try_match("not channelled", &reg).unwrap();
-        assert!(matches!(
+        std::assert_matches!(
             &m.mods[0].tags[0],
             ModTag::SkillTypesNeg(types) if *types == SkillTypes::CHANNEL
-        ));
+        );
     }
 
     /// Literal Multiplier tag mapping (fork-a: Blood Mage's
@@ -1705,10 +1666,10 @@ mod tests {
         let m = r.try_match("life per es on body", &reg).unwrap();
         assert_eq!(m.mods[0].name.as_str(), "MaximumLife");
         assert_eq!(m.mods[0].tags.len(), 1);
-        assert!(matches!(
+        std::assert_matches!(
             &m.mods[0].tags[0],
             ModTag::Multiplier { var, div, .. } if var == "EnergyShieldOnbodyarmour" && *div == 1.0
-        ));
+        );
     }
 
     /// A slot tag scopes the modifier to the item in that slot, under the
@@ -1756,7 +1717,7 @@ mod tests {
             r#"{"id":"dup","pattern":"b","mods":[{"name":"Y","type":"FLAG","value":true}],"batch":"S2"}"#,
         );
         let err = SpecialModRules::compile(&[a, b], &HandlerRegistry::new()).unwrap_err();
-        assert!(matches!(err, SpecialCompileError::DuplicateId { .. }));
+        std::assert_matches!(err, SpecialCompileError::DuplicateId { .. });
     }
 
     /// Compile error: invalid regex.
@@ -1766,7 +1727,7 @@ mod tests {
             r#"{"id":"t","pattern":"(unclosed","mods":[{"name":"X","type":"FLAG","value":true}],"batch":"S2"}"#,
         );
         let err = SpecialModRules::compile(&[a], &HandlerRegistry::new()).unwrap_err();
-        assert!(matches!(err, SpecialCompileError::BadPattern { .. }));
+        std::assert_matches!(err, SpecialCompileError::BadPattern { .. });
     }
 
     /// Compile error: unknown mod_type.
@@ -1776,7 +1737,7 @@ mod tests {
             r#"{"id":"t","pattern":"a","mods":[{"name":"X","type":"WAT","value":1.0}],"batch":"S2"}"#,
         );
         let err = SpecialModRules::compile(&[a], &HandlerRegistry::new()).unwrap_err();
-        assert!(matches!(err, SpecialCompileError::BadModType { .. }));
+        std::assert_matches!(err, SpecialCompileError::BadModType { .. });
     }
 
     /// Representative entries from the C-2 safe batch (plain INC/BASE
