@@ -10,4 +10,7 @@ pobr-gamedata.workspace = true
 serde.workspace = true
 serde_ignored = "0.1"
 serde_json.workspace = true
-sha2 = { version = "0.11", default-features = false }
+sha2 = { workspace = true, default-features = false }
+
+[lints]
+workspace = true
