@@ -2,7 +2,7 @@
 """Collect data migration measurements and review-only drafts; never accept them."""
 
 import argparse
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import hashlib
 import json
 import math
@@ -54,7 +54,7 @@ def game_digest(manifest):
 
 def output_directory(root, requested):
     base = root / ".cache/data-migrate"
-    name = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ-") + uuid.uuid4().hex[:8]
+    name = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-") + uuid.uuid4().hex[:8]
     raw = Path(requested) if requested else base / name
     if ".." in raw.parts:
         raise ValueError("output path cannot contain '..'")

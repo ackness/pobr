@@ -2,7 +2,7 @@
 """Read-only patch handoff evidence; never a publication or acceptance gate."""
 
 import argparse
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import lru_cache
 import http.client
 import importlib.util
@@ -60,7 +60,7 @@ class Unavailable(Exception):
 
 
 def now():
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def command_text(args, cwd=ROOT, *, raw=False):

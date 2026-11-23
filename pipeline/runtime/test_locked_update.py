@@ -1,5 +1,4 @@
 """Exercise explicit locked selection and rollback with real small owner packages."""
-import importlib.util
 import contextlib
 import io
 import json
@@ -13,9 +12,7 @@ from unittest.mock import patch
 from pipeline.runtime import data_bundle as bundle
 from pipeline.runtime import data_snapshot as snapshot
 from pipeline.runtime import locked_update as update
-spec = importlib.util.spec_from_file_location('build_fixture', Path(__file__).with_name('test_build_data.py'))
-fixture = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(fixture)
+from pipeline.runtime import test_build_data as fixture
 ROOT = Path(__file__).resolve().parents[2]
 
 

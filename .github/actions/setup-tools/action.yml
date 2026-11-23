@@ -37,7 +37,7 @@ runs:
       if: inputs.python == 'true'
       with:
         python-version: ${{ steps.versions.outputs.python }}
-    - uses: pnpm/action-setup@v6.1.0
+    - uses: pnpm/action-setup@v6.1.1
       if: inputs.node == 'true'
       with:
         version: ${{ steps.versions.outputs.pnpm }}
@@ -62,7 +62,7 @@ runs:
         # An explicit override prevents rustup from adding the root file's WASM
         # target later when a host-only job invokes Cargo.
         echo "RUSTUP_TOOLCHAIN=$RUST_VERSION" >> "$GITHUB_ENV"
-    - uses: taiki-e/install-action@v2.88.1
+    - uses: taiki-e/install-action@v2.90.8
       if: inputs.wasm == 'true'
       with:
         tool: wasm-pack@${{ steps.versions.outputs.wasm_pack }}
@@ -73,10 +73,10 @@ runs:
       working-directory: ${{ github.action_path }}/../../..
       env:
         ACTIONLINT_VERSION: ${{ steps.versions.outputs.actionlint }}
-      run: python3 devs/scripts/install-actionlint.py "$ACTIONLINT_VERSION"
+      run: python3 devs/scripts/install-tool.py actionlint "$ACTIONLINT_VERSION"
     # Upstream LuaJIT has no official binaries for this pin. Retain only its
     # executable, not the source tree, and compile once on a genuine cache miss.
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       if: inputs.oracle == 'true'
       with:
         path: ~/.cache/pobr/runtimes/*/src/luajit
@@ -94,4 +94,4 @@ runs:
       working-directory: ${{ github.action_path }}/../../..
       env:
         GH_VERSION: ${{ steps.versions.outputs.gh }}
-      run: python3 devs/scripts/install-gh.py "$GH_VERSION"
+      run: python3 devs/scripts/install-tool.py gh "$GH_VERSION"

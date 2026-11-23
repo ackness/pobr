@@ -3,7 +3,6 @@
 本文档覆盖 PoE2（0.5.0）**触发 (Trigger)** 体系的「机制与速率」层：触发来源分类、元宝石的**能量 (Energy)** 量化模型、触发冷却与**触发速率上限 (Trigger Rate Cap)**、服务器帧节流、CoC / CWC 的 PoE2 对应物、触发技能的伤害/暴击上下文，以及多技能轮转 (rotation) 的建模。
 
 > 本文与既有文档**互补、不重复**：
-> - 元宝石的基础概念、Spirit 保留、敌人力量 (Monster Power) 概览见 [meta-gems.md](./meta-gems.md)，本文**补充能量获取/消耗的量化公式与触发速率**；
 > - 冷却 (Cooldown)、消耗/保留、引导 (Channelling)、重复 (Repeat) 的技能侧机制见 [skill-mechanics.md](./skill-mechanics.md)，本文只讲**冷却如何门控触发速率**；
 > - Spirit 保留池/效率/Presence 公式见 [recovery-charges-buffs.md](./recovery-charges-buffs.md)；
 > - 触发技能的伤害/暴击计算沿用 [critical-hits.md](./critical-hits.md) / [damage-scaling.md](./damage-scaling.md)，本文只讲**触发上下文的差异**。
@@ -45,8 +44,6 @@ PoB2 `isTriggered()` 把「被触发技能」识别为：`triggered` / `SkillTyp
 ---
 
 ## 二、能量 (Energy) 机制量化
-
-> 与 [meta-gems.md](./meta-gems.md) §能量 交叉引用——此处补充**获取/消耗公式与最大能量**。
 
 触发型元宝石用 **Energy** 计数器决定何时触发：**攒到最大能量 → 触发所有插槽法术 → 能量清零**[^poe2db-energy][^poe2wiki-coc]。每个产能技能**有自己独立的能量计数**；**被触发技能的直接效果不能产能**（防止自循环）[^poe2db-energy]。
 
@@ -90,7 +87,7 @@ PoB2 `isTriggered()` 把「被触发技能」识别为：`triggered` / `SkillTyp
 
 > centienergy = 1/100 能量。Freeze 的基数是 Crit/Ignite/Shock 的 10 倍——冰冻触发显著更快[^pob2-actint]。
 
-### 2.3 Monster Power（与 meta-gems.md 交叉，补充范围）
+### 2.3 Monster Power
 
 `Power = 内部生命乘数 × 稀有度系数`。内部乘数一般 **0.5–3**（弱小怪 ~0.5，大型威胁怪 ~3）；稀有度系数 **普通 1 / 魔法 2 / 稀有 5 / 独特固定 20**[^mobalytics-monsterpower][^poe2wiki-coc]。游戏术语表 Monster Power 条目原文：“An average monster has a Power of 1, strong monsters can have Power of 2 to 3”，“Unique monsters always have 20 Power”[^poe2db-energy]。
 
@@ -131,7 +128,7 @@ PoB2 `Data.lua`：`ServerTickTime = 0.033`，`ServerTickRate = 1/0.033 ≈ 30.3/
 
 - **所有触发冷却向上取整到服务器帧**：`ceil(cd × ServerTickRate) / ServerTickRate`。即触发只能发生在帧边界，真实冷却被"四舍五入"到下一帧。
 - 例外：`skillData.ignoresTickRate` / `triggeredBy.ignoresTickRate` 的技能跳过取整（按真实值走，配合能量/充能式估算）[^pob2-calctriggers]。
-- 这与冷却/持续/速度的帧上限一致——见 [skill-mechanics.md](./skill-mechanics.md) §冷却、[recovery-charges-buffs.md] 同款 `ServerTickRate`。
+- 这与冷却/持续/速度的帧上限一致——见 [skill-mechanics.md](./skill-mechanics.md) §冷却、[recovery-charges-buffs.md](./recovery-charges-buffs.md) 同款 `ServerTickRate`。
 
 ### 3.3 实际触发速率 = min(上限, 源速率)
 
@@ -196,12 +193,12 @@ next_trig = ceil_b( floor_b(now, ServerTickTime) + skill.cd, ServerTickTime )   
 
 ## 六、触发技能的伤害 / 暴击 / 上下文
 
-被触发技能的伤害、暴击、命中**沿用标准 calc**（[critical-hits.md](./critical-hits.md) / [damage-scaling.md]），但有触发专属差异：
+被触发技能的伤害、暴击、命中**沿用标准 calc**（[critical-hits.md](./critical-hits.md) / [damage-scaling.md](./damage-scaling.md)），但有触发专属差异：
 
 - **暴击独立滚动**：触发的击中按每次击中独立滚暴击阈值（与持续/引导同，不算 Rerolling）——见 [critical-hits.md](./critical-hits.md) §暴击检定。
 - **DPS = 触发速率 × 单次伤害**：触发技能的 DPS 由 `SkillTriggerRate`（§三/§五）× 单次击中/暴击效果决定，而非自身施法速度。
 - **`less Damage` 惩罚**：CoC 类「Socketed Skills deal 20% less Damage」是 `Damage MORE −20`。
-- **Spirit 保留**：元宝石按宝石保留 Spirit（CoC=100），且作为持续增益可被持续增益辅助宝石支持——见 [meta-gems.md](./meta-gems.md) §精神保留、[recovery-charges-buffs.md](./recovery-charges-buffs.md) §保留效率。**成本倍乘 ≠ 保留倍乘**。
+- **Spirit 保留**：元宝石按宝石保留 Spirit（CoC=100），且作为持续增益可被持续增益辅助宝石支持——见 [recovery-charges-buffs.md](./recovery-charges-buffs.md) §保留效率。**成本倍乘 ≠ 保留倍乘**。
 
 ---
 

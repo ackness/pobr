@@ -4,7 +4,6 @@
 
 > **分工说明**：
 > - **异常状态** (流血/毒/点燃/冰冷/冻结/感电/电击) 归 [`ailments.md`](ailments.md)，本文不重复。
-> - **眩晕 / 重眩晕** 归 [`stun.md`](stun.md)。
 > - **护甲与伤害减免公式** 归 [`armour.md`](armour.md)；本文「破甲」一节只讲减益侧机制，减伤公式见 armour.md。
 > - **暴击弱点 (Critical Weakness)** 已在 [`critical-hits.md`](critical-hits.md) 详述，本文只简述并指回。
 >
@@ -182,9 +181,9 @@ enemyDB:ReplaceMod("Armour", "OVERRIDE", -enemyDB:Sum("BASE", {source="Config"},
 | **Maim（残废）** | 敌方 **-30% increased 移动速度** + **-15% increased 闪避**；解锁"对 Maimed 敌人"词条（如对 Maimed +近战伤害） | `MovementSpeed INC -30` / `Evasion INC -15`（cond `Maimed`）；`Condition:Maimed` |
 | **Blind（致盲）** | 被致盲一方 **20% less 命中 (Accuracy)** + **20% less 闪避 (Evasion)**（游戏关键词原文："Being Blinded causes 20% less Accuracy Rating and Evasion Rating, and lasts for 4 seconds unless otherwise specified"）；"Blind Effect" 缩放该数值，结果取整 | PoB2：`Blind` FLAG（cond `Blinded`）；`BlindEffect` OVERRIDE 可设效果。PoBR：`calc::blind`（env_finalize 阶段 6.8）给被致盲一方写入 `Accuracy` / `Evasion` MORE；敌方致盲由 `conditionEnemyBlinded` 声明，仅在 effective 视图生效 |
 | **Hinder（妨碍）** | 降低目标移动速度（Wither 技能附带）；不与多来源相加，刷新持续 | `Condition:Hindered` |
-| **Pin（钉刺）** | 目标无法移动且无法闪避 4 秒，钉刺瞬间附带 Light Stun；属 Poise 系（见 stun.md / ailments.md） | `Condition:Pinned` + `Immobilised` + `CannotEvade` + `StunnedRecently` |
-| **Daze（眩目）** | 目标承受 **50% more 眩晕积累**，8 秒 | `Condition:Dazed`（详见 stun.md） |
-| **Heavy Stun（重眩晕）/ Electrocute / Freeze** | Poise/控制类，**置 `Immobilised`** | 见 [`stun.md`](stun.md) / [`ailments.md`](ailments.md) |
+| **Pin（钉刺）** | 目标无法移动且无法闪避 4 秒，钉刺瞬间附带 Light Stun；属 Poise 系（见 ailments.md） | `Condition:Pinned` + `Immobilised` + `CannotEvade` + `StunnedRecently` |
+| **Daze（眩目）** | 目标承受 **50% more 眩晕积累**，8 秒 | `Condition:Dazed` |
+| **Heavy Stun（重眩晕）/ Electrocute / Freeze** | Poise/控制类，**置 `Immobilised`** | 见 [`ailments.md`](ailments.md) |
 | **Taunt（嘲讽）** | 强制目标攻击你 | `Condition:Taunted` |
 | **Immobilised（被定身）** | 冻结/钉刺/重眩晕/电击等导致无法移动的统称条件 | `Condition:Immobilised` |
 
@@ -213,7 +212,7 @@ enemyDB:ReplaceMod("Armour", "OVERRIDE", -enemyDB:Sum("BASE", {source="Config"},
 ## 0.5.0 / 近期版本变化备注
 
 - **0.3.0**：诅咒对高稀有度怪物效果降低（魔法 15% / 稀有 30% / 唯一·Boss 50% less）。Despair 大幅加强为 -35~-49% 混沌抗（原 -20~-24%）；Enfeeble 改为统一 21~29% less damage（不再区分唯一/非唯一）[^poe2-030-patch]。
-- **0.5.0**：未发现针对 curses/exposure/wither/armour-break 的专门数值改动（patch notes 主要改护甲数值缩放与重眩晕衰减，见 armour.md / stun.md）[^maxroll-050-patchnotes]。如后续 PoB2 数据更新，以一手数据校正本节。
+- **0.5.0**：未发现针对 curses/exposure/wither/armour-break 的专门数值改动（patch notes 主要改护甲数值缩放与重眩晕衰减，见 armour.md）[^maxroll-050-patchnotes]。如后续 PoB2 数据更新，以一手数据校正本节。
 - **Wither 的数值**：PoE2 为 5% / 10 层，与 PoB2 一致（见上文凋萎节）。
 
 ---

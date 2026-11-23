@@ -3,9 +3,8 @@
 本文档汇总 PoE2（0.5.0）中**恢复 (Recovery)**、**充能 (Charges)**、**增益 (Buffs)**、**EHP / 防御层乘数**以及 **Spirit 保留 (Reservation)**、**存在范围 (Presence)** 的细分机制。
 
 > 本文与既有文档**互补、不重复**：
-> - 伤害承受顺序（ES → 生命 → 符咒护佑 → 死亡）见 [damage-defence-order.md](./damage-defence-order.md)；
 > - 能量护盾充能 (Recharge) 与混沌双倍伤害、0.5.0 偷取重制概览见 [energy-shield.md](./energy-shield.md)；
-> - 护甲/PDR、闪避、格挡、抗性各自成文，本文只补它们没覆盖的「恢复 / 充能 / 增益 / EHP 层乘数」主题，并交叉引用。
+> - 本文重点补齐「恢复 / 充能 / 增益 / EHP 层乘数」主题，并交叉引用既有防御文档。
 >
 > 末尾「PoB2 计算实现」给出核对过的真实变量/旗标名，是 pobr 的回归基准。
 
@@ -153,7 +152,7 @@ PoE2 的 Tailwind 是「行动速度 (Action Speed)」类增益（每层提升 a
 
 ## 四、防御层与 EHP 细节 (Defensive Layers & EHP)
 
-伤害承受**顺序**与各防御层（护甲/闪避/ES/格挡/抗性/符咒护佑）已在 [damage-defence-order.md](./damage-defence-order.md) 等文档覆盖。本节只补**「承受伤害乘数」的叠加规则**与 **Max Hit / EHP**。
+本节补齐**「承受伤害乘数」的叠加规则**与 **Max Hit / EHP**。
 
 ### 4.1 「承受的伤害」乘数 (Damage Taken Multiplier)
 
