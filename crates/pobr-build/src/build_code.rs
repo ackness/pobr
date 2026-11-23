@@ -160,37 +160,31 @@ mod tests {
 
     #[test]
     fn empty_code_errors() {
-        assert!(matches!(
-            decode_pob_code("   \n\t "),
-            Err(BuildCodeError::Empty)
-        ));
+        std::assert_matches!(decode_pob_code("   \n\t "), Err(BuildCodeError::Empty));
     }
 
     #[test]
     fn garbage_base64_errors() {
-        assert!(matches!(
+        std::assert_matches!(
             decode_pob_code("!!!not base64!!!"),
             Err(BuildCodeError::Base64(_))
-        ));
+        );
     }
 
     #[test]
     fn non_zlib_payload_errors() {
         // Valid base64 but not a zlib stream.
         let code = URL_SAFE_NO_PAD.encode(b"hello world not zlib");
-        assert!(matches!(
-            decode_pob_code(&code),
-            Err(BuildCodeError::Inflate(_))
-        ));
+        std::assert_matches!(decode_pob_code(&code), Err(BuildCodeError::Inflate(_)));
     }
 
     #[test]
     fn oversized_code_errors_before_decoding() {
         let oversized = "a".repeat(MAX_INPUT_BYTES + 1);
-        assert!(matches!(
+        std::assert_matches!(
             decode_pob_code(&oversized),
             Err(BuildCodeError::InputTooLarge { len, limit })
                 if len == MAX_INPUT_BYTES + 1 && limit == MAX_INPUT_BYTES
-        ));
+        );
     }
 }

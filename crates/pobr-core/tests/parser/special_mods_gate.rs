@@ -45,9 +45,8 @@ fn read_layer(path: std::path::PathBuf) -> Option<SpecialModsDef> {
 /// Match runtime precedence: common entries, version overrides by id, then
 /// generated derived/vendor rules. Optional layers may be absent.
 fn load_entries() -> Vec<SpecialTemplateDef> {
-    let mut entries = read_layer(overlay_common_special_mods_path())
-        .map(|doc| doc.entries)
-        .unwrap_or_default();
+    let mut entries =
+        read_layer(overlay_common_special_mods_path()).map_or_default(|doc| doc.entries);
     let version = read_layer(special_mods_path()).expect("read prepared special_mods.json");
     for entry in version.entries {
         match entries.iter_mut().find(|e| e.id == entry.id) {

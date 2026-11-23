@@ -84,16 +84,12 @@ fn passive_variant_batch_timing() {
         let mut salt = 0usize;
         let mut run = |count: usize, baseline: bool| -> f64 {
             salt += 1;
-            let variants: Vec<Value> = (0..count)
-                .map(|i| {
-                    // 3 nodes per variant, different every call so the response cache never hits.
-                    let at = salt * 997 + i * 3;
-                    let pick: Vec<u64> = (0..3)
-                        .map(|k| nodes[(at + k * 131) % nodes.len()])
-                        .collect();
-                    json!({ "allocate_nodes": pick })
-                })
-                .collect();
+            let variants = Vec::from_fn(count, |i| {
+                // 3 nodes per variant, different every call so the response cache never hits.
+                let at = salt * 997 + i * 3;
+                let pick = Vec::from_fn(3, |k| nodes[(at + k * 131) % nodes.len()]);
+                json!({ "allocate_nodes": pick })
+            });
             let body = json!({ "request": { "pob_code": code }, "stats": stats,
                 "variants": variants, "include_baseline": baseline })
             .to_string();
@@ -109,15 +105,11 @@ fn passive_variant_batch_timing() {
         // The extreme case: a lot of points in one go, in one variant or spread over many.
         let mut big = |per_variant: usize, count: usize| -> f64 {
             salt += 1;
-            let variants: Vec<Value> = (0..count)
-                .map(|i| {
-                    let at = salt * 389 + i * 7;
-                    let pick: Vec<u64> = (0..per_variant)
-                        .map(|k| nodes[(at + k * 13) % nodes.len()])
-                        .collect();
-                    json!({ "allocate_nodes": pick })
-                })
-                .collect();
+            let variants = Vec::from_fn(count, |i| {
+                let at = salt * 389 + i * 7;
+                let pick = Vec::from_fn(per_variant, |k| nodes[(at + k * 13) % nodes.len()]);
+                json!({ "allocate_nodes": pick })
+            });
             let body = json!({ "request": { "pob_code": code }, "stats": stats,
                 "variants": variants, "include_baseline": false })
             .to_string();
@@ -143,7 +135,7 @@ fn passive_variant_batch_timing() {
             let ms = start.elapsed().as_secs_f64() * 1000.0;
             let entries = serde_json::from_str::<Value>(&out).unwrap()["entries"]
                 .as_array()
-                .map_or(0, Vec::len);
+                .map_or_default(Vec::len);
             println!(
                 "  heatmap depth {depth}: {entries} nodes in {ms:.0} ms ({:.2} ms/node)",
                 ms / entries.max(1) as f64

@@ -15,7 +15,7 @@
 //! `buff:<name>` (buff domain, budget ≤8); total <100 (a hard-boundary monitor for the
 //! DSL — approaching the cap signals the data-driven split has failed).
 
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, LazyLock};
 
 use pobr_core::CampaignProgress;
 use pobr_core::modifier::{ModTag, ModValue, Modifier};
@@ -73,8 +73,8 @@ pub fn build_registry() -> HandlerRegistry {
 
 /// Returns the process-wide shared handler registry, initialized once via [`build_registry`].
 pub fn shared_registry() -> Arc<HandlerRegistry> {
-    static REGISTRY: OnceLock<Arc<HandlerRegistry>> = OnceLock::new();
-    Arc::clone(REGISTRY.get_or_init(|| Arc::new(build_registry())))
+    static REGISTRY: LazyLock<Arc<HandlerRegistry>> = LazyLock::new(|| Arc::new(build_registry()));
+    Arc::clone(&REGISTRY)
 }
 
 /// First batch of config handlers.
@@ -317,9 +317,8 @@ fn combat_gated(modifier: Modifier) -> Modifier {
 /// scalar output (a list, option values `None/Boss/Pinnacle/Uber`).
 ///
 /// `None` = the entry isn't active or holds a string outside the table; the consumer
-/// falls back to the orchestrator option's tier (matches the legacy parse_config path's
-/// semantics; the catalog's default defaultIndex=3 resolves to Pinnacle, which is
-/// exactly the PoB2/orchestrator default tier).
+/// falls back to the orchestrator option's tier (the catalog's default defaultIndex=3
+/// resolves to Pinnacle, matching the PoB2/orchestrator default tier).
 pub fn enemy_tier_from_config(outcome: &ConfigOutcome) -> Option<EnemyTier> {
     match outcome.scalars.get("enemyIsBoss")? {
         ConfigInputValue::Text(text) => EnemyTier::from_pob_str(text),

@@ -63,17 +63,11 @@ pub(crate) fn critical_resolution() {
 }
 
 pub(crate) fn observe<T>(f: impl FnOnce() -> T) -> (T, Reads) {
-    struct Reset;
-    impl Drop for Reset {
-        fn drop(&mut self) {
-            READS.with_borrow_mut(|slot| *slot = None);
-        }
-    }
     READS.with_borrow_mut(|slot| {
         assert!(slot.is_none(), "hit dependency probes cannot nest");
         *slot = Some(Reads::default());
     });
-    let _reset = Reset;
+    let _reset = core::mem::DropGuard::new((), |()| READS.with_borrow_mut(|slot| *slot = None));
     let value = f();
     let reads = READS.with_borrow_mut(|slot| slot.take().expect("probe is active"));
     (value, reads)

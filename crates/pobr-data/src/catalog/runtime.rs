@@ -147,17 +147,11 @@ pub mod query_probe {
 
     /// Runs one observation on the current thread and resets even after panic.
     pub fn observe<T>(f: impl FnOnce() -> T) -> (T, Reads) {
-        struct Reset;
-        impl Drop for Reset {
-            fn drop(&mut self) {
-                READS.with(|slot| slot.set(None));
-            }
-        }
         READS.with(|slot| {
             assert!(slot.get().is_none(), "runtime query probes cannot nest");
             slot.set(Some(Reads::default()));
         });
-        let _reset = Reset;
+        let _reset = core::mem::DropGuard::new((), |()| READS.with(|slot| slot.set(None)));
         let value = f();
         let reads = READS.with(|slot| slot.take().expect("runtime query probe is active"));
         (value, reads)

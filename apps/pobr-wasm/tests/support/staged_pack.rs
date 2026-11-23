@@ -1,18 +1,18 @@
 use std::path::Path;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
 /// Runtime JSON files and the shared overlay, read once per test binary under
 /// the relative paths the browser stages them with.
 pub fn pack() -> &'static [(String, Vec<u8>)] {
-    static FILES: OnceLock<Vec<(String, Vec<u8>)>> = OnceLock::new();
-    FILES.get_or_init(|| {
+    static FILES: LazyLock<Vec<(String, Vec<u8>)>> = LazyLock::new(|| {
         let version = pobr_gamedata::current_data_dir();
         let mut files = Vec::new();
         walk(&version, &version, "", &mut files);
         let common = version.parent().unwrap().join("overlay-common");
         walk(&common, &common, "overlay-common/", &mut files);
         files
-    })
+    });
+    &FILES
 }
 
 fn walk(root: &Path, dir: &Path, prefix: &str, out: &mut Vec<(String, Vec<u8>)>) {

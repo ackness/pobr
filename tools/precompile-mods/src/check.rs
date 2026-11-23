@@ -4,7 +4,6 @@
 //! StatId remains open: syntax validation is not a calculation-support claim.
 
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
@@ -13,15 +12,7 @@ use serde::de::DeserializeOwned;
 use pobr_core::mod_parser::CompiledParserRules;
 use pobr_core::rules::{HandlerRegistry, SpecialModRules, register_special_handlers};
 use pobr_data::catalog::parser_rules::{ModParserRulesDoc, SpecialModsDef};
-use pobr_gamedata::GameData;
-
-/// Lowercase hex SHA-256 of `bytes`.
-fn sha256_hex(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
-}
+use pobr_gamedata::{GameData, sha256_hex};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RuleOrigin {
@@ -208,8 +199,7 @@ pub fn inspect(data_dir: &Path) -> Result<ValidationReport, String> {
 }
 
 fn relative(path: &Path, data_dir: &Path) -> String {
-    path.strip_prefix(data_dir.parent().unwrap_or(data_dir))
-        .unwrap_or(path)
+    path.trim_prefix(data_dir.parent().unwrap_or(data_dir))
         .to_string_lossy()
         .replace('\\', "/")
 }
@@ -366,9 +356,7 @@ mod tests {
     fn body_armour_crit_rule_has_effective_common_provenance() {
         {
             let version = pobr_gamedata::data_version();
-            let data = Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../../data")
-                .join(&version);
+            let data = pobr_gamedata::repo_data_root().join(&version);
             let report = inspect(&data).unwrap();
             let rules = crate::parsed::compile_parser_rules(&data).unwrap();
             let parsed = pobr_core::mod_parser::parse_mod_engine(
@@ -389,9 +377,7 @@ mod tests {
     #[test]
     fn repo_overlay_passes_check() {
         let version = pobr_gamedata::data_version();
-        let data_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../data")
-            .join(&version);
+        let data_dir = pobr_gamedata::repo_data_root().join(&version);
         GameData::new(&data_dir)
             .install_skill_type_names()
             .expect("install the prepared package's skill type names");

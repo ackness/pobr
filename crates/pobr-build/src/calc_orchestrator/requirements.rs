@@ -106,18 +106,19 @@ pub(super) fn requirement_snapshots(build: &Build, data: &BuildData) -> Vec<(Str
                 if let Some(colour @ 1..=3) = gem.gem_colour {
                     supports[(colour - 1) as usize] += 5.0;
                 }
-            } else if group.source.is_none() && !(index == 0 && group.granted_level.is_some()) {
+            } else if group.source.is_none()
+                && !(index == 0 && group.granted_level.is_some())
                 // Added skill levels change the skill, not the gem's requirements.
-                if let Some(requirements) = gem.attribute_requirements(level) {
-                    maximum(
-                        if gem.gem_tags.iter().any(|tag| tag == "melee") {
-                            "MeleeGem"
-                        } else {
-                            "Gem"
-                        },
-                        requirements.map(f64::from),
-                    );
-                }
+                && let Some(requirements) = gem.attribute_requirements(level)
+            {
+                maximum(
+                    if gem.gem_tags.iter().any(|tag| tag == "melee") {
+                        "MeleeGem"
+                    } else {
+                        "Gem"
+                    },
+                    requirements.map(f64::from),
+                );
             }
         }
     }

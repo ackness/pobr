@@ -28,8 +28,8 @@ fn sixty_one_entries_sorted_unique() {
     );
     assert!(
         def.configs
-            .windows(2)
-            .all(|w| w[0].key.name < w[1].key.name),
+            .array_windows()
+            .all(|[a, b]| a.key.name < b.key.name),
         "key.name should be strictly ascending (unique)"
     );
 }
@@ -80,11 +80,9 @@ fn curation_discipline() {
             "{}: missing vendor anchor",
             c.key.name
         );
-        assert!(
-            matches!(
-                c.key.kind.as_str(),
-                "skill" | "triggered_by" | "unique_item"
-            ),
+        std::assert_matches!(
+            c.key.kind.as_str(),
+            "skill" | "triggered_by" | "unique_item",
             "{}: invalid kind {}",
             c.key.name,
             c.key.kind

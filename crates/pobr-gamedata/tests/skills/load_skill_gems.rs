@@ -143,7 +143,7 @@ fn granted_effect_levels_load_with_ascending_levels() {
         rows.len()
     );
     assert!(
-        rows.windows(2).all(|w| w[0].level <= w[1].level),
+        rows.array_windows().all(|[a, b]| a.level <= b.level),
         "per-level array should be ascending by level"
     );
 

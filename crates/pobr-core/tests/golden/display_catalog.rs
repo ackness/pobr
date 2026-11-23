@@ -146,11 +146,9 @@ fn catalog_comparison_directions_match_costs_damage_and_duration_semantics() {
 fn catalog_entries_have_known_status_and_valid_optional_reference_keys() {
     let catalog = display_catalog();
     for def in &catalog {
-        assert!(
-            matches!(
-                def.parity_status,
-                ParityStatus::Computed | ParityStatus::Planned
-            ),
+        std::assert_matches!(
+            def.parity_status,
+            ParityStatus::Computed | ParityStatus::Planned,
             "{} has an unexpected status",
             def.id.as_str()
         );

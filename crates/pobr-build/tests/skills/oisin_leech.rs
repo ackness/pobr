@@ -91,7 +91,7 @@ fn assert_mana_instance(session: &CompletedCalculationSession, amount: f64) {
             .inputs
             .iter()
             .find(|(id, _)| id == name)
-            .map_or(0.0, |(_, value)| *value)
+            .map_or_default(|(_, value)| *value)
     };
     close(input("PrimaryLeechedAmount"), amount);
     let rate = amount.min(input("PrimaryLeechRateCap"));

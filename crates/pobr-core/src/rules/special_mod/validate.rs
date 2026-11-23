@@ -132,7 +132,7 @@ fn modifier(
         }
     }
     // Preserve the existing compiler's dedicated BadModType error.
-    if parse_mod_type(&m.mod_type).is_none() {
+    if m.mod_type.parse::<ModType>().is_err() {
         return Ok(());
     }
     for flag in &m.flags {

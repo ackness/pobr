@@ -368,7 +368,7 @@ impl SupportGemSpec {
         self.level.map(|lvl| {
             SourceId::new(
                 SourceKind::SkillLevel,
-                format!("support.{}.level{}", self.gem_id, lvl),
+                format!("support.{}.level{lvl}", self.gem_id),
             )
         })
     }
@@ -378,7 +378,7 @@ impl SupportGemSpec {
         self.quality.map(|q| {
             SourceId::new(
                 SourceKind::GemQuality,
-                format!("support.{}.q{}", self.gem_id, q),
+                format!("support.{}.q{q}", self.gem_id),
             )
         })
     }

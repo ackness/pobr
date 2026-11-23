@@ -70,7 +70,6 @@ fn mods_load_with_resolved_stat_foreign_keys() {
 #[test]
 fn mod_families_survive_runtime_loading_and_json_roundtrips() {
     use serde_json::{Value, json};
-    use sha2::{Digest, Sha256};
     use std::collections::BTreeMap;
 
     for (name, field, expected) in [
@@ -91,10 +90,7 @@ fn mod_families_survive_runtime_loading_and_json_roundtrips() {
             raw["families"] = field;
         }
         let bytes = serde_json::to_vec(&json!([raw])).unwrap();
-        let digest: String = Sha256::digest(&bytes)
-            .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect();
+        let digest = pobr_gamedata::sha256_hex(&bytes);
         let manifest = json!({
             "schema_version":3, "poe_version":"1.2.3", "languages":[],
             "contract_version": pobr_data::CONTRACT_VERSION,

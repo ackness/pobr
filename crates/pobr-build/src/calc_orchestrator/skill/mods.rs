@@ -235,7 +235,7 @@ pub(crate) fn resolved_enemy_level(
     } else {
         config_enemy_level(build).unwrap_or(default_level)
     };
-    level.max(min_level).min(presets.max_enemy_level)
+    level.clamp(min_level, presets.max_enemy_level)
 }
 
 /// Crossbow reload data channel (matching vendor `CalcOffence.lua:1118-1122`'s
@@ -305,7 +305,7 @@ pub(crate) fn main_skill_modifiers(
 ) -> Vec<Modifier> {
     let selected = super::resolve::selected_group_effect(data, group)
         .filter(|effect| effect.skill_id == skill_id);
-    let quality = selected.as_ref().map_or(0, |gem| gem.quality);
+    let quality = selected.as_ref().map_or_default(|gem| gem.quality);
     let set_index = selected.as_ref().and_then(|gem| gem.stat_set_index);
     let quality_stats = selected.map_or_else(Vec::new, |gem| {
         data.effect_stats_with_quality(skill_id, gem.gem_level, quality, set_index, use_alt_quality)
@@ -557,8 +557,8 @@ pub(crate) fn totem_base_modifiers(
         Modifier::number("TotemLifeBase", ModType::Base, life).with_origin(origin(
             "TotemLifeBase",
             format!(
-                "level {monster_level} totem: AllyLife {} x LifeMultiplier {}",
-                ally_life, totem.life_multiplier
+                "level {monster_level} totem: AllyLife {ally_life} x LifeMultiplier {}",
+                totem.life_multiplier
             ),
         )),
     ];

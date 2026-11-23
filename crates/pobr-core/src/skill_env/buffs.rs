@@ -489,8 +489,8 @@ pub fn spirit_reservation_modifiers(
                         format!("spirit.{}", gem.skill_id),
                     ))
                     .with_raw_text(format!(
-                        "life reservation from spirit {} ({} × {spirit_to_life}%)",
-                        gem.skill_id, flat
+                        "life reservation from spirit {} ({flat} × {spirit_to_life}%)",
+                        gem.skill_id
                     ));
                     mods.push(
                         Modifier::number("LifeReservedPercent", ModType::Inc, percent)
@@ -530,8 +530,8 @@ pub fn spirit_reservation_modifiers(
                 format!("spirit.{}", gem.skill_id),
             ))
             .with_raw_text(format!(
-                "spirit reservation {} ({} × {})",
-                gem.skill_id, flat, mult
+                "spirit reservation {} ({flat} × {mult})",
+                gem.skill_id
             ));
             mods.push(
                 Modifier::number("SkillSpiritReservationBase", ModType::Base, reserved)

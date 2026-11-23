@@ -38,6 +38,7 @@ use pobr_data::catalog::{
 };
 
 pub use identity::DataIdentity;
+pub use manifest::sha256_hex;
 pub use overlay::{MergeError, merge};
 pub use ruleset::RuleSet;
 
@@ -289,7 +290,7 @@ impl GameData {
     /// Reduces a path (possibly carrying the `root` prefix) to an
     /// in-memory table key.
     fn memory_key(&self, path: &Path) -> String {
-        let rel = path.strip_prefix(&self.root).unwrap_or(path);
+        let rel = path.trim_prefix(&self.root);
         rel.to_string_lossy().replace('\\', "/")
     }
 

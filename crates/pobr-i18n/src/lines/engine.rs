@@ -122,7 +122,7 @@ fn template_skeleton(segments: &[Segment]) -> String {
 /// with at most one decimal point, and at least one ASCII digit.
 fn is_numeric_capture(value: &str) -> bool {
     let trimmed = value.trim();
-    let unsigned = trimmed.strip_prefix(['+', '-']).unwrap_or(trimmed);
+    let unsigned = trimmed.trim_prefix(['+', '-']);
     let mut has_digit = false;
     let mut dots = 0usize;
     for byte in unsigned.bytes() {
@@ -177,7 +177,7 @@ fn range_len(text: &str) -> Option<usize> {
 /// line holds a number.
 fn is_range_capture(value: &str) -> bool {
     let value = value.trim();
-    let unsigned = value.strip_prefix(['+', '-']).unwrap_or(value);
+    let unsigned = value.trim_prefix(['+', '-']);
     range_len(unsigned) == Some(unsigned.len())
 }
 
@@ -960,7 +960,7 @@ impl LineTranslator {
 
 /// The placeholders directly followed by `%`: a percentage's number.
 fn percent_slots(segments: &[Segment]) -> impl Iterator<Item = usize> + '_ {
-    segments.windows(2).filter_map(|pair| match pair {
+    segments.array_windows().filter_map(|pair| match pair {
         [Segment::Placeholder { index, .. }, Segment::Literal(lit)] if lit.starts_with('%') => {
             Some(*index)
         }
@@ -1097,7 +1097,7 @@ impl<'a> SegmentMatcher<'a> {
                 // replaced the template's literal plus with a minus.
                 let optional_plus = plus_before_signed_slot(segments, seg_idx + 1);
                 let lit = if optional_plus {
-                    raw_lit.strip_suffix('+').unwrap_or(raw_lit.as_str())
+                    raw_lit.trim_suffix('+')
                 } else {
                     raw_lit.as_str()
                 };
@@ -1130,7 +1130,7 @@ impl<'a> SegmentMatcher<'a> {
                     Some(Segment::Literal(raw_lit)) => {
                         let optional_plus = plus_before_signed_slot(segments, seg_idx + 2);
                         let lit = if optional_plus {
-                            raw_lit.strip_suffix('+').unwrap_or(raw_lit.as_str())
+                            raw_lit.trim_suffix('+')
                         } else {
                             raw_lit.as_str()
                         };
@@ -1198,7 +1198,7 @@ fn match_segments(
 ) -> Option<HashMap<usize, String>> {
     // Two adjacent placeholders with no literal separator —
     // shouldn't appear in a template, fail conservatively.
-    if segments.windows(2).any(|pair| {
+    if segments.array_windows().any(|pair| {
         matches!(
             pair,
             [Segment::Placeholder { .. }, Segment::Placeholder { .. }]

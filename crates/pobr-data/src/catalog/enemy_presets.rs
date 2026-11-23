@@ -293,7 +293,10 @@ fn boss_player_mods() -> Vec<EnemyPresetMod> {
 /// fields reference the relevant [`EnemyTier`] method — no literal
 /// duplication; ExactRatio components use vendor's fraction notation,
 /// matching the JSON shape).
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "constructor mirrors the tier preset table columns"
+)]
 fn tier_preset(
     tier: EnemyTier,
     id: &str,

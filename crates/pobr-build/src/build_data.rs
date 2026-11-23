@@ -174,8 +174,8 @@ pub struct BuildData {
     /// config option catalog (`overlay/config_options.json`).
     /// Consumed by `calculate_with_data` via `crate::config_resolve::resolve_config` —
     /// `Some` goes through the `config_interpreter::interpret` primary path; `None` (old
-    /// data pack / [`BuildData::empty`]) falls back to the legacy parse_config output
-    /// (tolerant of a missing table).
+    /// data pack / [`BuildData::empty`]) falls back to the fields populated on
+    /// `BuildConfig` at import time (tolerant of a missing table).
     pub config_catalog: Option<Arc<ConfigCatalog>>,
     /// Trigger config recognition index: granted effect id (from `match_effect_ids`) →
     /// `overlay/trigger_configs.json` entry (transcribed from vendor
@@ -424,8 +424,8 @@ impl BuildData {
         self.derived.effect_id_by_normalized_name.get_or_init(|| {
             let mut lookup: HashMap<String, String> = HashMap::new();
             for id in self.granted_effects.keys() {
-                let stem = id.strip_suffix("Player").unwrap_or(id);
-                let stem = stem.strip_prefix("Support").unwrap_or(stem);
+                let stem = id.trim_suffix("Player");
+                let stem = stem.trim_prefix("Support");
                 match lookup.entry(normalize_gem_name(stem)) {
                     std::collections::hash_map::Entry::Occupied(mut held) => {
                         if outranks_for_name(id, held.get()) {
@@ -683,8 +683,7 @@ impl BuildData {
         // Rounding-precision exception table: missing overlay file = Default (no exception table).
         let high_precision = ruleset
             .high_precision_mods
-            .map(HighPrecisionRules::from_def)
-            .unwrap_or_default();
+            .map_or_default(HighPrecisionRules::from_def);
 
         // Local mod allowlist: degrades to the built-in fallback (matches the JSON
         // value-for-value) when the overlay file is missing (old data pack); every other
@@ -725,17 +724,14 @@ impl BuildData {
 
         // Built-in buff definitions: missing file = empty table (no built-in buff
         // expansion, backward compatible); every other load/parse error still propagates as normal.
-        let buff_definitions = data
-            .buff_definitions()?
-            .map(|def| def.buffs)
-            .unwrap_or_default();
+        let buff_definitions = data.buff_definitions()?.map_or_default(|def| def.buffs);
 
         // Curse priority table: missing file = None (the consumer falls back to all
         // weights being 0); every other load/parse error still propagates as normal.
         let curse_priority = data.curse_priority()?;
 
         // config option catalog: missing file = `None` (the consumer falls back to the
-        // legacy parse_config output, tolerant of a missing table); every other
+        // fields populated on `BuildConfig` at import time); every other
         // load/parse error still propagates as normal.
         let config_catalog = ruleset.config_catalog.map(Arc::new);
 

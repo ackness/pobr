@@ -81,7 +81,7 @@ fn a_latin_script_locale_parses_by_its_templates() {
         "Rarity: Rare\nDoomgrasp\nSapphire Ring\n+50 to maximum Life\n+5 to Strength"
     );
     let english = "Rarity: Rare\nSapphire Ring\r\n+50 to maximum Life\n";
-    assert!(matches!(parser.parse_text(english), Cow::Borrowed(t) if t == english));
+    std::assert_matches!(parser.parse_text(english), Cow::Borrowed(t) if t == english);
 }
 
 #[test]
@@ -242,11 +242,11 @@ fn punctuation_alone_does_not_mark_a_line_and_unchanged_text_keeps_its_bytes() {
     assert!(!parser.is_localized(flavour));
     assert!(!may_contain_localized_text(flavour, false));
     let text = "Rarity: Unique\r\n“Bow before me”\r\n";
-    assert!(matches!(parser.parse_text(text), Cow::Borrowed(t) if t == text));
+    std::assert_matches!(parser.parse_text(text), Cow::Borrowed(t) if t == text);
     // A localized line that no template recognizes leaves the text as it was.
     let text = "Rarity: Rare\r\n生命 很多\r\n";
     assert!(parser.is_localized("生命 很多"));
-    assert!(matches!(parser.parse_text(text), Cow::Borrowed(t) if t == text));
+    std::assert_matches!(parser.parse_text(text), Cow::Borrowed(t) if t == text);
 }
 
 /// A CJK pack whose stat descriptions include ones the game writes on

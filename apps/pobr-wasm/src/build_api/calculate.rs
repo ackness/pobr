@@ -87,9 +87,10 @@ fn unmodelled_meta_trigger(
     host_skill_id: &str,
 ) -> Option<UnmodelledMetaTrigger> {
     limits.iter().find_map(|limit| {
-        let detail = limit
-            .strip_prefix("MetaTrigger:")?
-            .strip_suffix(": Energy trigger event rate is not modelled")?;
+        let detail = limit.strip_circumfix(
+            "MetaTrigger:",
+            ": Energy trigger event rate is not modelled",
+        )?;
         let (meta_gem_id, detail) = detail.split_once(":stat=")?;
         let (_, host) = detail.rsplit_once(":host=")?;
         (host == host_skill_id).then_some(UnmodelledMetaTrigger {

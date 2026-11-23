@@ -1142,15 +1142,13 @@ pub(crate) fn translated_mod_name_parts<'a>(
     // Name-dispatch family: the flag consumed by dispatch is removed from
     // the direct-translation set; remaining flags are translated as usual.
     let (base_name, consumed_flag) = match name {
-        "Speed" => {
-            if let Some(pos) = flags.iter().position(|f| f == "Attack") {
-                ("AttackSpeed", Some(pos))
-            } else if let Some(pos) = flags.iter().position(|f| f == "Cast") {
-                ("CastSpeed", Some(pos))
-            } else {
-                ("SkillSpeed", None)
-            }
+        "Speed" if let Some(pos) = flags.iter().position(|f| f == "Attack") => {
+            ("AttackSpeed", Some(pos))
         }
+        "Speed" if let Some(pos) = flags.iter().position(|f| f == "Cast") => {
+            ("CastSpeed", Some(pos))
+        }
+        "Speed" => ("SkillSpeed", None),
         "Damage" => match flags {
             [f] if f == "Attack" => ("AttackDamage", Some(0)),
             [f] if f == "Spell" => ("Damage", Some(0)),
@@ -1406,7 +1404,7 @@ pub(crate) fn translated_mod_name_parts<'a>(
 /// be a damage type. Matches the names consumed by PoBR `calc::damage`
 /// literally.
 fn is_conversion_mod_name(name: &str) -> bool {
-    let core = name.strip_prefix("Skill").unwrap_or(name);
+    let core = name.trim_prefix("Skill");
     for marker in ["DamageConvertTo", "DamageGainAs"] {
         if let Some((from, to)) = core.split_once(marker) {
             let from_ok = from.is_empty() || DAMAGE_TYPES.contains(&from);
@@ -1899,19 +1897,19 @@ mod tests {
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "flag", "name": "projectile", "mod_type": "FLAG" } ] }"#,
         );
-        assert!(matches!(
+        std::assert_matches!(
             map_entry(&entry, 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnknownModName(_))
-        ));
+        );
 
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "flag", "name": "BifurcateCrit", "mod_type": "FLAG",
                  "tags": [ { "type": "SkillType", "skillType": "NotARealSkillType" } ] } ] }"#,
         );
-        assert!(matches!(
+        std::assert_matches!(
             map_entry(&entry, 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
-        ));
+        );
     }
 
     /// (Backlog #7-1) SkillType tag: every name inside the enum is admitted
@@ -2082,10 +2080,10 @@ mod tests {
                  { "kind": "mod", "name": "Damage", "mod_type": "INC" },
                  { "kind": "mod", "name": "SomethingNovel", "mod_type": "INC" } ] }"#,
         );
-        assert!(matches!(
+        std::assert_matches!(
             map_entry(&entry, 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnknownModName(_))
-        ));
+        );
     }
 
     // name translation / flag dispatch
@@ -2109,10 +2107,10 @@ mod tests {
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "mod", "name": "Speed", "mod_type": "INC", "flags": ["Warcry"] } ] }"#,
         );
-        assert!(matches!(
+        std::assert_matches!(
             map_entry(&entry, 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnsupportedFlags(_))
-        ));
+        );
     }
 
     /// Damage dispatches on ModFlag; CritChance/CritMultiplier translate
@@ -2151,10 +2149,10 @@ mod tests {
             r#"{ "mods": [ { "kind": "mod", "name": "PhysicalMin", "mod_type": "BASE",
                              "keyword_flags": ["Warcry"] } ] }"#,
         );
-        assert!(matches!(
+        std::assert_matches!(
             map_entry(&entry, 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnsupportedKeywordFlags(_))
-        ));
+        );
     }
 
     /// Direct ModFlag translation: the ported subset attaches to the
@@ -2237,10 +2235,10 @@ mod tests {
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC", "keyword_flags": ["Shapeshift"] } ] }"#,
         );
-        assert!(matches!(
+        std::assert_matches!(
             map_entry(&entry, 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnsupportedKeywordFlags(_))
-        ));
+        );
     }
 
     /// A ported KeywordFlag bit attaches via direct translation (e.g.
@@ -2313,7 +2311,7 @@ mod tests {
                 assert_eq!(db.more(&cfg.clone().with_flags(flags), &names), 1.0);
             }
         }
-        assert!(matches!(
+        std::assert_matches!(
             map_stat(
                 &catalog,
                 "SupportElementalArmamentPlayerThree",
@@ -2322,7 +2320,7 @@ mod tests {
                 12.0
             ),
             MappedOutcome::Unknown
-        ));
+        );
     }
 
     #[test]
@@ -2390,10 +2388,10 @@ mod tests {
             r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC",
                  "tags": [ { "type": "ActorCondition", "actor": "parent", "var": "Stationary" } ] } ] }"#,
         );
-        assert!(matches!(
+        std::assert_matches!(
             map_entry(&entry, 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
-        ));
+        );
     }
 
     /// set_key=None automatically uses the default set "1" override (PoB2
@@ -2446,10 +2444,10 @@ mod tests {
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "mod", "name": "SkillFooDamageConvertToBar", "mod_type": "BASE" } ] }"#,
         );
-        assert!(matches!(
+        std::assert_matches!(
             map_entry(&entry, 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnknownModName(_))
-        ));
+        );
     }
 
     // tag first batch
@@ -2482,10 +2480,10 @@ mod tests {
             entry_json(r#"{ "mods": [ { "kind": "skill_data", "value": { "key": "Damage" } } ] }"#);
         // (The line above just constructs a legal-JSON counterexample --
         // skill_data's Damage key isn't on the whitelist.)
-        assert!(matches!(
+        std::assert_matches!(
             map_entry(&entry, 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnsupportedSkillDataKey(_))
-        ));
+        );
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC",
                  "tags": [ { "type": "PerStat", "stat": "Int", "div": 10.0 } ] } ] }"#,
@@ -2505,10 +2503,10 @@ mod tests {
             r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "MORE",
                  "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] }"#,
         );
-        assert!(matches!(
+        std::assert_matches!(
             map_entry(&entry, 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
-        ));
+        );
     }
 
     /// `DistanceRamp` tag (Close Combat's `..._final_from_distance`) ->
@@ -2537,10 +2535,10 @@ mod tests {
             r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "MORE",
                  "tags": [ { "type": "DistanceRamp", "ramp": [[10,1]], "var": "x" } ] } ] }"#,
         );
-        assert!(matches!(
+        std::assert_matches!(
             map_entry(&entry, 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
-        ));
+        );
     }
 
     /// `Multiplier{limitTotal}` (vendor ModStore.lua:370-371 + 402-404's total
@@ -2845,11 +2843,9 @@ mod tests {
         //     reported Unsupported and injects nothing (skip rather than
         //     miscompute).
         for stat in ["alpha", "gamma"] {
-            assert!(
-                matches!(
-                    map_stat_global_only(&catalog, "Foo", Some("2"), stat, 10.0),
-                    MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
-                ),
+            std::assert_matches!(
+                map_stat_global_only(&catalog, "Foo", Some("2"), stat, 10.0),
+                MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_)),
                 "global element should be reported wholesale (injects zero before M3): {stat}"
             );
         }
@@ -2897,10 +2893,10 @@ mod tests {
         // A distorted-extraction entry is reported as Unsupported (content
         // unknown, visibility comes first; injects nothing either way).
         let catalog = catalog_json(r#"{ "global": { "broken": { "_unextractable": true } } }"#);
-        assert!(matches!(
+        std::assert_matches!(
             map_stat_global_only(&catalog, "Any", None, "broken", 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::Unextractable)
-        ));
+        );
     }
 
     //  curse domain enemy-side mapping
@@ -3194,10 +3190,10 @@ mod tests {
                                "tags": [ { "type": "GlobalEffect", "effectType": "Curse",
                                            "effectCond": "Stationary" } ] } ] } } } } }"#,
         );
-        assert!(matches!(
+        std::assert_matches!(
             map_curse_stat(&catalog, "X", Some("1"), "some_stat", -10.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
-        ));
+        );
     }
 
     /// Mirrors Frost Bomb's shape (SkillStatMap.lua:1721-1725):
@@ -3623,10 +3619,10 @@ mod tests {
         assert!(rejected("whole").is_empty());
         assert!(rejected("none").is_empty());
         assert!(rejected("absent").is_empty());
-        assert!(matches!(
+        std::assert_matches!(
             map_player_buff_stat(&catalog, "X", Some("1"), "none", 10.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnknownModName(_))
-        ));
+        );
     }
 
     /// A flag outside the `<Type>Can<Ailment>` family (e.g. the behaviour
@@ -3841,7 +3837,7 @@ mod tests {
                                          { "type": "MultiplierThreshold", "var": "EnemyPresenceSeconds",
                                            "thresholdVar": "AttritionCullSeconds" } ] } ] } } } } }"#,
         );
-        assert!(matches!(
+        std::assert_matches!(
             map_player_buff_stat(
                 &catalog,
                 "AttritionPlayer",
@@ -3850,7 +3846,7 @@ mod tests {
                 1.0,
             ),
             MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
-        ));
+        );
     }
 
     /// Sigil of Power's max-stages payload (`circle_of_power_max_stages` ->

@@ -85,7 +85,7 @@ impl ItemDraft {
             for (i, alt) in self.variant.alts.iter().enumerate() {
                 if let Some(sel) = alt {
                     lines.push(ALT_LABELS[i].0.to_string());
-                    lines.push(format!("{}: {}", ALT_LABELS[i].1, sel));
+                    lines.push(format!("{}: {sel}", ALT_LABELS[i].1));
                 }
             }
         }

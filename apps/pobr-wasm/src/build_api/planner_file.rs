@@ -390,7 +390,7 @@ fn export_build(
                 .weapon_swap
                 .as_ref()
                 .and_then(|s| s.exclusive_nodes.iter().position(|n| n.contains(&id)))
-                .map_or(0, |i| i + 1)
+                .map_or_default(|i| i + 1)
         );
         if let Some(choice) = build.tree.attribute_choices.get(&id) {
             entry["additional_text"] = json!(format!("Attribute: {choice}"));

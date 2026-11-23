@@ -10,7 +10,7 @@ use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence
 
 /// A Fireball build, with a level 19 Purity of Ice of `quality` when given.
 fn build(purity_quality: Option<u32>) -> Build {
-    let purity = purity_quality.map_or(String::new(), |quality| {
+    let purity = purity_quality.map_or_default(|quality| {
         format!(
             r#"<Skill enabled="true" mainActiveSkill="1"><Gem gemId="Metadata/Items/Gems/SkillGemPurityOfIce" skillId="PurityOfIcePlayer" nameSpec="Purity of Ice" level="19" quality="{quality}" enabled="true"/></Skill>"#
         )

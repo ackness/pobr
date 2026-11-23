@@ -237,11 +237,9 @@ pub use pobr_core::skill_env::StatMapMode;
 /// ([`calculate_with_data`]) doesn't go through this function (its rules are compiled alongside [`BuildData::load`]).
 fn default_parser_rules()
 -> Result<std::sync::Arc<pobr_core::mod_parser::CompiledParserRules>, BuildError> {
-    use std::sync::{Arc, OnceLock};
-    static RULES: OnceLock<Result<Arc<pobr_core::mod_parser::CompiledParserRules>, String>> =
-        OnceLock::new();
-    RULES
-        .get_or_init(|| {
+    use std::sync::{Arc, LazyLock};
+    static RULES: LazyLock<Result<Arc<pobr_core::mod_parser::CompiledParserRules>, String>> =
+        LazyLock::new(|| {
             let data = pobr_gamedata::GameData::new(pobr_gamedata::current_data_dir());
             let doc = data
                 .mod_parser_rules()
@@ -263,27 +261,23 @@ fn default_parser_rules()
             )
             .map(Arc::new)
             .map_err(|e| format!("parser rule compilation failed: {e:?}"))
-        })
-        .clone()
-        .map_err(BuildError::Parse)
+        });
+    RULES.clone().map_err(BuildError::Parse)
 }
 
 /// The runtime constants for the text-only path ([`calculate`]): loaded once from the
 /// same default data directory as [`default_parser_rules`] (missing = error), so the
 /// monster-level tables (ailment / poise thresholds) are the imported ones.
 fn default_constants() -> Result<std::sync::Arc<pobr_data::catalog::RuntimeConstants>, BuildError> {
-    use std::sync::{Arc, OnceLock};
-    static CONSTANTS: OnceLock<Result<Arc<pobr_data::catalog::RuntimeConstants>, String>> =
-        OnceLock::new();
-    CONSTANTS
-        .get_or_init(|| {
+    use std::sync::{Arc, LazyLock};
+    static CONSTANTS: LazyLock<Result<Arc<pobr_data::catalog::RuntimeConstants>, String>> =
+        LazyLock::new(|| {
             let data = pobr_gamedata::GameData::new(pobr_gamedata::current_data_dir());
             crate::load_runtime_constants(&data)
                 .map(Arc::new)
                 .map_err(|e| format!("failed to load runtime constants: {e}"))
-        })
-        .clone()
-        .map_err(BuildError::Parse)
+        });
+    CONSTANTS.clone().map_err(BuildError::Parse)
 }
 
 /// Runs a minimal calculation on a [`Build`], returning a scalar [`OutputTable`].

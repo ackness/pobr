@@ -203,9 +203,12 @@ fn capture(identity: String) -> Snapshot {
             let minion = pobr_build::reference_check::main_skill_minion(&build, &data, &output);
             stats.insert(
                 "MinionTotalDPS".into(),
-                number(minion.map_or(0.0, |m| m.dps)),
+                number(minion.map_or_default(|m| m.dps)),
             );
-            stats.insert("MinionLife".into(), number(minion.map_or(0.0, |m| m.life)));
+            stats.insert(
+                "MinionLife".into(),
+                number(minion.map_or_default(|m| m.life)),
+            );
             builds.insert(name, stats);
         }
     }
@@ -305,7 +308,7 @@ fn output_snapshot_matches() {
 fn snapshot_update() {
     let path = snapshot_path();
     let mode = std::env::var("POBR_SNAPSHOT_MODE").expect("snapshot command mode");
-    assert!(matches!(mode.as_str(), "record" | "report"));
+    std::assert_matches!(mode.as_str(), "record" | "report");
     let migration_snapshot = std::env::var_os("POBR_MIGRATION_SNAPSHOT").map(PathBuf::from);
     assert!(
         migration_snapshot.is_none() || mode == "report",
