@@ -3,7 +3,6 @@
 #
 # Scripted setup from a clean environment to running tests and consulting PoB2 Lua formulas.
 # Subcommands:
-#   bootstrap  Install LuaJIT/build deps + clone vendored PoB2 (pinned commit) + CLI build
 #   deps       Install/cache the compatible PoB2 LuaJIT runtime
 #   vendor     Clone/align vendored PoB2 to the pinned commit (gitignored, never committed)
 #   build      Build the application CLI, or forward explicit Cargo selectors.
@@ -580,7 +579,6 @@ case "${1:-}" in
   reference) reference_field "${2:-commit}" ;;
   deps)      cmd_deps ;;
   vendor)    cmd_vendor ;;
-  bootstrap) cmd_deps && cmd_vendor && cmd_build ;;
   build)     shift; cmd_build "$@" ;;
   test)      shift; cmd_test "$@" ;;
   lint)      shift; cmd_lint "$@" ;;

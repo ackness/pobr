@@ -20,7 +20,7 @@
 | [计算页](calcs-live.png) | `/calcs`，游戏卡片模式 |
 | [配置页](config-live.png) | `/config`，游戏卡片模式 |
 
-根目录中英 README 使用前四张图。另附两套对比子目录：[`display-modes/`](display-modes/)（不同全局显示模式与视口宽度下的界面截图，10 张）与 [`item-display/`](item-display/)（`compact`、`game`、`grouped`、`settings` 四种物品显示视图，4 张）。
+根目录中英 README 使用前四张图。
 
 ## 输入来源
 

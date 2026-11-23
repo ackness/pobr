@@ -68,18 +68,8 @@ jobs:
           shared-key: tests-${{ matrix.shard }}
           cache-bin: 'false'
           save-if: ${{ github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch }}
-      - name: Restore owner data downloads
-        uses: actions/cache@v6
-        with:
-          # Content-addressed by SHA-256; every hit is re-verified against the lock.
-          path: .cache/data-import-downloads
-          key: owner-data-${{ hashFiles('pipeline/data.lock.json') }}
-          restore-keys: owner-data-
-      - name: Prepare pinned external data for real tests
-        run: |
-          python3 -m pipeline.runtime.build_data --install data
-          python3 -c 'import json; from pathlib import Path; assert Path("data/CURRENT").read_text().strip() == json.loads(Path("pipeline/data.lock.json").read_bytes())["target"]["game_patch"]'
-          bash devs/scripts/check-data.sh
+      - name: Prepare pinned external data
+        uses: ./.github/actions/prepare-data
       - name: Workspace tests (including doctests)
         env:
           CI_SHARD: ${{ matrix.shard }}
@@ -126,18 +116,8 @@ jobs:
           key: wasm-bindings-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.wasm-key.outputs.key }}
       - name: Install
         run: pnpm install --frozen-lockfile
-      - name: Restore owner data downloads
-        uses: actions/cache@v6
-        with:
-          # Content-addressed by SHA-256; every hit is re-verified against the lock.
-          path: .cache/data-import-downloads
-          key: owner-data-${{ hashFiles('pipeline/data.lock.json') }}
-          restore-keys: owner-data-
-      - name: Prepare pinned external data for Web tests and build
-        working-directory: .
-        run: |
-          python3 -m pipeline.runtime.build_data --install data
-          bash devs/scripts/check-data.sh
+      - name: Prepare pinned external data
+        uses: ./.github/actions/prepare-data
       - name: Game-text translation coverage (report only)
         working-directory: .
         # A report, never a gate: gaps and unreadable tables are printed, and even a broken
@@ -248,17 +228,8 @@ jobs:
         with:
           node: 'true'
           python: 'true'
-      - name: Restore owner data downloads
-        uses: actions/cache@v6
-        with:
-          # Content-addressed by SHA-256; every hit is re-verified against the lock.
-          path: .cache/data-import-downloads
-          key: owner-data-${{ hashFiles('pipeline/data.lock.json') }}
-          restore-keys: owner-data-
-      - name: Prepare pinned external data for the compact release
-        run: |
-          python3 -m pipeline.runtime.build_data --install data
-          bash devs/scripts/check-data.sh
+      - name: Prepare pinned external data
+        uses: ./.github/actions/prepare-data
       # The owner snapshot already holds every runtime file; PoBR only packages it.
       - name: Assemble the compact release from the prepared owner snapshot
         run: |
@@ -319,17 +290,8 @@ jobs:
       # Populate node_modules even when the pnpm store cache is an exact hit.
       - name: Install automation test dependencies
         run: pnpm --dir web install --frozen-lockfile
-      - name: Restore owner data downloads
-        uses: actions/cache@v6
-        with:
-          # Content-addressed by SHA-256; every hit is re-verified against the lock.
-          path: .cache/data-import-downloads
-          key: owner-data-${{ hashFiles('pipeline/data.lock.json') }}
-          restore-keys: owner-data-
-      - name: Prepare pinned external data for automation integration tests
-        run: |
-          python3 -m pipeline.runtime.build_data --install data
-          bash devs/scripts/check-data.sh
+      - name: Prepare pinned external data
+        uses: ./.github/actions/prepare-data
       - run: bash devs/scripts/check-workflows.sh
 
   gate:

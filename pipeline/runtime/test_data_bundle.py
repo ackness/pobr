@@ -1,15 +1,12 @@
 """Offline regression checks for complete, portable runtime data combinations."""
 
-import importlib.util
 import json
 from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
 
-SPEC = importlib.util.spec_from_file_location("data_bundle", Path(__file__).with_name("data_bundle.py"))
-bundle = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(bundle)
+from pipeline.runtime import data_bundle as bundle
 
 
 class BundleTests(unittest.TestCase):

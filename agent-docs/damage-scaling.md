@@ -2,7 +2,7 @@
 
 伤害缩放是把"基础伤害"放大到"最终击中/持续伤害"的全过程。本文档只补充那些**细致、容易被忽略**的概念，并对每个关键结论给出 PoB2 真实旗标名作为回归基准。
 
-> 总体计算顺序（避免击中 → 伤害计算 → 承受为 → 减伤 → 承受倍率 → 眩晕/格挡 → 资源损失）已在 [`damage-defence-order.md`](./damage-defence-order.md) 覆盖；5 种伤害类型的属性关联与抗性见 [`damage-types.md`](./damage-types.md)；暴击倍率（爆伤）、幸运暴击、双倍/三倍 on Crit 见 [`critical-hits.md`](./critical-hits.md)。本文聚焦**伤害包的构建与放大**这一段（即 `damage-defence-order.md` 步骤 2.1–2.6 的内部细节），尽量不重复。
+> 总体计算顺序为「避免击中 → 伤害计算 → 承受为 → 减伤 → 承受倍率 → 眩晕/格挡 → 资源损失」；5 种伤害类型的属性关联与抗性见 [`damage-types.md`](./damage-types.md)；暴击倍率（爆伤）、幸运暴击、双倍/三倍 on Crit 见 [`critical-hits.md`](./critical-hits.md)。本文聚焦**伤害包的构建与放大**这一段，尽量不重复。
 
 ## 核心叠加语义：added (Base) / increased / more
 
@@ -149,7 +149,7 @@ resist = m_min(m_max(-NegArmourDmgBonusCap,
 | **Exposure / 诅咒 (Elemental Weakness)** | 抗性（debuff 持续在目标上） | **是**（可到负抗） | 击中与持续都受益 |
 | **Armour Break** | 护甲 → PDR | **是**（可负） | 物理 |
 
-- 穿透与"降低抗性/负抗"**互斥**：穿透在 debuff 之后结算，抗性已 ≤0 时穿透全浪费[^mobalytics-pen]。pobr 公式 `m_max(resist - pen, minPen)` 已体现（见 `damage-defence-order.md` 步骤 4）。
+- 穿透与"降低抗性/负抗"**互斥**：穿透在 debuff 之后结算，抗性已 ≤0 时穿透全浪费[^mobalytics-pen]。pobr 公式 `m_max(resist - pen, minPen)` 已体现。
 - 穿透**只作用于击中**，不作用于持续伤害；异常 magnitude 基于减免前伤害，因此也不吃穿透[^mobalytics-pen]。
 
 ## 命中伤害 vs 持续伤害 (Hit vs DoT) 的缩放归属
@@ -179,11 +179,11 @@ CullMultiplier = 100 / (100 - CullPercent)   -- 折成等效 DPS 倍率
 
 - **`Deals no X damage`**：PoB2 用 flag `DealNo<Type>` / `DealNoDamage`，在算转换前就把该类型禁用（`canDeal[type] = not Flag("DealNo"..type)`）。如 Brutality 的"deal no chaos/elemental damage"。
 - **damage 标签（近战/投射物/范围/attack/spell）**：决定一条 modifier 是否适用，对应 PoB2 的 `ModFlag`（`Melee`/`Projectile`/`Area`/`Attack`/`Spell`/`Hit`…）与 `KeywordFlag`，以及 `SkillType`/`Condition` 标签。例如 "increased Projectile Damage" 只在 `skillFlags.projectile` 时进聚合；敌人侧 `ProjectileDamageTaken` 也按同标签叠加到 `takenInc`。这正对应 pobr `Modifier.flags` / `keyword_flags` / `tags` 与 `matches(cfg)`。
-- **"extra damage as"**：即上文 Gain as Extra，注意区别于"伤害承受为 (Damage Taken As)"（防御侧伤害转移，见 `damage-defence-order.md` 步骤 3）。
+- **"extra damage as"**：即上文 Gain as Extra，注意区别于"伤害承受为 (Damage Taken As)"（防御侧伤害转移）。
 
 ## 0.5.0 相关变化
 
-- "Defences" 关键词废弃，明确改为 "Armour, Evasion and Energy Shield"（影响哪些词条适用于 Runic Ward；见 `damage-defence-order.md`）[^maxroll-050]。
+- "Defences" 关键词废弃，明确改为 "Armour, Evasion and Energy Shield"（影响哪些词条适用于 Runic Ward）[^maxroll-050]。
 - 护甲/闪避数值曲线在 65 级后整体上调（间接影响 Overwhelm/Armour Break 的相对价值）[^maxroll-050]。
 - 转换链/伤害效率/双三倍/Overwhelm 的核心公式在 0.5.0 未见结构性改动（以 PoB2 `dev` 分支为准）。
 

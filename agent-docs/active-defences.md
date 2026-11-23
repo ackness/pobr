@@ -3,8 +3,7 @@
 本文档收录 PoE2（0.5.0）防御面那些**未被既有文档覆盖**的进阶 / 主动概念：**翻滚闪避 (Dodge Roll)**、**守护吸收 (Guard / Molten Shell)**、**规避 (Avoidance)**、**减少受到的暴击额外伤害**、**防御向 Keystone**、以及一批 PoE1 有而 PoE2 **已移除**的机制（Spell Suppression / Acrobatics 等，逐一核实）。
 
 > 本文与既有文档**互补、不重复**，交叉引用：
-> - 闪避 / 偏转命中公式见 [evasion.md](./evasion.md)；护甲减伤见 [armour.md](./armour.md)；ES 充能 / CI 见 [energy-shield.md](./energy-shield.md)；符咒护佑见 [runic-ward.md](./runic-ward.md)；格挡见 [block.md](./block.md)；抗性 / 最大抗性见 [resistances.md](./resistances.md)；眩晕 / 重眩晕见 [stun.md](./stun.md)。
-> - 伤害承受**顺序**（转移 → Guard → ES → 生命 → 符咒护佑）见 [damage-defence-order.md](./damage-defence-order.md)。
+> - 护甲减伤见 [armour.md](./armour.md)；ES 充能 / CI 见 [energy-shield.md](./energy-shield.md)；格挡见 [block.md](./block.md)。
 > - **「不被击中几率」乘法链**、**Max Hit / EHP**、**承受伤害乘数**、**Fortify / Onslaught / Elusive** 等增益已在 [recovery-charges-buffs.md](./recovery-charges-buffs.md) §4 覆盖，本文只补它们没讲的「翻滚 / 守护 / 规避 / 暴击减伤 / Keystone」并交叉引用。
 > - 末尾「PoB2 计算实现」给出核对过的真实变量 / 旗标名，是 pobr 的回归基准。
 
@@ -20,7 +19,7 @@
 
 - 翻滚动画**前半段**提供 **avoidance frames（无敌帧）**：保证躲避此期间**可被躲避的**击中；**后半段**角色恢复可受击状态、且移动距离变短[^poe2wiki-dodgeroll][^sportskeeda-dodge]。
 - 默认**仅 Projectile 与 Strike 可被翻滚躲避**；**持续伤害 (DoT)、地面效果、范围 (Area) 击中默认无法躲避**[^mobalytics-dodgeroll]。Boss 大型 AoE / 砸地必须靠**移出范围**而非原地翻滚。
-- **翻滚躲避 ≠ 闪避 (Evasion)**：被翻滚躲掉的击中**不算 Evaded**，闪避值与翻滚**完全不交互**[^mobalytics-dodgeroll]（与 [evasion.md](./evasion.md) 的熵值 / 命中检定无关）。但被翻滚躲掉的击中和被闪避的击中一样**在伤害计算第 1 步即被丢弃**，因此也不会施加流血等需要命中连接的 ailment。
+- **翻滚躲避 ≠ 闪避 (Evasion)**：被翻滚躲掉的击中**不算 Evaded**，闪避值与翻滚**完全不交互**[^mobalytics-dodgeroll]（与闪避的熵值 / 命中检定无关）。但被翻滚躲掉的击中和被闪避的击中一样**在伤害计算第 1 步即被丢弃**，因此也不会施加流血等需要命中连接的 ailment。
 
 ### 1.2 距离 / 速度 / 与 ActionSpeed 的关系
 
@@ -49,7 +48,7 @@ PoE2 的 **Guard** 是一个**增益 (Buff)**（不是 PoE1 那样的技能类�
 - **仅吸收击中 (Hit) 伤害**，不与 DoT 交互[^mobalytics-guard]。
 - **同时只能有一个 Guard buff**。再获得 Guard 时，**保留 magnitude 更高者**；被丢弃的低 magnitude buff 会**按其 magnitude 比例刷新**保留 buff 的持续时间（但不超过其原始基础时长）[^poe2db-guard]。
 - **Guard 上限 = 最大生命的 200%**[^poe2db-guard]。
-- Guard 池在伤害承受顺序中位于 **ES / 生命之前**（见 [damage-defence-order.md](./damage-defence-order.md) §8 步骤 3「守护」）。
+- Guard 池在伤害承受顺序中位于 **ES / 生命之前**。
 
 ### 2.2 Guard 来源
 
@@ -63,7 +62,7 @@ PoE2 的 **Guard** 是一个**增益 (Buff)**（不是 PoE1 那样的技能类�
 
 > **重要区分**：**所有 Guard 都是伤害吸收，但并非所有伤害吸收都是 Guard**[^poe2db-guard][^mobalytics-guard]。
 > - **Guard buff**：受「单 buff、200% 生命上限、magnitude 覆盖」规则约束。
-> - **非 Guard 吸收**：如 Witchhunter 的 **`Sorcery Ward`**、**`Encase in Jade`**（物体）等——同样在生命 / ES 前吸收，但**不占 Guard 槽、不受 Guard 专属规则限制**。PoB2 把这些与 Guard 一起归入「Damage Absorption」承受层（见 [damage-defence-order.md](./damage-defence-order.md) §8）。
+> - **非 Guard 吸收**：如 Witchhunter 的 **`Sorcery Ward`**、**`Encase in Jade`**（物体）等——同样在生命 / ES 前吸收，但**不占 Guard 槽、不受 Guard 专属规则限制**。PoB2 把这些与 Guard 一起归入「Damage Absorption」承受层。
 
 ---
 
@@ -95,7 +94,7 @@ PoE2 实际存在的规避（已在 0.5.0 stat_descriptions 核实）：
 - **「Avoid being X」与「X Immune」等价于 100% 规避**（PoB2：`Flag(ailment.."Immune")` → 直接置 100）。
 - **眩晕的隐式规避**：**受击时身上有任意能量护盾 → 50% 几率避免眩晕**（PoB2 `CalcDefence.lua` 注释明确，把 `notAvoidChance × 0.5`）。这是 ES 角色「天然抗眩晕」的根因，且独立于 `AvoidStun` 词条。
 - **联动旗标**：`ShockAvoidAppliesToElementalAilments`（`Stormshroud`：感电规避也作用于全元素异常）、`SpellSuppressionAppliesToAilmentAvoidance`（`Ancestral Vision`，遗留路径，见 §6）。
-- **核实不存在**：PoE2 **没有**「Avoid being Critically Hit / 规避暴击」这一项。对暴击的防御走**「减少受到的暴击额外伤害」**（§4）和**闪避二次命中检定降级暴击**（见 [evasion.md](./evasion.md) §闪避与暴击 / [critical-hits.md](./critical-hits.md) §对暴击的防御）。
+- **核实不存在**：PoE2 **没有**「Avoid being Critically Hit / 规避暴击」这一项。对暴击的防御走**「减少受到的暴击额外伤害」**（§4）和**闪避二次命中检定降级暴击**（见 [critical-hits.md](./critical-hits.md) §对暴击的防御）。
 
 ### 3.3 规避 vs 抵抗（reduced effect / duration）
 
@@ -129,8 +128,8 @@ PoE2 0.5.0 共 **33 个 Keystone**（另 8 个 Timeless Jewel Keystone）[^poe2d
 |----------|----------------------|---------|
 | **Chaos Inoculation** | 最大生命变 1；免疫混沌伤害与流血 | 见 [energy-shield.md](./energy-shield.md) §CI |
 | **Eldritch Battery** | 所有 ES 转为法力；法力消耗翻倍 | ES 当法力池；放弃 ES 作为受击缓冲 |
-| **Mind Over Matter** | 所有伤害先从法力承受；法力恢复速率 −50% | 法力当额外血池（承受顺序见 [damage-defence-order.md](./damage-defence-order.md) §8） |
-| **Iron Reflexes** | 所有闪避值转为护甲 | 闪避流并入护甲减伤（见 [armour.md](./armour.md)/[evasion.md](./evasion.md)） |
+| **Mind Over Matter** | 所有伤害先从法力承受；法力恢复速率 −50% | 法力当额外血池 |
+| **Iron Reflexes** | 所有闪避值转为护甲 | 闪避流并入护甲减伤（见 [armour.md](./armour.md)） |
 | **Zealot's Oath**（即 PoB 旗标 `ZealotsOath`）| 生命再生溢出转 ES（`Excess Life Recovery from Regeneration applied to ES; ES does not Recharge`）| ES 改由再生而非充能恢复 |
 | **Resolute Technique** | 精准翻倍；**永不暴击** | 不是防御，但「无法暴击」总是优先于「保证暴击」（见 [critical-hits.md](./critical-hits.md)） |
 | **Unwavering Stance** | **无法被轻眩晕**；无法翻滚 / 冲刺 | 眩晕免疫换机动（与翻滚互斥，§1.3） |
@@ -151,10 +150,10 @@ PoE2 0.5.0 共 **33 个 Keystone**（另 8 个 Timeless Jewel Keystone）[^poe2d
 - **法术压制 (Spell Suppression)** —— ❌ **PoE2 普通构建已移除**。因 PoE2 取消「攻击 vs 法术」防御二分，Spell Suppression（半化法术伤害）失去存在基础[^mmojugg-monster][^mobalytics-mechanics]。
   - **注意**：PoB2 代码里**仍保留** `SpellSuppressionChance` / `SuppressionChanceCap=100` / `SuppressionEffect=50` 等变量，但这些只能由 **Timeless Jewel（Glorious Vanity 等）转化出的遗留小点**或个别遗留路径触发，**不在常规天赋树 / 装备词缀池中**[^poe2db-suppression]。
   - ⚠️ **既有 [block.md](./block.md) 的「法术压制」一节按 PoE1 语义描述，对 0.5.0 不准确**——常规 PoE2 没有 50% 半化法术的可堆叠层；应以本节为准。
-- **Acrobatics（Keystone）** —— ❌ **0.3.0 移除**。0.3.0 起「闪避对**除红闪 Boss 技能外的所有击中**生效」，等于把旧 Acrobatics 的能力内置给了所有闪避角色，故 Keystone 被删（同时闪避公式被下调以平衡，见 [evasion.md](./evasion.md)）[^thegamer-acro][^poe2wiki-acro][^sportskeeda-evasion]。
+- **Acrobatics（Keystone）** —— ❌ **0.3.0 移除**。0.3.0 起「闪避对**除红闪 Boss 技能外的所有击中**生效」，等于把旧 Acrobatics 的能力内置给了所有闪避角色，故 Keystone 被删（同时闪避公式被下调以平衡）[^thegamer-acro][^poe2wiki-acro][^sportskeeda-evasion]。
   - PoB2 残留 `ConvertSpellSuppressionToSpellDodge`（"Acrobatics"）属遗留代码。
 - **Attack/Spell Dodge（几率躲避，stat 型）** —— ⚠️ **退化**。PoB2 仍有 `AttackDodgeChance` / `SpellDodgeChance`（`DodgeChanceCap=75`），但常规 PoE2 已无对应词缀来源，主要是遗留 / Timeless Jewel 路径；玩家面对的「躲避」是**主动翻滚**（§1）而非这套几率 stat。
-- **Deflection（偏转）** —— ✅ **存在但经历反复**：曾随「移除攻击/法术二分」一度被取消，后由 `The Third Edict` 重新引入，0.5.0 公式再调（DEX/闪避流减伤层）。**命中型偏转公式见 [evasion.md](./evasion.md) §偏转**，本文不重复（PoB2：`DeflectionChanceCap=95`、`DeflectEffect`）。
+- **Deflection（偏转）** —— ✅ **存在但经历反复**：曾随「移除攻击/法术二分」一度被取消，后由 `The Third Edict` 重新引入，0.5.0 公式再调（DEX/闪避流减伤层，PoB2：`DeflectionChanceCap=95`、`DeflectEffect`）。
 
 ---
 
@@ -166,12 +165,12 @@ PoE2 0.5.0 共 **33 个 Keystone**（另 8 个 Timeless Jewel Keystone）[^poe2d
 ```lua
 DamageReductionCap = 90        -- 物理减伤 / 护甲减伤硬上限
 MaxResistCap = 90;  EnemyMaxResist = ...;  ResistFloor = -200
-EvadeChanceCap = DefaultMaxEvadeChancePercent   -- 闪避上限(见 evasion.md)
+EvadeChanceCap = DefaultMaxEvadeChancePercent   -- 闪避上限
 DodgeChanceCap = 75            -- stat 型 dodge（遗留）
 AvoidChanceCap = 75            -- 规避伤害/击中上限
 BlockChanceCap = 90            -- 见 block.md
 SuppressionChanceCap = 100; SuppressionEffect = 50   -- 遗留，常规不可用
-DeflectionChanceCap = 95; DeflectEffect = ...        -- 偏转(见 evasion.md)
+DeflectionChanceCap = 95; DeflectEffect = ...        -- 偏转
 ArmourRatio = 10; NegArmourDmgBonusCap = 100; MinStunChanceNeeded = 20
 ```
 
@@ -238,13 +237,13 @@ MeleeNotHitChance = 100 - (1-Evade)*(1-EffectiveAttackDodge)*(1-AvoidAllDamageFr
    - 实现 `CritExtraDamageReduction = min(Σ ReduceCritExtraDamage, 100)`，仅乘敌人爆伤 bonus（`EnemyCritEffect` 公式），**不要**误乘基础击中伤害；并让它同步缩放暴击施加的异常。这与攻击侧 `critical-hits.md` 的爆伤是**对偶**关系。
 
 4. **Guard / 伤害吸收作为承受顺序里 ES 之前的独立池。**
-   - 建模为：单一 Guard 槽（magnitude 覆盖 + 比例刷新时长）、上限 200% 生命、`GuardAbsorbRate`（按类型 / shared）、`Vaal Molten Shell` 独立槽；并把 `Sorcery Ward` / `Encase in Jade` 归入「非 Guard 吸收」同层但不占 Guard 槽。承受顺序见 [damage-defence-order.md](./damage-defence-order.md) §8。
+   - 建模为：单一 Guard 槽（magnitude 覆盖 + 比例刷新时长）、上限 200% 生命、`GuardAbsorbRate`（按类型 / shared）、`Vaal Molten Shell` 独立槽；并把 `Sorcery Ward` / `Encase in Jade` 归入「非 Guard 吸收」同层但不占 Guard 槽。
 
 5. **Keystone 用「旗标 → 注入若干 Modifier / 改写承受管线」实现，便于归因。**
    - 如 `IronReflexes`（闪避→护甲转换）、`MindOverMatter`（承受顺序插入法力层）、`Bulwark`（翻滚减伤）、`ZealotsOath`（再生转 ES）。每个 Keystone 的影响都应能在 `TraceGraph` 回溯到该 `SourceId`——这是 pobr 相对 PoB 的增量价值。
 
 6. **不要照搬 PoE1：Spell Suppression / Acrobatics / stat 型 Dodge 在常规 PoE2 不存在。**
-   - 即使 PoB2 代码保留这些变量，pobr 数据管线应只在 Timeless Jewel / 遗留路径暴露它们，默认词缀池不含；闪避对「除红闪 Boss 外所有击中」生效（0.3.0+）应作为闪避的默认语义（见 [evasion.md](./evasion.md)）。
+   - 即使 PoB2 代码保留这些变量，pobr 数据管线应只在 Timeless Jewel / 遗留路径暴露它们，默认词缀池不含；闪避对「除红闪 Boss 外所有击中」生效（0.3.0+）应作为闪避的默认语义。
 
 ---
 

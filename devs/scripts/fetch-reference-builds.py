@@ -21,7 +21,7 @@ import json
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -119,7 +119,7 @@ def collect(args):
         if manifest_path.exists():
             raise ValueError(f"{manifest_path} exists; --replay re-fetches what it records")
         manifest = discover(args.pick, args.timeout, committed_characters(ROOT / "examples"))
-    fetched_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    fetched_at = datetime.now(UTC).isoformat(timespec="seconds")
     manifest["fetched_at"] = fetched_at
     manifest["failures"] = [f for f in manifest["failures"] if "candidate" not in f]
     manifest["fixtures"] = []
