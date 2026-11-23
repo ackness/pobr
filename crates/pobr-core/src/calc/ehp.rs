@@ -1274,10 +1274,19 @@ fn max_hit_solution(dtype: DamageType, inputs: &MaxHitInputs) -> f64 {
             f64::INFINITY
         } else if eff_armour == 0.0 && convert >= 1.0 {
             // :3614-3617 a simplified closed form with no armour DR (here panel DR = clamp(min(drMax, flat) − ow)).
+            // Matches taken.rs:514: (raw * convert * dr_multi + taken_flat) * total_taken_multi = total_pool.
             let dr_pct = (mit.flat_dr_pct[c].min(mit.dr_max_pct[c]) - mit.overwhelm_pct[c])
                 .clamp(0.0, mit.dr_max_pct[c]);
             let dr_multi = resist_mult * (1.0 - dr_pct / 100.0);
-            (total_pool / convert / dr_multi - taken_flat).max(0.0) / total_taken_multi
+            if dr_multi <= 0.0 {
+                if taken_flat.max(0.0) * total_taken_multi >= total_pool {
+                    0.0
+                } else {
+                    f64::INFINITY
+                }
+            } else {
+                (total_pool / total_taken_multi - taken_flat).max(0.0) / (convert * dr_multi)
+            }
         } else {
             // :3620-3641 the quadratic-equation solution + noDR/maxDR bounds + floor.
             let flat_dr = mit.flat_dr_pct[c] / 100.0;

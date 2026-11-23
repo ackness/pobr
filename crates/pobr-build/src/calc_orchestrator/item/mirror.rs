@@ -10,19 +10,28 @@ use super::super::skill::resolve::clean_grant_text;
 use crate::build::Build;
 use crate::build_data::BuildData;
 
-/// Scale each numeric item bonus once, including bonuses granted to another
-/// actor. Keep LIST wrappers, flags, text, conditions and attribution intact.
-/// A delta copy is not equivalent for MORE or OVERRIDE modifiers.
-pub(crate) fn scale_item_bonuses(modifiers: &mut [pobr_core::Modifier], scale: f64) {
+/// Scale each scalable numeric item bonus once using PoB2's `HighPrecisionRules`,
+/// including bonuses granted to another actor. Keep `unscalable` modifiers, LIST
+/// wrappers, flags, text, conditions and attribution intact. A delta copy is not
+/// equivalent for MORE or OVERRIDE modifiers.
+pub(crate) fn scale_item_bonuses(
+    modifiers: &mut [pobr_core::Modifier],
+    scale: f64,
+    rules: &pobr_core::HighPrecisionRules,
+) {
     if scale == 1.0 {
         return;
     }
     for modifier in modifiers {
+        if modifier.unscalable {
+            continue;
+        }
         match &mut modifier.value {
             pobr_core::ModValue::Number(value) => {
-                *value = super::super::collect::vendor_scale_mod_value(*value, scale);
+                *value =
+                    rules.scale_number(modifier.name.as_str(), modifier.mod_type, *value, scale);
             }
-            pobr_core::ModValue::NestedMods(inner) => scale_item_bonuses(inner, scale),
+            pobr_core::ModValue::NestedMods(inner) => scale_item_bonuses(inner, scale, rules),
             pobr_core::ModValue::Bool(_) | pobr_core::ModValue::Text(_) => {}
         }
     }
@@ -311,6 +320,7 @@ mod tests {
             .with_tag(ModTag::condition("TestCondition", false))
             .with_origin(origin.clone())
         };
+        let rules = pobr_core::HighPrecisionRules::default();
         for (scale, expected) in [
             (1.0, payload(3.0, -20.0, 100.0)),
             (1.5, payload(4.0, -30.0, 150.0)),
@@ -318,9 +328,61 @@ mod tests {
             (0.0, payload(0.0, 0.0, 0.0)),
         ] {
             let mut mods = vec![wrap(payload(3.0, -20.0, 100.0))];
-            scale_item_bonuses(&mut mods, scale);
+            scale_item_bonuses(&mut mods, scale, &rules);
             assert_eq!(mods, vec![wrap(expected)]);
         }
+    }
+
+    #[test]
+    fn slot_scaling_uses_high_precision_rules_and_skips_unscalable_modifiers() {
+        use pobr_data::catalog::high_precision_mods::HighPrecisionModsDef;
+        use std::collections::BTreeMap;
+
+        let entry = |mod_type: &str, precision: u32| {
+            let mut map = BTreeMap::new();
+            map.insert(mod_type.to_string(), precision);
+            map
+        };
+        let rules = pobr_core::HighPrecisionRules::from_def(HighPrecisionModsDef {
+            default_high_precision: 1,
+            more_default_round_decimals: 2,
+            mods: BTreeMap::from([
+                ("PhysicalDamageLifeLeech".to_string(), entry("BASE", 2)),
+                ("LifeRegen".to_string(), entry("BASE", 1)),
+                ("CriticalStrikeChance".to_string(), entry("BASE", 2)),
+            ]),
+        });
+
+        let mut mods = vec![
+            Modifier::number("PhysicalDamageLifeLeech", ModType::Base, 0.4),
+            Modifier::number("LifeRegen", ModType::Base, 1.5),
+            Modifier::number("CriticalStrikeChance", ModType::Base, 1.5),
+            // Arbitrary fractional mod not in exception table -> default_high_precision = 1.
+            Modifier::number("Damage", ModType::Inc, 1.5),
+            // Top-level unscalable modifier must stay untouched.
+            Modifier::number("TakenFromCompanionBeforeYou", ModType::Base, 10.0)
+                .with_unscalable(true),
+            // NestedMods: scalable leaf uses precision rules; unscalable leaf stays untouched.
+            Modifier::new(
+                "MinionModifier",
+                ModType::List,
+                ModValue::NestedMods(vec![
+                    Modifier::number("LifeRegen", ModType::Base, 1.5),
+                    Modifier::number("Multiplier:Stages", ModType::Base, 4.0).with_unscalable(true),
+                ]),
+            ),
+        ];
+
+        scale_item_bonuses(&mut mods, 1.5, &rules);
+
+        assert_eq!(mods[0].value.as_number(), Some(0.6));
+        assert_eq!(mods[1].value.as_number(), Some(2.2));
+        assert_eq!(mods[2].value.as_number(), Some(2.25));
+        assert_eq!(mods[3].value.as_number(), Some(2.2));
+        assert_eq!(mods[4].value.as_number(), Some(10.0));
+        let nested = mods[5].value.as_nested_mods().expect("nested");
+        assert_eq!(nested[0].value.as_number(), Some(2.2));
+        assert_eq!(nested[1].value.as_number(), Some(4.0));
     }
 
     #[test]

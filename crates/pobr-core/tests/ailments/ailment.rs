@@ -1955,3 +1955,256 @@ fn aggravated_or_moving_doubles_bleed_without_stacking_and_respects_prohibitions
     );
     assert!((suppressed.magnitude_dps - base.magnitude_dps).abs() < 1e-6);
 }
+
+#[test]
+fn damaging_ailments_apply_enemy_self_duration_and_clamp_negative_to_zero() {
+    use pobr_core::calc::{Actor, ActorBaseStats, Env, perform};
+    use pobr_core::display_catalog::display_value;
+
+    let run = |enemy_mods: Vec<Modifier>| {
+        let mut env = Env::new(Actor::new(
+            80,
+            ActorBaseStats {
+                life: 100.0,
+                hit_min: 100.0,
+                hit_max: 100.0,
+                action_rate: 1.0,
+                ..Default::default()
+            },
+        ));
+        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+        env.player.mod_db.add_list([
+            Modifier::flag("NeverCrit"),
+            Modifier::flag("CannotBeEvaded"),
+            Modifier::number("BleedChance", ModType::Base, 100.0),
+            Modifier::number("BleedDuration", ModType::Inc, 50.0),
+        ]);
+        env.enemy.mod_db.add_list(enemy_mods);
+        perform(&mut env).unwrap();
+        env.player.output
+    };
+
+    // Base bleed duration = 5s, player +50% -> 7.5s.
+    let baseline = run(vec![]);
+    assert!((display_value(&baseline, "BleedDuration") - 7.5).abs() < 1e-9);
+    assert!((baseline.bleed_damage - baseline.bleed_dps * 7.5).abs() < 1e-6);
+
+    // Enemy SelfBleedDuration INC -25% adds to player +50% -> +25% (= 6.25s),
+    // and SelfAilmentDuration MORE -20% multiplies -> 6.25 * 0.8 = 5.0s.
+    let shortened = run(vec![
+        Modifier::number("SelfBleedDuration", ModType::Inc, -25.0),
+        Modifier::number("SelfAilmentDuration", ModType::More, -20.0),
+    ]);
+    assert!((display_value(&shortened, "BleedDuration") - 5.0).abs() < 1e-9);
+    assert!((shortened.bleed_damage - shortened.bleed_dps * 5.0).abs() < 1e-6);
+
+    // Severe negative SelfBleedDuration clamps to 0.0 rather than turning negative.
+    let clamped = run(vec![Modifier::number(
+        "SelfBleedDuration",
+        ModType::Inc,
+        -250.0,
+    )]);
+    assert_eq!(display_value(&clamped, "BleedDuration"), 0.0);
+    assert_eq!(clamped.bleed_damage, 0.0);
+}
+
+#[test]
+fn ailment_effect_mod_combines_inc_and_more_under_ailment_scoped_cfg() {
+    use pobr_core::calc::{CalculationSession, MinimalInput};
+
+    // Direct helper check: (1 + INC/100).max(0) * MORE.
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("AilmentEffect", ModType::Inc, 50.0));
+    db.add_mod(Modifier::number("AilmentEffect", ModType::More, 20.0));
+    assert!((ailment_effect_mod(&db, &CalcConfig::attack()) - 1.8).abs() < 1e-9);
+
+    let mut clamped_db = ModDb::new();
+    clamped_db.add_mod(Modifier::number("AilmentEffect", ModType::Inc, -150.0));
+    clamped_db.add_mod(Modifier::number("AilmentEffect", ModType::More, 50.0));
+    assert_eq!(ailment_effect_mod(&clamped_db, &CalcConfig::attack()), 0.0);
+
+    // End-to-end scoping check: KeywordFlags::POISON AilmentEffect (INC + MORE)
+    // amplifies Poison DPS & ailment_lines("PoisonDPS").effect, but not Bleed.
+    let run = |with_poison_effect: bool| {
+        let mut session = CalculationSession::new(MinimalInput {
+            base_hit_min: 100.0,
+            base_hit_max: 100.0,
+            base_action_rate: 1.0,
+            ..Default::default()
+        })
+        .with_config(CalcConfig::attack().with_damage_type(DamageType::Physical));
+        session.add_modifiers([
+            Modifier::flag("NeverCrit"),
+            Modifier::flag("CannotBeEvaded"),
+            Modifier::number("PoisonChance", ModType::Base, 100.0),
+            Modifier::number("BleedChance", ModType::Base, 100.0),
+        ]);
+        if with_poison_effect {
+            session.add_modifiers([
+                Modifier::number("AilmentEffect", ModType::Inc, 50.0)
+                    .with_keyword_flags(KeywordFlags::POISON),
+                Modifier::number("AilmentEffect", ModType::More, 20.0)
+                    .with_keyword_flags(KeywordFlags::POISON),
+            ]);
+        }
+        session.perform_minimal().unwrap();
+        session
+    };
+
+    let base = run(false);
+    let buffed = run(true);
+    assert!(
+        (buffed.output().poison_dps - base.output().poison_dps * 1.8).abs() < 1e-6,
+        "poison_dps should scale by 1.5 * 1.2 = 1.8: {} vs {}",
+        buffed.output().poison_dps,
+        base.output().poison_dps,
+    );
+    assert_eq!(
+        buffed.output().bleed_dps,
+        base.output().bleed_dps,
+        "POISON-scoped AilmentEffect must not scale Bleed"
+    );
+    let poison_effect_lines = buffed.ailment_lines("PoisonDPS").unwrap().effect;
+    assert_eq!(poison_effect_lines.len(), 2);
+    assert!(
+        poison_effect_lines.iter().all(|e| e.active),
+        "ailment_lines must mark POISON-scoped AilmentEffect active under scoped_cfg"
+    );
+    let bleed_effect_lines = buffed.ailment_lines("BleedDPS").unwrap().effect;
+    assert!(
+        bleed_effect_lines.iter().all(|e| !e.active),
+        "Bleed ailment_lines must mark POISON-scoped AilmentEffect inactive"
+    );
+}
+
+#[test]
+fn hit_scoped_enemy_damage_taken_does_not_apply_to_damaging_ailments() {
+    use pobr_core::calc::{CalculationSession, MinimalInput};
+    use pobr_core::display_catalog::display_value;
+
+    let mut session = CalculationSession::new(MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        base_action_rate: 1.0,
+        ..Default::default()
+    })
+    .with_config(
+        CalcConfig::attack()
+            .with_damage_type(DamageType::Physical)
+            .with_keyword_flags(KeywordFlags::HIT)
+            .with_mode_effective(true),
+    );
+    session.add_modifiers([
+        Modifier::flag("NeverCrit"),
+        Modifier::flag("CannotBeEvaded"),
+        Modifier::number("BleedChance", ModType::Base, 100.0),
+    ]);
+    session.add_enemy_modifiers([
+        Modifier::number("DamageTaken", ModType::Inc, 50.0).with_keyword_flags(KeywordFlags::HIT),
+        Modifier::number("DamageTaken", ModType::Inc, 20.0).with_keyword_flags(KeywordFlags::BLEED),
+    ]);
+    session.perform_minimal().unwrap();
+
+    // Hit DPS sees the HIT-scoped +50% DamageTaken, not the BLEED-scoped +20%.
+    assert!((session.output().dps - 150.0).abs() < 1e-6);
+    // Bleed EffMult sees ONLY the BLEED-scoped +20% (1.2), NOT the HIT-scoped +50%.
+    let bleed_eff = display_value(session.output(), "BleedEffMult");
+    assert!(
+        (bleed_eff - 1.2).abs() < 1e-9,
+        "expected BleedEffMult=1.2, got {bleed_eff}"
+    );
+    let detail = session.derived_detail("BleedEffMult").unwrap();
+    let taken_inc = detail
+        .inputs
+        .iter()
+        .find(|(k, _)| k == "AilmentDamageTakenIncreased")
+        .unwrap()
+        .1;
+    assert_eq!(
+        taken_inc, 20.0,
+        "BleedEffMult detail must match scoped effmult"
+    );
+}
+
+#[test]
+fn asymmetric_dual_wield_merges_per_hand_ailment_damage_and_reconciles_views() {
+    use pobr_core::calc::{CalculationSession, HandSource, MinimalInput, WeaponBase};
+    use pobr_core::display_catalog::display_value;
+
+    // MH: 100 phys, base 2s poison -> dps 20, dmg 40.
+    // OH: 200 phys, +100% PoisonDuration (4s) -> dps 40, dmg 160.
+    // Attack rate 0.25/s with PoisonCanStack + max_stacks = 2:
+    // MH stacks = 0.25 * 2 = 0.5, OH stacks = 0.25 * 4 = 1.0 -> stacks = 1.0, max = 2 -> share = 0.5.
+    let mut session = CalculationSession::new(MinimalInput::default())
+        .with_config(CalcConfig::attack().with_damage_type(DamageType::Physical));
+    session.set_hand_sources(
+        vec![
+            HandSource::main_hand(WeaponBase {
+                hit_min: 100.0,
+                hit_max: 100.0,
+                attack_rate: Some(0.25),
+                ..Default::default()
+            }),
+            HandSource::off_hand(WeaponBase {
+                hit_min: 200.0,
+                hit_max: 200.0,
+                attack_rate: Some(0.25),
+                ..Default::default()
+            }),
+        ],
+        false,
+    );
+    session.add_modifiers([
+        Modifier::flag("NeverCrit"),
+        Modifier::flag("CannotBeEvaded"),
+        Modifier::number("PoisonChance", ModType::Base, 100.0),
+        Modifier::flag("PoisonCanStack"),
+        Modifier::number("PoisonStacks", ModType::Base, 1.0), // max_stacks = 2
+        Modifier::number("PoisonDuration", ModType::Inc, 100.0)
+            .with_tag(ModTag::condition("OffHandAttack", false)),
+    ]);
+    session.perform_minimal().unwrap();
+
+    let out = session.output();
+    let stage = session.ailment_stage_terms("PoisonDPS").unwrap();
+    assert_eq!(stage.passes.len(), 2);
+    let mh = stage.passes[0].1;
+    let oh = stage.passes[1].1;
+    assert_eq!(mh.duration, 2.0);
+    assert_eq!(oh.duration, 4.0);
+    assert!(oh.dps > mh.dps);
+
+    let merge = stage.merge.expect("dual-wield merge");
+    assert!((merge.stronger_share - 0.5).abs() < 1e-9);
+    let expected_damage =
+        oh.dps * oh.duration * merge.stronger_share + mh.dps * mh.duration * merge.weaker_share;
+    assert!(
+        (out.poison_damage - expected_damage).abs() < 1e-6,
+        "poison_damage should merge per-hand damage ({expected_damage}), not dps * mh.duration ({}); got {}",
+        out.poison_dps * mh.duration,
+        out.poison_damage,
+    );
+    assert!(
+        (out.poison_damage - out.poison_dps * mh.duration).abs() > 1.0,
+        "test must distinguish merged per-hand damage from dps * mh.duration"
+    );
+
+    // derived_detail("PoisonDamage") must reproduce out.poison_damage exactly.
+    let dmg_detail = session.derived_detail("PoisonDamage").unwrap();
+    let get = |name: &str| dmg_detail.inputs.iter().find(|(k, _)| k == name).unwrap().1;
+    let rebuilt_damage = get("StrongerAilmentDamage") * get("StrongerAilmentShare")
+        + get("WeakerAilmentDamage") * get("WeakerAilmentShare");
+    assert!((rebuilt_damage - out.poison_damage).abs() < 1e-6);
+
+    // PoisonDuration view reads the primary hand (.first() = MH = 2.0s), consistent
+    // with single-pass views and hand_pass's MH leg convention.
+    assert_eq!(display_value(out, "PoisonDuration"), mh.duration);
+    let dur_detail = session.derived_detail("PoisonDuration").unwrap();
+    let dur_before = dur_detail
+        .inputs
+        .iter()
+        .find(|(k, _)| k == "AilmentDurationBeforeRate")
+        .unwrap()
+        .1;
+    assert_eq!(dur_before, mh.duration_before_rate);
+}

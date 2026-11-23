@@ -536,6 +536,9 @@ pub struct Modifier {
     pub flags: ModFlags,
     pub keyword_flags: KeywordFlags,
     pub tags: Vec<ModTag>,
+    /// Exempt from modifier-value scaling (buff effect, item bonus scaling,
+    /// `ModDb::scale_add_mod`), matching PoB2 `GlobalEffect.unscalable`.
+    pub unscalable: bool,
 }
 
 pub(crate) fn resistance_expansion<'a>(
@@ -598,6 +601,7 @@ impl Modifier {
             flags: ModFlags::NONE,
             keyword_flags: KeywordFlags::NONE,
             tags: Vec::new(),
+            unscalable: false,
         }
     }
 
@@ -634,6 +638,11 @@ impl Modifier {
 
     pub fn with_keyword_flags(mut self, keyword_flags: KeywordFlags) -> Self {
         self.keyword_flags = keyword_flags;
+        self
+    }
+
+    pub fn with_unscalable(mut self, unscalable: bool) -> Self {
+        self.unscalable = unscalable;
         self
     }
 

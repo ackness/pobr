@@ -1219,7 +1219,7 @@ fn compute_damaging_ailment(
         _ => bleed_instance(base_source, player, cfg),
     };
 
-    let eff_mult = effmult_for_ailment(enemy, cfg, damage_type, cfg.mode_effective);
+    let eff_mult = effmult_for_ailment(enemy, &scoped, damage_type, cfg.mode_effective);
     let magnitude_dps = round(instance.magnitude_dps * eff_mult);
     let expected_dps = round(magnitude_dps * chance);
 
@@ -1240,16 +1240,19 @@ fn compute_damaging_ailment(
     trace.add_edge(mag_node, dps_node);
     // The effMult node (enemy resistance + the taken chain) chains into DPS.
     if cfg.mode_effective {
-        let eff_node = record_effmult_trace(enemy, cfg, damage_type, eff_mult, trace);
+        let eff_node = record_effmult_trace(enemy, &scoped, damage_type, eff_mult, trace);
         trace.add_edge(eff_node, dps_node);
     }
+
+    let duration_secs = ailment_duration_terms(ailment, player, Some(enemy), cfg)
+        .map_or(instance.duration_secs, |t| round(t.value().max(0.0)));
 
     (
         DamagingAilmentOutput {
             chance,
             eff_mult,
             magnitude_dps,
-            duration_secs: instance.duration_secs,
+            duration_secs,
             expected_dps,
             source_damage: base_source,
         },
@@ -2223,10 +2226,12 @@ pub fn stacking_ailment_dps_traced(
 /// Corresponds to `effectMod` in PoB2's damaging-ailment DPS formula:
 /// `ailmentDPS = baseVal * effectMod * rateMod * activeAilments * effMult`.
 ///
-/// `AilmentEffect` is aggregated as MORE (PoB2's `calcLib.mod`), source:
+/// `AilmentEffect` is aggregated as `(1 + ΣINC / 100).max(0) × ΠMORE`
+/// (PoB2's `calcLib.mod`), source:
 /// PoB2 `CalcOffence.lua` l.5190 `local effectMod = calcLib.mod(skillModList, dotCfg, "AilmentEffect")`.
 pub fn ailment_effect_mod(db: &ModDb, cfg: &CalcConfig) -> f64 {
-    db.more(cfg, &effect_mod_names())
+    let names = effect_mod_names();
+    (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0).max(0.0) * db.more(cfg, &names)
 }
 
 /// The Ailment Rate factor (cadence correction): `mod(Faster) / mod(Slower)`.
@@ -2587,6 +2592,19 @@ impl HandAilmentMerge {
             b.at_most(FormulaOp::Cap, cap);
         }
         b.finish(self.dps())
+    }
+}
+
+/// Orders two hands' per-pass ailment damages (`dps * duration`) to match
+/// [`HandAilmentMerge`]'s stronger/weaker hand choice (higher DPS first,
+/// tie-breaking by higher total damage).
+pub(crate) fn ordered_hand_ailment_damages(a: &AilmentTerms, b: &AilmentTerms) -> (f64, f64) {
+    let a_damage = a.dps * a.duration;
+    let b_damage = b.dps * b.duration;
+    if a.dps > b.dps || (a.dps == b.dps && a_damage >= b_damage) {
+        (a_damage, b_damage)
+    } else {
+        (b_damage, a_damage)
     }
 }
 

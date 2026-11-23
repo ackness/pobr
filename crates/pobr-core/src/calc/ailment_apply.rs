@@ -35,9 +35,10 @@
 //!   (see the data channel below).
 //! - **Writing the enemy db** (:3078-3124 + :3165-3168):
 //!   - Shock → `DamageTaken INC Current {Condition:EnemyShocked}`;
-//!   - Chill → `ActionSpeed INC -Current {Condition:Chilled}` (:3089) plus the
-//!     Bonechill branch's `ColdDamageTaken INC Current {Condition:Chilled}` (:3092-3094);
-//!   - An Override source sets `Condition:Shocked/Chilled` (:3136-3138);
+//!   - Chill → `ActionSpeed INC -Current {Condition:EnemyChilled}` (:3089) plus the
+//!     Bonechill branch's `ColdDamageTaken INC Current {Condition:EnemyChilled}` (:3092-3094);
+//!   - An Override source sets enemy `Condition:Shocked/Chilled` (:3136-3138) and
+//!     bridges `EnemyShocked`/`EnemyChilled` into the shared config namespace;
 //!   - After applying, sets `Condition:Already<cond>` gated by the same
 //!     target state, to prevent a minion applying it twice.
 //! - **`Multiplier:ChillEffect/ShockEffect` incremental update** (:3172-3180):
@@ -87,10 +88,10 @@
 //!   existence gate instead (the enemy `<X>Val` aggregate is > 0, or a
 //!   Base/Override/Minimum source or selected Shock fallback exists), which keeps things
 //!   no-op safe (env/db is bit-for-bit unchanged when there's no source).
-//! - Condition bridging: enemy Shock writes `EnemyShocked` in the shared
-//!   config namespace, never the player's `Shocked` state. The older Chill
-//!   path still uses unprefixed `Chilled`. An enemy condition flag or an
-//!   Override source activates the derived debuff in offence aggregation.
+//! - Condition bridging: enemy Shock and Chill write `EnemyShocked` /
+//!   `EnemyChilled` in the shared config namespace, never the player's
+//!   `Shocked` / `Chilled` state. An enemy condition flag or an Override
+//!   source activates the derived debuff in offence aggregation.
 
 use pobr_data::monster::SHOCK_MAX_EFFECT;
 use pobr_data::prelude::*;
@@ -113,7 +114,7 @@ struct AilmentSpec {
 const CHILL: AilmentSpec = AilmentSpec {
     name: "Chill",
     condition: "Chilled",
-    config_condition: "Chilled",
+    config_condition: "EnemyChilled",
 };
 const SHOCK: AilmentSpec = AilmentSpec {
     name: "Shock",
@@ -320,7 +321,7 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> AppliedAilment {
                 .with_source(spec.name)
                 .with_origin(origin()),
         ),
-        // Chill → ActionSpeed INC -Current {Condition:Chilled} (:3089) + Bonechill.
+        // Chill → ActionSpeed INC -Current {Condition:EnemyChilled} (:3089) + Bonechill.
         _ => {
             new_mods.push(
                 Modifier::number(ModName::from("ActionSpeed"), ModType::Inc, -current)
@@ -347,8 +348,8 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> AppliedAilment {
     );
     env.enemy.mod_db.add_list(new_mods);
 
-    // Keep enemy Shock separate from the player's own Shock: a selected
-    // target state must not activate "while you are Shocked" player modifiers.
+    // Keep enemy ailments separate from the player's own ailments: a selected
+    // target state must not activate "while you are Shocked/Chilled" player modifiers.
     if condition_active {
         env.cfg
             .conditions

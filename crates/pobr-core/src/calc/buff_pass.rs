@@ -39,14 +39,13 @@
 //!   -- pobr's parse layer doesn't produce this ModName yet, add per the C5
 //!   diff report when it comes up.
 //! - (e) `highPrecisionMods` (Data.lua:415-530): after deduplication, this
-//!   is **data-driven** -- [`scale_value`] directly consumes the T1 write
-//!   primitive [`crate::ModDb::scale_add_mod`], with precision exceptions
+//!   is **data-driven** -- [`scale_value`] delegates directly to
+//!   [`crate::HighPrecisionRules::scale_number`], with precision exceptions
 //!   looked up via `Env::high_precision` (injected from
 //!   `overlay/high_precision_mods.json` by the orchestration layer; not
-//!   injected = falls back to no exception table). The earlier hardcoded
-//!   name-family mirror table has been removed. `mod.unscalable`
-//!   (ModStore.lua:46-52) has no corresponding bit in pobr's mod model, not
-//!   implemented (recorded with the same semantics on the T1 primitive side).
+//!   injected = falls back to no exception table). `Modifier.unscalable`
+//!   (ModStore.lua:46-52) is honored recursively across top-level and nested
+//!   payloads so exempt modifiers store their unscaled values.
 //! - (f) Debuff's `stackVar`/`stackLimit` (`:2221-2230`): the `BuffSpec`
 //!   contract (frozen at T0) has no stack field, treated as `stackCount = 1`
 //!   (vendor's `skillData.stackCount or 1` default).
@@ -227,22 +226,9 @@ pub fn determine_curse_priority(
     base + socket + slot_weight + source_weight
 }
 
-/// ScaleAddMod's value scaling semantics (vendor `ModStore.lua:45-79`) --
-/// deduplicated: **directly consumes the T1 write primitive**
-/// [`ModDb::scale_add_mod`] (the single implementation of this vendor
-/// section, covering the precision exception lookup / non-integer raw value
-/// `defaultHighPrecision` floor / default `m_modf(round(·,2))` truncation
-/// three branches). `rules` = `overlay/high_precision_mods.json`'s
-/// data-driven exception table (injected via [`Env::high_precision`];
-/// replaces the earlier hardcoded name-family mirror).
-///
-/// Implementation: goes through a single-mod scratch db running the
-/// primitive, then reads the value back -- under the no-code-movement
-/// constraint, mod_db's rounding kernel exposes no value-level entry point,
-/// so a scratch db is a "consume only, never mutate" reuse channel (a single
-/// bucket, single mod, deterministic read-back; buff/flask scaling isn't a
-/// hot path, so the overhead is negligible). `scale == 1` returns the raw
-/// value directly (`:54`, an early exit with the same semantics as the primitive, avoiding the scratch overhead).
+/// Applies the high-precision scaling rounding of [`HighPrecisionRules::scale_number`]
+/// (`ModStore.lua:69-77`). `rules` = `overlay/high_precision_mods.json`'s
+/// data-driven exception table (injected via [`Env::high_precision`]).
 pub fn scale_value(
     rules: &HighPrecisionRules,
     name: &str,
@@ -250,22 +236,33 @@ pub fn scale_value(
     value: f64,
     scale: f64,
 ) -> f64 {
-    if scale == 1.0 {
-        return value;
+    rules.scale_number(name, mod_type, value, scale)
+}
+
+fn scale_buff_value(rules: &HighPrecisionRules, modifier: &mut Modifier, mult: f64) {
+    if modifier.unscalable {
+        return;
     }
-    let mut db = ModDb::new();
-    db.scale_add_mod(Modifier::number(name, mod_type, value), scale, rules);
-    db.iter_mods()
-        .next()
-        .and_then(|m| m.value.as_number())
-        .unwrap_or(value)
+    match &mut modifier.value {
+        ModValue::Number(v) => {
+            *v = scale_value(rules, modifier.name.as_str(), modifier.mod_type, *v, mult);
+        }
+        // What a buff grants others (an aura only allies have) is scaled
+        // with it, except leaves marked unscalable.
+        ModValue::NestedMods(nested) => {
+            for inner in nested.iter_mut() {
+                scale_buff_value(rules, inner, mult);
+            }
+        }
+        _ => {}
+    }
 }
 
 /// Applies the effect factor (equivalent to ScaleAddMod) to a buff mod and
 /// sorts out its attribution: preserves the original `origin` (never dropped
 /// from the trace), falling back to `(SourceKind::Buff, fallback_source_id)`
 /// when there's no origin; the scaling multiplier is recorded in `raw_text`.
-/// Numeric leaves of nested payloads receive the same effect factor;
+/// Modifiers marked `unscalable` (top-level or nested) keep their raw values;
 /// flags and text pass through unchanged.
 fn scale_buff_mod(
     rules: &HighPrecisionRules,
@@ -274,25 +271,14 @@ fn scale_buff_mod(
     fallback_source_id: &str,
 ) -> Modifier {
     let mut out = modifier.clone();
-    match &mut out.value {
-        ModValue::Number(v) => {
-            *v = scale_value(rules, out.name.as_str(), out.mod_type, *v, mult);
-        }
-        // What a buff grants others (an aura only allies have) is scaled
-        // with it.
-        ModValue::NestedMods(nested) => {
-            for inner in nested.iter_mut() {
-                if let ModValue::Number(v) = &mut inner.value {
-                    *v = scale_value(rules, inner.name.as_str(), inner.mod_type, *v, mult);
-                }
-            }
-        }
-        _ => {}
+    let effective_mult = if out.unscalable { 1.0 } else { mult };
+    if effective_mult != 1.0 {
+        scale_buff_value(rules, &mut out, effective_mult);
     }
-    let scale_note = format!("buff effect ×{mult:.4}");
+    let scale_note = format!("buff effect ×{effective_mult:.4}");
     match out.origin.as_mut() {
         Some(origin) => {
-            if mult != 1.0 && !origin.source_id.id.starts_with("party.") {
+            if effective_mult != 1.0 && !origin.source_id.id.starts_with("party.") {
                 origin.raw_text = Some(match origin.raw_text.take() {
                     Some(text) => format!("{text} ({scale_note})"),
                     None => scale_note,
@@ -2084,5 +2070,76 @@ mod tests {
             ),
             30.0
         );
+    }
+
+    #[test]
+    fn unscalable_buff_modifiers_are_exempt_from_buff_effect_scaling() {
+        let mut env = buffed_env();
+        env.player
+            .mod_db
+            .add_mod(Modifier::number("BuffEffect", ModType::Inc, 100.0));
+        env.buff_skills.push(BuffSpec {
+            name: "SigilAndLoyalty".to_string(),
+            kind: BuffKind::Buff,
+            skill_id: "SigilOfPowerPlayer".to_string(),
+            mods: vec![
+                Modifier::number("Multiplier:SigilOfPowerMaxStages", ModType::Base, 4.0)
+                    .with_unscalable(true),
+                Modifier::number("TakenFromCompanionBeforeYou", ModType::Base, 10.0)
+                    .with_unscalable(true),
+                Modifier::number("Damage", ModType::More, 20.0),
+                Modifier::new(
+                    "ExtraAura",
+                    ModType::List,
+                    ModValue::NestedMods(vec![
+                        Modifier::number("Armour", ModType::Base, 50.0),
+                        Modifier::number("TakenFromCompanionBeforeYou", ModType::Base, 10.0)
+                            .with_unscalable(true),
+                    ]),
+                ),
+            ],
+            magnitude: 1.0,
+            slot: None,
+            socket_index: 1,
+            is_mark: false,
+            ignore_curse_limit: false,
+            local_effect_inc: 0.0,
+            local_effect_more: 1.0,
+            skill_types: SkillTypes::NONE,
+        });
+
+        buff_pass(&mut env);
+
+        assert_eq!(
+            env.player.mod_db.sum(
+                ModType::Base,
+                &env.cfg,
+                &[ModName::from("Multiplier:SigilOfPowerMaxStages")]
+            ),
+            4.0,
+            "unscalable stage cap must not double under +100% BuffEffect"
+        );
+        assert_eq!(
+            env.player.mod_db.sum(
+                ModType::Base,
+                &env.cfg,
+                &[ModName::from("TakenFromCompanionBeforeYou")]
+            ),
+            10.0,
+            "unscalable companion share must not double under +100% BuffEffect"
+        );
+        assert!(
+            (env.player.mod_db.more(&env.cfg, &[ModName::from("Damage")]) - 1.4).abs() < 1e-9,
+            "scalable sibling Damage MORE 20 must double to 40 under +100% BuffEffect"
+        );
+        let extra = env
+            .player
+            .mod_db
+            .named("ExtraAura")
+            .next()
+            .expect("ExtraAura stored");
+        let nested = extra.value.as_nested_mods().expect("nested mods");
+        assert_eq!(nested[0].value.as_number(), Some(100.0));
+        assert_eq!(nested[1].value.as_number(), Some(10.0));
     }
 }
