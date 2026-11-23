@@ -240,8 +240,7 @@ export async function smokeRuntimeCandidate({ package: packageDir, data, expecte
   const initialHead = head();
   const packageDirectory = stamp(noSymlinks(packageRoot));
   const inputs = inputReader();
-  const codeFiles = ['web/scripts/smoke-runtime-candidate.mjs', 'web/scripts/sync-data.mjs',
-    'web/scripts/sync-build-references.mjs', 'web/src/api/types.ts'];
+  const codeFiles = ['web/scripts/smoke-runtime-candidate.mjs', 'web/scripts/sync-data.mjs', 'web/src/api/types.ts'];
   const code = Object.fromEntries(codeFiles.map(name => [name, sha256(inputs.read(join(repo, name)))]));
   const workedRequests = workedBuilds.map(name => {
     const source = `examples/demo-bd-test/builds/${name}/code.txt`;

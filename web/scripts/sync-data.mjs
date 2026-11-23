@@ -4,7 +4,6 @@ import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { syncBuildReferences } from './sync-build-references.mjs';
 
 /** Where a published file is also found by its content: `data/h/<first 16 digits of its SHA-256>/<path>`. */
 const ADDRESSED = 'h';
@@ -193,5 +192,4 @@ export function syncRelease({ packRoot, destRoot, expectedId }, rename = renameS
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const { version, files } = syncData();
   console.log(`synced ${files.length} runtime files for ${version}`);
-  syncBuildReferences();
 }

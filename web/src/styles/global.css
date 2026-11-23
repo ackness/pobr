@@ -147,6 +147,9 @@ pre {
   color: var(--text-muted);
 }
 
+.delta-pos { color: var(--color-positive); }
+.delta-neg { color: var(--color-negative); }
+
 /* Inline annotations (shared next to items, socket groups, and jewels): quote block + save on blur */
 .note-block {
   display: block;

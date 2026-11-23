@@ -1,10 +1,8 @@
 @layer app {
 .shell-root .config-page { min-width: 0; }
 .shell-root .config-scenario { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; align-items: start; padding: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 1rem; margin-bottom: 1.25rem; }
-.shell-root .config-scenario .config-row { display: grid; gap: .5rem; margin: 0; font-size: .875em; }
 .shell-root .config-toolbar { position: static; top: auto; z-index: auto; padding: 0; border: 0; background: transparent; display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; margin: .5rem 0 1rem; }
 .shell-root .config-search { flex: 1 1 15rem; min-width: 0; max-width: 32rem; }
-.shell-root .config-filter { display: flex; align-items: center; gap: .5rem; font-size: .875em; }
 .shell-root :is(.config-guidance, .config-quick-disclosure) { padding: .75rem 1rem; border: 1px solid var(--border); border-radius: .75rem; margin: .75rem 0; background: var(--card); }
 .shell-root .config-quick-access { border: 0; padding: .5rem 0; background: transparent; }
 .shell-root .config-quick-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); padding: 0; list-style: none; gap: .75rem; }
@@ -23,7 +21,6 @@
 .shell-root .config-item { display: grid; grid-template-columns: minmax(0, 1fr) minmax(7rem, 12rem) 2rem; align-items: start; gap: .5rem .75rem; padding: 1rem; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; }
 .shell-root .config-item:last-child { border-bottom: 0; }
 .shell-root .config-item.is-overridden { box-shadow: inset 3px 0 var(--primary); }
-.shell-root .config-description { min-width: 0; }
 .shell-root .config-key { display: block; font-weight: 500; color: var(--foreground); font-size: .95em; }
 .shell-root .config-item > :is(input, [role="checkbox"], [role="combobox"]) { grid-column: 2; width: 100%; }
 .shell-root .config-item > [role="checkbox"] { justify-self: end; width: 1.1rem; height: 1.1rem; margin-top: .4rem; }
@@ -70,7 +67,7 @@
 }
 @media (max-width: 600px) {
   .shell-root .config-item, .shell-root .config-advanced .config-item { grid-template-columns: minmax(0, 1fr) 2rem; }
-  .shell-root .config-description, .shell-root .config-advanced .config-key { grid-column: 1 / -1; }
+  .shell-root .config-advanced .config-key { grid-column: 1 / -1; }
   .shell-root .config-item > :is(input, [role="checkbox"], [role="combobox"], .config-raw-value) { grid-column: 1; justify-self: start; }
   .shell-root .config-reset { grid-column: 2; }
 }
@@ -86,7 +83,7 @@
 }
 @container shell-page (max-width: 36rem) {
   .shell-root .config-item, .shell-root .config-advanced .config-item { grid-template-columns: minmax(0, 1fr) auto; }
-  .shell-root .config-description, .shell-root .config-advanced .config-key { grid-column: 1 / -1; }
+  .shell-root .config-advanced .config-key { grid-column: 1 / -1; }
   .shell-root .config-item > :is(input, [role='checkbox'], .app-checkbox, [role='combobox'], .config-raw-value) { grid-column: 1; justify-self: start; }
   .shell-root .config-reset { grid-column: 2; }
   .shell-root .config-raw-value { width: 100%; grid-template-columns: minmax(0, 1fr); }

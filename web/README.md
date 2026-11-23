@@ -151,7 +151,6 @@ Comparisons use each side's own config by default, optionally A's for both;
 applying B to A never edits B. [Web contracts](../docs/web-contracts.md) cover exact
 search, application, undo and diagnostic boundaries; [jewel search](../docs/jewel-search.md)
 covers Time-Lost jewels and unique-jewel limits.
-Build-reference guidance remains hidden from navigation.
 
 ## Workspace
 
