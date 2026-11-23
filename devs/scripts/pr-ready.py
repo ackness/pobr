@@ -6,17 +6,45 @@ import subprocess
 import sys
 
 REQUIRED = {"PR gate"}
-FULL_REQUIRED = REQUIRED | {"Full gate"}
+FULL_GATE = "Full gate"
+FULL_REQUIRED = REQUIRED | {FULL_GATE}
 
 
 def gh(*args):
     return json.loads(subprocess.check_output(["gh", *args], text=True))
 
 
-def assess(pr, checks, require_full=False):
+def flatten_check_runs(payload):
+    if isinstance(payload, dict):
+        pages = [payload]
+    elif isinstance(payload, list):
+        pages = payload
+    else:
+        raise ValueError("unexpected commit check-runs payload")
+    runs = []
+    for page in pages:
+        runs.extend(page.get("check_runs", []))
+    return runs
+
+
+def assess_full_gate(commit_check_runs):
+    if any(run.get("status") != "completed" for run in commit_check_runs):
+        raise ValueError("head commit still has pending check runs")
+    full_runs = [run for run in commit_check_runs if run.get("name") == FULL_GATE]
+    if not full_runs:
+        raise ValueError("Full gate must exist on the PR head commit")
+    latest = max(
+        enumerate(full_runs),
+        key=lambda item: (item[1].get("id") or 0, item[0]),
+    )[1]
+    if latest.get("conclusion") != "success":
+        raise ValueError("Full gate on the PR head commit must pass, not fail, cancel or skip")
+
+
+def assess(pr, checks, require_full=False, commit_checks=None):
     if pr.get("draft") or pr.get("state") != "open" or pr.get("mergeable") is not True:
         raise ValueError("PR must be open, ready and conflict-free; unknown mergeability needs a later retry")
-    required = FULL_REQUIRED if require_full else REQUIRED
+    required = FULL_REQUIRED if (require_full and commit_checks is None) else REQUIRED
     by_name = {check["name"]: check for check in checks}
     missing = sorted(required - by_name.keys())
     if missing:
@@ -26,6 +54,8 @@ def assess(pr, checks, require_full=False):
         raise ValueError(f"{', '.join(not_passing)} must pass, not skip or remain pending")
     if any(check.get("bucket") in {"fail", "cancel", "pending"} for check in checks):
         raise ValueError("PR still has failing, cancelled or pending checks")
+    if require_full and commit_checks is not None:
+        assess_full_gate(commit_checks)
 
 
 def parse_args(argv):
@@ -51,9 +81,15 @@ def main():
         endpoint = f"repos/{repo}/pulls/{number}"
         before = gh("api", endpoint)
         checks = gh("pr", "checks", number, "--json", "name,state,bucket,link")
-        assess(before, checks, require_full=require_full)
+        commit_checks = None
+        if require_full:
+            head_sha = before["head"]["sha"]
+            commit_checks = flatten_check_runs(
+                gh("api", "--paginate", "--slurp", f"repos/{repo}/commits/{head_sha}/check-runs?per_page=100")
+            )
+        assess(before, checks, require_full=require_full, commit_checks=commit_checks)
         after = gh("api", endpoint)
-        assess(after, checks, require_full=require_full)
+        assess(after, checks, require_full=require_full, commit_checks=commit_checks)
         if any(before[side]["sha"] != after[side]["sha"] for side in ("head", "base")):
             raise ValueError("PR changed during preflight; repeat review/checks for the new version")
     except (ValueError, KeyError, subprocess.CalledProcessError) as error:
