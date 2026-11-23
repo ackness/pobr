@@ -38,6 +38,7 @@ export function createHookHarness(options: HookHarnessOptions = {}) {
     refs: [] as Ref[],
     effectSlots: [] as EffectEntry[],
     cleanups: [] as (Cleanup | undefined)[],
+    unsubscribes: [] as Cleanup[],
     effects: [] as Effect[],
     effect: undefined as Effect | undefined,
     cleanup: undefined as Cleanup | undefined,
@@ -52,6 +53,7 @@ export function createHookHarness(options: HookHarnessOptions = {}) {
       harness.dirty = false;
     },
     reset() {
+      harness.unsubscribes.splice(0).forEach(unsubscribe => unsubscribe());
       harness.slots = [];
       harness.refs = [];
       harness.effectSlots = [];
@@ -77,6 +79,17 @@ export function createHookHarness(options: HookHarnessOptions = {}) {
               ? value(harness.slots[index]) : value;
             harness.dirty = true;
           }];
+        },
+        useSyncExternalStore: (subscribe: (onStoreChange: () => void) => Cleanup, getSnapshot: () => unknown) => {
+          const index = harness.cursor++;
+          const previous = harness.slots[index] as { subscribe: unknown; unsubscribe: Cleanup } | undefined;
+          if (!previous || previous.subscribe !== subscribe) {
+            previous?.unsubscribe();
+            const unsubscribe = subscribe(() => { harness.dirty = true; });
+            harness.slots[index] = { subscribe, unsubscribe };
+            harness.unsubscribes.push(unsubscribe);
+          }
+          return getSnapshot();
         },
       };
       if (options.refs) {

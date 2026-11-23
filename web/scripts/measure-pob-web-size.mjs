@@ -1,12 +1,12 @@
-import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
 import { gzipSync } from 'node:zlib';
 import { verifyReference, DEFAULT_REFERENCE_DIRECTORY } from './benchmark-pob-web.mjs';
+import { sha256 } from './wasm-build-inputs.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 
 export function measureReferenceArtifacts({ wasm, js, data }) {
   if (![wasm, js, data].every(bytes => Buffer.isBuffer(bytes) && bytes.length > 0)) {
@@ -36,20 +36,29 @@ export function measureReferenceSize({ directory = DEFAULT_REFERENCE_DIRECTORY }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    const options = { directory: DEFAULT_REFERENCE_DIRECTORY, output: resolve(root, '.cache/pob-web-size-reference.json') };
+    const { values, tokens } = parseArgs({
+      options: { help: { type: 'boolean' }, 'reference-dir': { type: 'string' }, output: { type: 'string' } },
+      strict: true,
+      allowPositionals: false,
+      tokens: true,
+    });
     const seen = new Set();
-    for (let index = 2; index < process.argv.length; index++) {
-      const flag = process.argv[index];
-      if (flag === '--help' && process.argv.length === 3) {
-        console.log('Usage: node web/scripts/measure-pob-web-size.mjs [--reference-dir PATH] [--output FILE]');
-        process.exit(0);
+    for (const token of tokens) {
+      if (token.kind !== 'option') continue;
+      if (token.inlineValue || seen.has(token.name) || (token.value !== undefined && (!token.value.trim() || token.value.startsWith('--')))) {
+        throw new Error(`Invalid option: ${token.rawName}`);
       }
-      const key = { '--reference-dir': 'directory', '--output': 'output' }[flag];
-      const value = process.argv[++index];
-      if (!key || seen.has(key) || !value?.trim() || value.startsWith('--')) throw new Error(`Invalid option: ${flag}`);
-      seen.add(key);
-      options[key] = resolve(value);
+      seen.add(token.name);
     }
+    if (values.help) {
+      if (seen.size !== 1) throw new Error('Invalid option: --help');
+      console.log('Usage: node web/scripts/measure-pob-web-size.mjs [--reference-dir PATH] [--output FILE]');
+      process.exit(0);
+    }
+    const options = {
+      directory: values['reference-dir'] ? resolve(values['reference-dir']) : DEFAULT_REFERENCE_DIRECTORY,
+      output: values.output ? resolve(values.output) : resolve(root, '.cache/pob-web-size-reference.json'),
+    };
     const report = measureReferenceSize(options);
     mkdirSync(dirname(options.output), { recursive: true });
     writeFileSync(options.output, JSON.stringify(report, null, 2) + '\n');

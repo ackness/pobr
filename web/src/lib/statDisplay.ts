@@ -281,6 +281,13 @@ export function formatNumber(value: number, digits = 2, minimumDigits = 0): stri
   return formatter.format(shown);
 }
 
+/** Signed number with explicit `+` on positive values (and optionally on zero). */
+export function formatSignedNumber(value: number, digits = 2, minimumDigits = 0, plusZero = false): string {
+  const shown = Math.round(value * 10 ** digits) === 0 ? 0 : value;
+  const sign = shown > 0 || (plusZero && shown === 0) ? '+' : '';
+  return `${sign}${formatNumber(shown, digits, minimumDigits)}`;
+}
+
 export function signedPercent(percent: number, digits = 1): string {
   const text = formatNumber(Math.abs(percent), digits, digits);
   return `${percent > 0 ? '+' : percent < 0 ? '−' : ''}${text}%`;

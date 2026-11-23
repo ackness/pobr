@@ -80,7 +80,7 @@ async function importCode(page: Page, code: string) {
 
 function identity(lang: Lang, actor: Actor, charge: Charge) {
   const actorName = lang === 'en-US' ? (actor === 'player' ? '\\bPlayer\\b' : '\\bMinions\\b')
-    : actor === 'player' ? '角色' : '召[唤喚]物';
+    : actor === 'player' ? '角色' : '召[唤喚](?:生)?物';
   const chargeName = lang === 'en-US' ? `\\b${charge}\\b`
     : charge === 'Power' ? '暴[击擊]球' : charge === 'Frenzy' ? '狂怒球' : '耐力球';
   // Actor + charge identity, not punctuation, sentence structure or suffix wording.

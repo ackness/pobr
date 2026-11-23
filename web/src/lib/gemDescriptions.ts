@@ -4,6 +4,7 @@ import { gameTextChain } from './gameLocales';
 import type { Lang } from './i18n';
 import type { GemNameLink, GemNameOverride } from './nativeDisplayNames';
 import type { NativeDisplayTexts } from './nativeDisplayTexts';
+import { isRecord as object } from './record';
 
 const ACTIVE = 'ActiveSkills.Description';
 const SUPPORT = 'GemEffects.SupportText';
@@ -29,9 +30,6 @@ export function renderGemDescription(raw: string): string {
   return raw.replace(/\[([^\[\]|]*)(?:\|([^\[\]|]*))?\]/g, (_match, a: string, b: string | undefined) => b ?? a)
     .replace(/\r\n|\\r\\n|\\n/g, '\n').trim();
 }
-
-const object = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === 'object' && !Array.isArray(value);
 
 export function gemDescriptionScopes(value: unknown): DescriptionScopes {
   const scopes = object(value) && object(value.scopes) ? value.scopes : null;

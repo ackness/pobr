@@ -1,6 +1,5 @@
 // Opt-in real-engine benchmark; no UI, network or filesystem I/O in calculation samples.
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
 import { cpus, platform, arch, release } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -8,9 +7,9 @@ import { inflateSync } from 'node:zlib';
 import { parseOptions, measureComparison, measureEngine } from './benchmark-comparison.mjs';
 import { discoverBuilds } from './benchmark-builds.mjs';
 import { loadPobWeb } from './benchmark-pob-web.mjs';
+import { sha256 } from './wasm-build-inputs.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 
 async function loadPobr(directory) {
   const manifest = JSON.parse(await readFile(resolve(root, 'web/public/data/manifest.json'), 'utf8'));

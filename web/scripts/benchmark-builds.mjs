@@ -1,8 +1,8 @@
 import { readFile, readdir } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
 import { basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inflateSync } from 'node:zlib';
+import { sha256 } from './wasm-build-inputs.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const defaultDirectories = [
@@ -20,7 +20,6 @@ const historicalFixtures = new Set([
   'warrior-titan-shield-wall',
   'witch-abyssal-lich-detonate-dead',
 ]);
-const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const text = value => typeof value === 'string' && value.trim().length > 0;
 

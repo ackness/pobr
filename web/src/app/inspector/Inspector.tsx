@@ -24,7 +24,7 @@ export default function Inspector({ session, view, lang, id, onClose, onOpenCalc
   const { detail, error, loading, retry } = useStatBreakdown(session, id);
   const none = !source || detailKind(source, stat) === 'none';
   const emptyKey = detailEmptyKey(source ? detailKind(source, stat) : 'none', raw, detail);
-  return <NavigateContext.Provider value={route => {
+  return <NavigateContext value={route => {
     flushSync(onNavigate ?? onClose);
     navigate(route);
   }}><div className="insp" data-stale={loading || view.stale || undefined}>
@@ -47,5 +47,5 @@ export default function Inspector({ session, view, lang, id, onClose, onOpenCalc
             : <p className="insp-note" role="status">{tt(loading ? 'calcs.loadingDetail' : emptyKey!)}</p>}
     </div>
     <footer className="insp-foot"><Button variant="ghost" size="sm" onClick={() => onOpenCalcs(id)}>{tt('inspector.openInCalcs')}<ChevronRight /></Button></footer>
-  </div></NavigateContext.Provider>;
+  </div></NavigateContext>;
 }

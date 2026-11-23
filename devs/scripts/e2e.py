@@ -80,7 +80,7 @@ AFFECTED = (
     ("Cargo.toml", ENGINE), ("Cargo.lock", ENGINE), ("rust-toolchain.toml", ENGINE), (".cargo/*", ENGINE),
     (planner.DATA_LOCK, ENGINE), ("data/*", ENGINE),
     ("web/scripts/build-wasm.mjs", ENGINE), ("web/scripts/wasm-build-inputs.mjs", ENGINE),
-    ("web/scripts/sync-data.mjs", ENGINE), ("web/scripts/sync-build-references.mjs", ENGINE),
+    ("web/scripts/sync-data.mjs", ENGINE),
     ("web/scripts/*", NONE),
     # Isolated configs and their fixtures.
     ("web/e2e/calcs-config.*", ("@calcs-config",)), ("web/e2e/fixtures/calcs-config.*", ("@calcs-config",)),
@@ -100,9 +100,6 @@ AFFECTED = (
     ("web/src/components/trade/*", TRADE), ("web/src/app/pages-trade.css", TRADE),
     ("web/src/components/compare/*", COMPARE), ("web/src/app/pages/compare/*", COMPARE),
     ("web/src/app/pages-compare.css", COMPARE),
-    ("web/src/components/guidance/*", ("build-guidance",)),
-    # sync-build-references.mjs serves these as public/build-references/, which build guidance loads.
-    ("examples/demo-bd-test/builds/*", ("build-guidance",)),
     ("web/src/app/Overview.tsx", ("overview-ux", "calcs-breakdown")),
     ("web/src/app/CommandPalette.tsx", ("workbench",)),
 )
@@ -279,9 +276,8 @@ class Inputs:
         if not current.is_file() or current.read_text().strip() != version or not manifest.is_file():
             return None
         return sha256(json.dumps([sha256(lock), sha256(manifest.read_bytes()),
-                                  tree_digest(self.root, ["data/overlay-common", f"data/{version}/patch",
-                                                          "examples/demo-bd-test/builds"]),
-                                  tree_digest(self.web, ["scripts/sync-data.mjs", "scripts/sync-build-references.mjs"])]).encode())
+                                  tree_digest(self.root, ["data/overlay-common", f"data/{version}/patch"]),
+                                  tree_digest(self.web, ["scripts/sync-data.mjs"])]).encode())
 
     def install_locked_data(self):
         # The pinned install verifies every byte against the lock; offline it only reuses verified downloads.
@@ -314,7 +310,7 @@ class Inputs:
         sources = ["src", "public", "index.html", "vite.config.ts", "package.json", "pnpm-lock.yaml",
                    "tsconfig.json", "tsconfig.app.json", "tsconfig.node.json"]
         return sha256(json.dumps([data, vite, sha256((self.root / "Cargo.toml").read_bytes()),
-                                  tree_digest(self.web, sources, skip=("public/data/", "public/build-references/"))]).encode())
+                                  tree_digest(self.web, sources, skip=("public/data/",))]).encode())
 
     def dist(self, data):
         key = self.dist_key(data)

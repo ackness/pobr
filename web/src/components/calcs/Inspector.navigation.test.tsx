@@ -37,10 +37,10 @@ test.each([false, true])('an inspector condition link dismisses its modal before
   const calc = { stats: [{ id: 'TotalDPS', value: 50 }], breakdowns: {}, breakdown_descriptors: { TotalDPS: 'steps' } };
   const close = vi.fn(() => { sheetOpen = false; events.push('close'); });
   const navigate = vi.fn(() => { expect(sheetOpen).toBe(false); events.push('navigate'); });
-  renderToStaticMarkup(<NavigateContext.Provider value={navigate}><TooltipProvider>
+  renderToStaticMarkup(<NavigateContext value={navigate}><TooltipProvider>
     <Inspector session={{ calc } as unknown as BuildSession} view={{ calc } as unknown as SettledCalc} lang="en-US" id="TotalDPS"
       onClose={close} onNavigate={shellCallback ? close : undefined} onOpenCalcs={() => {}} pinned={false} onTogglePin={() => {}} />
-  </TooltipProvider></NavigateContext.Provider>);
+  </TooltipProvider></NavigateContext>);
   harness.click!({ preventDefault: vi.fn() } as never);
   expect(close).toHaveBeenCalledOnce();
   expect(navigate).toHaveBeenCalledWith('config');

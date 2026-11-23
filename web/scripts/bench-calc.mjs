@@ -1,32 +1,46 @@
 // Opt-in real-WASM measurements. Never included in the ordinary unit-test gate.
 import { readFile, writeFile, mkdir, lstat, realpath } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
 import { platform, arch, release, cpus } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve, dirname } from 'node:path';
 import { deepStrictEqual } from 'node:assert';
-import { bindingFiles } from './wasm-build-inputs.mjs';
+import { parseArgs } from 'node:util';
+import { bindingFiles, sha256 } from './wasm-build-inputs.mjs';
 
 const started = performance.now();
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-const argumentsByName = new Map();
-const flags = new Set(['--iterations', '--wasm-dir', '--reference', '--output']);
-for (let index = 2; index < process.argv.length; index += 2) {
-  const flag = process.argv[index];
-  const value = process.argv[index + 1];
-  if (!flags.has(flag) || argumentsByName.has(flag)) throw new Error(`Unknown or duplicate option: ${flag}`);
-  if (!value?.trim() || value.startsWith('--')) throw new Error(`Missing value for ${flag}`);
-  argumentsByName.set(flag, value);
+let parsed;
+try {
+  parsed = parseArgs({
+    options: {
+      iterations: { type: 'string' },
+      'wasm-dir': { type: 'string' },
+      reference: { type: 'string' },
+      output: { type: 'string' },
+    },
+    strict: true,
+    allowPositionals: false,
+    tokens: true,
+  });
+} catch (error) {
+  if (error?.code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') throw new Error(`Missing value: ${error.message}`, { cause: error });
+  throw new Error(`Unknown or duplicate option: ${error.message}`, { cause: error });
 }
-const iterations = Number(argumentsByName.get('--iterations') ?? 9);
+const seen = new Set();
+for (const token of parsed.tokens) {
+  if (token.kind !== 'option') continue;
+  if (token.inlineValue || seen.has(token.name)) throw new Error(`Unknown or duplicate option: ${token.rawName}`);
+  if (!token.value?.trim() || token.value.startsWith('--')) throw new Error(`Missing value for ${token.rawName}`);
+  seen.add(token.name);
+}
+const iterations = Number(parsed.values.iterations ?? 9);
 if (!Number.isInteger(iterations) || iterations < 3 || iterations > 100) throw new Error('Expected 3..100 iterations');
-const currentPath = resolve(argumentsByName.get('--wasm-dir') ?? resolve(root, 'web/src/wasm/pkg'));
-const referencePath = argumentsByName.get('--reference');
+const currentPath = resolve(parsed.values['wasm-dir'] ?? resolve(root, 'web/src/wasm/pkg'));
+const referencePath = parsed.values.reference;
 if (referencePath && await realpath(referencePath) === await realpath(currentPath)) {
   throw new Error('Reference and current engines must use separate binding directories');
 }
-const outputPath = resolve(argumentsByName.get('--output') ?? resolve(root, '.cache/calc-performance.json'));
+const outputPath = resolve(parsed.values.output ?? resolve(root, '.cache/calc-performance.json'));
 try {
   await lstat(outputPath);
   throw new Error(`Refusing to overwrite an observation: ${outputPath}`);

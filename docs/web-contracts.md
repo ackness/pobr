@@ -822,13 +822,9 @@ Playwright 使用的 DOM 标记需保留，
 现有真实 WASM 尺寸验证覆盖除 Compare 外的可见页，宽度 320–3440px；这不是所有布局都已穷尽验证。
 
 <a id="planner-experiments-and-hidden-panels"></a>
-## 规划器实验与隐藏面板
+## 规划器实验
 
 按需实验命令为
 `POBR_UPGRADE_BENCH=1 mise run web test src/lib/upgradeBench.test.ts src/lib/supportBench.test.ts src/lib/passiveBench.test.ts`。
 它用真实 WASM 和合成数据，对照有限穷举与应用后重算一致性，报告写入忽略的 `.cache`。
 真实 BD 验证还需覆盖候选适用性和所用配置；有限搜索不证明全局或预算最优。
-
-参考 BD 暂不进入导航或恢复页签。面板、匹配逻辑、fixture、目录生成仍保留，`web/e2e/build-guidance.spec.ts`
-断言导航里没有入口且不请求参考数据，旧页签回退与匹配单测继续运行。启动时不加载参考库；现有样本是静态来源，
-不能承诺实时攻略、市场价格或在线角色服务。

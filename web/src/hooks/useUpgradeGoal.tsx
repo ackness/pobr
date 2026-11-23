@@ -1,7 +1,7 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { DEFAULT_OBJECTIVE_STATE, type ObjectiveState } from '../components/shared/OptimizerControls';
 import { CONSTRAINT_STATS, OBJECTIVE_PRESETS } from '../lib/optimize';
-import { uiStorageKey } from '../lib/sessionStorage';
+import { readPreference, uiStorageKey, writePreference } from '../lib/sessionStorage';
 
 const KEY = uiStorageKey('pobr-upgrade-goal');
 const Context = createContext<{ goal: ObjectiveState; setGoal: (next: ObjectiveState) => void } | null>(null);
@@ -10,7 +10,7 @@ const Context = createContext<{ goal: ObjectiveState; setGoal: (next: ObjectiveS
 export function UpgradeGoalProvider({ children }: { children: ReactNode }) {
   const [goal, setState] = useState<ObjectiveState>(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(KEY) ?? 'null');
+      const saved = JSON.parse(readPreference(KEY) ?? 'null');
       if (saved && OBJECTIVE_PRESETS.some(preset => preset.id === saved.preset)) {
         return { ...DEFAULT_OBJECTIVE_STATE, preset: saved.preset,
           cStat: CONSTRAINT_STATS.includes(saved.cStat) ? saved.cStat : '',
@@ -24,11 +24,12 @@ export function UpgradeGoalProvider({ children }: { children: ReactNode }) {
     } catch { /* Invalid preferences fall back to the default goal. */ }
     return DEFAULT_OBJECTIVE_STATE;
   });
-  const setGoal = (next: ObjectiveState) => {
+  const setGoal = useCallback((next: ObjectiveState) => {
     setState(next);
-    try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* In-memory preferences still work when storage is full. */ }
-  };
-  return <Context.Provider value={{ goal, setGoal }}>{children}</Context.Provider>;
+    writePreference(KEY, JSON.stringify(next));
+  }, []);
+  const value = useMemo(() => ({ goal, setGoal }), [goal, setGoal]);
+  return <Context value={value}>{children}</Context>;
 }
 
 export function useUpgradeGoal() {

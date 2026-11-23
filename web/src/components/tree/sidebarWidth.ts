@@ -1,4 +1,4 @@
-import { uiStorageKey } from '../../lib/sessionStorage';
+import { readPreference, uiStorageKey, writePreference } from '../../lib/sessionStorage';
 
 export const SIDE_DEFAULT = 27;
 const SIDE_MIN = 22;
@@ -45,9 +45,9 @@ export function parseSideWidth(raw: string | null): number {
 }
 
 export function readSideWidth(): number {
-  try { return parseSideWidth(localStorage.getItem(KEY)); } catch { return SIDE_DEFAULT; }
+  return parseSideWidth(readPreference(KEY));
 }
 
 export function writeSideWidth(rem: number) {
-  try { localStorage.setItem(KEY, String(rem)); } catch { /* A remembered width is a convenience only. */ }
+  writePreference(KEY, String(rem));
 }
