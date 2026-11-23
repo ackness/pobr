@@ -24,7 +24,7 @@
 
 # ── 本地 agent 辅助资料（保留在本地盘，不入库）──
 # 审计工作产物 / 架构参考文档 / 旧 oracle shim
-# （devs/ci、devs/fixtures、devs/scripts 被测试与 skill 引用，仍入库）
+# （devs/ci、devs/scripts 被测试与 skill 引用，仍入库）
 /audits/
 # Current contracts live in docs/; design drafts and review notes stay local.
 /devs/docs/
