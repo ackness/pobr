@@ -104,6 +104,7 @@ class LocalPlannerTests(unittest.TestCase):
         self.assertIn("pobr-core/benchmarks", clippy[clippy.index("--features") + 1])
         self.assertIn("pobr-build/benchmarks", clippy[clippy.index("--features") + 1])
         self.assertIn("pobr-wasm/diagnostics", clippy[clippy.index("--features") + 1])
+        self.assertIn("pobr-wasm/wasm", clippy[clippy.index("--features") + 1])
         self.assertEqual(clippy[-3:], ["--", "-D", "warnings"])
         self.assertIn("--all-targets", clippy)
         for _, _, command in steps[1:]:
@@ -154,7 +155,8 @@ class LocalPlannerTests(unittest.TestCase):
         commands = {label: command for label, _, command in steps}
         self.assertEqual(list(commands), ["Rust fmt", "Rust check", "Web i18n:check", "Web typecheck", "Web test"])
         self.assertEqual(commands["Rust check"], ["cargo", "check", "--offline", "--locked", "-p", "pobr-build",
-                                                  "-p", "pobr-cli", "-p", "pobr-wasm", "--all-targets"])
+                                                  "-p", "pobr-cli", "-p", "pobr-wasm", "--all-targets",
+                                                  "--features", "pobr-wasm/wasm"])
         # No `--` separator: Vitest ignores options after one.
         self.assertEqual(commands["Web test"], ["pnpm", "test", "--changed", "origin/master", "--maxWorkers=4"])
         full = [command for _, _, command in check.steps_for(plan, check.touched_packages(files))]

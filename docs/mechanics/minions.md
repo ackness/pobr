@@ -74,7 +74,7 @@ Presence 装备光环通过 `ExtraAura` 给召唤生物；写明“你和友军�
 
 Offering 效果查询使用 Offering 自己的技能类型，即使主技能另选，通用 Offering 天赋仍生效。冻结 `chronomancer-07` 的两条 15% 使 Pain Offering 的伤害／速度 83/35 经整数取整变为 107/45。Danse Macabre 的额外骷髅消耗和玩家 `HitRecently` 仍需适用的明确状态，不能为贴合 PoB2 自动开启。
 
-“你和 Presence 内的友军 …” 类词条（例如 Infernalist 的 Bringer of Flame：“All Damage from you and Allies in your Presence contributes to Flammability and Ignite Magnitudes”）角色自己也有。PoBR 的 `ExtraAura` 只给友军，所以抽取器把 PoB2 规则里不带 `onlyAllies` 的 `ExtraAura` 展开为角色自己的词条（带同样的条件）加给友军的 `ExtraAura`（`sync-pob-catalog` 的 `character_share_of_aura`）；带 `onlyAllies` 的规则抽取器不收。
+“你和 Presence 内的友军 …” 类词条（例如 Infernalist 的 Bringer of Flame：“All Damage from you and Allies in your Presence contributes to Flammability and Ignite Magnitudes”）角色自己也有。PoBR 的 `ExtraAura` 只给友军，所以规则数据把不带 `onlyAllies` 的 `ExtraAura` 展开为角色自己的词条（带同样的条件）加给友军的 `ExtraAura`；带 `onlyAllies` 的规则不给角色。
 
 Blackened Heart 按施法者最终最大魔力，每满 100 点缩放其授予的 Unholy Might。Necromantic Conduit 将该命名 buff 交给友军后再展开，不能按接收召唤生物的魔力决定来源幅度。接收方 buff 效果另算，重复标志只建立一份 buff，玩家拥有 buff 的条件不会自动给所有召唤生物。低魔、关闭来源、Presence 数零或阻止友军光环仍保留限制，明细保留施法者天赋来源。
 

@@ -70,6 +70,16 @@ impl HighPrecisionRules {
         crate::calc::hit_read_probe::dependency("modifier default precision");
         self.def.as_ref().map_or(1, |d| d.default_high_precision)
     }
+
+    /// Scales a single numeric modifier value using PoB2's `ScaleAddMod`
+    /// rounding rules (`ModStore.lua:69-77`). `scale == 1.0` returns `value`
+    /// unchanged (`:54`).
+    pub fn scale_number(&self, name: &str, mod_type: ModType, value: f64, scale: f64) -> f64 {
+        if scale == 1.0 {
+            return value;
+        }
+        scale_mod_value(name, mod_type, value, scale, self)
+    }
 }
 
 /// ScaleAddMod's value rounding (a line-by-line port of vendor `ModStore.lua:69-77`):
@@ -94,6 +104,26 @@ fn scale_mod_value(
             (value * scale * power).floor() / power
         }
         None => pob_round(value * scale, 2).trunc(),
+    }
+}
+
+/// Recursively scales numeric modifier payloads while skipping any modifier
+/// marked `unscalable` (including nested leaves inside [`ModValue::NestedMods`]).
+fn scale_modifier_values(modifier: &mut Modifier, scale: f64, rules: &HighPrecisionRules) {
+    if modifier.unscalable {
+        return;
+    }
+    match &mut modifier.value {
+        ModValue::Number(value) => {
+            *value = rules.scale_number(modifier.name.as_str(), modifier.mod_type, *value, scale);
+        }
+        ModValue::NestedMods(nested) => {
+            for inner in nested.iter_mut() {
+                scale_modifier_values(inner, scale, rules);
+            }
+        }
+        // Bool / text payloads aren't scaled (vendor only rounds the number branch, :68).
+        ModValue::Bool(_) | ModValue::Text(_) => {}
     }
 }
 
@@ -677,55 +707,28 @@ impl ModDb {
     /// The write-side primitive ScaleAddMod (vendor `ModStore.lua:45-81`):
     /// scales the value by `scale` before storing; rounding goes through
     /// [`HighPrecisionRules`] (see [`scale_mod_value`] for the line-by-line
-    /// branches). `scale == 1` stores directly (vendor :54).
+    /// branches). `scale == 1` or `modifier.unscalable` stores directly
+    /// (vendor :46-54).
     ///
     /// Known divergences from vendor (tracked here):
-    /// - `effects.unscalable` (:46-52, non-scalable modifiers store their
-    ///   original value) — pobr's `ModTag` has no such bit yet, so
-    ///   everything is treated as scalable (no producer in the current parse
-    ///   layer);
     /// - the `value.keyOfScaledMod` / `+level` floor special case (:59-66) —
     ///   for scaling non-`mod` keys inside a table value; pobr's `ModValue`
     ///   has no corresponding shape;
     /// - [`ModValue::NestedMods`] (vendor's `value.mod` nested payload)
-    ///   scales each inner Number under the same rule (a generalization of
-    ///   vendor :57's `subMod = scaledMod.value.mod` for multiple payloads).
+    ///   recursively scales each scalable inner Number under the same rule
+    ///   (a generalization of vendor :57's `subMod = scaledMod.value.mod`
+    ///   for multiple payloads).
     pub fn scale_add_mod(
         &mut self,
         mut modifier: Modifier,
         scale: f64,
         rules: &HighPrecisionRules,
     ) {
-        if scale == 1.0 {
+        if scale == 1.0 || modifier.unscalable {
             self.add_mod(modifier);
             return;
         }
-        match &mut modifier.value {
-            ModValue::Number(value) => {
-                *value = scale_mod_value(
-                    modifier.name.as_str(),
-                    modifier.mod_type,
-                    *value,
-                    scale,
-                    rules,
-                );
-            }
-            ModValue::NestedMods(nested) => {
-                for inner in nested.iter_mut() {
-                    if let ModValue::Number(value) = &mut inner.value {
-                        *value = scale_mod_value(
-                            inner.name.as_str(),
-                            inner.mod_type,
-                            *value,
-                            scale,
-                            rules,
-                        );
-                    }
-                }
-            }
-            // Bool / text payloads aren't scaled (vendor only rounds the number branch, :68).
-            ModValue::Bool(_) | ModValue::Text(_) => {}
-        }
+        scale_modifier_values(&mut modifier, scale, rules);
         self.add_mod(modifier);
     }
 

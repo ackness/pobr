@@ -39,11 +39,11 @@ jobs:
         with:
           shared-key: host-check
           cache-bin: 'false'
-          save-if: ${{ github.event_name != 'pull_request' }}
+          save-if: ${{ github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch }}
       - name: Format
         run: cargo fmt --all --check
       - name: Clippy
-        run: cargo clippy --locked --workspace --all-targets --features pobr-core/benchmarks,pobr-build/benchmarks,pobr-wasm/diagnostics -- -D warnings
+        run: cargo clippy --locked --workspace --all-targets --features pobr-core/benchmarks,pobr-build/benchmarks,pobr-wasm/diagnostics,pobr-wasm/wasm -- -D warnings
 
   ci:
     name: Rust tests (${{ matrix.shard }})
@@ -67,7 +67,7 @@ jobs:
         with:
           shared-key: tests-${{ matrix.shard }}
           cache-bin: 'false'
-          save-if: ${{ github.event_name != 'pull_request' }}
+          save-if: ${{ github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch }}
       - name: Restore owner data downloads
         uses: actions/cache@v6
         with:
@@ -114,7 +114,7 @@ jobs:
         with:
           cache-bin: 'false'
           cache-directories: ~/.cache/.wasm-pack
-          save-if: ${{ github.event_name != 'pull_request' }}
+          save-if: ${{ github.ref_type == 'branch' && github.ref_name == github.event.repository.default_branch }}
       # A small, exact source/toolchain cache avoids Cargo + bindgen + wasm-opt
       # when only UI, tests or runtime data changed. The receipt is revalidated.
       - name: WASM build identity

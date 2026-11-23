@@ -3886,6 +3886,10 @@ mod tests {
             m.tags.is_empty(),
             "GlobalEffect (with unscalable key) should be stripped"
         );
+        assert!(
+            m.unscalable,
+            "GlobalEffect unscalable: true should propagate to Modifier.unscalable"
+        );
     }
 
     /// Mirrors Elemental Conflux's shape (vendor SkillStatMap's

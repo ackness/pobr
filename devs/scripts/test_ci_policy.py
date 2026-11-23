@@ -597,6 +597,23 @@ else:
         with self.assertRaises(ValueError):
             ready.assess(pr, checks)
 
+    def test_require_full_checks_full_gate_without_changing_default(self):
+        pr = {"draft": False, "state": "open", "mergeable": True,
+              "head": {"sha": "a" * 40}, "base": {"sha": "b" * 40}}
+        pr_only = [{"name": "PR gate", "bucket": "pass"}]
+        ready.assess(pr, pr_only)
+        with self.assertRaisesRegex(ValueError, "Full gate"):
+            ready.assess(pr, pr_only, require_full=True)
+        for bucket in ("skip", "pending", "cancel", "fail"):
+            with self.subTest(bucket=bucket), self.assertRaises(ValueError):
+                ready.assess(pr, [*pr_only, {"name": "Full gate", "bucket": bucket}], require_full=True)
+        ready.assess(pr, [*pr_only, {"name": "Full gate", "bucket": "pass"}], require_full=True)
+        self.assertEqual(ready.parse_args(["123"]), ("123", False))
+        self.assertEqual(ready.parse_args(["123", "--require-full"]), ("123", True))
+        self.assertEqual(ready.parse_args(["--require-full", "123"]), ("123", True))
+        with self.assertRaises(SystemExit):
+            ready.parse_args(["123", "--unknown"])
+
 
 if __name__ == "__main__":
     unittest.main()

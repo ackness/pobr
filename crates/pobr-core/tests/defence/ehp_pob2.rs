@@ -1106,6 +1106,79 @@ fn max_hit_zero_taken_multi_is_immune() {
     assert!(max_hit_pob2(DamageType::Chaos, &inputs, 1.0).is_infinite());
 }
 
+/// No-armour full-conversion max hit must invert `taken_hit_from_damage`
+/// (`(raw * convert * dr_multi + taken_flat) * total_taken_multi = total_pool`)
+/// across positive/negative `taken_flat`, `dr_multi < 1`, `total_taken_multi != 1`,
+/// lethal flat (`raw == 0.0`), and `dr_multi <= 0.0`.
+#[test]
+fn max_hit_no_armour_taken_flat_round_trips_with_taken_hit() {
+    use pobr_core::calc::taken_hit_from_damage;
+
+    let pools = PoolState::default();
+    let ctx = PoolCtx::default();
+    let pool = 1000.0;
+    let fire = DamageType::Fire as usize;
+
+    // Positive & negative taken_flat with resist/flat DR and after-reduction multiplier != 1.
+    for (resist_mult, flat_dr, taken_flat, after_mult, expected_raw) in [
+        // (1000 / 2.0 - 100) / 0.5 = 800
+        (0.5, 0.0, 100.0, 2.0, 800.0),
+        // (1000 / 2.0 - (-100)) / 0.5 = 1200
+        (0.5, 0.0, -100.0, 2.0, 1200.0),
+        // dr_multi = 0.25 * (1 - 0.2) = 0.2; (1000 / 1.25 - 50) / 0.2 = 3750
+        (0.25, 20.0, 50.0, 1.25, 3750.0),
+        // dr_multi = 0.5 * (1 - 0.5) = 0.25; (1000 / 0.8 - (-250)) / 0.25 = 6000
+        (0.5, 50.0, -250.0, 0.8, 6000.0),
+    ] {
+        let mut mit = MitigationCtx::default();
+        mit.resist_taken_multi[fire] = resist_mult;
+        mit.flat_dr_pct[fire] = flat_dr;
+        mit.taken_flat[fire] = taken_flat;
+        mit.after_reduction_multi[fire] = after_mult;
+        let inputs = max_hit_inputs(&mit, &pools, &ctx, [pool; 5]);
+
+        let raw = max_hit_pob2(DamageType::Fire, &inputs, 1.0);
+        assert_eq!(
+            raw, expected_raw,
+            "resist_mult={resist_mult}, flat_dr={flat_dr}, taken_flat={taken_flat}, after_mult={after_mult}"
+        );
+        let (taken, _) = taken_hit_from_damage(raw, DamageType::Fire, &mit);
+        assert_eq!(taken, pool, "round-trip taken damage must equal pool");
+    }
+
+    // Lethal flat damage alone depletes pool -> raw max hit is 0.0.
+    let mut lethal_mit = MitigationCtx::default();
+    lethal_mit.resist_taken_multi[fire] = 0.5;
+    lethal_mit.taken_flat[fire] = 600.0;
+    lethal_mit.after_reduction_multi[fire] = 2.0; // 600 * 2 = 1200 >= 1000
+    let lethal_inputs = max_hit_inputs(&lethal_mit, &pools, &ctx, [pool; 5]);
+    assert_eq!(max_hit_pob2(DamageType::Fire, &lethal_inputs, 1.0), 0.0);
+
+    // dr_multi <= 0.0 (100% resistance): non-lethal flat -> ∞, lethal flat -> 0.0.
+    for (taken_flat, after_mult, expect_lethal) in [
+        (0.0, 1.0, false),
+        (100.0, 2.0, false), // 200 < 1000
+        (-50.0, 2.0, false), // 0 < 1000
+        (500.0, 2.0, true),  // 1000 >= 1000
+        (600.0, 2.0, true),  // 1200 >= 1000
+    ] {
+        let mut immune_mit = MitigationCtx::default();
+        immune_mit.resist_taken_multi[fire] = 0.0;
+        immune_mit.taken_flat[fire] = taken_flat;
+        immune_mit.after_reduction_multi[fire] = after_mult;
+        let immune_inputs = max_hit_inputs(&immune_mit, &pools, &ctx, [pool; 5]);
+        let raw = max_hit_pob2(DamageType::Fire, &immune_inputs, 1.0);
+        if expect_lethal {
+            assert_eq!(raw, 0.0, "taken_flat={taken_flat}, after_mult={after_mult}");
+        } else {
+            assert!(
+                raw.is_infinite(),
+                "expected ∞ for taken_flat={taken_flat}, after_mult={after_mult}, got {raw}"
+            );
+        }
+    }
+}
+
 // not-hit layer (:2015-2026)
 
 /// Four-way NotHit composition: evade 30% + avoidAll 20% →

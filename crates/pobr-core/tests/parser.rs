@@ -15,3 +15,5 @@ mod mod_parser;
 mod parser_modcache_golden;
 #[path = "parser/special_mods_gate.rs"]
 mod special_mods_gate;
+#[path = "parser/special_mods_patterns.rs"]
+mod special_mods_patterns;

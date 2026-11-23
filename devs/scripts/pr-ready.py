@@ -6,36 +6,54 @@ import subprocess
 import sys
 
 REQUIRED = {"PR gate"}
+FULL_REQUIRED = REQUIRED | {"Full gate"}
 
 
 def gh(*args):
     return json.loads(subprocess.check_output(["gh", *args], text=True))
 
 
-def assess(pr, checks):
+def assess(pr, checks, require_full=False):
     if pr.get("draft") or pr.get("state") != "open" or pr.get("mergeable") is not True:
         raise ValueError("PR must be open, ready and conflict-free; unknown mergeability needs a later retry")
+    required = FULL_REQUIRED if require_full else REQUIRED
     by_name = {check["name"]: check for check in checks}
-    if not REQUIRED <= by_name.keys():
-        raise ValueError("PR gate must exist on this PR")
-    if any(by_name[name].get("bucket") != "pass" for name in REQUIRED):
-        raise ValueError("PR gate must pass, not skip or remain pending")
+    missing = sorted(required - by_name.keys())
+    if missing:
+        raise ValueError(f"{', '.join(missing)} must exist on this PR")
+    not_passing = sorted(name for name in required if by_name[name].get("bucket") != "pass")
+    if not_passing:
+        raise ValueError(f"{', '.join(not_passing)} must pass, not skip or remain pending")
     if any(check.get("bucket") in {"fail", "cancel", "pending"} for check in checks):
         raise ValueError("PR still has failing, cancelled or pending checks")
 
 
+def parse_args(argv):
+    usage = "usage: mise run pr-ready <PR-number> [--require-full] (read-only; does not merge)"
+    require_full = False
+    positional = []
+    for arg in argv:
+        if arg == "--require-full":
+            require_full = True
+        elif arg.startswith("-"):
+            raise SystemExit(usage)
+        else:
+            positional.append(arg)
+    if len(positional) != 1 or not positional[0].isdigit():
+        raise SystemExit(usage)
+    return positional[0], require_full
+
+
 def main():
-    if len(sys.argv) != 2 or not sys.argv[1].isdigit():
-        raise SystemExit("usage: mise run pr-ready <PR-number> (read-only; does not merge)")
-    number = sys.argv[1]
+    number, require_full = parse_args(sys.argv[1:])
     try:
         repo = gh("repo", "view", "--json", "nameWithOwner")["nameWithOwner"]
         endpoint = f"repos/{repo}/pulls/{number}"
         before = gh("api", endpoint)
         checks = gh("pr", "checks", number, "--json", "name,state,bucket,link")
-        assess(before, checks)
+        assess(before, checks, require_full=require_full)
         after = gh("api", endpoint)
-        assess(after, checks)
+        assess(after, checks, require_full=require_full)
         if any(before[side]["sha"] != after[side]["sha"] for side in ("head", "base")):
             raise ValueError("PR changed during preflight; repeat review/checks for the new version")
     except (ValueError, KeyError, subprocess.CalledProcessError) as error:

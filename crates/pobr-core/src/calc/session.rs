@@ -1755,8 +1755,8 @@ impl CalculationSession {
 
     /// The player's lines behind the inputs of a damaging ailment's steps
     /// (`BleedDPS` / `IgniteDPS` / `PoisonDPS`), as the ailment stage reads
-    /// them: the chance to apply and the duration in the ailment's own
-    /// config, the ailment effect and the faster / slower damage rate in the
+    /// them: the chance to apply, the duration and the ailment effect in the
+    /// ailment's own config, and the faster / slower damage rate in the
     /// session config. Modifiers on the enemy that add to these are not listed.
     pub fn ailment_lines(&self, stat: &str) -> Option<AilmentLines<'_>> {
         use super::ailment;
@@ -1773,7 +1773,7 @@ impl CalculationSession {
         Some(AilmentLines {
             chance: db.evaluate_names(&scoped, &ailment::chance_mod_names(name, from_hit_size)),
             duration: db.evaluate_names(&scoped, &ailment::duration_mod_names_for(kind, db, cfg)),
-            effect: db.evaluate_names(cfg, &ailment::effect_mod_names()),
+            effect: db.evaluate_names(&scoped, &ailment::effect_mod_names()),
             rate: db.evaluate_names(cfg, &[faster, slower]),
         })
     }
@@ -2018,7 +2018,7 @@ pub const CONDITIONS_SET_BY_A_PASS: [&str; 29] = [
     "CanGainRage",
     "HaveMaximumRage",
     // `calc::ailment_apply`: Chill and Shock on the enemy.
-    "Chilled",
+    "EnemyChilled",
     "EnemyShocked",
     // `calc::buff_pass`: curses and marks on the enemy.
     "EnemyCursed",
