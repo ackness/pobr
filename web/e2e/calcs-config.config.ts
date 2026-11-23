@@ -9,6 +9,6 @@ export default defineConfig({
   testDir: '.', testMatch: 'calcs-config.spec.ts', timeout: 30_000,
   fullyParallel: true, workers: 2,
   use: { baseURL, screenshot: 'only-on-failure', trace: process.env.CI || process.env.POBR_E2E_TRACE === '1' ? 'retain-on-failure' : 'off' },
-  webServer: { command: `VITE_POBR_BACKEND=mock pnpm dev --config e2e/calcs-config.vite.config.ts --host 127.0.0.1 --port ${port} --strictPort`,
+  webServer: { command: `VITE_POBR_BACKEND=mock pnpm dev --host 127.0.0.1 --port ${port} --strictPort`,
     url: baseURL, reuseExistingServer: false, timeout: 30_000 },
 });

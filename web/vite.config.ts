@@ -61,7 +61,7 @@ function panelStyles(): Plugin {
 export default defineConfig({
   define: { __POBR_APP_VERSION__: JSON.stringify(appVersion) },
   plugins: [panelStyles(), react(), tailwindcss(), importService()],
-  resolve: { alias: { '@': resolve(process.cwd(), 'src') } },
+  resolve: { tsconfigPaths: true },
   test: {
     // e2e/ belongs to Playwright; Vitest runs only unit tests under src/.
     include: ['src/**/*.test.{ts,tsx}'],

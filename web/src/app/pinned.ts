@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { uiStorageKey } from '../lib/sessionStorage';
+import { readPreference, uiStorageKey, writePreference } from '../lib/sessionStorage';
 
 const KEY = uiStorageKey('pobr-rail-pinned');
 export const MAX_PINNED = 12;
@@ -11,7 +11,7 @@ export function togglePinned(list: readonly string[], id: string, max = MAX_PINN
 }
 
 function read(): string[] {
-  try { const value = JSON.parse(localStorage.getItem(KEY) ?? '[]'); return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string').slice(0, MAX_PINNED) : []; }
+  try { const value = JSON.parse(readPreference(KEY) ?? '[]'); return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string').slice(0, MAX_PINNED) : []; }
   catch { return []; }
 }
 
@@ -20,7 +20,7 @@ export function usePinnedStats() {
   const [pinned, setPinned] = useState<string[]>(read);
   const toggle = useCallback((id: string) => setPinned(previous => {
     const next = togglePinned(previous, id);
-    try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* A remembered pin is a convenience only. */ }
+    writePreference(KEY, JSON.stringify(next));
     return next;
   }), []);
   return { pinned, toggle };

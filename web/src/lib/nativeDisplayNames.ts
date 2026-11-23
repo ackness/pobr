@@ -5,6 +5,7 @@ import type { Lang } from './i18n';
 import { listedOrigin, type DisplayText, type NativeDisplayTexts, type TextOrigin } from './nativeDisplayTexts';
 import type { CraftingMetadata } from '../api/itemCrafting';
 import type { RuntimeRelease } from '../api/runtimeRelease';
+import { isRecord as object } from './record';
 
 /** The same gem -> effect links consumed by GameData, including its overlay. */
 export interface GemNameLink { id: string; granted_effect_id?: string | null }
@@ -13,8 +14,6 @@ export interface GemNameOverride { gem_id: string; granted_effect_id: string }
 type Scope = NativeDisplayTexts['scopes'][string];
 const own = (scope: Scope, id: string) => Object.hasOwn(scope, id);
 const ITEM_CLASSES = 'ItemClasses.Name';
-const object = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === 'object' && !Array.isArray(value);
 
 /** Runtime projection drops audit headers; when present, they must agree with the loaded target. */
 export function itemClassNames(value: unknown, version: string, target?: RuntimeRelease['target']): Record<string, string> {

@@ -1,7 +1,8 @@
 import { ModifierText } from '../../../components/calcs/ModifierText';
 import { ConfigFieldLink } from '../../../components/config/ConfigFieldLink';
 import { bindT, modTypeLabel } from '../../../lib/i18n';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useCancellableJob } from '../../jobs/useCancellableJob';
 import { AppButton, AppInput, AppSelectControl } from '../../../components/shared/controls';
 import { getBackend } from '../../../api/backend';
 import { formatApiError } from '../../../api/error';
@@ -85,16 +86,16 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
   const tt = bindT(lang);
   const skillName = useSkillName(lang);
   const [done, setDone] = useState<{ version: number; response: LineUsageResponse; options: ConfigOption[]; nodeIds: ReadonlyMap<number, string> } | null>(null);
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const job = useCancellableJob<void>();
+  const running = job.running;
+  const error = job.error ? formatApiError(job.error) : null;
   const [filter, setFilter] = useState<LedgerFilter>({ ...NO_FILTER, showInternal: false });
   const [limit, setLimit] = useState(PAGE);
   const [open, setOpen] = useState<ReadonlySet<number>>(new Set());
-  const sequence = useRef(0);
   const { stateVersion } = session;
 
   // A change to the BD makes the result an old one. Keep showing it, marked, and stop any check in flight.
-  useEffect(() => { sequence.current++; setRunning(false); return () => { sequence.current++; }; }, [stateVersion]);
+  useEffect(() => { job.cancel(); }, [stateVersion, job.cancel]);
 
   const stale = done !== null && done.version !== stateVersion;
   const usage = done?.response.usage ?? null;
@@ -108,28 +109,22 @@ export function LedgerView({ session, lang }: { session: BuildSession; lang: Lan
   const nodeIds = done?.nodeIds ?? NO_NODE_IDS;
   const translate = useTranslated(visible.flatMap(line => [ledgerDisplayText(line, lang, configLabels), holderName(line, nodeIds) ?? '']), lang);
 
-  const run = async () => {
+  const run = () => {
     if (running || session.busy || !session.calc) return;
     const request = session.currentRequest();
     if (!request) return;
-    const current = ++sequence.current;
     const version = stateVersion;
-    setRunning(true); setError(null);
-    try {
+    return job.start(async ({ signal }) => {
       // The check is heavier than a calculation and blocks the page while it runs; let the busy state paint first.
       await new Promise(resolve => setTimeout(resolve, 40));
-      if (current !== sequence.current) return;
+      if (signal.aborted) return;
       const backend = await getBackend();
       const [response, options, nodes] = await Promise.all([backend.lineUsage(request), backend.loadConfigOptions(),
         // Node holders are named from the request's tree; without it they keep the text path.
         backend.loadPassiveTree(request.tree_version).catch(() => [])]);
-      if (current !== sequence.current) return;
+      if (signal.aborted) return;
       setDone({ version, response, options, nodeIds: new Map(nodes.map(node => [node.skill, node.id])) }); setFilter({ ...NO_FILTER, showInternal: false }); setLimit(PAGE); setOpen(new Set());
-    } catch (err) {
-      if (current === sequence.current) setError(formatApiError(err));
-    } finally {
-      if (current === sequence.current) setRunning(false);
-    }
+    });
   };
 
   const changeFilter = (next: LedgerFilter) => { setFilter(next); setLimit(PAGE); };

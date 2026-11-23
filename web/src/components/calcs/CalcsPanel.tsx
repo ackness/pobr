@@ -4,7 +4,8 @@ import { COMMON_METRICS, defaultMetric } from '../../lib/metricSelection';
 import { AppButton, AppInput } from '../shared/controls';
 import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCancellableJob } from '../../app/jobs/useCancellableJob';
 import type {
   AttributionResponse,
   MinionOutput,
@@ -42,7 +43,6 @@ import { ModifierText } from './ModifierText';
 import { useLocalizedLines } from '../../hooks/useLocalizedLines';
 import { ConfigFieldLink } from '../config/ConfigFieldLink';
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
-import { useEffect } from 'react';
 import { useSkillName, useSkillCatalog } from '../../hooks/useSkillName';
 import { useLocalizedNames } from '../../hooks/useLocalizedLines';
 import './calcs.css';
@@ -945,33 +945,26 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
 export function AttributionView({ session, lang }: { session: BuildSession; lang: Lang }) {
   const tt = bindT(lang);
   const selection = calculatedSkillKey(session);
+  const job = useCancellableJob<{ version: number; selection: string; report: AttributionResponse }>();
   const [completed, setCompleted] = useState<{ version: number; selection: string; report: AttributionResponse } | null>(null);
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const fields = ['CombinedDPS', 'Life', 'EnergyShield', 'TotalEHP'];
-  const sequence = useRef(0);
   const report = completed?.version === session.stateVersion ? completed.report : null;
+  const running = job.running;
+  const error = job.error ? formatApiError(job.error) : null;
   useEffect(() => {
-    sequence.current++;
-    setRunning(false);
-    setError(null);
-    return () => { sequence.current++; };
-  }, [session.stateVersion]);
+    job.reset();
+  }, [session.stateVersion, job.reset]);
 
-  const run = async () => {
+  const run = () => {
     if (session.busy || !session.calc) return;
-    const current = ++sequence.current;
     const version = session.stateVersion;
-    setRunning(true);
-    setError(null);
-    try {
+    const runSelection = selection;
+    return job.start(async ({ signal }) => {
       const result = await session.runAttribution(fields);
-      if (current === sequence.current) setCompleted({ version, selection, report: result });
-    } catch (err) {
-      if (current === sequence.current) setError(formatApiError(err));
-    } finally {
-      if (current === sequence.current) setRunning(false);
-    }
+      const entry = { version, selection: runSelection, report: result };
+      if (!signal.aborted) setCompleted(entry);
+      return entry;
+    });
   };
 
   const skillName = useSkillName(lang);
@@ -1076,39 +1069,49 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
   const [commonOnly, setCommonOnly] = useState(true);
   const calc = session.calcError ? null : session.calc ?? settledCalc ?? null;
   const [opening] = useState(() => openingMinion(calc, focus));
-  const [open, setOpen] = useState<string | null>(() => opening
+  const [openState, setOpen] = useState<string | null>(() => opening
     ? defaultMetric(Object.entries(opening.stats).map(([id, value]) => ({ id, value })), true)
     : defaultMetric(calc?.stats ?? [], !!calc?.main_skill));
-  const [actor, setActor] = useState(() => opening ? actorKey(opening) : 'player');
+  const [actorState, setActorState] = useState(() => ({
+    key: opening ? actorKey(opening) : 'player',
+    chosen: false,
+  }));
+  const [lastFollowedActor, setLastFollowedActor] = useState(() => followedActorKey(calc));
   const detailHeading = useRef<HTMLHeadingElement>(null);
   const focusMinionDetail = useRef(false);
+  const chooseActor = (key: string) => setActorState({ key, chosen: true });
+  // Follow the calculated skill's minion across subsequent results until the player picks an actor or
+  // arrives from a specific stat. Resolved synchronously during render to avoid cascading effects.
+  const mainMinionKey = followedActorKey(calc);
+  let actor = actorState.key;
+  let actorChanged = false;
+  if (mainMinionKey !== lastFollowedActor) {
+    setLastFollowedActor(mainMinionKey);
+    if (!actorState.chosen && mainMinionKey !== null && actor !== mainMinionKey) {
+      actor = mainMinionKey;
+      setActorState({ key: mainMinionKey, chosen: false });
+      actorChanged = true;
+    }
+  }
   const selectedMinion = calc?.minions?.find(minion => actorKey(minion) === actor);
+  if (calc && actor !== 'player' && !selectedMinion) {
+    actor = 'player';
+    setActorState({ key: 'player', chosen: actorState.chosen });
+    actorChanged = true;
+  }
+  if (actorChanged && openState !== null) setOpen(null);
+  const effectiveOpen = actorChanged ? null : openState;
+  const open = useMemo(() => {
+    if (!calc || session.busy || focus) return effectiveOpen;
+    const stats = selectedMinion ? Object.entries(selectedMinion.stats).map(([id, value]) => ({ id, value })) : calc.stats;
+    if (effectiveOpen !== null && stats.some(stat => stat.id === effectiveOpen)) return effectiveOpen;
+    return defaultMetric(stats, !!(selectedMinion?.skill_id ?? calc.main_skill));
+  }, [calc, selectedMinion, session.busy, focus, effectiveOpen]);
   // Minion names by game variety id; English without a MonsterVarieties.Name record.
   const minionNames = useLocalizedNames(useMemo(() => (calc?.minions ?? []).map(minion =>
     ({ kind: 'monster' as const, id: minion.monster_variety_id, name: minion.name })), [calc?.minions]), lang);
   const minionName = (minion: MinionOutput) => minionNames[minion.index] ?? minion.name;
   const actorBreakdowns = selectedMinion?.breakdowns ?? calc?.breakdowns ?? {};
-  useEffect(() => {
-    if (!calc || session.busy || focus) return;
-    const stats = selectedMinion ? Object.entries(selectedMinion.stats).map(([id, value]) => ({ id, value })) : calc.stats;
-    if (open === null || !stats.some(stat => stat.id === open)) setOpen(defaultMetric(stats, !!(selectedMinion?.skill_id ?? calc.main_skill)));
-  }, [calc, selectedMinion, session.busy, focus, open]);
-  useEffect(() => {
-    if (calc && actor !== 'player' && !selectedMinion) {
-      setActor('player');
-      setOpen(null);
-    }
-  }, [calc, actor, selectedMinion]);
-  // Later results keep following the calculated skill's minion until the player picks an actor or
-  // arrives from a specific stat. Declared before the focus effect, which wins on mount.
-  const actorChosen = useRef(false);
-  const mainMinionKey = followedActorKey(calc);
-  useEffect(() => {
-    if (actorChosen.current || mainMinionKey === null || actor === mainMinionKey) return;
-    setActor(mainMinionKey);
-    setOpen(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- follows the calculated skill's minion only.
-  }, [mainMinionKey]);
   useEffect(() => {
     if (!focusMinionDetail.current || !selectedMinion || !open) return;
     focusMinionDetail.current = false;
@@ -1153,8 +1156,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
     setQuery('');
     if (targetView === 'metrics') {
       const minion = minionFocus && calc?.minions?.find(row => row.index === Number(minionFocus[1]));
-      actorChosen.current = true;
-      setActor(minion ? actorKey(minion) : 'player');
+      chooseActor(minion ? actorKey(minion) : 'player');
       setOpen(stat);
     }
     const frame = requestAnimationFrame(() => {
@@ -1216,7 +1218,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
   const actorPicker = (calc?.minions?.length ?? 0) > 0 && <label className="calcs-actor-picker">
     <span>{tt('minion.actor')}</span>
     <AppSelectControl aria-label={tt('minion.actor')} value={selectedMinion ? actorKey(selectedMinion) : 'player'}
-      onChange={event => { actorChosen.current = true; setActor(event.target.value); setOpen(null); }}>
+      onChange={event => { chooseActor(event.target.value); setOpen(null); }}>
       <option value="player">{tt('minion.player')}</option>
       {(calc?.minions ?? []).map(minion => <option key={actorKey(minion)} value={actorKey(minion)}>
         {tt('minion.title')}{colon(lang)}{minionName(minion) || tt('minion.unavailable')} · {minion.index + 1}
@@ -1322,8 +1324,7 @@ export function CalcsPanel({ session, lang, settledCalc, focus, onFocusConsumed 
               <p className="breakdown-note">{tt('calcs.minionDamage').replace('{skill}', skillName(calc!.main_skill?.skill_id ?? calculatedMinion.summoned_by))}</p>
               <AppButton onClick={() => {
                 focusMinionDetail.current = true;
-                actorChosen.current = true;
-                setActor(actorKey(calculatedMinion));
+                chooseActor(actorKey(calculatedMinion));
                 setOpen(defaultMetric(Object.entries(calculatedMinion.stats).map(([id, value]) => ({ id, value })), !!(calculatedMinion.skill_id ?? calc?.main_skill)));
               }}>{tt('calcs.viewMinion').replace('{minion}', minionName(calculatedMinion) || tt('minion.unavailable'))}</AppButton>
             </div>}

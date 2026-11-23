@@ -1,8 +1,6 @@
 packages:
   - .
 
-# esbuild's postinstall downloads a platform binary needed by vite; allow it explicitly.
 allowBuilds:
-  esbuild: true
   # Verify/install the platform runtime used by Worker smoke tests.
   workerd: true

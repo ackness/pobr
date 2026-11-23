@@ -15,6 +15,7 @@ import { useSkillName } from '../../hooks/useSkillName';
 import { useEnemyPresets } from '../../hooks/useEnemyPresets';
 import { bindT, configSectionLabel, damageTypeLabel, t, type Lang } from '../../lib/i18n';
 import { CONFIG_LABEL_ZH, configLabel, configListOptionLabel, configTooltip } from '../../lib/configLabels';
+import { stripPobColorCodes } from '../../lib/pobColors';
 import { configValueDiffers } from '../../lib/configDefaults';
 import { encounterHitTypes, encounterInheritedValues, encounterTierLabel, encounterValue, encounterValueLabel, inheritsEnemyValue } from '../../lib/configEncounter';
 import { resolveEnemyTier } from '../../app/enemy';
@@ -75,11 +76,6 @@ const SECTION_ORDER = [
 const RELEVANT_SECTION = 'Relevant to this build';
 /** Every group opens but quest rewards, which an import has already settled. */
 const DEFAULT_OPEN_SECTIONS = [RELEVANT_SECTION, 'General', 'Skill Options', 'When In Combat', 'For Effective DPS', 'Enemy Stats'];
-
-/** Strip PoB color codes (`^xRRGGBB` / `^N`). */
-function stripColorCodes(text: string): string {
-  return text.replace(/\^x[0-9A-Fa-f]{6}|\^[0-9]/g, '');
-}
 
 /** Localize config label: look up localized table in Chinese UI (falling back to raw English). */
 function optionLabel(lang: Lang, option: ConfigOption): string {
@@ -147,7 +143,7 @@ export function OptionRow({
             {!(option.list_options ?? []).some(opt => String(opt.value) === String(effective ?? '')) &&
               <option value={String(effective ?? '')}>{effective === undefined ? workflowLabel(lang, 'unset') : String(effective)}</option>}
             {(option.list_options ?? []).map((opt) => {
-              const en = stripColorCodes(opt.label);
+              const en = stripPobColorCodes(opt.label);
               const zh = configListLabel(lang, en, listLabels);
               return (
                 <option key={opt.value} value={opt.value}>
@@ -194,7 +190,7 @@ export function OptionRow({
       )}
       <details className="config-option-help">
         <summary className="disclosure">{workflowLabel(lang, 'help')}</summary>
-        {tooltip && <p className="config-help" id={`config-help-${option.var}`}>{stripColorCodes(tooltip)}</p>}
+        {tooltip && <p className="config-help" id={`config-help-${option.var}`}>{stripPobColorCodes(tooltip)}</p>}
         {tooltip && lang !== 'en-US' && tooltip === option.tooltip && <p className="config-source">{workflowLabel(lang, 'sourceHelp')}</p>}
         <span className="config-source">{workflowLabel(lang, 'rawKey')}</span>
         <code className="config-raw-key">{option.var}</code>
@@ -271,7 +267,7 @@ export function ConfigPanel({ session, lang, settledCalc }: Props) {
       ...new Set(
         options
           .flatMap((o) => o.list_options ?? [])
-          .flatMap((o) => stripColorCodes(o.label).split(/\r?\n/).map(line => line.trim()))
+          .flatMap((o) => stripPobColorCodes(o.label).split(/\r?\n/).map(line => line.trim()))
           .filter((l) => !configListOptionLabel(lang, l)),
       ),
     ];

@@ -1,5 +1,6 @@
 /** Transport-only adapter: verified JSON strings become existing GameData paths. */
 import type { DigestFn } from './dataIntegrity';
+import { isRecord as object } from '../lib/record';
 
 export const RELEASE_SCHEMA = 'pobr-runtime-release/v1';
 const BLOCK_SCHEMA = 'pobr-runtime-block/v1';
@@ -29,8 +30,6 @@ export interface RuntimeRelease {
 const requireValue: (value: unknown, message: string) => asserts value = (value, message) => {
   if (!value) throw new Error(message);
 };
-const object = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === 'object' && !Array.isArray(value);
 const hex = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value);
 const strings = (value: unknown): value is string[] => Array.isArray(value) && value.every(v => typeof v === 'string');
 const safePath = (name: string) => !/[\\:]/.test(name) && name.split('/').every(part => part && part !== '.' && part !== '..');

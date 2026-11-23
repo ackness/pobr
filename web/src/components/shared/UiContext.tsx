@@ -6,13 +6,13 @@ const UiContext = createContext<{ lang: Lang; displayMode: DisplayMode }>({ lang
 
 export function UiProvider({ lang, displayMode = 'grouped', children }: { lang: Lang; displayMode?: DisplayMode; children: ReactNode }) {
   const value = useMemo(() => ({ lang, displayMode }), [lang, displayMode]);
-  return <UiContext.Provider value={value}>{children}</UiContext.Provider>;
+  return <UiContext value={value}>{children}</UiContext>;
 }
 
 export function useUi() { return useContext(UiContext); }
 
 const PanelActiveContext = createContext(true);
 export function PanelActivity({ active, children }: { active: boolean; children: ReactNode }) {
-  return <PanelActiveContext.Provider value={active}>{children}</PanelActiveContext.Provider>;
+  return <PanelActiveContext value={active}>{children}</PanelActiveContext>;
 }
 export function usePanelActive() { return useContext(PanelActiveContext); }

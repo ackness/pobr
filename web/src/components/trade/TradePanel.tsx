@@ -34,7 +34,7 @@ import { planGemUpgrades } from '../../lib/tradeMarket';
 import { AppSelect } from '../shared/AppSelect';
 import { CopyButton } from '../shared/CopyButton';
 import { objectiveOf, ObjectiveEditor } from '../shared/OptimizerControls';
-import { formatNumber, statMap, formatStat } from '../../lib/statDisplay';
+import { formatNumber, formatSignedNumber, statMap, formatStat } from '../../lib/statDisplay';
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { rankUpgradePositions, type PositionAnalysis } from '../../lib/tradePriority';
 import { hasReusableTradeAnalysis, hasUsableTradeWeights, reusableTradeCount, type CachedTradeAnalysis, type TradeAnalysisMode } from '../../lib/tradeAnalysis';
@@ -406,7 +406,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
         <tbody>{priorities.map(entry => <tr key={entry.slot}>
           <th scope="row"><strong>{labelOf(entry.slot)}</strong><small>{slotNames[slots.indexOf(entry.slot)]}</small></th>
           {[entry.balancedPercent, entry.dpsPercent, entry.ehpPercent].map((value, index) => <td key={index} className={value === undefined ? '' : deltaClass(value)}>
-            {value === undefined ? '—' : `${value >= 0 ? '+' : ''}${formatNumber(value, 1)}%`}</td>)}
+            {value === undefined ? '—' : `${formatSignedNumber(value, 1, 0, true)}%`}</td>)}
           <td><AppButton className="trade-priority-position" onClick={() => {
             setSelected(entry.slot); marketRef.current?.scrollIntoView({ block: 'start' }); marketRef.current?.focus({ preventScroll: true });
           }}>{flowT('goMarket')}<span className="sr-only"> · {labelOf(entry.slot)}</span></AppButton></td>
@@ -534,7 +534,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
               <p>{session.socketGroups[plan.group]?.gems[plan.position]
                 ? `${tt('trade.replacesGem')} ${skillName(session.socketGroups[plan.group].gems[plan.position].skill_id)}`
                 : tt('trade.addsGem')}</p>
-              {plan.gainPercent !== undefined && <span className={plan.gainPercent < 0 ? 'delta-neg' : 'trade-gain'}>{tt('trade.referenceGain')} {plan.gainPercent >= 0 ? '+' : ''}{formatNumber(plan.gainPercent, 2)}%</span>}</div>
+              {plan.gainPercent !== undefined && <span className={plan.gainPercent < 0 ? 'delta-neg' : 'trade-gain'}>{tt('trade.referenceGain')} {formatSignedNumber(plan.gainPercent, 2, 0, true)}%</span>}</div>
             <div className="upgrade-gem-stats">{[damage.stat, 'TotalEHP'].map(stat => {
               const before = plan.baseline?.[stat] ?? 0, after = plan.stats?.[stat] ?? 0;
               return <span key={stat} data-stat={stat}>{stat === damage.stat ? damage.label : statNameLabel(lang, stat)} <b className={after < before ? 'delta-neg' : 'delta-pos'}>{formatStat(stat, before, lang)} → {formatStat(stat, after, lang)}</b></span>;

@@ -2,16 +2,16 @@
 // No downloads, builds, bundled game data, or ambient POBR_* data selection.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { constants, linkSync, lstatSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { snapshotFiles } from './sync-data.mjs';
+import { sha256 } from './wasm-build-inputs.mjs';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
-const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const isHash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 // The materializer's small bundle receipt uses sorted-key, compact UTF-8 JSON.
@@ -240,8 +240,7 @@ export async function smokeRuntimeCandidate({ package: packageDir, data, expecte
   const initialHead = head();
   const packageDirectory = stamp(noSymlinks(packageRoot));
   const inputs = inputReader();
-  const codeFiles = ['web/scripts/smoke-runtime-candidate.mjs', 'web/scripts/sync-data.mjs',
-    'web/scripts/sync-build-references.mjs', 'web/src/api/types.ts'];
+  const codeFiles = ['web/scripts/smoke-runtime-candidate.mjs', 'web/scripts/sync-data.mjs', 'web/scripts/wasm-build-inputs.mjs', 'web/src/api/types.ts'];
   const code = Object.fromEntries(codeFiles.map(name => [name, sha256(inputs.read(join(repo, name)))]));
   const workedRequests = workedBuilds.map(name => {
     const source = `examples/demo-bd-test/builds/${name}/code.txt`;

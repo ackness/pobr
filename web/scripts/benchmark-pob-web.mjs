@@ -1,11 +1,12 @@
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { parseArgs } from 'node:util';
 import { runInNewContext } from 'node:vm';
 import { isMainThread, parentPort, Worker, workerData } from 'node:worker_threads';
+import { sha256 as hash } from './wasm-build-inputs.mjs';
 
 export const SOURCE_COMMIT = 'ee33ce63920f23e634cc30e37d8ad339244dbf34';
 const SOURCE_REPOSITORY = 'https://github.com/krauthaufen/pob-web';
@@ -17,7 +18,6 @@ const SOURCE_FILES = {
 const DEPLOYED_FILES = { 'lua.mjs': 'wasm/lua.mjs', 'lua.wasm': 'wasm/lua.wasm', 'pob-lua.json': 'data/pob-lua.json' };
 const FILE_NAMES = [...Object.keys(DEPLOYED_FILES), ...Object.keys(SOURCE_FILES)].sort();
 export const DEFAULT_REFERENCE_DIRECTORY = fileURLToPath(new URL('../../.cache/pob-web-benchmark', import.meta.url));
-const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 
 function safeRelativePath(path) {
   return typeof path === 'string' && path.length > 0 && !path.includes('\\') && !path.includes('\0')
@@ -321,19 +321,34 @@ new deployed artifacts. Deployment revision is unknown, not the wrapper commit.
 
 if (isMainThread && process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    const args = process.argv.slice(2);
-    if (args.length === 1 && ['--help', '-h'].includes(args[0])) process.stdout.write(HELP);
-    else {
-      const options = {};
-      let prepare = false;
-      for (let index = 0; index < args.length; index++) {
-        const arg = args[index];
-        if (arg === '--prepare' && !prepare) { prepare = true; continue; }
-        const key = { '--directory': 'directory', '--source-dir': 'sourceDirectory', '--base-url': 'baseUrl' }[arg];
-        if (!key || options[key] !== undefined || !args[index + 1] || args[index + 1].startsWith('--')) throw new Error(`Invalid argument: ${arg}`);
-        options[key] = args[++index];
+    const { values, tokens } = parseArgs({
+      options: {
+        help: { type: 'boolean', short: 'h' },
+        prepare: { type: 'boolean' },
+        directory: { type: 'string' },
+        'source-dir': { type: 'string' },
+        'base-url': { type: 'string' },
+      },
+      strict: true,
+      allowPositionals: false,
+      tokens: true,
+    });
+    const seen = new Set();
+    for (const token of tokens) {
+      if (token.kind !== 'option') continue;
+      if (token.inlineValue || seen.has(token.name) || (token.value !== undefined && (!token.value || token.value.startsWith('--')))) {
+        throw new Error(`Invalid argument: ${token.rawName}`);
       }
-      if (!prepare) throw new Error('Expected --prepare; use --help for usage');
+      seen.add(token.name);
+    }
+    if (values.help && seen.size === 1) process.stdout.write(HELP);
+    else {
+      if (values.help || !values.prepare) throw new Error('Expected --prepare; use --help for usage');
+      const options = {
+        ...(values.directory !== undefined ? { directory: values.directory } : {}),
+        ...(values['source-dir'] !== undefined ? { sourceDirectory: values['source-dir'] } : {}),
+        ...(values['base-url'] !== undefined ? { baseUrl: values['base-url'] } : {}),
+      };
       process.stdout.write(`${JSON.stringify(await prepareReference(options), null, 2)}\n`);
     }
   } catch (error) { console.error(error.stack ?? String(error)); process.exitCode = 1; }

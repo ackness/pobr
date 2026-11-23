@@ -22,7 +22,6 @@
   .shell-root .cmp-config-value { margin-block: .4rem; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-sm); }
   .shell-root .cmp-mark, .shell-root .cmp-panel .compare-pair > div > strong:first-child::before { content: ''; display: inline-block; flex: none; width: .55rem; height: .55rem; border-radius: 50%; background: var(--color-fire); }
   .shell-root .cmp-mark[data-side='b'] { border-radius: 2px; background: var(--color-cold); }
-  .shell-root .cmp-identity { font-size: var(--text-xs); line-height: 1.45; color: var(--muted-foreground); overflow-wrap: anywhere; }
   .shell-root .cmp-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem 1.25rem; min-height: 1.5rem; margin-top: .85rem; font-size: var(--text-sm); color: var(--muted-foreground); }
   .shell-root .cmp-headline { color: var(--foreground); white-space: nowrap; }
   .shell-root .cmp-headline b { margin-left: .2rem; font-weight: 620; font-variant-numeric: tabular-nums; }
@@ -91,10 +90,6 @@
   .shell-root .cmp-panel .compare-pair li { margin: .2rem 0; }
   .shell-root .cmp-panel .compare-pair details { font-size: var(--text-xs); color: var(--muted-foreground); }
   .shell-root .cmp-panel .compare-pair summary { cursor: pointer; }
-  .shell-root .compare-line-before, .shell-root .compare-line-after { display: inline-block; min-width: 100%; border-radius: 2px; }
-  .shell-root .cmp-diff-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
-  .shell-root .cmp-diff-actions > [data-slot='button']:not(:last-child) { border-color: transparent; color: var(--muted-foreground); }
-  .shell-root .cmp-gap { color: var(--muted-foreground); opacity: .8; font-style: italic; }
 
   /* ── Tree: the canvas keeps its drawing, everything around it goes flat ─── */
   .shell-root .cmp-panel .compare-trees { display: block; }

@@ -1,6 +1,5 @@
 node_modules/
 dist/
 src/wasm/pkg/
-public/build-references/
 e2e/screenshots/
 test-results/

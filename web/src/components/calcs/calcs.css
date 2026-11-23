@@ -3,13 +3,6 @@
   font-size: var(--text-sm);
 }
 
-.breakdown-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-bottom: var(--space-6);
-}
-
 .calcs-search {
   width: 100%;
   max-width: 420px;
@@ -25,40 +18,6 @@
   color: var(--text-primary);
   border-bottom: 1px solid var(--border-subtle);
   padding-bottom: var(--space-1);
-}
-
-.calcs-section .breakdown-list {
-  margin-bottom: var(--space-4);
-}
-
-.breakdown-item {
-  background: var(--surface-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-}
-
-.breakdown-item.is-open {
-  border-color: var(--accent-gold-dim);
-}
-
-.breakdown-toggle {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  background: transparent;
-  border: none;
-  padding: var(--space-3) var(--space-4);
-}
-
-.breakdown-name {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.breakdown-value {
-  color: var(--accent-gold-bright);
-  font-variant-numeric: tabular-nums;
 }
 
 .breakdown-count {
@@ -258,16 +217,6 @@
   font-weight: 600;
 }
 
-.attribution-kind {
-  display: inline-block;
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 0 var(--space-1);
-  margin-right: var(--space-1);
-}
-
 .delta-pos {
   color: var(--color-positive);
 }
@@ -294,9 +243,7 @@
   color: var(--accent-gold-bright);
 }
 .calcs-section { min-width: 0; }
-.calcs-section:has(.is-open) { grid-column: 1 / -1; }
 .calcs-section-title { font-size: var(--text-sm); letter-spacing: 0; padding-bottom: var(--space-2); }
-.breakdown-name { text-align: left; }
 .breakdown-summary { flex-wrap: wrap; }
 .breakdown-count { white-space: nowrap; }
 .attribution-view { margin-top: var(--space-6); }
@@ -311,10 +258,8 @@
 .skill-metrics-diagnostics .calc-error { margin: 0; }
 .breakdown-table th:last-child { text-align: right; }
 @media (max-width: 600px) {
-  .breakdown-toggle { padding: var(--space-3); gap: var(--space-2); flex-wrap: wrap; }
   .breakdown-table { min-width: 460px; }
 }
-.calcs-section:has(.breakdown-item.is-open) { grid-column: 1 / -1; }
 .attribution-view > h3 { scroll-margin-top: var(--space-4); }
 
 .derived-formula { overflow-wrap: anywhere; line-height: 1.7; color: var(--text-primary); }

@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Command } from 'cmdk';
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { CornerDownLeft } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/dialog';
 import type { BuildSession } from '../hooks/useBuildSession';
@@ -19,12 +18,22 @@ export interface PaletteProps {
   onOpenImport: () => void; onSettings: () => void; onToggleTheme: () => void; themeLabel: string;
 }
 
+interface PaletteEntry { key: string; label: string; hint?: string; action: () => void }
+interface PaletteGroup { id: string; heading: string; items: PaletteEntry[] }
+
 /** ⌘K: jump to a page, open the calculation behind any stat, switch the main skill or the enemy, or run an action. */
 export function CommandPalette({ open, onOpenChange, session, view, lang, pageLabel, onNavigate, onInspect, onOpenImport, onSettings, onToggleTheme, themeLabel }: PaletteProps) {
   const tt = bindT(lang);
   const catalog = useSkillCatalog();
+  const baseId = useId();
+  const listRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState('');
-  useEffect(() => { if (open) setQuery(''); }, [open]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) { setQuery(''); setActiveIndex(0); }
+  }
   const q = query.trim().toLowerCase();
   const match = (...texts: string[]) => !q || texts.some(text => text.toLowerCase().includes(q));
   const run = (action: () => void) => () => { onOpenChange(false); action(); };
@@ -47,24 +56,85 @@ export function CommandPalette({ open, onOpenChange, session, view, lang, pageLa
     { id: 'settings', label: tt('settings.title'), run: onSettings },
   ].filter(action => match(action.label));
 
-  const item = (key: string, label: string, hint: string | undefined, action: () => void) =>
-    <Command.Item key={key} value={key} onSelect={run(action)}><span>{label}</span>{hint ? <kbd>{hint}</kbd> : null}</Command.Item>;
+  const groups: PaletteGroup[] = [
+    { id: 'pages', heading: tt('palette.pages'), items: pages.map(page => ({ key: `page:${page.route}`, label: page.label, hint: page.key || undefined, action: () => onNavigate(page.route) })) },
+    { id: 'values', heading: tt('palette.values'), items: stats.map(stat => ({ key: `stat:${stat.id}`, label: stat.label, hint: stat.value, action: () => onInspect(stat.id) })) },
+    { id: 'skills', heading: tt('sidebar.mainSkill'), items: skills.map(skill => ({ key: `skill:${skill.index}`, label: skill.label, action: () => session.updateParams({ main_socket_group: skill.index }) })) },
+    { id: 'tiers', heading: tt('compare.enemy'), items: tiers.map(entry => ({ key: `tier:${entry.tier}`, label: entry.label, action: () => session.updateParams({ enemy_tier: entry.tier }) })) },
+    { id: 'actions', heading: tt('palette.actions'), items: actions.map(action => ({ key: `action:${action.id}`, label: action.label, action: action.run })) },
+  ].filter(group => group.items.length > 0);
+
+  const entries = groups.flatMap(group => group.items);
+  const selectedIndex = entries.length ? Math.min(activeIndex, entries.length - 1) : -1;
+  const activeEntry = selectedIndex >= 0 ? entries[selectedIndex] : undefined;
+  const optionId = (index: number) => `${baseId}-option-${index}`;
+  const listId = `${baseId}-list`;
+
+  useEffect(() => {
+    if (!open || selectedIndex < 0) return;
+    listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' });
+  }, [open, selectedIndex]);
+
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') { event.preventDefault(); onOpenChange(false); return; }
+    if (!entries.length) return;
+    if (event.key === 'ArrowDown') { event.preventDefault(); setActiveIndex(i => (i + 1) % entries.length); }
+    else if (event.key === 'ArrowUp') { event.preventDefault(); setActiveIndex(i => (i - 1 + entries.length) % entries.length); }
+    else if (event.key === 'Home') { event.preventDefault(); setActiveIndex(0); }
+    else if (event.key === 'End') { event.preventDefault(); setActiveIndex(entries.length - 1); }
+    else if (event.key === 'Enter' && !event.nativeEvent.isComposing && activeEntry) {
+      event.preventDefault();
+      run(activeEntry.action)();
+    }
+  };
+
+  let offset = 0;
   return <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent showCloseButton={false} className="shell-palette" aria-describedby="shell-palette-hint">
       <DialogTitle className="sr-only">{tt('palette.title')}</DialogTitle>
       <DialogDescription id="shell-palette-hint" className="sr-only">{tt('palette.description')}</DialogDescription>
-      <Command shouldFilter={false} loop label={tt('palette.title')}>
-        <Command.Input autoFocus value={query} onValueChange={setQuery} placeholder={tt('palette.placeholder')} />
-        <Command.List>
-          <Command.Empty>{tt('palette.empty')}</Command.Empty>
-          {pages.length > 0 && <Command.Group heading={tt('palette.pages')}>{pages.map(page => item(`page:${page.route}`, page.label, page.key, () => onNavigate(page.route)))}</Command.Group>}
-          {stats.length > 0 && <Command.Group heading={tt('palette.values')}>{stats.map(stat => item(`stat:${stat.id}`, stat.label, stat.value, () => onInspect(stat.id)))}</Command.Group>}
-          {skills.length > 0 && <Command.Group heading={tt('sidebar.mainSkill')}>{skills.map(skill => item(`skill:${skill.index}`, skill.label, undefined, () => session.updateParams({ main_socket_group: skill.index })))}</Command.Group>}
-          {tiers.length > 0 && <Command.Group heading={tt('compare.enemy')}>{tiers.map(entry => item(`tier:${entry.tier}`, entry.label, undefined, () => session.updateParams({ enemy_tier: entry.tier })))}</Command.Group>}
-          {actions.length > 0 && <Command.Group heading={tt('palette.actions')}>{actions.map(action => item(`action:${action.id}`, action.label, undefined, action.run))}</Command.Group>}
-        </Command.List>
+      <div className="palette-root" onKeyDown={onKeyDown}>
+        <input
+          className="palette-input"
+          type="text"
+          role="combobox"
+          aria-expanded="true"
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={selectedIndex >= 0 ? optionId(selectedIndex) : undefined}
+          aria-label={tt('palette.title')}
+          autoFocus
+          value={query}
+          onChange={event => { setQuery(event.target.value); setActiveIndex(0); }}
+          placeholder={tt('palette.placeholder')}
+        />
+        <div ref={listRef} id={listId} className="palette-list" role="listbox" aria-label={tt('palette.title')}>
+          {entries.length === 0 ? <div className="palette-empty">{tt('palette.empty')}</div> : groups.map(group => {
+            const headingId = `${baseId}-group-${group.id}`;
+            const start = offset;
+            offset += group.items.length;
+            return <div key={group.id} role="group" aria-labelledby={headingId}>
+              <div id={headingId} className="palette-group-heading">{group.heading}</div>
+              {group.items.map((entry, idx) => {
+                const index = start + idx;
+                const selected = index === selectedIndex;
+                return <div
+                  key={entry.key}
+                  id={optionId(index)}
+                  role="option"
+                  aria-selected={selected}
+                  data-selected={selected ? 'true' : undefined}
+                  data-command={entry.key}
+                  className="palette-item"
+                  onMouseMove={() => setActiveIndex(index)}
+                  onClick={run(entry.action)}
+                ><span>{entry.label}</span>{entry.hint ? <kbd>{entry.hint}</kbd> : null}</div>;
+              })}
+            </div>;
+          })}
+        </div>
         <footer className="palette-foot"><span><kbd>↑</kbd><kbd>↓</kbd>{tt('palette.move')}</span><span><kbd><CornerDownLeft /></kbd>{tt('palette.select')}</span><span><kbd>Esc</kbd>{tt('common.close')}</span></footer>
-      </Command>
+      </div>
     </DialogContent>
   </Dialog>;
 }

@@ -32,6 +32,11 @@ export function hasPobColorCodes(text: string): boolean {
   return CODE_RE.test(text);
 }
 
+/** Remove PoB color codes (`^xRRGGBB` / `^N`) from text. */
+export function stripPobColorCodes(text: string): string {
+  return text.replace(CODE_RE, '');
+}
+
 /** Split text with color codes into styled segments (codes are stripped and apply to following text until the next code). */
 export function parsePobColorText(text: string): ColorSegment[] {
   const segments: ColorSegment[] = [];

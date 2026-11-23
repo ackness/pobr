@@ -104,13 +104,11 @@ class TierTests(unittest.TestCase):
         grep = main_grep(affected(name))
         self.assertTrue(all(re.escape(f"{stem}.spec.ts") in grep for stem in readers), (name, readers))
 
-    def test_build_references_run_build_guidance_and_their_readers(self):
-        grep = main_grep(affected("examples/demo-bd-test/builds/druid-oracle-comet/meta.json"))
-        self.assertIn(re.escape("build-guidance.spec.ts"), grep)
-        # A build that specs also import runs those specs as well.
+    def test_build_fixtures_run_their_spec_readers(self):
+        # A build that specs import runs those specs.
         name = "examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt"
         grep = main_grep(affected(name))
-        for stem in ("build-guidance", *sorted(e2e.spec_inputs(E2E)[name])):
+        for stem in sorted(e2e.spec_inputs(E2E)[name]):
             self.assertIn(re.escape(f"{stem}.spec.ts"), grep)
         # Docs beside the builds stay documentation.
         self.assertEqual(affected("examples/demo-bd-test/builds/druid-oracle-comet/notes.md").suites, ())
@@ -193,7 +191,7 @@ class PreflightTests(unittest.TestCase):
             "web/pnpm-lock.yaml": "lock", "web/node_modules/.modules.yaml": "modules",
             "web/src/app.ts": "app", "web/public/data/1.0/x.json": "{}",
             "web/src/wasm/pkg/build-receipt.json": "{}", "web/scripts/sync-data.mjs": "sync",
-            "data/1.0/patch/fix.json": "{}", "examples/demo-bd-test/builds/a/meta.json": "{}",
+            "data/1.0/patch/fix.json": "{}",
         }
         for name, text in files.items():
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
@@ -246,9 +244,9 @@ class PreflightTests(unittest.TestCase):
         self.assertFalse(run.ran("sync-data"))
         self.assertFalse(self.prepared().ran("vite build"))
 
-    def test_patch_or_build_reference_edits_resync_data_and_rebuild_dist(self):
+    def test_patch_or_overlay_edits_resync_data_and_rebuild_dist(self):
         self.prepared()
-        for name in ("data/1.0/patch/fix.json", "examples/demo-bd-test/builds/a/meta.json"):
+        for name in ("data/1.0/patch/fix.json", "data/overlay-common/rule.json"):
             with self.subTest(name=name):
                 (self.root / name).write_text('{"edited": true}')
                 run = self.prepared()

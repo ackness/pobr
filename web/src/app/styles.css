@@ -181,7 +181,7 @@
   .shell-root [data-slot='checkbox'] { min-height: 1rem; padding: 0; }
   .shell-root .app-checkbox > input[type='checkbox'] { min-height: 0; padding: 0; }
   .shell-root :is(.weapon-set-control, .named-sets) { padding: .5rem 0; }
-  .shell-root [role='table'], .shell-root .table-scroll { overflow-x: auto; max-width: 100%; }
+  .shell-root [role='table'] { overflow-x: auto; max-width: 100%; }
   [data-slot='dialog-content'], .shell-dialog { max-height: calc(100dvh - 2rem); overflow-y: auto; }
   [data-slot='tooltip-content'] { max-width: min(32rem, calc(100vw - 2rem)); white-space: normal; overflow-wrap: anywhere; }
 
@@ -281,8 +281,6 @@
   .ov-actions > button:last-child { margin-inline-start: auto; }
   .ov > .import-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .35rem .65rem; margin: 0; }
   .ov > .import-summary > button { align-self: flex-start; margin: -.2rem -.35rem -.2rem 0; }
-  .ov-scenario { display: flex; align-items: center; gap: .6rem; font-size: var(--text-sm); color: var(--muted-foreground); }
-  .ov-scenario [data-slot='select-trigger'] { min-width: 9rem; }
 
   /* Four figures read left to right; hairlines divide them, no boxes. */
   .ov-figures { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; border-block: 1px solid var(--border); }

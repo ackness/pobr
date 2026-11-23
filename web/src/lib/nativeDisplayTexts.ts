@@ -1,4 +1,5 @@
 import type { Lang } from './i18n';
+import { isRecord as object } from './record';
 
 /** Who wrote a shown text that is not official: the translation library's own supplement
  * (`agent` = drafted by a model and reviewed, `human` = written by a person). Official text has
@@ -29,9 +30,6 @@ export interface NativeDisplayTexts {
   scopes: Record<string, Record<string, [string | null, string | null]>>;
   origins?: NativeDisplayOrigins;
 }
-
-const object = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === 'object' && !Array.isArray(value);
 
 /** An origin map: text or id -> origin. Values are not checked here: see {@link listedOrigin}. */
 const originMap = (value: unknown) => object(value);

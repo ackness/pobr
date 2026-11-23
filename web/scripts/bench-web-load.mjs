@@ -19,15 +19,28 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, wri
 import { cpus, totalmem, release } from 'node:os';
 import { dirname, extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
 import { syncRelease } from './sync-data.mjs';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
-const options = { iterations: 5, dist: join(repo, 'web/dist'), out: join(repo, '.cache/web-load-performance.json'), profiles: 'all' };
-for (let i = 2; i < process.argv.length; i += 2) {
-  const [flag, value] = [process.argv[i], process.argv[i + 1]];
-  if (!['--pack', '--dist', '--iterations', '--out', '--profiles'].includes(flag) || value === undefined) throw new Error(`Unknown or incomplete option: ${flag}`);
-  options[flag.slice(2)] = flag === '--iterations' ? Number(value) : flag === '--profiles' ? value : resolve(value);
-}
+const { values } = parseArgs({
+  options: {
+    pack: { type: 'string' },
+    dist: { type: 'string' },
+    iterations: { type: 'string' },
+    out: { type: 'string' },
+    profiles: { type: 'string' },
+  },
+  strict: true,
+  allowPositionals: false,
+});
+const options = {
+  pack: values.pack ? resolve(values.pack) : undefined,
+  dist: values.dist ? resolve(values.dist) : join(repo, 'web/dist'),
+  iterations: values.iterations !== undefined ? Number(values.iterations) : 5,
+  out: values.out ? resolve(values.out) : join(repo, '.cache/web-load-performance.json'),
+  profiles: values.profiles ?? 'all',
+};
 if (!options.pack) throw new Error('--pack <runtime_pack build output>/player is required');
 if (!Number.isInteger(options.iterations) || options.iterations < 1) throw new Error('--iterations must be a positive integer');
 

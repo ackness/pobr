@@ -23,7 +23,7 @@ export function treeHoverChanges(diffs: DiffEntry[], lang: Lang = 'en-US') {
 export function TreeHoverBenefits({ diffs, lang, refundCount = 0 }: { diffs: DiffEntry[]; lang: Lang; refundCount?: number }) {
   const tt = bindT(lang);
   const { primary, more } = treeHoverChanges(diffs, lang);
-  const row = (diff: DiffEntry) => <span key={diff.id} className={`diff-entry ${diff.delta > 0 ? 'diff-pos' : 'diff-neg'}`}>
+  const row = (diff: DiffEntry) => <span key={diff.id} className={`diff-entry ${diff.delta > 0 ? 'delta-pos' : 'delta-neg'}`}>
     {treeStatLabel(lang, diff.id)} {formatComparisonDelta(diff.delta, statFormat(diff.id), lang)}
   </span>;
   return <div className="diff-list">

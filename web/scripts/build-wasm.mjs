@@ -2,18 +2,24 @@ import { execFileSync } from 'node:child_process';
 import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
 import { bindingHashes, buildInputs, compiledSchema, sourceFingerprint, verifyBuildReceipt } from './wasm-build-inputs.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const pkgRoot = join(root, 'web/src/wasm/pkg');
 const receiptPath = join(pkgRoot, 'build-receipt.json');
 const profile = 'wasm-release';
-const options = process.argv.slice(2);
-if (options.some(option => option !== '--force')) throw new Error('Usage: build-wasm.mjs [--force]');
+let force = false;
+try {
+  const { values } = parseArgs({ options: { force: { type: 'boolean' } }, strict: true, allowPositionals: false });
+  force = values.force === true;
+} catch (error) {
+  throw new Error('Usage: build-wasm.mjs [--force]', { cause: error });
+}
 const fingerprint = sourceFingerprint(root);
 const inputs = buildInputs(root);
 let reusable = false;
-if (!options.includes('--force')) {
+if (!force) {
   try {
     const receipt = verifyBuildReceipt(root, pkgRoot, fingerprint);
     reusable = JSON.stringify(receipt.buildInputs) === JSON.stringify(inputs);

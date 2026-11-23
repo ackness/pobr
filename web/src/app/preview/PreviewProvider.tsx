@@ -81,5 +81,5 @@ export function PreviewProvider({ session, view, route, children }: { session: B
   // Navigation, including retained panels, invalidates all pending preview work.
   useEffect(reset, [session.stateVersion, route, reset]);
   const value = useMemo(() => ({ state, show, showChanges, clear }), [state, show, showChanges, clear]);
-  return <PreviewContext.Provider value={value}>{children}</PreviewContext.Provider>;
+  return <PreviewContext value={value}>{children}</PreviewContext>;
 }

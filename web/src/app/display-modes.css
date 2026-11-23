@@ -86,7 +86,6 @@
   .shell-root .config-mobile-category { display: none; }
   .shell-root [data-display-mode='grouped'] .config-section { border-top: 2px solid var(--input); }
   .shell-root [data-display-mode='compact'] .config-page .config-item { grid-template-columns: minmax(0, 1fr) minmax(6rem, 10rem) 2rem; padding-block: .45rem; }
-  .shell-root [data-display-mode='compact'] .config-description { column-gap: 1rem; }
   .shell-root [data-display-mode='compact'] .config-key { flex: 1 1 auto; min-width: 0; }
   .shell-root [data-display-mode='game'] .config-page .config-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr)); gap: .75rem; padding-top: .75rem; }
   .shell-root [data-display-mode='game'] .config-page .config-item { grid-template-columns: minmax(0, 1fr) minmax(5rem, 7rem) 1.5rem; padding: .9rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--card); }
@@ -120,14 +119,10 @@
   .shell-root .trade-page .up-title { margin-bottom: .75rem; }
   .shell-root .trade-page .trade-objectives > .trade-field-label { display: none; }
   .shell-root .trade-page .upgrade-paths { margin-bottom: .75rem; }
-  .shell-root [data-display-mode='grouped'] .trade-priority-list > li { margin-bottom: .75rem; padding: .5rem .75rem; border: 1px solid var(--border); border-radius: .4rem; }
   .shell-root [data-display-mode='compact'] .trade-page .trade-position-list { gap: 0; }
   .shell-root [data-display-mode='compact'] .trade-page .trade-position { padding-block: .45rem; border-radius: 0; }
   .shell-root [data-display-mode='compact'] .trade-page .trade-score-row { padding-block: .45rem; }
-  .shell-root [data-display-mode='compact'] .trade-page .trade-priority-list > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .75rem; }
-  .shell-root [data-display-mode='compact'] .trade-page .trade-priority-defence { padding: .25rem; }
-  .shell-root [data-display-mode='game'] .trade-page .trade-priority-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: .75rem; }
-  .shell-root [data-display-mode='game'] .trade-page :is(.trade-priority-list > li, .trade-gem-card, .trade-search-card) { padding: 1rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--card); }
+  .shell-root [data-display-mode='game'] .trade-page :is(.trade-gem-card, .trade-search-card) { padding: 1rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--card); }
   .shell-root [data-display-mode='game'] .trade-page .trade-position { background: var(--card); border: 1px solid var(--border); border-radius: .5rem; margin-bottom: .5rem; }
   .shell-root [data-display-mode='game'] .trade-page .trade-position[aria-pressed='true'] { border-color: var(--primary); }
 
@@ -180,14 +175,12 @@
     .shell-root [data-display-mode] .calcs-page.calcs-workspace .calcs-explorer { display: flex; flex-direction: column; gap: 1.25rem; }
     .shell-root [data-display-mode] .calcs-page.calcs-workspace .calcs-detail-pane { order: -1; width: 100%; }
     .shell-root [data-display-mode] .calcs-page.calcs-workspace .calcs-metric-browser { width: 100%; }
-    .shell-root [data-display-mode='compact'] .trade-page .trade-priority-list > li { display: block; }
   }
   @container shell-container (max-width: 40rem) {
     .shell-root [data-display-mode] .cmp-tablist { flex-wrap: wrap; width: 100%; }
     .shell-root [data-display-mode='compact'] .ov-figure { grid-template-columns: minmax(0, 1fr) auto; gap: .25rem 1rem; }
     .shell-root [data-display-mode='compact'] .ov-figure small { grid-column: 1 / -1; }
     .shell-root [data-display-mode] .config-page .config-item { grid-template-columns: minmax(0, 1fr) minmax(4rem, 6rem) 1.5rem; padding-left: .25rem; gap: .4rem; }
-    .shell-root [data-display-mode] .config-option-groups .config-description { grid-column: 1; }
     .shell-root [data-display-mode] .config-option-groups .config-item > :is(.app-checkbox, input, [role='checkbox'], [role='combobox']) { grid-column: 2; grid-row: 1; align-self: center; justify-self: end; }
     .shell-root [data-display-mode] .config-option-groups .config-reset { grid-column: 3; grid-row: 1; }
     .shell-root [data-display-mode] .config-page .config-toolbar { margin-block: .75rem; }

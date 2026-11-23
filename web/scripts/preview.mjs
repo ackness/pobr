@@ -7,7 +7,6 @@ import { Readable } from 'node:stream';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { build, preview } from 'vite';
-import { syncBuildReferences } from './sync-build-references.mjs';
 import { syncData } from './sync-data.mjs';
 
 const webRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -101,7 +100,6 @@ async function main(port, stage, allowWegame) {
       const publicDir = join(stage, 'web/public');
       outDir = join(stage, 'dist');
       syncData({ dataRoot: join(stage, 'data'), destRoot: join(publicDir, 'data') });
-      syncBuildReferences({ source: join(stage, 'examples/demo-bd-test/builds'), destination: join(publicDir, 'build-references') });
       await build({
         root: webRoot,
         publicDir,

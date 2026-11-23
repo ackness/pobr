@@ -1,17 +1,15 @@
 // Package the same WASM and data inputs used by the Web gate. No rebuild or download.
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { cpSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
-import { verifyBuildReceipt } from './wasm-build-inputs.mjs';
+import { sha256, verifyBuildReceipt } from './wasm-build-inputs.mjs';
 import { snapshotFiles } from './sync-data.mjs';
 
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 const json = path => JSON.parse(readFileSync(path, 'utf8'));
-const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const pretty = value => JSON.stringify(value, null, 2) + '\n';
 const mib = bytes => (bytes / 1024 ** 2).toFixed(3);
 

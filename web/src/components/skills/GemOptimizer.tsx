@@ -4,7 +4,7 @@ import { DisclosureChevron } from '../shared/DisclosureChevron';
 import { UnincludedModifiers } from '../shared/UnincludedModifiers';
 import { useJobBeacon } from '../../app/jobs/useJobBeacon';
 import { usePreview } from '../shared/PreviewContext';
-import { uiStorageKey } from '../../lib/sessionStorage';
+import { readPreference, uiStorageKey, writePreference } from '../../lib/sessionStorage';
 import { AppButton, AppInput } from '../shared/controls';
 import { formatApiError } from '../../api/error';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -60,7 +60,7 @@ interface AppliedSupports {
 
 function savedExclusions(key: string): string[] {
   try {
-    const value: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
+    const value: unknown = JSON.parse(readPreference(key) ?? '[]');
     if (Array.isArray(value)) return [...new Set(value.filter((id): id is string => typeof id === 'string'))];
   } catch { /* Invalid or unavailable storage leaves every candidate enabled. */ }
   return [];
@@ -78,13 +78,17 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const occupied = equipped.length;
   const [expanded, setExpanded] = useState(false);
   const descriptions = useGemDescriptions(active && expanded);
-  const [capacity, setCapacity] = useState(Math.max(2, Math.min(5, occupied)));
+  const [capacity, setCapacity] = useState(() => Math.max(2, Math.min(5, occupied)));
+  const [previousOccupied, setPreviousOccupied] = useState(occupied);
+  if (previousOccupied !== occupied) {
+    setPreviousOccupied(occupied);
+    setCapacity(value => Math.max(value, Math.min(5, occupied)));
+  }
   const [includeLineage, setIncludeLineage] = useState(true);
   const preferenceKey = uiStorageKey(`pobr-support-exclusions:${skillKey}`);
   const [excludedIds, setExcludedIds] = useState(() => savedExclusions(preferenceKey));
   const excluded = useMemo(() => new Set(excludedIds), [excludedIds]);
   const [search, setSearch] = useState('');
-  useEffect(() => setCapacity(value => Math.max(value, Math.min(5, occupied))), [occupied]);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   useJobBeacon(progress !== null);
   const [error, setError] = useState<string | null>(null);
@@ -133,7 +137,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     // Invalidate before publishing new settings or allowing another Apply action.
     invalidate();
     setExcludedIds(next);
-    try { localStorage.setItem(preferenceKey, JSON.stringify(next)); } catch { /* In-memory filtering still works. */ }
+    writePreference(preferenceKey, JSON.stringify(next));
   };
   const exclude = (id: string) => updateExclusions([...new Set([...excludedIds, id])]);
   const restore = (id: string) => updateExclusions(excludedIds.filter(value => value !== id));

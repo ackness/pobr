@@ -1,43 +1,45 @@
 import { randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
+import { parseArgs } from 'node:util';
 
 export function parseOptions(args) {
-  const options = {
-    referenceDir: '.cache/pob-web-benchmark',
-    wasmDir: 'web/src/wasm/pkg',
-    output: '.cache/pob-web-performance.json',
-    iterations: 9,
-    warmup: 2,
-    help: false,
-    pobrOnly: false,
-  };
-  const flags = new Map([
-    ['--reference-dir', 'referenceDir'], ['--wasm-dir', 'wasmDir'],
-    ['--output', 'output'], ['--iterations', 'iterations'], ['--warmup', 'warmup'],
-    ['--help', 'help'], ['--pobr-only', 'pobrOnly'],
-  ]);
+  const { values, tokens } = parseArgs({
+    args,
+    options: {
+      'reference-dir': { type: 'string' },
+      'wasm-dir': { type: 'string' },
+      output: { type: 'string' },
+      iterations: { type: 'string' },
+      warmup: { type: 'string' },
+      help: { type: 'boolean' },
+      'pobr-only': { type: 'boolean' },
+    },
+    strict: true,
+    allowPositionals: false,
+    tokens: true,
+  });
   const seen = new Set();
-  for (let index = 0; index < args.length; index += 1) {
-    const flag = args[index];
-    const key = flags.get(flag);
-    if (!key) throw new Error(`Unknown option: ${flag}`);
-    if (seen.has(flag)) throw new Error(`Duplicate option: ${flag}`);
-    seen.add(flag);
-    if (key === 'help' || key === 'pobrOnly') {
-      options[key] = true;
-      continue;
-    }
-    const value = args[++index];
-    if (typeof value !== 'string' || value.trim() === '' || value.startsWith('--')) {
-      throw new Error(`Missing value for ${flag}`);
-    }
-    if (key === 'iterations' || key === 'warmup') {
-      if (!/^\d+$/.test(value)) throw new Error(`${flag} requires an integer`);
-      options[key] = Number(value);
-    } else {
-      options[key] = value;
+  for (const token of tokens) {
+    if (token.kind !== 'option') continue;
+    if (token.inlineValue) throw new Error(`Unknown option: ${token.rawName}=${token.value}`);
+    if (seen.has(token.rawName)) throw new Error(`Duplicate option: ${token.rawName}`);
+    seen.add(token.rawName);
+    if (token.value !== undefined && (token.value.trim() === '' || token.value.startsWith('--'))) {
+      throw new Error(`Missing value for ${token.rawName}`);
     }
   }
+  for (const flag of ['iterations', 'warmup']) {
+    if (values[flag] !== undefined && !/^\d+$/.test(values[flag])) throw new Error(`--${flag} requires an integer`);
+  }
+  const options = {
+    referenceDir: values['reference-dir'] ?? '.cache/pob-web-benchmark',
+    wasmDir: values['wasm-dir'] ?? 'web/src/wasm/pkg',
+    output: values.output ?? '.cache/pob-web-performance.json',
+    iterations: values.iterations !== undefined ? Number(values.iterations) : 9,
+    warmup: values.warmup !== undefined ? Number(values.warmup) : 2,
+    help: values.help === true,
+    pobrOnly: values['pobr-only'] === true,
+  };
   validateCounts(options.iterations, options.warmup);
   if (options.pobrOnly) {
     // A PoBR-only report has no reference or speed ratio, and must not replace the paired report

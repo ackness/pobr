@@ -8,7 +8,7 @@ import { contributionFields, ItemContribution } from './ItemContribution';
 const ui = vi.hoisted(() => ({ button: undefined as ComponentProps<'button'> | undefined }));
 const hooks = await vi.hoisted(async () => {
   const { createHookHarness } = await import('../../testing/hookHarness');
-  return createHookHarness({ lazyState: false, functionalUpdates: false, refs: { reuse: 'nullish' },
+  return createHookHarness({ functionalUpdates: false, refs: { reuse: 'nullish' },
     effects: { comparison: 'strict', cleanup: 'latest' } });
 });
 vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
