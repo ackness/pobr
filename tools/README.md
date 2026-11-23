@@ -5,7 +5,6 @@ enter through [mise tasks](../mise.toml); game-facing commands live in `apps/`.
 
 | Directory | Responsibility |
 | --- | --- |
-| [sync-pob-catalog/](sync-pob-catalog/README.md) | PoB2 display/output catalog scan and parity checks (test reference only) |
 | `precompile-mods/` | Generate and audit precompiled modifier rules |
 | [pob2-oracle/](pob2-oracle/README.md) | Run the pinned Lua reference through a headless bridge |
 

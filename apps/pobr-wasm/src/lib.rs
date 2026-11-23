@@ -135,12 +135,12 @@ pub mod wasm {
         crate::build_api::display_catalog_json().map_err(|err| JsError::new(&err))
     }
 
-    /// JS entry point: `skillMetricsJson(requestJson) -> string` (independent active-effect metrics).
     #[wasm_bindgen(js_name = importPartyMemberJson)]
     pub fn import_party_member_json(code: &str) -> Result<String, JsError> {
         crate::build_api::import_party_member_json(code).map_err(|err| JsError::new(&err))
     }
 
+    /// JS entry point: `skillMetricsJson(requestJson) -> string` (independent active-effect metrics).
     #[wasm_bindgen(js_name = skillMetricsJson)]
     pub fn skill_metrics_json(request_json: &str) -> Result<String, JsError> {
         crate::build_api::skill_metrics_json(request_json).map_err(|err| JsError::new(&err))
@@ -264,7 +264,6 @@ pub mod wasm {
         crate::build_api::item_augment_info_json(item_text).map_err(|err| JsError::new(&err))
     }
 
-    /// JS entry point: `reforgeRunesJson(requestJson) -> string` (re-socket runes -> rewritten item text).
     #[wasm_bindgen(js_name = uniqueCatalogJson)]
     pub fn unique_catalog_json() -> Result<String, JsError> {
         crate::build_api::unique_catalog_json().map_err(|err| JsError::new(&err))
@@ -285,6 +284,7 @@ pub mod wasm {
         crate::build_api::normalize_item_draft_json(text).map_err(|err| JsError::new(&err))
     }
 
+    /// JS entry point: `reforgeRunesJson(requestJson) -> string` (re-socket runes -> rewritten item text).
     #[wasm_bindgen(js_name = reforgeRunesJson)]
     pub fn reforge_runes_json(request_json: &str) -> Result<String, JsError> {
         crate::build_api::reforge_runes_json(request_json).map_err(|err| JsError::new(&err))
