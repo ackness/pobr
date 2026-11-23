@@ -79,8 +79,11 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   const [expanded, setExpanded] = useState(false);
   const descriptions = useGemDescriptions(active && expanded);
   const [capacity, setCapacity] = useState(() => Math.max(2, Math.min(5, occupied)));
-  const minCapacity = Math.min(5, occupied);
-  if (capacity < minCapacity) setCapacity(minCapacity);
+  const [previousOccupied, setPreviousOccupied] = useState(occupied);
+  if (previousOccupied !== occupied) {
+    setPreviousOccupied(occupied);
+    setCapacity(value => Math.max(value, Math.min(5, occupied)));
+  }
   const [includeLineage, setIncludeLineage] = useState(true);
   const preferenceKey = uiStorageKey(`pobr-support-exclusions:${skillKey}`);
   const [excludedIds, setExcludedIds] = useState(() => savedExclusions(preferenceKey));

@@ -9,7 +9,7 @@ import { GemOptimizer } from './GemOptimizer';
 import { ChangeBar } from '../../app/preview/ChangeBar';
 
 const harness = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], optimize: vi.fn(), articles: [] as ComponentProps<'article'>[], show: vi.fn(), showChanges: vi.fn(), settings: null as { current: HTMLDetailsElement | null } | null, previewState: null as import('../shared/PreviewContext').PreviewState | null,
-  preset: 'dps', descriptions: null as GemDescriptionIndex | null, descriptionsEnabled: false }));
+  inputs: [] as ComponentProps<'input'>[], preset: 'dps', descriptions: null as GemDescriptionIndex | null, descriptionsEnabled: false }));
 vi.mock('../../hooks/useGemDescriptions', () => ({ useGemDescriptions: (enabled: boolean) => { harness.descriptionsEnabled = enabled; return harness.descriptions; } }));
 const hooks = await vi.hoisted(async () => {
   const { createHookHarness } = await import('../../testing/hookHarness');
@@ -18,7 +18,7 @@ const hooks = await vi.hoisted(async () => {
 vi.mock('react', async original => hooks.mockReact(await original<typeof import('react')>()));
 vi.mock('../shared/controls', () => ({
   AppButton: (props: ComponentProps<'button'>) => { harness.buttons.push(props); return <button {...props} />; },
-  AppInput: (props: ComponentProps<'input'>) => <input {...props} />,
+  AppInput: (props: ComponentProps<'input'>) => { harness.inputs.push(props); return <input {...props} />; },
 }));
 vi.mock('../../hooks/useLocalizedLines', async original => ({ ...await original<typeof import('../../hooks/useLocalizedLines')>(),
   useLocalizedNames: (names: { name: string }[]) => names.map(entry => entry.name) }));
@@ -51,7 +51,7 @@ function setup(main = 0, lang: Lang = 'en-US') {
     canUndo: true, undoEdit: vi.fn(), setSocketGroups: vi.fn(),
   } as unknown as BuildSession;
   const render = (active = true) => {
-    hooks.beginRender(); harness.buttons.length = 0; harness.articles.length = 0;
+    hooks.beginRender(); harness.buttons.length = 0; harness.articles.length = 0; harness.inputs.length = 0;
     return renderToStaticMarkup(<GemOptimizer session={session} lang={lang} active={active} groupIndex={0} catalog={catalog} gemName={id => id} skillKey="skill" />);
   };
   return { session, render };
@@ -143,6 +143,21 @@ it('keeps recommendations collapsed until requested', () => {
   expect(harness.descriptionsEnabled).toBe(true);
   expand(); render();
   expect(harness.descriptionsEnabled).toBe(false);
+});
+
+it('keeps an explicitly reduced capacity until support occupancy changes', () => {
+  const { session, render } = setup();
+  const support = { skill_id: 'Old support', level: 1, quality: 0 };
+  session.socketGroups = [{ enabled: true, gems: Array.from({ length: 4 }, () => support) }];
+  const capacity = () => harness.inputs.find(input => input.type === 'number' && input.min === 2)!;
+  render(); expand(); render();
+  expect(capacity().value).toBe(4);
+  capacity().onChange!({ target: { value: '3' } } as never);
+  render(); render();
+  expect(capacity().value).toBe(3);
+  session.socketGroups = [{ enabled: true, gems: Array.from({ length: 5 }, () => support) }];
+  render(); render();
+  expect(capacity().value).toBe(5);
 });
 
 it('zero evaluations explain the blocker without claiming no improvement', async () => {

@@ -4,6 +4,7 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { EquipmentPlanner } from './EquipmentPlanner';
 import { minionDpsNote } from '../../lib/mainMinion';
+import type { EquipmentPlanningResult } from '../../lib/equipmentPlanner';
 
 const ui = vi.hoisted(() => ({ buttons: [] as ComponentProps<'button'>[], plan: vi.fn() }));
 const hooks = await vi.hoisted(async () => {
@@ -76,4 +77,40 @@ test.each(['en-US', 'zh-CN', 'zh-TW'] as const)('planned resistance values have 
   expect(resistances.match(/ 75%<\/span>/g)).toHaveLength(3);
   expect(resistances).toContain(' -20%</span>');
   expect(resistances).not.toContain('%%');
+});
+
+test('a cancelled comparison resolving late does not abort its replacement', async () => {
+  const request = {};
+  const session = { activeWeaponSet: 1, currentRequest: () => request } as unknown as BuildSession;
+  const objective = { stat: 'Life', constraints: [] }, catalog = { bases: [], mods: [] };
+  const damage = { stat: 'CombinedDPS', label: 'Combined DPS' };
+  const oldComparison = Promise.withResolvers<EquipmentPlanningResult>();
+  const replacement = Promise.withResolvers<EquipmentPlanningResult>();
+  ui.plan.mockReturnValueOnce(oldComparison.promise).mockReturnValueOnce(replacement.promise);
+  const render = (id: string) => {
+    const candidates = [{ id, itemId: id, label: 'Ring', slot: 'ring1', text: 'Candidate' }];
+    for (let count = 0; count < 10; count++) {
+      hooks.beginRender(); ui.buttons = [];
+      renderToStaticMarkup(<EquipmentPlanner session={session} lang="en-US" active objective={objective}
+        catalog={catalog} candidates={candidates} onRemove={() => {}} damage={damage} />);
+      hooks.runEffects();
+      if (!hooks.dirty) return;
+    }
+    throw new Error('Render did not settle');
+  };
+  const start = () => ui.buttons.find(button => button.className === 'trade-primary')!.onClick!({} as never);
+  render('old');
+  const oldRun = start();
+  render('new');
+  const newRun = start();
+  expect(ui.plan).toHaveBeenCalledTimes(2);
+  const oldSignal = ui.plan.mock.calls[0][0].signal as AbortSignal;
+  const newSignal = ui.plan.mock.calls[1][0].signal as AbortSignal;
+  expect(oldSignal.aborted).toBe(true);
+  const result = { baseline: { Life: 100 }, evaluated: 0, plans: [] } satisfies EquipmentPlanningResult;
+  oldComparison.resolve(result);
+  await oldRun;
+  expect(newSignal.aborted).toBe(false);
+  replacement.resolve(result);
+  await newRun;
 });

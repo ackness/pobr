@@ -77,7 +77,6 @@ export function EquipmentPlanner({ session, lang, active, objective, catalog, ca
         && latest.current.key === runKey && latest.current.catalog === catalog;
       const next = await planEquipmentUpgrades({ request, candidates, maxReplacements, objective, signal,
         onProgress: (done, total) => { if (current()) report(done, total); } }, { catalog });
-      if (!current()) { job.cancel(); return null as never; }
       return { key: runKey, result: next, request, objective, catalog,
         dataVersion: session.dataVersion, treeVersion: session.treeVersion, candidates, maxReplacements };
     });
