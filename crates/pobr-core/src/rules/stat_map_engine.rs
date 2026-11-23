@@ -2298,7 +2298,7 @@ mod tests {
                 .with_flags(ModFlags::ATTACK)
                 .with_mode_effective(true)
                 .with_multiplier("EnemyElementalAilmentCount", count);
-            let names = ["Damage".into()];
+            let names = ["Damage"];
             assert!(
                 (db.more(&cfg, &names) - expected).abs() < 1e-12,
                 "payload={value}, count={count}"

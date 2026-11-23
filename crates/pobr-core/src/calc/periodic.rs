@@ -42,20 +42,16 @@ pub(crate) struct PeriodicHits {
 }
 
 pub(crate) fn is_periodic(db: &ModDb, cfg: &CalcConfig) -> bool {
-    db.sum(ModType::Base, cfg, &[ModName::from(INTERVAL)]) > 0.0
+    db.sum(ModType::Base, cfg, &[INTERVAL]) > 0.0
 }
 
 pub(crate) fn periodic_hits(db: &ModDb, cfg: &CalcConfig, uses: f64) -> Option<PeriodicHits> {
-    let interval = db.sum(ModType::Base, cfg, &[ModName::from(INTERVAL)]) / 1000.0;
+    let interval = db.sum(ModType::Base, cfg, &[INTERVAL]) / 1000.0;
     if interval <= 0.0 {
         return None;
     }
     let hit_interval = db
-        .sum(
-            ModType::Base,
-            cfg,
-            &[ModName::from(super::rain::HIT_INTERVAL)],
-        )
+        .sum(ModType::Base, cfg, &[super::rain::HIT_INTERVAL])
         .max(0.0)
         / 1000.0;
     let landing_rate = 1.0 / interval;
@@ -67,15 +63,15 @@ pub(crate) fn periodic_hits(db: &ModDb, cfg: &CalcConfig, uses: f64) -> Option<P
     } else {
         landing_rate
     };
-    let duration_ms = db.sum(ModType::Base, cfg, &[ModName::from(DURATION)]);
+    let duration_ms = db.sum(ModType::Base, cfg, &[DURATION]);
     let uptime = if cfg.periodic_hits_assume_sustained {
         1.0
     } else if duration_ms > 0.0 {
-        let names = [ModName::from("Duration")];
+        let names = ["Duration"];
         let duration = duration_ms / 1000.0
             * (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0).max(0.0)
             * db.more(cfg, &names);
-        let limit = db.sum(ModType::Base, cfg, &[ModName::from(LIMIT)]).max(0.0);
+        let limit = db.sum(ModType::Base, cfg, &[LIMIT]).max(0.0);
         (duration * uses.max(0.0)).min(limit).clamp(0.0, 1.0)
     } else if uses > 0.0 {
         1.0

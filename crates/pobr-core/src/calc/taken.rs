@@ -50,17 +50,6 @@ const DAMAGE_TYPE_BY_INDEX: [DamageType; 5] = [
     DamageType::Chaos,
 ];
 
-/// DamageType → mod name prefix (PoB2's ModName convention).
-fn dt_prefix(dt: DamageType) -> &'static str {
-    match dt {
-        DamageType::Physical => "Physical",
-        DamageType::Fire => "Fire",
-        DamageType::Cold => "Cold",
-        DamageType::Lightning => "Lightning",
-        DamageType::Chaos => "Chaos",
-    }
-}
-
 /// Vendor's `round(val)` (`Modules/Common.lua`: `m_floor(val + 0.5)`, rounds to the nearest integer).
 /// [`taken_hit_from_damage`]'s final taken damage is rounded at the same point as vendor (CalcDefence.lua:442).
 fn vendor_round(value: f64) -> f64 {
@@ -68,6 +57,145 @@ fn vendor_round(value: f64) -> f64 {
 }
 
 // damage shift table (13-G1)
+
+/// Per-type modifier names for taken-damage mitigation, indexed by [`DamageType`].
+struct TakenTypeNames {
+    armour_does_not_apply: &'static str,
+    armour_applies: &'static str,
+    evasion_does_not_apply: &'static str,
+    evasion_applies: &'static str,
+    es_does_not_apply: &'static str,
+    es_applies: &'static str,
+    dr_max: &'static str,
+    dr_names: &'static [&'static str],
+    enemy_overwhelm: &'static str,
+    taken: &'static str,
+    taken_when_hit: &'static str,
+    taken_from_attacks: &'static str,
+    taken_from_proj_attacks: &'static str,
+    taken_from_spells: &'static str,
+    taken_from_spell_proj: &'static str,
+}
+
+macro_rules! taken_type_entry {
+    ($t:literal, elemental) => {
+        TakenTypeNames {
+            armour_does_not_apply: concat!("ArmourDoesNotApplyTo", $t, "DamageTaken"),
+            armour_applies: concat!("ArmourAppliesTo", $t, "DamageTaken"),
+            evasion_does_not_apply: concat!("EvasionDoesNotApplyTo", $t, "DamageTaken"),
+            evasion_applies: concat!("EvasionAppliesTo", $t, "DamageTaken"),
+            es_does_not_apply: concat!("EnergyShieldDoesNotApplyTo", $t, "DamageTaken"),
+            es_applies: concat!("EnergyShieldAppliesTo", $t, "DamageTaken"),
+            dr_max: concat!($t, "DamageReductionMax"),
+            dr_names: &[concat!($t, "DamageReduction"), "ElementalDamageReduction"],
+            enemy_overwhelm: concat!("Enemy", $t, "Overwhelm"),
+            taken: concat!($t, "DamageTaken"),
+            taken_when_hit: concat!($t, "DamageTakenWhenHit"),
+            taken_from_attacks: concat!($t, "DamageTakenFromAttacks"),
+            taken_from_proj_attacks: concat!($t, "DamageTakenFromProjectileAttacks"),
+            taken_from_spells: concat!($t, "DamageTakenFromSpells"),
+            taken_from_spell_proj: concat!($t, "DamageTakenFromSpellProjectiles"),
+        }
+    };
+    ($t:literal, plain) => {
+        TakenTypeNames {
+            armour_does_not_apply: concat!("ArmourDoesNotApplyTo", $t, "DamageTaken"),
+            armour_applies: concat!("ArmourAppliesTo", $t, "DamageTaken"),
+            evasion_does_not_apply: concat!("EvasionDoesNotApplyTo", $t, "DamageTaken"),
+            evasion_applies: concat!("EvasionAppliesTo", $t, "DamageTaken"),
+            es_does_not_apply: concat!("EnergyShieldDoesNotApplyTo", $t, "DamageTaken"),
+            es_applies: concat!("EnergyShieldAppliesTo", $t, "DamageTaken"),
+            dr_max: concat!($t, "DamageReductionMax"),
+            dr_names: &[concat!($t, "DamageReduction")],
+            enemy_overwhelm: concat!("Enemy", $t, "Overwhelm"),
+            taken: concat!($t, "DamageTaken"),
+            taken_when_hit: concat!($t, "DamageTakenWhenHit"),
+            taken_from_attacks: concat!($t, "DamageTakenFromAttacks"),
+            taken_from_proj_attacks: concat!($t, "DamageTakenFromProjectileAttacks"),
+            taken_from_spells: concat!($t, "DamageTakenFromSpells"),
+            taken_from_spell_proj: concat!($t, "DamageTakenFromSpellProjectiles"),
+        }
+    };
+}
+
+const TAKEN_TYPE_NAMES: [TakenTypeNames; 5] = [
+    taken_type_entry!("Physical", plain),
+    taken_type_entry!("Fire", elemental),
+    taken_type_entry!("Cold", elemental),
+    taken_type_entry!("Lightning", elemental),
+    taken_type_entry!("Chaos", plain),
+];
+
+macro_rules! shift_names_for_src {
+    ($src:literal, elemental, $dst:expr) => {
+        match $dst {
+            DamageType::Physical => &[
+                concat!($src, "DamageTakenAsPhysical"),
+                concat!($src, "DamageFromHitsTakenAsPhysical"),
+                "ElementalDamageTakenAsPhysical",
+                "ElementalDamageFromHitsTakenAsPhysical",
+            ],
+            DamageType::Fire => &[
+                concat!($src, "DamageTakenAsFire"),
+                concat!($src, "DamageFromHitsTakenAsFire"),
+                "ElementalDamageTakenAsFire",
+                "ElementalDamageFromHitsTakenAsFire",
+            ],
+            DamageType::Cold => &[
+                concat!($src, "DamageTakenAsCold"),
+                concat!($src, "DamageFromHitsTakenAsCold"),
+                "ElementalDamageTakenAsCold",
+                "ElementalDamageFromHitsTakenAsCold",
+            ],
+            DamageType::Lightning => &[
+                concat!($src, "DamageTakenAsLightning"),
+                concat!($src, "DamageFromHitsTakenAsLightning"),
+                "ElementalDamageTakenAsLightning",
+                "ElementalDamageFromHitsTakenAsLightning",
+            ],
+            DamageType::Chaos => &[
+                concat!($src, "DamageTakenAsChaos"),
+                concat!($src, "DamageFromHitsTakenAsChaos"),
+                "ElementalDamageTakenAsChaos",
+                "ElementalDamageFromHitsTakenAsChaos",
+            ],
+        }
+    };
+    ($src:literal, plain, $dst:expr) => {
+        match $dst {
+            DamageType::Physical => &[
+                concat!($src, "DamageTakenAsPhysical"),
+                concat!($src, "DamageFromHitsTakenAsPhysical"),
+            ],
+            DamageType::Fire => &[
+                concat!($src, "DamageTakenAsFire"),
+                concat!($src, "DamageFromHitsTakenAsFire"),
+            ],
+            DamageType::Cold => &[
+                concat!($src, "DamageTakenAsCold"),
+                concat!($src, "DamageFromHitsTakenAsCold"),
+            ],
+            DamageType::Lightning => &[
+                concat!($src, "DamageTakenAsLightning"),
+                concat!($src, "DamageFromHitsTakenAsLightning"),
+            ],
+            DamageType::Chaos => &[
+                concat!($src, "DamageTakenAsChaos"),
+                concat!($src, "DamageFromHitsTakenAsChaos"),
+            ],
+        }
+    };
+}
+
+fn shift_names(src: DamageType, dst: DamageType) -> &'static [&'static str] {
+    match src {
+        DamageType::Physical => shift_names_for_src!("Physical", plain, dst),
+        DamageType::Fire => shift_names_for_src!("Fire", elemental, dst),
+        DamageType::Cold => shift_names_for_src!("Cold", elemental, dst),
+        DamageType::Lightning => shift_names_for_src!("Lightning", elemental, dst),
+        DamageType::Chaos => shift_names_for_src!("Chaos", plain, dst),
+    }
+}
 
 /// Builds the defence side's taken-as conversion matrix `shift[src][dst]` (fraction, 0-1).
 ///
@@ -84,25 +212,12 @@ pub fn damage_shift_table(db: &ModDb, cfg: &CalcConfig) -> [[f64; 5]; 5] {
     let mut shift = [[0.0; 5]; 5];
     for src in DAMAGE_TYPE_BY_INDEX {
         let s = src as usize;
-        let src_name = dt_prefix(src);
         let mut total_pct = 0.0;
         for dst in DAMAGE_TYPE_BY_INDEX {
             if dst == src {
                 continue;
             }
-            let dst_name = dt_prefix(dst);
-            let mut names = vec![
-                ModName::from(format!("{src_name}DamageTakenAs{dst_name}")),
-                ModName::from(format!("{src_name}DamageFromHitsTakenAs{dst_name}")),
-            ];
-            if src.is_elemental() {
-                // Elemental sources also pick up the Elemental family (vendor :2181/:2183's isElemental branch).
-                names.push(ModName::from(format!("ElementalDamageTakenAs{dst_name}")));
-                names.push(ModName::from(format!(
-                    "ElementalDamageFromHitsTakenAs{dst_name}"
-                )));
-            }
-            let pct = db.sum(ModType::Base, cfg, &names);
+            let pct = db.sum(ModType::Base, cfg, shift_names(src, dst));
             shift[s][dst as usize] = pct / 100.0;
             total_pct += pct;
         }
@@ -126,15 +241,11 @@ pub fn damage_shift_table(db: &ModDb, cfg: &CalcConfig) -> [[f64; 5]; 5] {
 /// - Elemental types additionally add `ArmourAppliesToElementalDamageTaken`
 ///   (independently gated by the `ArmourDoesNotApplyToElementalDamageTaken` flag).
 pub fn armour_applies_pct(db: &ModDb, cfg: &CalcConfig, dtype: DamageType) -> f64 {
-    let name = dt_prefix(dtype);
-    let mut pct = if db.flag(cfg, &format!("ArmourDoesNotApplyTo{name}DamageTaken")) {
+    let names = &TAKEN_TYPE_NAMES[dtype as usize];
+    let mut pct = if db.flag(cfg, names.armour_does_not_apply) {
         0.0
     } else {
-        let base = db.sum(
-            ModType::Base,
-            cfg,
-            &[ModName::from(format!("ArmourAppliesTo{name}DamageTaken"))],
-        );
+        let base = db.sum(ModType::Base, cfg, &[names.armour_applies]);
         // Implicit physical BASE 100 (:1862-1863): implemented inline here, not written to ModDb.
         if dtype == DamageType::Physical {
             base + 100.0
@@ -143,11 +254,7 @@ pub fn armour_applies_pct(db: &ModDb, cfg: &CalcConfig, dtype: DamageType) -> f6
         }
     };
     if dtype.is_elemental() && !db.flag(cfg, "ArmourDoesNotApplyToElementalDamageTaken") {
-        pct += db.sum(
-            ModType::Base,
-            cfg,
-            &[ModName::from("ArmourAppliesToElementalDamageTaken")],
-        );
+        pct += db.sum(ModType::Base, cfg, &["ArmourAppliesToElementalDamageTaken"]);
     }
     pct
 }
@@ -188,31 +295,32 @@ fn effective_applied_armour_for_category(
     dtype: DamageType,
     category: HitCategory,
 ) -> f64 {
-    let name = dt_prefix(dtype);
+    let names = &TAKEN_TYPE_NAMES[dtype as usize];
     let armour_pct = armour_applies_pct(db, cfg, dtype);
     // Conditional defence uses the incoming enemy hit, never the player's
     // selected skill. An unspecified/Average hit supplies no projectile attack
     // assumption. As with ArmourDefense, only the strongest percentage applies.
-    let mut defence_names = vec![ModName::from("ArmourDefense")];
-    if category == HitCategory::Projectile {
-        defence_names.push(ModName::from("ArmourDefenseAgainstProjectileAttacks"));
-    }
-    let armour_defense = db.max_of(ModType::Base, cfg, &defence_names).max(0.0) / 100.0;
-    let other_pct = |def: &str| -> f64 {
-        if db.flag(cfg, &format!("{def}DoesNotApplyTo{name}DamageTaken")) {
+    let defence_names: &[&str] = if category == HitCategory::Projectile {
+        &["ArmourDefense", "ArmourDefenseAgainstProjectileAttacks"]
+    } else {
+        &["ArmourDefense"]
+    };
+    let armour_defense = db.max_of(ModType::Base, cfg, defence_names).max(0.0) / 100.0;
+    let other_pct = |does_not_apply: &str, applies: &str| -> f64 {
+        if db.flag(cfg, does_not_apply) {
             0.0
         } else {
-            db.sum(
-                ModType::Base,
-                cfg,
-                &[ModName::from(format!("{def}AppliesTo{name}DamageTaken"))],
-            )
+            db.sum(ModType::Base, cfg, &[applies])
         }
     };
     let from_armour = (inputs.armour * armour_pct / 100.0) * (1.0 + armour_defense);
     // Evasion/ES borrowed terms each get their own max(…, 0) (vendor :2356/:2358).
-    let from_evasion = (inputs.evasion * other_pct("Evasion") / 100.0).max(0.0);
-    let from_es = (inputs.energy_shield * other_pct("EnergyShield") / 100.0).max(0.0);
+    let from_evasion =
+        (inputs.evasion * other_pct(names.evasion_does_not_apply, names.evasion_applies) / 100.0)
+            .max(0.0);
+    let from_es = (inputs.energy_shield * other_pct(names.es_does_not_apply, names.es_applies)
+        / 100.0)
+        .max(0.0);
     round(from_armour + from_evasion + from_es)
 }
 
@@ -319,7 +427,7 @@ pub struct MitigationInputs {
 /// The global damage reduction ceiling: the highest `DamageReductionMax`
 /// modifier (0 when absent) and the ceiling it gives, else the game constant.
 pub(crate) fn global_damage_reduction_max(db: &ModDb, cfg: &CalcConfig) -> (f64, f64) {
-    let modifier = db.max_of(ModType::Base, cfg, &[ModName::from("DamageReductionMax")]);
+    let modifier = db.max_of(ModType::Base, cfg, &["DamageReductionMax"]);
     let cap = if modifier > 0.0 {
         modifier
     } else {
@@ -338,8 +446,7 @@ pub(crate) fn type_damage_reduction_max(
     dt: DamageType,
     global_cap: f64,
 ) -> (f64, f64) {
-    let name = ModName::from(format!("{}DamageReductionMax", dt_prefix(dt)));
-    let modifier = db.max_of(ModType::Base, cfg, &[name]);
+    let modifier = db.max_of(ModType::Base, cfg, &[TAKEN_TYPE_NAMES[dt as usize].dr_max]);
     let cap = if modifier > 0.0 {
         modifier.min(global_cap)
     } else {
@@ -354,11 +461,8 @@ pub(crate) fn type_damage_reduction_max(
 /// alike: additional Physical Damage Reduction also reduces Bleeding, where
 /// Armour does not (agent-docs/armour.md).
 pub(crate) fn base_damage_reduction(db: &ModDb, cfg: &CalcConfig, dt: DamageType, cap: f64) -> f64 {
-    let mut names = vec![ModName::from(format!("{}DamageReduction", dt_prefix(dt)))];
-    if dt.is_elemental() {
-        names.push(ModName::from("ElementalDamageReduction"));
-    }
-    db.sum(ModType::Base, cfg, &names).clamp(0.0, cap)
+    db.sum(ModType::Base, cfg, TAKEN_TYPE_NAMES[dt as usize].dr_names)
+        .clamp(0.0, cap)
 }
 
 /// Assembles a [`MitigationCtx`] from a ModDb (assembling the per-type
@@ -394,16 +498,12 @@ pub(crate) fn build_mitigation_ctx_for_category(
     };
     for dt in DAMAGE_TYPE_BY_INDEX {
         let i = dt as usize;
-        let name = dt_prefix(dt);
+        let names = &TAKEN_TYPE_NAMES[i];
         (ctx.dr_max_type_modifier[i], ctx.dr_max_pct[i]) =
             type_damage_reduction_max(db, cfg, dt, global_dr_max);
         ctx.flat_dr_pct[i] = base_damage_reduction(db, cfg, dt, ctx.dr_max_pct[i]);
         // Enemy overwhelm (pobr's `Enemy<X>Overwhelm` BASE mod; currently only physical has a source).
-        ctx.overwhelm_pct[i] = db.sum(
-            ModType::Base,
-            cfg,
-            &[ModName::from(format!("Enemy{name}Overwhelm"))],
-        );
+        ctx.overwhelm_pct[i] = db.sum(ModType::Base, cfg, &[names.enemy_overwhelm]);
         // Resistance-taken multiplier (:2363; enemy penetration is left for config).
         ctx.resist_taken_multi[i] = 1.0 - inputs.resist_pct[i] / 100.0;
         // Flat damage taken follows the selected attack/spell and projectile
@@ -412,40 +512,29 @@ pub(crate) fn build_mitigation_ctx_for_category(
             ModType::Base,
             cfg,
             &[
-                ModName::from("DamageTaken"),
-                ModName::from(format!("{name}DamageTaken")),
-                ModName::from("DamageTakenWhenHit"),
-                ModName::from(format!("{name}DamageTakenWhenHit")),
+                "DamageTaken",
+                names.taken,
+                "DamageTakenWhenHit",
+                names.taken_when_hit,
             ],
         ) + db.sum(
             ModType::Base,
             cfg,
-            &[
-                ModName::from("DamageTakenFromAttacks"),
-                ModName::from(format!("{name}DamageTakenFromAttacks")),
-            ],
+            &["DamageTakenFromAttacks", names.taken_from_attacks],
         ) * category.select([1.0, 1.0, 0.0, 0.0], 0.0)
+            + db.sum(ModType::Base, cfg, &[names.taken_from_proj_attacks])
+                * category.select([0.0, 1.0, 0.0, 0.0], 0.0)
             + db.sum(
                 ModType::Base,
                 cfg,
-                &[ModName::from(format!(
-                    "{name}DamageTakenFromProjectileAttacks"
-                ))],
-            ) * category.select([0.0, 1.0, 0.0, 0.0], 0.0)
-            + db.sum(
-                ModType::Base,
-                cfg,
-                &[
-                    ModName::from("DamageTakenFromSpells"),
-                    ModName::from(format!("{name}DamageTakenFromSpells")),
-                ],
+                &["DamageTakenFromSpells", names.taken_from_spells],
             ) * category.spell_share()
             + db.sum(
                 ModType::Base,
                 cfg,
                 &[
-                    ModName::from("DamageTakenFromSpellProjectiles"),
-                    ModName::from(format!("{name}DamageTakenFromSpellProjectiles")),
+                    "DamageTakenFromSpellProjectiles",
+                    names.taken_from_spell_proj,
                 ],
             ) * category.select([0.0, 0.0, 0.0, 1.0], 0.0);
         // Post-reduction multiplier (:2429/:2436-2437): taken inc/more (Average) × deflect; PoE2 has no suppression.

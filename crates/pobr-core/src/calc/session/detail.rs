@@ -2,7 +2,7 @@
 //! ModDb query: totals and rows always use the same names and configuration.
 use super::CalculationSession;
 use crate::ModEvaluation;
-use pobr_data::prelude::{ModName, ModType};
+use pobr_data::prelude::ModType;
 
 pub use super::detail_views::DERIVED_STATS;
 
@@ -622,7 +622,7 @@ impl CalculationSession {
             "RemnantManaRecoveryPercent" | "CreatedRemnantDuplicateChance"
         ) {
             let cfg = super::super::utility::query_config(&self.env.cfg);
-            let names = [ModName::from(stat)];
+            let names = [stat];
             let filtered = db.filtered(super::super::remnant_pickup::is_player_source);
             return vec![SourceGroup {
                 name: stat.into(),
@@ -638,19 +638,18 @@ impl CalculationSession {
         let view_names = super::super::player_debuffs::view_names(stat);
         if !view_names.is_empty() {
             let cfg = &self.env.cfg;
-            let names: Vec<_> = view_names.iter().map(|name| ModName::from(*name)).collect();
             let mut groups = vec![SourceGroup {
                 name: stat.into(),
                 more_precision: None,
                 totals: (
-                    db.sum(ModType::Base, cfg, &names),
-                    db.sum(ModType::Inc, cfg, &names),
-                    db.more(cfg, &names),
+                    db.sum(ModType::Base, cfg, view_names),
+                    db.sum(ModType::Inc, cfg, view_names),
+                    db.more(cfg, view_names),
                 ),
-                rows: db.evaluate_names(cfg, &names),
+                rows: db.evaluate_names(cfg, view_names),
             }];
             if super::super::player_debuffs::is_duration_view(stat) {
-                let names = [ModName::from("SelfDebuffExpirationRate")];
+                let names = ["SelfDebuffExpirationRate"];
                 groups.push(SourceGroup {
                     name: "SelfDebuffExpirationRate".into(),
                     more_precision: None,
@@ -692,19 +691,14 @@ impl CalculationSession {
             .into_iter()
             .filter(|name| {
                 !matches!(name.as_str(), "AttackSpeed" | "CastSpeed" | "SkillSpeed")
-                    || super::super::skill_use_time::speed_names_for(&cfg)
-                        .iter()
-                        .any(|n| n.as_str() == name)
+                    || super::super::skill_use_time::speed_names_slice(&cfg)
+                        .contains(&name.as_str())
             })
             .map(|name| {
                 let mut query_cfg = cfg.clone();
                 if stat == "SkillTriggerRate"
                     && name == "EnergyGenerated"
-                    && db.sum(
-                        ModType::Base,
-                        &cfg,
-                        &[ModName::from("EnergyPerPowerOnCrit")],
-                    ) > 0.0
+                    && db.sum(ModType::Base, &cfg, &["EnergyPerPowerOnCrit"]) > 0.0
                 {
                     query_cfg.conditions.insert("CritRecently".into(), true);
                 }
@@ -745,7 +739,7 @@ impl CalculationSession {
                     _ => (db, name.as_str()),
                 };
                 let cfg = &query_cfg;
-                let names = [ModName::from(query_name)];
+                let names = [query_name];
                 if stat == "EffectiveLootRarityMod" && query_name == "LootRarity" {
                     let keep = super::super::sidebar::loot_rarity_filter(db, cfg);
                     let rarity = db.filtered(&keep);
@@ -785,8 +779,8 @@ impl CalculationSession {
         if !shared_regen.is_empty() {
             let keep =
                 super::super::survivability::shared_regen_increase_filter(db, &cfg, regen_stat);
-            for name in shared_regen {
-                let names = [name.clone()];
+            for &name in shared_regen {
+                let names = [name];
                 groups.push(SourceGroup {
                     name: name.to_string(),
                     more_precision: None,
@@ -804,11 +798,11 @@ impl CalculationSession {
             }
         }
         if stat == "EsRechargeRate" {
-            for name in super::super::defence::es_recharge_increase_names(db, &cfg)
-                .into_iter()
+            for &name in super::super::defence::es_recharge_increase_names(db, &cfg)
+                .iter()
                 .skip(1)
             {
-                let names = [name.clone()];
+                let names = [name];
                 groups.push(SourceGroup {
                     name: name.to_string(),
                     more_precision: None,

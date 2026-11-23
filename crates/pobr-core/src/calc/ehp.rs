@@ -575,8 +575,46 @@ pub struct EnemyDamageIn {
 /// Explicit inputs replace preset base values, leaving added enemy damage intact.
 fn enemy_base(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
     db.override_(cfg, name)
-        .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[ModName::from(name)]))
+        .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[name]))
 }
+
+const ENEMY_DAMAGE_NAMES: [(&str, &str, &str, &str, &[&str]); 5] = [
+    (
+        "EnemyPhysicalDamage",
+        "PhysicalMin",
+        "PhysicalMax",
+        "PhysicalDamage",
+        &["Damage", "PhysicalDamage"],
+    ),
+    (
+        "EnemyFireDamage",
+        "FireMin",
+        "FireMax",
+        "FireDamage",
+        &["Damage", "FireDamage", "ElementalDamage"],
+    ),
+    (
+        "EnemyColdDamage",
+        "ColdMin",
+        "ColdMax",
+        "ColdDamage",
+        &["Damage", "ColdDamage", "ElementalDamage"],
+    ),
+    (
+        "EnemyLightningDamage",
+        "LightningMin",
+        "LightningMax",
+        "LightningDamage",
+        &["Damage", "LightningDamage", "ElementalDamage"],
+    ),
+    (
+        "EnemyChaosDamage",
+        "ChaosMin",
+        "ChaosMax",
+        "ChaosDamage",
+        &["Damage", "ChaosDamage"],
+    ),
+];
 
 /// Enemy incoming-damage assembly (vendor CalcDefence.lua:2065-2137): the
 /// placeholder (`Enemy<X>Damage` BASE injected by setup_enemy) + the enemy
@@ -600,24 +638,17 @@ pub fn assemble_enemy_damage(
     let mut base_by_type = [0.0_f64; 5];
     for dtype in DAMAGE_TYPE_BY_INDEX {
         let i = dtype as usize;
-        let name = type_prefix(dtype);
+        let (placeholder_name, min_name, max_name, _, mult_names) = ENEMY_DAMAGE_NAMES[i];
         // Placeholder (injected by setup_enemy; 0 under a bare Env with no enemy config → neutral).
-        let placeholder = enemy_base(enemy_db, cfg, &format!("Enemy{name}Damage"));
+        let placeholder = enemy_base(enemy_db, cfg, placeholder_name);
         // :2098 the enemy Min/Max mod average.
-        let min_max = (enemy_db.sum(ModType::Base, cfg, &[ModName::from(format!("{name}Min"))])
-            + enemy_db.sum(ModType::Base, cfg, &[ModName::from(format!("{name}Max"))]))
+        let min_max = (enemy_db.sum(ModType::Base, cfg, &[min_name])
+            + enemy_db.sum(ModType::Base, cfg, &[max_name]))
             / 2.0;
         let enemy_damage = placeholder + min_max;
         // :2133 enemyDamageMult.
-        let mut names = vec![
-            ModName::from("Damage"),
-            ModName::from(format!("{name}Damage")),
-        ];
-        if dtype.is_elemental() {
-            names.push(ModName::from("ElementalDamage"));
-        }
-        let mult =
-            (1.0 + enemy_db.sum(ModType::Inc, cfg, &names) / 100.0) * enemy_db.more(cfg, &names);
+        let mult = (1.0 + enemy_db.sum(ModType::Inc, cfg, mult_names) / 100.0)
+            * enemy_db.more(cfg, mult_names);
         result.mult_by_type[i] = mult;
         result.total_in += enemy_damage;
         base_by_type[i] = enemy_damage;
@@ -633,20 +664,20 @@ pub fn assemble_enemy_damage(
                 continue;
             }
             let share =
-                enemy_db.sum(ModType::Base, cfg, &super::damage::gain_names(from, to)) / 100.0;
+                enemy_db.sum(ModType::Base, cfg, super::damage::gain_names(from, to)) / 100.0;
             if share <= 0.0 {
                 continue;
             }
-            let mut names = vec![
-                ModName::from("Damage"),
-                ModName::from(format!("{}Damage", type_prefix(to))),
-                ModName::from(format!("{}Damage", type_prefix(from))),
-            ];
-            if to.is_elemental() || from.is_elemental() {
-                names.push(ModName::from("ElementalDamage"));
-            }
-            let mult = (1.0 + enemy_db.sum(ModType::Inc, cfg, &names) / 100.0)
-                * enemy_db.more(cfg, &names);
+            let to_damage = ENEMY_DAMAGE_NAMES[to as usize].3;
+            let from_damage = ENEMY_DAMAGE_NAMES[from as usize].3;
+            let names_buf = ["Damage", to_damage, from_damage, "ElementalDamage"];
+            let names = if to.is_elemental() || from.is_elemental() {
+                &names_buf[..]
+            } else {
+                &names_buf[..3]
+            };
+            let mult =
+                (1.0 + enemy_db.sum(ModType::Inc, cfg, names) / 100.0) * enemy_db.more(cfg, names);
             per_type[to as usize] += base_by_type[from as usize] * share * mult * crit_effect;
         }
     }
@@ -663,17 +694,6 @@ pub fn assemble_enemy_damage(
 /// A typed damage as an array in `DAMAGE_TYPE_BY_INDEX` order.
 fn by_type(damage: &TypedDamage) -> [f64; 5] {
     DAMAGE_TYPE_BY_INDEX.map(|dtype| damage.get(dtype))
-}
-
-/// DamageType → mod name prefix.
-fn type_prefix(dtype: DamageType) -> &'static str {
-    match dtype {
-        DamageType::Physical => "Physical",
-        DamageType::Fire => "Fire",
-        DamageType::Cold => "Cold",
-        DamageType::Lightning => "Lightning",
-        DamageType::Chaos => "Chaos",
-    }
 }
 
 /// The second smallest of the five typed maximum hits; equal values count
@@ -757,8 +777,8 @@ pub(crate) fn enemy_crit_chance_terms(
         base: enemy_db
             .override_(cfg, "EnemyCritChance")
             .unwrap_or(presets.default_enemy_crit_chance),
-        increased: player_db.sum(ModType::Inc, cfg, &[ModName::from("EnemyCritChance")])
-            + enemy_db.sum(ModType::Inc, cfg, &[ModName::from("CritChance")]),
+        increased: player_db.sum(ModType::Inc, cfg, &["EnemyCritChance"])
+            + enemy_db.sum(ModType::Inc, cfg, &["CritChance"]),
         evade: configured_evade_pct,
         unlucky: player_db.flag(cfg, "EnemyUnluckyCrit"),
     }
@@ -796,10 +816,7 @@ fn enemy_crit_effect_with(
     // player's skill. Desensitisation's enemy modifier is Hit-only.
     let mut hit_cfg = cfg.clone();
     hit_cfg.flags = ModFlags::HIT;
-    let multiplier_names = [
-        ModName::from("CriticalStrikeMultiplier"),
-        ModName::from("CritMultiplier"),
-    ];
+    let multiplier_names = ["CriticalStrikeMultiplier", "CritMultiplier"];
     let crit_damage = ((enemy_db
         .override_(cfg, "EnemyCritDamage")
         .unwrap_or(presets.default_enemy_crit_damage_bonus)
@@ -1688,7 +1705,7 @@ pub fn fill_ehp_pob2(
             "LightningEnergyShieldRecoup",
         ]
         .iter()
-        .any(|name| db.sum(ModType::Base, cfg, &[ModName::from(*name)]) > 0.0);
+        .any(|name| db.sum(ModType::Base, cfg, &[*name]) > 0.0);
         // Recovery on block (:1948-1960 outputs, :3261-3268 `× BlockChance`). PoBR
         // evaluates the "Average" damage category, so spell-block recovery counts
         // half (:3266-3267); `DisableEHPGainOnBlock` turns the whole layer off.
@@ -1700,7 +1717,7 @@ pub fn fill_ehp_pob2(
         {
             GainWhenHit::default()
         } else {
-            let on_block = |name: &str| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
+            let on_block = |name: &str| db.sum(ModType::Base, cfg, &[name]);
             GainWhenHit {
                 life: if db.flag(cfg, "CannotRecoverLifeOutsideLeech") {
                     0.0

@@ -140,8 +140,6 @@ pub fn merge_keystones(env: &mut Env) {
 /// (attached by the parse layer), so it doesn't match under the panel view
 /// (`mode_effective == false`) aggregation -- forwarding by itself never changes existing output.
 pub fn forward_enemy_modifiers(env: &mut Env) {
-    let enemy_modifier = ModName::from("EnemyModifier");
-
     // The enemy db's existing "bucket key → (representative mod, remaining
     // count)" multiset (the base for idempotent deduction). Bucket key =
     // semantic scalars (see [`DedupSeed`]); the final identity within a
@@ -163,7 +161,7 @@ pub fn forward_enemy_modifiers(env: &mut Env) {
     let source_dbs =
         std::iter::once(&env.player.mod_db).chain(env.minions.iter().map(|m| &m.mod_db));
     for db in source_dbs {
-        for outer in db.named(enemy_modifier.as_str()) {
+        for outer in db.named("EnemyModifier") {
             if outer.mod_type != ModType::List || !outer.matches(&env.cfg) {
                 continue;
             }
@@ -303,9 +301,8 @@ fn dedup_seed(m: &Modifier) -> DedupSeed {
 /// Slot" from elsewhere (`CharmLimit`), at most three; "Cannot use Charms"
 /// leaves none.
 pub(crate) fn charm_slots(db: &crate::ModDb, cfg: &crate::CalcConfig) -> f64 {
-    let name = ModName::from("CharmLimit");
-    db.override_(cfg, name.as_str())
-        .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[name]))
+    db.override_(cfg, "CharmLimit")
+        .unwrap_or_else(|| db.sum(ModType::Base, cfg, &["CharmLimit"]))
         .min(cfg.constants.game().charm_limit_cap)
 }
 
@@ -358,16 +355,12 @@ pub fn merge_flasks_charms(env: &mut Env) {
         return;
     }
 
-    let flask_list = ModName::from(FLASK_BUFF_LIST_NAME);
-    let charm_list = ModName::from(CHARM_BUFF_LIST_NAME);
-    let local_effect = ModName::from(LOCAL_UTILITY_EFFECT_NAME);
-
     let carriers: Vec<Modifier> = env
         .player
         .mod_db
-        .named(flask_list.as_str())
+        .named(FLASK_BUFF_LIST_NAME)
         .chain(env.player.mod_db.named(INACTIVE_FLASK_BUFF_LIST_NAME))
-        .chain(env.player.mod_db.named(charm_list.as_str()))
+        .chain(env.player.mod_db.named(CHARM_BUFF_LIST_NAME))
         .filter(|m| {
             m.mod_type == ModType::List && m.matches(&env.cfg) && m.value.as_nested_mods().is_some()
         })
@@ -378,7 +371,7 @@ pub fn merge_flasks_charms(env: &mut Env) {
     }
     // Determinism note: when charms exceed `charm_limit`, "which one gets
     // dropped" follows payload insertion order -- every charm payload shares
-    // the single `charm_list` ModName, landing in one Vec bucket in the
+    // the single `CHARM_BUFF_LIST_NAME` ModName, landing in one Vec bucket in the
     // ModDb, laid out consecutively in ingest slot order (not scattered
     // across HashMap buckets), so the deduction order is deterministic. See
     // the `charm_limit_caps_number_of_active_charms` test for this pinned insertion-order semantics.
@@ -388,8 +381,8 @@ pub fn merge_flasks_charms(env: &mut Env) {
     // exception table; vendor's ScaleAddList → ScaleAddMod already looks up
     // highPrecisionMods per mod, ModStore.lua:69).
     let rules = &env.high_precision;
-    let flask_effect_inc = db.sum(ModType::Inc, cfg, &[ModName::from("FlaskEffect")]);
-    let charm_effect_inc = db.sum(ModType::Inc, cfg, &[ModName::from("CharmEffect")]);
+    let flask_effect_inc = db.sum(ModType::Inc, cfg, &["FlaskEffect"]);
+    let charm_effect_inc = db.sum(ModType::Inc, cfg, &["CharmEffect"]);
     let mut charm_budget = charm_slots(db, cfg);
     let flasks_do_not_apply = db.flag(cfg, "FlasksDoNotApplyToPlayer");
     let cannot_recover_life = db.flag(cfg, "CannotRecoverLifeOutsideLeech");
@@ -398,7 +391,7 @@ pub fn merge_flasks_charms(env: &mut Env) {
     let mut groups: BTreeMap<(bool, String), Vec<Modifier>> = BTreeMap::new();
     let mut conditions: Vec<String> = Vec::new();
     for carrier in &carriers {
-        let is_charm = carrier.name == charm_list;
+        let is_charm = carrier.name.as_str() == CHARM_BUFF_LIST_NAME;
         let spec = env.utility_items.iter().find(|item| {
             carrier.origin.as_ref().is_some_and(|origin| {
                 origin.source_id == crate::item::flask_charm_source(&item.slot)
@@ -431,7 +424,7 @@ pub fn merge_flasks_charms(env: &mut Env) {
         let nested = carrier.value.as_nested_mods().unwrap_or(&[]);
         let local_inc: f64 = nested
             .iter()
-            .filter(|m| m.name == local_effect)
+            .filter(|m| m.name.as_str() == LOCAL_UTILITY_EFFECT_NAME)
             .filter_map(|m| m.value.as_number())
             .sum();
         let global_inc = if is_charm {
@@ -456,7 +449,10 @@ pub fn merge_flasks_charms(env: &mut Env) {
         }
 
         let group = groups.entry((is_charm, base_name)).or_default();
-        for inner in nested.iter().filter(|m| m.name != local_effect) {
+        for inner in nested
+            .iter()
+            .filter(|m| m.name.as_str() != LOCAL_UTILITY_EFFECT_NAME)
+        {
             let mut scaled = inner.clone();
             if let Some(value) = scaled.value.as_number() {
                 scaled.value = ModValue::Number(super::buff_pass::scale_value(
@@ -590,11 +586,10 @@ pub(super) fn resolve_unholy_might_magnitude(env: &mut Env) {
     if !env.cfg.multipliers.contains_key("UnholyMightMagnitude") {
         return;
     }
-    let inc = env.player.mod_db.sum(
-        ModType::Inc,
-        &env.cfg,
-        &[ModName::from("UnholyMightGrantedMagnitude")],
-    );
+    let inc = env
+        .player
+        .mod_db
+        .sum(ModType::Inc, &env.cfg, &["UnholyMightGrantedMagnitude"]);
     if let Some(magnitude) = env.cfg.multipliers.get_mut("UnholyMightMagnitude") {
         // Add magnitude points before the definition's multiplier tag rounds
         // them: 100 + 16 must not become 115.999... through 100 * 1.16.
@@ -623,18 +618,17 @@ pub fn apply_nondamaging_ailments(env: &mut Env) {
 fn bridge_enemy_condition_flags(env: &mut Env) {
     // The flags retain their own gates: Zone of Control only hinders a cursed
     // enemy, and Daze's configured state is gated on the Effective view.
-    const BRIDGED: &[&str] = &[
-        "Intimidated",
-        "Crushed",
-        "Dazed",
-        "Hindered",
-        "BleedAggravated",
-        "Moving",
+    const BRIDGED: &[(&str, &str)] = &[
+        ("Condition:Intimidated", "EnemyIntimidated"),
+        ("Condition:Crushed", "EnemyCrushed"),
+        ("Condition:Dazed", "EnemyDazed"),
+        ("Condition:Hindered", "EnemyHindered"),
+        ("Condition:BleedAggravated", "EnemyBleedAggravated"),
+        ("Condition:Moving", "EnemyMoving"),
     ];
-    for cond in BRIDGED {
-        let flag = ModName::from(format!("Condition:{cond}"));
-        if env.enemy.mod_db.flag(&env.cfg, flag.as_str()) {
-            env.cfg.conditions.insert(format!("Enemy{cond}"), true);
+    for &(flag, enemy_cond) in BRIDGED {
+        if env.enemy.mod_db.flag(&env.cfg, flag) {
+            env.cfg.conditions.insert(enemy_cond.to_string(), true);
         }
     }
 }
@@ -709,7 +703,7 @@ mod forward_enemy_modifiers_tests {
 
         forward_enemy_modifiers(&mut env);
 
-        let names = [ModName::from("DamageTaken")];
+        let names = ["DamageTaken"];
         assert_eq!(
             env.enemy
                 .mod_db
@@ -735,11 +729,10 @@ mod forward_enemy_modifiers_tests {
 
         forward_enemy_modifiers(&mut env);
 
-        let contributions = env.enemy.mod_db.contributions(
-            ModType::Inc,
-            &effective_cursed_cfg(),
-            &[ModName::from("DamageTaken")],
-        );
+        let contributions =
+            env.enemy
+                .mod_db
+                .contributions(ModType::Inc, &effective_cursed_cfg(), &["DamageTaken"]);
         assert_eq!(contributions.len(), 1);
         let origin = contributions[0]
             .origin
@@ -769,7 +762,7 @@ mod forward_enemy_modifiers_tests {
         let contributions = env.enemy.mod_db.contributions(
             ModType::Inc,
             &CalcConfig::new().with_mode_effective(true),
-            &[ModName::from("ActionSpeed")],
+            &["ActionSpeed"],
         );
         assert_eq!(
             contributions[0].origin.as_ref().unwrap().source_id,
@@ -788,7 +781,7 @@ mod forward_enemy_modifiers_tests {
         env.player.mod_db.add_mod(curse_take_outer());
 
         forward_enemy_modifiers(&mut env);
-        let names = [ModName::from("DamageTaken")];
+        let names = ["DamageTaken"];
         let cfg = effective_cursed_cfg();
         assert_eq!(
             env.enemy.mod_db.sum(ModType::Inc, &cfg, &names),
@@ -818,11 +811,9 @@ mod forward_enemy_modifiers_tests {
         forward_enemy_modifiers(&mut env);
 
         assert_eq!(
-            env.enemy.mod_db.sum(
-                ModType::Inc,
-                &effective_cursed_cfg(),
-                &[ModName::from("DamageTaken")]
-            ),
+            env.enemy
+                .mod_db
+                .sum(ModType::Inc, &effective_cursed_cfg(), &["DamageTaken"]),
             6.0
         );
     }

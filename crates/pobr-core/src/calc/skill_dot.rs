@@ -242,14 +242,61 @@ fn dot_keyword(damage_type: DamageType) -> KeywordFlags {
     }
 }
 
-/// `DamageType` → ModName prefix.
-fn type_prefix(damage_type: DamageType) -> &'static str {
+fn dot_taken_names(damage_type: DamageType) -> &'static [&'static str] {
     match damage_type {
-        DamageType::Physical => "Physical",
-        DamageType::Fire => "Fire",
-        DamageType::Cold => "Cold",
-        DamageType::Lightning => "Lightning",
-        DamageType::Chaos => "Chaos",
+        DamageType::Physical => &[
+            "DamageTaken",
+            "DamageTakenOverTime",
+            "PhysicalDamageTaken",
+            "PhysicalDamageTakenOverTime",
+        ],
+        DamageType::Fire => &[
+            "DamageTaken",
+            "DamageTakenOverTime",
+            "FireDamageTaken",
+            "FireDamageTakenOverTime",
+            "ElementalDamageTaken",
+        ],
+        DamageType::Cold => &[
+            "DamageTaken",
+            "DamageTakenOverTime",
+            "ColdDamageTaken",
+            "ColdDamageTakenOverTime",
+            "ElementalDamageTaken",
+        ],
+        DamageType::Lightning => &[
+            "DamageTaken",
+            "DamageTakenOverTime",
+            "LightningDamageTaken",
+            "LightningDamageTakenOverTime",
+            "ElementalDamageTaken",
+        ],
+        DamageType::Chaos => &[
+            "DamageTaken",
+            "DamageTakenOverTime",
+            "ChaosDamageTaken",
+            "ChaosDamageTakenOverTime",
+        ],
+    }
+}
+
+fn deal_no_flag(damage_type: DamageType) -> &'static str {
+    match damage_type {
+        DamageType::Physical => "DealNoPhysical",
+        DamageType::Fire => "DealNoFire",
+        DamageType::Cold => "DealNoCold",
+        DamageType::Lightning => "DealNoLightning",
+        DamageType::Chaos => "DealNoChaos",
+    }
+}
+
+fn dot_base_name(damage_type: DamageType) -> &'static str {
+    match damage_type {
+        DamageType::Physical => "PhysicalDot",
+        DamageType::Fire => "FireDot",
+        DamageType::Cold => "ColdDot",
+        DamageType::Lightning => "LightningDot",
+        DamageType::Chaos => "ChaosDot",
     }
 }
 
@@ -269,26 +316,13 @@ fn skill_dot_eff_mult(enemy: &ModDb, taken_cfg: &CalcConfig, damage_type: Damage
         return 1.0;
     }
     let type_cfg = taken_cfg.clone().with_damage_type(damage_type);
-    let prefix = type_prefix(damage_type);
-    let mut taken_names = vec![
-        ModName::from("DamageTaken"),
-        ModName::from("DamageTakenOverTime"),
-        ModName::from(format!("{prefix}DamageTaken")),
-        ModName::from(format!("{prefix}DamageTakenOverTime")),
-    ];
-    if damage_type.is_elemental() {
-        taken_names.push(ModName::from("ElementalDamageTaken"));
-    }
-    let taken_inc = enemy.sum(ModType::Inc, &type_cfg, &taken_names);
-    let taken_more = enemy.more(&type_cfg, &taken_names);
+    let taken_names = dot_taken_names(damage_type);
+    let taken_inc = enemy.sum(ModType::Inc, &type_cfg, taken_names);
+    let taken_more = enemy.more(&type_cfg, taken_names);
 
     let resist = if damage_type == DamageType::Physical {
         enemy
-            .sum(
-                ModType::Base,
-                &type_cfg,
-                &[ModName::from("PhysicalDamageReduction")],
-            )
+            .sum(ModType::Base, &type_cfg, &["PhysicalDamageReduction"])
             .clamp(
                 0.0,
                 type_cfg
@@ -329,11 +363,15 @@ pub(crate) fn dot_type_config(dot_cfg: &CalcConfig, damage_type: DamageType) -> 
 }
 
 /// The names of `damage_type`'s damage over time multiplier lines.
-pub(crate) fn dot_multiplier_names(damage_type: DamageType) -> [ModName; 2] {
-    [
-        ModName::from("DotMultiplier"),
-        ModName::from(format!("{}DotMultiplier", type_prefix(damage_type))),
-    ]
+pub(crate) fn dot_multiplier_names(damage_type: DamageType) -> [&'static str; 2] {
+    let typed = match damage_type {
+        DamageType::Physical => "PhysicalDotMultiplier",
+        DamageType::Fire => "FireDotMultiplier",
+        DamageType::Cold => "ColdDotMultiplier",
+        DamageType::Lightning => "LightningDotMultiplier",
+        DamageType::Chaos => "ChaosDotMultiplier",
+    };
+    ["DotMultiplier", typed]
 }
 
 /// [`calc_skill_dot`] with the terms it computed with.
@@ -359,7 +397,7 @@ pub fn skill_dot_terms(
     let is_dot_aura = cfg.skill_types.intersects(SkillTypes::AURA)
         && !cfg.skill_types.intersects(SkillTypes::REMOTE_MINED);
     let aura_magnitude = if is_dot_aura {
-        let names = [ModName::from("Magnitude")];
+        let names = ["Magnitude"];
         (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)
     } else {
         1.0
@@ -369,18 +407,13 @@ pub fn skill_dot_terms(
     let mut dot_active = false;
     let mut parts = Vec::new();
     for damage_type in DAMAGE_TYPES {
-        let prefix = type_prefix(damage_type);
         let dot_type_cfg = dot_type_config(&dot_cfg, damage_type);
         // canDeal gate (same-source flags: `DealNoDamage` / `DealNo<Type>`).
-        let can_deal = !deal_no_damage && !db.flag(&dot_type_cfg, &format!("DealNo{prefix}"));
+        let can_deal = !deal_no_damage && !db.flag(&dot_type_cfg, deal_no_flag(damage_type));
         if !can_deal {
             continue;
         }
-        let base_val = db.sum(
-            ModType::Base,
-            &dot_type_cfg,
-            &[ModName::from(format!("{prefix}Dot"))],
-        );
+        let base_val = db.sum(ModType::Base, &dot_type_cfg, &[dot_base_name(damage_type)]);
         if base_val <= 0.0 {
             continue;
         }
@@ -394,23 +427,17 @@ pub fn skill_dot_terms(
         // hit pipeline; category buckets naturally drop out once their flag is stripped).
         let (inc, more) = aggregate_inc_more(db, &dot_type_cfg, damage_type);
         // DotMultiplier: Override takes priority, otherwise Sum(DotMultiplier) + Sum(<Type>DotMultiplier) (`:5897`).
+        let [generic_mult, typed_mult] = dot_multiplier_names(damage_type);
         let mult = db
             .override_(&dot_type_cfg, "DotMultiplier")
             .unwrap_or_else(|| {
-                db.sum(
-                    ModType::Base,
-                    &dot_type_cfg,
-                    &[ModName::from("DotMultiplier")],
-                ) + db.sum(
-                    ModType::Base,
-                    &dot_type_cfg,
-                    &[ModName::from(format!("{prefix}DotMultiplier"))],
-                )
+                db.sum(ModType::Base, &dot_type_cfg, &[generic_mult])
+                    + db.sum(ModType::Base, &dot_type_cfg, &[typed_mult])
             });
         // Vendor :6114: AuraEffect uses the per-type DoT config, while
         // Magnitude uses the original skill config (not the stripped dot config).
         let aura = if is_dot_aura {
-            let names = [ModName::from("AuraEffect")];
+            let names = ["AuraEffect"];
             (1.0 + db.sum(ModType::Inc, &dot_type_cfg, &names) / 100.0)
                 * db.more(&dot_type_cfg, &names)
                 * aura_magnitude
@@ -512,8 +539,7 @@ pub(crate) fn cull_threshold_percent(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig
     } else {
         game.culling_strike_normal_threshold
     };
-    let percent =
-        threshold * (1.0 + db.sum(ModType::Inc, cfg, &[ModName::from("CullPercent")]) / 100.0);
+    let percent = threshold * (1.0 + db.sum(ModType::Inc, cfg, &["CullPercent"]) / 100.0);
     (0.0..100.0).contains(&percent).then_some(percent)
 }
 
@@ -524,11 +550,7 @@ pub(crate) fn cull_threshold_percent(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig
 pub(crate) fn reserved_life_percent(enemy: &ModDb, cfg: &CalcConfig) -> f64 {
     if cfg.mode_effective {
         enemy
-            .max_of(
-                ModType::Base,
-                cfg,
-                &[ModName::from("LifeReservationPercent")],
-            )
+            .max_of(ModType::Base, cfg, &["LifeReservationPercent"])
             .clamp(0.0, 99.0)
     } else {
         0.0

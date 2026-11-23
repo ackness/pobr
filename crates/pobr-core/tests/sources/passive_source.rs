@@ -352,22 +352,14 @@ fn native_passive_does_not_dispatch_by_node_name_number_or_value() {
             .unwrap();
     let mut db = ModDb::new();
     db.add_list(ingest.modifiers);
-    let contributions = db.contributions(
-        ModType::Base,
-        &CalcConfig::new(),
-        &["FireResistance".into()],
-    );
+    let contributions = db.contributions(ModType::Base, &CalcConfig::new(), &["FireResistance"]);
     assert_eq!(contributions.len(), 2);
     assert_ne!(
         contributions[0].origin.as_ref().unwrap().source_id,
         contributions[1].origin.as_ref().unwrap().source_id
     );
     assert_eq!(
-        db.sum(
-            ModType::Base,
-            &CalcConfig::new(),
-            &["FireResistance".into()]
-        ),
+        db.sum(ModType::Base, &CalcConfig::new(), &["FireResistance"]),
         10.0
     );
 }

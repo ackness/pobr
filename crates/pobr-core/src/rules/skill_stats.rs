@@ -1991,13 +1991,10 @@ mod tests {
         ]);
         let attack = CalcConfig::new().with_flags(ModFlags::ATTACK);
         let spell = CalcConfig::new().with_flags(ModFlags::SPELL);
-        assert_eq!(db.sum(ModType::Base, &attack, &["MaimChance".into()]), 25.0);
-        assert_eq!(db.sum(ModType::Base, &spell, &["MaimChance".into()]), 0.0);
-        assert_eq!(
-            db.sum(ModType::Base, &attack, &["BlindChance".into()]),
-            10.0
-        );
-        assert_eq!(db.sum(ModType::Base, &spell, &["BlindChance".into()]), 0.0);
+        assert_eq!(db.sum(ModType::Base, &attack, &["MaimChance"]), 25.0);
+        assert_eq!(db.sum(ModType::Base, &spell, &["MaimChance"]), 0.0);
+        assert_eq!(db.sum(ModType::Base, &attack, &["BlindChance"]), 10.0);
+        assert_eq!(db.sum(ModType::Base, &spell, &["BlindChance"]), 0.0);
     }
 
     #[test]

@@ -77,9 +77,7 @@ mod tests {
     }
 
     fn base(env: &Env, name: &str) -> f64 {
-        env.player
-            .mod_db
-            .sum(ModType::Base, &env.cfg, &[ModName::from(name)])
+        env.player.mod_db.sum(ModType::Base, &env.cfg, &[name])
     }
 
     #[test]

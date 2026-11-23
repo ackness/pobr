@@ -151,7 +151,7 @@ pub(crate) fn detail(env: &Env, stat: &str) -> Option<DerivedDetail> {
                     env.player.mod_db.sum(
                         pobr_data::prelude::ModType::Base,
                         &env.cfg,
-                        &[pobr_data::prelude::ModName::from("RepeatCount")],
+                        &["RepeatCount"],
                     ),
                 )],
             ));

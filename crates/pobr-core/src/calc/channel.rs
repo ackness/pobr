@@ -83,7 +83,7 @@ pub fn skill_modifiers(
 }
 
 fn base(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
-    db.sum(ModType::Base, cfg, &[ModName::from(name)]).max(0.0)
+    db.sum(ModType::Base, cfg, &[name]).max(0.0)
 }
 
 fn stages(db: &ModDb, cfg: &CalcConfig) -> (f64, f64, f64, bool) {
@@ -379,13 +379,10 @@ mod tests {
             assert_eq!(result.stages, selected);
             assert_eq!(result.default_stages, request.is_none());
             assert_eq!(result.channel_time, (selected * 0.85).max(1.0));
-            assert_eq!(
-                db.more(&cfg, &[ModName::from("Damage")]),
-                1.0 + selected * 0.4
-            );
+            assert_eq!(db.more(&cfg, &["Damage"]), 1.0 + selected * 0.4);
             let ailment_cfg = cfg.clone().with_keyword_flags(KeywordFlags::AILMENT);
-            assert_eq!(db.more(&ailment_cfg, &[ModName::from("Damage")]), 1.0);
-            assert_eq!(db.more(&cfg, &[ModName::from("DPS")]), 1.0 + selected);
+            assert_eq!(db.more(&ailment_cfg, &["Damage"]), 1.0);
+            assert_eq!(db.more(&cfg, &["DPS"]), 1.0 + selected);
         }
     }
 }

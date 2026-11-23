@@ -114,7 +114,7 @@ pub fn apply_shared_increases(env: &mut Env) {
     let area_share = db.sum(
         ModType::Base,
         &env.cfg,
-        &[ModName::from("LightRadiusAppliesToAreaPercent")],
+        &["LightRadiusAppliesToAreaPercent"],
     ) / 100.0
         + if db.flag(&env.cfg, "LightRadiusAppliesToAreaOfEffect") {
             0.5
@@ -185,9 +185,7 @@ mod tests {
         player.mod_db.add_list(mods);
         let mut env = Env::new(player);
         apply_companion_damage_to_player(&mut env);
-        env.player
-            .mod_db
-            .sum(ModType::Inc, &env.cfg, &[ModName::from("Damage")])
+        env.player.mod_db.sum(ModType::Inc, &env.cfg, &["Damage"])
     }
 
     fn transfer() -> Modifier {
@@ -209,7 +207,7 @@ mod tests {
         ]);
         let mut env = Env::new(player);
         apply_shared_increases(&mut env);
-        let names = [ModName::from("Damage")];
+        let names = ["Damage"];
         assert_eq!(env.player.mod_db.sum(ModType::Inc, &env.cfg, &names), 0.0);
         env.cfg.conditions.insert("FullLife".into(), true);
         assert_eq!(env.player.mod_db.sum(ModType::Inc, &env.cfg, &names), 30.0);

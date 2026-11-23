@@ -7,8 +7,7 @@ use crate::{CalcConfig, ModDb, Modifier};
 use super::env::Env;
 
 fn factor(db: &ModDb, cfg: &CalcConfig, names: &[&str]) -> f64 {
-    let names: Vec<_> = names.iter().map(|name| ModName::from(*name)).collect();
-    ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0)
+    ((1.0 + db.sum(ModType::Inc, cfg, names) / 100.0) * db.more(cfg, names)).max(0.0)
 }
 
 /// Loreweave's rarity and exclusion are one game stat. Derived stat/type
@@ -150,17 +149,12 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     {
         0.0
     } else {
-        db.sum(
-            ModType::Base,
-            &global,
-            &[ModName::from("ArmourMovementPenalty")],
-        )
+        db.sum(ModType::Base, &global, &["ArmourMovementPenalty"])
     };
     let mut movement = db
         .override_(&global, "MovementSpeed")
         .unwrap_or_else(|| {
-            (1.0 + db.sum(ModType::Base, &global, &[ModName::from("MovementSpeed")])
-                - armour_penalty)
+            (1.0 + db.sum(ModType::Base, &global, &["MovementSpeed"]) - armour_penalty)
                 * factor(db, &global, &["MovementSpeed"])
         })
         .max(0.0);
@@ -172,7 +166,7 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     out.limit_views.movement_speed_mod = movement;
     out.limit_views.light_radius_mod = factor(db, &global, &["LightRadius"]);
     out.limit_views.freeze_threshold_added = db
-        .sum(ModType::Base, &global, &[ModName::from("FreezeThreshold")])
+        .sum(ModType::Base, &global, &["FreezeThreshold"])
         .max(0.0);
     out.limit_views.freeze_threshold_mod = factor(db, &global, &["FreezeThreshold"]);
     out.limit_views.freeze_threshold = (out.ailment_threshold
@@ -203,17 +197,17 @@ pub(super) fn fill_sidebar(env: &mut Env) {
     }
     // Presence is independent of skill AoE. Its base radius is 4 m since
     // Content Update 0.2.0 (pathofexile.com/forum/view-thread/3740562).
-    let radius = 40.0 + db.sum(ModType::Base, &global, &[ModName::from("PresenceRadius")]);
+    let radius = 40.0 + db.sum(ModType::Base, &global, &["PresenceRadius"]);
     out.presence_radius_metres =
         (super::skill_mechanics::calc_radius(radius, factor(db, &global, &["PresenceArea"]))
             * factor(db, &global, &["PresenceRadius"]))
         .floor()
             / 10.0;
     if cfg.skill_types.intersects(SkillTypes::AURA) {
-        let names = if db.flag(cfg, "AuraCannotAffectSelf") {
-            vec!["AuraEffect", "SelectedAuraEffect"]
+        let names: &[&str] = if db.flag(cfg, "AuraCannotAffectSelf") {
+            &["AuraEffect", "SelectedAuraEffect"]
         } else {
-            vec![
+            &[
                 "AuraEffect",
                 "SelectedAuraEffect",
                 "SkillAuraEffectOnSelf",
@@ -221,17 +215,17 @@ pub(super) fn fill_sidebar(env: &mut Env) {
             ]
         };
         out.aura_effect_mod =
-            factor(db, cfg, &names) * factor(db, cfg, &["Magnitude", "SelectedMagnitude"]);
+            factor(db, cfg, names) * factor(db, cfg, &["Magnitude", "SelectedMagnitude"]);
     }
     if cfg.skill_types.intersects(SkillTypes::APPLIES_CURSE) {
         out.curse_effect_mod = factor(db, cfg, &["CurseEffect", "SelectedCurseEffect"]);
     }
     out.active_minion_limit = db
-        .max_of(ModType::Base, cfg, &[ModName::from("SelectedMinionLimit")])
+        .max_of(ModType::Base, cfg, &["SelectedMinionLimit"])
         .max(0.0)
         .floor();
     out.explode_chance = db
-        .sum(ModType::Base, cfg, &[ModName::from("EnemyExplodeChance")])
+        .sum(ModType::Base, cfg, &["EnemyExplodeChance"])
         .clamp(0.0, 100.0);
     let monster_life = f64::from(
         cfg.constants
@@ -269,7 +263,7 @@ fn fill_threshold_and_kill_views(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
     let out = &mut env.player.output;
-    let names = [ModName::from("AilmentThreshold")];
+    let names = ["AilmentThreshold"];
     out.ailment_threshold = db
         .override_(cfg, "AilmentThreshold")
         .unwrap_or_else(|| {
@@ -283,25 +277,36 @@ fn fill_threshold_and_kill_views(env: &mut Env) {
         .with_flags(cfg.flags | ModFlags::HIT)
         .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
     out.daze_chance = db
-        .sum(ModType::Base, &hit_cfg, &[ModName::from("DazeChance")])
+        .sum(ModType::Base, &hit_cfg, &["DazeChance"])
         .clamp(0.0, 100.0);
     out.fully_broken_armour_effect = super::armour_break::fully_broken_effect(db, cfg);
-    for (resource, value) in [
-        ("Life", &mut out.life_on_kill),
-        ("Mana", &mut out.mana_on_kill),
-        ("EnergyShield", &mut out.energy_shield_on_kill),
+    for (resource, on_kill_mod, cannot_gain_flag, value) in [
+        (
+            "Life",
+            "LifeOnKill",
+            "CannotGainLife",
+            &mut out.life_on_kill,
+        ),
+        (
+            "Mana",
+            "ManaOnKill",
+            "CannotGainMana",
+            &mut out.mana_on_kill,
+        ),
+        (
+            "EnergyShield",
+            "EnergyShieldOnKill",
+            "CannotGainEnergyShield",
+            &mut out.energy_shield_on_kill,
+        ),
     ] {
         // Flat and PercentStat-tagged gains share this query. A remote
         // skill's hit kills belong to its proxy, not to the player. This
         // view does not estimate kills or damage-over-time kill attribution.
-        let gain = db.sum(
-            ModType::Base,
-            cfg,
-            &[ModName::from(format!("{resource}OnKill"))],
-        );
+        let gain = db.sum(ModType::Base, cfg, &[on_kill_mod]);
         *value = if super::recovery::proxy(cfg)
             || cfg.skill_types.contains(SkillTypes::SUMMONS_TOTEM)
-            || db.flag(cfg, &format!("CannotGain{resource}"))
+            || db.flag(cfg, cannot_gain_flag)
             || resource == "Life" && db.flag(cfg, "CannotRecoverLifeOutsideLeech")
         {
             0.0

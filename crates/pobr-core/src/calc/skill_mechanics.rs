@@ -18,6 +18,8 @@
 //!
 //! SupportManaMultiplier has already landed (see §4's cost formula), no longer deferred.
 
+use std::borrow::Cow;
+
 use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb, TraceGraph, TraceNodeId, TraceOperation, TracedValue};
@@ -67,15 +69,12 @@ pub fn calc_radius(base_radius: f64, area_mod: f64) -> f64 {
 /// The skill's radius stats and area modifiers determine its circular area;
 /// echoes use the selected repeat view (`agent-docs/skill-mechanics.md` §AoE).
 pub fn calc_aoe(db: &ModDb, cfg: &CalcConfig, base_radius: f64, extra_base: f64) -> AoeResult {
-    let aoe_names = [
-        ModName::from("AreaOfEffect"),
-        ModName::from("AreaOfEffectPrimary"),
-    ];
+    let aoe_names = ["AreaOfEffect", "AreaOfEffectPrimary"];
     // Spell Echo's area bonus belongs to echoes only. The Average view
     // weights it by echo count / all casts; Final shows the echo's area.
     // Game stats: support_spell_echo_number_of_echo_cascades and
     // echoed_spell_area_of_effect_+% (one echo, 40% increased area).
-    let repeats = db.sum(ModType::Base, cfg, &[ModName::from("RepeatCount")]);
+    let repeats = db.sum(ModType::Base, cfg, &["RepeatCount"]);
     let repeat_inc = if repeats > 0.0 && !db.flag(cfg, "CannotRepeat") {
         let weight = if cfg.condition("averageRepeat") {
             repeats / (1.0 + repeats)
@@ -84,7 +83,7 @@ pub fn calc_aoe(db: &ModDb, cfg: &CalcConfig, base_radius: f64, extra_base: f64)
         } else {
             0.0
         };
-        db.sum(ModType::Inc, cfg, &[ModName::from("RepeatAreaOfEffect")]) * weight
+        db.sum(ModType::Inc, cfg, &["RepeatAreaOfEffect"]) * weight
     } else {
         0.0
     };
@@ -92,7 +91,7 @@ pub fn calc_aoe(db: &ModDb, cfg: &CalcConfig, base_radius: f64, extra_base: f64)
     let more = db.more(cfg, &aoe_names);
     let area_mod = round((1.0 + inc / 100.0) * more);
     let effective_base = base_radius + extra_base + db.sum(ModType::Base, cfg, &aoe_names);
-    let radius_names = [ModName::from("AreaOfEffectRadius")];
+    let radius_names = ["AreaOfEffectRadius"];
     let radius_mod = ((1.0 + db.sum(ModType::Inc, cfg, &radius_names) / 100.0)
         * db.more(cfg, &radius_names))
     .max(0.0);
@@ -117,10 +116,7 @@ pub fn calc_aoe_traced(
 ) -> (AoeResult, TraceNodeId) {
     let result = calc_aoe(db, cfg, base_radius, extra_base);
 
-    let aoe_names = [
-        ModName::from("AreaOfEffect"),
-        ModName::from("AreaOfEffectPrimary"),
-    ];
+    let aoe_names = ["AreaOfEffect", "AreaOfEffectPrimary"];
     let base_node = trace.add_source_node(
         "base radius",
         base_radius,
@@ -371,13 +367,10 @@ pub fn calc_projectile_count(db: &ModDb, cfg: &CalcConfig) -> ProjectileCountRes
         };
     }
 
-    let proj_names = [ModName::from("ProjectileCount")];
-    let two_add_names = [ModName::from("TwoAdditionalProjectilesChance")];
-    let surpassing_names = [ModName::from("SurpassingProjectileChance")];
-
+    let proj_names = ["ProjectileCount"];
     let base = db.sum(ModType::Base, cfg, &proj_names)
-        + 2.0 * db.sum(ModType::Base, cfg, &two_add_names) / 100.0
-        + db.sum(ModType::Base, cfg, &surpassing_names) / 100.0;
+        + 2.0 * db.sum(ModType::Base, cfg, &["TwoAdditionalProjectilesChance"]) / 100.0
+        + db.sum(ModType::Base, cfg, &["SurpassingProjectileChance"]) / 100.0;
     let more = db.more(cfg, &proj_names);
     let count = round(base * more);
     let additional = (count - 1.0).max(0.0);
@@ -444,13 +437,13 @@ pub fn calc_cooldown(
     base_cooldown_s: f64,
     base_stored_uses: u32,
 ) -> CooldownResult {
-    let cd_recovery_names = [ModName::from("CooldownRecovery")];
+    let cd_recovery_names = ["CooldownRecovery"];
 
     // Base cooldown modifier (adds/subtracts a millisecond-level value directly, PoB2 L327)
     let added_cooldown = db.sum(ModType::Base, cfg, &cd_recovery_names);
     // Only a skill with a cooldown of its own has seconds taken off it.
     let flat_cooldown = if base_cooldown_s > 0.0 {
-        db.sum(ModType::Base, cfg, &[ModName::from(FLAT_COOLDOWN)])
+        db.sum(ModType::Base, cfg, &[FLAT_COOLDOWN])
     } else {
         0.0
     };
@@ -462,12 +455,8 @@ pub fn calc_cooldown(
         // Override gives the final cooldown directly (seconds); recovery_rate is set to 1.0 to mean no scaling
         let _ = ov; // returns directly when using the override value
         // PoB2: cooldown = override
-        let stored_uses = base_stored_uses
-            + db.sum(
-                ModType::Base,
-                cfg,
-                &[ModName::from("AdditionalCooldownUses")],
-            ) as u32;
+        let stored_uses =
+            base_stored_uses + db.sum(ModType::Base, cfg, &["AdditionalCooldownUses"]) as u32;
         let (cd, rounded) =
             finalize_cooldown(ov, stored_uses, cfg.constants.game().server_tick_seconds);
         return CooldownResult {
@@ -495,12 +484,8 @@ pub fn calc_cooldown(
         raw_cd
     };
 
-    let stored_uses = base_stored_uses
-        + db.sum(
-            ModType::Base,
-            cfg,
-            &[ModName::from("AdditionalCooldownUses")],
-        ) as u32;
+    let stored_uses =
+        base_stored_uses + db.sum(ModType::Base, cfg, &["AdditionalCooldownUses"]) as u32;
     let (cd, rounded) = finalize_cooldown(
         raw_cd,
         stored_uses,
@@ -610,6 +595,39 @@ pub fn calc_skill_cost(
     }
 }
 
+fn resource_cost_name(prefix: &str) -> Cow<'static, str> {
+    match prefix {
+        "Mana" => Cow::Borrowed("ManaCost"),
+        "Life" => Cow::Borrowed("LifeCost"),
+        "ES" => Cow::Borrowed("ESCost"),
+        "Rage" => Cow::Borrowed("RageCost"),
+        "Ward" => Cow::Borrowed("WardCost"),
+        _ => Cow::Owned(format!("{prefix}Cost")),
+    }
+}
+
+fn resource_cost_efficiency_name(prefix: &str) -> Cow<'static, str> {
+    match prefix {
+        "Mana" => Cow::Borrowed("ManaCostEfficiency"),
+        "Life" => Cow::Borrowed("LifeCostEfficiency"),
+        "ES" => Cow::Borrowed("ESCostEfficiency"),
+        "Rage" => Cow::Borrowed("RageCostEfficiency"),
+        "Ward" => Cow::Borrowed("WardCostEfficiency"),
+        _ => Cow::Owned(format!("{prefix}CostEfficiency")),
+    }
+}
+
+fn resource_cost_no_mult_name(prefix: &str) -> Cow<'static, str> {
+    match prefix {
+        "Mana" => Cow::Borrowed("ManaCostNoMult"),
+        "Life" => Cow::Borrowed("LifeCostNoMult"),
+        "ES" => Cow::Borrowed("ESCostNoMult"),
+        "Rage" => Cow::Borrowed("RageCostNoMult"),
+        "Ward" => Cow::Borrowed("WardCostNoMult"),
+        _ => Cow::Owned(format!("{prefix}CostNoMult")),
+    }
+}
+
 /// The cost inc/more/efficiency chain (vendor CalcOffence.lua:2126-2160's
 /// second loop); the `final_base` parameter = finalBaseCost, already including SupportManaMultiplier.
 fn apply_cost_chain(
@@ -618,18 +636,18 @@ fn apply_cost_chain(
     resource_mod_prefix: &str,
     final_base: f64,
 ) -> f64 {
-    let type_cost_name = format!("{resource_mod_prefix}Cost");
+    let type_cost_name = resource_cost_name(resource_mod_prefix);
     let generic_cost_name = "Cost";
-    let inc_names = [
-        ModName::from(type_cost_name.as_str()),
-        ModName::from(generic_cost_name),
-    ];
     // ManaCost / Cost INC (PoB2: `skillModList:Sum("INC", skillCfg, type.."Cost", "Cost")`)
-    let inc = db.sum(ModType::Inc, cfg, &inc_names);
+    let inc = db.sum(
+        ModType::Inc,
+        cfg,
+        &[type_cost_name.as_ref(), generic_cost_name],
+    );
 
     // ManaCost MORE (type) × Cost MORE (generic) (PoB2's two-step more multiplication)
-    let more_type = db.more(cfg, &[ModName::from(type_cost_name.as_str())]);
-    let more_generic = db.more(cfg, &[ModName::from(generic_cost_name)]);
+    let more_type = db.more(cfg, &[type_cost_name.as_ref()]);
+    let more_generic = db.more(cfg, &[generic_cost_name]);
 
     // PoB2's stepwise rounding:
     //   1) `floor(finalBaseCost × (1+inc/100))` (inc positive → floor, inc negative → ceil)
@@ -656,13 +674,11 @@ fn apply_cost_chain(
     // (already rounded), with the result no longer rounded.
     // `{type}CostEfficiency` + generic `CostEfficiency` stack additively.
     // PoB2: 9 mana, 50% eff → 6; 25% generic → 7.2; 25%+25% → 6; 50% inc + 50% eff → floor(9×1.5)/1.5 = 8.67.
+    let efficiency_name = resource_cost_efficiency_name(resource_mod_prefix);
     let efficiency = db.sum(
         ModType::Inc,
         cfg,
-        &[
-            ModName::from(format!("{resource_mod_prefix}CostEfficiency").as_str()),
-            ModName::from("CostEfficiency"),
-        ],
+        &[efficiency_name.as_ref(), "CostEfficiency"],
     );
     after_more / (1.0 + efficiency / 100.0)
 }
@@ -670,7 +686,7 @@ fn apply_cost_chain(
 /// The support gem cost multiplier product, truncated to 4 decimal places
 /// (PoB2 CalcOffence.lua:2062's `mult = floor(More(skillCfg, "SupportManaMultiplier"), 4)`).
 fn support_cost_multiplier(db: &ModDb, cfg: &CalcConfig) -> f64 {
-    let m = db.more(cfg, &[ModName::from("SupportManaMultiplier")]);
+    let m = db.more(cfg, &["SupportManaMultiplier"]);
     (m * 10000.0).floor() / 10000.0
 }
 
@@ -678,20 +694,14 @@ fn support_cost_multiplier(db: &ModDb, cfg: &CalcConfig) -> f64 {
 /// scale (`<Resource>CostNoMult`): Archmage's "Non-Channelling Spells cost an
 /// additional N% of your maximum Mana".
 fn unscaled_cost(db: &ModDb, cfg: &CalcConfig, resource_mod_prefix: &str) -> f64 {
-    let name = format!("{resource_mod_prefix}CostNoMult");
-    db.sum(ModType::Base, cfg, &[ModName::from(name.as_str())])
-        .max(0.0)
+    let name = resource_cost_no_mult_name(resource_mod_prefix);
+    db.sum(ModType::Base, cfg, &[name]).max(0.0)
 }
 
 /// The share (0 and up) of the skill's base Mana cost it also costs in Life:
 /// "Skills gain a Base Life Cost equal to Base Mana Cost" is 1.
 fn base_mana_cost_as_life_share(db: &ModDb, cfg: &CalcConfig) -> f64 {
-    (db.sum(
-        ModType::Base,
-        cfg,
-        &[ModName::from("BaseManaCostAsLifeCost")],
-    ) / 100.0)
-        .max(0.0)
+    (db.sum(ModType::Base, cfg, &["BaseManaCostAsLifeCost"]) / 100.0).max(0.0)
 }
 
 /// What lines like "Non-Channelling Spells cost an additional 6% of your
@@ -703,8 +713,12 @@ fn base_mana_cost_as_life_share(db: &ModDb, cfg: &CalcConfig) -> f64 {
 /// base cost, it is then scaled by the supports' cost multipliers and the
 /// cost modifiers.
 fn cost_from_maximum_pool(db: &ModDb, cfg: &CalcConfig, pool: &str) -> f64 {
-    let name = format!("{pool}CostPercentOfMaximum{pool}");
-    let percent = db.sum(ModType::Base, cfg, &[ModName::from(name.as_str())]);
+    let name: Cow<'static, str> = match pool {
+        "Mana" => Cow::Borrowed("ManaCostPercentOfMaximumMana"),
+        "Life" => Cow::Borrowed("LifeCostPercentOfMaximumLife"),
+        _ => Cow::Owned(format!("{pool}CostPercentOfMaximum{pool}")),
+    };
+    let percent = db.sum(ModType::Base, cfg, &[name]);
     if percent <= 0.0 {
         return 0.0;
     }
@@ -724,7 +738,7 @@ pub struct SkillCosts {
 pub fn skill_costs(db: &ModDb, cfg: &CalcConfig) -> SkillCosts {
     #[cfg(test)]
     super::hit_read_probe::dependency("skill costs");
-    let base = |name: &str| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
+    let base = |name: &str| db.sum(ModType::Base, cfg, &[name]);
     let base_mana = db
         .override_(cfg, "BaseManaCostOverride")
         .unwrap_or_else(|| base("SkillManaCostBase"))
@@ -767,12 +781,8 @@ pub fn skill_costs(db: &ModDb, cfg: &CalcConfig) -> SkillCosts {
 /// constantStat 100; the same-named tree mod in the Blood-Magic family),
 /// vendor caps this at 100 (CalcOffence.lua:2067's `m_min(Sum(...), 100) / 100`).
 pub fn hybrid_life_cost_share(db: &ModDb, cfg: &CalcConfig) -> f64 {
-    (db.sum(
-        ModType::Base,
-        cfg,
-        &[ModName::from("HybridManaAndLifeCost_Life")],
-    )
-    .min(100.0)
+    (db.sum(ModType::Base, cfg, &["HybridManaAndLifeCost_Life"])
+        .min(100.0)
         / 100.0)
         .max(0.0)
 }
@@ -860,10 +870,8 @@ pub fn calc_spirit_reservation(
         };
     }
 
-    let reservation_more_names = [ModName::from("ReservationMultiplier")];
-    let extra_spirit_names = [ModName::from("ExtraSpirit")];
-    let more = db.more(cfg, &reservation_more_names);
-    let extra_flat = db.sum(ModType::Base, cfg, &extra_spirit_names);
+    let more = db.more(cfg, &["ReservationMultiplier"]);
+    let extra_flat = db.sum(ModType::Base, cfg, &["ExtraSpirit"]);
 
     // ⚠️ Reservation Efficiency is **not** divided out here -- vendor's
     // efficiency is per-skill (CalcDefence.lua:240-243 computes
@@ -922,20 +930,10 @@ impl DurationTerms {
 }
 /// buff_time_passed_+%_only_buff_category: slower elapsed time extends buffs.
 pub fn buff_expiration_mult(db: &ModDb, cfg: &CalcConfig) -> f64 {
-    let rate = 1.0 + db.sum(ModType::Inc, cfg, &[ModName::from("BuffExpiryRate")]) / 100.0;
+    let rate = 1.0 + db.sum(ModType::Inc, cfg, &["BuffExpiryRate"]) / 100.0;
     // A zero expiry rate has no finite duration; use the same finite 75% slow
     // ceiling as other effect-expiry calculations.
     1.0 / rate.max(cfg.constants.game().buff_expiration_slow_cap)
-}
-
-/// The names a duration is modified by: every skill's `Duration` and the
-/// duration scope of the channel being measured.
-fn duration_names(scope: Option<&str>) -> Vec<ModName> {
-    let mut names = vec![ModName::from("Duration")];
-    if let Some(scope) = scope {
-        names.push(ModName::from(scope));
-    }
-    names
 }
 
 /// The increased and more/less terms behind a duration's modifier, shared by
@@ -960,10 +958,16 @@ pub fn duration_modifier_terms(
     cfg: &CalcConfig,
     scope: Option<&str>,
 ) -> DurationModifierTerms {
-    let names = duration_names(scope);
+    let mut buf = ["Duration", ""];
+    let names = if let Some(scope) = scope {
+        buf[1] = scope;
+        &buf[..]
+    } else {
+        &buf[..1]
+    };
     DurationModifierTerms {
-        increased: db.sum(ModType::Inc, cfg, &names),
-        more: db.more(cfg, &names),
+        increased: db.sum(ModType::Inc, cfg, names),
+        more: db.more(cfg, names),
     }
 }
 
@@ -986,10 +990,9 @@ pub fn duration_terms(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig, stat: &str) -
             "SkillReserveDurationIsDebuff",
         ),
     };
-    let names = duration_names(scope);
-    let base = db.sum(ModType::Base, cfg, &[ModName::from(base_name)])
-        + if scope.is_some() {
-            db.sum(ModType::Base, cfg, &names)
+    let base = db.sum(ModType::Base, cfg, &[base_name])
+        + if let Some(scope) = scope {
+            db.sum(ModType::Base, cfg, &["Duration", scope])
         } else {
             0.0
         };
@@ -1033,7 +1036,7 @@ pub(super) fn snapshot_remaining_chains(db: &ModDb, enemy: &ModDb, cfg: &mut Cal
     let available = available_counts.chain;
     let used = cfg
         .multiplier_if_set("Chain")
-        .unwrap_or_else(|| db.sum(ModType::Base, &*cfg, &[ModName::from("ChainCount")]));
+        .unwrap_or_else(|| db.sum(ModType::Base, &*cfg, &["ChainCount"]));
     let used = if used.is_finite() {
         used.clamp(0.0, available)
     } else {
@@ -1058,7 +1061,7 @@ fn snapshot_projectile_interactions_taken(
         ("ForkedCount", available.fork),
         ("PiercedCount", available.pierce),
     ] {
-        let taken = db.sum(ModType::Base, &*cfg, &[ModName::from(name)]);
+        let taken = db.sum(ModType::Base, &*cfg, &[name]);
         let taken = if taken.is_finite() {
             taken.clamp(0.0, capacity.max(0.0))
         } else {
@@ -1069,7 +1072,7 @@ fn snapshot_projectile_interactions_taken(
 }
 
 pub fn projectile_behavior_counts(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -> ProjectileCounts {
-    let sum = |name: &str| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
+    let sum = |name: &str| db.sum(ModType::Base, cfg, &[name]);
     let flag = |name: &str| db.flag(cfg, name);
     let projectile = cfg.flags.intersects(ModFlags::PROJECTILE) || sum("ProjectileCount") > 0.0;
     // Conversions use additional projectiles even when the launched count is
@@ -1083,19 +1086,16 @@ pub fn projectile_behavior_counts(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -
             + 2.0 * sum("TwoAdditionalProjectilesChance") / 100.0
             + sum("SurpassingProjectileChance") / 100.0
             - 1.0)
-            * db.more(cfg, &[ModName::from("ProjectileCount")]))
+            * db.more(cfg, &["ProjectileCount"]))
         .max(0.0)
     };
-    let chain_names = if projectile {
-        vec![ModName::from("ChainCountMax")]
+    let chain_names: &[&str] = if projectile {
+        &["ChainCountMax"]
     } else {
-        vec![
-            ModName::from("ChainCountMax"),
-            ModName::from("BeamChainCountMax"),
-        ]
+        &["ChainCountMax", "BeamChainCountMax"]
     };
-    let chain = ((db.sum(ModType::Base, cfg, &chain_names) + sum("ChainChance") / 100.0)
-        * db.more(cfg, &chain_names)
+    let chain = ((db.sum(ModType::Base, cfg, chain_names) + sum("ChainChance") / 100.0)
+        * db.more(cfg, chain_names)
         + if flag("AdditionalProjectilesAddChainsInstead") {
             additional
         } else {
@@ -1103,7 +1103,7 @@ pub fn projectile_behavior_counts(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -
         })
     .max(0.0);
     let split = (sum("SplitCount")
-        + enemy.sum(ModType::Base, cfg, &[ModName::from("SelfSplitCount")])
+        + enemy.sum(ModType::Base, cfg, &["SelfSplitCount"])
         + if flag("AdditionalProjectilesAddSplitsInstead") {
             additional
         } else {
@@ -1148,7 +1148,7 @@ pub fn projectile_behavior_counts(db: &ModDb, enemy: &ModDb, cfg: &CalcConfig) -
         },
         split: if resolved.split_count > 0 { split } else { 0.0 },
         bounce: if projectile {
-            (sum("BounceCount") * db.more(cfg, &[ModName::from("ProjectileCount")])
+            (sum("BounceCount") * db.more(cfg, &["ProjectileCount"])
                 + if flag("AdditionalProjectilesAddBouncesInstead") {
                     additional
                 } else {
@@ -1168,29 +1168,43 @@ pub fn attribute_requirements(db: &ModDb, cfg: &CalcConfig) -> [f64; 3] {
     attribute_requirement_terms(db, cfg).map(|values| values.into_iter().fold(0.0, f64::max))
 }
 
+/// Zero-allocation static slice behind [`requirement_modifier_names`].
+pub(crate) fn requirement_modifier_names_slice(category: &str) -> &'static [&'static str] {
+    if category.ends_with("Gem") {
+        &[
+            "GlobalAttributeRequirements",
+            "GlobalGemAttributeRequirements",
+        ]
+    } else if category.ends_with("Weapon") {
+        &[
+            "GlobalAttributeRequirements",
+            "GlobalItemAttributeRequirements",
+            "GlobalWeaponAttributeRequirements",
+        ]
+    } else {
+        &[
+            "GlobalAttributeRequirements",
+            "GlobalItemAttributeRequirements",
+        ]
+    }
+}
+
 /// Names whose increases and decreases scale one category's attribute
 /// requirements: the generic name, the gem or item name, and for weapons the
 /// weapon name. Shared by the requirement calculation and the Calcs views.
 pub fn requirement_modifier_names(category: &str) -> Vec<ModName> {
-    let mut names = vec![
-        ModName::from("GlobalAttributeRequirements"),
-        ModName::from(if category.ends_with("Gem") {
-            "GlobalGemAttributeRequirements"
-        } else {
-            "GlobalItemAttributeRequirements"
-        }),
-    ];
-    if category.ends_with("Weapon") {
-        names.push(ModName::from("GlobalWeaponAttributeRequirements"));
-    }
-    names
+    requirement_modifier_names_slice(category)
+        .iter()
+        .copied()
+        .map(ModName::from)
+        .collect()
 }
 
 /// The multiplier applied to a category's requirements (`Item`, `Weapon`,
 /// `MeleeWeapon`, `Gem` or `MeleeGem`); `global` has the skill's flags cleared.
 pub fn requirement_modifier(db: &ModDb, global: &CalcConfig, category: &str) -> f64 {
-    let names = requirement_modifier_names(category);
-    ((1.0 + db.sum(ModType::Inc, global, &names) / 100.0) * db.more(global, &names)).max(0.0)
+    let names = requirement_modifier_names_slice(category);
+    ((1.0 + db.sum(ModType::Inc, global, names) / 100.0) * db.more(global, names)).max(0.0)
 }
 
 /// The Gem, Item and Weapon requirement multipliers, in that order, read with
@@ -1258,7 +1272,7 @@ pub fn resource_costs(db: &ModDb, cfg: &CalcConfig) -> ResourceCosts {
     if db.flag(cfg, "HasNoCost") {
         return costs;
     }
-    let sum = |name: &str| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
+    let sum = |name: &str| db.sum(ModType::Base, cfg, &[name]);
     let mult = support_cost_multiplier(db, cfg);
     for (suffix, output) in [
         ("", &mut costs.upfront),
@@ -1332,8 +1346,8 @@ pub struct SkillTimings {
 /// Placement and throwing speed apply to the character's use, independently
 /// of the proxy's hit rate. A channel's displayed time excludes its release.
 pub fn skill_timings(db: &ModDb, cfg: &CalcConfig, base_use_time: f64) -> SkillTimings {
-    let sum = |name: &str| db.sum(ModType::Base, cfg, &[ModName::from(name)]);
-    let modifier = |names: &[ModName]| {
+    let sum = |name: &str| db.sum(ModType::Base, cfg, &[name]);
+    let modifier = |names: &[&str]| {
         ((1.0 + db.sum(ModType::Inc, cfg, names) / 100.0) * db.more(cfg, names)).max(0.0)
     };
     let action = super::skill_use_time::action_speed_factor(db, cfg);
@@ -1342,16 +1356,16 @@ pub fn skill_timings(db: &ModDb, cfg: &CalcConfig, base_use_time: f64) -> SkillT
         if base <= 0.0 || action <= 0.0 {
             return 0.0;
         }
-        let speed = modifier(&[ModName::from(speed_name)]) * action;
+        let speed = modifier(&[speed_name]) * action;
         if speed <= 0.0 {
             return 0.0;
         }
-        let time_factor = time_mod.map_or(1.0, |name| modifier(&[ModName::from(name)]));
+        let time_factor = time_mod.map_or(1.0, |name| modifier(&[name]));
         round((base * time_factor / speed).max(cfg.constants.game().server_tick_seconds))
     };
     let count = |name: &str| {
         db.override_(cfg, name)
-            .unwrap_or_else(|| (1.0 + sum(name)) * modifier(&[ModName::from(name)]))
+            .unwrap_or_else(|| (1.0 + sum(name)) * modifier(&[name]))
             .max(0.0)
     };
     let trap_count = count("TrapThrowCount");
@@ -1373,7 +1387,7 @@ pub fn skill_timings(db: &ModDb, cfg: &CalcConfig, base_use_time: f64) -> SkillT
         || sum("SkillChannelStages") > 0.0
         || sum("SkillChannelStageTimeOverride") > 0.0
     {
-        let speed = modifier(&super::skill_use_time::speed_names_for(cfg)) * action;
+        let speed = modifier(super::skill_use_time::speed_names_slice(cfg)) * action;
         let stage = if sum("SkillChannelStageTimeOverride") > 0.0 {
             sum("SkillChannelStageTimeOverride")
         } else if speed > 0.0 {

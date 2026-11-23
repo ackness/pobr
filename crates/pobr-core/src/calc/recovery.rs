@@ -6,7 +6,101 @@ use super::{Env, LeechResource, calc_regen};
 use crate::{CalcConfig, HandTag, ModDb};
 use pobr_data::prelude::*;
 
-const RESOURCES: [&str; 5] = ["Life", "Mana", "EnergyShield", "Ward", "Rage"];
+struct ResourceMods {
+    is_life: bool,
+    cannot_gain: &'static str,
+    no_regen: &'static str,
+    unaffected_by_regen: &'static str,
+    recovery: &'static str,
+    recovery_rate: &'static str,
+    overflow_recovery: &'static str,
+    degen: &'static str,
+    degen_percent: &'static str,
+}
+
+macro_rules! resource_mods {
+    ($r:literal, $is_life:expr) => {
+        ResourceMods {
+            is_life: $is_life,
+            cannot_gain: concat!("CannotGain", $r),
+            no_regen: concat!("No", $r, "Regen"),
+            unaffected_by_regen: concat!("UnaffectedBy", $r, "Regen"),
+            recovery: concat!($r, "Recovery"),
+            recovery_rate: concat!($r, "RecoveryRate"),
+            overflow_recovery: concat!("Overflow", $r, "Recovery"),
+            degen: concat!($r, "Degen"),
+            degen_percent: concat!($r, "DegenPercent"),
+        }
+    };
+}
+
+const RESOURCE_MODS: [ResourceMods; 5] = [
+    resource_mods!("Life", true),
+    resource_mods!("Mana", false),
+    resource_mods!("EnergyShield", false),
+    resource_mods!("Ward", false),
+    resource_mods!("Rage", false),
+];
+
+macro_rules! regen_recovers_row {
+    ($src:literal) => {
+        [
+            concat!($src, "RegenerationRecoversLife"),
+            concat!($src, "RegenerationRecoversMana"),
+            concat!($src, "RegenerationRecoversEnergyShield"),
+            concat!($src, "RegenerationRecoversWard"),
+            concat!($src, "RegenerationRecoversRage"),
+        ]
+    };
+}
+
+const REGEN_RECOVERS: [[&str; 5]; 5] = [
+    regen_recovers_row!("Life"),
+    regen_recovers_row!("Mana"),
+    regen_recovers_row!("EnergyShield"),
+    regen_recovers_row!("Ward"),
+    regen_recovers_row!("Rage"),
+];
+
+struct LeechMods {
+    is_life: bool,
+    cannot_gain: &'static str,
+    on_hit: &'static str,
+    self_on_hit: &'static str,
+    cannot_leech: &'static str,
+    cannot_leech_from_self: &'static str,
+    instant_leech: &'static str,
+    recovery_rate: &'static str,
+    leech_rate: &'static str,
+}
+
+macro_rules! leech_mods {
+    ($r:literal, $is_life:expr) => {
+        LeechMods {
+            is_life: $is_life,
+            cannot_gain: concat!("CannotGain", $r),
+            on_hit: concat!($r, "OnHit"),
+            self_on_hit: concat!("Self", $r, "OnHit"),
+            cannot_leech: concat!("CannotLeech", $r),
+            cannot_leech_from_self: concat!("CannotLeech", $r, "FromSelf"),
+            instant_leech: concat!("Instant", $r, "Leech"),
+            recovery_rate: concat!($r, "RecoveryRate"),
+            leech_rate: concat!($r, "LeechRate"),
+        }
+    };
+}
+
+fn leech_mods_for(resource: LeechResource) -> &'static LeechMods {
+    const LIFE: LeechMods = leech_mods!("Life", true);
+    const MANA: LeechMods = leech_mods!("Mana", false);
+    const ES: LeechMods = leech_mods!("EnergyShield", false);
+    match resource {
+        LeechResource::Life => &LIFE,
+        LeechResource::Mana => &MANA,
+        LeechResource::EnergyShield => &ES,
+    }
+}
+
 const TYPES: [DamageType; 5] = [
     DamageType::Physical,
     DamageType::Fire,
@@ -14,19 +108,60 @@ const TYPES: [DamageType; 5] = [
     DamageType::Lightning,
     DamageType::Chaos,
 ];
-const TYPE_NAMES: [&str; 5] = ["Physical", "Fire", "Cold", "Lightning", "Chaos"];
+
+struct TypeDegenMods {
+    degen: &'static str,
+    taken_from_mana_before_life: &'static str,
+    es_bypass: &'static str,
+    elem_taken_as: &'static str,
+}
+
+macro_rules! type_degen_mods {
+    ($t:literal) => {
+        TypeDegenMods {
+            degen: concat!($t, "Degen"),
+            taken_from_mana_before_life: concat!($t, "DamageTakenFromManaBeforeLife"),
+            es_bypass: concat!($t, "EnergyShieldBypass"),
+            elem_taken_as: concat!("ElementalDamageTakenAs", $t),
+        }
+    };
+}
+
+const TYPE_DEGEN_MODS: [TypeDegenMods; 5] = [
+    type_degen_mods!("Physical"),
+    type_degen_mods!("Fire"),
+    type_degen_mods!("Cold"),
+    type_degen_mods!("Lightning"),
+    type_degen_mods!("Chaos"),
+];
+
+macro_rules! taken_as_row {
+    ($src:literal) => {
+        [
+            concat!($src, "DamageTakenAsPhysical"),
+            concat!($src, "DamageTakenAsFire"),
+            concat!($src, "DamageTakenAsCold"),
+            concat!($src, "DamageTakenAsLightning"),
+            concat!($src, "DamageTakenAsChaos"),
+        ]
+    };
+}
+
+const TAKEN_AS: [[&str; 5]; 5] = [
+    taken_as_row!("Physical"),
+    taken_as_row!("Fire"),
+    taken_as_row!("Cold"),
+    taken_as_row!("Lightning"),
+    taken_as_row!("Chaos"),
+];
 
 fn base(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
-    db.sum(ModType::Base, cfg, &[ModName::from(name)])
+    db.sum(ModType::Base, cfg, &[name])
 }
 
 fn factor(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
-    let names = [ModName::from(name)];
+    let names = [name];
     ((1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)).max(0.0)
-}
-
-fn cannot_gain(db: &ModDb, cfg: &CalcConfig, resource: &str) -> bool {
-    db.flag(cfg, &format!("CannotGain{resource}"))
 }
 
 /// Called after the final main-skill frequency (channel/trigger/reload) is known.
@@ -59,47 +194,42 @@ fn fill_regeneration(env: &mut Env) {
         calc_regen(db, cfg, maximum_rage, "RageRegen"),
     ];
     let mut recovery = [0.0; 5];
-    for (i, resource) in RESOURCES.iter().enumerate() {
-        let no_recovery = cannot_gain(db, cfg, resource)
-            || (*resource == "Life" && db.flag(cfg, "CannotRecoverLifeOutsideLeech"));
-        let regeneration = if no_recovery
-            || db.flag(cfg, &format!("No{resource}Regen"))
-            || db.flag(cfg, &format!("UnaffectedBy{resource}Regen"))
-        {
-            0.0
-        } else {
-            (regen[i] * 10.0 + 0.5).floor() / 10.0
-        };
+    for (i, mods) in RESOURCE_MODS.iter().enumerate() {
+        let no_recovery = db.flag(cfg, mods.cannot_gain)
+            || (mods.is_life && db.flag(cfg, "CannotRecoverLifeOutsideLeech"));
+        let regeneration =
+            if no_recovery || db.flag(cfg, mods.no_regen) || db.flag(cfg, mods.unaffected_by_regen)
+            {
+                0.0
+            } else {
+                (regen[i] * 10.0 + 0.5).floor() / 10.0
+            };
         let direct = if no_recovery {
             0.0
         } else {
-            base(db, cfg, &format!("{resource}Recovery"))
-                * factor(db, cfg, &format!("{resource}RecoveryRate"))
-                + base(db, cfg, &format!("Overflow{resource}Recovery"))
+            base(db, cfg, mods.recovery) * factor(db, cfg, mods.recovery_rate)
+                + base(db, cfg, mods.overflow_recovery)
         };
-        let drain = (base(db, cfg, &format!("{resource}Degen"))
-            + pools[i] * base(db, cfg, &format!("{resource}DegenPercent")) / 100.0)
+        let drain = (base(db, cfg, mods.degen)
+            + pools[i] * base(db, cfg, mods.degen_percent) / 100.0)
             .max(0.0)
-            * factor(db, cfg, &format!("{resource}Degen"));
+            * factor(db, cfg, mods.degen);
         recovery[i] = regeneration + direct - drain;
     }
     // "Mana Recovery from Regeneration is also applied to Runic Ward"
     // copies regeneration before display rounding; it is recovery at the
     // destination and does not receive its regeneration-rate modifiers.
-    for (source, source_name) in RESOURCES.iter().enumerate() {
-        if cannot_gain(db, cfg, source_name) || db.flag(cfg, &format!("No{source_name}Regen")) {
+    for (source, source_mods) in RESOURCE_MODS.iter().enumerate() {
+        if db.flag(cfg, source_mods.cannot_gain) || db.flag(cfg, source_mods.no_regen) {
             continue;
         }
-        for (destination, destination_name) in RESOURCES.iter().enumerate() {
+        for (destination, destination_mods) in RESOURCE_MODS.iter().enumerate() {
             if source != destination
-                && !cannot_gain(db, cfg, destination_name)
-                && db.flag(
-                    cfg,
-                    &format!("{source_name}RegenerationRecovers{destination_name}"),
-                )
+                && !db.flag(cfg, destination_mods.cannot_gain)
+                && db.flag(cfg, REGEN_RECOVERS[source][destination])
             {
                 recovery[destination] +=
-                    regen[source] * factor(db, cfg, &format!("{destination_name}RecoveryRate"));
+                    regen[source] * factor(db, cfg, destination_mods.recovery_rate);
             }
         }
     }
@@ -108,7 +238,7 @@ fn fill_regeneration(env: &mut Env) {
         let transfer = (recovery[0]
             - base(db, cfg, "LifeRecovery") * factor(db, cfg, "LifeRecoveryRate"))
         .max(0.0);
-        if !cannot_gain(db, cfg, "EnergyShield") {
+        if !db.flag(cfg, "CannotGainEnergyShield") {
             recovery[2] += transfer;
         }
         recovery[0] -= transfer;
@@ -149,22 +279,16 @@ fn gain_for_hit(
 ) -> Gain {
     let db = &env.player.mod_db;
     let enemy = &env.enemy.mod_db;
-    let name = match resource {
-        LeechResource::Life => "Life",
-        LeechResource::Mana => "Mana",
-        LeechResource::EnergyShield => "EnergyShield",
-    };
-    if cannot_gain(db, cfg, name) || proxy(cfg) {
+    let mods = leech_mods_for(resource);
+    if db.flag(cfg, mods.cannot_gain) || proxy(cfg) {
         return Gain::default();
     }
-    let on_hit = if name == "Life" && db.flag(cfg, "CannotRecoverLifeOutsideLeech") {
+    let on_hit = if mods.is_life && db.flag(cfg, "CannotRecoverLifeOutsideLeech") {
         0.0
     } else {
-        base(db, cfg, &format!("{name}OnHit")) + base(enemy, cfg, &format!("Self{name}OnHit"))
+        base(db, cfg, mods.on_hit) + base(enemy, cfg, mods.self_on_hit)
     };
-    if db.flag(cfg, &format!("CannotLeech{name}"))
-        || enemy.flag(cfg, &format!("CannotLeech{name}FromSelf"))
-    {
+    if db.flag(cfg, mods.cannot_leech) || enemy.flag(cfg, mods.cannot_leech_from_self) {
         return Gain {
             on_hit,
             ..Gain::default()
@@ -184,13 +308,13 @@ fn gain_for_hit(
     // Reuse the engine's single-instance leech limits. A sustained rate also
     // needs sufficient hits to replace each expired instance; hit frequency
     // never stacks the recovery rates of overlapping instances.
-    let instant_fraction = if db.flag(cfg, &format!("Instant{name}Leech")) {
+    let instant_fraction = if db.flag(cfg, mods.instant_leech) {
         1.0
     } else {
-        (base(db, cfg, &format!("Instant{name}Leech")) / 100.0).clamp(0.0, 1.0)
+        (base(db, cfg, mods.instant_leech) / 100.0).clamp(0.0, 1.0)
     };
-    let recovery = factor(db, cfg, &format!("{name}RecoveryRate"));
-    let speed = factor(db, cfg, &format!("{name}LeechRate"));
+    let recovery = factor(db, cfg, mods.recovery_rate);
+    let speed = factor(db, cfg, mods.leech_rate);
     let cap = super::survivability::leech_cap_terms(db, cfg, pool, resource);
     let instance = super::survivability::calc_leech_for_hit(db, cfg, pool, &dealt, resource);
     let normal = instance.instance_total * (1.0 - instant_fraction);
@@ -376,31 +500,30 @@ pub(super) fn net_recovery_terms(env: &Env) -> NetRecoveryTerms {
         out.energy_shield * percent / 100.0 * use_rate,
     ];
     let mut loss = std::array::from_fn(|i| costs[i] + use_loss[i]);
-    let direct_drain: f64 = RESOURCES[..3]
+    let direct_drain: f64 = RESOURCE_MODS[..3]
         .iter()
         .enumerate()
-        .map(|(i, name)| {
-            (base(db, cfg, &format!("{name}Degen"))
-                + pools[i] * base(db, cfg, &format!("{name}DegenPercent")) / 100.0)
+        .map(|(i, mods)| {
+            (base(db, cfg, mods.degen) + pools[i] * base(db, cfg, mods.degen_percent) / 100.0)
                 .max(0.0)
-                * factor(db, cfg, &format!("{name}Degen"))
+                * factor(db, cfg, mods.degen)
         })
         .sum();
     let mut damage = [0.0; 5];
-    for (src, src_name) in TYPE_NAMES.iter().enumerate() {
-        let amount = base(db, cfg, &format!("{src_name}Degen")).max(0.0);
+    for (src, src_mods) in TYPE_DEGEN_MODS.iter().enumerate() {
+        let amount = base(db, cfg, src_mods.degen).max(0.0);
         if amount == 0.0 {
             continue;
         }
         let mut remaining = 1.0;
-        for (dst, dst_name) in TYPE_NAMES.iter().enumerate() {
+        for (dst, dst_mods) in TYPE_DEGEN_MODS.iter().enumerate() {
             if src == dst {
                 continue;
             }
             // Damage from Hits taken as ... does not convert degeneration.
-            let mut share = base(db, cfg, &format!("{src_name}DamageTakenAs{dst_name}"));
+            let mut share = base(db, cfg, TAKEN_AS[src][dst]);
             if TYPES[src].is_elemental() {
-                share += base(db, cfg, &format!("ElementalDamageTakenAs{dst_name}"));
+                share += base(db, cfg, dst_mods.elem_taken_as);
             }
             let share = (share / 100.0).max(0.0);
             damage[dst] += amount * share;
@@ -410,21 +533,18 @@ pub(super) fn net_recovery_terms(env: &Env) -> NetRecoveryTerms {
     }
     let mut typed_loss = 0.0;
     for (i, ty) in TYPES.iter().enumerate() {
+        let mods = &TYPE_DEGEN_MODS[i];
         let amount = damage[i] * dot_taken(db, cfg, out, *ty).multiplier();
         typed_loss += amount;
         let mom = ((base(db, cfg, "DamageTakenFromManaBeforeLife")
-            + base(
-                db,
-                cfg,
-                &format!("{}DamageTakenFromManaBeforeLife", TYPE_NAMES[i]),
-            ))
+            + base(db, cfg, mods.taken_from_mana_before_life))
             / 100.0)
             .clamp(0.0, 1.0);
         let bypass = if db.flag(cfg, "UnblockedDamageDoesBypassES") {
             1.0
         } else {
-            db.override_(cfg, &format!("{}EnergyShieldBypass", TYPE_NAMES[i]))
-                .unwrap_or_else(|| base(db, cfg, &format!("{}EnergyShieldBypass", TYPE_NAMES[i])))
+            db.override_(cfg, mods.es_bypass)
+                .unwrap_or_else(|| base(db, cfg, mods.es_bypass))
                 / 100.0
         }
         .clamp(0.0, 1.0);

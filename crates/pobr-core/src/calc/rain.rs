@@ -102,8 +102,7 @@ pub(crate) struct RainHits {
 
 /// Whether the skill `db` and `cfg` describe is a rain.
 pub(crate) fn is_rain(db: &ModDb, cfg: &CalcConfig) -> bool {
-    db.flag(cfg, USE_CADENCE)
-        || db.sum(ModType::Base, cfg, &[ModName::from(LANDING_INTERVAL)]) > 0.0
+    db.flag(cfg, USE_CADENCE) || db.sum(ModType::Base, cfg, &[LANDING_INTERVAL]) > 0.0
 }
 
 /// First evenly spaced landing after the target's hit lockout expires.
@@ -115,15 +114,13 @@ pub(crate) fn landings_per_hit(landing_rate: f64, hit_interval: f64) -> f64 {
 /// enemy when the character uses the skill `uses_per_second` times a second.
 /// `None` for a skill that is not a rain.
 pub(crate) fn rain_hits(db: &ModDb, cfg: &CalcConfig, uses_per_second: f64) -> Option<RainHits> {
-    let landing_ms = db.sum(ModType::Base, cfg, &[ModName::from(LANDING_INTERVAL)]);
+    let landing_ms = db.sum(ModType::Base, cfg, &[LANDING_INTERVAL]);
     let use_cadence = db.flag(cfg, USE_CADENCE);
     if landing_ms <= 0.0 && !use_cadence {
         return None;
     }
-    let hit_ms = db
-        .sum(ModType::Base, cfg, &[ModName::from(HIT_INTERVAL)])
-        .max(0.0);
-    let speed = [ModName::from(LANDING_SPEED)];
+    let hit_ms = db.sum(ModType::Base, cfg, &[HIT_INTERVAL]).max(0.0);
+    let speed = [LANDING_SPEED];
     let (base_landing_rate, speed_inc, speed_more) = if use_cadence {
         (uses_per_second.max(0.0), 0.0, 1.0)
     } else {

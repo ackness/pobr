@@ -275,9 +275,7 @@ fn marked_enemy_modifiers_use_the_applied_mark_without_duplicate_forwarding() {
             env.player.output.dps
         );
         assert_eq!(
-            env.enemy
-                .mod_db
-                .sum(ModType::Inc, &env.cfg, &["Accuracy".into()]),
+            env.enemy.mod_db.sum(ModType::Inc, &env.cfg, &["Accuracy"]),
             if marked { -10.0 } else { 0.0 }
         );
     }

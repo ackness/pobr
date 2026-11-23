@@ -324,10 +324,9 @@ pub struct MinionModifierEntry {
 pub fn extract_minion_modifier_entries<'a>(
     mods: impl IntoIterator<Item = &'a Modifier>,
 ) -> Vec<MinionModifierEntry> {
-    let target = ModName::from("MinionModifier");
     let mut entries = Vec::new();
     for m in mods {
-        if m.name != target {
+        if m.name.as_str() != "MinionModifier" {
             continue;
         }
         let Some(inner_mods) = m.value.as_nested_mods() else {
@@ -715,21 +714,20 @@ pub(crate) fn bridge_count_multipliers(db: &ModDb, cfg: &mut CalcConfig) {
         .conditions
         .entry("Combat".into())
         .or_insert(scope.mode_combat);
-    let resolve = |var: &str| {
-        let name = format!("Multiplier:{var}");
-        db.override_(&scope, &name)
+    let resolve = |var: &str, mod_name: &str| {
+        db.override_(&scope, mod_name)
             .or_else(|| scope.multiplier_if_set(var))
             .or_else(|| {
-                let count = db.sum(ModType::Base, &scope, &[ModName::from(name)]);
+                let count = db.sum(ModType::Base, &scope, &[mod_name]);
                 (count != 0.0).then_some(count)
             })
     };
-    let summoned = resolve("SummonedMinion");
+    let summoned = resolve("SummonedMinion", "Multiplier:SummonedMinion");
     let presence = db
         .override_(&scope, "Multiplier:MinionPresenceCount")
         .or_else(|| scope.multiplier_if_set("MinionPresenceCount"))
         .or(summoned)
-        .or_else(|| resolve("MinionPresenceCount"));
+        .or_else(|| resolve("MinionPresenceCount", "Multiplier:MinionPresenceCount"));
     for (var, count) in [
         ("SummonedMinion", summoned),
         ("MinionPresenceCount", presence),
@@ -749,22 +747,24 @@ pub(crate) fn bridge_count_multipliers(db: &ModDb, cfg: &mut CalcConfig) {
     {
         0.0
     } else {
-        db.sum(
-            ModType::Base,
-            &scope,
-            &[ModName::from("DifferentCompanions")],
-        )
+        db.sum(ModType::Base, &scope, &["DifferentCompanions"])
     };
     cfg.multipliers
         .insert("DifferentCompanionsInPresence".into(), companion_kinds);
     // "per Summoned <kind>" uses that kind's created population, not the total.
-    for var in [
-        "ActiveGolemLimit",
-        "ActiveRagingSpiritLimit",
-        "ActiveSentinelOfPurityLimit",
-        "ActiveSkeletonLimit",
+    for (var, mod_name) in [
+        ("ActiveGolemLimit", "Multiplier:ActiveGolemLimit"),
+        (
+            "ActiveRagingSpiritLimit",
+            "Multiplier:ActiveRagingSpiritLimit",
+        ),
+        (
+            "ActiveSentinelOfPurityLimit",
+            "Multiplier:ActiveSentinelOfPurityLimit",
+        ),
+        ("ActiveSkeletonLimit", "Multiplier:ActiveSkeletonLimit"),
     ] {
-        if let Some(count) = resolve(var) {
+        if let Some(count) = resolve(var, mod_name) {
             cfg.multipliers.insert(var.into(), count);
             cfg.stats.insert(var.into(), count);
         }
@@ -1063,9 +1063,7 @@ mod tests {
         );
         // Crit damage base = 30 (monster) + 70 (intrinsic) = 100
         let cfg = CalcConfig::attack();
-        let crit_mult = ctx
-            .mod_db
-            .sum(ModType::Base, &cfg, &[ModName::from("CritMultiplier")]);
+        let crit_mult = ctx.mod_db.sum(ModType::Base, &cfg, &["CritMultiplier"]);
         assert_eq!(crit_mult, 100.0);
         // Always hits
         assert!(ctx.mod_db.flag(&cfg, "CannotBeEvaded"));
@@ -1090,11 +1088,9 @@ mod tests {
             AttributeInfusion::default(),
             &scaling(),
         );
-        let inc = ctx.mod_db.sum(
-            ModType::Inc,
-            &CalcConfig::attack(),
-            &[ModName::from("Damage")],
-        );
+        let inc = ctx
+            .mod_db
+            .sum(ModType::Inc, &CalcConfig::attack(), &["Damage"]);
         assert_eq!(inc, 30.0);
     }
 
@@ -1115,11 +1111,9 @@ mod tests {
             AttributeInfusion::default(),
             &scaling(),
         );
-        let inc = ctx.mod_db.sum(
-            ModType::Inc,
-            &CalcConfig::attack(),
-            &[ModName::from("Damage")],
-        );
+        let inc = ctx
+            .mod_db
+            .sum(ModType::Inc, &CalcConfig::attack(), &["Damage"]);
         assert_eq!(inc, 0.0);
     }
 
@@ -1130,16 +1124,8 @@ mod tests {
         let mut player_db = ModDb::new();
         write_summoned_minion_multipliers(&mut player_db, 5, "RaisedZombie");
         let cfg = CalcConfig::attack();
-        let summ = player_db.sum(
-            ModType::Base,
-            &cfg,
-            &[ModName::from("Multiplier:SummonedMinion")],
-        );
-        let presence = player_db.sum(
-            ModType::Base,
-            &cfg,
-            &[ModName::from("Multiplier:MinionPresenceCount")],
-        );
+        let summ = player_db.sum(ModType::Base, &cfg, &["Multiplier:SummonedMinion"]);
+        let presence = player_db.sum(ModType::Base, &cfg, &["Multiplier:MinionPresenceCount"]);
         // Both multipliers were written with the limit count
         assert_eq!(summ, 5.0);
         assert_eq!(presence, 5.0);
@@ -1151,11 +1137,7 @@ mod tests {
         // limit=0 → both multipliers are 0 (no summons)
         write_summoned_minion_multipliers(&mut player_db, 0, "NoLimit");
         let cfg = CalcConfig::attack();
-        let summ = player_db.sum(
-            ModType::Base,
-            &cfg,
-            &[ModName::from("Multiplier:SummonedMinion")],
-        );
+        let summ = player_db.sum(ModType::Base, &cfg, &["Multiplier:SummonedMinion"]);
         assert_eq!(summ, 0.0);
     }
 }

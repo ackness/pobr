@@ -66,7 +66,7 @@ fn blind_percent(db: &ModDb, cfg: &CalcConfig) -> Option<f64> {
     {
         return None;
     }
-    let effect = [ModName::from("BlindEffect")];
+    let effect = ["BlindEffect"];
     let maximum = (1.0 + db.sum(ModType::Inc, cfg, &effect) / 100.0) * db.more(cfg, &effect);
     let scale = db.override_(cfg, "BlindEffect").map_or(maximum, |value| {
         (value / 100.0).clamp(0.0, maximum.max(0.0))
@@ -108,7 +108,7 @@ mod tests {
     }
 
     fn player_more(env: &Env, rating: &str) -> f64 {
-        env.player.mod_db.more(&env.cfg, &[ModName::from(rating)])
+        env.player.mod_db.more(&env.cfg, &[rating])
     }
 
     #[test]

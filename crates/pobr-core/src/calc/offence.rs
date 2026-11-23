@@ -1,3 +1,5 @@
+use std::borrow::{Borrow, Cow};
+
 use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb, TraceGraph, TraceNodeId, TraceOperation, TraceOutput, TracedValue};
@@ -259,30 +261,87 @@ pub(crate) fn resolve_resistance(
     element: &str,
     is_elemental: bool,
 ) -> ResistanceResolution {
-    let long = ModName::from(format!("{element}Resistance").as_str());
-    let short = ModName::from(format!("{element}Resist").as_str());
-    let max_long = ModName::from(format!("Maximum{element}Resistance").as_str());
-    let max_short = ModName::from(format!("{element}ResistMax").as_str());
-
-    let mut res_names = vec![long.clone(), short.clone()];
-    let mut max_names = vec![max_long.clone(), max_short.clone()];
-    if is_elemental {
-        res_names.push(ModName::from("ElementalResist"));
-        max_names.push(ModName::from("MaximumAllElementalResistances"));
-        max_names.push(ModName::from("ElementalResistMax"));
+    let base_max = cfg.constants.character().base_maximum_all_resistances_pct;
+    let shared = shared_fire_resistance(db, cfg, element);
+    let static_names = match (element, is_elemental) {
+        ("Fire", true) => Some(ResistanceNames {
+            res: &["FireResistance", "FireResist", "ElementalResist"],
+            max: &[
+                "MaximumFireResistance",
+                "FireResistMax",
+                "MaximumAllElementalResistances",
+                "ElementalResistMax",
+            ],
+            overrides: ["FireResistance", "FireResist"],
+            max_overrides: ["MaximumFireResistance", "FireResistMax"],
+            base_max,
+        }),
+        ("Cold", true) => Some(ResistanceNames {
+            res: &["ColdResistance", "ColdResist", "ElementalResist"],
+            max: &[
+                "MaximumColdResistance",
+                "ColdResistMax",
+                "MaximumAllElementalResistances",
+                "ElementalResistMax",
+            ],
+            overrides: ["ColdResistance", "ColdResist"],
+            max_overrides: ["MaximumColdResistance", "ColdResistMax"],
+            base_max,
+        }),
+        ("Lightning", true) => Some(ResistanceNames {
+            res: &["LightningResistance", "LightningResist", "ElementalResist"],
+            max: &[
+                "MaximumLightningResistance",
+                "LightningResistMax",
+                "MaximumAllElementalResistances",
+                "ElementalResistMax",
+            ],
+            overrides: ["LightningResistance", "LightningResist"],
+            max_overrides: ["MaximumLightningResistance", "LightningResistMax"],
+            base_max,
+        }),
+        ("Chaos", false) => Some(ResistanceNames {
+            res: &["ChaosResistance", "ChaosResist"],
+            max: &["MaximumChaosResistance", "ChaosResistMax"],
+            overrides: ["ChaosResistance", "ChaosResist"],
+            max_overrides: ["MaximumChaosResistance", "ChaosResistMax"],
+            base_max,
+        }),
+        _ => None,
+    };
+    if let Some(names) = static_names {
+        return resolve_resistance_named(db, cfg, base, names, shared);
     }
 
-    let shared = shared_fire_resistance(db, cfg, element);
+    let long = format!("{element}Resistance");
+    let short = format!("{element}Resist");
+    let max_long = format!("Maximum{element}Resistance");
+    let max_short = format!("{element}ResistMax");
+    let res_buf = [long.as_str(), short.as_str(), "ElementalResist"];
+    let max_buf = [
+        max_long.as_str(),
+        max_short.as_str(),
+        "MaximumAllElementalResistances",
+        "ElementalResistMax",
+    ];
     resolve_resistance_named(
         db,
         cfg,
         base,
         ResistanceNames {
-            res: &res_names,
-            max: &max_names,
+            res: if is_elemental {
+                &res_buf
+            } else {
+                &res_buf[..2]
+            },
+            max: if is_elemental {
+                &max_buf
+            } else {
+                &max_buf[..2]
+            },
             overrides: [long.as_str(), short.as_str()],
             max_overrides: [max_long.as_str(), max_short.as_str()],
-            base_max: cfg.constants.character().base_maximum_all_resistances_pct,
+            base_max,
         },
         shared,
     )
@@ -290,8 +349,8 @@ pub(crate) fn resolve_resistance(
 
 /// The modifier names one resistance reads ([`resolve_resistance_named`]).
 pub(crate) struct ResistanceNames<'a> {
-    pub(crate) res: &'a [ModName],
-    pub(crate) max: &'a [ModName],
+    pub(crate) res: &'a [&'a str],
+    pub(crate) max: &'a [&'a str],
     pub(crate) overrides: [&'a str; 2],
     pub(crate) max_overrides: [&'a str; 2],
     /// The maximum before modifiers (75 for the player and for monsters).
@@ -310,24 +369,64 @@ pub(crate) fn resolve_totem_resistance(
     is_elemental: bool,
     auras: SharedResistance,
 ) -> ResistanceResolution {
+    let base_max = cfg.constants.monster().base_maximum_all_resistances_pct;
+    let static_names = match (element, is_elemental) {
+        ("Fire", true) => Some(ResistanceNames {
+            res: &["TotemFireResist", "TotemElementalResist"],
+            max: &["TotemFireResistMax", "TotemElementalResistMax"],
+            overrides: ["TotemFireResist", "TotemFireResist"],
+            max_overrides: ["TotemFireResistMax", "TotemFireResistMax"],
+            base_max,
+        }),
+        ("Cold", true) => Some(ResistanceNames {
+            res: &["TotemColdResist", "TotemElementalResist"],
+            max: &["TotemColdResistMax", "TotemElementalResistMax"],
+            overrides: ["TotemColdResist", "TotemColdResist"],
+            max_overrides: ["TotemColdResistMax", "TotemColdResistMax"],
+            base_max,
+        }),
+        ("Lightning", true) => Some(ResistanceNames {
+            res: &["TotemLightningResist", "TotemElementalResist"],
+            max: &["TotemLightningResistMax", "TotemElementalResistMax"],
+            overrides: ["TotemLightningResist", "TotemLightningResist"],
+            max_overrides: ["TotemLightningResistMax", "TotemLightningResistMax"],
+            base_max,
+        }),
+        ("Chaos", false) => Some(ResistanceNames {
+            res: &["TotemChaosResist"],
+            max: &["TotemChaosResistMax"],
+            overrides: ["TotemChaosResist", "TotemChaosResist"],
+            max_overrides: ["TotemChaosResistMax", "TotemChaosResistMax"],
+            base_max,
+        }),
+        _ => None,
+    };
+    if let Some(names) = static_names {
+        return resolve_resistance_named(db, cfg, 0.0, names, auras);
+    }
+
     let short = format!("Totem{element}Resist");
     let max_short = format!("Totem{element}ResistMax");
-    let mut res_names = vec![ModName::from(short.as_str())];
-    let mut max_names = vec![ModName::from(max_short.as_str())];
-    if is_elemental {
-        res_names.push(ModName::from("TotemElementalResist"));
-        max_names.push(ModName::from("TotemElementalResistMax"));
-    }
+    let res_buf = [short.as_str(), "TotemElementalResist"];
+    let max_buf = [max_short.as_str(), "TotemElementalResistMax"];
     resolve_resistance_named(
         db,
         cfg,
         0.0,
         ResistanceNames {
-            res: &res_names,
-            max: &max_names,
+            res: if is_elemental {
+                &res_buf
+            } else {
+                &res_buf[..1]
+            },
+            max: if is_elemental {
+                &max_buf
+            } else {
+                &max_buf[..1]
+            },
             overrides: [short.as_str(), short.as_str()],
             max_overrides: [max_short.as_str(), max_short.as_str()],
-            base_max: cfg.constants.monster().base_maximum_all_resistances_pct,
+            base_max,
         },
         auras,
     )
@@ -422,7 +521,7 @@ fn shared_fire_resistance(db: &ModDb, cfg: &CalcConfig, element: &str) -> Shared
     if !matches!(element, "Cold" | "Lightning") {
         return shared;
     }
-    let total = |names: &[ModName], mod_type: ModType| -> f64 {
+    let total = |names: &[&str], mod_type: ModType| -> f64 {
         db.evaluate_names(cfg, names)
             .into_iter()
             .filter(|row| row.active && row.modifier.mod_type == mod_type)
@@ -441,21 +540,15 @@ fn shared_fire_resistance(db: &ModDb, cfg: &CalcConfig, element: &str) -> Shared
     let rate = db.sum(
         ModType::Base,
         cfg,
-        &[ModName::from("FireResistanceAlsoGrantsColdAndLightning")],
+        &["FireResistanceAlsoGrantsColdAndLightning"],
     ) / 100.0;
     if rate > 0.0 {
-        let fire = [ModName::from("FireResistance"), ModName::from("FireResist")];
+        let fire = ["FireResistance", "FireResist"];
         shared.flat = total(&fire, ModType::Base) * rate;
         shared.inc = total(&fire, ModType::Inc) * rate;
     }
     if db.flag(cfg, "MaximumFireResistanceAlsoGrantsColdAndLightning") {
-        shared.max = total(
-            &[
-                ModName::from("MaximumFireResistance"),
-                ModName::from("FireResistMax"),
-            ],
-            ModType::Base,
-        );
+        shared.max = total(&["MaximumFireResistance", "FireResistMax"], ModType::Base);
     }
     shared
 }
@@ -561,7 +654,7 @@ fn fixed_use_rate(db: &ModDb, cfg: &CalcConfig) -> Option<f64> {
     if db.flag(cfg, super::trigger::EVENT_RATE_UNMODELLED) {
         return Some(0.0);
     }
-    let rate = db.sum(ModType::Base, cfg, &[ModName::from("SkillUseRate")]);
+    let rate = db.sum(ModType::Base, cfg, &["SkillUseRate"]);
     (rate > 0.0).then_some(rate)
 }
 
@@ -603,9 +696,9 @@ fn use_rate_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> ActionR
             value: round(ticked),
         };
     }
-    let speed_names = super::skill_use_time::speed_names_for(cfg);
-    let inc_speed = db.sum(ModType::Inc, cfg, &speed_names);
-    let more_speed = db.more(cfg, &speed_names);
+    let speed_names = super::skill_use_time::speed_names_slice(cfg);
+    let inc_speed = db.sum(ModType::Inc, cfg, speed_names);
+    let more_speed = db.more(cfg, speed_names);
     let action_speed_mod = super::skill_use_time::action_speed_factor(db, cfg);
     let inc_more_rate = input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed;
     let scaled_rate = apply_total_time(db, cfg, inc_more_rate);
@@ -668,7 +761,7 @@ impl AccuracyTerms {
 
 /// Accuracy rating of the inspected skill in `cfg` (one hand's pass).
 pub(crate) fn accuracy_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> AccuracyTerms {
-    let names = [ModName::from("Accuracy")];
+    let names = ["Accuracy"];
     let override_value = db.override_(cfg, "Accuracy");
     let flat = db.sum(ModType::Base, cfg, &names);
     let inc = db.sum(ModType::Inc, cfg, &names);
@@ -767,7 +860,7 @@ pub(crate) fn hit_chance_terms(
     };
     // Enemy block: only deducted from hit chance under the effective view (accuracy-and-enemy.md §2.3).
     let enemy_block = if cfg.mode_effective {
-        (enemy_db.sum(ModType::Base, cfg, &[ModName::from("BlockChance")]) / 100.0).clamp(0.0, 1.0)
+        (enemy_db.sum(ModType::Base, cfg, &["BlockChance"]) / 100.0).clamp(0.0, 1.0)
     } else {
         0.0
     };
@@ -1370,7 +1463,7 @@ fn total_dps_traced(
     trace: &mut TraceGraph,
 ) -> TracedValue {
     // accuracy & hit chance (moved before crit: the mode_effective crit downgrade needs the hit chance)
-    let accuracy_names = [ModName::from("Accuracy")];
+    let accuracy_names = ["Accuracy"];
     let base_accuracy_node = trace.add_source_node(
         "base accuracy",
         input.base_accuracy,
@@ -1417,7 +1510,7 @@ fn total_dps_traced(
     };
     // Enemy block: only deducted from hit chance under the effective view (accuracy-and-enemy.md §2.3).
     let enemy_block = if cfg.mode_effective {
-        (enemy_db.sum(ModType::Base, cfg, &[ModName::from("BlockChance")]) / 100.0).clamp(0.0, 1.0)
+        (enemy_db.sum(ModType::Base, cfg, &["BlockChance"]) / 100.0).clamp(0.0, 1.0)
     } else {
         0.0
     };
@@ -1472,11 +1565,7 @@ fn total_dps_traced(
         },
     );
     let base_hit_avg = (input.base_hit_min + input.base_hit_max) / 2.0;
-    let damage_names = [
-        ModName::from("PhysicalDamage"),
-        ModName::from("AttackDamage"),
-        ModName::from("Damage"),
-    ];
+    let damage_names = ["PhysicalDamage", "AttackDamage", "Damage"];
     // Non-crit leg sub-graph.
     let cfg_hit = hit_cfg.clone().with_condition("CriticalStrike", false);
     trace.begin_pass(crate::PassId::new(
@@ -1590,7 +1679,7 @@ fn total_dps_traced(
         let use_rate = db.sum_traced(
             ModType::Base,
             cfg,
-            &[ModName::from("SkillUseRate")],
+            &["SkillUseRate"],
             trace,
             "Skill use rate (not the character's)",
         );
@@ -1599,7 +1688,7 @@ fn total_dps_traced(
         trace.add_edge(use_rate.node_id, node);
         (action_rate, node)
     } else {
-        let speed_names = super::skill_use_time::speed_names_for(cfg);
+        let speed_names = super::skill_use_time::speed_names_slice(cfg);
         let base_rate_node = trace.add_source_node(
             "base action rate",
             input.base_action_rate,
@@ -1608,11 +1697,11 @@ fn total_dps_traced(
         let inc_speed = db.sum_traced(
             ModType::Inc,
             cfg,
-            &speed_names,
+            speed_names,
             trace,
             "Speed INC modifier sum (Attack/Cast/Skill)",
         );
-        let more_speed = more_factor_traced(db, cfg, &speed_names, "Speed MORE factor", trace);
+        let more_speed = more_factor_traced(db, cfg, speed_names, "Speed MORE factor", trace);
         let action_speed_mod = super::skill_use_time::action_speed_factor(db, cfg);
         let scaled_rate = apply_total_time(
             db,
@@ -1647,7 +1736,7 @@ fn total_dps_traced(
                     ModType::Base
                 },
                 cfg,
-                &[ModName::from(landing_stat)],
+                &[landing_stat],
                 trace,
                 "Rain landing timing",
             );
@@ -1671,10 +1760,10 @@ fn total_dps_traced(
                 super::periodic::DURATION,
                 super::periodic::LIMIT,
             ] {
-                let term = db.sum_traced(ModType::Base, cfg, &[ModName::from(name)], trace, name);
+                let term = db.sum_traced(ModType::Base, cfg, &[name], trace, name);
                 trace.add_edge(term.node_id, node);
             }
-            let duration = [ModName::from("Duration")];
+            let duration = ["Duration"];
             let inc = db.sum_traced(ModType::Inc, cfg, &duration, trace, "Periodic duration INC");
             let more = more_factor_traced(db, cfg, &duration, "Periodic duration MORE", trace);
             trace.add_edge(inc.node_id, node);
@@ -1698,7 +1787,7 @@ fn total_dps_traced(
         let quantity = db.sum_traced(
             ModType::Base,
             cfg,
-            &[ModName::from("QuantityMultiplier")],
+            &["QuantityMultiplier"],
             trace,
             "QuantityMultiplier BASE sum",
         );
@@ -1802,7 +1891,7 @@ fn enemy_mitigation_terms(
     //   `cfg.skill_types` containing Trapped(33)/RemoteMined(36) (the
     //   statSet.baseFlags main channel; the support addFlags grant channel,
     //   e.g. Remote Mine support adding 'mine', isn't modeled by PoBR, kept tracked).
-    for name in enemy_taken_inc_only_names(&type_cfg, damage_type) {
+    for &name in enemy_taken_inc_only_names(&type_cfg, damage_type).as_slice() {
         taken_inc += enemy_db.sum(ModType::Inc, &type_cfg, &[name]);
     }
     let taken_more = enemy_db.more(&type_cfg, &taken_names);
@@ -1826,11 +1915,7 @@ fn enemy_mitigation_terms(
         // penetration and ignore rules must resolve each outcome separately.
         if damage_type.is_elemental() {
             let invert = player_db
-                .sum(
-                    ModType::Base,
-                    &type_cfg,
-                    &[ModName::from("HitsInvertEleResChance")],
-                )
+                .sum(ModType::Base, &type_cfg, &["HitsInvertEleResChance"])
                 .clamp(0.0, 1.0);
             if invert > 0.0 {
                 resist -= 2.0 * invert * resist;
@@ -1843,8 +1928,15 @@ fn enemy_mitigation_terms(
         // critical leg only), the enemy's own "resistance does not affect
         // damage taken". "Cannot penetrate or ignore elemental resistances"
         // (`cannot_penetrate_or_ignore_elemental_resistances`) overrides it.
-        let ignores_resist = (player_db.flag(&type_cfg, &format!("Ignore{type_prefix}Resistance"))
-            || enemy_db.flag(&type_cfg, &format!("SelfIgnore{type_prefix}Resistance"))
+        let (ignore_flag, self_ignore_flag) = match damage_type {
+            DamageType::Physical => ("IgnorePhysicalResistance", "SelfIgnorePhysicalResistance"),
+            DamageType::Fire => ("IgnoreFireResistance", "SelfIgnoreFireResistance"),
+            DamageType::Cold => ("IgnoreColdResistance", "SelfIgnoreColdResistance"),
+            DamageType::Lightning => ("IgnoreLightningResistance", "SelfIgnoreLightningResistance"),
+            DamageType::Chaos => ("IgnoreChaosResistance", "SelfIgnoreChaosResistance"),
+        };
+        let ignores_resist = (player_db.flag(&type_cfg, ignore_flag)
+            || enemy_db.flag(&type_cfg, self_ignore_flag)
             || damage_type.is_elemental()
                 && player_db.flag(&type_cfg, "IgnoreElementalResistances"))
             && !(damage_type.is_elemental() && player_db.flag(&type_cfg, "CannotElePenIgnore"));
@@ -1880,12 +1972,13 @@ fn enemy_mitigation_terms(
         // POBR_DBG_ENEMYMIT=1 (for comparison against the oracle's
         // enemyMitigation: resistBase/pen/takenInc/takenMore).
         if dbg_env!("POBR_DBG_ENEMYMIT").is_some() {
+            let resist_short = enemy_resist_names(damage_type)[0];
             eprintln!(
                 "[POBR_ENEMYMIT] {type_prefix}: resist={resist:.2} eff_resist={effective_resist:.2} taken_inc={taken_inc:.2} taken_more={taken_more:.4}"
             );
             for m in enemy_db.iter_mods() {
                 let n = m.name.as_str();
-                if n == format!("{type_prefix}Resist") || n == "ElementalResist" {
+                if n == resist_short || n == "ElementalResist" {
                     eprintln!(
                         "[POBR_ENEMYMIT]   {n} {:?} {:?} origin={:?} tags={:?}",
                         m.mod_type, m.value, m.origin, m.tags
@@ -1905,31 +1998,53 @@ fn enemy_mitigation_terms(
 }
 
 /// The enemy's damage-taken names read as INC and MORE for `damage_type`.
-fn enemy_taken_names(damage_type: DamageType) -> [ModName; 2] {
-    [
-        ModName::from("DamageTaken"),
-        ModName::from(format!("{damage_type:?}DamageTaken")),
-    ]
+fn enemy_taken_names(damage_type: DamageType) -> [&'static str; 2] {
+    let typed = match damage_type {
+        DamageType::Physical => "PhysicalDamageTaken",
+        DamageType::Fire => "FireDamageTaken",
+        DamageType::Cold => "ColdDamageTaken",
+        DamageType::Lightning => "LightningDamageTaken",
+        DamageType::Chaos => "ChaosDamageTaken",
+    };
+    ["DamageTaken", typed]
+}
+
+struct IncOnlyTakenNames {
+    buf: [&'static str; 4],
+    len: usize,
+}
+
+impl IncOnlyTakenNames {
+    fn as_slice(&self) -> &[&'static str] {
+        &self.buf[..self.len]
+    }
 }
 
 /// The enemy's damage-taken names read as INC only, in the order the stage
 /// adds them: elemental, projectile, projectile attack, trap / mine.
-fn enemy_taken_inc_only_names(type_cfg: &CalcConfig, damage_type: DamageType) -> Vec<ModName> {
-    let mut names = Vec::new();
+fn enemy_taken_inc_only_names(type_cfg: &CalcConfig, damage_type: DamageType) -> IncOnlyTakenNames {
+    let mut names = IncOnlyTakenNames {
+        buf: [""; 4],
+        len: 0,
+    };
     if damage_type.is_elemental() {
-        names.push(ModName::from("ElementalDamageTaken"));
+        names.buf[names.len] = "ElementalDamageTaken";
+        names.len += 1;
     }
     if type_cfg.flags.intersects(ModFlags::PROJECTILE) {
-        names.push(ModName::from("ProjectileDamageTaken"));
+        names.buf[names.len] = "ProjectileDamageTaken";
+        names.len += 1;
         if type_cfg.is_attack() {
-            names.push(ModName::from("ProjectileAttackDamageTaken"));
+            names.buf[names.len] = "ProjectileAttackDamageTaken";
+            names.len += 1;
         }
     }
     if type_cfg
         .skill_types
         .intersects(SkillTypes::TRAPPED | SkillTypes::REMOTE_MINED)
     {
-        names.push(ModName::from("TrapMineDamageTaken"));
+        names.buf[names.len] = "TrapMineDamageTaken";
+        names.len += 1;
     }
     names
 }
@@ -1937,15 +2052,14 @@ fn enemy_taken_inc_only_names(type_cfg: &CalcConfig, damage_type: DamageType) ->
 /// The names the enemy's resistance to `damage_type` is summed from. The
 /// parser's `<Type>Resistance` and imported `<Type>Resist` name are aliases.
 /// The three elements also share `ElementalResist` (chaos excluded).
-fn enemy_resist_names(damage_type: DamageType) -> Vec<ModName> {
-    let mut names = vec![
-        ModName::from(format!("{damage_type:?}Resist")),
-        ModName::from(format!("{damage_type:?}Resistance")),
-    ];
-    if damage_type.is_elemental() {
-        names.push(ModName::from("ElementalResist"));
+fn enemy_resist_names(damage_type: DamageType) -> &'static [&'static str] {
+    match damage_type {
+        DamageType::Physical => &["PhysicalResist", "PhysicalResistance"],
+        DamageType::Fire => &["FireResist", "FireResistance", "ElementalResist"],
+        DamageType::Cold => &["ColdResist", "ColdResistance", "ElementalResist"],
+        DamageType::Lightning => &["LightningResist", "LightningResistance", "ElementalResist"],
+        DamageType::Chaos => &["ChaosResist", "ChaosResistance"],
     }
-    names
 }
 
 /// The enemy's own lines behind one damage type's [`EnemyMitigationTerms`].
@@ -1967,25 +2081,19 @@ pub(crate) fn enemy_mitigation_lines<'a>(
 ) -> EnemyMitigationLines<'a> {
     let type_cfg = cfg.clone().with_damage_type(damage_type);
     let defence = if damage_type == DamageType::Physical {
-        enemy_db.evaluate_names(
-            &type_cfg,
-            &[
-                ModName::from("Armour"),
-                ModName::from("PhysicalDamageReduction"),
-            ],
-        )
+        enemy_db.evaluate_names(&type_cfg, &["Armour", "PhysicalDamageReduction"])
     } else {
         let resisting = enemy_resisting_element(enemy_db, &type_cfg, damage_type);
         let resist_cfg = type_cfg.clone().with_damage_type(resisting);
         let names = enemy_resist_names(resisting);
-        let mut lines = enemy_db.evaluate_names(&resist_cfg, &names);
+        let mut lines = enemy_db.evaluate_names(&resist_cfg, names);
         // The same last matching numeric override as enemy_own_resist uses.
         // Shared ElementalResist overrides are not part of that query.
         // Keep the existing short-name override priority, then its alias.
-        let winning = names[..2].iter().find_map(|name| {
+        let winning = names[..2].iter().find_map(|&name| {
             lines.iter().rposition(|line| {
                 line.active
-                    && line.modifier.name == *name
+                    && line.modifier.name.as_str() == name
                     && line.modifier.mod_type == ModType::Override
                     && line.modifier.effective_number(&resist_cfg).is_some()
             })
@@ -2011,7 +2119,7 @@ pub(crate) fn enemy_mitigation_lines<'a>(
         enemy_db
             .evaluate_names(
                 &type_cfg,
-                &enemy_taken_inc_only_names(&type_cfg, damage_type),
+                enemy_taken_inc_only_names(&type_cfg, damage_type).as_slice(),
             )
             .into_iter()
             .filter(|line| line.modifier.mod_type == ModType::Inc),
@@ -2102,25 +2210,17 @@ fn enemy_own_resist(enemy_db: &ModDb, type_cfg: &CalcConfig, damage_type: Damage
         damage_type != DamageType::Physical,
         "physical has no resistance path"
     );
-    let type_prefix = match damage_type {
-        DamageType::Physical => "Physical",
-        DamageType::Fire => "Fire",
-        DamageType::Cold => "Cold",
-        DamageType::Lightning => "Lightning",
-        DamageType::Chaos => "Chaos",
-    };
-    let resist_name = ModName::from(format!("{type_prefix}Resist"));
-    let max_resist = enemy_max_resist_for(enemy_db, type_cfg, type_prefix, &resist_name);
     let names = enemy_resist_names(damage_type);
+    let max_resist = enemy_max_resist_for(enemy_db, type_cfg, damage_type, names[0]);
     let resist = match names[..2]
         .iter()
-        .find_map(|name| enemy_db.override_(type_cfg, name.as_str()))
+        .find_map(|&name| enemy_db.override_(type_cfg, name))
     {
         Some(value) => value,
         None => {
-            let base = enemy_db.sum(ModType::Base, type_cfg, &names);
-            let scale = (1.0 + enemy_db.sum(ModType::Inc, type_cfg, &names) / 100.0)
-                * enemy_db.more(type_cfg, &names);
+            let base = enemy_db.sum(ModType::Base, type_cfg, names);
+            let scale = (1.0 + enemy_db.sum(ModType::Inc, type_cfg, names) / 100.0)
+                * enemy_db.more(type_cfg, names);
             base * scale.max(0.0)
         }
     };
@@ -2142,18 +2242,24 @@ fn enemy_own_resist(enemy_db: &ModDb, type_cfg: &CalcConfig, damage_type: Damage
 fn enemy_max_resist_for(
     enemy_db: &ModDb,
     type_cfg: &CalcConfig,
-    type_prefix: &str,
-    resist_name: &ModName,
+    damage_type: DamageType,
+    resist_name: &str,
 ) -> f64 {
     if enemy_db.flag(type_cfg, "DoNotChangeMaxResFromConfig") {
         return ENEMY_MAX_RESIST;
     }
-    let config_source_id = format!("config.enemy{type_prefix}Resist");
+    let config_source_id = match damage_type {
+        DamageType::Physical => "config.enemyPhysicalResist",
+        DamageType::Fire => "config.enemyFireResist",
+        DamageType::Cold => "config.enemyColdResist",
+        DamageType::Lightning => "config.enemyLightningResist",
+        DamageType::Chaos => "config.enemyChaosResist",
+    };
     let config_input: Option<f64> = enemy_db
         .iter_mods()
         .filter(|m| {
             m.mod_type == ModType::Base
-                && m.name == *resist_name
+                && m.name.as_str() == resist_name
                 && m.origin.as_ref().is_some_and(|o| {
                     o.source_id.kind == SourceKind::EnemyConfig
                         && o.source_id.id == config_source_id
@@ -2198,41 +2304,23 @@ fn apply_penetration(
 /// `Sum("BASE", cfg, <El>PenetrationMinimum, ElementalPenetrationMinimum)`).
 /// Only the three elements have a minimum name space; chaos/physical are always 0.
 fn penetration_minimum(player_db: &ModDb, type_cfg: &CalcConfig, damage_type: DamageType) -> f64 {
-    let names: &[ModName] = &match damage_type {
+    let names: &[&str] = match damage_type {
         DamageType::Physical | DamageType::Chaos => return 0.0,
-        DamageType::Fire => vec![
-            ModName::from("FirePenetrationMinimum"),
-            ModName::from("ElementalPenetrationMinimum"),
-        ],
-        DamageType::Cold => vec![
-            ModName::from("ColdPenetrationMinimum"),
-            ModName::from("ElementalPenetrationMinimum"),
-        ],
-        DamageType::Lightning => vec![
-            ModName::from("LightningPenetrationMinimum"),
-            ModName::from("ElementalPenetrationMinimum"),
-        ],
+        DamageType::Fire => &["FirePenetrationMinimum", "ElementalPenetrationMinimum"],
+        DamageType::Cold => &["ColdPenetrationMinimum", "ElementalPenetrationMinimum"],
+        DamageType::Lightning => &["LightningPenetrationMinimum", "ElementalPenetrationMinimum"],
     };
     player_db.sum(ModType::Base, type_cfg, names)
 }
 
 /// The player's penetration value (%) for a damage type. Physical has no penetration (physical uses the Overwhelm/armour-break path instead).
 fn penetration_value(player_db: &ModDb, type_cfg: &CalcConfig, damage_type: DamageType) -> f64 {
-    let names: &[ModName] = &match damage_type {
+    let names: &[&str] = match damage_type {
         DamageType::Physical => return 0.0,
-        DamageType::Fire => vec![
-            ModName::from("FirePenetration"),
-            ModName::from("ElementalPenetration"),
-        ],
-        DamageType::Cold => vec![
-            ModName::from("ColdPenetration"),
-            ModName::from("ElementalPenetration"),
-        ],
-        DamageType::Lightning => vec![
-            ModName::from("LightningPenetration"),
-            ModName::from("ElementalPenetration"),
-        ],
-        DamageType::Chaos => vec![ModName::from("ChaosPenetration")],
+        DamageType::Fire => &["FirePenetration", "ElementalPenetration"],
+        DamageType::Cold => &["ColdPenetration", "ElementalPenetration"],
+        DamageType::Lightning => &["LightningPenetration", "ElementalPenetration"],
+        DamageType::Chaos => &["ChaosPenetration"],
     };
     player_db.sum(ModType::Base, type_cfg, names)
 }
@@ -2285,7 +2373,7 @@ fn enemy_physical_reduction(
     cfg: &CalcConfig,
     raw_hit: f64,
 ) -> f64 {
-    let armour_names = [ModName::from("Armour")];
+    let armour_names = ["Armour"];
     let mut armour = match enemy_db.override_(cfg, "Armour") {
         Some(value) => value,
         None => {
@@ -2300,29 +2388,22 @@ fn enemy_physical_reduction(
         } else {
             // Vendor :4301 reads the enemy's calcLib.val, not a player-side
             // ignore stat. A negative broken armour value must remain negative.
-            let ignore = enemy_db.sum(ModType::Base, cfg, &[ModName::from("IgnoreArmour")])
-                * (1.0 + enemy_db.sum(ModType::Inc, cfg, &[ModName::from("IgnoreArmour")]) / 100.0)
-                * enemy_db.more(cfg, &[ModName::from("IgnoreArmour")]);
+            let ignore_names = ["IgnoreArmour"];
+            let ignore = enemy_db.sum(ModType::Base, cfg, &ignore_names)
+                * (1.0 + enemy_db.sum(ModType::Inc, cfg, &ignore_names) / 100.0)
+                * enemy_db.more(cfg, &ignore_names);
             armour = (armour - ignore).max(0.0);
         }
     }
-    let as_though_dealing = player_db.more(cfg, &[ModName::from("CalcArmourAsThoughDealing")]);
+    let as_though_dealing = player_db.more(cfg, &["CalcArmourAsThoughDealing"]);
     let from_armour = armour_reduction_pct_signed(
         armour,
         raw_hit * as_though_dealing,
         cfg.constants.game().armour_ratio,
     );
-    let flat_pdr = enemy_db.sum(
-        ModType::Base,
-        cfg,
-        &[ModName::from("PhysicalDamageReduction")],
-    );
+    let flat_pdr = enemy_db.sum(ModType::Base, cfg, &["PhysicalDamageReduction"]);
     // Overwhelm: the player's EnemyPhysicalDamageReduction BASE (usually negative) is added directly to the enemy's PDR.
-    let overwhelm = player_db.sum(
-        ModType::Base,
-        cfg,
-        &[ModName::from("EnemyPhysicalDamageReduction")],
-    );
+    let overwhelm = player_db.sum(ModType::Base, cfg, &["EnemyPhysicalDamageReduction"]);
     (flat_pdr + overwhelm + from_armour).clamp(
         -cfg.constants.game().neg_armour_dmg_bonus_cap,
         ENEMY_PHYS_DMGRED_CAP,
@@ -2350,7 +2431,7 @@ fn armour_reduction_pct_signed(armour: f64, raw_hit: f64, armour_ratio: f64) -> 
 pub(crate) fn more_factor_traced(
     db: &ModDb,
     cfg: &CalcConfig,
-    names: &[ModName],
+    names: &[impl Borrow<str>],
     label: impl Into<String>,
     trace: &mut TraceGraph,
 ) -> TracedValue {
@@ -2416,14 +2497,7 @@ fn apply_total_time(db: &ModDb, cfg: &CalcConfig, scaled_rate: f64) -> f64 {
     // SPELL/ATTACK flag derivation (skill_type_flags) isn't reliable for
     // some builds, and gating would make comet etc. lose the TotalCastTime
     // speed cap (regressed offence parity was observed); summing is more robust.
-    let extra_time = db.sum(
-        ModType::Base,
-        cfg,
-        &[
-            ModName::from("TotalCastTime"),
-            ModName::from("TotalAttackTime"),
-        ],
-    );
+    let extra_time = db.sum(ModType::Base, cfg, &["TotalCastTime", "TotalAttackTime"]);
     let channel_time = super::flameblast::release_time(db, cfg, 1.0 / scaled_rate);
     if extra_time <= 0.0 && channel_time == 1.0 / scaled_rate {
         return scaled_rate;
@@ -2452,7 +2526,7 @@ pub(crate) fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f6
     if db.flag(cfg, "CooldownBypass") {
         return uncapped_rate;
     }
-    let base_cd = db.sum(ModType::Base, cfg, &[ModName::from("SkillCooldownBase")]);
+    let base_cd = db.sum(ModType::Base, cfg, &["SkillCooldownBase"]);
     if base_cd <= 0.0 {
         return uncapped_rate;
     }
@@ -2460,7 +2534,7 @@ pub(crate) fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f6
     // rounded up to the server tick (PoB2 CalcOffence L338-345), sharing the
     // same source read of SkillStoredUsesBase with perform::fill_skill_mechanics.
     let stored = db
-        .sum(ModType::Base, cfg, &[ModName::from("SkillStoredUsesBase")])
+        .sum(ModType::Base, cfg, &["SkillStoredUsesBase"])
         .max(0.0) as u32;
     let cd = super::skill_mechanics::calc_cooldown(db, cfg, base_cd, stored).cooldown;
     if cd <= 0.0 {
@@ -2473,9 +2547,7 @@ pub(crate) fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f6
 /// How many times one use of the skill casts it: `1 + RepeatCount` (Spell
 /// Echo's echoes, see `rules::skill_stats`).
 pub(crate) fn repeats(db: &ModDb, cfg: &CalcConfig) -> f64 {
-    1.0 + db
-        .sum(ModType::Base, cfg, &[ModName::from("RepeatCount")])
-        .max(0.0)
+    1.0 + db.sum(ModType::Base, cfg, &["RepeatCount"]).max(0.0)
 }
 
 /// The server tick rate ceiling (PoB2 CalcOffence L2863-2865): a
@@ -2542,27 +2614,45 @@ impl PoolTerms {
     }
 }
 
+fn pool_extra_and_total_names(
+    name: &str,
+) -> (Cow<'static, str>, Cow<'static, str>, Cow<'static, str>) {
+    match name {
+        "MaximumLife" => (
+            Cow::Borrowed("ExtraLife"),
+            Cow::Borrowed("LifeTotal"),
+            Cow::Borrowed("ExtraLifeTotal"),
+        ),
+        "MaximumMana" => (
+            Cow::Borrowed("ExtraMana"),
+            Cow::Borrowed("ManaTotal"),
+            Cow::Borrowed("ExtraManaTotal"),
+        ),
+        _ => {
+            let pool_name = name.trim_start_matches("Maximum");
+            (
+                Cow::Owned(format!("Extra{pool_name}")),
+                Cow::Owned(format!("{pool_name}Total")),
+                Cow::Owned(format!("Extra{pool_name}Total")),
+            )
+        }
+    }
+}
+
 pub(crate) fn pool_terms(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -> PoolTerms {
-    let names = [ModName::from(name)];
+    let names = [name];
     let converted_pct = pool_conversion_pct(db, cfg, name);
-    let pool_name = name.trim_start_matches("Maximum");
-    let flat = db.sum(
-        ModType::Base,
-        cfg,
-        &[
-            ModName::from(name),
-            ModName::from(format!("Extra{pool_name}")),
-        ],
-    );
+    let (extra_name, total_name, extra_total_name) = pool_extra_and_total_names(name);
+    let flat = db.sum(ModType::Base, cfg, &[name, extra_name.as_ref()]);
     let inc = db.sum(ModType::Inc, cfg, &names);
     let more = db.more(cfg, &names);
     // Discipline grants total ES. Its converted share remains a total,
     // added after the destination pool's increases and multipliers.
-    let total_names = [
-        ModName::from(format!("{pool_name}Total")),
-        ModName::from(format!("Extra{pool_name}Total")),
-    ];
-    let flat_after = db.sum(ModType::Base, cfg, &total_names) * (1.0 - converted_pct / 100.0);
+    let flat_after = db.sum(
+        ModType::Base,
+        cfg,
+        &[total_name.as_ref(), extra_total_name.as_ref()],
+    ) * (1.0 - converted_pct / 100.0);
     // OVERRIDE wins over everything (ChaosInoculation etc. pool clamping).
     let override_value = db.override_(cfg, name);
     // vendor CalcDefence.lua:92-95: `(base × (1 − conv/100) + extra) × (1+inc) × more`.
@@ -2589,30 +2679,29 @@ pub(crate) fn pool_terms(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) ->
 // The separate Extra<res> input prevents matrix feedback. Keep the existing
 // pool deduction order: this rate applies to the combined flat pool.
 fn pool_conversion_pct(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
-    let prefix = match name {
-        "MaximumLife" => "Life",
-        "MaximumMana" => "Mana",
+    let names: &[&str] = match name {
+        "MaximumLife" => &[
+            "LifeConvertToEnergyShield",
+            "LifeConvertToArmour",
+            "LifeConvertToEvasion",
+        ],
+        "MaximumMana" => &[
+            "ManaConvertToEnergyShield",
+            "ManaConvertToArmour",
+            "ManaConvertToEvasion",
+        ],
         _ => return 0.0,
     };
-    db.sum(
-        ModType::Base,
-        cfg,
-        &[
-            ModName::from(format!("{prefix}ConvertToEnergyShield")),
-            ModName::from(format!("{prefix}ConvertToArmour")),
-            ModName::from(format!("{prefix}ConvertToEvasion")),
-        ],
-    )
-    .min(100.0)
+    db.sum(ModType::Base, cfg, names).min(100.0)
 }
 
-fn scaled_numeric_stat(db: &ModDb, cfg: &CalcConfig, base: f64, names: &[ModName]) -> f64 {
+fn scaled_numeric_stat(db: &ModDb, cfg: &CalcConfig, base: f64, names: &[&str]) -> f64 {
     // OVERRIDE wins over base/inc/more (PoB2 semantics: keystones like Chaos
     // Inoculation's "Maximum Life is 1" and Blood Magic's "You have no Mana"
     // clamp the pool value directly). A later write overrides an earlier
     // one; the first matching override is taken.
-    for name in names {
-        if let Some(value) = db.override_(cfg, name.as_str()) {
+    for &name in names {
+        if let Some(value) = db.override_(cfg, name) {
             return round(value);
         }
     }
@@ -2630,7 +2719,7 @@ fn scaled_pool_traced(
     output_label: &str,
     trace: &mut TraceGraph,
 ) -> TracedValue {
-    let names = [ModName::from(stat_name)];
+    let names = [stat_name];
     // OVERRIDE wins over base/inc/more (PoB2's keystone pool-clamping semantics, see scaled_numeric_stat).
     let (override_value, override_node) =
         db.override_traced(cfg, stat_name, trace, format!("{stat_name} OVERRIDE"));
@@ -2652,13 +2741,11 @@ fn scaled_pool_traced(
         base,
         SourceId::new(SourceKind::CharacterBase, format!("base.{stat_name}")),
     );
+    let (extra_name, total_name, extra_total_name) = pool_extra_and_total_names(stat_name);
     let base_mods = db.sum_traced(
         ModType::Base,
         cfg,
-        &[
-            ModName::from(stat_name),
-            ModName::from(format!("Extra{}", stat_name.trim_start_matches("Maximum"))),
-        ],
+        &[stat_name, extra_name.as_ref()],
         trace,
         format!("{stat_name} BASE modifier sum"),
     );
@@ -2695,14 +2782,10 @@ fn scaled_pool_traced(
     trace.add_edge(base_total_node, scaled_node);
     trace.add_edge(inc_mods.node_id, scaled_node);
     trace.add_edge(more_node, scaled_node);
-    let total_name = format!("{}Total", stat_name.trim_start_matches("Maximum"));
     let total_mods = db.sum_traced(
         ModType::Base,
         cfg,
-        &[
-            ModName::from(total_name.as_str()),
-            ModName::from(format!("Extra{total_name}")),
-        ],
+        &[total_name.as_ref(), extra_total_name.as_ref()],
         trace,
         format!("{total_name} direct modifier sum"),
     );
@@ -2729,7 +2812,7 @@ fn additive_stat_traced(
     output_label: &str,
     trace: &mut TraceGraph,
 ) -> TracedValue {
-    let names = [ModName::from(stat_name)];
+    let names = [stat_name];
     let base_node = trace.add_source_node(
         format!("base {stat_name}"),
         base,

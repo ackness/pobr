@@ -69,7 +69,7 @@ pub fn calculate(env: &mut Env) {
         .max_of(
             ModType::Base,
             &cfg,
-            &[ModName::from("ThaumaturgicalDynamismChargeInterval")],
+            &["ThaumaturgicalDynamismChargeInterval"],
         )
         .max(0.0);
     env.player.output.charge_generation = ChargeGeneration {

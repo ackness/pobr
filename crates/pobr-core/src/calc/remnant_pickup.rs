@@ -73,18 +73,10 @@ pub(super) fn calculate(env: &mut Env) {
     let db = env.player.mod_db.filtered(is_player_source);
     let cfg = utility::query_config(&env.cfg);
     let percent = db
-        .sum(
-            ModType::Base,
-            &cfg,
-            &[ModName::from("RemnantManaRecoveryPercent")],
-        )
+        .sum(ModType::Base, &cfg, &["RemnantManaRecoveryPercent"])
         .max(0.0);
     let chance = db
-        .sum(
-            ModType::Base,
-            &cfg,
-            &[ModName::from("CreatedRemnantDuplicateChance")],
-        )
+        .sum(ModType::Base, &cfg, &["CreatedRemnantDuplicateChance"])
         .clamp(0.0, 100.0);
     let combat = f64::from(cfg.mode_combat);
     let mana = env.player.output.mana.max(0.0);

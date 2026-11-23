@@ -105,21 +105,50 @@ use super::Env;
 struct AilmentSpec {
     /// Vendor's canonical ailment name (the mod name prefix): "Chill" / "Shock".
     name: &'static str,
-    /// Enemy condition name (`Condition:<X>`): "Chilled" / "Shocked".
-    condition: &'static str,
     /// Condition used by derived mods in the shared calculation namespace.
     config_condition: &'static str,
+    max_name: &'static str,
+    val_name: &'static str,
+    base_name: &'static str,
+    override_name: &'static str,
+    minimum_name: &'static str,
+    already_flag: &'static str,
+    cond_flag: &'static str,
+    enemy_magnitude: &'static str,
+    self_magnitude: &'static str,
+    effect_multiplier: &'static str,
+    origin_id: &'static str,
 }
 
 const CHILL: AilmentSpec = AilmentSpec {
     name: "Chill",
-    condition: "Chilled",
     config_condition: "EnemyChilled",
+    max_name: "ChillMax",
+    val_name: "ChillVal",
+    base_name: "ChillBase",
+    override_name: "ChillOverride",
+    minimum_name: "ChillMinimum",
+    already_flag: "Condition:AlreadyChilled",
+    cond_flag: "Condition:Chilled",
+    enemy_magnitude: "EnemyChillMagnitude",
+    self_magnitude: "SelfChillMagnitude",
+    effect_multiplier: "Multiplier:ChillEffect",
+    origin_id: "ailment.chill",
 };
 const SHOCK: AilmentSpec = AilmentSpec {
     name: "Shock",
-    condition: "Shocked",
     config_condition: "EnemyShocked",
+    max_name: "ShockMax",
+    val_name: "ShockVal",
+    base_name: "ShockBase",
+    override_name: "ShockOverride",
+    minimum_name: "ShockMinimum",
+    already_flag: "Condition:AlreadyShocked",
+    cond_flag: "Condition:Shocked",
+    enemy_magnitude: "EnemyShockMagnitude",
+    self_magnitude: "SelfShockMagnitude",
+    effect_multiplier: "Multiplier:ShockEffect",
+    origin_id: "ailment.shock",
 };
 
 impl AilmentSpec {
@@ -152,11 +181,10 @@ impl MaximumTerms {
 /// `Maximum<X>` terms for `"Chill"`; any other name reads Shock.
 pub fn maximum_terms(player: &ModDb, cfg: &CalcConfig, name: &str) -> MaximumTerms {
     let spec = if name == "Chill" { &CHILL } else { &SHOCK };
-    let max_name = ModName::from(format!("{}Max", spec.name));
     MaximumTerms {
-        override_value: player.override_(cfg, max_name.as_str()),
+        override_value: player.override_(cfg, spec.max_name),
         game_maximum: spec.data_max(cfg),
-        bonus: player.sum(ModType::Base, cfg, std::slice::from_ref(&max_name)),
+        bonus: player.sum(ModType::Base, cfg, &[spec.max_name]),
     }
 }
 
@@ -214,8 +242,7 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> AppliedAilment {
     let player = &env.player.mod_db;
     let enemy = &env.enemy.mod_db;
 
-    let val_name = ModName::from(format!("{}Val", spec.name));
-    let enemy_val = enemy.sum(ModType::Base, &cfg, std::slice::from_ref(&val_name));
+    let enemy_val = enemy.sum(ModType::Base, &cfg, &[spec.val_name]);
 
     let mut sources = collect_player_sources(player, &cfg, spec);
     let selected_shock = spec.name == "Shock"
@@ -225,7 +252,7 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> AppliedAilment {
     // particular, a weaker explicit/external Shock must not be raised to the
     // character's inferred magnitude, and guaranteed sources still take their
     // existing strongest-wins path. Presence matters even for a zero-valued mod.
-    let has_enemy_value = enemy.named(val_name.as_str()).any(|modifier| {
+    let has_enemy_value = enemy.named(spec.val_name).any(|modifier| {
         modifier.mod_type == ModType::Base
             && modifier.matches(&cfg)
             && modifier.effective_number(&cfg).is_some()
@@ -253,8 +280,7 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> AppliedAilment {
         return not_applied;
     }
     // `Condition:Already<cond>` prevents duplicate application (:3130).
-    let already_name = ModName::from(format!("Condition:Already{}", spec.condition));
-    if enemy.flag(&cfg, already_name.as_str()) {
+    if enemy.flag(&cfg, spec.already_flag) {
         return not_applied;
     }
 
@@ -290,9 +316,7 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> AppliedAilment {
     let current = strongest.max(enemy_val).min(maximum).floor();
 
     // Condition-bridging decision must read before writing (override source / existing enemy db condition flag).
-    let cond_flag_name = ModName::from(format!("Condition:{}", spec.condition));
-    let condition_active =
-        selected_shock || override_seen || enemy.flag(&cfg, cond_flag_name.as_str());
+    let condition_active = selected_shock || override_seen || enemy.flag(&cfg, spec.cond_flag);
 
     // Bonechill branch decision (Chill-only, :3092-3094; see the module doc's "Known differences" for the approximation).
     let bonechill = spec.name == "Chill"
@@ -300,15 +324,14 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> AppliedAilment {
         && (enemy_val > 0.0 || override_seen);
 
     // Write stage (all writes to the enemy db / cfg.conditions are applied together after reads are done)
-    let origin_id = format!("ailment.{}", spec.name.to_lowercase());
-    let origin = || ModifierSource::new(SourceId::new(SourceKind::Derived, origin_id.clone()));
+    let origin = || ModifierSource::new(SourceId::new(SourceKind::Derived, spec.origin_id));
     let cond_tag = || ModTag::condition(spec.config_condition, false);
 
     let mut new_mods: Vec<Modifier> = Vec::new();
     // An Override source sets enemy `Condition:<cond>` (:3136-3138; merged into a single flag).
     if override_seen {
         new_mods.push(
-            Modifier::flag(cond_flag_name)
+            Modifier::flag(spec.cond_flag)
                 .with_source(spec.name)
                 .with_origin(origin()),
         );
@@ -341,7 +364,7 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> AppliedAilment {
     }
     // The same target-state gate prevents another actor applying it twice.
     new_mods.push(
-        Modifier::flag(already_name)
+        Modifier::flag(spec.already_flag)
             .with_tag(cond_tag())
             .with_source(spec.name)
             .with_origin(origin()),
@@ -373,18 +396,15 @@ fn collect_player_sources(
     cfg: &CalcConfig,
     spec: &AilmentSpec,
 ) -> Vec<(SourceKind3, f64)> {
-    let base_name = ModName::from(format!("{}Base", spec.name));
-    let override_name = ModName::from(format!("{}Override", spec.name));
-    let minimum_name = ModName::from(format!("{}Minimum", spec.name));
     [
-        (SourceKind3::Base, &base_name),
-        (SourceKind3::Override, &override_name),
-        (SourceKind3::Minimum, &minimum_name),
+        (SourceKind3::Base, spec.base_name),
+        (SourceKind3::Override, spec.override_name),
+        (SourceKind3::Minimum, spec.minimum_name),
     ]
     .into_iter()
     .flat_map(|(kind, name)| {
         player
-            .named(name.as_str())
+            .named(name)
             .filter(|modifier| modifier.mod_type == ModType::Base && modifier.matches(cfg))
             .filter_map(move |modifier| Some((kind, modifier.effective_number(cfg)?)))
     })
@@ -396,14 +416,8 @@ fn collect_player_sources(
 /// `Self<X>Magnitude`/`AilmentMagnitude` (enemy db), each computed as
 /// `(1 + Σinc/100) × Πmore` (calcLib.mod).
 fn ailment_magnitude(player: &ModDb, enemy: &ModDb, cfg: &CalcConfig, spec: &AilmentSpec) -> f64 {
-    let skill_names = [
-        ModName::from(format!("Enemy{}Magnitude", spec.name)),
-        ModName::from("AilmentMagnitude"),
-    ];
-    let enemy_names = [
-        ModName::from(format!("Self{}Magnitude", spec.name)),
-        ModName::from("AilmentMagnitude"),
-    ];
+    let skill_names = [spec.enemy_magnitude, "AilmentMagnitude"];
+    let enemy_names = [spec.self_magnitude, "AilmentMagnitude"];
     let skill_side = (1.0 + player.sum(ModType::Inc, cfg, &skill_names) / 100.0)
         * player.more(cfg, &skill_names);
     let enemy_side =
@@ -413,18 +427,17 @@ fn ailment_magnitude(player: &ModDb, enemy: &ModDb, cfg: &CalcConfig, spec: &Ail
 
 /// `Multiplier:<X>Effect` incremental update (:3173-3180): tops up the difference when the existing Σ BASE < Current.
 fn update_effect_multiplier(env: &mut Env, spec: &AilmentSpec, current: f64) {
-    let name = ModName::from(format!("Multiplier:{}Effect", spec.name));
     let existing = env
         .enemy
         .mod_db
-        .sum(ModType::Base, &env.cfg, std::slice::from_ref(&name));
+        .sum(ModType::Base, &env.cfg, &[spec.effect_multiplier]);
     if existing < current {
         env.enemy.mod_db.add_mod(
-            Modifier::number(name, ModType::Base, current - existing)
+            Modifier::number(spec.effect_multiplier, ModType::Base, current - existing)
                 .with_source(spec.name)
                 .with_origin(ModifierSource::new(SourceId::new(
                     SourceKind::Derived,
-                    format!("ailment.{}", spec.name.to_lowercase()),
+                    spec.origin_id,
                 ))),
         );
     }
