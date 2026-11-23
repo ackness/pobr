@@ -11,7 +11,7 @@
 
 `examples/wasm-benchmark/builds` 的 8 个构筑同样已被逐个修过，属于前一类。`tuned/selection-holdout-2026-10-13.json` 与 `tuned/selection-holdout-2026-10-15.json` 是并入 `tuned/` 的两批 holdout 的抓取记录。
 
-`ninja-top10-2026-10-26/` 是额外的 Forbidden Rites 活动服样本：固定快照 `0757-20261026-16736`，按网站默认等级降序保留每个升华的前十行及同级原顺序，共 230 个码。它使用排名选择，与下文 `builds:fetch` 的账号排序不同。`build-codes.json` 是码合集，`index.csv` 和 `selection.json` 记录来源，`validation.json` 记录完整性校验。本批已用于引擎修复，不是独立 holdout，也没有加入默认门禁语料。运行 `mise run accuracy examples/reference-builds/ninja-top10-2026-10-26/builds` 可复测整批；默认模式与参考模式应分开测量，两者都不是游戏实测真值。
+`ninja-top10-2026-10-26/` 是额外的 Forbidden Rites 活动服样本：固定快照 `0757-20261026-16736`，按网站默认等级降序保留每个升华的前十行及同级原顺序，共 230 个码。它使用排名选择，与下文 `builds:fetch` 的账号排序不同。`index.csv` 和 `selection.json` 记录来源，`validation.json` 记录完整性校验。本批已用于引擎修复，不是独立 holdout，也没有加入默认门禁语料。运行 `mise run accuracy examples/reference-builds/ninja-top10-2026-10-26/builds` 可复测整批；默认模式与参考模式应分开测量，两者都不是游戏实测真值。
 
 
 `batch-2026-10-27/` 保存了抓取脚本联网核验时取得的 23 个新构筑，来自 Forbidden Rites 普通服快照 `1537-20261027-28463`。按账号和角色名排序、排除已有角色后，每个升华取第一个；[selection.json](batch-2026-10-27/selection.json) 记录来源和选择，[validation.json](batch-2026-10-27/validation.json) 记录构筑码完整性校验。这批样本尚未做计算准确度评估，也未加入默认门禁语料。

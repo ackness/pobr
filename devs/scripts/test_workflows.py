@@ -719,7 +719,7 @@ pathlib.Path(sys.argv[sys.argv.index("-o") + 1]).write_text("{}", encoding="utf-
 
 
 class OracleRuntimeTests(unittest.TestCase):
-    """Exercise runtime selection and bootstrap failures without PoB2 or a compiler."""
+    """Exercise runtime selection and install failures without PoB2 or a compiler."""
 
     def setUp(self):
         temp = tempfile.TemporaryDirectory(prefix="pobr oracle runtime ")
@@ -877,15 +877,15 @@ pathlib.Path(os.environ["TARGET_CAPTURE"]).write_text(os.environ["MACOSX_DEPLOYM
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual((self.root / "deployment-target").read_text(), expected)
 
-    def test_failed_install_stops_bootstrap_and_cleans_partial_cache(self):
+    def test_failed_install_cleans_partial_cache(self):
         # No real network or compiler work; failed Git acquisition is terminal.
         for name in ("git", "make", "cc"):
             path = self.root / "bin" / name
             path.write_text("#!/usr/bin/env bash\nexit 29\n", encoding="utf-8")
             path.chmod(0o755)
-        result = self.run_script("devs/scripts/driver.sh", "bootstrap")
+        result = self.run_script("devs/scripts/driver.sh", "deps")
         self.assertEqual(result.returncode, 29, result.stdout + result.stderr)
-        self.assertFalse((self.root / "vendor").exists())
+        self.assertFalse((self.root / ".cache/runtime/bin/luajit").exists())
         self.assertEqual(list((self.root / "cache/pobr/runtimes").iterdir()), [])
 
     def test_install_publishes_compatible_runtime_and_is_idempotent(self):

@@ -4,7 +4,7 @@
 
 > **核心心智模型（对 pobr 最关键的一条）**：召唤物在 PoB2 里是一个**独立的 Actor**（`env.minion`，持有自己的 `modDB` / `output`），它的伤害/防御走的是**与玩家完全相同的 CalcOffence/CalcDefence 管线**——只是把 Actor 换成召唤物、`modDB` 换成召唤物自己的库。玩家身上的普通词条**默认不传递**给召唤物；只有形如「Minions deal/have …」「光环/盟友 buff」「`MinionModifier`」的东西才会被显式注入召唤物的 `modDB`。
 
-> 本文与既有文档**互补、不重复**：宝石类型/精神宝石/品质见 [gems.md](./gems.md)；伤害 added/inc/more 叠加、转换、Gain as Extra、双三倍见 [damage-scaling.md](./damage-scaling.md)；暴击几率/爆伤链见 [critical-hits.md](./critical-hits.md)；充能默认值、Spirit 保留、Presence、增益效果 (BuffEffect) 见 [recovery-charges-buffs.md](./recovery-charges-buffs.md)。本文只补「召唤物作为独立 Actor 的基础属性来源 + player→minion 传递规则 + 召唤物专属机制」。末尾「## 对 pobr 实现的启示」给落地建议，「## 参考来源」给脚注。
+> 本文与既有文档**互补、不重复**：伤害 added/inc/more 叠加、转换、Gain as Extra、双三倍见 [damage-scaling.md](./damage-scaling.md)；暴击几率/爆伤链见 [critical-hits.md](./critical-hits.md)；充能默认值、Spirit 保留、Presence、增益效果 (BuffEffect) 见 [recovery-charges-buffs.md](./recovery-charges-buffs.md)。本文只补「召唤物作为独立 Actor 的基础属性来源 + player→minion 传递规则 + 召唤物专属机制」。末尾「## 对 pobr 实现的启示」给落地建议，「## 参考来源」给脚注。
 
 ---
 

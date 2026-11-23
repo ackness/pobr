@@ -3,21 +3,18 @@
 本文档梳理 PoE2（0.5.0）的**物品/角色"系统功能面"**机制：稀有度与数量、物品等级、需求、插槽 / 符文 / 灵魂核心、品质、角色等级与点数来源、珠宝、瓶子 / 护符。
 
 > 与既有文档**互补、不重复**：
-> - 前后缀 / 修饰词等级 / 制作流程见 [crafting.md](./crafting.md)；通货球体见 [currency.md](./currency.md)；
-> - 三大属性派生（力量→生命、敏捷→精准、智力→魔力）见 [attributes.md](./attributes.md)；
-> - 宝石标签 / 类型 / Spirit / 转化宝石见 [gems.md](./gems.md) 与 [meta-gems.md](./meta-gems.md)；
 > - 充能（Charges）获取 / 上限 / 持续、偷取 / 再生、瓶子充能恢复见 [recovery-charges-buffs.md](./recovery-charges-buffs.md)；
 > - 战役永久奖励（属性点、抗性奖励、Boon 重选）见 [campaign-rewards.md](./campaign-rewards.md)。
 >
-> 本文只补它们没覆盖的**系统功能面**，并交叉引用。末尾「PoB2 数据核对」给出真实变量 / 常量名，是 pobr 的回归基准。
+> 本文聚焦**系统功能面**，并交叉引用。末尾「PoB2 数据核对」给出真实变量 / 常量名，是 pobr 的回归基准。
 
 ---
 
 ## 一、物品稀有度与数量 (Item Rarity / Quantity, Magic Find)
 
-### 1.1 物品稀有度（与 crafting.md 交叉引用，不重复显性词条上限）
+### 1.1 物品稀有度
 
-四档稀有度：普通 (Normal, 灰) / 魔法 (Magic, 蓝) / 稀有 (Rare, 黄) / 传奇 (Unique, 棕)[^poe2wiki-rare]。显性词条上限见 [crafting.md](./crafting.md)（魔法 2 / 稀有 6 / 传奇不可改）。**通货、瓶子、护符、符文等没有这四档稀有度**，只有内部掉落权重。
+四档稀有度：普通 (Normal, 灰) / 魔法 (Magic, 蓝) / 稀有 (Rare, 黄) / 传奇 (Unique, 棕)[^poe2wiki-rare]（显性词条上限：魔法 2 / 稀有 6 / 传奇不可改）。**通货、瓶子、护符、符文等没有这四档稀有度**，只有内部掉落权重。
 
 ### 1.2 增加物品稀有度 / 数量 (IIR / IIQ = Magic Find)
 
@@ -43,11 +40,11 @@
 
 物品等级 (item level, iLvl) 由**发现该物品的区域等级**决定，与"装备需求等级 (required level)"是两个独立概念[^orbis-ilvl]。
 
-- iLvl 决定①该物品能出现哪些词条、②词条能达到的**最高等级 (tier)**——前后缀 / 等级范围细节见 [crafting.md](./crafting.md)，此处不重复。
+- iLvl 决定①该物品能出现哪些词条、②词条能达到的**最高等级 (tier)**。
 - 低 iLvl 物品**无法"幸运地"**滚出高等级词条；这是确定性约束，不是概率[^orbis-ilvl]。
 - 同一词条，不同 iLvl 物品能滚到的最高 tier 不同——故低 iLvl 物品有时反而更易滚到想要的中 tier（候选 tier 池更小）[^alphagamer-tiers]。
 
-### 重要 iLvl 断点（0.5.0，gearing 参考）[^crafting-breakpoints][^mobalytics-gearing]
+### 重要 iLvl 断点（0.5.0，gearing 参考）[^mobalytics-gearing]
 
 | 断点 | iLvl | 解锁 |
 |------|------|------|
@@ -74,7 +71,7 @@ PoE2 装备 / 宝石可有**属性需求**（力量 / 敏捷 / 智力）和**等
 
 ## 四、插槽系统：符文 / 灵魂核心 / 增强物 (Sockets / Runes / Soul Cores / Augments)
 
-> **与 PoE1 的根本差异**：PoE2 装备**没有连线 (links) / 颜色插槽**。技能宝石独立存在、辅助宝石直接挂在技能上（见 [gems.md](./gems.md)），靠 **Spirit** 限制持续效果数量。装备插槽专门用来塞**增强物 (Augments)**——符文 / 灵魂核心 / 护身符 (Talismans) / Idols[^mobalytics-runes][^game8-sockets]。
+> **与 PoE1 的根本差异**：PoE2 装备**没有连线 (links) / 颜色插槽**。技能宝石独立存在、辅助宝石直接挂在技能上，靠 **Spirit** 限制持续效果数量。装备插槽专门用来塞**增强物 (Augments)**——符文 / 灵魂核心 / 护身符 (Talismans) / Idols[^mobalytics-runes][^game8-sockets]。
 
 ### 4.1 插槽数量上限
 
@@ -101,11 +98,11 @@ PoE2 装备 / 宝石可有**属性需求**（力量 / 敏捷 / 智力）和**等
 
 - **符文 (Runes)**：到处可掉，效果简单（如 Glacial Rune：武器 +6~10 冰伤 / 护甲 +12% 冰抗）。有 Lesser / 普通 / Greater 三档。0.5.0 起符文获得**法杖 / 短杖专属词条**（Desert/Glacial/Storm/Iron/Body/Mind/Rebirth/Inspiration/Stone/Vision 等）[^game8-sockets][^poe2wiki-augments]。
 - **灵魂核心 (Soul Cores)**：仅 **Trials of Chaos** 奖励，效果更强 / 更独特（如 `Soul Core of Ticaba`：武器 +12% 爆伤 / 护甲"对你的击中减 10% 爆伤"，见 [critical-hits.md](./critical-hits.md)）。可有 Spirit / IIR 等高级词条。
-- **作为附魔显示**：增强物效果以**附魔 (enchantment)** 形式出现在物品上（见 [crafting.md](./crafting.md) 附魔段）[^poe2wiki-augments]。
+- **作为附魔显示**：增强物效果以**附魔 (enchantment)** 形式出现在物品上[^poe2wiki-augments]。
 
-### 4.3 局部 vs 全局（与 crafting.md 局部 / 全局段呼应）
+### 4.3 局部 vs 全局
 
-灵魂核心在**武器**里的词条通常是**局部 (local)**——只作用于该武器的击中（如 "with this weapon"、武器局部爆伤）；在**护甲**里通常是**全局**（抗性、最大生命等）。这与 [crafting.md](./crafting.md) 的 local/global 区分一致，pobr 需保留这层语义。
+灵魂核心在**武器**里的词条通常是**局部 (local)**——只作用于该武器的击中（如 "with this weapon"、武器局部爆伤）；在**护甲**里通常是**全局**（抗性、最大生命等）。pobr 需保留这层 local/global 语义区分。
 
 ### 4.4 0.5.0 变化
 
@@ -154,14 +151,12 @@ PoE2 装备 / 宝石可有**属性需求**（力量 / 敏捷 / 智力）和**等
 
 ---
 
-## 六、宝石等级与品质曲线（与 gems.md 交叉引用补功能面）
-
-宝石标签 / 类型 / Spirit / 转化宝石见 [gems.md](./gems.md)。此处补**等级 / 品质功能面**：
+## 六、宝石等级与品质曲线
 
 - **等级上限**：技能宝石自然最高 **level 20**（`naturalMaxLevel = 20`），腐化 +1 → **21**[^pob-gems][^poe2wiki-gem]。用 `Uncut Skill Gem` 雕刻 / 升级，雕出来的等级 = 未切割宝石的等级。
 - **辅助宝石没有品质**（不能加）[^poe2wiki-quality]。
 - **技能宝石品质效果因技能而异**（不是统一"+伤害"）；`Gemcutter's Prism` 每次固定 +5%[^poe2wiki-quality]。技能宝石掉落时**无品质**（未切割宝石无品质）。
-- **0.5.0 额外品质**：所有宝石现在都有按住 **Alt 查看的额外品质属性**；`Gemling Legionnaire` 的 `Advanced Thaumaturgy` 改为"宝石品质赋予插槽技能额外效果"[^maxroll-050]（见 [gems.md](./gems.md) 0.5.0 段）。
+- **0.5.0 额外品质**：所有宝石现在都有按住 **Alt 查看的额外品质属性**；`Gemling Legionnaire` 的 `Advanced Thaumaturgy` 改为"宝石品质赋予插槽技能额外效果"[^maxroll-050]。
 - **全局宝石品质**（如 Body Armour "+2% Quality of all Skills"）**独立于 20% 默认上限**，>20% 部分仍继续叠加[^poe2wiki-quality]。
 - **升华技能**：Ascendancy 授予的技能等级与辅助插槽**随角色等级自动缩放**[^poe2wiki-gem]。
 
@@ -172,7 +167,7 @@ PoE2 装备 / 宝石可有**属性需求**（力量 / 敏捷 / 智力）和**等
 ### 7.1 等级与经验
 
 - 每升 1 级获得 **1 个被动天赋点**；部分任务额外给点[^mobalytics-tree]。
-- 角色等级派生生命 / 魔力 / 精准（见 [attributes.md](./attributes.md)：基础生命 28 + 12/级 + 2/Str；魔力 34 + 4/级 + 2/Int；精准 6/级 + 6/Dex）。1 级基础闪避 7、基础速度 37[^pob-misc]。
+- 角色等级派生生命 / 魔力 / 精准（基础生命 28 + 12/级 + 2/Str；魔力 34 + 4/级 + 2/Int；精准 6/级 + 6/Dex）。1 级基础闪避 7、基础速度 37[^pob-misc]。
 - 终局起始区域等级 **65**（`EndgameStartLevel = 65`）[^pob-misc]。
 
 ### 7.2 被动天赋点来源
@@ -203,7 +198,7 @@ PoE2 角色默认有 **2 个武器组 (weapon sets)**（`base_number_of_weapon_s
 ### 7.5 重置 (Respec) 与属性点
 
 - **随时可重置**被动，在 The Hooded One / Doryani 处花**黄金**；按已分配点数累进定价，PoB 用 `data.goldRespecPrices` 表（1→15、2→19、…、100→10129 金）[^pob-misc][^mobalytics-tree]。
-- **属性点**：PoE2 **没有**独立分配的属性点，属性靠**被动树节点 + 装备 + 珠宝 + 升华 + 战役奖励**获得（见 [attributes.md](./attributes.md) §属性获取）。旅行节点的 +5 属性类型可随时重选。
+- **属性点**：PoE2 **没有**独立分配的属性点，属性靠**被动树节点 + 装备 + 珠宝 + 升华 + 战役奖励**获得。旅行节点的 +5 属性类型可随时重选。
 - 地图集天赋树重置 `AtlasPassiveRespecCost = 5000`[^pob-misc]。
 
 ---
@@ -281,7 +276,7 @@ PoE2 把 PoE1 的 utility 瓶职能搬到**护符**——装在腰带的护符�
 
 ### pobr-build
 
-6. **角色派生**：从职业起始属性 + 等级 + 属性派生生命 / 魔力 / 精准（见 attributes.md），别用全 0 默认。
+6. **角色派生**：从职业起始属性 + 等级 + 属性派生生命 / 魔力 / 精准，别用全 0 默认。
 7. **点数预算**：被动点（升级 + 任务，~123）、武器组点（24，转化常规点而非新增）、觉醒点（8 = 4×2）、地图集点；respec 成本用 `goldRespecPrices` 表 / `AscendancyRespecCost` / `AtlasPassiveRespecCost`。
 8. **武器组 (weapon sets)**：2 组各自武器 / Spirit / 武器组天赋子树；计算需支持按 active set 切换快照（Keystone / 珠宝插槽不分组）。
 9. **瓶子 / 护符**：瓶子只生命 / 魔力（utility 移到护符）；护符是条件触发 buff——建模为带触发条件的 buff 提供者，充能管线复用 recovery-charges-buffs.md。
@@ -313,7 +308,6 @@ PoE2 把 PoE1 的 utility 瓶职能搬到**护符**——装在腰带的护符�
 [^thegamer-runes]: TheGamer — Runes / Soul Cores / Talismans / Sockets Guide. https://www.thegamer.com/path-of-exile-2-poe2-runes-soul-cores-talismans-sockets-effects-guide/
 [^orbis-ilvl]: Orbis — How important is item level in PoE 2. https://orbispatches.com/gaming-faq/how-important-is-item-level-in-poe-2
 [^alphagamer-tiers]: Alphagamer — Item Modifiers, Modifier Tiers and Item Tiers. https://legacy.alphagamer.net/path-of-exile-2-understanding-item-modifiers-modifier-tiers-and-item-tiers/
-[^crafting-breakpoints]: 见本仓 [crafting.md](./crafting.md) §重要断点。
 [^poe2-tree-report]: PoE2 Passive Tree 0.4→0.5 Change Report（Sinister Jewel Sockets）. https://poe2-05-tree.netlify.app/
 [^maxroll-050]: Maxroll — 0.5.0 Patch Notes – Return of the Ancients. https://maxroll.gg/poe2/news/0-5-0-patch-notes-return-of-the-ancients
 [^pob-misc]: PathOfBuilding-PoE2 — `src/Data/Misc.lua`（gameConstants / characterConstants / goldRespecPrices）. https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/blob/dev/src/Data/Misc.lua
