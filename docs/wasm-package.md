@@ -63,7 +63,7 @@ mise run web smoke-wasm-package
 输出在 `.cache/wasm-release/`。打包复用已有 WASM 和完整 Web 数据清单，
 包含共享 overlay 与 i18n，不包含 UI、图片、玩家示例构筑和维护审计报告。
 
-`build-wasm` 选择 `wasm-release` profile：release 优化、ThinLTO、一个 codegen unit，
+`build-wasm` 选择 `wasm-release` profile：`opt-level = "s"` 体积优化、全量 LTO、一个 codegen unit，
 不改变 dev/test 设置。
 
 构建前检查源码指纹、工具版本、相关环境与 Cargo 配置、生成绑定哈希，以及编译出的 schema。

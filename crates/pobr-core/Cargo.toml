@@ -18,7 +18,7 @@ pobr-data.workspace = true
 # Full-line anchored matching for special mod templates (rules::special_mod, RegexSet built on load).
 regex.workspace = true
 # Parses a special pattern to count its capture groups at load, without compiling it.
-regex-syntax = "0.8"
+regex-syntax = { version = "0.8", default-features = false, features = ["std", "unicode-case", "unicode-perl"] }
 # Data-driven parser engine (plain phrase index + literal prefilter) — unconditional dependency.
 aho-corasick.workspace = true
 # Test-rules only (deserializes rule files); omitted when the feature is off to keep zero I/O.
