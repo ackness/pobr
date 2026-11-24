@@ -668,15 +668,16 @@ pub fn buff_skill_specs(
                     // zone, reads skillModList): the curse gem's own quality segment +
                     // the **compatible** supports in the group's payload, pre-scaled
                     // via the statmap global segment `curse_local_effect`.
-                    let (local_effect_inc, local_effect_more) = curse_local_effect_scale(
-                        ctx,
-                        &group,
-                        data,
-                        gem,
-                        skill_id,
-                        level,
-                        use_alt_quality,
-                    );
+                    let (local_effect_inc, local_effect_more, skill_types) =
+                        curse_local_effect_scale(
+                            ctx,
+                            &group,
+                            data,
+                            gem,
+                            skill_id,
+                            level,
+                            use_alt_quality,
+                        );
                     let spec = BuffSpec {
                         name: buff_skill_name(data, skill_id),
                         kind: BuffKind::Curse,
@@ -689,16 +690,24 @@ pub fn buff_skill_specs(
                         ignore_curse_limit: false,
                         local_effect_inc,
                         local_effect_more,
-                        skill_types: pobr_data::skill::SkillTypes::NONE,
+                        skill_types,
                     };
                     // "Debuffs of the same type do not stack, and only the copy
                     // with the strongest effect applies": of the groups that
-                    // use the same curse, the one whose curse is strongest
-                    // before the character's and the enemy's shared factors.
-                    match specs
-                        .iter_mut()
-                        .find(|other| other.kind == BuffKind::Curse && other.skill_id == skill_id)
-                    {
+                    // use the same curse with the same delivery kind (aura vs
+                    // non-aura), keep the strongest; aura vs non-aura copies
+                    // both proceed to curse priority resolution.
+                    let is_aura = spec
+                        .skill_types
+                        .contains(pobr_data::skill::SkillTypes::AURA);
+                    match specs.iter_mut().find(|other| {
+                        other.kind == BuffKind::Curse
+                            && other.skill_id == skill_id
+                            && other
+                                .skill_types
+                                .contains(pobr_data::skill::SkillTypes::AURA)
+                                == is_aura
+                    }) {
                         Some(other) if curse_strength(&spec) > curse_strength(other) => {
                             *other = spec;
                         }
@@ -912,7 +921,8 @@ pub fn strongest_skill_blind(
 /// `curse_effect_+%`) + the effect stats of **compatible** supports in the group.
 ///
 /// stat → (INC, MORE) conversion goes through statmap data
-/// ([`stat_map_engine::curse_local_effect`]). No catalog → (0, 1).
+/// ([`stat_map_engine::curse_local_effect`]). Also returns the post-support
+/// `SkillTypes` bitset for the curse gem. No catalog → `(0.0, 1.0, skill_types)`.
 fn curse_local_effect_scale(
     ctx: &mut StatMapCtx<'_>,
     group: &EnabledGroup<'_>,
@@ -921,9 +931,23 @@ fn curse_local_effect_scale(
     skill_id: &str,
     curse_level: u32,
     use_alt_quality: bool,
-) -> (f64, f64) {
+) -> (f64, f64, pobr_data::skill::SkillTypes) {
+    let judgement = group_judgement(group, data, skill_id);
+    let skill_types =
+        judgement
+            .final_skill_types
+            .iter()
+            .fold(pobr_data::skill::SkillTypes::NONE, |acc, name| {
+                match pobr_data::skill::SkillTypes::from_pob2_name(name) {
+                    Some(st) => acc | st,
+                    None => {
+                        debug_assert!(false, "unknown SkillType name: {name}");
+                        acc
+                    }
+                }
+            });
     let Some(catalog) = ctx.catalog else {
-        return (0.0, 1.0);
+        return (0.0, 1.0, skill_types);
     };
     let (mut inc, mut more) = (0.0, 1.0);
     let mut absorb = |effect_id: &str, level: u32, quality: u32, set_index: Option<u32>| {
@@ -949,7 +973,6 @@ fn curse_local_effect_scale(
         .then_some(gem.stat_set_index)
         .flatten();
     absorb(skill_id, curse_level, gem.quality, set_index);
-    let judgement = group_judgement(group, data, skill_id);
     for sup in &judgement.compatible {
         let host = &group.gems[sup.gem_index];
         absorb(
@@ -959,7 +982,7 @@ fn curse_local_effect_scale(
             support_stat_set_index(sup, group.gems),
         );
     }
-    (inc, more)
+    (inc, more, skill_types)
 }
 
 /// The **player-side buff** granted by a support → [`BuffSpec`] (kind =
