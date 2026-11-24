@@ -128,10 +128,18 @@
   .shell-root .cmp-panel .compare-trees > details summary { cursor: pointer; color: var(--primary); }
   .shell-root .cmp-panel .compare-trees > details p { margin-top: .4rem; font-size: var(--text-xs); color: var(--muted-foreground); }
 
-  @container shell-container (max-width: 56rem) {
+  @container shell-page (min-width: 96rem) {
+    .shell-root .cmp-stats { max-width: none; display: grid; grid-template-columns: minmax(48rem, 66rem) minmax(20rem, 1fr); column-gap: 2.5rem; align-items: start; }
+    .shell-root .cmp-stats > :not(.cmp-details) { grid-column: 1; }
+    .shell-root .cmp-stats > .cmp-details { grid-column: 2; grid-row: 1 / span 4; margin-top: 0; padding-left: 1.75rem; border-left: 1px solid var(--border); }
+  }
+  @container shell-page (min-width: 112rem) {
+    .shell-root .cmp-tree-stage { grid-template-columns: minmax(0, 1fr) minmax(20rem, 28rem); }
+  }
+  @container shell-page (max-width: 46rem) {
     .shell-root .cmp-tree-stage { grid-template-columns: minmax(0, 1fr); }
   }
-  @container shell-container (max-width: 40rem) {
+  @container shell-page (max-width: 34rem) {
     .shell-root .cmp-panel .compare-pair { grid-template-columns: minmax(0, 1fr); }
     .shell-root .cmp-summary { gap: .2rem .9rem; }
     .shell-root .cmp-stats table { display: block; table-layout: fixed; font-size: .7rem; }

@@ -218,11 +218,14 @@ test.describe('1440px', () => {
 test.describe('390px', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test('the stacked layout has no resize handle (zh-CN)', async ({ page }) => {
+  test('the stacked layout has no resize handle and shows the canvas above the view bar (zh-CN)', async ({ page }) => {
     await open(page);
     await setLanguage(page, 'zh-CN');
     await expect(page.locator('.tree-side-resize')).toHaveCount(1);
     await expect(handle(page)).toBeHidden();
     await expect(page.locator('#tree-side')).toBeVisible();
+    const canvas = await box(page.locator('.tree-canvas'));
+    const viewBar = await box(page.locator('.tree-bar-view'));
+    expect(canvas.y + canvas.height).toBeLessThanOrEqual(viewBar.y + 1);
   });
 });

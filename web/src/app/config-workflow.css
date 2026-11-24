@@ -76,21 +76,4 @@
 .shell-root .config-modifier-title { min-width: 0; flex-wrap: wrap; }
 .shell-root .party-editor fieldset > label { flex-wrap: wrap; }
 .shell-root .party-editor legend { max-width: 100%; overflow-wrap: anywhere; }
-@container shell-page (max-width: 48rem) {
-  .shell-root .config-options-workspace, .shell-root .config-scenario, .shell-root .config-grid { grid-template-columns: minmax(0, 1fr); }
-  .shell-root .config-group-nav { position: static; display: flex; flex-wrap: wrap; }
-  .shell-root .config-group-nav h3 { flex-basis: 100%; }
-}
-@container shell-page (max-width: 36rem) {
-  .shell-root .config-item, .shell-root .config-advanced .config-item { grid-template-columns: minmax(0, 1fr) auto; }
-  .shell-root .config-advanced .config-key { grid-column: 1 / -1; }
-  .shell-root .config-item > :is(input, [role='checkbox'], .app-checkbox, [role='combobox'], .config-raw-value) { grid-column: 1; justify-self: start; }
-  .shell-root .config-reset { grid-column: 2; }
-  .shell-root .config-raw-value { width: 100%; grid-template-columns: minmax(0, 1fr); }
-}
-@container shell-page (max-width: 24rem) {
-  .shell-root :is(.config-item, .config-custom, .config-advanced, .config-modifier-block, .party-editor, .party-editor fieldset) { padding: .75rem; }
-  .shell-root .config-quick-entry { flex-direction: row; flex-wrap: wrap; }
-  .shell-root .config-quick-description { flex-basis: 100%; }
-}
 }

@@ -486,17 +486,19 @@ export function SkillsPanel({ session, lang, active, focusOptimizer, focusSpirit
       {active && <PageHeader id="skills-heading" title={tt('skills.title')} description={tt('skills.hint')}>
         <WeaponSetControl session={session} lang={lang} />
       </PageHeader>}
-      {active && <NamedSets session={session} lang={lang} kind="skill" />}
+      {active && <div className="skills-controls-bar">
+        <NamedSets session={session} lang={lang} kind="skill" />
+        {groups.length > 0 && <div ref={spiritSummary} className="skill-spirit-summary" tabIndex={-1}>
+          <AppButton disabled={session.busy} onClick={() => setSpiritRequested(value => value + 1)}>{tt('skills.inspectSpirit')}</AppButton>
+          {(spiritRequested > 0 || focusSpirit !== undefined) && <p role="status">{spiritReport === undefined ? tt('skills.spiritPending') : spiritReport === null ? tt('skills.spiritUnavailable') : tt('skills.spiritExplanation')}</p>}
+          {spiritReport?.shared.map(entry => <p key={entry.skillId}>{tt('skills.spiritSharedGroups')
+            .replace('{groups}', entry.groups.map(index => index + 1).join(tt('format.listSeparator')))
+            .replace('{skill}', gemName(entry.skillId))}</p>)}
+          {spiritReport?.limited && <p role="note">{tt('skills.spiritLimits')}</p>}
+        </div>}
+      </div>}
       {catalogError && <p className="opt-error">{supportText(lang, 'catalogError')}</p>}
       {!catalogError && !catalog.length && <p className="skills-hint">{supportText(lang, 'loading')}</p>}
-      {active && groups.length > 0 && <div ref={spiritSummary} className="skill-spirit-summary" tabIndex={-1}>
-        <AppButton disabled={session.busy} onClick={() => setSpiritRequested(value => value + 1)}>{tt('skills.inspectSpirit')}</AppButton>
-        {(spiritRequested > 0 || focusSpirit !== undefined) && <p role="status">{spiritReport === undefined ? tt('skills.spiritPending') : spiritReport === null ? tt('skills.spiritUnavailable') : tt('skills.spiritExplanation')}</p>}
-        {spiritReport?.shared.map(entry => <p key={entry.skillId}>{tt('skills.spiritSharedGroups')
-          .replace('{groups}', entry.groups.map(index => index + 1).join(tt('format.listSeparator')))
-          .replace('{skill}', gemName(entry.skillId))}</p>)}
-        {spiritReport?.limited && <p role="note">{tt('skills.spiritLimits')}</p>}
-      </div>}
       <div className="skill-groups" data-list-expanded={showAllGroups || undefined}>
         <aside className="skill-group-list">
           {groups.length > 0 ? toolbar : active && <div className="skills-empty">

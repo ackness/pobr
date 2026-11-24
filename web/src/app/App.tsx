@@ -117,7 +117,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const [settingsOpen, setSettingsOpen] = useState(false);
   const main = useRef<HTMLElement>(null);
   const [shellEl, setShellEl] = useState<HTMLElement | null>(null);
-  const docked = useShellRems(shellEl) >= 94;
+  const shellRems = useShellRems(shellEl);
   const skipInspectorRestore = useRef(false);
   const [inspect, setInspect] = useState<string | null>(null);
   const jobs = useActiveJobCount();
@@ -125,6 +125,7 @@ function Workspace({ preferences, onPreferences, preferencesFailed }: { preferen
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [railHidden, setRailHidden] = useState(() => readPreference(RAIL_HIDDEN_KEY) === '1');
+  const docked = shellRems >= (railHidden ? 88 : 104);
   const toggleRail = () => setRailHidden(hidden => { writePreference(RAIL_HIDDEN_KEY, hidden ? '0' : '1'); return !hidden; });
   const session = useBuildSession(route === 'config', lang);
   const activeBuild = session.workspace?.builds.find(build => build.id === session.workspace?.activeBuild);
