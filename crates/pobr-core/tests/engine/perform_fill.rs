@@ -933,6 +933,29 @@ fn perform_fills_cooldown_from_base_and_recovery() {
     assert!(env.player.output.cooldown >= 1.9);
 }
 
+#[test]
+fn perform_fills_cooldown_from_cooldown_recovery_base_without_skill_cooldown_base() {
+    let base = ActorBaseStats {
+        life: 1000.0,
+        ..ActorBaseStats::default()
+    };
+    let mut env = player_with(
+        base,
+        vec![
+            Modifier::number("CooldownRecovery", ModType::Base, 10.3),
+            Modifier::number("CooldownRecovery", ModType::Inc, 26.0),
+        ],
+    );
+    perform(&mut env).unwrap();
+    let expected = 10.3 / 1.26;
+    assert!(
+        env.player.output.cooldown >= expected && env.player.output.cooldown <= expected + 0.05,
+        "expected ~{expected:.4} (tick-rounded), got {}",
+        env.player.output.cooldown
+    );
+    assert_eq!(env.player.output.cooldown_stored_uses, 1);
+}
+
 /// Cost wiring: SkillManaCostBase BASE + ManaCost INC → mana_cost; Spirit reservation works the same way.
 #[test]
 fn perform_fills_mana_and_spirit_cost() {

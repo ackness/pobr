@@ -512,27 +512,44 @@ fn placement_throwing_and_channel_times_use_their_own_speed_scopes() {
 
 #[test]
 fn proxy_costs_are_paid_when_placing_it_and_respect_cooldown() {
-    let mut actor = Actor::new(
-        1,
-        ActorBaseStats {
-            action_rate: 20.0,
-            ..Default::default()
-        },
-    );
-    actor.mod_db.add_list(vec![
-        Modifier::number("SkillManaCostBase", ModType::Base, 10.0),
-        Modifier::number("SkillTotemPlacementTimeBase", ModType::Base, 0.5),
-        Modifier::number("TotemPlacementSpeed", ModType::Inc, 100.0),
-    ]);
-    let mut env = Env::new(actor.clone());
+    let base_actor = |time_stat: &str, speed_stat: &str| {
+        let mut actor = Actor::new(
+            1,
+            ActorBaseStats {
+                action_rate: 20.0,
+                ..Default::default()
+            },
+        );
+        actor.mod_db.add_list(vec![
+            Modifier::number("SkillManaCostBase", ModType::Base, 10.0),
+            Modifier::number(time_stat, ModType::Base, 0.5),
+            Modifier::number(speed_stat, ModType::Inc, 100.0),
+        ]);
+        actor
+    };
+
+    // Totem placement uses TotemPlacementSpeed without clamping by skill cooldown.
+    let mut totem_actor = base_actor("SkillTotemPlacementTimeBase", "TotemPlacementSpeed");
+    let mut env = Env::new(totem_actor.clone());
     env.cfg = crate::support::with_game_tables(CalcConfig::spell());
     perform(&mut env).unwrap();
     assert_eq!(env.player.output.total_totem_placement_time, 0.25);
     assert_eq!(env.player.output.mana_per_second_cost, 40.0);
-    actor
+
+    totem_actor
         .mod_db
         .add_mod(Modifier::number("SkillCooldownBase", ModType::Base, 1.0));
-    let mut env = Env::new(actor);
+    let mut env = Env::new(totem_actor);
+    env.cfg = crate::support::with_game_tables(CalcConfig::spell());
+    perform(&mut env).unwrap();
+    assert_eq!(env.player.output.mana_per_second_cost, 40.0);
+
+    // Traps still clamp placement cost rate by 1 / cooldown.
+    let mut trap_actor = base_actor("SkillTrapThrowingTimeBase", "TrapThrowingSpeed");
+    trap_actor
+        .mod_db
+        .add_mod(Modifier::number("SkillCooldownBase", ModType::Base, 1.0));
+    let mut env = Env::new(trap_actor);
     env.cfg = crate::support::with_game_tables(CalcConfig::spell());
     perform(&mut env).unwrap();
     assert!((env.player.output.mana_per_second_cost - 10.0 / 1.023).abs() < 1e-6);
@@ -1133,4 +1150,39 @@ fn freeze_duration_uses_the_keyword_base_and_inflicted_duration_modifiers() {
     // A hit that cannot build Freeze reports no Freeze duration.
     let cannot = cold_session(vec![Modifier::flag("CannotFreeze")], vec![]);
     assert_eq!(display_value(cannot.output(), "FreezeDuration"), 0.0);
+}
+
+#[test]
+fn show_average_damage_respects_cooldown_only_for_self_cast_skills() {
+    let make = |types: SkillTypes| {
+        let mut actor = Actor::new(
+            1,
+            ActorBaseStats {
+                hit_min: 100.0,
+                hit_max: 100.0,
+                action_rate: 2.0,
+                ..ActorBaseStats::default()
+            },
+        );
+        actor.mod_db.add_list(vec![
+            Modifier::flag("ShowAverageDamage"),
+            Modifier::number("SkillCooldownBase", ModType::Base, 1.0),
+        ]);
+        let mut env = Env::new(actor);
+        env.cfg = crate::support::with_game_tables(CalcConfig::spell().with_skill_types(types));
+        perform(&mut env).unwrap();
+        env.player.output
+    };
+
+    let self_cast = make(SkillTypes::SPELL);
+    assert_eq!(self_cast.average_damage, 100.0);
+    assert!((self_cast.dps - 100.0 / 1.023).abs() < 1e-6);
+    assert_eq!(self_cast.combined_avg, self_cast.dps);
+
+    let totem = make(SkillTypes::SPELL | SkillTypes::USED_BY_TOTEM);
+    assert_eq!(totem.average_damage, 100.0);
+    assert_eq!(totem.combined_avg, totem.average_damage);
+
+    let summon_totem = make(SkillTypes::SPELL | SkillTypes::SUMMONS_TOTEM);
+    assert_eq!(summon_totem.combined_avg, summon_totem.average_damage);
 }

@@ -1622,8 +1622,13 @@ pub fn dot_taken_terms(
     };
     let (_, global_cap) = global_damage_reduction_max(db, cfg);
     let (_, cap) = type_damage_reduction_max(db, cfg, damage_type, global_cap);
+    let effective_resistance = if super::taken::self_ignores_resistance(db, cfg, damage_type) {
+        0.0
+    } else {
+        resistance
+    };
     DotTakenTerms {
-        resistance,
+        resistance: effective_resistance,
         reduction: base_damage_reduction(db, cfg, damage_type, cap),
         taken: taken_mult_over_time(db, cfg, damage_type),
         immune: damage_type == DamageType::Chaos && chaos_immune(db, cfg),

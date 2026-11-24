@@ -65,6 +65,7 @@ struct TakenTypeNames {
     dr_max: &'static str,
     dr_names: &'static [&'static str],
     enemy_overwhelm: &'static str,
+    self_ignore_resist: &'static str,
     taken: &'static str,
     taken_when_hit: &'static str,
     taken_from_attacks: &'static str,
@@ -85,6 +86,7 @@ macro_rules! taken_type_entry {
             dr_max: concat!($t, "DamageReductionMax"),
             dr_names: &[concat!($t, "DamageReduction"), "ElementalDamageReduction"],
             enemy_overwhelm: concat!("Enemy", $t, "Overwhelm"),
+            self_ignore_resist: concat!("SelfIgnore", $t, "Resistance"),
             taken: concat!($t, "DamageTaken"),
             taken_when_hit: concat!($t, "DamageTakenWhenHit"),
             taken_from_attacks: concat!($t, "DamageTakenFromAttacks"),
@@ -104,6 +106,7 @@ macro_rules! taken_type_entry {
             dr_max: concat!($t, "DamageReductionMax"),
             dr_names: &[concat!($t, "DamageReduction")],
             enemy_overwhelm: concat!("Enemy", $t, "Overwhelm"),
+            self_ignore_resist: concat!("SelfIgnore", $t, "Resistance"),
             taken: concat!($t, "DamageTaken"),
             taken_when_hit: concat!($t, "DamageTakenWhenHit"),
             taken_from_attacks: concat!($t, "DamageTakenFromAttacks"),
@@ -112,6 +115,14 @@ macro_rules! taken_type_entry {
             taken_from_spell_proj: concat!($t, "DamageTakenFromSpellProjectiles"),
         }
     };
+}
+
+/// Whether the defender ignores their own resistance to `dt` for damage taken
+/// (e.g. Doryani's Prototype's "Lightning Resistance does not affect Lightning
+/// damage taken"). The character's resolved resistance value is unchanged for
+/// display and enemy inheritance; only incoming damage mitigation ignores it.
+pub(crate) fn self_ignores_resistance(db: &ModDb, cfg: &CalcConfig, dt: DamageType) -> bool {
+    db.flag(cfg, TAKEN_TYPE_NAMES[dt as usize].self_ignore_resist)
 }
 
 const TAKEN_TYPE_NAMES: [TakenTypeNames; 5] = [
@@ -504,7 +515,11 @@ pub(crate) fn build_mitigation_ctx_for_category(
         // Enemy overwhelm (pobr's `Enemy<X>Overwhelm` BASE mod; currently only physical has a source).
         ctx.overwhelm_pct[i] = db.sum_by_name(ModType::Base, cfg, &[names.enemy_overwhelm]);
         // Resistance-taken multiplier (:2363; enemy penetration is left for config).
-        ctx.resist_taken_multi[i] = 1.0 - inputs.resist_pct[i] / 100.0;
+        ctx.resist_taken_multi[i] = if self_ignores_resistance(db, cfg, dt) {
+            1.0
+        } else {
+            1.0 - inputs.resist_pct[i] / 100.0
+        };
         // Flat damage taken follows the selected attack/spell and projectile
         // context; Average gives each of the four categories equal weight.
         ctx.taken_flat[i] = db.sum_by_name(

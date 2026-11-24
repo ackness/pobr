@@ -1517,21 +1517,28 @@ pub fn fill_ehp_pob2(
         // (Pinnacle 3 / Uber 8, ConfigOptions.lua:2072-2074, Modules/Data.lua:231);
         // physical/chaos have no pen.
         let enemy_pen = |name: &str| enemy_base(enemy_db, cfg, name);
-        // Physical and Chaos have no enemy penetration input.
-        let enemy_pen = [
+        let enemy_pen_raw = [
             0.0,
             enemy_pen("EnemyFirePen"),
             enemy_pen("EnemyColdPen"),
             enemy_pen("EnemyLightningPen"),
             0.0,
         ];
-        let resist_before_pen = [
+        let resist_raw = [
             0.0,
             resistances.fire,
             resistances.cold,
             resistances.lightning,
             resistances.chaos,
         ];
+        let mut enemy_pen = [0.0; 5];
+        let mut resist_before_pen = [0.0; 5];
+        for (i, dtype) in DAMAGE_TYPE_BY_INDEX.into_iter().enumerate() {
+            if !super::taken::self_ignores_resistance(db, cfg, dtype) {
+                enemy_pen[i] = enemy_pen_raw[i];
+                resist_before_pen[i] = resist_raw[i];
+            }
+        }
         let resist_after_pen = |resist: f64, pen: f64| -> f64 {
             if resist > 0.0 {
                 (resist - pen).max(0.0)

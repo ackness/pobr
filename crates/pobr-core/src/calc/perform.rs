@@ -1197,12 +1197,22 @@ fn fill_mechanics(env: &mut Env) {
         };
         super::offence::accuracy_terms(db, hand_cfg, hand_input).value
     };
+    let effective_resist = |dtype: DamageType, value: f64| {
+        if super::taken::self_ignores_resistance(db, cfg, dtype) {
+            0.0
+        } else {
+            value
+        }
+    };
     let resistances = ResistanceSuite {
         physical_pdr: physical_pdr_fraction(db, cfg),
-        fire: env.player.output.fire_resistance,
-        cold: env.player.output.cold_resistance,
-        lightning: env.player.output.lightning_resistance,
-        chaos: env.player.output.chaos_resistance,
+        fire: effective_resist(DamageType::Fire, env.player.output.fire_resistance),
+        cold: effective_resist(DamageType::Cold, env.player.output.cold_resistance),
+        lightning: effective_resist(
+            DamageType::Lightning,
+            env.player.output.lightning_resistance,
+        ),
+        chaos: effective_resist(DamageType::Chaos, env.player.output.chaos_resistance),
     };
     let reference_hit = (env.player.output.life + env.player.output.energy_shield).max(1.0);
     // -2 (13-G7): unify mitigation-side setup into MitigationCtx — ArmourAppliesTo switches to a
@@ -1220,10 +1230,10 @@ fn fill_mechanics(env: &mut Env) {
             energy_shield: env.player.output.energy_shield,
             resist_pct: [
                 0.0, // Physical has no resistance (mitigation goes through armour/flat DR)
-                resistances.fire,
-                resistances.cold,
-                resistances.lightning,
-                resistances.chaos,
+                env.player.output.fire_resistance,
+                env.player.output.cold_resistance,
+                env.player.output.lightning_resistance,
+                env.player.output.chaos_resistance,
             ],
             // Deflect multiplier: folded in by F once Track D wires up the DeflectChance/DeflectEffect output; currently 0 → 1.
             deflect_chance_pct: 0.0,
@@ -1755,8 +1765,14 @@ pub(super) fn damage_view_terms(env: &Env) -> DamageViewTerms {
         BurstTerms::Repeats(repeats)
     };
     let out = &env.player.output;
+    let is_self_cast = !cfg.skill_types.intersects(
+        SkillTypes::USED_BY_TOTEM
+            | SkillTypes::SUMMONS_TOTEM
+            | SkillTypes::TRAPPED
+            | SkillTypes::REMOTE_MINED,
+    );
     let show_average = db.flag(cfg, "ShowAverageDamage")
-        && out.cooldown == 0.0
+        && (!is_self_cast || out.cooldown == 0.0)
         && out.reload_time == 0.0
         && out.skill_trigger_rate == 0.0;
     let base = if show_average {
@@ -2122,9 +2138,10 @@ fn fill_skill_mechanics(env: &mut Env) {
         env.player.output.aoe_radius = aoe.radius;
     }
 
-    // Cooldown: needs the skill's base cooldown (SkillCooldownBase BASE, seconds). Skipped if absent.
+    // Cooldown: needs the skill's base cooldown (SkillCooldownBase or CooldownRecovery BASE, seconds). Skipped if absent.
     let base_cd = db.sum_by_name(ModType::Base, cfg, &["SkillCooldownBase"]);
-    if base_cd > 0.0 {
+    let extra_cd = db.sum_by_name(ModType::Base, cfg, &["CooldownRecovery"]);
+    if base_cd > 0.0 || extra_cd > 0.0 {
         let stored = db
             .sum_by_name(ModType::Base, cfg, &["SkillStoredUsesBase"])
             .max(1.0) as u32;
@@ -2987,19 +3004,22 @@ pub(super) fn resource_cost_use_rate(env: &Env) -> f64 {
     {
         rate = 0.0;
     }
+    // Totem placement speed sets totem cost cadence even when the totem's
+    // own attack/spell carries a cooldown; trap/mine/warcry placements cap
+    // directly against cooldown.
     let placement = [
-        env.player.output.mine_laying_time,
-        env.player.output.trap_throwing_time,
-        env.player.output.total_totem_placement_time,
-        env.player.output.warcry_cast_time,
+        (env.player.output.mine_laying_time, true),
+        (env.player.output.trap_throwing_time, true),
+        (env.player.output.total_totem_placement_time, false),
+        (env.player.output.warcry_cast_time, true),
     ]
     .into_iter()
-    .find(|time| *time > 0.0);
-    if let Some(time) = placement
+    .find(|(time, _)| *time > 0.0);
+    if let Some((time, clamp_by_cooldown)) = placement
         && env.player.output.skill_trigger_rate <= 0.0
     {
         rate = 1.0 / time;
-        if env.player.output.cooldown > 0.0 {
+        if clamp_by_cooldown && env.player.output.cooldown > 0.0 {
             rate = rate.min(1.0 / env.player.output.cooldown);
         }
     }
