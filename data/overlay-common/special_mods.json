@@ -8146,6 +8146,34 @@
       "examples": [
         "Gain 50% of maximum Energy Shield as additional Freeze Threshold"
       ]
+    },
+    {
+      "id": "warcry_chance_empower_3_additional_attacks",
+      "pattern": "^warcries have (\\d+(?:\\.\\d+)?)% chance to empower 3 additional attacks?$",
+      "mods": [
+        {
+          "name": "ExtraEmpoweredAttacks",
+          "type": "BASE",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "mult": 3
+              },
+              {
+                "div": 100
+              }
+            ]
+          }
+        }
+      ],
+      "verified": true,
+      "batch": "hand-curated",
+      "game_source": "chance_to_gain_3_additional_exerted_attacks_%; notable Inherited Strength (46683)",
+      "source_note": "Grants expected additional empowered attacks equal to P * 3 added to ExtraEmpoweredAttacks BASE (consumed by calc::warcry).",
+      "examples": [
+        "Warcries have 15% chance to Empower 3 additional Attacks"
+      ]
     }
   ]
 }

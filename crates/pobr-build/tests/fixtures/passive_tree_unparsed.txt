@@ -202,7 +202,6 @@ node.46454	Attribute Passive Skills can instead grant 5% increased Damage
 node.46454	Attribute Passive Skills can instead grant 5% increased [Armour], [Evasion] and [EnergyShield|Energy Shield]
 node.46535	Deal up to 40% more Damage to Enemies based on their missing [Concentration]
 node.4661	[Banner|Banners] also grant +25% to all [ElementalDamage|Elemental] [Resistances] affected targets
-node.46683	[Warcry|Warcries] have 15% chance to [Empowered|Empower] 3 additional [Attack|Attacks]
 node.47097	[Warcry|Warcries] Explode [Corpse|Corpses] dealing 25% of their Life as [Physical] Damage
 node.47184	Grants Skill: <underline>{Manifest Weapon}
 node.47418	Remove a [Curse] when you use a Mana [Flask]

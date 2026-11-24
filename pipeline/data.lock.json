@@ -81,14 +81,14 @@
       "sha256": "bab112b9b43f89e28ced1674902ca12e573ab6ea379153280124bbb1d25cf746"
     },
     "special_mods.json": {
-      "bytes": 320255,
-      "sha256": "268854b3f3170fe076f344cd910756f5b62b4c786aba156b315abb47b1829678"
+      "bytes": 321151,
+      "sha256": "777f8407f95cb06ea3985617ddf5dfc72433fc697c87f3c7852fdd9f62f9a3d3"
     }
   },
   "snapshot_manifest": {
     "bytes": 7307,
     "sha256": "5aee7f25d8b5dffb381ccbb27f37ab82fae5a04ad59c81dff6fdeba9b0ef31c2"
   },
-  "runtime_identity": "2dd2637974f2ebe490a2fee1a2156843e043702b1d872a2ef1455fb58db419f2",
-  "release_id": "6e519a0f9a2c8fb1a6a2c4afe3fe5b26235b7e1f1dc5ab58ca52fb896c945af8"
+  "runtime_identity": "a218a6ad58153192a42b868f82a2566bd7c8649fa1dc470f313402fd25168875",
+  "release_id": "4307535471f12cb194b70bb00fffda00f5336e38a59b501a43f6eab7c0eb69e1"
 }
