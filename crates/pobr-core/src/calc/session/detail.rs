@@ -167,6 +167,8 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "ChannelReleaseFraction",
             "ChannelMaxStages",
             "ChannelCycle",
+            "TotalAttackTime",
+            "TotalCastTime",
             "AttackSpeed",
             "CastSpeed",
             "SkillSpeed",

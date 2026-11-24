@@ -591,11 +591,11 @@ pub(crate) struct ActionRateTerms {
     inc: f64,
     more: f64,
     /// After the speed inc/more scaling.
-    scaled: f64,
+    pub(crate) scaled: f64,
     /// After the added cast/attack time.
-    timed: f64,
+    pub(crate) timed: f64,
     action_speed: f64,
-    uncapped: f64,
+    pub(crate) uncapped: f64,
     /// After the cooldown cap.
     cooled: f64,
     /// After the server tick cap, before rounding.

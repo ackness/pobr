@@ -2077,3 +2077,53 @@ fn meat_shield_two_scales_minion_damage_dealt_and_taken_by_sixty_percent() {
         shielded.minion_stat_totals(0, "DamageTaken")
     );
 }
+
+#[test]
+fn danse_macabre_increases_soul_offering_buff_effect() {
+    let data = load_data();
+    let run = |with_danse: bool| {
+        let mut offering = SocketGroup::new().with_gem_skill("SoulOfferingPlayer", 19);
+        if with_danse {
+            offering = offering.with_gem_skill("SupportDanseMacabrePlayer", 1);
+        }
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Witch".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20))
+            .add_socket_group(offering);
+        pobr_build::calculate_with_data_session(&build, data, &default_opts()).expect("calculate")
+    };
+
+    // Level 19 Soul Offering grants 74% increased Spell Damage; Danse Macabre adds
+    // +30% increased Buff Effect -> trunc(74 * 1.3) = 96%.
+    assert_eq!(run(false).stat_totals("Damage").1, 74.0);
+    assert_eq!(run(true).stat_totals("Damage").1, 96.0);
+}
+
+#[test]
+fn wild_protector_quality_scales_minion_life_final() {
+    let data = load_data();
+    let run = |quality: u32| {
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Huntress".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(SocketGroup::new().with_gem_skill_quality(
+                "WildProtectorPlayer",
+                20,
+                quality,
+            ));
+        pobr_build::calculate_with_data_session(&build, data, &default_opts()).expect("calculate")
+    };
+
+    let q0 = run(0);
+    let q20 = run(20);
+    assert_eq!(q0.minion_stat_totals(0, "Life").2, 1.0);
+    assert!((q20.minion_stat_totals(0, "Life").2 - 1.2).abs() < 1e-8);
+    assert!((q20.output().minions[0].life / q0.output().minions[0].life - 1.2).abs() < 1e-3);
+}

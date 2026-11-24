@@ -1186,3 +1186,34 @@ fn show_average_damage_respects_cooldown_only_for_self_cast_skills() {
     let summon_totem = make(SkillTypes::SPELL | SkillTypes::SUMMONS_TOTEM);
     assert_eq!(summon_totem.combined_avg, summon_totem.average_damage);
 }
+
+#[test]
+fn channelled_attack_with_total_time_reports_channel_time_without_cooldown() {
+    let make = |types: SkillTypes| {
+        let mut actor = Actor::new(
+            1,
+            ActorBaseStats {
+                hit_min: 100.0,
+                hit_max: 100.0,
+                action_rate: 1.0,
+                ..ActorBaseStats::default()
+            },
+        );
+        actor.mod_db.add_list(vec![
+            Modifier::number("TotalAttackTime", ModType::Base, 2.0),
+            Modifier::number("SkillCooldownBase", ModType::Base, 4.0),
+        ]);
+        let mut env = Env::new(actor);
+        env.cfg = crate::support::with_game_tables(CalcConfig::attack().with_skill_types(types));
+        perform(&mut env).unwrap();
+        env.player.output
+    };
+
+    let channelled = make(SkillTypes::ATTACK | SkillTypes::CHANNEL);
+    assert_eq!(channelled.channel_time, 3.0);
+    assert!(channelled.cooldown >= 4.0);
+    assert!((channelled.action_rate - 1.0 / channelled.cooldown).abs() < 1e-6);
+
+    let plain = make(SkillTypes::ATTACK);
+    assert_eq!(plain.channel_time, 0.0);
+}

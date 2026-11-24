@@ -528,6 +528,7 @@ pub fn buff_skill_specs(
                             ignore_curse_limit: false,
                             local_effect_inc: [
                                 skill_stats::OFFERING_BUFF_EFFECT,
+                                skill_stats::DANSE_MACABRE_OFFERING_BUFF_EFFECT,
                                 skill_stats::REMNANT_EFFECT,
                             ]
                             .into_iter()

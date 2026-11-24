@@ -3039,10 +3039,18 @@ fn fill_resource_cost_rates(env: &mut Env) {
     let costs = super::skill_mechanics::resource_costs(&env.player.mod_db, &env.cfg);
     let rate = resource_cost_use_rate(env);
     let (cfg, input) = main_hand_scope(env).unwrap_or_else(|| (env.cfg.clone(), player_input(env)));
-    if let Some(channel) =
-        super::offence::action_rate_terms(&env.player.mod_db, &cfg, &input).channel
-    {
+    let rate_terms = super::offence::action_rate_terms(&env.player.mod_db, &cfg, &input);
+    if let Some(channel) = rate_terms.channel {
         env.player.output.channel_time = round(channel.channel_time);
+    } else if env.player.output.channel_time == 0.0
+        && cfg.skill_types.contains(SkillTypes::CHANNEL)
+        && rate_terms.timed != rate_terms.scaled
+        && rate_terms.uncapped > 0.0
+    {
+        // Charge-and-release channelled skills such as Plasma Blast use added
+        // attack/cast time instead of ChannelCycle (`calc::channel`); their
+        // channel time excludes release and reload.
+        env.player.output.channel_time = round(1.0 / rate_terms.uncapped);
     }
     let out = &mut env.player.output;
     [
