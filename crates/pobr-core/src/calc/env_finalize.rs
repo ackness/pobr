@@ -76,8 +76,10 @@ pub fn env_finalize(env: &mut Env) {
     super::crit::apply_inexorable_critical(env);
     super::configured_damage::apply(env);
     super::cadiro_arrows::apply(env);
-    // Stage 6.9: what Bear form gives a character the main skill puts in it.
+    // Stage 6.9: what animal shapeshift forms give a character the main skill puts in them.
     super::bear_form::apply_bear_form(env);
+    super::bear_form::apply_wolf_form(env);
+    super::bear_form::apply_wyvern_form(env);
     // Stage 7 (T4): applies non-damaging ailments (Chill/Shock → enemy db).
     apply_nondamaging_ailments(env);
     // Stage 7.5: bridges enemy-side condition flags → cfg conditions (vendor

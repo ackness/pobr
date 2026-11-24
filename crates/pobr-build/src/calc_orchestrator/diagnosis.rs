@@ -554,6 +554,10 @@ const SET_BY_THE_ORCHESTRATION: &[&str] = &[
     "UsedMinionSkillRecently",
     "UsedVaalSkillRecently",
     "Channelling",
+    "Shapeshifted",
+    "BearForm",
+    "WolfForm",
+    "WyvernForm",
     "HaveTotem",
     "SummonedTotemRecently",
     // `prepare::stage_build_cfg`: a boss-tier enemy, a Companion skill, a

@@ -295,6 +295,12 @@ pub(crate) fn combat_conditions(
         if has("Bear") {
             conds.push(pobr_core::calc::bear_form::BEAR_FORM);
         }
+        if has("Wolf") {
+            conds.push(pobr_core::calc::bear_form::WOLF_FORM);
+        }
+        if has("Wyvern") {
+            conds.push(pobr_core::calc::bear_form::WYVERN_FORM);
+        }
     }
     conds
 }

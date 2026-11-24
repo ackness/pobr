@@ -1,22 +1,22 @@
-//! Bear form: the shape a character takes to use a Bear skill.
+//! Animal shapeshift forms: Bear, Wolf, and Wyvern.
 //!
-//! The rules, as the game defines the form ("While in Bear form, you gain"):
+//! A skill of the game types `Shapeshift` and `Bear`/`Wolf`/`Wyvern`
+//! shapeshifts its user into that form while active:
 //!
-//! - "+10 to Armour per level" ([`BEAR_FORM_ARMOUR_PER_LEVEL`]): flat Armour,
-//!   which the character's increased and more Armour scale like any other.
-//!   PoB2 gives 10 more (10 + 10 per level), which the game's text does not
-//!   state, so a build's reference Armour comes out slightly higher.
-//! - "30% of Armour also applies to Elemental Damage Types"
+//! - **Bear form**: +10 Armour per level ([`BEAR_FORM_ARMOUR_PER_LEVEL`]) and
+//!   30% of Armour also applies to Elemental Damage Types
 //!   ([`BEAR_FORM_ARMOUR_ALSO_APPLIES_TO_ELEMENTAL`]).
-//! - "an Endurance Charge for every 15 Rage you spend" is not modelled: the
-//!   calculation does not follow Rage being spent.
-//!
-//! A skill of the game types `Shapeshift` and `Bear` shapeshifts its user into
-//! the form, so the character is in it while that skill is the one in use: the
-//! build states the `BearForm` condition from the main skill's types.
+//! - **Wolf form**: 30% increased Movement Speed
+//!   ([`WOLF_FORM_MOVEMENT_SPEED_INC`]).
+//! - **Wyvern form**: 50% faster start of Energy Shield Recharge, 50% increased
+//!   Stun Threshold, and 50% increased Ailment Threshold
+//!   ([`WYVERN_FORM_ES_RECHARGE_FASTER_INC`], [`WYVERN_FORM_STUN_THRESHOLD_INC`],
+//!   [`WYVERN_FORM_AILMENT_THRESHOLD_INC`]).
 
 use pobr_data::constants::{
     BEAR_FORM_ARMOUR_ALSO_APPLIES_TO_ELEMENTAL, BEAR_FORM_ARMOUR_PER_LEVEL,
+    WOLF_FORM_MOVEMENT_SPEED_INC, WYVERN_FORM_AILMENT_THRESHOLD_INC,
+    WYVERN_FORM_ES_RECHARGE_FASTER_INC, WYVERN_FORM_STUN_THRESHOLD_INC,
 };
 use pobr_data::prelude::*;
 
@@ -26,38 +26,109 @@ use super::Env;
 
 /// The condition of a character in Bear form.
 pub const BEAR_FORM: &str = "BearForm";
+/// The condition of a character in Wolf form.
+pub const WOLF_FORM: &str = "WolfForm";
+/// The condition of a character in Wyvern form.
+pub const WYVERN_FORM: &str = "WyvernForm";
 
-/// Source of the injected modifiers; also the guard against applying them twice.
 const BEAR_FORM_SOURCE: &str = "BearForm";
+const WOLF_FORM_SOURCE: &str = "WolfForm";
+const WYVERN_FORM_SOURCE: &str = "WyvernForm";
+
+fn inject_form(
+    env: &mut Env,
+    condition: &str,
+    guard_stat: &str,
+    source_id: &str,
+    buff_id: &str,
+    raw_text: &str,
+    modifiers: impl IntoIterator<Item = Modifier>,
+) {
+    if !env.cfg.condition(condition)
+        || env
+            .player
+            .mod_db
+            .named(guard_stat)
+            .any(|modifier| modifier.source.as_deref() == Some(source_id))
+    {
+        return;
+    }
+    let origin =
+        ModifierSource::new(SourceId::new(SourceKind::Buff, buff_id)).with_raw_text(raw_text);
+    env.player.mod_db.add_list(
+        modifiers
+            .into_iter()
+            .map(|modifier| modifier.with_source(source_id).with_origin(origin.clone())),
+    );
+}
 
 /// Grants a character in Bear form what the form gives. Does nothing when it
 /// is not in the form, or already has the form's modifiers.
 pub fn apply_bear_form(env: &mut Env) {
-    if !env.cfg.condition(BEAR_FORM)
-        || env
-            .player
-            .mod_db
-            .named("ArmourAppliesToElementalDamageTaken")
-            .any(|modifier| modifier.source.as_deref() == Some(BEAR_FORM_SOURCE))
-    {
-        return;
-    }
-    let origin = ModifierSource::new(SourceId::new(SourceKind::Buff, "buff.BearForm"))
-        .with_raw_text("Bear form");
-    let modifiers = [
-        Modifier::number("Armour", ModType::Base, BEAR_FORM_ARMOUR_PER_LEVEL)
-            .with_tag(ModTag::multiplier("Level", 1.0, None)),
-        Modifier::number(
-            "ArmourAppliesToElementalDamageTaken",
-            ModType::Base,
-            BEAR_FORM_ARMOUR_ALSO_APPLIES_TO_ELEMENTAL,
-        ),
-    ];
-    env.player.mod_db.add_list(modifiers.map(|modifier| {
-        modifier
-            .with_source(BEAR_FORM_SOURCE)
-            .with_origin(origin.clone())
-    }));
+    inject_form(
+        env,
+        BEAR_FORM,
+        "ArmourAppliesToElementalDamageTaken",
+        BEAR_FORM_SOURCE,
+        "buff.BearForm",
+        "Bear form",
+        [
+            Modifier::number("Armour", ModType::Base, BEAR_FORM_ARMOUR_PER_LEVEL)
+                .with_tag(ModTag::multiplier("Level", 1.0, None)),
+            Modifier::number(
+                "ArmourAppliesToElementalDamageTaken",
+                ModType::Base,
+                BEAR_FORM_ARMOUR_ALSO_APPLIES_TO_ELEMENTAL,
+            ),
+        ],
+    );
+}
+
+/// Grants a character in Wolf form its inherent movement speed bonus.
+pub fn apply_wolf_form(env: &mut Env) {
+    inject_form(
+        env,
+        WOLF_FORM,
+        "MovementSpeed",
+        WOLF_FORM_SOURCE,
+        "buff.WolfForm",
+        "Wolf form",
+        [Modifier::number(
+            "MovementSpeed",
+            ModType::Inc,
+            WOLF_FORM_MOVEMENT_SPEED_INC,
+        )],
+    );
+}
+
+/// Grants a character in Wyvern form its inherent ES recharge, stun, and
+/// ailment threshold bonuses.
+pub fn apply_wyvern_form(env: &mut Env) {
+    inject_form(
+        env,
+        WYVERN_FORM,
+        "EnergyShieldRechargeFaster",
+        WYVERN_FORM_SOURCE,
+        "buff.WyvernForm",
+        "Wyvern form",
+        [
+            Modifier::number(
+                "EnergyShieldRechargeFaster",
+                ModType::Inc,
+                WYVERN_FORM_ES_RECHARGE_FASTER_INC,
+            ),
+            Modifier::number(
+                "StunThreshold",
+                ModType::Inc,
+                WYVERN_FORM_STUN_THRESHOLD_INC,
+            ),
+            Modifier::number(
+                "AilmentThreshold",
+                ModType::Inc,
+                WYVERN_FORM_AILMENT_THRESHOLD_INC,
+            ),
+        ],
+    );
 }
 
 #[cfg(test)]
@@ -82,6 +153,12 @@ mod tests {
             .sum_by_name(ModType::Base, &env.cfg, &[name])
     }
 
+    fn inc(env: &Env, name: &str) -> f64 {
+        env.player
+            .mod_db
+            .sum_by_name(ModType::Inc, &env.cfg, &[name])
+    }
+
     #[test]
     fn bear_form_gives_armour_per_level_and_armour_against_the_elements() {
         let env = run(true);
@@ -102,5 +179,37 @@ mod tests {
         apply_bear_form(&mut env);
         assert_eq!(base(&env, "Armour"), 980.0);
         assert_eq!(base(&env, "ArmourAppliesToElementalDamageTaken"), 30.0);
+    }
+
+    #[test]
+    fn wolf_form_gives_movement_speed_once() {
+        let mut inactive = Env::new(Actor::new(1, ActorBaseStats::default()));
+        inactive.cfg = inactive.cfg.with_condition(WOLF_FORM, false);
+        apply_wolf_form(&mut inactive);
+        assert_eq!(inc(&inactive, "MovementSpeed"), 0.0);
+
+        let mut active = Env::new(Actor::new(1, ActorBaseStats::default()));
+        active.cfg = active.cfg.with_condition(WOLF_FORM, true);
+        apply_wolf_form(&mut active);
+        apply_wolf_form(&mut active);
+        assert_eq!(inc(&active, "MovementSpeed"), 30.0);
+    }
+
+    #[test]
+    fn wyvern_form_gives_es_recharge_stun_and_ailment_threshold_once() {
+        let mut inactive = Env::new(Actor::new(1, ActorBaseStats::default()));
+        inactive.cfg = inactive.cfg.with_condition(WYVERN_FORM, false);
+        apply_wyvern_form(&mut inactive);
+        assert_eq!(inc(&inactive, "EnergyShieldRechargeFaster"), 0.0);
+        assert_eq!(inc(&inactive, "StunThreshold"), 0.0);
+        assert_eq!(inc(&inactive, "AilmentThreshold"), 0.0);
+
+        let mut active = Env::new(Actor::new(1, ActorBaseStats::default()));
+        active.cfg = active.cfg.with_condition(WYVERN_FORM, true);
+        apply_wyvern_form(&mut active);
+        apply_wyvern_form(&mut active);
+        assert_eq!(inc(&active, "EnergyShieldRechargeFaster"), 50.0);
+        assert_eq!(inc(&active, "StunThreshold"), 50.0);
+        assert_eq!(inc(&active, "AilmentThreshold"), 50.0);
     }
 }
