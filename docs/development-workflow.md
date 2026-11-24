@@ -273,7 +273,7 @@ dist、WASM 包和同步数据。不编译、不删除、不跟随符号链接�
 已配置 sccache 时用 `sccache --show-stats` 查看位置、命中率、占用及上限；
 本仓库沿用已有 wrapper，不安装缓存服务或修改全局设置。
 
-`build-wasm` 使用 `wasm-release`：继承 release 的速度优化，启用 ThinLTO 和单个 codegen unit。
+`build-wasm` 使用 `wasm-release`：继承 release 并改用 `opt-level = "s"` 体积优化，启用全量 LTO 和单个 codegen unit。
 这只影响 WASM 发布构建，不改变日常 dev/test 缓存。
 
 WASM 构建记录校验 Rust 源码、共享配置 JSON、manifest/lockfile、JSON 契约、

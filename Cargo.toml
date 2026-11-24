@@ -27,7 +27,8 @@ pobr-i18n = { path = "crates/pobr-i18n" }
 pobr-tree = { path = "crates/pobr-tree" }
 pobr-item = { path = "crates/pobr-item" }
 pobr-build = { path = "crates/pobr-build" }
-regex = "1.11"
+# Omit unused Unicode script/category/age/segment tables to reduce WASM binary size.
+regex = { version = "1.11", default-features = false, features = ["std", "perf", "unicode-case", "unicode-perl"] }
 # M6-B data-driven parser engine plain-phrase / literal prefilter index.
 aho-corasick = "1.1"
 serde = { version = "1", features = ["derive"] }
@@ -53,8 +54,9 @@ incremental = false
 [profile.dev.package."*"]
 opt-level = 3
 
-# Cross-crate optimization for the shipped engine, independent of local tests.
+# Size-focused cross-crate optimization for the shipped WASM engine, independent of local tests.
 [profile.wasm-release]
 inherits = "release"
-lto = "thin"
+opt-level = "s"
+lto = true
 codegen-units = 1
