@@ -991,6 +991,7 @@ fn minion_hit_supports_use_selected_damage() {
     assert_eq!(brand.skill_id, "LivingBombFireDjinn");
     assert!(brand.dps > 0.0);
     for (supports, ratio, invert, gain) in [
+        (vec!["SupportFirePenetrationPlayerTwo"], 2.0, 0.0, 0.0),
         (vec!["SupportRakiatasFlowPlayer"], 3.0, 1.0, 0.0),
         (vec!["SupportXophsPyrePlayer"], 1.8, 0.0, 40.0),
         (
@@ -2039,4 +2040,40 @@ fn ordinary_buff_copies_keep_strongest_pain_offering() {
             }
         }
     }
+}
+
+#[test]
+fn meat_shield_two_scales_minion_damage_dealt_and_taken_by_sixty_percent() {
+    let data = load_data();
+    let make = |with_support: bool| {
+        let mut group = SocketGroup::new()
+            .with_slot("weapon1")
+            .with_gem_skill("SummonInfernalHoundPlayer", 20);
+        if with_support {
+            group = group.with_gem_skill("SupportMeatShieldPlayerTwo", 1);
+        }
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 90,
+                class_name: "Witch".into(),
+                ascendancy_name: "Infernalist".into(),
+            })
+            .add_socket_group(group);
+        pobr_build::calculate_with_data_session(&build, data, &default_opts()).expect("calculate")
+    };
+
+    let base = make(false);
+    let shielded = make(true);
+    let base_dps = base.output().minions[0].dps;
+    let shielded_dps = shielded.output().minions[0].dps;
+    assert!(base_dps > 0.0);
+    assert!(
+        (shielded_dps / base_dps - 0.6).abs() < 1e-8,
+        "expected 40% less minion damage (ratio 0.6), got {shielded_dps} / {base_dps}"
+    );
+    assert!(
+        (shielded.minion_stat_totals(0, "DamageTaken").2 - 0.6).abs() < 1e-8,
+        "expected 40% less minion damage taken (MORE 0.6), got {:?}",
+        shielded.minion_stat_totals(0, "DamageTaken")
+    );
 }

@@ -711,6 +711,10 @@ fn is_consumable_flag(name: &str) -> bool {
             | "PoisonCanStack"
             | "BleedCanStack"
             | "IgniteCanStack"
+            | "IgnoreFireResistance"
+            | "IgnoreColdResistance"
+            | "IgnoreLightningResistance"
+            | "IgnoreElementalResistances"
     )
 }
 
@@ -1214,6 +1218,10 @@ pub(crate) fn translated_mod_name_parts<'a>(
         | "LightningPenetration"
         | "ChaosPenetration"
         | "ElementalPenetration"
+        | "IgnoreFireResistance"
+        | "IgnoreColdResistance"
+        | "IgnoreLightningResistance"
+        | "IgnoreElementalResistances"
         | "TotalCastTime"
         | "TotalAttackTime"
         | "ManaCost"
@@ -3979,6 +3987,18 @@ mod tests {
                 "cannot_bleed": {
                     "mods": [{ "kind": "flag", "name": "CannotBleed", "mod_type": "FLAG" }]
                 },
+                "hits_ignore_enemy_fire_resistance": {
+                    "mods": [{ "kind": "flag", "name": "IgnoreFireResistance", "mod_type": "FLAG" }]
+                },
+                "hits_ignore_enemy_cold_resistance": {
+                    "mods": [{ "kind": "flag", "name": "IgnoreColdResistance", "mod_type": "FLAG" }]
+                },
+                "hits_ignore_enemy_lightning_resistance": {
+                    "mods": [{ "kind": "flag", "name": "IgnoreLightningResistance", "mod_type": "FLAG" }]
+                },
+                "ignore_elemental_resistances": {
+                    "mods": [{ "kind": "flag", "name": "IgnoreElementalResistances", "mod_type": "FLAG" }]
+                },
                 "poison_duration_is_skill_duration": {
                     "mods": [{ "kind": "skill_data", "name": "SkillData", "mod_type": "LIST",
                                "value": { "key": "poisonDurationIsSkillDuration", "value": true } }]
@@ -3994,6 +4014,13 @@ mod tests {
             ("physical_damage_can_freeze", "PhysicalCanFreeze"),
             ("cannot_poison", "CannotPoison"),
             ("cannot_bleed", "CannotBleed"),
+            ("hits_ignore_enemy_fire_resistance", "IgnoreFireResistance"),
+            ("hits_ignore_enemy_cold_resistance", "IgnoreColdResistance"),
+            (
+                "hits_ignore_enemy_lightning_resistance",
+                "IgnoreLightningResistance",
+            ),
+            ("ignore_elemental_resistances", "IgnoreElementalResistances"),
             (
                 "poison_duration_is_skill_duration",
                 "PoisonDurationIsSkillDuration",

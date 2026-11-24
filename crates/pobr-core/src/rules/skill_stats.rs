@@ -226,12 +226,16 @@ fn minion_modifiers_impl(
         "active_skill_minion_damage_+%_final"
         // Feeding Frenzy: "Minions from Supported Skills deal {0}% more
         // Damage".
-        | "feeding_frenzy_minion_damage_+%_final" => {
+        | "feeding_frenzy_minion_damage_+%_final"
+        // Meat Shield I / II: "Minions from Supported Skills deal {0}% less Damage".
+        | "support_meat_shield_minion_damage_+%_final" => {
             Modifier::number("Damage", ModType::More, value)
         }
         // Feeding Frenzy: "Minions from Supported Skills take {0}% more
         // Damage".
-        "feeding_frenzy_minion_damage_taken_+%_final" => {
+        "feeding_frenzy_minion_damage_taken_+%_final"
+        // Meat Shield I / II: "Minions from Supported Skills take {0}% less Damage".
+        | "support_minion_defensive_stance_minion_damage_taken_+%_final" => {
             Modifier::number("DamageTaken", ModType::More, value)
         }
         // Storm Mage quality: "Minions gain {0}% of their maximum Life as
@@ -2505,5 +2509,25 @@ mod tests {
                 "the summoner gains nothing"
             );
         }
+    }
+
+    #[test]
+    fn meat_shield_stats_reduce_minion_damage_dealt_and_taken() {
+        let dmg_stat = "support_meat_shield_minion_damage_+%_final";
+        let taken_stat = "support_minion_defensive_stance_minion_damage_taken_+%_final";
+        assert!(is_minion_stat(dmg_stat));
+        assert!(is_minion_stat(taken_stat));
+        assert_eq!(skill_modifiers(dmg_stat, -40.0), Some(Vec::new()));
+        assert_eq!(skill_modifiers(taken_stat, -40.0), Some(Vec::new()));
+
+        let dmg = minion_modifiers(dmg_stat, -40.0, SummonedMinions::default()).unwrap();
+        assert_eq!(dmg[0].name.as_str(), "Damage");
+        assert_eq!(dmg[0].mod_type, ModType::More);
+        assert_eq!(dmg[0].value.as_number(), Some(-40.0));
+
+        let taken = minion_modifiers(taken_stat, -40.0, SummonedMinions::default()).unwrap();
+        assert_eq!(taken[0].name.as_str(), "DamageTaken");
+        assert_eq!(taken[0].mod_type, ModType::More);
+        assert_eq!(taken[0].value.as_number(), Some(-40.0));
     }
 }
