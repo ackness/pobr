@@ -8,12 +8,12 @@
   .shell-root .rarity-gem { --rc: var(--rarity-gem); }
 
   .shell-root .items-page .weapon-set-hint { margin: 0 0 1.25rem; font-size: var(--text-xs); color: var(--muted-foreground); line-height: 1.6; }
-  .shell-root .items-page .items-workspace { display: grid; grid-template-columns: minmax(19rem, 26rem) minmax(0, 1fr); gap: 2.5rem; align-items: start; }
+  .shell-root .items-page .items-workspace { display: grid; grid-template-columns: clamp(21.5rem, 40%, 26rem) minmax(0, 1fr); gap: clamp(1.25rem, 3cqi, 2.5rem); align-items: start; }
   .shell-root .items-page :is(.items-equipped, .items-library, .item-detail) { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
   .shell-root .items-page .items-collection { display: grid; gap: 2rem; min-width: 0; }
   .shell-root .items-page .item-detail { padding-top: 1rem; border-top: 2px solid var(--rc, var(--border)); }
   .shell-root .items-page .item-find-upgrade { border-color: var(--primary); color: var(--primary); }
-  @container shell-container (max-width: 34rem) {
+  @container shell-page (max-width: 34rem) {
     .shell-root .items-page .item-find-upgrade { min-height: 2.75rem; font-size: var(--text-base); }
   }
   .shell-root .items-page .items-library { padding-top: 1.25rem; border-top: 1px solid var(--border); }
@@ -42,17 +42,20 @@
   .doll .doll-symbol svg { width: 1rem; height: 1rem; }
   .doll .doll-slot-empty .doll-symbol { opacity: .45; }
   .doll .doll-slot-label { grid-area: 1 / 2; display: flex; align-items: center; gap: .35rem; min-width: 0; font-size: .6875rem; letter-spacing: .03em; color: var(--muted-foreground); }
-  .doll .doll-item-name { grid-area: 2 / 1 / 3 / -1; font-size: var(--text-sm); font-weight: 560; line-height: 1.3; color: var(--rc, var(--foreground)); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
-  .doll .doll-item-base { grid-area: 3 / 1 / 4 / -1; font-size: var(--text-xs); line-height: 1.3; color: var(--muted-foreground); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+  .doll .doll-item-name { grid-area: 2 / 1 / 3 / -1; font-size: var(--text-sm); font-weight: 560; line-height: 1.3; color: var(--rc, var(--foreground)); overflow-wrap: break-word; hyphens: auto; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+  .doll .doll-item-base { grid-area: 3 / 1 / 4 / -1; font-size: var(--text-xs); line-height: 1.3; color: var(--muted-foreground); overflow-wrap: break-word; hyphens: auto; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
   /* An empty slot is told apart by its dashed outline; the word stays for screen readers. */
   .doll .doll-empty { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .doll .note-dot { width: .4rem; height: .4rem; border-radius: 50%; background: var(--primary); }
 
   .doll-group { display: grid; gap: .5rem; }
   .doll-group-title { font-size: .6875rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted-foreground); }
-  .shell-root .doll .utility-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .4rem; }
+  /* Two flasks on row 1, three charms on row 2: mirrors PoE2's layout and keeps item names readable at every width. */
+  .shell-root .doll .utility-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .45rem; }
+  .shell-root .doll .utility-row.doll-utility > :nth-child(-n + 2) { grid-column: span 3; }
+  .shell-root .doll .utility-row.doll-utility > :nth-child(n + 3) { grid-column: span 2; }
   .shell-root .doll .limb-row { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: .5rem; }
-  .shell-root .doll .utility-row .doll-slot { min-height: 3.6rem; padding: .4rem .45rem; }
+  .shell-root .doll .utility-row .doll-slot { min-height: 3.75rem; padding: .45rem .5rem; }
   .doll-limbs > summary { cursor: pointer; font-size: var(--text-sm); color: var(--muted-foreground); }
   .doll-limbs > summary:hover { color: var(--foreground); }
 
@@ -69,7 +72,13 @@
   .shell-root .items-page .library-row-body { padding: .5rem 0 .75rem 1.6rem; }
   .shell-root .items-page .library-search { width: 100%; margin-bottom: .75rem; }
 
-  @container doll (max-width: 22rem) { .shell-root .doll .utility-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } .shell-root .doll .limb-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @container doll (max-width: 24rem) {
+    .shell-root .doll .doll-slot { padding: .42rem .45rem; }
+    .doll .doll-item-name { font-size: var(--text-xs); }
+  }
+  @container doll (max-width: 22rem) {
+    .shell-root .doll .limb-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
   /* Not enough width for a figure (a phone, or very large text): the same slots as a plain list. */
   @container doll (max-width: 21rem) {
     .shell-root .paper-doll.doll-figure { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; grid-auto-rows: minmax(4rem, auto);
@@ -80,11 +89,19 @@
     .shell-root .paper-doll.doll-figure { grid-template-columns: minmax(0, 1fr);
       grid-template-areas: 'weapon1' 'weapon2' 'helmet' 'amulet' 'bodyarmour' 'belt' 'ring1' 'ring2' 'gloves' 'boots'; }
     .shell-root .doll .utility-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .shell-root .doll .utility-row.doll-utility > * { grid-column: auto; }
     .shell-root .doll .limb-row { grid-template-columns: minmax(0, 1fr); }
   }
-  @container shell-container (max-width: 64rem) {
-    .shell-root .items-page .items-workspace { grid-template-columns: minmax(0, 1fr); gap: 2rem; }
+  @container shell-page (max-width: 50rem) {
+    .shell-root .items-page .items-workspace { grid-template-columns: minmax(0, 1fr); gap: 1.75rem; }
     .shell-root .items-doll { position: static; max-height: none; max-width: 30rem; }
+  }
+  /* Ultrawide workbench: paper doll | selected item detail | sticky item library side by side. */
+  @container shell-page (min-width: 100rem) {
+    .shell-root .items-page .items-workspace { grid-template-columns: clamp(24rem, 26%, 28rem) minmax(0, 1fr); gap: 2.25rem; }
+    .shell-root .items-page .items-workspace:has(.item-detail) { grid-template-columns: clamp(24rem, 24%, 28rem) minmax(0, 1.15fr) minmax(20rem, .85fr); }
+    .shell-root .items-page .items-workspace:has(.item-detail) > .items-collection { display: contents; }
+    .shell-root .items-page .items-workspace:has(.item-detail) .items-library { position: sticky; top: 0; max-height: calc(100dvh - var(--topbar-height) - 3rem); overflow-y: auto; scrollbar-width: thin; padding: 0 0 0 1.75rem; border-top: 0; border-left: 1px solid var(--border); }
   }
 }
 

@@ -3,12 +3,15 @@
   .shell-palette-button { gap: .5rem; color: var(--muted-foreground); }
   .shell-palette-button kbd, .shell-palette kbd, .shell-shortcuts kbd { padding: .05rem .4rem; border: 1px solid var(--border); border-radius: .3rem; background: var(--muted); font: inherit; font-size: .6875rem; font-family: var(--font-mono); color: var(--muted-foreground); }
   .shell-rail-toggle, .shell-history-button { color: var(--muted-foreground); }
-  @container shell-container (max-width: 56rem) { .shell-history-button, .shell-source-button, .shell-brand-version { display: none; } }
+  @container shell-container (max-width: 88rem) { .shell-brand-version, .shell-palette-button kbd { display: none; } }
+  @container shell-container (max-width: 56rem) { .shell-history-button, .shell-source-button { display: none; } }
   .shell-topbar-actions [aria-disabled="true"] { opacity: .5; cursor: default; }
   .shell-rail-toggle[aria-pressed='true'] { color: var(--primary); }
 
   /* The body is rail | page | inspector. The rail can be hidden; the inspector docks when there is room. */
   .shell-root { --inspector-width: 26rem; }
+  @container shell-container (min-width: 130rem) { .shell-body { --inspector-width: clamp(26rem, 20cqi, 32rem); } }
+  @container shell-container (min-width: 170rem) { .shell-body { --inspector-width: clamp(28rem, 19cqi, 36rem); } }
   .shell-body[data-rail] { grid-template-columns: minmax(0, 1fr); }
   .shell-body[data-rail] .shell-rail { display: none; }
   .shell-body[data-inspector] { grid-template-columns: var(--rail-width) minmax(0, 1fr) var(--inspector-width); }
@@ -75,11 +78,10 @@
   .cb li[data-tone='neutral'] strong { color: var(--primary); }
 
   /* On a crowded bar the status and library buttons keep their icons and give their words to the BD / stage selectors. */
-  @container shell-container (max-width: 100rem) {
+  @container shell-container (max-width: 116rem) {
     .shell-topbar-actions .shell-quiet-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
     .shell-topbar-actions .shell-save-state { margin-right: .25rem; }
   }
   @container shell-container (max-width: 72rem) { .shell-rail-toggle { display: none; } }
-  @container shell-container (max-width: 56rem) { .shell-palette-button kbd { display: none; } }
   @media (prefers-reduced-motion: reduce) { .shell-inspector, .insp-body, .cb { animation: none; } }
 }

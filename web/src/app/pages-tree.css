@@ -18,6 +18,9 @@
   .shell-root .shell-main.shell-page-tree .calc-error { color: var(--destructive); }
   .shell-root .shell-main.shell-page-tree .tree-historical { flex: 1 1 0; display: grid; align-content: start; gap: 1rem; min-height: 0; padding: 1.5rem 2rem; overflow: auto; }
   .shell-root .tree-panel { --tree-side: min(var(--tree-side-preference, 27rem), 48%); position: relative; flex: 1 1 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--tree-side); width: 100%; max-width: none; min-height: 0; height: auto; margin: 0; padding: 0; }
+  @container shell-container (min-width: 64.01rem) and (max-width: 89.99rem) {
+    .shell-root .tree-panel { --tree-side: min(var(--tree-side-preference, 27rem), 38%); }
+  }
   .shell-root .tree-panel[data-side='closed'] { grid-template-columns: minmax(0, 1fr); }
   .shell-root .tree-panel .tree-stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
 
@@ -26,7 +29,7 @@
      highlights are the dark-theme values for the same reason; floating panels keep the page's own colours. */
   .shell-root .tree-panel .tree-canvas { --accent-gold: #d8b66f; --accent-gold-bright: #e8c988; --accent-gold-dim: #a18a5e; --color-cold: #8bbce8; position: absolute; inset: 0; height: auto; min-height: 0; margin: 0; border: 0; border-radius: 0; background: radial-gradient(ellipse at 50% 42%, #1b1d21 0%, #101113 72%); }
   .shell-root .tree-panel .tree-canvas:focus-within { outline: none; }
-  .shell-root .tree-panel .tree-canvas, .shell-root .tree-panel .asc-hint, .shell-root .tree-panel .tree-route-preview { --tree-top-bar-bottom: inherit; }
+  .shell-root .tree-panel .tree-canvas, .shell-root .tree-panel .asc-hint, .shell-root .tree-panel .tree-route-preview, .shell-root .tree-panel .tree-edit-error { --tree-top-bar-bottom: inherit; }
   .shell-root .tree-panel .asc-hint { top: calc(var(--tree-top-bar-bottom, 3.5rem) + .5rem); border-color: var(--border); background: var(--card); color: var(--muted-foreground); }
 
   /* The node tooltip is a floating panel: page colours, kind-coloured name, then its stats and the "if allocated" delta. */
@@ -187,7 +190,7 @@
   .shell-root .tree-panel .node-power-route[open] > p { margin: .25rem 0 0; padding-inline-start: 1.5rem; }
   .shell-root .tree-panel .node-power [role='status']:empty { margin: 0; }
 
-  /* ── Smaller screens and larger text: the same pieces, stacked ──────────── */
+  /* ── Smaller screens and larger text: canvas first, view controls beneath it ── */
   @container shell-container (max-width: 64rem) {
     .shell-root .tree-panel .tree-bar-socket-picker { display: block; min-width: 0; flex: 1 1 100%; }
     .shell-root .tree-panel .tree-bar-socket-picker .app-select-trigger { width: 100%; }
@@ -196,10 +199,12 @@
     .shell-root .shell-main.shell-page-tree .shell-page-content, .shell-root .shell-main.shell-page-tree .shell-page-content > div:not([hidden]) { display: block; }
     .shell-root .tree-panel, .shell-root .tree-panel[data-side='closed'], .shell-root .tree-panel:has(.tree-planner-body), .shell-root .tree-panel:has(.node-power[open]) { display: block; }
     .shell-root .tree-panel .tree-stage { display: flex; flex-direction: column; overflow: visible; }
-    .shell-root .tree-panel .tree-canvas { position: relative; inset: auto; order: 1; flex: none; height: clamp(14rem, 62dvh, 48rem); }
-    .shell-root .tree-panel .tree-bar, .shell-root .tree-panel .tree-side-toggle, .shell-root .tree-panel .tree-edit-error { position: static; order: 0; max-width: none; border-radius: 0; border-width: 0 0 1px; background: var(--card); box-shadow: none; backdrop-filter: none; }
-    .shell-root .tree-panel .tree-side-toggle { align-self: stretch; justify-content: flex-start; }
-    .shell-root .tree-panel .tree-bar-view, .shell-root .tree-panel .tree-bar-top { padding: .5rem .9rem; }
+    .shell-root .tree-panel .tree-bar, .shell-root .tree-panel .tree-side-toggle, .shell-root .tree-panel .tree-edit-error { position: static; max-width: none; border-radius: 0; border-width: 0 0 1px; background: var(--card); box-shadow: none; backdrop-filter: none; }
+    .shell-root .tree-panel .tree-bar-top { order: 0; padding: .45rem .85rem; }
+    .shell-root .tree-panel .tree-edit-error { order: 1; }
+    .shell-root .tree-panel .tree-canvas { position: relative; inset: auto; order: 2; flex: none; height: clamp(16rem, 56dvh, 42rem); }
+    .shell-root .tree-panel .tree-bar-view { order: 3; padding: .5rem .85rem; border-top: 1px solid var(--border); }
+    .shell-root .tree-panel .tree-side-toggle { order: 4; align-self: stretch; justify-content: flex-start; }
     .shell-root .tree-panel .tree-point-details[open] { flex: 1 1 100%; }
     .shell-root .tree-panel .tree-point-breakdown { position: static; width: 100%; max-height: none; margin-top: .35rem; box-shadow: none; }
     /* The ascendancy name stays on one line; with large text the label moves above the picker instead of overflowing. */
