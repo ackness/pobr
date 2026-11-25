@@ -94,15 +94,4 @@
 .shell-root .compare-panel { overflow-wrap: anywhere; }
 .shell-root .compare-table-wrap { min-width: 0; max-width: 100%; }
 .shell-root :is(.doll-slot.is-selected, .trade-position[aria-pressed='true']) { background: color-mix(in srgb, var(--primary) 12%, var(--card)); border-color: var(--primary); color: var(--primary); }
-@container shell-page (max-width: 48rem) {
-  .shell-root .items-workspace, .shell-root .skill-groups { grid-template-columns: minmax(0, 1fr); }
-}
-@container shell-page (max-width: 36rem) {
-  .shell-root .compare-pair { grid-template-columns: minmax(0, 1fr); }
-  .shell-root .trade-workspace { grid-template-columns: minmax(0, 1fr); }
-  .shell-root .paper-doll { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); }
-  .shell-root .doll-slot { grid-template-columns: minmax(0, 1fr); }
-  .shell-root .skill-group-header { flex-wrap: wrap; }
-  .shell-root .skill-group-title { flex-basis: 100%; }
-}
 }

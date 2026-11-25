@@ -10,7 +10,7 @@
   .shell-root .calcs-page.calcs-workspace .calcs-hint { margin: .25rem 0; font-size: var(--text-sm); line-height: 1.55; color: var(--muted-foreground); }
 
   /* ── Metrics: the list of stats (left) and the inspector (right) ──────── */
-  .shell-root .calcs-page.calcs-workspace .calcs-explorer { display: grid; grid-template-columns: minmax(16rem, 21rem) minmax(0, 1fr); align-items: start; gap: 0 2.5rem; }
+  .shell-root .calcs-page.calcs-workspace .calcs-explorer { display: grid; grid-template-columns: clamp(14.5rem, 29%, 21rem) minmax(0, 1fr); align-items: start; gap: 0 clamp(1.25rem, 3cqi, 2.5rem); }
   .shell-root .calcs-page.calcs-workspace .calcs-metric-browser { position: sticky; top: .5rem; display: flex; flex-direction: column; min-width: 0; max-height: max(24rem, calc(100dvh - var(--topbar-height) - 9.5rem)); padding: 0 1.5rem 0 0; border: 0; border-right: 1px solid var(--border); border-radius: 0; background: none; }
   .shell-root .calcs-page.calcs-workspace .calcs-metric-browser:focus { outline: none; }
   .shell-root .calcs-page.calcs-workspace .calcs-context-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .9rem; margin: 0 0 .8rem; padding: 0; border: 0; border-radius: 0; background: none; font-size: var(--text-sm); color: var(--muted-foreground); }
@@ -192,8 +192,16 @@
   .shell-root .calcs-page.calcs-workspace .ledger-extra li > span, .shell-root .calcs-page.calcs-workspace .ledger-extra li > small { color: var(--muted-foreground); }
   .shell-root .calcs-page.calcs-workspace .ledger-errors { margin: 0; padding: 0; list-style: none; }
 
+  /* ── Ultrawide screens ─────────────────────────────────────────────────── */
+  @container shell-page (min-width: 108rem) {
+    .shell-root .calcs-page.calcs-workspace .calcs-explorer { grid-template-columns: clamp(18rem, 24%, 24rem) minmax(0, 1fr); gap: 0 3rem; }
+  }
+  @container shell-page (min-width: 120rem) {
+    .shell-root .calcs-page.calcs-workspace .ledger-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 2.5rem; }
+  }
+
   /* ── Smaller screens and larger text ───────────────────────────────────── */
-  @container shell-container (max-width: 56rem) {
+  @container shell-page (max-width: 46rem) {
     .shell-root .calcs-page.calcs-workspace .calcs-explorer { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
     .shell-root .calcs-page.calcs-workspace .calcs-metric-browser { position: static; max-height: none; padding: 0; border: 0; }
     .shell-root .calcs-page.calcs-workspace .calcs-metric-list { max-height: 22rem; }
@@ -203,7 +211,9 @@
     .shell-root .calcs-page.calcs-workspace .ledger-row { grid-template-columns: minmax(0, 1fr); gap: .2rem; }
     .shell-root .calcs-page.calcs-workspace .ledger-extra li { grid-template-columns: minmax(0, 1fr); }
   }
-  @container shell-container (max-width: 34rem) {
+  @container shell-page (max-width: 34rem) {
+    .shell-root .calcs-page.calcs-workspace .calcs-view-tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; max-width: 100%; margin-bottom: 1rem; scrollbar-width: none; }
+    .shell-root .calcs-page.calcs-workspace .calcs-view-tabs > * { flex: none; padding-inline: .5rem; font-size: var(--text-xs); }
     .shell-root .breakdown-detail { max-width: 100%; overflow-x: auto; }
     .shell-root .calcs-page.calcs-workspace .calcs-detail-value strong { font-size: 1.9rem; }
     .shell-root .calcs-page.calcs-workspace .breakdown-formula .formula-operand { padding-right: 1rem; }

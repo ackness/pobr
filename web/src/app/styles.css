@@ -100,7 +100,7 @@
   /* The workflow. Left group describes the character; right group reads and improves it. */
   .shell-tabs { display: flex; align-items: stretch; align-self: stretch; gap: .1rem; margin-left: .5rem; }
   /* Long translated page names get their own row until there is room for every control. */
-  .shell-topbar > .shell-tabs { order: 3; flex: 1 0 100%; min-width: 0; flex-wrap: wrap; justify-content: center; margin-left: 0; }
+  .shell-topbar > .shell-tabs { order: 3; flex: 1 0 100%; min-width: 0; min-height: 2.35rem; flex-wrap: wrap; justify-content: center; margin-left: 0; margin-inline: -1rem; padding-inline: 1rem; border-top: 1px solid var(--border); }
   .shell-tab { position: relative; display: inline-flex; align-items: center; gap: .6rem; padding-inline: .7rem; font-size: var(--text-base); color: var(--muted-foreground); text-decoration: none; white-space: nowrap; transition: color .12s; }
   .shell-tab:hover { color: var(--foreground); }
   .shell-tab[aria-current='page'] { color: var(--foreground); font-weight: 550; }
@@ -116,7 +116,7 @@
 
   /* Results rail: always visible, because every edit exists to move these numbers. */
   .shell-rail { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; border-right: 1px solid var(--border); background: var(--card); }
-  .shell-main { min-height: 0; overflow: auto; padding: 1.5rem 2rem 3rem; scrollbar-gutter: stable; scroll-padding: 1rem; }
+  .shell-main { container: shell-page / inline-size; min-height: 0; overflow: auto; padding: 1.5rem 2rem 3rem; scrollbar-gutter: stable; scroll-padding: 1rem; }
   .shell-main:focus { outline: none; }
   .shell-page-content { min-width: 0; max-width: var(--content-width); margin-inline: auto; overflow-wrap: anywhere; }
 
@@ -170,7 +170,7 @@
   /* ── Page chrome shared by every workspace page ────────────────────────── */
   .shell-root .ui-page { max-width: none; padding-bottom: 0; }
   .shell-root .page-header { flex-wrap: wrap; align-items: flex-end; margin-bottom: 1.25rem; padding-bottom: .9rem; border-bottom: 1px solid var(--border); }
-  .shell-root .page-header > div { min-width: 0; }
+  .shell-root .page-header > div { flex: 1 1 20rem; min-width: 0; }
   .shell-root .page-header-actions { flex-shrink: 1; max-width: 100%; }
   .shell-root .page-header h2 { font-size: var(--text-xl); font-weight: 600; letter-spacing: -.01em; line-height: 1.3; }
   .shell-root .page-header p { margin: .3rem 0 0; max-width: 60rem; font-size: var(--text-sm); line-height: 1.55; color: var(--muted-foreground); }
@@ -235,18 +235,43 @@
   .app-select-content [data-slot='select-item'] > span:last-child { min-width: 0; }
   .shell-root .app-disabled-tooltip { min-width: 0; max-width: 100%; }
 
-  /* ── Responsive: the rail moves into a drawer, the workflow into a menu ── */
-  @container shell-container (min-width: 112rem) {
-    .shell-main { padding: 2rem 3rem 4rem; }
-    .shell-topbar { flex-wrap: nowrap; }
-    .shell-crumb { flex: 0 1 auto; max-width: 22rem; }
-    .shell-topbar > .shell-tabs { order: 0; flex: 1 0 auto; justify-content: flex-start; }
+  /* ── Responsive: mobile, split desktop, standard desktop and ultrawide ─── */
+  /* Narrow desktop / split-screen ultrawide (1152–1440px): trim rail and main gutters so 2-col pages stay open. */
+  @container shell-container (min-width: 72.01rem) and (max-width: 89.99rem) {
+    .shell-body { --rail-width: clamp(14.5rem, 20cqi, 16.5rem); }
+    .shell-main { padding: 1.15rem 1.25rem 2.5rem; }
   }
-  /* Chinese page names are short: one row fits from 90rem and still leaves the crumb about 16rem. */
-  @container shell-container (min-width: 90rem) {
-    .shell-topbar:lang(zh) { flex-wrap: nowrap; }
-    .shell-topbar:lang(zh) > .shell-crumb { flex: 0 1 auto; max-width: 22rem; }
-    .shell-topbar:lang(zh) > .shell-tabs { order: 0; flex: 1 0 auto; justify-content: flex-start; }
+  /* Chinese page names are compact: one row fits from 74rem while leaving room for long build/stage names. */
+  @container shell-container (min-width: 74rem) {
+    .shell-topbar:lang(zh) { flex-wrap: nowrap; column-gap: .65rem; }
+    .shell-topbar:lang(zh) > .shell-crumb { flex: 0 1 auto; min-width: 8.5rem; max-width: 16rem; }
+    .shell-topbar:lang(zh) > .shell-tabs { order: 0; flex: 1 0 auto; min-height: 0; flex-wrap: nowrap; justify-content: flex-start; margin-inline: .25rem 0; padding-inline: 0; border-top: 0; }
+    .shell-topbar:lang(zh) .shell-tab { padding-inline: .5rem; }
+    .shell-topbar:lang(zh) .shell-tab-divider { margin-inline: .3rem; }
+  }
+  /* English and wider Chinese bars settle into comfortable single-row spacing from 94rem. */
+  @container shell-container (min-width: 94rem) {
+    .shell-topbar { flex-wrap: nowrap; column-gap: .85rem; }
+    .shell-crumb, .shell-topbar:lang(zh) > .shell-crumb { flex: 0 1 auto; min-width: 9rem; max-width: 22rem; }
+    .shell-topbar > .shell-tabs, .shell-topbar:lang(zh) > .shell-tabs { order: 0; flex: 1 0 auto; min-height: 0; flex-wrap: nowrap; justify-content: flex-start; margin-inline: .5rem 0; padding-inline: 0; border-top: 0; }
+    .shell-topbar:lang(zh) .shell-tab { padding-inline: .7rem; }
+    .shell-topbar:lang(zh) .shell-tab-divider { margin-inline: .5rem; }
+  }
+  @container shell-container (min-width: 112rem) {
+    .shell-main { padding: 1.75rem 2.5rem 3.5rem; }
+    .shell-topbar { column-gap: 1rem; }
+  }
+  /* Ultrawide (2560px+): lift content-width cap so multi-column workbenches use the monitor instead of side margins. */
+  @container shell-container (min-width: 130rem) {
+    .shell-body { --rail-width: 18.5rem; }
+    .shell-main { --content-width: 132rem; padding: 2rem 3rem 4rem; }
+    .shell-crumb, .shell-topbar:lang(zh) > .shell-crumb { max-width: 26rem; }
+    .shell-topbar > .shell-tabs, .shell-topbar:lang(zh) > .shell-tabs { gap: .2rem; margin-left: .85rem; }
+  }
+  /* Super-ultrawide (3440px+): support three-column workbenches across ~85% of the workspace width. */
+  @container shell-container (min-width: 170rem) {
+    .shell-body { --rail-width: 19.5rem; }
+    .shell-main { --content-width: 168rem; }
   }
   @container shell-container (max-width: 72rem) {
     .shell-body { grid-template-columns: minmax(0, 1fr); }
@@ -256,11 +281,18 @@
     .shell-main { padding: 1.25rem 1.25rem 2.5rem; }
   }
   @container shell-container (max-width: 40rem) {
-    .shell-topbar { flex-wrap: wrap; row-gap: 0; padding-block: .25rem; }
-    .shell-crumb { order: 3; flex: 1 0 100%; padding-bottom: .25rem; }
-    .shell-crumb [data-slot='select-trigger'] { max-width: 100%; }
+    .shell-topbar { flex-wrap: wrap; row-gap: 0; min-height: 2.85rem; padding-block: .2rem; }
+    .shell-crumb { order: 3; flex: 1 0 100%; padding-bottom: .15rem; }
+    .shell-crumb [data-slot='select-trigger'] { max-width: 100%; height: 1.75rem; font-size: var(--text-sm); }
     .shell-save-state { display: none; }
-    .shell-main { padding: 1rem .9rem 2rem; }
+    .shell-main { padding: .85rem .85rem 2rem; }
+    .shell-root .page-header { margin-bottom: .85rem; padding-bottom: .65rem; }
+    .shell-root .page-header h2 { font-size: 1.2rem; }
+  }
+  /* Short desktop/laptop viewports (720–800px tall) reclaim vertical chrome above the fold. */
+  @media (max-height: 820px) {
+    .shell-main:not(.shell-page-tree) { padding-top: 1rem; }
+    .shell-root .page-header { margin-bottom: .9rem; padding-bottom: .65rem; }
   }
 }
 
@@ -346,19 +378,19 @@
   .ov-empty { max-width: 40rem; margin: 12vh auto 0; justify-items: start; }
   .ov-empty p { margin: 0; color: var(--muted-foreground); line-height: 1.7; }
 
-  @container shell-container (max-width: 72rem) { .ov-cols { grid-template-columns: minmax(0, 1fr); gap: 2rem; } }
-  @container shell-container (max-width: 56rem) {
+  @container shell-page (max-width: 54rem) { .ov-cols { grid-template-columns: minmax(0, 1fr); gap: 1.75rem; } }
+  @container shell-page (max-width: 44rem) {
     .ov-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .ov-figure:nth-child(odd) { padding-left: 0; border-left: 0; }
     .ov-figure:nth-child(n + 3) { border-top: 1px solid var(--border); }
   }
-  @container shell-container (max-width: 34rem) {
+  @container shell-page (max-width: 34rem) {
     .ov-figure { padding: .65rem .55rem; }
     .ov-figure dd button { font-size: clamp(1.1rem, 6cqw, 1.55rem); }
     .ov-figure .ov-source { margin-top: .12rem; }
     .ov-head, .ov { gap: 1rem; }
     .ov-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .shell-root :is(.ov-actions, .ov-head) > button { min-height: 2.75rem; font-size: var(--text-base); }
+    .shell-root :is(.ov-actions, .ov-head) > button { min-height: 2.75rem; padding-inline: .55rem; font-size: var(--text-sm); }
     .ov-actions > button:last-child { margin-inline-start: 0; }
     .ov-cols, .ov-col { gap: 1.25rem; }
     .ov-sec > h2, .ov-sec-head { margin-bottom: .3rem; }
@@ -561,7 +593,10 @@
     .ov-findings li > div { max-width: 64ch; }
     .ov-hint { max-width: 72ch; }
   }
-  @container shell-container (max-width: 40rem) {
+  @container shell-container (min-width: 170rem) {
+    .shell-page-content[data-page='overview'], .shell-main.shell-page-overview > :is(.shell-notice, .shell-alert) { max-width: 136rem; }
+  }
+  @container shell-page (max-width: 34rem) {
     .ov-resistances { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 }

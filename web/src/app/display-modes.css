@@ -154,9 +154,9 @@
 
   /* Density changes spacing, never type size or data visibility. */
   [data-density='compact'] .shell-root :is(.config-item, .trade-score-row, .ov-findings > li) { padding-block: .4rem; }
-  @container skills-page (max-width: 55.99rem) {
-    .shell-root .skills-page .named-sets > label { flex: 1; min-width: 0; flex-wrap: nowrap; margin-right: 0; }
-    .shell-root .skills-page .named-sets > label [data-slot='select-trigger'] { flex: 1; min-width: 0; width: auto; }
+  @container skills-page (max-width: 47.99rem) {
+    .shell-root .skills-page .named-sets > label { flex: 0 1 auto; min-width: 0; flex-wrap: nowrap; margin-right: 0; white-space: nowrap; }
+    .shell-root .skills-page .named-sets > label [data-slot='select-trigger'] { flex: 0 1 11rem; min-width: 5.5rem; width: auto; }
     .shell-root .skills-page .skill-groups { display: flex; flex-direction: column; }
     .shell-root .skills-page .skill-group-list { display: contents; }
     .shell-root .skills-page .skill-group-list > .skills-toolbar { order: 0; width: 100%; }
@@ -167,23 +167,23 @@
     .shell-root .skills-page .skill-groups:not([data-list-expanded]) .skill-group:not(.is-selected) > .skill-group-header { display: none; }
     .shell-root .skills-page .skills-empty { width: 100%; }
   }
-  @container shell-container (max-width: 56rem) {
+  @container shell-page (max-width: 46rem) {
     .shell-root .config-page .config-group-nav { display: none; }
     .shell-root .config-page .config-options-workspace { display: block; }
-    .shell-root .config-mobile-category { display: flex; gap: .75rem; align-items: center; margin-top: .75rem; }
+    .shell-root .config-mobile-category { display: flex; gap: .75rem; align-items: center; margin-top: .5rem; }
     .shell-root .config-mobile-category [data-slot='select-trigger'] { flex: 1; min-width: 0; }
     .shell-root [data-display-mode] .calcs-page.calcs-workspace .calcs-explorer { display: flex; flex-direction: column; gap: 1.25rem; }
     .shell-root [data-display-mode] .calcs-page.calcs-workspace .calcs-detail-pane { order: -1; width: 100%; }
     .shell-root [data-display-mode] .calcs-page.calcs-workspace .calcs-metric-browser { width: 100%; }
   }
-  @container shell-container (max-width: 40rem) {
+  @container shell-page (max-width: 34rem) {
     .shell-root [data-display-mode] .cmp-tablist { flex-wrap: wrap; width: 100%; }
     .shell-root [data-display-mode='compact'] .ov-figure { grid-template-columns: minmax(0, 1fr) auto; gap: .25rem 1rem; }
     .shell-root [data-display-mode='compact'] .ov-figure small { grid-column: 1 / -1; }
     .shell-root [data-display-mode] .config-page .config-item { grid-template-columns: minmax(0, 1fr) minmax(4rem, 6rem) 1.5rem; padding-left: .25rem; gap: .4rem; }
     .shell-root [data-display-mode] .config-option-groups .config-item > :is(.app-checkbox, input, [role='checkbox'], [role='combobox']) { grid-column: 2; grid-row: 1; align-self: center; justify-self: end; }
     .shell-root [data-display-mode] .config-option-groups .config-reset { grid-column: 3; grid-row: 1; }
-    .shell-root [data-display-mode] .config-page .config-toolbar { margin-block: .75rem; }
+    .shell-root [data-display-mode] .config-page .config-toolbar { margin-block: .5rem; }
     .shell-root [data-display-mode] .compare-table-wrap { overflow: visible; padding-inline: 0; border-inline: 0; }
   }
 }

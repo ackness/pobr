@@ -130,3 +130,43 @@ for (const width of [390, 1440, 2560]) {
     }
   });
 }
+
+test('split-desktop (1200px) avoids single-column collapse and super-ultrawide (3440px) opens three-column workbenches', async ({ page }) => {
+  const { readFileSync } = await import('node:fs');
+  await page.setViewportSize({ width: 1200, height: 760 });
+  await importAndOpen(page, readFileSync('../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', 'utf8'));
+  await expect(page.locator('.paper-doll')).toBeVisible();
+
+  // 1200px narrow desktop: Items keeps the paper doll beside details, and Skills stays two-column.
+  await page.getByRole('button', { name: 'Body Armour', exact: true }).click();
+  const doll1200 = (await page.locator('.items-doll').boundingBox())!;
+  const detail1200 = (await page.locator('.item-detail').boundingBox())!;
+  expect(detail1200.x).toBeGreaterThanOrEqual(doll1200.x + doll1200.width);
+
+  await goTo(page, 'Skills');
+  await expect(page.locator('.skill-detail')).toBeVisible();
+  const list1200 = (await page.locator('.skill-group-header').first().boundingBox())!;
+  const skillDetail1200 = (await page.locator('.skill-detail').boundingBox())!;
+  expect(skillDetail1200.x).toBeGreaterThanOrEqual(list1200.x + list1200.width);
+
+  // 3440px super-ultrawide: Skills, Items and Upgrades spread into three side-by-side panes without overflow.
+  await page.setViewportSize({ width: 3440, height: 1440 });
+  const gems3440 = (await page.locator('.skill-gems-section').boundingBox())!;
+  const supports3440 = (await page.locator('.skill-support-section').boundingBox())!;
+  expect(supports3440.x).toBeGreaterThanOrEqual(gems3440.x + gems3440.width);
+
+  await goTo(page, 'Items');
+  await page.getByRole('button', { name: 'Body Armour', exact: true }).click();
+  await expect(page.locator('.item-detail')).toBeVisible();
+  const itemDetail3440 = (await page.locator('.item-detail').boundingBox())!;
+  const library3440 = (await page.locator('.items-library').boundingBox())!;
+  expect(library3440.x).toBeGreaterThanOrEqual(itemDetail3440.x + itemDetail3440.width);
+
+  await goTo(page, 'Upgrades');
+  await expect(page.locator('.trade-workspace')).toBeVisible();
+  const slots3440 = (await page.locator('.trade-workspace').boundingBox())!;
+  const paste3440 = (await page.locator('.up-paste').boundingBox())!;
+  expect(paste3440.x).toBeGreaterThanOrEqual(slots3440.x + slots3440.width);
+  expect(await page.locator('main').evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
+});
+
