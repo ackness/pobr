@@ -617,3 +617,27 @@ Makeshift Crossbow
     .unwrap();
     assert_eq!(combined.active_totem_limit, 8.0);
 }
+
+#[test]
+fn ancestral_warrior_totem_enforces_non_modifiable_totem_limit_from_host() {
+    let data = data();
+    let build = parse_build(
+        r#"<PathOfBuilding2>
+<Build level="80" className="Warrior" ascendClassName="None" mainSocketGroup="1"/>
+<Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
+<Skills defaultGemLevel="20" activeSkillSet="1"><SkillSet id="1">
+  <Skill enabled="true" mainActiveSkill="2">
+    <Gem skillId="AncestralWarriorTotemPlayer" enabled="true" level="20" quality="0"/>
+    <Gem skillId="SunderPlayer" enabled="true" level="20" quality="0"/>
+  </Skill>
+</SkillSet></Skills>
+</PathOfBuilding2>"#,
+    )
+    .expect("parse");
+    let opts = DataOrchestratorOptions {
+        extra_modifier_texts: vec!["+1 to maximum number of Summoned Totems".into()],
+        ..DataOrchestratorOptions::default()
+    };
+    let output = calculate_with_data(&build, &data, &opts).expect("calculate");
+    assert_eq!(output.active_totem_limit, 10.0);
+}

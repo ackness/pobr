@@ -198,3 +198,110 @@ Implicits: 0
         output.action_rate
     );
 }
+
+#[test]
+fn armour_on_all_armour_items_scales_block_chance() {
+    let data = data();
+    let shield_armour =
+        f64::from(data.armour_base("Splintered Tower Shield").unwrap().armour) + 144.0;
+    let chest_armour = f64::from(data.armour_base("Rusted Cuirass").unwrap().armour) + 200.0;
+    let helm_armour = f64::from(data.armour_base("Rusted Greathelm").unwrap().armour) + 100.0;
+    let shield_block = data
+        .armour_base("Splintered Tower Shield")
+        .unwrap()
+        .block_chance
+        .unwrap();
+    let expected_inc = 3.0 * ((shield_armour + chest_armour + helm_armour) / 100.0).floor();
+    let expected_block = (shield_block * (1.0 + expected_inc / 100.0)).round();
+
+    let xml = r#"<PathOfBuilding2>
+<Build level="90" className="Warrior" mainSocketGroup="1"/>
+<Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true" mainActiveSkill="1"><Gem skillId="FireballPlayer" level="20" quality="0" enabled="true"/></Skill></SkillSet></Skills>
+<Items activeItemSet="1">
+<Item id="1">Rarity: RARE
+Test Shield
+Splintered Tower Shield
+Implicits: 0
++144 to Armour
+3% increased Block chance per 100 total Item Armour on Equipped Armour Items
+</Item>
+<Item id="2">Rarity: RARE
+Test Chest
+Rusted Cuirass
+Implicits: 0
++200 to Armour
+</Item>
+<Item id="3">Rarity: RARE
+Test Helm
+Rusted Greathelm
+Implicits: 0
++100 to Armour
+</Item>
+<ItemSet id="1"><Slot name="Weapon 2" itemId="1"/><Slot name="Body Armour" itemId="2"/><Slot name="Helmet" itemId="3"/></ItemSet>
+</Items>
+</PathOfBuilding2>"#;
+    let build = parse_build(xml).unwrap();
+    let baseline_xml = xml.replace(
+        "3% increased Block chance per 100 total Item Armour on Equipped Armour Items\n",
+        "",
+    );
+    let baseline = calculate_with_data(
+        &parse_build(&baseline_xml).unwrap(),
+        &data,
+        &DataOrchestratorOptions::default(),
+    )
+    .unwrap();
+    let output = calculate_with_data(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+    assert!(
+        output.effective_block_chance > baseline.effective_block_chance,
+        "{} should exceed {}",
+        output.effective_block_chance,
+        baseline.effective_block_chance
+    );
+    assert_eq!(output.block_chance, expected_block);
+}
+
+#[test]
+fn buckler_offhand_activates_using_shield_for_shield_evasion_attack_scaling() {
+    let data = data();
+    // Node 27687: "4% increased Attack Damage per 75 Item Armour and Evasion on Equipped Shield"
+    // requires `Condition:UsingShield` and reads `EvasionOnWeapon 2`.
+    let make = |offhand: &str| {
+        let xml = format!(
+            r#"<PathOfBuilding2>
+<Build level="90" className="Huntress" mainSocketGroup="1"/>
+<Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true" mainActiveSkill="1"><Gem skillId="MeleeSpearPlayer" level="20" quality="0" enabled="true"/></Skill></SkillSet></Skills>
+<Items activeItemSet="1">
+<Item id="1">Rarity: NORMAL
+Hardwood Spear
+Implicits: 0
+</Item>
+<Item id="2">Rarity: RARE
+Test Offhand
+{offhand}
+Implicits: 0
++300 to Evasion Rating
+</Item>
+<ItemSet id="1"><Slot name="Weapon 1" itemId="1"/><Slot name="Weapon 2" itemId="2"/></ItemSet>
+</Items>
+</PathOfBuilding2>"#
+        );
+        let build = parse_build(&xml).unwrap();
+        let options = DataOrchestratorOptions {
+            extra_modifier_texts: vec![
+                "4% increased Attack Damage per 75 Item Armour and Evasion on Equipped Shield"
+                    .into(),
+            ],
+            ..Default::default()
+        };
+        calculate_with_data(&build, &data, &options).unwrap()
+    };
+    let buckler = make("Leather Buckler");
+    let focus = make("Twig Focus");
+    assert!(
+        buckler.dps > focus.dps,
+        "buckler dps {} should exceed focus dps {}",
+        buckler.dps,
+        focus.dps
+    );
+}
