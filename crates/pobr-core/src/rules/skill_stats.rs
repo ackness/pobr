@@ -226,12 +226,18 @@ fn minion_modifiers_impl(
         "active_skill_minion_damage_+%_final"
         // Feeding Frenzy: "Minions from Supported Skills deal {0}% more
         // Damage".
-        | "feeding_frenzy_minion_damage_+%_final" => {
+        | "feeding_frenzy_minion_damage_+%_final"
+        // Meat Shield I / II: "Minions from Supported Skills deal {0}% less Damage".
+        | "support_meat_shield_minion_damage_+%_final" => {
             Modifier::number("Damage", ModType::More, value)
         }
+        // "Minions have {0}% more Maximum Life", of the summoning skill itself.
+        "active_skill_minion_life_+%_final" => Modifier::number("MaximumLife", ModType::More, value),
         // Feeding Frenzy: "Minions from Supported Skills take {0}% more
         // Damage".
-        "feeding_frenzy_minion_damage_taken_+%_final" => {
+        "feeding_frenzy_minion_damage_taken_+%_final"
+        // Meat Shield I / II: "Minions from Supported Skills take {0}% less Damage".
+        | "support_minion_defensive_stance_minion_damage_taken_+%_final" => {
             Modifier::number("DamageTaken", ModType::More, value)
         }
         // Storm Mage quality: "Minions gain {0}% of their maximum Life as
@@ -308,6 +314,11 @@ fn minion_modifiers_impl(
 /// Sacrificial Offering: "Supported Offering Skills have {0}% increased Buff
 /// effect", of the buff the Offering grants.
 pub const OFFERING_BUFF_EFFECT: &str = "offering_spells_effect_+%";
+
+/// Danse Macabre: "Supported Offering Skills have {0}% increased Buff Effect if
+/// they consumed an additional Skeleton", of the buff the Offering grants.
+pub const DANSE_MACABRE_OFFERING_BUFF_EFFECT: &str =
+    "offering_spells_effect_+%_if_consumed_additional_skeleton";
 
 /// "Flames of Chayula have {0}% increased effect" on Into the Breach,
 /// "Remnants from Supported Skills have {0}% increased effect" on a support:
@@ -784,7 +795,9 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         // Raise the buff of the Offering, or the effect of the Remnants, of
         // the skill they are on, where that buff is made
         // (`skill_env::buff_specs`).
-        OFFERING_BUFF_EFFECT | REMNANT_EFFECT => Some(Vec::new()),
+        OFFERING_BUFF_EFFECT | DANSE_MACABRE_OFFERING_BUFF_EFFECT | REMNANT_EFFECT => {
+            Some(Vec::new())
+        }
         "all_damage_gained_as_cold_instead" => Some(vec![Modifier::flag(GAINS_ONLY_COLD)]),
         // "{0}% increased Projectile Speed" (Spark's quality), Twister's
         // additional quality, and Projectile Acceleration's more speed.
@@ -902,6 +915,11 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         "support_rigwald_damage_+%_final_in_weapon_set_two" => Some(vec![
             Modifier::number("Damage", ModType::More, value).with_tag(while_using_weapon_set(2)),
         ]),
+        "skill_rapid_fire_repeats_per_broken_seal" => Some(if value > 0.0 {
+            vec![Modifier::flag("DamageSeal")]
+        } else {
+            Vec::new()
+        }),
         _ => None,
     }
 }
@@ -2505,5 +2523,45 @@ mod tests {
                 "the summoner gains nothing"
             );
         }
+    }
+
+    #[test]
+    fn meat_shield_stats_reduce_minion_damage_dealt_and_taken() {
+        let dmg_stat = "support_meat_shield_minion_damage_+%_final";
+        let taken_stat = "support_minion_defensive_stance_minion_damage_taken_+%_final";
+        assert!(is_minion_stat(dmg_stat));
+        assert!(is_minion_stat(taken_stat));
+        assert_eq!(skill_modifiers(dmg_stat, -40.0), Some(Vec::new()));
+        assert_eq!(skill_modifiers(taken_stat, -40.0), Some(Vec::new()));
+
+        let dmg = minion_modifiers(dmg_stat, -40.0, SummonedMinions::default()).unwrap();
+        assert_eq!(dmg[0].name.as_str(), "Damage");
+        assert_eq!(dmg[0].mod_type, ModType::More);
+        assert_eq!(dmg[0].value.as_number(), Some(-40.0));
+
+        let taken = minion_modifiers(taken_stat, -40.0, SummonedMinions::default()).unwrap();
+        assert_eq!(taken[0].name.as_str(), "DamageTaken");
+        assert_eq!(taken[0].mod_type, ModType::More);
+        assert_eq!(taken[0].value.as_number(), Some(-40.0));
+    }
+
+    #[test]
+    fn active_skill_minion_life_final_maps_to_minion_more_life() {
+        let stat = "active_skill_minion_life_+%_final";
+        assert!(is_minion_stat(stat));
+        assert_eq!(skill_modifiers(stat, 20.0), Some(Vec::new()));
+        let life = minion_modifiers(stat, 20.0, SummonedMinions::default()).unwrap();
+        assert_eq!(life.len(), 1);
+        assert_eq!(life[0].name.as_str(), "MaximumLife");
+        assert_eq!(life[0].mod_type, ModType::More);
+        assert_eq!(life[0].value.as_number(), Some(20.0));
+    }
+
+    #[test]
+    fn danse_macabre_offering_buff_effect_is_consumed_by_buff_specs() {
+        assert_eq!(
+            skill_modifiers(DANSE_MACABRE_OFFERING_BUFF_EFFECT, 30.0),
+            Some(Vec::new())
+        );
     }
 }

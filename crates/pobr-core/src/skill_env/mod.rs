@@ -35,8 +35,8 @@ pub use item_text::{
     parse_adds_physical, parse_adds_with_suffix, parse_has_per_level_defence,
     parse_local_block_chance, parse_local_defence_flat, parse_local_defence_inc,
     parse_local_reload_speed, parse_local_ward_flat, parse_local_ward_inc, parse_weapon_local_crit,
-    weapon_local_attack_speed, weapon_local_phys_adds, weapon_local_phys_inc,
-    weapon_local_reload_speed, weapon_mod_texts,
+    weapon_has_no_physical_damage, weapon_local_attack_speed, weapon_local_phys_adds,
+    weapon_local_phys_inc, weapon_local_reload_speed, weapon_mod_texts,
 };
 pub use lookup::{
     ArmourBaseLookup, BaseItemLookup, CostTypeLookup, CostTypeRef, EffectLookup, EffectStats,
@@ -50,8 +50,9 @@ pub use mods::{
     STAT_IS_AREA_DAMAGE, STAT_IS_PROJECTILE, additional_resource_cost_modifiers, clean_grant_text,
     crossbow_ammo_cost_modifiers, crossbow_ammo_sibling, crossbow_reload_modifiers,
     dot_flag_modifiers, gem_level_category_matches, gem_tags_match_category, group_active_effects,
-    is_attribute_node, is_damage_skill, is_off_hand_weapon_base_stat, mk_trigger_flag,
-    mk_trigger_mod, parse_gem_level_bonus, parse_gem_property_bonus, pick_group_main_skill,
+    group_active_effects_with_sets, is_attribute_node, is_damage_skill,
+    is_off_hand_weapon_base_stat, mk_trigger_flag, mk_trigger_mod, parse_gem_level_bonus,
+    parse_gem_property_bonus, pick_group_main_skill, resolve_gem_stat_set_index,
     resolved_enemy_level, scale_trunc_2dp, skill_base_modifiers, skill_keyword_flags,
     skill_name_from_id, skill_type_bits, skill_type_flags, stat_set_hit_flags,
     support_mana_multiplier_modifier, vendor_scale_mod_value,

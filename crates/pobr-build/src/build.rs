@@ -52,6 +52,10 @@ pub struct GemSkillRef {
     /// parsing normalizes to `None`). `statSetIndexCalcs` (a separate selection on the
     /// calcs page) is not handled and is ignored by the parser.
     pub stat_set_index: Option<u32>,
+    /// Per-grantedEffect statSet selections (`PoB <StatSetIndex grantedEffect="X" index="N"/>`,
+    /// **1-based**). Empty when omitted; takes priority over `stat_set_index` for exact effect ids.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub stat_set_indexes: std::collections::BTreeMap<String, u32>,
     /// PoB `<Gem nameSpec>` display name — only present when the XML lacks
     /// `skillId`/`gemId` (the serialized form of a lineage support like Atziri's
     /// Communion), in which case `skill_id` is an empty string. The orchestrator's
@@ -74,6 +78,20 @@ pub struct GemSkillRef {
     pub minion_skill: Option<u32>,
 }
 
+impl GemSkillRef {
+    /// Resolves the stat-set index only for an explicit `<StatSetIndex>` entry
+    /// or an exact primary-effect `skill_id` match.
+    pub fn stat_set_index_for_exact(&self, effect_id: &str) -> Option<u32> {
+        pobr_core::skill_env::resolve_gem_stat_set_index(
+            &self.skill_id,
+            self.stat_set_index,
+            Some(&self.stat_set_indexes),
+            effect_id,
+            false,
+        )
+    }
+}
+
 impl Default for GemSkillRef {
     fn default() -> Self {
         Self {
@@ -86,6 +104,7 @@ impl Default for GemSkillRef {
             global_level_bonus: None,
             quality: 0,
             stat_set_index: None,
+            stat_set_indexes: std::collections::BTreeMap::new(),
             name_spec: None,
             corrupted: false,
             minion: None,
@@ -181,6 +200,7 @@ impl SocketGroup {
                 global_level_bonus: g.global_level_bonus,
                 quality: g.quality,
                 stat_set_index: g.stat_set_index,
+                stat_set_indexes: g.stat_set_indexes.clone(),
                 corrupted: g.corrupted,
                 minion: g.minion.clone(),
                 minion_skill: g.minion_skill,
@@ -272,6 +292,7 @@ impl SocketGroup {
             gem_level,
             quality,
             stat_set_index: None,
+            stat_set_indexes: std::collections::BTreeMap::new(),
             name_spec: None,
             corrupted: false,
             minion: None,

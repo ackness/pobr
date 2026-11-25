@@ -166,6 +166,27 @@ pub(crate) fn item_spirit_modifiers(build: &Build, data: &BuildData) -> Vec<Modi
     mods
 }
 
+fn item_local_ward(item: &Item, data: &BuildData) -> Option<f64> {
+    let armour = data.armour_base(&item.base.to_string());
+    let base = armour.map_or_default(|a| a.ward);
+    // Elsewhere, on a weapon, the line is the character's.
+    let flat = if armour.is_some() {
+        pobr_core::skill_env::item_local_ward_flat(item)
+    } else {
+        0.0
+    };
+    if base > 0 || flat > 0.0 {
+        Some(
+            ((f64::from(base) + flat)
+                * (1.0 + pobr_core::skill_env::item_local_ward_inc(item) / 100.0)
+                * (1.0 + f64::from(item.quality) / 100.0))
+                .round(),
+        )
+    } else {
+        item.rolled_defence.ward
+    }
+}
+
 /// Per-item Runic Ward → a `Ward` BASE mod.
 ///
 /// An item's Runic Ward is its base type's plus its own "+N to maximum Runic
@@ -179,24 +200,8 @@ pub(crate) fn item_spirit_modifiers(build: &Build, data: &BuildData) -> Vec<Modi
 pub(crate) fn item_ward_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
     let mut mods = Vec::new();
     for (slot, item) in build.equipped_items() {
-        let armour = data.armour_base(&item.base.to_string());
-        let base = armour.map_or_default(|a| a.ward);
-        // Elsewhere, on a weapon, the line is the character's.
-        let flat = if armour.is_some() {
-            pobr_core::skill_env::item_local_ward_flat(item)
-        } else {
-            0.0
-        };
-        let value = if base > 0 || flat > 0.0 {
-            ((f64::from(base) + flat)
-                * (1.0 + pobr_core::skill_env::item_local_ward_inc(item) / 100.0)
-                * (1.0 + f64::from(item.quality) / 100.0))
-                .round()
-        } else {
-            match item.rolled_defence.ward {
-                Some(v) => v,
-                None => continue,
-            }
+        let Some(value) = item_local_ward(item, data) else {
+            continue;
         };
         if value > 0.0 {
             let origin =
@@ -212,18 +217,33 @@ pub(crate) fn item_ward_modifiers(build: &Build, data: &BuildData) -> Vec<Modifi
     mods
 }
 
-/// Per-slot defence scaling multipliers `<Stat>On<SlotId>` (PoB2's PerStat, e.g.
-/// `EnergyShieldOnboots`).
+/// Per-slot and aggregate armour-item defence scaling multipliers
+/// `<Stat>On<SlotId>` and `<Stat>OnAllArmourItems` (PoB2's PerStat, e.g.
+/// `EnergyShieldOnboots`, `ArmourOnAllArmourItems`).
 ///
 /// For each item's per-item defence base value ([`item_local_defences`]), builds a
 /// multiplier key from `Armour/Evasion/EnergyShield` × that item's slot id, for mods
 /// like `+N to <stat> per M <defence> on equipped <slot>` (parsed as
-/// `ModTag::Multiplier{var, div}`) to expand by count/div during perform. Generic:
-/// builds keys from slot/attribute, never targets a specific item.
+/// `ModTag::Multiplier{var, div}`) to expand by count/div during perform. Also
+/// aggregates local defences across armour slots (`Helmet`, `BodyArmour`, `Gloves`,
+/// `Boots`, `Weapon2`) into `*OnAllArmourItems`. Generic: builds keys from
+/// slot/attribute, never targets a specific item.
 pub(crate) fn per_slot_defence_multipliers(build: &Build, data: &BuildData) -> Vec<(String, f64)> {
     let mut out = Vec::new();
     let level = build.character.level;
+    let [mut all_armour, mut all_evasion, mut all_es, mut all_ward] = [0.0; 4];
     for (slot, item) in build.equipped_items() {
+        let is_armour_slot = matches!(
+            slot,
+            EquipmentSlot::Helmet
+                | EquipmentSlot::BodyArmour
+                | EquipmentSlot::Gloves
+                | EquipmentSlot::Boots
+                | EquipmentSlot::Weapon2
+        );
+        if is_armour_slot && let Some(ward) = item_local_ward(item, data) {
+            all_ward += ward;
+        }
         let Some(values) = item_local_defences(item, data, level) else {
             continue;
         };
@@ -232,6 +252,11 @@ pub(crate) fn per_slot_defence_multipliers(build: &Build, data: &BuildData) -> V
             if values[idx] > 0.0 {
                 out.push((format!("{name}On{slot_id}"), values[idx]));
             }
+        }
+        if is_armour_slot {
+            all_armour += values[0];
+            all_evasion += values[1];
+            all_es += values[2];
         }
         // Per-slot lowest of armour and evasion: `LowestOfArmourAndEvasionOn<slot>
         // = min(item armour base, item evasion base)` — consumed by PerStat mods
@@ -245,6 +270,16 @@ pub(crate) fn per_slot_defence_multipliers(build: &Build, data: &BuildData) -> V
         let lowest = values[0].min(values[1]);
         if lowest > 0.0 {
             out.push((format!("LowestOfArmourAndEvasionOn{slot_id}"), lowest));
+        }
+    }
+    for (name, total) in [
+        ("ArmourOnAllArmourItems", all_armour),
+        ("EvasionOnAllArmourItems", all_evasion),
+        ("EnergyShieldOnAllArmourItems", all_es),
+        ("WardOnAllArmourItems", all_ward),
+    ] {
+        if total > 0.0 {
+            out.push((name.to_string(), total));
         }
     }
     out
@@ -330,6 +365,8 @@ mod tests {
                 ("ArmourOnbodyarmour".to_string(), 100.0),
                 ("ArmourOnhelmet".to_string(), 100.0),
                 ("ArmourOnweapon1".to_string(), 100.0),
+                ("ArmourOnAllArmourItems".to_string(), 200.0),
+                ("WardOnAllArmourItems".to_string(), 50.0),
             ]
         );
         assert_eq!(
@@ -340,5 +377,43 @@ mod tests {
                 ("RunesSocketedInweapon1".to_string(), 1.0),
             ]
         );
+    }
+
+    #[test]
+    fn all_armour_items_multipliers_sum_armour_slots_only() {
+        let mut helm = test_item("Helm");
+        helm.rolled_defence = RolledDefence {
+            armour: Some(120.0),
+            evasion: Some(40.0),
+            energy_shield: None,
+            spirit: None,
+            ward: Some(15.0),
+        };
+        let mut boots = test_item("Boots");
+        boots.rolled_defence = RolledDefence {
+            armour: None,
+            evasion: Some(90.0),
+            energy_shield: Some(35.0),
+            spirit: None,
+            ward: None,
+        };
+        let mut offhand = test_item("Shield");
+        offhand.rolled_defence = RolledDefence {
+            armour: Some(250.0),
+            evasion: None,
+            energy_shield: Some(60.0),
+            spirit: None,
+            ward: None,
+        };
+        let build = Build::new()
+            .set_item(EquipmentSlot::Weapon1, test_item("Weapon"))
+            .set_item(EquipmentSlot::Helmet, helm)
+            .set_item(EquipmentSlot::Boots, boots)
+            .set_item(EquipmentSlot::Weapon2, offhand);
+        let multipliers = per_slot_defence_multipliers(&build, &BuildData::empty());
+        assert!(multipliers.contains(&("ArmourOnAllArmourItems".into(), 370.0)));
+        assert!(multipliers.contains(&("EvasionOnAllArmourItems".into(), 130.0)));
+        assert!(multipliers.contains(&("EnergyShieldOnAllArmourItems".into(), 95.0)));
+        assert!(multipliers.contains(&("WardOnAllArmourItems".into(), 15.0)));
     }
 }

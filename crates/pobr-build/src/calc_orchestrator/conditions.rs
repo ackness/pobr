@@ -79,10 +79,11 @@ pub(crate) fn weapon_support_limits(build: &Build, data: &BuildData) -> Vec<Stri
         .collect()
 }
 
-/// Whether the off-hand slot has a shield equipped (PoB2's `Condition:UsingShield`).
-/// Determined from the `Weapon2` slot's base `item_class` in the currently active
-/// equipment group (of `Shield`/`Buckler`/`Focus`, only the Shield category counts).
-/// Generic, not specialized.
+/// Whether the off-hand slot has a shield or buckler equipped (PoB2's
+/// `Condition:UsingShield`). Determined from the `Weapon2` slot's base
+/// `item_class` in the currently active equipment group (PoE2 Bucklers are
+/// Evasion Shields and satisfy shield conditions/passives, whereas `Focus`
+/// does not). Generic, not specialized.
 pub(crate) fn main_hand_offhand_is_shield(build: &Build, data: &BuildData) -> bool {
     let Some(item) = build.items.get(&EquipmentSlot::Weapon2) else {
         return false;
@@ -90,7 +91,7 @@ pub(crate) fn main_hand_offhand_is_shield(build: &Build, data: &BuildData) -> bo
     let Some(def) = data.base_item(&item.base.to_string()) else {
         return false;
     };
-    def.item_class.as_str().contains("Shield")
+    def.item_class.as_str().contains("Shield") || def.item_class.as_str() == "Buckler"
 }
 
 /// PoB2 condition implications (ConfigOptions.lua's `implyCond`/`implyCondList`): a
@@ -294,6 +295,12 @@ pub(crate) fn combat_conditions(
         conds.push("Shapeshifted");
         if has("Bear") {
             conds.push(pobr_core::calc::bear_form::BEAR_FORM);
+        }
+        if has("Wolf") {
+            conds.push(pobr_core::calc::bear_form::WOLF_FORM);
+        }
+        if has("Wyvern") {
+            conds.push(pobr_core::calc::bear_form::WYVERN_FORM);
         }
     }
     conds

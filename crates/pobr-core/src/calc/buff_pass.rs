@@ -49,11 +49,9 @@
 //! - (f) Debuff's `stackVar`/`stackLimit` (`:2221-2230`): the `BuffSpec`
 //!   contract (frozen at T0) has no stack field, treated as `stackCount = 1`
 //!   (vendor's `skillData.stackCount or 1` default).
-//! - (g) Curse priority's source weight: pobr doesn't model "equipment
-//!   implicit curse / aura-applied curse" (`socketGroup.source` / the
-//!   Blasphemy family), the orchestration layer always passes
-//!   [`CurseSourceWeight::None`]; [`determine_curse_priority`] keeps the
-//!   parameter, and the table-driven tests cover it with vendor's numeric samples.
+//! - (g) Curse priority's source weight: `CurseSourceWeight::Aura` is passed
+//!   for aura-delivered curses (Blasphemy); equipment-implicit curse sources
+//!   (`CurseSourceWeight::Equipment`) are not modeled and pass `None`.
 //! - (h) The `SelfCast<name>` condition (`:2288`), `socketedCursesHexLimit`
 //!   (`:2294`/`:2899-2914`), and `CurseBuff`'s buffModList secondary scaling
 //!   (`:2318-2330`) are absent -- `CurseBuff` and every other unconsumed kind
@@ -730,43 +728,57 @@ pub fn buff_pass(env: &mut Env) {
                 merge_buff(player_buffs.entry(spec.name.clone()).or_default(), scaled);
             }
             BuffKind::Curse => {
-                // vendor :2289's gate: `(mode_effective and (not Hexproof or exempt)) or mark`.
+                let is_aura = spec.skill_types.contains(SkillTypes::AURA);
+                if party.is_none()
+                    && is_aura
+                    && caster.mod_db.flag(&caster_cfg, "SelfAurasOnlyAffectYou")
+                {
+                    continue;
+                }
+                let curse_cfg = caster_cfg
+                    .clone()
+                    .with_skill_types(spec.skill_types.clone())
+                    .with_keyword_flags(crate::skill_env::skill_keyword_flags(&spec.skill_types));
+                // Curse gate: effective mode required for hexes unless Hexproof is ignored; Marks always apply.
                 let hexproof = env.enemy.mod_db.flag(&env.cfg, "Hexproof");
                 let ignores_hexproof = (party.is_none()
-                    && caster.mod_db.flag(&caster_cfg, "CursesIgnoreHexproof"))
+                    && caster.mod_db.flag(&curse_cfg, "CursesIgnoreHexproof"))
                     || spec.ignore_curse_limit;
                 if !((env.cfg.mode_effective && (!hexproof || ignores_hexproof)) || spec.is_mark) {
                     continue;
                 }
-                // vendor :2295-2305: the CurseEffect factor. Originally
-                // documented as `INC(CurseEffect, BuffEffect)`, but a direct
-                // reading of `:2295` shows
-                // `Sum(INC, CurseEffect) + enemyDB Sum(INC, CurseEffectOnSelf)`
-                // (no BuffEffect), aligned with the actual vendor source;
-                // the aura source's extra AuraEffect INC (`:2296-2298`) isn't
-                // implemented (simplification (g): no aura source modeled).
                 let curse_effect: &[&str] = if spec.is_mark {
                     &["CurseEffect", "MarkEffect"]
                 } else {
                     &["CurseEffect"]
                 };
                 let curse_effect_on_self = ["CurseEffectOnSelf"];
-                // spec.local_effect_inc/more = vendor skillModList's
-                // skill-local CurseEffect section (gem quality / in-group
-                // support, pre-folded by the orchestration layer).
-                let inc = caster
+                let mut inc = caster
                     .mod_db
-                    .sum_by_name(ModType::Inc, &caster_cfg, curse_effect)
+                    .sum_by_name(ModType::Inc, &curse_cfg, curse_effect)
                     + spec.local_effect_inc
                     + env
                         .enemy
                         .mod_db
                         .sum_by_name(ModType::Inc, &env.cfg, &curse_effect_on_self);
-                let mut more = caster.mod_db.more_by_name(&caster_cfg, curse_effect)
+                if is_aura {
+                    // Aura-delivered curses (e.g. Blasphemy) also benefit from AuraEffect INC.
+                    inc += caster
+                        .mod_db
+                        .sum_by_name(ModType::Inc, &curse_cfg, &["AuraEffect"]);
+                }
+                let mag_names = ["Magnitude"];
+                let mag_mult = (1.0
+                    + caster
+                        .mod_db
+                        .sum_by_name(ModType::Inc, &curse_cfg, &mag_names)
+                        / 100.0)
+                    * caster.mod_db.more_by_name(&curse_cfg, &mag_names);
+                let mut more = caster.mod_db.more_by_name(&curse_cfg, curse_effect)
                     * spec.local_effect_more
+                    * mag_mult
                     * spec.magnitude;
                 if !spec.is_mark {
-                    // vendor :2303-2305: non-marks additionally multiply by the enemy-side CurseEffectOnSelf MORE.
                     more *= env
                         .enemy
                         .mod_db
@@ -790,7 +802,7 @@ pub fn buff_pass(env: &mut Env) {
                 };
                 if dbg_env!("POBR_DBG_CURSE").is_some() {
                     eprintln!(
-                        "[POBR_CURSE] entry name={} inc={inc:.2} (local_inc={:.2}) more={more:.4} (local_more={:.4} magnitude={:.4}) mult={mult:.4} mods={:?}",
+                        "[POBR_CURSE] entry name={} is_aura={is_aura} inc={inc:.2} (local_inc={:.2}) more={more:.4} (local_more={:.4} magnitude={:.4}) mult={mult:.4} mods={:?}",
                         spec.name,
                         spec.local_effect_inc,
                         spec.local_effect_more,
@@ -812,9 +824,8 @@ pub fn buff_pass(env: &mut Env) {
                         scaled
                     })
                     .collect();
-                // vendor :2294's `ignoreCurseLimit = (...) and not mark or false`.
                 let ignore_curse_limit = ((party.is_none()
-                    && caster.mod_db.flag(&caster_cfg, "CursesIgnoreCurseLimit"))
+                    && caster.mod_db.flag(&curse_cfg, "CursesIgnoreCurseLimit"))
                     || spec.ignore_curse_limit)
                     && !spec.is_mark;
                 curses.push(CurseEntry {
@@ -828,7 +839,11 @@ pub fn buff_pass(env: &mut Env) {
                         &spec.name,
                         spec.slot.as_deref(),
                         spec.socket_index,
-                        CurseSourceWeight::None, // Simplification (g): aura/equipment sources not modeled.
+                        if is_aura {
+                            CurseSourceWeight::Aura
+                        } else {
+                            CurseSourceWeight::None
+                        },
                     ),
                     is_mark: spec.is_mark,
                     ignore_curse_limit,
@@ -1073,6 +1088,8 @@ pub(super) fn party_exports(env: &Env) -> Vec<super::session::BuffSpec> {
         if !matches!(spec.kind, BuffKind::Aura | BuffKind::Curse) {
             continue;
         }
+        let is_curse_aura =
+            spec.kind == BuffKind::Curse && spec.skill_types.contains(SkillTypes::AURA);
         if spec.kind == BuffKind::Aura
             && [
                 "SelfAurasCannotAffectAllies",
@@ -1082,6 +1099,9 @@ pub(super) fn party_exports(env: &Env) -> Vec<super::session::BuffSpec> {
             .iter()
             .any(|name| env.player.mod_db.flag(&env.cfg, name))
         {
+            continue;
+        }
+        if is_curse_aura && env.player.mod_db.flag(&env.cfg, "SelfAurasOnlyAffectYou") {
             continue;
         }
         let cfg = env
@@ -1097,16 +1117,25 @@ pub(super) fn party_exports(env: &Env) -> Vec<super::session::BuffSpec> {
             &["CurseEffect"]
         };
         let mut exported = spec.clone();
-        let inc = env.player.mod_db.sum_by_name(ModType::Inc, &cfg, names) + spec.local_effect_inc;
+        let mut inc =
+            env.player.mod_db.sum_by_name(ModType::Inc, &cfg, names) + spec.local_effect_inc;
+        if is_curse_aura {
+            inc += env
+                .player
+                .mod_db
+                .sum_by_name(ModType::Inc, &cfg, &["AuraEffect"]);
+        }
         exported.magnitude *= (1.0 + inc / 100.0)
             * env.player.mod_db.more_by_name(&cfg, names)
             * spec.local_effect_more;
-        if spec.kind == BuffKind::Aura {
-            let names = ["Magnitude"];
-            exported.magnitude *= (1.0
-                + env.player.mod_db.sum_by_name(ModType::Inc, &cfg, &names) / 100.0)
-                * env.player.mod_db.more_by_name(&cfg, &names);
-        }
+        let mag_names = ["Magnitude"];
+        exported.magnitude *= (1.0
+            + env
+                .player
+                .mod_db
+                .sum_by_name(ModType::Inc, &cfg, &mag_names)
+                / 100.0)
+            * env.player.mod_db.more_by_name(&cfg, &mag_names);
         exported.local_effect_inc = 0.0;
         exported.local_effect_more = 1.0;
         result.push(exported);
@@ -2158,5 +2187,106 @@ mod tests {
         let nested = extra.value.as_nested_mods().expect("nested mods");
         assert_eq!(nested[0].value.as_number(), Some(100.0));
         assert_eq!(nested[1].value.as_number(), Some(10.0));
+    }
+
+    #[test]
+    fn aura_curse_scales_with_aura_effect_and_magnitude_independently() {
+        let mut env = buffed_env();
+        env.player.mod_db.add_list([
+            Modifier::number("CurseEffect", ModType::Inc, 30.0),
+            Modifier::number("AuraEffect", ModType::Inc, 20.0),
+            Modifier::number("CurseEffect", ModType::More, 25.0),
+            Modifier::number("Magnitude", ModType::Inc, 50.0)
+                .with_tag(ModTag::SkillTypes(SkillTypes::AURA)),
+        ]);
+
+        let mut aura_curse = curse_spec("Despair", "Body Armour", 1, 10.0, false, false);
+        aura_curse.skill_types = SkillTypes::APPLIES_CURSE | SkillTypes::AURA;
+        env.buff_skills.push(aura_curse);
+
+        buff_pass(&mut env);
+
+        // INC bucket: 1 + (30 CurseEffect + 20 AuraEffect) / 100 = 1.5
+        // MORE * Magnitude bucket: 1.25 * (1 + 50/100) = 1.875
+        // Total = 10.0 * 1.5 * 1.875 = 28.125 (truncated/rounded per normal scaling).
+        let got = env
+            .enemy
+            .mod_db
+            .sum_by_name(ModType::Inc, &env.cfg, &["DamageTaken"]);
+        assert!(
+            (got - 28.0).abs() < 1e-6 || (got - 28.125).abs() < 1e-6,
+            "expected ~28.125 (or floor/rounded 28), got {got}"
+        );
+    }
+
+    #[test]
+    fn non_aura_curse_ignores_aura_effect_and_aura_tagged_magnitude() {
+        let mut env = buffed_env();
+        env.player.mod_db.add_list([
+            Modifier::number("CurseEffect", ModType::Inc, 30.0),
+            Modifier::number("AuraEffect", ModType::Inc, 20.0),
+            Modifier::number("Magnitude", ModType::Inc, 50.0)
+                .with_tag(ModTag::SkillTypes(SkillTypes::AURA)),
+        ]);
+
+        let mut hex = curse_spec("Despair", "Body Armour", 1, 10.0, false, false);
+        hex.skill_types = SkillTypes::APPLIES_CURSE;
+        env.buff_skills.push(hex);
+
+        buff_pass(&mut env);
+
+        let got = env
+            .enemy
+            .mod_db
+            .sum_by_name(ModType::Inc, &env.cfg, &["DamageTaken"]);
+        assert!(
+            (got - 13.0).abs() < 1e-6,
+            "non-aura hex should only get +30% CurseEffect (10 * 1.3 = 13), got {got}"
+        );
+    }
+
+    #[test]
+    fn self_auras_only_affect_you_blocks_aura_curse_only() {
+        let mut env = buffed_env();
+        env.player
+            .mod_db
+            .add_mod(Modifier::flag("SelfAurasOnlyAffectYou"));
+        env.player
+            .mod_db
+            .add_mod(Modifier::number("EnemyCurseLimit", ModType::Base, 1.0));
+
+        let mut aura_curse = curse_spec("Despair", "Body Armour", 1, 10.0, false, false);
+        aura_curse.skill_types = SkillTypes::APPLIES_CURSE | SkillTypes::AURA;
+        let mut self_curse = curse_spec("Enfeeble", "Gloves", 1, 12.0, false, false);
+        self_curse.skill_types = SkillTypes::APPLIES_CURSE;
+
+        env.buff_skills.push(aura_curse);
+        env.buff_skills.push(self_curse);
+
+        buff_pass(&mut env);
+
+        assert_eq!(
+            env.curse_pass_output.as_ref().unwrap().curse_slots,
+            vec!["Enfeeble".to_string()]
+        );
+    }
+
+    #[test]
+    fn aura_curse_wins_priority_over_self_cast_curse() {
+        let mut env = buffed_env();
+        let mut aura_curse = curse_spec("Vulnerability", "Body Armour", 1, 10.0, false, false);
+        aura_curse.skill_types = SkillTypes::APPLIES_CURSE | SkillTypes::AURA;
+        let mut self_curse = curse_spec("Despair", "Gloves", 6, 10.0, false, false);
+        self_curse.skill_types = SkillTypes::APPLIES_CURSE;
+
+        env.buff_skills.push(self_curse);
+        env.buff_skills.push(aura_curse);
+
+        buff_pass(&mut env);
+
+        assert_eq!(
+            env.curse_pass_output.as_ref().unwrap().curse_slots,
+            vec!["Vulnerability".to_string()]
+        );
     }
 }

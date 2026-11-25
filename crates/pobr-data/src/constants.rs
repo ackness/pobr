@@ -235,6 +235,15 @@ pub const BASE_REQUIRED_ENEMIES_TO_BE_SURROUNDED: f64 = 5.0;
 pub const BEAR_FORM_ARMOUR_PER_LEVEL: f64 = 10.0;
 pub const BEAR_FORM_ARMOUR_ALSO_APPLIES_TO_ELEMENTAL: f64 = 30.0;
 
+/// Inherent bonuses of a character in Wolf form ("While in Wolf form, you gain:
+/// 30% increased Movement Speed") and Wyvern form ("While in Wyvern form, you
+/// gain: 50% faster start of Energy Shield Recharge; 50% increased Stun
+/// Threshold; 50% increased Elemental Ailment Threshold").
+pub const WOLF_FORM_MOVEMENT_SPEED_INC: f64 = 30.0;
+pub const WYVERN_FORM_ES_RECHARGE_FASTER_INC: f64 = 50.0;
+pub const WYVERN_FORM_STUN_THRESHOLD_INC: f64 = 50.0;
+pub const WYVERN_FORM_AILMENT_THRESHOLD_INC: f64 = 50.0;
+
 /// Global DoT DPS cap (`(2^31 - 1) / 60`, roughly 3.579×10^7).
 ///
 /// Source: PoB2 `src/Modules/Data.lua`:

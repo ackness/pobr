@@ -1318,3 +1318,40 @@ fn perform_mom_increases_pob2_ehp() {
     );
     assert!(mom.player.output.total_ehp_pob2 > plain.player.output.total_ehp_pob2);
 }
+
+#[test]
+fn self_ignore_resistance_keeps_sheet_resist_but_ignores_resist_and_pen_in_ehp_and_dot() {
+    let base = ActorBaseStats {
+        life: 2000.0,
+        ..ActorBaseStats::default()
+    };
+    let res_penalty = Modifier::number("LightningResistance", ModType::Base, -200.0);
+
+    let mut normal = player_with(base, vec![res_penalty.clone()]);
+    setup_enemy(&mut normal, 82, EnemyTier::Pinnacle);
+    perform(&mut normal).unwrap();
+
+    let mut ignored = player_with(
+        base,
+        vec![res_penalty, Modifier::flag("SelfIgnoreLightningResistance")],
+    );
+    setup_enemy(&mut ignored, 82, EnemyTier::Pinnacle);
+    perform(&mut ignored).unwrap();
+
+    // Resolved sheet resistance stays -200% (used for nearby enemies too).
+    assert_eq!(ignored.player.output.lightning_resistance, -200.0);
+    // Defense treats taken hit and DoT resistance as 0% (1.0x instead of 3.0x), and skips enemy pen.
+    let terms = ignored.player.output.ehp_terms.as_ref().unwrap();
+    let light = DamageType::Lightning as usize;
+    assert_eq!(terms.resist_taken_multi[light], 1.0);
+    assert_eq!(terms.enemy_pen[light], 0.0);
+    assert_eq!(terms.dot_taken[light].resistance, 0.0);
+    assert_eq!(terms.dot_taken[light].multiplier(), 1.0);
+    assert!(
+        (ignored.player.output.lightning_max_hit - 2000.0).abs() < 1e-6,
+        "got {}",
+        ignored.player.output.lightning_max_hit
+    );
+    assert!(ignored.player.output.lightning_max_hit > normal.player.output.lightning_max_hit * 2.5);
+    assert!(ignored.player.output.total_ehp > normal.player.output.total_ehp);
+}

@@ -405,3 +405,22 @@ fn builder_after_reduction_from_taken_inc() {
     let (sum, _) = taken_hit_from_damage(1000.0, DamageType::Fire, &ctx);
     assert_eq!(sum, 1200.0);
 }
+
+#[test]
+fn self_ignore_resistance_sets_resist_taken_multiplier_to_one() {
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::flag("SelfIgnoreLightningResistance"));
+    let cfg = CalcConfig::attack();
+    let inputs = MitigationInputs {
+        resist_pct: [0.0, 75.0, 50.0, -200.0, 25.0],
+        ..MitigationInputs::default()
+    };
+    let ctx = build_mitigation_ctx(&db, &cfg, &inputs);
+    assert_eq!(ctx.resist_taken_multi[DamageType::Fire as usize], 0.25);
+    assert_eq!(ctx.resist_taken_multi[DamageType::Cold as usize], 0.5);
+    assert_eq!(ctx.resist_taken_multi[DamageType::Lightning as usize], 1.0);
+    assert_eq!(ctx.resist_taken_multi[DamageType::Chaos as usize], 0.75);
+
+    let (light_taken, _) = taken_hit_from_damage(1000.0, DamageType::Lightning, &ctx);
+    assert_eq!(light_taken, 1000.0);
+}

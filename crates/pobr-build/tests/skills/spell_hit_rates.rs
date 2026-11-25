@@ -249,3 +249,36 @@ fn selected_warcry_rate_keeps_cooldown_recovery_and_spell_speed_separate() {
     .unwrap();
     assert!((modified.output().action_rate - plain.output().action_rate * 2.0).abs() < 2e-9);
 }
+
+#[test]
+fn plasma_blast_reports_channel_time_without_crossbow_reload() {
+    let build = pobr_build::parse_build(
+        r#"<PathOfBuilding2><Build className="Mercenary" level="90" mainSocketGroup="1"/>
+<Skills><Skill mainActiveSkill="1"><Gem skillId="PlasmaBlastPlayer" level="20"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Makeshift Crossbow
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items></PathOfBuilding2>"#,
+    )
+    .unwrap();
+    let session =
+        calculate_with_data_session(&build, data(), &DataOrchestratorOptions::default()).unwrap();
+    let out = session.output();
+    // Base weapon attack time + 2.0s `total_attack_time_+_ms`, excluding
+    // crossbow reload and release animation.
+    assert!(out.channel_time > 2.5, "got {}", out.channel_time);
+    assert!(out.reload_time > 0.0, "got {}", out.reload_time);
+    assert!(
+        out.channel_time + out.reload_time < 1.0 / out.action_rate + 0.05
+            || out.channel_time < 1.0 / out.action_rate,
+        "channel_time={} reload={} action_rate={}",
+        out.channel_time,
+        out.reload_time,
+        out.action_rate
+    );
+    let sources = session.detail_sources("ChannelTime");
+    let total_attack_time = sources
+        .iter()
+        .find(|group| group.name == "TotalAttackTime")
+        .expect("TotalAttackTime in ChannelTime detail sources");
+    assert_eq!(total_attack_time.totals.0, 2.0);
+}

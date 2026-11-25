@@ -444,9 +444,9 @@ pub(super) fn stage_build_cfg(
         .with_condition("HelmetEvasionHigherThanArmour", helmet[1] > helmet[0]);
 
     // PoB2's `Condition:UsingShield` (CalcSetup: set true when the off-hand is a
-    // shield). Determined from whether the current active equipment group's off-hand
-    // slot has a shield-category base — a build-state default, consistent across the
-    // whole build, not specialized.
+    // shield or buckler). Determined from whether the current active equipment
+    // group's off-hand slot has a Shield/Buckler base — a build-state default,
+    // consistent across the whole build, not specialized.
     if main_hand_offhand_is_shield(build, data) {
         cfg = cfg.with_condition("UsingShield", true);
     }

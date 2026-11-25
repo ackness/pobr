@@ -177,3 +177,45 @@ fn dynamism_recognizes_the_five_second_generator_without_inventing_charge_uptime
         assert_eq!(env.cfg.multiplier(charge), 0.0);
     }
 }
+
+#[test]
+fn armour_and_evasion_es_recovery_cap_limit_es_pool_and_max_hit() {
+    let base_mods = vec![Modifier::number("Armour", ModType::Base, 250.0)];
+    let uncapped = run(CalcConfig::new(), &[], base_mods.clone());
+    assert_eq!(uncapped.player.output.energy_shield, 400.0);
+    assert_eq!(uncapped.player.output.energy_shield_recovery_cap, 400.0);
+
+    let mut armour_capped_mods = base_mods.clone();
+    armour_capped_mods.push(Modifier::flag("ArmourESRecoveryCap"));
+    let armour_capped = run(CalcConfig::new(), &[], armour_capped_mods);
+    assert_eq!(
+        armour_capped.player.output.energy_shield_recovery_cap,
+        250.0
+    );
+    assert!(
+        armour_capped.player.output.physical_max_hit < uncapped.player.output.physical_max_hit,
+        "capping ES recovery to Armour below ES must reduce physical max hit"
+    );
+
+    let high_armour = run(
+        CalcConfig::new(),
+        &[],
+        vec![
+            Modifier::number("Armour", ModType::Base, 500.0),
+            Modifier::flag("ArmourESRecoveryCap"),
+        ],
+    );
+    assert_eq!(high_armour.player.output.energy_shield_recovery_cap, 400.0);
+
+    let both_capped = run(
+        CalcConfig::new(),
+        &[],
+        vec![
+            Modifier::number("Armour", ModType::Base, 250.0),
+            Modifier::number("Evasion", ModType::Base, 180.0),
+            Modifier::flag("ArmourESRecoveryCap"),
+            Modifier::flag("EvasionESRecoveryCap"),
+        ],
+    );
+    assert_eq!(both_capped.player.output.energy_shield_recovery_cap, 180.0);
+}

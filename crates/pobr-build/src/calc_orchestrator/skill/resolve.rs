@@ -27,6 +27,7 @@ pub(crate) fn group_active_effects<'a>(
             gem.gem_level,
             gem.quality,
             gem.stat_set_index,
+            Some(&gem.stat_set_indexes),
         )
     });
     let builder = group
@@ -39,9 +40,10 @@ pub(crate) fn group_active_effects<'a>(
                 group.active_gem_level.unwrap_or(1),
                 group.active_gem_quality.unwrap_or(0),
                 None,
+                None,
             )
         });
-    pobr_core::skill_env::group_active_effects(gems.chain(builder), data)
+    pobr_core::skill_env::group_active_effects_with_sets(gems.chain(builder), data)
 }
 
 pub(crate) fn selected_group_effect<'a>(

@@ -1491,13 +1491,18 @@ pub fn fill_ehp_pob2(
         let cfg = &env.cfg;
         let out = &env.player.output;
 
-        // Pool view (:1411 the ES recovery cap / :2644-2657 recoverable life)
-        // CappingES (flags like ArmourESRecoveryCap) and the lowLife/lowES config are left for later.
+        // Pool view (:1411 / CalcDefence.lua:1480-1487 ES recovery cap / :2644-2657 recoverable life)
         let life_recoverable = out.life_unreserved.max(1.0);
         // Widow's Reign does not release active skill or permanent reservation.
         // This is the fresh snapshot; reduce_pools retains damage reservation
         // through the sequence and lowers the recovery cap after every hit.
-        let es_recovery_cap = out.energy_shield;
+        let mut es_recovery_cap = out.energy_shield;
+        if db.flag(cfg, "ArmourESRecoveryCap") {
+            es_recovery_cap = es_recovery_cap.min(out.armour);
+        }
+        if db.flag(cfg, "EvasionESRecoveryCap") {
+            es_recovery_cap = es_recovery_cap.min(out.evasion);
+        }
         let base = PoolBaseStats {
             max_life: out.life,
             life_recoverable,
@@ -1517,21 +1522,28 @@ pub fn fill_ehp_pob2(
         // (Pinnacle 3 / Uber 8, ConfigOptions.lua:2072-2074, Modules/Data.lua:231);
         // physical/chaos have no pen.
         let enemy_pen = |name: &str| enemy_base(enemy_db, cfg, name);
-        // Physical and Chaos have no enemy penetration input.
-        let enemy_pen = [
+        let enemy_pen_raw = [
             0.0,
             enemy_pen("EnemyFirePen"),
             enemy_pen("EnemyColdPen"),
             enemy_pen("EnemyLightningPen"),
             0.0,
         ];
-        let resist_before_pen = [
+        let resist_raw = [
             0.0,
             resistances.fire,
             resistances.cold,
             resistances.lightning,
             resistances.chaos,
         ];
+        let mut enemy_pen = [0.0; 5];
+        let mut resist_before_pen = [0.0; 5];
+        for (i, dtype) in DAMAGE_TYPE_BY_INDEX.into_iter().enumerate() {
+            if !super::taken::self_ignores_resistance(db, cfg, dtype) {
+                enemy_pen[i] = enemy_pen_raw[i];
+                resist_before_pen[i] = resist_raw[i];
+            }
+        }
         let resist_after_pen = |resist: f64, pen: f64| -> f64 {
             if resist > 0.0 {
                 (resist - pen).max(0.0)

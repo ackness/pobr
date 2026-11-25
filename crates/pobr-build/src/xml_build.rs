@@ -1785,6 +1785,7 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                                 global_level_bonus: None,
                                 quality,
                                 stat_set_index,
+                                stat_set_indexes: std::collections::BTreeMap::new(),
                                 name_spec: if name_spec_pending { name_spec } else { None },
                                 corrupted,
                                 minion,
@@ -1801,21 +1802,18 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                             && let Some(effect) = attr_value(&e, b"grantedEffect")
                             && let Some(idx) =
                                 attr_value(&e, b"index").and_then(|v| v.parse::<u32>().ok())
-                            && let Some(gem) = cur.gem_skills.last_mut()
-                            && gem.skill_id == effect
-                            && gem.stat_set_index.is_none() =>
+                            && let Some(gem) = cur.gem_skills.last_mut() =>
                     {
-                        // PoB2's newer statSet serialization (confirmed against real
-                        // ninja codes; vendor SkillsTab.lua:375 reads / :508 writes): a
-                        // per-grantedEffect child element
-                        // `<StatSetIndex grantedEffect="X" index="2"/>`, in which case
-                        // the Gem's `statSetIndex` attribute is the literal `"nil"`. The
-                        // child element arrives before the Gem's End, so it's attributed
-                        // to the most recently pushed gem; only backfilled when
-                        // grantedEffect matches that gem's skillId and the attribute
-                        // channel hasn't already supplied a value (the older attribute
-                        // takes priority, backward compatible).
-                        gem.stat_set_index = Some(idx);
+                        // PoB2's newer statSet serialization (vendor SkillsTab.lua:375 reads /
+                        // :508 writes): per-grantedEffect child elements
+                        // `<StatSetIndex grantedEffect="X" index="N"/>`, while the Gem's
+                        // `statSetIndex` attribute may be `"nil"` and `grantedEffect` can name
+                        // an additional effect rather than `gem.skill_id` (e.g.
+                        // `ShockburstRoundsAmmoPlayer` carrying `grantedEffect="ShockburstRoundsPlayer"`).
+                        gem.stat_set_indexes.entry(effect.clone()).or_insert(idx);
+                        if gem.skill_id == effect && gem.stat_set_index.is_none() {
+                            gem.stat_set_index = Some(idx);
+                        }
                     }
                     _ => {}
                 }
@@ -2564,6 +2562,38 @@ Iron Ring
             "the literal nil normalizes to None"
         );
         assert_eq!(gems[2].stat_set_index, None, "a missing attribute is None");
+    }
+
+    #[test]
+    fn parses_child_stat_set_index_for_secondary_granted_effect() {
+        let xml = r#"<?xml version="1.0"?>
+<PathOfBuilding2>
+    <Build level="1" className="Mercenary"/>
+    <Skills activeSkillSet="1">
+        <SkillSet id="1">
+            <Skill enabled="true">
+                <Gem gemId="g1" skillId="ShockburstRoundsAmmoPlayer" level="20" statSetIndex="nil" enabled="true">
+                    <StatSetIndex grantedEffect="ShockburstRoundsPlayer" index="2"/>
+                </Gem>
+            </Skill>
+        </SkillSet>
+    </Skills>
+</PathOfBuilding2>"#;
+        let build = parse_build(xml).expect("parse");
+        let gem = &build.socket_groups[0].gem_skills[0];
+        assert_eq!(gem.stat_set_index, None);
+        assert_eq!(
+            gem.stat_set_indexes.get("ShockburstRoundsPlayer").copied(),
+            Some(2)
+        );
+        assert_eq!(
+            gem.stat_set_index_for_exact("ShockburstRoundsPlayer"),
+            Some(2)
+        );
+        assert_eq!(
+            gem.stat_set_index_for_exact("ShockburstRoundsAmmoPlayer"),
+            None
+        );
     }
 
     #[test]

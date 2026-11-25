@@ -156,6 +156,8 @@ Hailstorm Rounds 没有模拟散布和弹匣交界处的命中锁定相位，**�
 
 Shield Charge 按 1300 毫秒最短引导，不模拟行进与碰撞。PoB2 多只把释放阶段当作命中间隔、默认一层并用武器的攻击时间。**没有游戏内实测**。
 
+使用附加攻击时间的引导技能（如弩系的 Plasma Blast，`total_attack_time_+_ms` 映射为 `TotalAttackTime`）按“武器攻击时间 + 附加时间”计算 `ChannelTime`，不含释放动画比例（`channel_end_duration_as_%_of_attack_time`）和弩装填时间（`ReloadTime`）；PoB2 在 `CalcOffence` 里把装填时间并入 `ChannelTime`。
+
 ### 平均命中与每秒伤害
 
 带 `base_skill_show_average_damage_instead_of_dps` 的技能（Grim Pillars、Lightning Warp、Vile Disruption、Skyfall、Living Bomb、Volcano、Incinerate、Rake、Parry、Raise Shield、Hand of Chayula、Stampede、Gathering Storm、Perfect Strike 等）在游戏面板上显示平均伤害；这个 stat 没有词条文本，不改变伤害或使用速率。

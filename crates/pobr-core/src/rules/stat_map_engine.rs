@@ -711,6 +711,11 @@ fn is_consumable_flag(name: &str) -> bool {
             | "PoisonCanStack"
             | "BleedCanStack"
             | "IgniteCanStack"
+            | "HasSeals"
+            | "IgnoreFireResistance"
+            | "IgnoreColdResistance"
+            | "IgnoreLightningResistance"
+            | "IgnoreElementalResistances"
     )
 }
 
@@ -772,9 +777,9 @@ fn collect_skill_data(
     items: &mut Vec<MappedItem>,
 ) -> Result<(), UnsupportedReason> {
     // skill_data's key lands in the extraction layer's value table `{key, value}`.
-    let key = match &element.value {
+    let (key, value_field) = match &element.value {
         Some(StatMapValue::Table(t)) => match t.get("key") {
-            Some(StatMapValue::Text(k)) => k.as_str(),
+            Some(StatMapValue::Text(k)) => (k.as_str(), t.get("value")),
             _ => {
                 return Err(UnsupportedReason::UnsupportedKind(
                     "skill_data is missing key".into(),
@@ -870,6 +875,22 @@ fn collect_skill_data(
     // `poison_duration_is_skill_duration`).
     if key == "poisonDurationIsSkillDuration" {
         let mut modifier = Modifier::flag("PoisonDurationIsSkillDuration");
+        for tag in tags {
+            modifier = modifier.with_tag(tag);
+        }
+        items.push(MappedItem::Modifier(Box::new(modifier)));
+        return Ok(());
+    }
+    // Dual-wielding attacks that hit once with each weapon instead of
+    // alternating hands (`doubleHitsWhenDualWielding`, e.g. Hammer of the
+    // Gods, Rolling Slam, Sunder). Hand passes are already averaged in DPS, so
+    // counting both hits doubles DPS while DualWielding.
+    if key == "doubleHitsWhenDualWielding" {
+        if matches!(value_field, Some(StatMapValue::Bool(false))) {
+            return Ok(());
+        }
+        let mut modifier = Modifier::number("DPS", ModType::More, 100.0)
+            .with_tag(ModTag::condition("DualWielding", false));
         for tag in tags {
             modifier = modifier.with_tag(tag);
         }
@@ -1214,6 +1235,10 @@ pub(crate) fn translated_mod_name_parts<'a>(
         | "LightningPenetration"
         | "ChaosPenetration"
         | "ElementalPenetration"
+        | "IgnoreFireResistance"
+        | "IgnoreColdResistance"
+        | "IgnoreLightningResistance"
+        | "IgnoreElementalResistances"
         | "TotalCastTime"
         | "TotalAttackTime"
         | "ManaCost"
@@ -1371,6 +1396,9 @@ pub(crate) fn translated_mod_name_parts<'a>(
         "Multiplier:LifeFlaskMaxChargesPercent" | "Multiplier:ManaFlaskMaxChargesPercent" => {
             base_name
         }
+        // Unleash seal mechanics (SupportUnleashPlayer / SupportZarokhsRevoltPlayer):
+        // consumed by `calc::perform::apply_unleash_seal_dps` and `BurstTerms::Seals`.
+        "HasSeals" | "SealCount" | "SealGainFrequency" | "SealRepeatPenalty" => base_name,
         //  Ailment duration -- vendor's infliction-side mod names carry an
         // Enemy prefix (the debuff duration applied to the enemy,
         // CalcOffence.lua:5037's durationMod reads
@@ -1631,17 +1659,63 @@ fn translate_tag_internal<const MATERIALIZE: bool>(
         // so the old whitelist limited to Attack/Spell is obsolete. Names
         // outside the enum stay Unsupported.
         "SkillType" => {
-            if !keys_subset_of(&["type", "skillType", "neg"]) {
+            if !keys_subset_of(&["type", "skillType", "skillTypeList", "neg"]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
                     "SkillType has keys outside the convention: {:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
             }
-            let name = text("skillType");
-            let Some(bits) = name.and_then(SkillTypes::from_pob2_name) else {
-                return Err(UnsupportedReason::UnsupportedTag(format!(
-                    "SkillType has an unsupported type: {name:?}"
-                )));
+            let bits = match (tag.get("skillType"), tag.get("skillTypeList")) {
+                (Some(_), Some(_)) => {
+                    return Err(UnsupportedReason::UnsupportedTag(
+                        "SkillType cannot specify both skillType and skillTypeList".into(),
+                    ));
+                }
+                (Some(StatMapValue::Text(name)), None) => {
+                    let Some(bits) = SkillTypes::from_pob2_name(name) else {
+                        return Err(UnsupportedReason::UnsupportedTag(format!(
+                            "SkillType has an unsupported type: Some({name:?})"
+                        )));
+                    };
+                    bits
+                }
+                (Some(_), None) => {
+                    return Err(UnsupportedReason::UnsupportedTag(
+                        "SkillType skillType is not text".into(),
+                    ));
+                }
+                (None, Some(StatMapValue::List(items))) => {
+                    let mut acc = SkillTypes::NONE;
+                    for item in items {
+                        let StatMapValue::Text(name) = item else {
+                            return Err(UnsupportedReason::UnsupportedTag(format!(
+                                "SkillType skillTypeList item is not text: {item:?}"
+                            )));
+                        };
+                        let Some(one) = SkillTypes::from_pob2_name(name) else {
+                            return Err(UnsupportedReason::UnsupportedTag(format!(
+                                "SkillType has an unsupported type: Some({name:?})"
+                            )));
+                        };
+                        acc |= one;
+                    }
+                    if acc.is_empty() {
+                        return Err(UnsupportedReason::UnsupportedTag(
+                            "SkillType skillTypeList is empty".into(),
+                        ));
+                    }
+                    acc
+                }
+                (None, Some(other)) => {
+                    return Err(UnsupportedReason::UnsupportedTag(format!(
+                        "SkillType skillTypeList is not a list: {other:?}"
+                    )));
+                }
+                (None, None) => {
+                    return Err(UnsupportedReason::UnsupportedTag(
+                        "SkillType has an unsupported type: None".into(),
+                    ));
+                }
             };
             Ok(MATERIALIZE.then(|| {
                 if matches!(tag.get("neg"), Some(StatMapValue::Bool(true))) {
@@ -2636,6 +2710,30 @@ mod tests {
             ),
             other => panic!("expected Mapped, got {other:?}"),
         }
+    }
+
+    /// active_skill_damage_+%_final_while_dual_wielding -> both the Damage MORE
+    /// penalty and the DualWielding 100% MORE DPS from doubleHitsWhenDualWielding.
+    #[test]
+    fn skill_data_double_hits_when_dual_wielding_maps_dual_wield_dps_more() {
+        let entry = entry_json(
+            r#"{ "mods": [
+                { "kind": "mod", "name": "Damage", "mod_type": "MORE",
+                  "tags": [ { "type": "Condition", "var": "DualWielding" } ] },
+                { "kind": "skill_data", "name": "SkillData", "mod_type": "LIST",
+                  "value": { "key": "doubleHitsWhenDualWielding", "value": true } }
+            ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, -30.0));
+        assert_eq!(mods.len(), 2);
+        assert_eq!(mods[0].name.as_str(), "Damage");
+        assert_eq!(mods[0].mod_type, ModType::More);
+        assert_eq!(mods[0].value.as_number(), Some(-30.0));
+        assert_eq!(mods[0].tags, vec![ModTag::condition("DualWielding", false)]);
+        assert_eq!(mods[1].name.as_str(), "DPS");
+        assert_eq!(mods[1].mod_type, ModType::More);
+        assert_eq!(mods[1].value.as_number(), Some(100.0));
+        assert_eq!(mods[1].tags, vec![ModTag::condition("DualWielding", false)]);
     }
 
     /// A flag constructor (a skill behaviour switch) with no consumer in the
@@ -3979,6 +4077,18 @@ mod tests {
                 "cannot_bleed": {
                     "mods": [{ "kind": "flag", "name": "CannotBleed", "mod_type": "FLAG" }]
                 },
+                "hits_ignore_enemy_fire_resistance": {
+                    "mods": [{ "kind": "flag", "name": "IgnoreFireResistance", "mod_type": "FLAG" }]
+                },
+                "hits_ignore_enemy_cold_resistance": {
+                    "mods": [{ "kind": "flag", "name": "IgnoreColdResistance", "mod_type": "FLAG" }]
+                },
+                "hits_ignore_enemy_lightning_resistance": {
+                    "mods": [{ "kind": "flag", "name": "IgnoreLightningResistance", "mod_type": "FLAG" }]
+                },
+                "ignore_elemental_resistances": {
+                    "mods": [{ "kind": "flag", "name": "IgnoreElementalResistances", "mod_type": "FLAG" }]
+                },
                 "poison_duration_is_skill_duration": {
                     "mods": [{ "kind": "skill_data", "name": "SkillData", "mod_type": "LIST",
                                "value": { "key": "poisonDurationIsSkillDuration", "value": true } }]
@@ -3994,6 +4104,13 @@ mod tests {
             ("physical_damage_can_freeze", "PhysicalCanFreeze"),
             ("cannot_poison", "CannotPoison"),
             ("cannot_bleed", "CannotBleed"),
+            ("hits_ignore_enemy_fire_resistance", "IgnoreFireResistance"),
+            ("hits_ignore_enemy_cold_resistance", "IgnoreColdResistance"),
+            (
+                "hits_ignore_enemy_lightning_resistance",
+                "IgnoreLightningResistance",
+            ),
+            ("ignore_elemental_resistances", "IgnoreElementalResistances"),
             (
                 "poison_duration_is_skill_duration",
                 "PoisonDurationIsSkillDuration",
@@ -4024,5 +4141,90 @@ mod tests {
         };
         assert_eq!(m.name.as_str(), "Multiplier:LifeFlaskMaxChargesPercent");
         assert_eq!(m.value.as_number(), Some(30.0));
+    }
+
+    #[test]
+    fn skill_type_list_tag_translates_with_or_semantics() {
+        let catalog = catalog_json(
+            r#"{
+                "global": {
+                    "neg_list": {
+                        "mods": [{
+                            "kind": "mod",
+                            "name": "Damage",
+                            "mod_type": "MORE",
+                            "tags": [{ "type": "SkillType", "skillTypeList": ["Warcry", "Area"], "neg": true }]
+                        }]
+                    },
+                    "empty_list": {
+                        "mods": [{
+                            "kind": "mod",
+                            "name": "Damage",
+                            "mod_type": "MORE",
+                            "tags": [{ "type": "SkillType", "skillTypeList": [] }]
+                        }]
+                    },
+                    "bad_item": {
+                        "mods": [{
+                            "kind": "mod",
+                            "name": "Damage",
+                            "mod_type": "MORE",
+                            "tags": [{ "type": "SkillType", "skillTypeList": ["Warcry", "NoSuchType"] }]
+                        }]
+                    }
+                },
+                "per_stat_set": {
+                    "SupportZerphisLegacyPlayer": {
+                        "1": {
+                            "support_zerphis_legacy_damage_+%_final": {
+                                "mods": [{
+                                    "kind": "mod",
+                                    "name": "Damage",
+                                    "mod_type": "MORE",
+                                    "tags": [{ "type": "SkillType", "skillTypeList": ["Warcry", "Area"] }]
+                                }]
+                            }
+                        }
+                    }
+                }
+            }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_stat(
+            &catalog,
+            "SupportZerphisLegacyPlayer",
+            None,
+            "support_zerphis_legacy_damage_+%_final",
+            50.0,
+        ) else {
+            panic!("expected Mapped for skillTypeList");
+        };
+        let MappedItem::Modifier(m) = &items[0] else {
+            panic!("expected Modifier");
+        };
+        assert_eq!(
+            m.tags,
+            vec![ModTag::SkillTypes(SkillTypes::WARCRY | SkillTypes::AREA)]
+        );
+
+        let MappedOutcome::Mapped(neg_items) = map_stat(&catalog, "Any", None, "neg_list", 10.0)
+        else {
+            panic!("expected Mapped for negated skillTypeList");
+        };
+        let MappedItem::Modifier(neg_m) = &neg_items[0] else {
+            panic!("expected Modifier");
+        };
+        assert_eq!(
+            neg_m.tags,
+            vec![ModTag::SkillTypesNeg(SkillTypes::WARCRY | SkillTypes::AREA)]
+        );
+
+        assert!(matches!(
+            map_stat(&catalog, "Any", None, "empty_list", 10.0),
+            MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
+        ));
+        assert!(matches!(
+            map_stat(&catalog, "Any", None, "bad_item", 10.0),
+            MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
+        ));
     }
 }

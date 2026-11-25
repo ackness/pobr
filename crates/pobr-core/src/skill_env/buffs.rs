@@ -456,7 +456,8 @@ pub fn spirit_reservation_modifiers(
             // (LifeReserved/Reserved, LifeReservationEfficiency/ReservationEfficiency;
             // the gem quality efficiency term still applies regardless of pool);
             // percentage rounded to 2 places (vendor :312). Produces a
-            // `LifeReservedPercent` INC consumed by perform's reservation stage
+            // `SkillLifeReservedPercent` BASE already scaled for that skill and
+            // consumed unscaled by perform's reservation stage
             // (ritualist example: Eternal Rage 155×0.66×0.9 = 92.07% → LifeReserved
             // 270 / LifeUnreserved 23, matching golden).
             if spirit_to_life > 0.0 {
@@ -493,7 +494,7 @@ pub fn spirit_reservation_modifiers(
                         gem.skill_id
                     ));
                     mods.push(
-                        Modifier::number("LifeReservedPercent", ModType::Inc, percent)
+                        Modifier::number("SkillLifeReservedPercent", ModType::Base, percent)
                             .with_origin(origin),
                     );
                 }

@@ -623,19 +623,22 @@ pub(crate) fn totem_base_modifiers(
             )),
         );
     }
-    // A skill a meta totem uses (Spell Totem) reads the totem gem's own
-    // level stats; the main skill's stats are already mapped.
+    // A skill a meta totem uses (Spell Totem / Ancestral Warrior Totem) reads the
+    // totem gem's own level stats; the main skill's stats are already mapped.
     if gem.skill_id != skill_id {
         for stat in stats.all() {
-            let name = match stat.stat.as_str() {
-                "totem_elemental_resistance_%" => "TotemElementalResist",
-                "totem_chaos_resistance_%" => "TotemChaosResist",
-                "totem_maximum_all_elemental_resistances_%" => "TotemElementalResistMax",
+            let (name, mod_type) = match stat.stat.as_str() {
+                "totem_elemental_resistance_%" => ("TotemElementalResist", ModType::Base),
+                "totem_chaos_resistance_%" => ("TotemChaosResist", ModType::Base),
+                "totem_maximum_all_elemental_resistances_%" => {
+                    ("TotemElementalResistMax", ModType::Base)
+                }
+                "non_modifiable_totem_limit" => ("ActiveTotemLimit", ModType::Override),
                 _ => continue,
             };
             if stat.value != 0.0 {
                 modifiers.push(
-                    Modifier::number(name, ModType::Base, stat.value).with_origin(origin(
+                    Modifier::number(name, mod_type, stat.value).with_origin(origin(
                         &stat.stat,
                         format!("{} {} ({})", gem.skill_id, stat.stat, stat.value),
                     )),

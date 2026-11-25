@@ -591,11 +591,11 @@ pub(crate) struct ActionRateTerms {
     inc: f64,
     more: f64,
     /// After the speed inc/more scaling.
-    scaled: f64,
+    pub(crate) scaled: f64,
     /// After the added cast/attack time.
-    timed: f64,
+    pub(crate) timed: f64,
     action_speed: f64,
-    uncapped: f64,
+    pub(crate) uncapped: f64,
     /// After the cooldown cap.
     cooled: f64,
     /// After the server tick cap, before rounding.
@@ -2507,7 +2507,7 @@ fn apply_total_time(db: &ModDb, cfg: &CalcConfig, scaled_rate: f64) -> f64 {
 /// Exception: a "bypasses cooldown" skill (e.g. Flicker Strike, which
 /// consumes charges to reset its cooldown) injects the `CooldownBypass`
 /// flag, in which case there's no speed cap and it fires at attack speed.
-/// Also no speed cap when there's no `SkillCooldownBase` mod (base_cd≤0).
+/// Also no speed cap when there is no `SkillCooldownBase` or `CooldownRecovery` BASE (sum <= 0).
 ///
 /// `pub(crate)`: perform's fill stage (`effective_action_rate`, consumed by
 /// ailment/reload) and offence's main chain share this same cooldown cap (a single source across the whole chain).
@@ -2516,7 +2516,8 @@ pub(crate) fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f6
         return uncapped_rate;
     }
     let base_cd = db.sum_by_name(ModType::Base, cfg, &["SkillCooldownBase"]);
-    if base_cd <= 0.0 {
+    let extra_cd = db.sum_by_name(ModType::Base, cfg, &["CooldownRecovery"]);
+    if base_cd <= 0.0 && extra_cd <= 0.0 {
         return uncapped_rate;
     }
     // Stored use count (grenade=3, etc.): when >1, the cooldown isn't

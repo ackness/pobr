@@ -175,13 +175,14 @@ pub fn main_skill_minion_in_view<'a>(
     if !group.enabled {
         return None;
     }
-    let effect = pobr_core::skill_env::group_active_effects(
+    let effect = pobr_core::skill_env::group_active_effects_with_sets(
         group.gem_skills.iter().map(|gem| {
             (
                 gem.skill_id.as_str(),
                 gem.gem_level,
                 gem.quality,
                 gem.stat_set_index,
+                Some(&gem.stat_set_indexes),
             )
         }),
         data,

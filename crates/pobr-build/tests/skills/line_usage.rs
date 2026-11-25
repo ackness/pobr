@@ -1211,6 +1211,41 @@ Implicits: 0
         }
         assert!(ledger.condition_states.contains(condition));
     }
+
+    // A Buckler is an Evasion Shield and also satisfies `Condition:UsingShield`.
+    let buckler_build = parse_build(
+        r#"<PathOfBuilding2>
+<Build level="80" className="Huntress" mainSocketGroup="1"/>
+<Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="20" enabled="true"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: RARE
+Test Buckler
+Leather Buckler
+Implicits: 0
++20 to Evasion Rating
+</Item><ItemSet id="1"><Slot name="Weapon 2" itemId="1"/></ItemSet></Items>
+</PathOfBuilding2>"#,
+    )
+    .unwrap();
+    let options = DataOrchestratorOptions {
+        extra_modifier_texts: vec![focus.into(), shield.into()],
+        ..Default::default()
+    };
+    let diagnosis = diagnose(&buckler_build, &data, &options).unwrap();
+    let ledger = pobr_build::usage::line_usage(&diagnosis, &buckler_build, &data);
+    assert!(ledger.condition_states.contains("UsingShield"));
+    let shield_row = ledger
+        .lines
+        .iter()
+        .find(|line| line.text.as_deref() == Some(shield))
+        .unwrap();
+    assert_eq!(shield_row.status, LineStatus::Partial, "{shield_row:?}");
+    assert_eq!(shield_row.used_in, vec!["Evasion"]);
+    let focus_row = ledger
+        .lines
+        .iter()
+        .find(|line| line.text.as_deref() == Some(focus))
+        .unwrap();
+    assert_eq!(focus_row.status, LineStatus::Inactive, "{focus_row:?}");
 }
 
 #[test]

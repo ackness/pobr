@@ -9,8 +9,8 @@ use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::ModFlags;
 
 use crate::skill_env::item_text::{
-    item_local_defences, parse_weapon_local_crit, weapon_local_attack_speed,
-    weapon_local_phys_adds, weapon_local_phys_inc, weapon_mod_texts,
+    item_local_defences, parse_weapon_local_crit, weapon_has_no_physical_damage,
+    weapon_local_attack_speed, weapon_local_phys_adds, weapon_local_phys_inc, weapon_mod_texts,
 };
 use crate::skill_env::lookup::{
     ArmourBaseLookup, BaseItemLookup, EffectLookup, EquipmentView, UnarmedDataLookup,
@@ -147,9 +147,17 @@ pub fn weapon_item_contribution(
         .and_then(|def| data.weapon_type_info(&def.item_class))
         .map(|wt| ModFlags::weapon_flags(&wt.id, &wt.flag, wt.one_hand, wt.melee))
         .unwrap_or(ModFlags::NONE);
+    let (phys_min, phys_max) = if weapon_has_no_physical_damage(item) {
+        (0.0, 0.0)
+    } else {
+        (
+            (f64::from(w.physical_min) + local_add_min) * local_inc * quality,
+            (f64::from(w.physical_max) + local_add_max) * local_inc * quality,
+        )
+    };
     Some(WeaponContribution {
-        phys_min: (f64::from(w.physical_min) + local_add_min) * local_inc * quality,
-        phys_max: (f64::from(w.physical_max) + local_add_max) * local_inc * quality,
+        phys_min,
+        phys_max,
         attack_rate: base_rate * local_as,
         // Item.lua's weaponData.CritChance is rounded to two decimal places
         // before global increases and per-hand hit-chance corrections.
@@ -452,5 +460,91 @@ mod tests {
         let unknown = unarmed_contribution(&table, "Unknown");
         assert_eq!(unknown.crit_chance, 5.0);
         assert_eq!(unknown.flags, ModFlags::UNARMED);
+    }
+
+    struct StubWeaponLookup {
+        weapon: pobr_data::catalog::WeaponBaseStats,
+        base: pobr_data::catalog::BaseItemDef,
+        wtype: pobr_data::catalog::WeaponTypeDef,
+    }
+
+    impl WeaponBaseLookup for StubWeaponLookup {
+        fn weapon_base(&self, base_name: &str) -> Option<&pobr_data::catalog::WeaponBaseStats> {
+            (base_name == self.base.name).then_some(&self.weapon)
+        }
+    }
+
+    impl BaseItemLookup for StubWeaponLookup {
+        fn base_item(&self, base_name: &str) -> Option<&pobr_data::catalog::BaseItemDef> {
+            (base_name == self.base.name).then_some(&self.base)
+        }
+    }
+
+    impl WeaponTypeLookup for StubWeaponLookup {
+        fn weapon_type_info(&self, item_class: &str) -> Option<&pobr_data::catalog::WeaponTypeDef> {
+            (item_class == self.base.item_class).then_some(&self.wtype)
+        }
+    }
+
+    #[test]
+    fn no_physical_damage_zeroes_weapon_physical_contribution_while_keeping_speed() {
+        let weapon = pobr_data::catalog::WeaponBaseStats {
+            physical_min: 20,
+            physical_max: 40,
+            speed_ms: 625,
+            crit_chance: 500,
+            range: 20,
+            reload_time_ms: None,
+        };
+        let lookup = StubWeaponLookup {
+            weapon: weapon.clone(),
+            base: pobr_data::catalog::BaseItemDef {
+                id: "TestSpear".into(),
+                name: "Winged Spear".into(),
+                item_class: "Spear".into(),
+                drop_level: 1,
+                width: 1,
+                height: 4,
+                tags: Vec::new(),
+                implicits: Vec::new(),
+                mod_domain: 1,
+                weapon: Some(weapon),
+                armour: None,
+                spirit: None,
+                charm_buff: Vec::new(),
+                utility: None,
+                req_str: 0,
+                req_dex: 0,
+                req_int: 0,
+            },
+            wtype: pobr_data::catalog::WeaponTypeDef {
+                id: "Spear".into(),
+                one_hand: true,
+                melee: true,
+                flag: "Spear".into(),
+                label: None,
+            },
+        };
+        let item = Item {
+            base: "Winged Spear".into(),
+            rarity: pobr_data::item::ItemRarity::Unique,
+            quality: 20,
+            corrupted: false,
+            implicit_texts: Vec::new(),
+            modifier_texts: vec![
+                "No Physical Damage".into(),
+                "Adds 10 to 20 Physical Damage".into(),
+                "20% increased Attack Speed".into(),
+            ],
+            enchant_texts: Vec::new(),
+            rolled_defence: Default::default(),
+            socketed: Vec::new(),
+            parsed_stats: Vec::new(),
+        };
+        let contrib = weapon_item_contribution(&item, &lookup).unwrap();
+        assert_eq!(contrib.phys_min, 0.0);
+        assert_eq!(contrib.phys_max, 0.0);
+        assert!((contrib.attack_rate - 1.6 * 1.2).abs() < 1e-9);
+        assert_eq!(contrib.crit_chance, 5.0);
     }
 }

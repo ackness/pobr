@@ -654,9 +654,7 @@ fn energy_stats(
     let level = gem
         .gem_level
         .saturating_add(gem.global_levels(gem_level_bonuses, data.as_gem_property()));
-    let set_index = (effect_id == gem.skill_id)
-        .then_some(gem.stat_set_index)
-        .flatten();
+    let set_index = gem.stat_set_index_for_exact(effect_id);
     data.effect_stats(effect_id, level, gem.quality, set_index)
 }
 
