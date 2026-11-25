@@ -201,12 +201,7 @@ pub fn spawn_minions(
                     vec![GemInput {
                         skill_id: id.to_string(),
                         gem_level: group.active_gem_level,
-                        global_level_bonus: None,
-                        quality: 0,
-                        stat_set_index: None,
-                        corrupted: false,
-                        minion: None,
-                        minion_skill: None,
+                        ..Default::default()
                     }]
                 })
                 .unwrap_or_default()
@@ -271,11 +266,8 @@ pub fn spawn_minions(
                         skill_id: extra_id.to_string(),
                         gem_level: host.gem_level,
                         global_level_bonus: host.global_level_bonus,
-                        quality: 0,
-                        stat_set_index: None,
                         corrupted: host.corrupted,
-                        minion: None,
-                        minion_skill: None,
+                        ..Default::default()
                     },
                 ));
             }
@@ -292,6 +284,7 @@ pub fn spawn_minions(
                 corrupted,
                 minion: chosen,
                 minion_skill: chosen_skill,
+                ..
             },
         ) in candidates
         {

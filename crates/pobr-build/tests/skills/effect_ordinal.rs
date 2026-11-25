@@ -175,3 +175,33 @@ fn granted_periodic_effects_use_their_game_intervals() {
         }
     }
 }
+
+#[test]
+fn shockburst_rounds_child_stat_set_index_selects_pulse_set() {
+    let data = crate::test_data();
+    let base = parse_build(
+        r#"<PathOfBuilding2><Build className="Mercenary" level="90" mainSocketGroup="1"/>
+<Skills><Skill mainActiveSkill="1"><Gem skillId="ShockburstRoundsAmmoPlayer" level="20" statSetIndex="nil"/></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Makeshift Crossbow
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items></PathOfBuilding2>"#,
+    )
+    .unwrap();
+    let pulse = parse_build(
+        r#"<PathOfBuilding2><Build className="Mercenary" level="90" mainSocketGroup="1"/>
+<Skills><Skill mainActiveSkill="1"><Gem skillId="ShockburstRoundsAmmoPlayer" level="20" statSetIndex="nil"><StatSetIndex grantedEffect="ShockburstRoundsPlayer" index="2"/></Gem></Skill></Skills>
+<Items activeItemSet="1"><Item id="1">Rarity: NORMAL
+Makeshift Crossbow
+</Item><ItemSet id="1"><Slot name="Weapon 1" itemId="1"/></ItemSet></Items></PathOfBuilding2>"#,
+    )
+    .unwrap();
+    let opts = pobr_build::DataOrchestratorOptions::default();
+    let out_base = pobr_build::calculate_with_data(&base, &data, &opts).unwrap();
+    let out_pulse = pobr_build::calculate_with_data(&pulse, &data, &opts).unwrap();
+    assert_eq!(out_base.aoe_radius, 0.0);
+    assert!(
+        out_pulse.aoe_radius > 0.0,
+        "expected Pulse statSet AoE radius"
+    );
+    assert!(out_pulse.total_hit_avg > out_base.total_hit_avg * 2.0);
+}

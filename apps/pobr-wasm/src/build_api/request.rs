@@ -385,6 +385,7 @@ pub(super) fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData
             corrupted: gem.corrupted,
             minion: gem.minion.clone(),
             minion_skill: gem.minion_skill,
+            ..Default::default()
         });
         if let Some(gem_id) = gem_id {
             group.gem_ids.push(gem_id);

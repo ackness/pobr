@@ -157,6 +157,11 @@ pub fn parse_weapon_local_crit(text: &str) -> Option<(ModType, f64)> {
     None
 }
 
+/// Whether the weapon carries "No Physical Damage", which zeroes its local physical hit range.
+pub fn weapon_has_no_physical_damage(item: &Item) -> bool {
+    weapon_mod_texts(item).any(|t| clean_item_text(t) == "no physical damage")
+}
+
 /// Range sum of "Adds N to M Physical Damage" (local mod) on the weapon.
 pub fn weapon_local_phys_adds(item: &Item) -> (f64, f64) {
     let mut min_sum = 0.0;
@@ -193,6 +198,9 @@ pub fn is_weapon_local_mod(
     rules: &pobr_data::catalog::local_mods::WeaponLocalModsDef,
 ) -> bool {
     let clean = clean_item_text(text);
+    if clean == "no physical damage" {
+        return true;
+    }
     let as_increased = clean.replacen("% reduced ", "% increased ", 1);
     rules.increased_suffixes.iter().any(|suffix| {
         [&clean, &as_increased].into_iter().any(|text| {
@@ -491,5 +499,28 @@ mod tests {
         assert_eq!(parse("+5% to Block chance"), Some((ModType::Base, 5.0)));
         assert_eq!(parse("+5% to maximum Block chance"), None);
         assert_eq!(parse("30% increased Block chance while Surrounded"), None);
+    }
+
+    #[test]
+    fn no_physical_damage_is_recognized_as_a_local_weapon_mod() {
+        let rules = WeaponLocalModsDef::default();
+        assert!(is_weapon_local_mod("No Physical Damage", &rules));
+        assert!(is_weapon_local_mod("{variant:2}No Physical Damage", &rules));
+        let item = Item {
+            base: "Winged Spear".into(),
+            rarity: pobr_data::item::ItemRarity::Unique,
+            quality: 0,
+            corrupted: false,
+            implicit_texts: Vec::new(),
+            modifier_texts: vec![
+                "No Physical Damage".into(),
+                "Adds 1 to 100 Lightning Damage".into(),
+            ],
+            enchant_texts: Vec::new(),
+            rolled_defence: Default::default(),
+            socketed: Vec::new(),
+            parsed_stats: Vec::new(),
+        };
+        assert!(weapon_has_no_physical_damage(&item));
     }
 }

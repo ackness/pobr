@@ -616,8 +616,29 @@ pub fn scale_trunc_2dp(value: f64, scale: f64) -> f64 {
     ((value * scale * 100.0).round() / 100.0).trunc()
 }
 
+/// Resolves a gem effect's `statSetIndex`: prefers an explicit per-effect entry in
+/// `stat_set_indexes` (XML `<StatSetIndex grantedEffect="X" index="N"/>`), falling back
+/// to the gem's legacy `statSetIndex` attribute on exact `effect_id == gem_skill_id`
+/// matches (and also onto active additional effects when `inherit_legacy_to_additional`
+/// is true and `stat_set_indexes` is empty).
+pub fn resolve_gem_stat_set_index(
+    gem_skill_id: &str,
+    legacy_stat_set_index: Option<u32>,
+    stat_set_indexes: Option<&std::collections::BTreeMap<String, u32>>,
+    effect_id: &str,
+    inherit_legacy_to_additional: bool,
+) -> Option<u32> {
+    if let Some(&idx) = stat_set_indexes.and_then(|map| map.get(effect_id)) {
+        return Some(idx);
+    }
+    let inherit = inherit_legacy_to_additional && stat_set_indexes.is_none_or(|m| m.is_empty());
+    (effect_id == gem_skill_id || inherit)
+        .then_some(legacy_stat_set_index)
+        .flatten()
+}
+
 /// A gem's socketed-skill reference (the `gem_skills` domain).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct GemInput {
     /// The granted effect id this gem provides.
     pub skill_id: String,
@@ -632,6 +653,8 @@ pub struct GemInput {
     /// `None` selects the primary set). This is not a native stat-set ID or
     /// a physical client-table row number.
     pub stat_set_index: Option<u32>,
+    /// Per-granted-effect stat-set selections (PoB2 `<StatSetIndex grantedEffect="X" index="N"/>`).
+    pub stat_set_indexes: std::collections::BTreeMap<String, u32>,
     /// Whether the gem is corrupted.
     pub corrupted: bool,
     /// The monster the gem summons when the player chooses it (a Companion's
@@ -806,7 +829,7 @@ pub fn crossbow_ammo_sibling(
                     eid.to_string(),
                     g.gem_level,
                     g.quality,
-                    (eid == g.skill_id).then_some(g.stat_set_index).flatten(),
+                    g.stat_set_index_for_exact(eid),
                 )
             })
     })
@@ -880,17 +903,26 @@ pub struct ActiveEffect<'a> {
     pub stat_set_index: Option<u32>,
 }
 
-/// Enumerates each gem's active effects in its granted-effect display order.
+/// Enumerates each gem's active effects in its granted-effect display order,
+/// resolving per-effect `<StatSetIndex>` selections when provided.
 /// Support primaries are omitted, but their granted active effects are not.
 /// Unknown effects remain visible so callers can report missing data, not silently
 /// renumber or substitute a different skill.
-pub fn group_active_effects<'a>(
-    gems: impl Iterator<Item = (&'a str, u32, u32, Option<u32>)> + 'a,
+pub fn group_active_effects_with_sets<'a>(
+    gems: impl Iterator<
+        Item = (
+            &'a str,
+            u32,
+            u32,
+            Option<u32>,
+            Option<&'a std::collections::BTreeMap<String, u32>>,
+        ),
+    > + 'a,
     effects: &'a dyn crate::skill_env::EffectLookup,
 ) -> impl Iterator<Item = ActiveEffect<'a>> + 'a {
     gems.enumerate()
         .flat_map(
-            move |(gem_index, (id, gem_level, quality, stat_set_index))| {
+            move |(gem_index, (id, gem_level, quality, stat_set_index, stat_set_indexes))| {
                 let additional = effects.additional_effects(id);
                 let order = effects.effect_display_order(id);
                 order
@@ -909,8 +941,9 @@ pub fn group_active_effects<'a>(
                             additional[index - 1].as_str()
                         }
                     })
-                    .filter(move |id| {
-                        !id.is_empty() && effects.effect(id).is_none_or(|effect| !effect.is_support)
+                    .filter(move |eid| {
+                        !eid.is_empty()
+                            && effects.effect(eid).is_none_or(|effect| !effect.is_support)
                     })
                     .map(move |skill_id| ActiveEffect {
                         active_skill_index: 0,
@@ -918,7 +951,13 @@ pub fn group_active_effects<'a>(
                         skill_id,
                         gem_level,
                         quality,
-                        stat_set_index,
+                        stat_set_index: resolve_gem_stat_set_index(
+                            id,
+                            stat_set_index,
+                            stat_set_indexes,
+                            skill_id,
+                            true,
+                        ),
                     })
             },
         )
@@ -927,6 +966,22 @@ pub fn group_active_effects<'a>(
             effect.active_skill_index = index + 1;
             effect
         })
+}
+
+/// Enumerates each gem's active effects in its granted-effect display order.
+/// Support primaries are omitted, but their granted active effects are not.
+/// Unknown effects remain visible so callers can report missing data, not silently
+/// renumber or substitute a different skill.
+pub fn group_active_effects<'a>(
+    gems: impl Iterator<Item = (&'a str, u32, u32, Option<u32>)> + 'a,
+    effects: &'a dyn crate::skill_env::EffectLookup,
+) -> impl Iterator<Item = ActiveEffect<'a>> + 'a {
+    group_active_effects_with_sets(
+        gems.map(|(id, gem_level, quality, stat_set_index)| {
+            (id, gem_level, quality, stat_set_index, None)
+        }),
+        effects,
+    )
 }
 
 /// Selects an exact complete active-effect ordinal, defaulting to the first.
@@ -941,16 +996,17 @@ pub fn pick_group_main_skill<'a>(
     let index = main_active_skill.unwrap_or(1).checked_sub(1)?;
     let builder = active_skill_id
         .filter(|_| gems.is_empty())
-        .map(|id| (id, active_gem_level.unwrap_or(1), 0, None));
+        .map(|id| (id, active_gem_level.unwrap_or(1), 0, None, None));
     let gems = gems.iter().map(|gem| {
         (
             gem.skill_id.as_str(),
             gem.gem_level,
             gem.quality,
             gem.stat_set_index,
+            Some(&gem.stat_set_indexes),
         )
     });
-    group_active_effects(gems.chain(builder), effects)
+    group_active_effects_with_sets(gems.chain(builder), effects)
         .nth(index)
         .map(|effect| (effect.skill_id, effect.gem_level, effect.stat_set_index))
 }

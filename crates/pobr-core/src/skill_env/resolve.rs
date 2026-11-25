@@ -283,6 +283,32 @@ impl GemInput {
         self.global_level_bonus
             .unwrap_or_else(|| additional_gem_levels(bonuses, data, &self.skill_id, self.corrupted))
     }
+
+    /// Resolves the stat-set index for an active effect on this gem (allowing
+    /// legacy `stat_set_index` inheritance onto additional effects when
+    /// `stat_set_indexes` is empty).
+    pub fn stat_set_index_for_active(&self, effect_id: &str) -> Option<u32> {
+        crate::skill_env::resolve_gem_stat_set_index(
+            &self.skill_id,
+            self.stat_set_index,
+            Some(&self.stat_set_indexes),
+            effect_id,
+            true,
+        )
+    }
+
+    /// Resolves the stat-set index only for an explicit `<StatSetIndex>` match
+    /// or exact primary-effect `skill_id` match (without leaking legacy
+    /// `stat_set_index` onto sibling support/ammo/buff effects).
+    pub fn stat_set_index_for_exact(&self, effect_id: &str) -> Option<u32> {
+        crate::skill_env::resolve_gem_stat_set_index(
+            &self.skill_id,
+            self.stat_set_index,
+            Some(&self.stat_set_indexes),
+            effect_id,
+            false,
+        )
+    }
 }
 
 pub fn gem_property_applies(
@@ -494,10 +520,7 @@ pub fn support_granted_gem_quality(
 /// default set (vendor's additional effects share the gemInstance but the set selection
 /// doesn't carry across effects).
 pub fn support_stat_set_index(sup: &CompatibleSupport, gems: &[GemInput]) -> Option<u32> {
-    let gem = &gems[sup.gem_index];
-    (gem.skill_id == sup.effect_id.as_str())
-        .then_some(gem.stat_set_index)
-        .flatten()
+    gems[sup.gem_index].stat_set_index_for_exact(sup.effect_id.as_str())
 }
 
 /// Whether the build carries the GemlingQuality flag (matching vendor

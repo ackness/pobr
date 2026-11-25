@@ -430,9 +430,7 @@ pub fn buff_skill_specs(
                 if effect.is_support {
                     continue;
                 }
-                let set_index = (skill_id == gem.skill_id)
-                    .then_some(gem.stat_set_index)
-                    .flatten();
+                let set_index = gem.stat_set_index_for_exact(skill_id);
                 ctx.record_quality_issues(
                     skill_id,
                     gem.quality,
@@ -970,9 +968,7 @@ fn curse_local_effect_scale(
             more *= dm;
         }
     };
-    let set_index = (skill_id == gem.skill_id)
-        .then_some(gem.stat_set_index)
-        .flatten();
+    let set_index = gem.stat_set_index_for_exact(skill_id);
     absorb(skill_id, curse_level, gem.quality, set_index);
     for sup in &judgement.compatible {
         let host = &group.gems[sup.gem_index];
@@ -1054,11 +1050,7 @@ pub fn support_buff_specs_filtered(
             if !seen.insert((effect_id.clone(), buff_name.clone())) {
                 continue;
             }
-            // An additionally-granted support half doesn't reuse the gem instance's
-            // statSetIndex (only meaningful for the primary effect).
-            let set_index = (gem.skill_id == effect_id)
-                .then_some(gem.stat_set_index)
-                .flatten();
+            let set_index = gem.stat_set_index_for_exact(&effect_id);
             ctx.record_quality_issues(
                 &effect_id,
                 gem.quality,
@@ -1314,9 +1306,7 @@ pub fn exposure_support_modifiers(
         }
         for (idx, effect_id) in support_entries {
             let gem = &group.gems[idx];
-            let set_index = (gem.skill_id == effect_id)
-                .then_some(gem.stat_set_index)
-                .flatten();
+            let set_index = gem.stat_set_index_for_exact(&effect_id);
             // Current quality-bearing support owners have no exposure-effect stats.
             let stats = data.effect_stats(&effect_id, gem.gem_level, 0, set_index);
             let set_key = data.selected_set_key(&effect_id, set_index);

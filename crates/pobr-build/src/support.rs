@@ -75,9 +75,7 @@ pub fn judge_group_supports(
 /// set selection doesn't carry across effects).
 pub fn support_stat_set_index(sup: &CompatibleSupport, group: &SocketGroup) -> Option<u32> {
     let gem = &group.gem_skills[sup.gem_index];
-    (gem.skill_id == sup.effect_id)
-        .then_some(gem.stat_set_index)
-        .flatten()
+    gem.stat_set_index_for_exact(&sup.effect_id)
 }
 
 /// Tests each explicit support against all active skills in the group. A support
