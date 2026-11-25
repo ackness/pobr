@@ -777,9 +777,9 @@ fn collect_skill_data(
     items: &mut Vec<MappedItem>,
 ) -> Result<(), UnsupportedReason> {
     // skill_data's key lands in the extraction layer's value table `{key, value}`.
-    let key = match &element.value {
+    let (key, value_field) = match &element.value {
         Some(StatMapValue::Table(t)) => match t.get("key") {
-            Some(StatMapValue::Text(k)) => k.as_str(),
+            Some(StatMapValue::Text(k)) => (k.as_str(), t.get("value")),
             _ => {
                 return Err(UnsupportedReason::UnsupportedKind(
                     "skill_data is missing key".into(),
@@ -875,6 +875,22 @@ fn collect_skill_data(
     // `poison_duration_is_skill_duration`).
     if key == "poisonDurationIsSkillDuration" {
         let mut modifier = Modifier::flag("PoisonDurationIsSkillDuration");
+        for tag in tags {
+            modifier = modifier.with_tag(tag);
+        }
+        items.push(MappedItem::Modifier(Box::new(modifier)));
+        return Ok(());
+    }
+    // Dual-wielding attacks that hit once with each weapon instead of
+    // alternating hands (`doubleHitsWhenDualWielding`, e.g. Hammer of the
+    // Gods, Rolling Slam, Sunder). Hand passes are already averaged in DPS, so
+    // counting both hits doubles DPS while DualWielding.
+    if key == "doubleHitsWhenDualWielding" {
+        if matches!(value_field, Some(StatMapValue::Bool(false))) {
+            return Ok(());
+        }
+        let mut modifier = Modifier::number("DPS", ModType::More, 100.0)
+            .with_tag(ModTag::condition("DualWielding", false));
         for tag in tags {
             modifier = modifier.with_tag(tag);
         }
@@ -2694,6 +2710,30 @@ mod tests {
             ),
             other => panic!("expected Mapped, got {other:?}"),
         }
+    }
+
+    /// active_skill_damage_+%_final_while_dual_wielding -> both the Damage MORE
+    /// penalty and the DualWielding 100% MORE DPS from doubleHitsWhenDualWielding.
+    #[test]
+    fn skill_data_double_hits_when_dual_wielding_maps_dual_wield_dps_more() {
+        let entry = entry_json(
+            r#"{ "mods": [
+                { "kind": "mod", "name": "Damage", "mod_type": "MORE",
+                  "tags": [ { "type": "Condition", "var": "DualWielding" } ] },
+                { "kind": "skill_data", "name": "SkillData", "mod_type": "LIST",
+                  "value": { "key": "doubleHitsWhenDualWielding", "value": true } }
+            ] }"#,
+        );
+        let mods = expect_modifiers(map_entry(&entry, -30.0));
+        assert_eq!(mods.len(), 2);
+        assert_eq!(mods[0].name.as_str(), "Damage");
+        assert_eq!(mods[0].mod_type, ModType::More);
+        assert_eq!(mods[0].value.as_number(), Some(-30.0));
+        assert_eq!(mods[0].tags, vec![ModTag::condition("DualWielding", false)]);
+        assert_eq!(mods[1].name.as_str(), "DPS");
+        assert_eq!(mods[1].mod_type, ModType::More);
+        assert_eq!(mods[1].value.as_number(), Some(100.0));
+        assert_eq!(mods[1].tags, vec![ModTag::condition("DualWielding", false)]);
     }
 
     /// A flag constructor (a skill behaviour switch) with no consumer in the

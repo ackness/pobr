@@ -1056,3 +1056,31 @@ Giant's Blood</Item>
             .is_none()
     );
 }
+
+#[test]
+fn hammer_of_the_gods_dual_wielding_applies_damage_penalty_and_double_hits() {
+    let data = load_build_data();
+    let mut build =
+        dual_build(None).set_item(EquipmentSlot::Weapon1, weapon("Felled Greatclub", &[]));
+    build.socket_groups = vec![SocketGroup::new().with_active_skill("HammerOfTheGodsPlayer", 20)];
+    build
+        .tree
+        .allocated_nodes
+        .push(pobr_data::passive_tree::NodeId(32349));
+    let single = calculate_with_data(&build, &data, &opts(&[])).expect("single Hammer");
+    let dual_build = build.set_item(EquipmentSlot::Weapon2, weapon("Felled Greatclub", &[]));
+    let dual = calculate_with_data(&dual_build, &data, &opts(&[])).expect("dual Hammer");
+    assert!(dual.off_hand.is_some());
+    assert!(
+        (dual.average_damage / single.average_damage - 0.7).abs() < 1e-6,
+        "{} / {}",
+        dual.average_damage,
+        single.average_damage
+    );
+    assert!(
+        (dual.dps / single.dps - 1.4).abs() < 1e-6,
+        "{} / {}",
+        dual.dps,
+        single.dps
+    );
+}
