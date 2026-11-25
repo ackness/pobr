@@ -369,6 +369,7 @@ pub fn source_names(stat: &str) -> Vec<String> {
             "LifeReserved",
             "ExtraLifeReserved",
             "LifeReservedPercent",
+            "SkillLifeReservedPercent",
             "LifeReservationEfficiency",
             "ReservationEfficiency",
             "ReservationMultiplier",

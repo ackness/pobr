@@ -67,15 +67,19 @@ impl CalculationSession {
         let lowest = str_total.min(dex_total).min(int_total);
         self.set_multiplier("LowestAttribute", lowest);
         self.set_stat("LowestAttribute", lowest);
+        // Snapshot Life and Mana before Spirit so PerStat(Life/Mana -> Spirit) modifiers
+        // see the pools first (matching PoB2 CalcDefence.lua:87 Life -> Mana -> Spirit order).
+        let (life_total, mana_total) = life_mana_pools(&self.env);
+        self.set_multiplier("Life", life_total);
+        self.set_multiplier("Mana", mana_total);
+        self.set_stat("Life", life_total);
+        self.set_stat("Mana", mana_total);
         // (Pre-existing #7-4) The Spirit denominator = **the final pool value**
         // (calc_spirit_pool, including INC/MORE and conversion deductions) — vendor's
         // PerStat reads output.Spirit; BASE-only would under-count wolf-pack's Perfidy
         // "+2 Armour per 1 Spirit" by 72 base (Spirit 336 vs base 300).
         let spirit_total = self.spirit_total();
-        let (life_total, mana_total) = life_mana_pools(&self.env);
         self.set_multiplier("Spirit", spirit_total);
-        self.set_multiplier("Mana", mana_total);
-        self.set_multiplier("Life", life_total);
         self.set_multiplier("Level", f64::from(level));
         // cfg.stats snapshot backfill (a value-mirroring copy): the fetch channel for
         // PerStat/PercentStat (EvalContext::stat falls back to cfg.stats) and
@@ -87,8 +91,6 @@ impl CalculationSession {
         self.set_stat("Tribute", tribute);
         self.set_multiplier("Tribute", tribute);
         self.set_stat("Spirit", spirit_total);
-        self.set_stat("Mana", mana_total);
-        self.set_stat("Life", life_total);
         // The main skill's Life cost snapshot (matching vendor's output.LifeCost): the
         // fetch source for per-life-cost mods (PerStat stat=LifeCost, e.g. Atalui's
         // Bloodletting's gain-as-physical). Cost is resolved before damage, matching

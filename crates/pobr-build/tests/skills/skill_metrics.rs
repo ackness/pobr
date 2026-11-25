@@ -236,3 +236,44 @@ fn complete_effect_ordinals_preserve_provenance_and_skip_support_effects() {
     assert_eq!(effects[2].skill_id, "MissingEffectPlayer");
     assert_eq!(effects[2].active_skill_index, 3);
 }
+
+#[test]
+fn unleash_grants_burst_and_non_periodic_sustained_dps() {
+    let data = data();
+    let run = |skill_id: &str, with_unleash: bool| {
+        let mut group = SocketGroup::new().with_gem_skill(skill_id, 20);
+        if with_unleash {
+            group = group.with_gem_skill("SupportUnleashPlayer", 1);
+        }
+        let build = build().add_socket_group(group).with_main_socket_group(1);
+        calculate_with_data(&build, &data, &DataOrchestratorOptions::default()).unwrap()
+    };
+
+    let orb_bare = run("OrbOfStormsPlayer", false);
+    let orb_unleash = run("OrbOfStormsPlayer", true);
+    assert_eq!(orb_unleash.average_burst_hits, 2.0);
+    assert!(
+        (orb_unleash.average_burst_damage - orb_unleash.average_damage * 1.5).abs() < 1e-6,
+        "expected 1.5x burst damage for 2 seals at -50% penalty, got {} vs {}",
+        orb_unleash.average_burst_damage,
+        orb_unleash.average_damage
+    );
+    assert!(
+        orb_unleash.dps > orb_bare.dps * 1.15,
+        "non-periodic spell with Unleash should gain sustained seal DPS MORE: bare={} unleash={}",
+        orb_bare.dps,
+        orb_unleash.dps
+    );
+
+    let firestorm_bare = run("FirestormPlayer", false);
+    let firestorm_unleash = run("FirestormPlayer", true);
+    assert_eq!(firestorm_unleash.average_burst_hits, 2.0);
+    assert!(
+        (firestorm_unleash.average_burst_damage - firestorm_unleash.average_damage * 1.5).abs()
+            < 1e-6
+    );
+    assert_eq!(
+        firestorm_unleash.dps, firestorm_bare.dps,
+        "periodic spells use hitTimeOverride and must not receive sustained seal DPS MORE"
+    );
+}

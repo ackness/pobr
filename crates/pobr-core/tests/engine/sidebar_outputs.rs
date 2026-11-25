@@ -1188,6 +1188,38 @@ fn show_average_damage_respects_cooldown_only_for_self_cast_skills() {
 }
 
 #[test]
+fn periodic_skills_ignore_show_average_damage_for_combined_and_with_ailment_dps() {
+    let mut actor = Actor::new(
+        1,
+        ActorBaseStats {
+            hit_min: 100.0,
+            hit_max: 100.0,
+            action_rate: 1.0,
+            ..ActorBaseStats::default()
+        },
+    );
+    actor.mod_db.add_list(vec![
+        Modifier::flag("ShowAverageDamage"),
+        // Periodic hit every 200ms -> hit rate 5/s.
+        Modifier::number("PeriodicHitInterval", ModType::Base, 200.0),
+        Modifier::number("PeriodicHitDuration", ModType::Base, 2000.0),
+        Modifier::number("PeriodicInstanceLimit", ModType::Base, 1.0),
+        Modifier::flag("PeriodicEvenLandings"),
+    ]);
+    let mut env = Env::new(actor);
+    env.cfg =
+        crate::support::with_game_tables(CalcConfig::spell().with_skill_types(SkillTypes::SPELL));
+    perform(&mut env).unwrap();
+    let out = env.player.output;
+    assert_eq!(out.average_damage, 100.0);
+    assert_eq!(out.dps, 500.0);
+    assert_eq!(out.combined_avg, 500.0);
+    assert_eq!(out.with_ignite_dps, 500.0);
+    assert_eq!(out.with_bleed_dps, 500.0);
+    assert_eq!(out.with_poison_dps, 500.0);
+}
+
+#[test]
 fn channelled_attack_with_total_time_reports_channel_time_without_cooldown() {
     let make = |types: SkillTypes| {
         let mut actor = Actor::new(

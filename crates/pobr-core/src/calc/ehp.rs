@@ -1491,13 +1491,18 @@ pub fn fill_ehp_pob2(
         let cfg = &env.cfg;
         let out = &env.player.output;
 
-        // Pool view (:1411 the ES recovery cap / :2644-2657 recoverable life)
-        // CappingES (flags like ArmourESRecoveryCap) and the lowLife/lowES config are left for later.
+        // Pool view (:1411 / CalcDefence.lua:1480-1487 ES recovery cap / :2644-2657 recoverable life)
         let life_recoverable = out.life_unreserved.max(1.0);
         // Widow's Reign does not release active skill or permanent reservation.
         // This is the fresh snapshot; reduce_pools retains damage reservation
         // through the sequence and lowers the recovery cap after every hit.
-        let es_recovery_cap = out.energy_shield;
+        let mut es_recovery_cap = out.energy_shield;
+        if db.flag(cfg, "ArmourESRecoveryCap") {
+            es_recovery_cap = es_recovery_cap.min(out.armour);
+        }
+        if db.flag(cfg, "EvasionESRecoveryCap") {
+            es_recovery_cap = es_recovery_cap.min(out.evasion);
+        }
         let base = PoolBaseStats {
             max_life: out.life,
             life_recoverable,

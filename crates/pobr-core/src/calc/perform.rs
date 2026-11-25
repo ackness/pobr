@@ -168,6 +168,10 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         // Multiplier and GetStat consumers must read the same post-conversion pools.
         env.cfg.multipliers.insert("Mana".into(), mana_pool);
         env.cfg.multipliers.insert("Life".into(), life_pool);
+        // Refresh Spirit after Life/Mana so PerStat(Life/Mana -> Spirit) propagates.
+        let spirit_pool = super::calc_spirit_pool(&env.player.mod_db, &env.cfg);
+        env.cfg.stats.insert("Spirit".into(), spirit_pool);
+        env.cfg.multipliers.insert("Spirit".into(), spirit_pool);
         // "per N current Life / unreserved Mana": the pools less what is
         // reserved. Current Life is not something a build states, so the
         // character is taken to be at full unreserved Life.
@@ -264,6 +268,7 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     snapshot_crossbow_bolts_reloaded(env);
 
     let input = player_input(env);
+    apply_unleash_seal_dps(env, &input);
     // The hand-pass entry point. When `hand_sources` is empty (non-attack skill / old entry
     // point), `run_hand_passes` passes straight through to `calculate_minimal_vs_enemy`, behavior
     // unchanged bit-for-bit; once the orchestration layer assembles a HandSource, it goes through
@@ -1091,6 +1096,7 @@ fn pool_reservations(
             life,
             db.sum_by_name(ModType::Base, cfg, &["LifeReserved"]) * life_factor,
             db.sum_by_name(ModType::Inc, cfg, &["LifeReservedPercent"]) * life_factor
+                + db.sum_by_name(ModType::Base, cfg, &["SkillLifeReservedPercent"])
                 + super::survivability::permanent_reserved_percent(db, cfg, "Life"),
         ),
         reservation(
@@ -1708,6 +1714,61 @@ fn fill_skill_dot_stage(env: &mut Env) {
     super::skill_dot::fill_skill_dot(&mut env.player.output, &dot);
 }
 
+/// Sustained Unleash seal DPS multiplier (`CalcOffence.lua:1291-1313`).
+/// Periodic skills use `hitTimeOverride` and skip sustained DPS scaling while keeping burst.
+fn apply_unleash_seal_dps(env: &mut Env, input: &MinimalInput) {
+    let seal_more = {
+        let db = &env.player.mod_db;
+        let cfg = &env.cfg;
+        if !(db.flag(cfg, "HasSeals")
+            && db.flag(cfg, "DamageSeal")
+            && !db.flag(cfg, "NoRepeatBonuses")
+            && !db.flag(cfg, "UseMaxUnleash")
+            && !super::periodic::is_periodic(db, cfg)
+            && input.base_action_rate > 0.0)
+        {
+            return;
+        }
+        let cast_time = 1.0 / input.base_action_rate;
+        let speed_names = super::skill_use_time::speed_names_slice(cfg);
+        let speed_mod = ((1.0 + db.sum_by_name(ModType::Inc, cfg, speed_names) / 100.0)
+            * db.more_by_name(cfg, speed_names))
+        .max(0.0);
+        let total_cast_speed = input.base_action_rate * speed_mod;
+        let seal_gain_base = db.sum_by_name(ModType::Base, cfg, &["SealGainFrequency"]);
+        let seal_gain_mod = ((1.0
+            + db.sum_by_name(ModType::Inc, cfg, &["SealGainFrequency"]) / 100.0)
+            * db.more_by_name(cfg, &["SealGainFrequency"]))
+        .max(0.0);
+        if total_cast_speed <= 0.0 || seal_gain_base <= 0.0 || seal_gain_mod <= 0.0 {
+            return;
+        }
+        let seal_cooldown = cast_time * seal_gain_base / seal_gain_mod / 100.0;
+        let repeat_penalty = ((1.0
+            + db.sum_by_name(ModType::Inc, cfg, &["SealRepeatPenalty"]) / 100.0)
+            * db.more_by_name(cfg, &["SealRepeatPenalty"]))
+        .max(0.0);
+        if repeat_penalty <= 0.0 {
+            return;
+        }
+        ((1.0 / seal_cooldown / (total_cast_speed * 1.1) * repeat_penalty * 100.0) * 100.0).round()
+            / 100.0
+    };
+    let origin = env
+        .player
+        .mod_db
+        .flag_source(&env.cfg, "DamageSeal")
+        .cloned()
+        .unwrap_or_else(|| ModifierSource::new(SourceId::new(SourceKind::Derived, "DamageSeal")))
+        .with_stat("DPS")
+        .with_mod_type(ModType::More);
+    env.player.mod_db.add_mod(
+        Modifier::number("DPS", ModType::More, seal_more)
+            .with_source("DamageSeal")
+            .with_origin(origin),
+    );
+}
+
 /// Views of the already-resolved hit and ailment stages. Repeats affect a
 /// burst's damage; quantity affects throughput, not damage per hit.
 pub(super) struct DamageViewTerms {
@@ -1717,7 +1778,7 @@ pub(super) struct DamageViewTerms {
 }
 
 /// How many hits one use deals as a burst: the extra flickers from consumed
-/// Power Charges, or else the repeats.
+/// Power Charges, Unleash seals, or else the repeats.
 #[derive(Clone, Copy)]
 pub(super) enum BurstTerms {
     Repeats(f64),
@@ -1725,6 +1786,10 @@ pub(super) enum BurstTerms {
         per_charge: f64,
         charges: f64,
         doubled_percent: f64,
+    },
+    Seals {
+        seals: f64,
+        repeat_penalty: f64,
     },
 }
 
@@ -1737,6 +1802,17 @@ impl BurstTerms {
                 charges,
                 doubled_percent,
             } => 1.0 + per_charge * charges * (1.0 + doubled_percent / 100.0),
+            Self::Seals { seals, .. } => seals,
+        }
+    }
+
+    pub(super) fn damage_multiplier(self) -> f64 {
+        match self {
+            Self::Seals {
+                seals,
+                repeat_penalty,
+            } => 1.0 + (seals - 1.0) * repeat_penalty,
+            _ => self.hits(),
         }
     }
 }
@@ -1761,6 +1837,23 @@ pub(super) fn damage_view_terms(env: &Env) -> DamageViewTerms {
             charges: (removable + extra).max(0.0),
             doubled_percent: doubled,
         }
+    } else if db.flag(cfg, "HasSeals")
+        && db.flag(cfg, "DamageSeal")
+        && !db.flag(cfg, "NoRepeatBonuses")
+    {
+        let seal_max = db.sum_by_name(ModType::Base, cfg, &["SealCount"]);
+        if seal_max > 0.0 {
+            let repeat_penalty = ((1.0
+                + db.sum_by_name(ModType::Inc, cfg, &["SealRepeatPenalty"]) / 100.0)
+                * db.more_by_name(cfg, &["SealRepeatPenalty"]))
+            .max(0.0);
+            BurstTerms::Seals {
+                seals: seal_max,
+                repeat_penalty,
+            }
+        } else {
+            BurstTerms::Repeats(repeats)
+        }
     } else {
         BurstTerms::Repeats(repeats)
     };
@@ -1774,7 +1867,8 @@ pub(super) fn damage_view_terms(env: &Env) -> DamageViewTerms {
     let show_average = db.flag(cfg, "ShowAverageDamage")
         && (!is_self_cast || out.cooldown == 0.0)
         && out.reload_time == 0.0
-        && out.skill_trigger_rate == 0.0;
+        && out.skill_trigger_rate == 0.0
+        && !super::periodic::is_periodic(db, cfg);
     let base = if show_average {
         out.average_damage
     } else {
@@ -1794,10 +1888,11 @@ fn fill_damage_views(env: &mut Env) {
         base,
     } = damage_view_terms(env);
     let burst_hits = burst.hits();
+    let burst_mult = burst.damage_multiplier();
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
     let out = &mut env.player.output;
-    out.average_burst_damage = round(out.average_damage * burst_hits);
+    out.average_burst_damage = round(out.average_damage * burst_mult);
     out.average_burst_hits = burst_hits;
     out.hit_speed = out.effective_action_rate;
     out.repeats = super::offence::repeats(db, cfg);

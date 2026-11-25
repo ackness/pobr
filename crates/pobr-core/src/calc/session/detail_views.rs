@@ -1287,16 +1287,26 @@ impl CalculationSession {
                     )
                 }
             }
-            "AverageBurstDamage" => (
-                "round(AverageDamage * BurstHits, 9)".into(),
-                vec![
-                    ("AverageDamage".into(), out.average_damage),
-                    (
-                        "BurstHits".into(),
-                        perform::damage_view_terms(env).burst.hits(),
-                    ),
-                ],
-            ),
+            "AverageBurstDamage" => match perform::damage_view_terms(env).burst {
+                perform::BurstTerms::Seals {
+                    seals,
+                    repeat_penalty,
+                } => (
+                    "round(AverageDamage * (1 + (SealMax - 1) * SealRepeatPenalty), 9)".into(),
+                    vec![
+                        ("AverageDamage".into(), out.average_damage),
+                        ("SealMax".into(), seals),
+                        ("SealRepeatPenalty".into(), repeat_penalty),
+                    ],
+                ),
+                burst => (
+                    "round(AverageDamage * BurstHits, 9)".into(),
+                    vec![
+                        ("AverageDamage".into(), out.average_damage),
+                        ("BurstHits".into(), burst.hits()),
+                    ],
+                ),
+            },
             "AverageBurstHits" => match perform::damage_view_terms(env).burst {
                 perform::BurstTerms::Repeats(repeats) => {
                     ("Repeats".into(), vec![("Repeats".into(), repeats)])
@@ -1313,6 +1323,9 @@ impl CalculationSession {
                         ("DoubledChance".into(), doubled_percent),
                     ],
                 ),
+                perform::BurstTerms::Seals { seals, .. } => {
+                    ("SealMax".into(), vec![("SealMax".into(), seals)])
+                }
             },
             "EnemyAilmentThreshold" => {
                 let t =
@@ -1547,7 +1560,36 @@ impl CalculationSession {
                 "max(1, LifeUnreserved)".into(),
                 vec![("LifeUnreserved".into(), out.life_unreserved)],
             ),
-            "EnergyShieldRecoveryCap" => one("EnergyShield", out.energy_shield),
+            "EnergyShieldRecoveryCap" => {
+                match (
+                    db.flag(cfg, "ArmourESRecoveryCap"),
+                    db.flag(cfg, "EvasionESRecoveryCap"),
+                ) {
+                    (true, true) => (
+                        "min(EnergyShield, Armour, Evasion)".into(),
+                        vec![
+                            ("EnergyShield".into(), out.energy_shield),
+                            ("Armour".into(), out.armour),
+                            ("Evasion".into(), out.evasion),
+                        ],
+                    ),
+                    (true, false) => (
+                        "min(EnergyShield, Armour)".into(),
+                        vec![
+                            ("EnergyShield".into(), out.energy_shield),
+                            ("Armour".into(), out.armour),
+                        ],
+                    ),
+                    (false, true) => (
+                        "min(EnergyShield, Evasion)".into(),
+                        vec![
+                            ("EnergyShield".into(), out.energy_shield),
+                            ("Evasion".into(), out.evasion),
+                        ],
+                    ),
+                    (false, false) => one("EnergyShield", out.energy_shield),
+                }
+            }
             "PhysicalMaxHit" | "FireMaxHit" | "ColdMaxHit" | "LightningMaxHit" | "ChaosMaxHit" => {
                 let t = self.ehp_terms()?;
                 let i = [

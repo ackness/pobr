@@ -711,6 +711,7 @@ fn is_consumable_flag(name: &str) -> bool {
             | "PoisonCanStack"
             | "BleedCanStack"
             | "IgniteCanStack"
+            | "HasSeals"
             | "IgnoreFireResistance"
             | "IgnoreColdResistance"
             | "IgnoreLightningResistance"
@@ -1379,6 +1380,9 @@ pub(crate) fn translated_mod_name_parts<'a>(
         "Multiplier:LifeFlaskMaxChargesPercent" | "Multiplier:ManaFlaskMaxChargesPercent" => {
             base_name
         }
+        // Unleash seal mechanics (SupportUnleashPlayer / SupportZarokhsRevoltPlayer):
+        // consumed by `calc::perform::apply_unleash_seal_dps` and `BurstTerms::Seals`.
+        "HasSeals" | "SealCount" | "SealGainFrequency" | "SealRepeatPenalty" => base_name,
         //  Ailment duration -- vendor's infliction-side mod names carry an
         // Enemy prefix (the debuff duration applied to the enemy,
         // CalcOffence.lua:5037's durationMod reads
@@ -1639,17 +1643,63 @@ fn translate_tag_internal<const MATERIALIZE: bool>(
         // so the old whitelist limited to Attack/Spell is obsolete. Names
         // outside the enum stay Unsupported.
         "SkillType" => {
-            if !keys_subset_of(&["type", "skillType", "neg"]) {
+            if !keys_subset_of(&["type", "skillType", "skillTypeList", "neg"]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
                     "SkillType has keys outside the convention: {:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
             }
-            let name = text("skillType");
-            let Some(bits) = name.and_then(SkillTypes::from_pob2_name) else {
-                return Err(UnsupportedReason::UnsupportedTag(format!(
-                    "SkillType has an unsupported type: {name:?}"
-                )));
+            let bits = match (tag.get("skillType"), tag.get("skillTypeList")) {
+                (Some(_), Some(_)) => {
+                    return Err(UnsupportedReason::UnsupportedTag(
+                        "SkillType cannot specify both skillType and skillTypeList".into(),
+                    ));
+                }
+                (Some(StatMapValue::Text(name)), None) => {
+                    let Some(bits) = SkillTypes::from_pob2_name(name) else {
+                        return Err(UnsupportedReason::UnsupportedTag(format!(
+                            "SkillType has an unsupported type: Some({name:?})"
+                        )));
+                    };
+                    bits
+                }
+                (Some(_), None) => {
+                    return Err(UnsupportedReason::UnsupportedTag(
+                        "SkillType skillType is not text".into(),
+                    ));
+                }
+                (None, Some(StatMapValue::List(items))) => {
+                    let mut acc = SkillTypes::NONE;
+                    for item in items {
+                        let StatMapValue::Text(name) = item else {
+                            return Err(UnsupportedReason::UnsupportedTag(format!(
+                                "SkillType skillTypeList item is not text: {item:?}"
+                            )));
+                        };
+                        let Some(one) = SkillTypes::from_pob2_name(name) else {
+                            return Err(UnsupportedReason::UnsupportedTag(format!(
+                                "SkillType has an unsupported type: Some({name:?})"
+                            )));
+                        };
+                        acc |= one;
+                    }
+                    if acc.is_empty() {
+                        return Err(UnsupportedReason::UnsupportedTag(
+                            "SkillType skillTypeList is empty".into(),
+                        ));
+                    }
+                    acc
+                }
+                (None, Some(other)) => {
+                    return Err(UnsupportedReason::UnsupportedTag(format!(
+                        "SkillType skillTypeList is not a list: {other:?}"
+                    )));
+                }
+                (None, None) => {
+                    return Err(UnsupportedReason::UnsupportedTag(
+                        "SkillType has an unsupported type: None".into(),
+                    ));
+                }
             };
             Ok(MATERIALIZE.then(|| {
                 if matches!(tag.get("neg"), Some(StatMapValue::Bool(true))) {
@@ -4051,5 +4101,90 @@ mod tests {
         };
         assert_eq!(m.name.as_str(), "Multiplier:LifeFlaskMaxChargesPercent");
         assert_eq!(m.value.as_number(), Some(30.0));
+    }
+
+    #[test]
+    fn skill_type_list_tag_translates_with_or_semantics() {
+        let catalog = catalog_json(
+            r#"{
+                "global": {
+                    "neg_list": {
+                        "mods": [{
+                            "kind": "mod",
+                            "name": "Damage",
+                            "mod_type": "MORE",
+                            "tags": [{ "type": "SkillType", "skillTypeList": ["Warcry", "Area"], "neg": true }]
+                        }]
+                    },
+                    "empty_list": {
+                        "mods": [{
+                            "kind": "mod",
+                            "name": "Damage",
+                            "mod_type": "MORE",
+                            "tags": [{ "type": "SkillType", "skillTypeList": [] }]
+                        }]
+                    },
+                    "bad_item": {
+                        "mods": [{
+                            "kind": "mod",
+                            "name": "Damage",
+                            "mod_type": "MORE",
+                            "tags": [{ "type": "SkillType", "skillTypeList": ["Warcry", "NoSuchType"] }]
+                        }]
+                    }
+                },
+                "per_stat_set": {
+                    "SupportZerphisLegacyPlayer": {
+                        "1": {
+                            "support_zerphis_legacy_damage_+%_final": {
+                                "mods": [{
+                                    "kind": "mod",
+                                    "name": "Damage",
+                                    "mod_type": "MORE",
+                                    "tags": [{ "type": "SkillType", "skillTypeList": ["Warcry", "Area"] }]
+                                }]
+                            }
+                        }
+                    }
+                }
+            }"#,
+        );
+        let MappedOutcome::Mapped(items) = map_stat(
+            &catalog,
+            "SupportZerphisLegacyPlayer",
+            None,
+            "support_zerphis_legacy_damage_+%_final",
+            50.0,
+        ) else {
+            panic!("expected Mapped for skillTypeList");
+        };
+        let MappedItem::Modifier(m) = &items[0] else {
+            panic!("expected Modifier");
+        };
+        assert_eq!(
+            m.tags,
+            vec![ModTag::SkillTypes(SkillTypes::WARCRY | SkillTypes::AREA)]
+        );
+
+        let MappedOutcome::Mapped(neg_items) = map_stat(&catalog, "Any", None, "neg_list", 10.0)
+        else {
+            panic!("expected Mapped for negated skillTypeList");
+        };
+        let MappedItem::Modifier(neg_m) = &neg_items[0] else {
+            panic!("expected Modifier");
+        };
+        assert_eq!(
+            neg_m.tags,
+            vec![ModTag::SkillTypesNeg(SkillTypes::WARCRY | SkillTypes::AREA)]
+        );
+
+        assert!(matches!(
+            map_stat(&catalog, "Any", None, "empty_list", 10.0),
+            MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
+        ));
+        assert!(matches!(
+            map_stat(&catalog, "Any", None, "bad_item", 10.0),
+            MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
+        ));
     }
 }

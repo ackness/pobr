@@ -915,6 +915,11 @@ fn skill_modifiers_impl(stat: &str, value: f64) -> Option<Vec<Modifier>> {
         "support_rigwald_damage_+%_final_in_weapon_set_two" => Some(vec![
             Modifier::number("Damage", ModType::More, value).with_tag(while_using_weapon_set(2)),
         ]),
+        "skill_rapid_fire_repeats_per_broken_seal" => Some(if value > 0.0 {
+            vec![Modifier::flag("DamageSeal")]
+        } else {
+            Vec::new()
+        }),
         _ => None,
     }
 }

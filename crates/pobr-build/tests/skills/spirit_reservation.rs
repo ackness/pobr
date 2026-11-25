@@ -322,3 +322,34 @@ fn a_minion_skill_without_exempt_minions_reserves_for_its_minion() {
         build_with_group(SocketGroup::new().with_gem_skill("SummonSkeletalClericsPlayer", 20));
     assert_eq!(calc(&build, &data), 20.0);
 }
+
+#[test]
+fn atziris_communion_scales_life_reservation_efficiency_once() {
+    let data = repo_data();
+    let build = build_with_group(
+        SocketGroup::new()
+            .with_gem_skill("AlchemistsBoonPlayer", 1)
+            .with_gem_skill("SupportAtzirisCommunionPlayer", 1),
+    );
+    let plain = calculate_with_data(&build, &data, &DataOrchestratorOptions::default()).unwrap();
+    let with_eff = calculate_with_data(
+        &build,
+        &data,
+        &DataOrchestratorOptions {
+            extra_modifier_texts: vec!["100% increased Reservation Efficiency".into()],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(plain.spirit_reserved, 0.0);
+    // Alchemist's Boon = 30 Spirit * 66% = 19.80% Life at baseline; with +100% Reservation Efficiency,
+    // efficiency divides only once (19.80 / 2 = 9.90%), not twice (4.95%).
+    assert!((plain.life_reserved - (plain.life * 0.198).round()).abs() <= 1.0);
+    assert!((with_eff.life_reserved - (with_eff.life * 0.099).round()).abs() <= 1.0);
+    assert!(
+        (with_eff.life_reserved / plain.life_reserved - 0.5).abs() < 0.03,
+        "reserved life should halve once with 100% reservation efficiency: plain={} with_eff={}",
+        plain.life_reserved,
+        with_eff.life_reserved
+    );
+}

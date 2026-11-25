@@ -353,6 +353,7 @@ impl CalculationSession {
         let factor = mult / divisor;
         let flat = db.sum_by_name(ModType::Base, cfg, &["LifeReserved"]) * factor;
         let percent = db.sum_by_name(ModType::Inc, cfg, &["LifeReservedPercent"]) * factor
+            + db.sum_by_name(ModType::Base, cfg, &["SkillLifeReservedPercent"])
             + super::survivability::permanent_reserved_percent(db, cfg, "Life");
         let reserved = super::survivability::reservation(life, flat, percent).reserved;
         if (life - reserved) / life

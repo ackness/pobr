@@ -1042,3 +1042,32 @@ fn summoned_count_snapshot_is_idempotent_and_honors_zero_and_combat_overrides() 
         );
     }
 }
+
+#[test]
+fn spirit_snapshot_reads_life_and_scales_armour_per_spirit() {
+    use pobr_core::calc::CalculationSession;
+    use pobr_core::{CalcConfig, ModTag, Modifier};
+    use pobr_data::prelude::ModType;
+
+    let mut s = CalculationSession::new(MinimalInput {
+        base_life: 2500.0,
+        ..Default::default()
+    })
+    .with_config(crate::support::with_game_tables(CalcConfig::new()));
+    s.add_modifiers([
+        Modifier::number("Spirit", ModType::Base, 200.0),
+        // +1 Spirit per 25 Life -> +100 Spirit (total BASE 300).
+        Modifier::number("Spirit", ModType::Base, 1.0)
+            .with_tag(ModTag::multiplier("Life", 25.0, None)),
+        // 10% increased Spirit -> round(300 * 1.1) = 330.
+        Modifier::number("Spirit", ModType::Inc, 10.0),
+        // +2 Armour per 1 Spirit -> +660 Armour.
+        Modifier::number("Armour", ModType::Base, 2.0)
+            .with_tag(ModTag::multiplier("Spirit", 1.0, None)),
+    ]);
+    s.prepare_player_stats(90, None);
+    let completed = s.finish().expect("perform");
+    let output = completed.output();
+    assert_eq!(output.spirit, 330.0);
+    assert_eq!(output.armour, 660.0);
+}
