@@ -406,11 +406,11 @@ tag 与 nightly 不选，分支范围无法比较时保守选中。它不进入 
 worktree 的 Rust `target/` 为空时提示 `mise run warm`。无法廉价修复的问题以一行 `STOP …` 给出要运行的命令。
 服务器只绑 127.0.0.1：运行器传入由 worktree 路径推出的 `POBR_E2E_PORT`（4200–4999，被占用时顺延），
 直接运行 `playwright test` 时用各配置的固定端口；已有服务器只在 `POBR_E2E_REUSE=1` 时复用，否则端口被占即失败，
-不会悄悄测到另一个 worktree 的构建。默认 4 个 worker（机器共享）。汇总按套件列出通过／失败／flaky／跳过与耗时；
-失败时给出报告（`.cache/e2e/runs/<套件>/html`）与截图、trace 目录。
+不会悄悄测到另一个 worktree 的构建。默认 4 个 worker（机器共享；独享多核主机对 `e2e release` 传入 `--workers 6` 等仍正常生成回执）。汇总按套件列出通过／失败／flaky／跳过与耗时；
+失败时给出报告（`.cache/e2e/runs/<套件>/html`）与截图、trace 目录。跨平台键盘测试（如粘贴、全选）须用 `ControlOrMeta+...`，避免硬编码 `Control+...` 在 macOS 上失败。
 
 `release` 在干净工作树上全部通过时写回执 `.cache/e2e/release-<tree>.json`（commit、tree、数据锁 SHA-256、Playwright 版本、
-worker 数、各套件计数与耗时、起止时间）；有未提交改动、额外 Playwright 参数或失败时不写。回执以 tree 哈希为键：
+worker 数、各套件计数与耗时、起止时间）；有未提交改动（`git status --porcelain --untracked-files=normal` 非空；`web/public/` 下未跟踪目录还会进入 `dist/`）、额外 Playwright 参数或失败时不写。回执以 tree 哈希为键：
 master 未前进时 release PR 的合并提交与 PR 头 tree 相同，分支上的回执仍然匹配。`mise run release:e2e-check [<rev>]`
 只读检查 `<rev>`（默认 HEAD）的 tree 是否有通过的回执（本 checkout 与同一 clone 的其他 worktree），没有时给出要运行的命令；
 它不在任何 workflow 里。`mise run web:e2e` 仍是直接调用 Playwright 的旧入口，不做上述检查。

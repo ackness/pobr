@@ -129,6 +129,8 @@ mise run data:bump ackness/repoe game/<patch>-<n+1>
 
 ## 已知目标的本地回放
 
+本节是固定历史目标（`0.5.5.5`）的本地回放脚本，不代表当前活动数据或引擎版本；当前目标始终以 `data/CURRENT`、`pipeline/data.lock.json`、`Cargo.toml` 和 `git tag` 为准。
+
 用已发布的 `poe2 / 0.5.5.5 / international` 验证三仓库的 build → staging → bump/install → L2，
 不采用新数据。游戏声明为 RePoE `release/0.5.5.5-3`，语言配置为翻译库 `release/0.5.5.5-4.json`；
 PoBR 起始锁须仍引用对应 Release。发布规则仍见 [§1](#1-新游戏补丁owner-先发布) 和两个 owner 的发布文档。
@@ -229,24 +231,37 @@ runtime/release 身份与 L2 输出不变；新 receipt 如因生产者或路径
 
 ## 4. 发版上线
 
-发版是一个单独的小 PR：升 `[workspace.package].version`，并在 [CHANGELOG.md](CHANGELOG.md) 顶部写本版一节。
+发版是一个单独的小 PR：升 `[workspace.package].version`，并在 [CHANGELOG.md](CHANGELOG.md) 顶部写本版一节。开始前先从仓库实时状态核对基线（`Cargo.toml`、`git tag --sort=-v:refname | head -n 5`、`data/CURRENT`、`pipeline/data.lock.json`），不从文档示例数字推断版本。若上一版以来有 Web/CSS/E2E 改动，建议在改 `Cargo.toml` 之前先跑一次 `mise run e2e smoke` 或相关 spec 预检，以免因界面回归翻改版本号而触发两次 WASM 重编译。
 
 ```sh
 git fetch origin
+git status --porcelain --untracked-files=normal   # 须为空；web/public/ 下未跟踪文件会阻止生成 E2E 回执并混入 dist/
+pnpm --dir web exec playwright install --dry-run chromium   # 缺锁定浏览器时先跑 `mise run setup:e2e`
 git switch -c release/v0.x.y origin/master
 git log --first-parent --format='%s%n    %b' v<上一版>..origin/master   # 本版包含的 PR：合并提交标题有 PR 号，正文是 PR 标题；squash 合并的标题末尾带 PR 号
+git log --no-merges --oneline v<上一版>..origin/master                  # 补充核对合并前追加的提交，避免遗漏 PR 描述未覆盖的改动
+git diff --stat v<上一版>..origin/master -- apps/ crates/pobr-data/ pipeline/data.lock.json   # 核对是否有破坏性变更
 # 编辑 Cargo.toml 的 [workspace.package] version = "0.x.y"，在 CHANGELOG.md 写本版一节（写法见下）
-mise exec -- cargo metadata --format-version 1 > /dev/null   # 刷新 Cargo.lock 中继承 workspace 版本的包
+mise exec -- cargo metadata --offline --format-version 1 > /dev/null || mise exec -- cargo metadata --format-version 1 > /dev/null   # 刷新 Cargo.lock 中继承 workspace 版本的包
 mise exec -- bash devs/scripts/release-check.sh origin/master  # 应输出 release=true：SemVer 递增、锁版本一致、CHANGELOG 有本版一节、tag 未被占用
 python3 devs/scripts/release-policy.py notes v0.x.y .cache/release-notes.md   # 取出本版一节，作为 PR 说明
-git commit -am "chore: release v0.x.y"
-mise run e2e release   # 须全部通过：本地完整浏览器套件，写下该提交 tree 的回执
+git add Cargo.toml Cargo.lock CHANGELOG.md
+git commit -m "chore: release v0.x.y"
+# 先推分支开 Draft PR 并请求完整 CI，与本地 e2e release 并行执行以缩短总耗时：
 git push -u origin HEAD
-gh pr create --title "chore: release v0.x.y" --body-file .cache/release-notes.md
+gh pr create --draft --title "chore: release v0.x.y" --body-file .cache/release-notes.md
+mise run ci release/v0.x.y
+mise run e2e release   # 须全部通过：本地完整浏览器套件，写下该提交 tree 的回执（独享多核主机可加 --workers 6）
+mise run release:e2e-check HEAD
+# 两端均绿后再转为正式 PR 并核对合并前检查：
+gh pr ready <PR号>
+mise run pr-ready <PR号> --require-full
 ```
 
 - 浏览器套件只在本地运行（`mise run ci` 不再接受 `--e2e`）；层级、回执与端口见[浏览器测试](docs/development-workflow.md#浏览器测试)。
   发版带新游戏补丁时，先完成 [§2 的新补丁验收](#2-新游戏补丁pobr-改锁)；仍须运行完整的 `e2e release`。
+- 若 `e2e release` 失败，**不要把修补提交到 `release/v0.x.y`**：先在针对 `origin/master` 的独立修复 PR 中修复并合入，再 `git fetch origin && git switch -C release/v0.x.y origin/master` 重建发版分支，将修复 PR 补入 `CHANGELOG.md`，重新提交、触发 `mise run ci release/v0.x.y` 并重跑 `e2e release`。
+- 完整执行要点与常见坑恢复步骤见 [release-pobr skill](.agents/skills/release-pobr/SKILL.md)。
 
 CHANGELOG 的一节用英文写，读者依次是 pobr.win 的玩家、使用 WASM 包／CLI／数据包的开发者；写读者看到的变化，不写实现过程：
 
@@ -289,6 +304,7 @@ CHANGELOG 的一节用英文写，读者依次是 pobr.win 的玩家、使用 WA
 - 显示检查：`mise run builds:fetch .cache/ninja-<日期>` 抓当前赛季的 poe.ninja 构筑，再运行
   `mise run audit:display --release v0.x.y --strict .cache/ninja-<日期>`。应以 0 退出：Errors 与 Raw ids 两节为空，
   宝石目录的原始 ID 名为 0。
+  若上游 `builds:fetch` 临时失败（如 `missing or ambiguous latest-season snapshot` 或限流），可回退到最近一次本地 `.cache/ninja-*` 缓存或 `examples/reference-builds/tuned`，并在报告中注明回退来源。
   想在打 tag 前先看，对本地 `mise run web build` 的结果运行同一命令，去掉 `--release`。
   报告各节的含义见 [diagnostics.md](docs/diagnostics.md#前端显示审计)。
 
