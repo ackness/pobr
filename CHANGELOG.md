@@ -4,6 +4,30 @@ Notable changes to PoBR, the browser build planner at [pobr.win](https://pobr.wi
 
 Versions follow [SemVer](https://semver.org/). While the version is 0.0.x, any release may change behaviour; changes that need action from WASM, CLI or data consumers are listed under **Breaking changes**. How a release section is written: [RELEASING.md](RELEASING.md#4-发版上线).
 
+## [0.0.58] - 2026-11-26
+
+This release ships a ~24% smaller and faster-starting WASM engine, improves responsive layouts from phones to ultrawide monitors, and fixes a batch of damage, defence, minion, totem and skill calculation discrepancies across PoE2 builds. Game data remains at 0.5.5.8.
+
+### Breaking changes
+
+- None.
+
+### Changed
+
+- Smaller, faster-starting WASM engine: switching the release build to size optimisation with full LTO and trimmed Unicode regex tables cuts the raw `.wasm` binary by ~24% (7.6 MiB to 5.8 MiB) and reduces WASM compile and single-build calculation latency while keeping calculation outputs identical. (#412)
+- Responsive Web workspace across mobile, split-screen desktop and ultrawide monitors: Items, Skills and Passive Tree avoid collapsing on narrow desktop viewports (`1024–1200px`), mobile places the Passive Tree canvas first with a 2+3 flask/charm grid and horizontally scrollable Calcs tabs, and ultrawide screens unlock multi-column workbenches for Items, Skills, Upgrades, Config, Calcs and Compare. (#413)
+
+### Fixed
+
+- Apply Wolf and Wyvern shapeshift form bonuses, scale and prioritise Blasphemy aura curses, honour incoming and outgoing elemental resistance-ignore modifiers, and apply Meat Shield minion damage dealt/taken multipliers and Danse Macabre offering effects. (#411)
+- Fix Buckler shield-condition checks, all-armour defence pools, host meta-totem limits, totem average-damage views and placement resource rates, base cooldown recovery without an explicit skill cooldown base, minion life final multipliers and channelled skill times. (#411)
+- Fix dual-wield double-hitting skills, Unleash seal scaling, periodic skill views, Spirit reservation ordering, Energy Shield caps, Atziri's Communion, per-effect stat-set selection, local "no physical damage" weapon modifiers and parsing of the Inherited Strength warcry modifier. (#411)
+- Fix wrapped Passive Tree top bars overlapping tree edit error banners on shorter desktop viewports, keep ultrawide Config option columns within a readable 48rem width, and clean up mobile topbar and Skills header spacing. (#413, #415)
+
+### Internal
+
+- Add the repository-local PoE2 `audit-builds` agent skill and build source catalog for repeatable parity audits, add CSS invariant and responsive viewport E2E regression tests, and use cross-platform paste shortcuts in E2E tests. (#413, #414, #415)
+
 ## [0.0.57] - 2026-11-23
 
 Choose, craft and replace jewels directly in passive sockets. This release also corrects damage, recovery and defence calculations across a range of builds, and preserves more weapon-set details on import and export. Game data remains at 0.5.5.8.
@@ -474,6 +498,7 @@ pobr.win now calculates with game data 0.5.5.5 (was 0.5.5.4.2), imported from th
 
 Notes for 0.0.43 and earlier are on [GitHub Releases](https://github.com/ackness/pobr/releases).
 
+[0.0.58]: https://github.com/ackness/pobr/compare/v0.0.57...v0.0.58
 [0.0.57]: https://github.com/ackness/pobr/compare/v0.0.56...v0.0.57
 [0.0.56]: https://github.com/ackness/pobr/compare/v0.0.55...v0.0.56
 [0.0.55]: https://github.com/ackness/pobr/compare/v0.0.54...v0.0.55
