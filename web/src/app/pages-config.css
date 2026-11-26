@@ -107,16 +107,16 @@
   .shell-root .config-page .party-editor legend { padding: 0 .75rem 0 0; font-size: var(--text-base); font-weight: 600; }
   .shell-root .config-page .party-editor fieldset details { border-top: 1px solid var(--border); }
 
-  /* ── Wide / ultrawide pages: flow options into two readable columns ─────── */
+  /* ── Wide / ultrawide pages: flow options into readable columns capped at 48rem ─ */
   @container config-page (min-width: 78rem) {
     .shell-root .config-page .config-option-groups { max-width: none; }
-    .shell-root .config-page .config-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 2.5rem; align-items: start; }
+    .shell-root .config-page .config-grid { grid-template-columns: repeat(2, minmax(0, 48rem)); column-gap: 2.5rem; align-items: start; }
     .shell-root .config-page .config-option-row:last-child { border-bottom: 1px solid var(--border); }
-    .shell-root .config-page .config-quick-list { max-width: none; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 2.25rem; }
+    .shell-root .config-page .config-quick-list { max-width: none; grid-template-columns: repeat(2, minmax(0, 48rem)); column-gap: 2.25rem; }
     .shell-root .config-page .config-modifier-blocks { grid-template-columns: repeat(auto-fit, minmax(28rem, 1fr)); column-gap: 2rem; }
   }
   @container config-page (min-width: 136rem) {
-    .shell-root .config-page .config-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .shell-root .config-page .config-grid { grid-template-columns: repeat(3, minmax(0, 48rem)); }
   }
 
   /* ── Narrow pages: the jump list becomes a row, long rows wrap their controls ── */

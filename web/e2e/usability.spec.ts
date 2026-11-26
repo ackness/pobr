@@ -70,7 +70,7 @@ test('a long paste stays usable and the active build survives sharing and reload
   const source = readFileSync(new URL('../../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', import.meta.url), 'utf8').trim();
   await expect(code).toBeFocused();
   await page.evaluate(text => navigator.clipboard.writeText(text), source);
-  await page.keyboard.press('Control+V');
+  await page.keyboard.press('ControlOrMeta+v');
   await expect(code).toHaveValue(source);
   const submit = page.locator('.import-submit');
   await expect(submit).toBeInViewport({ ratio: 1 });

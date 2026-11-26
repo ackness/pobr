@@ -56,4 +56,10 @@ describe('responsive layout CSS invariants', () => {
     // At 2560px the skills content column caps at 132rem; the 3-column split must start strictly wider.
     expect(split!.minRem).toBeGreaterThan(132);
   });
+
+  it('caps multi-column config option tracks at 48rem on wide and ultrawide containers', () => {
+    const config = readCss('pages-config.css');
+    expect(config).toMatch(/\.config-grid\s*\{\s*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*48rem\)\)/);
+    expect(config).toMatch(/\.config-grid\s*\{\s*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*48rem\)\)/);
+  });
 });
