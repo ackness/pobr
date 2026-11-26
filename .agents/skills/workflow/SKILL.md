@@ -16,6 +16,7 @@ process redesign; using this adapter does not require it.
 | Commands, caches, CI routing, `pr-ready`, merge and release mechanics, external PRs | [development-workflow.md](../../../docs/development-workflow.md) |
 | External contributor expectations and which repository owns a fix | [CONTRIBUTING.md](../../../CONTRIBUTING.md) |
 | Data bumps, releases, deployment checks and rollback | [RELEASING.md](../../../RELEASING.md) |
+| Release execution runbook (fast path & troubleshooting) | [release-pobr skill](../release-pobr/SKILL.md) (policy in [RELEASING.md](../../../RELEASING.md)) |
 | Data design and current gaps | [data-architecture.md](../../../docs/data-architecture.md), [data-status.md](../../../docs/data-status.md) |
 
 ## Repository framework
